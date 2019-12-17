@@ -13,8 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import XPCActorable
 
-public protocol GreetingsServiceProtocol: Actorable {
+public protocol GreetingsServiceProtocol: XPCActorableProtocol {
 
     func logGreeting(name: String) throws
     func greet(name: String) throws -> String

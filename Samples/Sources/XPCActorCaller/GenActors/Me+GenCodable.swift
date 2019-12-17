@@ -13,34 +13,35 @@
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//
+//sa
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import XPC
+import XPCActorable
+import XPCActorServiceAPI
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for GreetingsServiceStub.Message
+// MARK: DO NOT EDIT: Codable conformance for Me.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension GreetingsServiceStub.Message: Codable {
+extension Me.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case _boxGreetingsServiceProtocol
+        case noop
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case _boxGreetingsServiceProtocol
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case ._boxGreetingsServiceProtocol:
-            let boxed = try container.decode(GeneratedActor.Messages.GreetingsServiceProtocol.self, forKey: CodingKeys._boxGreetingsServiceProtocol)
-            self = .greetingsServiceProtocol(boxed)
+        case .noop:
+            self = .noop
 
         }
     }
@@ -48,9 +49,8 @@ extension GreetingsServiceStub.Message: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .greetingsServiceProtocol(let boxed):
-            try container.encode(DiscriminatorKeys._boxGreetingsServiceProtocol.rawValue, forKey: CodingKeys._case)
-            try container.encode(boxed, forKey: CodingKeys._boxGreetingsServiceProtocol)
+        case .noop:
+            try container.encode(DiscriminatorKeys.noop.rawValue, forKey: CodingKeys._case)
 
         }
     }

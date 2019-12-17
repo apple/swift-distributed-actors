@@ -17,6 +17,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import XPCActorable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated GreetingsServiceProtocol messages 
