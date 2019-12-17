@@ -48,9 +48,9 @@ reply.withTimeout(after: .seconds(3))._nioFuture.whenComplete {
     system.log.info("Reply from service.greet(Capybara) = \($0)")
 }
 
-struct Me: Actorable {
-    let service: Actor<GreetingsServiceStub>
-
+//struct Me: Actorable {
+//    let service: Actor<GreetingsServiceStub>
+//
 //    // TODO make these work
 //    func receiveSignal(context: Myself.Context, signal: Signal) -> DeathPactDirective {
 //        switch signal {
