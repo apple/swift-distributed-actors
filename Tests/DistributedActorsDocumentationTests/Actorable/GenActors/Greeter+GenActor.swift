@@ -67,7 +67,7 @@ extension Greeter {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -76,7 +76,8 @@ extension Greeter {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -87,6 +88,13 @@ extension Greeter {
 
 extension Actor where A.Message == Greeter.Message {
 
+     func greet(name: String) -> Reply<String> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
+                .greet(name: name, _replyTo: _replyTo)}.nioFuture
+        )
+    }
  
 
 }

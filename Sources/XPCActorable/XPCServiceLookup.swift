@@ -12,6 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
+
 /// Allows obtaining actor references to XPC services.
 /// Returned references may be used to send messages to the targeted services, treating XPC as a transport.
 public struct XPCServiceLookup {
@@ -54,3 +58,8 @@ public struct XPCServiceLookup {
     }
 
 }
+
+#else
+/// XPC is only available on Apple platforms
+#endif
+

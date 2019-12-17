@@ -88,7 +88,7 @@ internal struct AssociationRemoteControl {
         self.channel.writeAndFlush(NIOAny(transportEnvelope), promise: nil)
     }
 
-    func sendSystemMessage(_ message: SystemMessage, recipient: ActorAddress) {
+    func sendSystemMessage(_ message: _SystemMessage, recipient: ActorAddress) {
         self.channel.writeAndFlush(NIOAny(TransportEnvelope(systemMessage: message, recipient: recipient)), promise: nil)
     }
 }

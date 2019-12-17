@@ -22,6 +22,7 @@
 
 import DistributedActors
 import XPCActorable
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated GreetingsServiceProtocolStub messages 

@@ -38,6 +38,14 @@ extension GeneratedActor.Messages {
 
 extension Actor where A: CoffeeMachine {
 
+    public func makeCoffee() -> Reply<Coffee> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: Coffee.self, timeout: .effectivelyInfinite) { _replyTo in
+                A._boxCoffeeMachine(.makeCoffee(_replyTo: _replyTo))
+            }.nioFuture
+        )
+    }
  
 
 }

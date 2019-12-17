@@ -271,7 +271,7 @@ class SerializationTests: XCTestCase {
         back.sysRef.address.shouldEqual(sysRef.address)
 
         // Only to see that the deserialized ref indeed works for sending system messages to it
-        back.sysRef.sendSystemMessage(.terminated(ref: watchMe.asAddressable(), existenceConfirmed: false), file: #file, line: #line)
+        back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable(), existenceConfirmed: false), file: #file, line: #line)
         try p.expectMessage("terminated:watchMe")
     }
 
@@ -346,9 +346,9 @@ private struct HasInterestingMessageRef: Codable, Equatable {
 /// as we do not expect this case to happen often (or at all), however if the need were to arise, the ReceivesSystemMessagesDecoder
 /// enables us to handle this rather easily.
 private struct HasReceivesSystemMsgs: Codable {
-    let sysRef: ReceivesSystemMessages
+    let sysRef: _ReceivesSystemMessages
 
-    init(sysRef: ReceivesSystemMessages) {
+    init(sysRef: _ReceivesSystemMessages) {
         self.sysRef = sysRef
     }
 

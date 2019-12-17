@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// :nodoc: INTERNAL API: May change without any prior notice.
+///
 /// Represents a reference to a remote actor.
 ///
 /// By owning a reference itself, no guarantees are given if the actor exists or even existed.
@@ -19,8 +21,8 @@
 /// by being sent from a remote note, one can safely assume that the actor _existed_, however nothing
 /// is clear about its current lifecycle state (it may have already terminated the moment the message was sent,
 /// or even before then). To obtain lifecycle status of this actor the usual strategy of watching it needs to be employed.
-@usableFromInline
-internal final class RemotePersonality<Message> {
+// TODO: reimplement as CellDelegate as it shall become simply another transport?
+public final class RemotePersonality<Message> {
     let address: ActorAddress
 
     let deadLetters: ActorRef<DeadLetter>
@@ -68,7 +70,7 @@ internal final class RemotePersonality<Message> {
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         traceLog_Cell("RemoteActorRef(\(self.address)) sendSystemMessage: \(message)")
         // TODO: in case we'd get a new connection the redeliveries must remain... so we always need to poll for the remotecontrol from association?
         // the association would keep the buffers?

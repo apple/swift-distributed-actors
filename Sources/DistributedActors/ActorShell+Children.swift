@@ -116,7 +116,7 @@ public class Children {
         }
     }
 
-    /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
+    /// :nodoc: INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     /// Returns: `true` upon successful removal of the ref identified by passed in path, `false` otherwise
     @usableFromInline
     @discardableResult
@@ -133,7 +133,7 @@ public class Children {
         }
     }
 
-    /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
+    /// :nodoc: INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     ///
     /// Once marked as stopping the actor MUST be sent a `.stop` system message.
     ///
@@ -192,8 +192,7 @@ public class Children {
 // MARK: Traversal
 
 extension Children: _ActorTreeTraversable {
-    @usableFromInline
-    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
@@ -202,7 +201,7 @@ extension Children: _ActorTreeTraversable {
 
         for child in children {
             // result of traversing / descending deeper into the tree
-            let descendResult: TraversalResult<T>
+            let descendResult: _TraversalResult<T>
             switch child {
             case .adapter(let adapterRef):
                 descendResult = adapterRef._traverse(context: context, visit)
@@ -229,8 +228,7 @@ extension Children: _ActorTreeTraversable {
         return c.result
     }
 
-    @usableFromInline
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -250,8 +248,7 @@ extension Children: _ActorTreeTraversable {
         }
     }
 
-    @usableFromInline
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -286,7 +283,7 @@ extension Children {
         }
     }
 
-    /// INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
+    /// :nodoc: INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
     // We may open this up once it is requested enough however...
     public func stopAll(includeAdapters: Bool = true) {
         self.rwLock.withWriterLockVoid {
@@ -302,7 +299,7 @@ extension Children {
         let childOpt = self.container[name]
         switch childOpt {
         case .some(.cell(let cell)) where self._markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.address):
-            cell.receivesSystemMessages.sendSystemMessage(.stop, file: #file, line: #line)
+            cell.receivesSystemMessages._sendSystemMessage(.stop, file: #file, line: #line)
             return true
         case .some(.adapter(let ref)) where includeAdapters:
             ref.stop()
@@ -372,7 +369,7 @@ extension ActorShell: ChildActorRefFactory {
         }
 
         if self.children.markAsStoppingChild(identifiedBy: ref.address) {
-            ref.sendSystemMessage(.stop)
+            ref._sendSystemMessage(.stop)
         }
     }
 

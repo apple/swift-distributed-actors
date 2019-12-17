@@ -85,11 +85,11 @@ extension ActorRef {
         // TODO somehow smarter detect that "this should to over XPC transport"
         //
         // FIXME: "if our context means we should deserialize the Proxied refs"
-        if let xpcConnection = decoder.xpcConnection {
-            self = ActorRef(.delegate(XPCProxiedRefDelegate(system: context.system, origin: xpcConnection, address: address)))
-        } else {
+//        if let xpcConnection = decoder.xpcConnection {
+//            self = ActorRef(.delegate(XPCProxiedRefDelegate(system: context.system, origin: xpcConnection, address: address)))
+//        } else {
             self = context.resolveActorRef(identifiedBy: address)
-        }
+//        }
     }
 }
 
@@ -128,7 +128,7 @@ extension ReceivesMessages {
 /// this type automatically, since users can not access the type at all.
 /// The `ReceivesSystemMessagesDecoder` however does enable this library itself to embed and use this type in Codable
 /// messages, if the need were to arise.
-extension ReceivesSystemMessages {
+extension _ReceivesSystemMessages {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         traceLog_Serialization("encode \(self.address) WITH address")
@@ -141,9 +141,9 @@ extension ReceivesSystemMessages {
 }
 
 internal struct ReceivesSystemMessagesDecoder {
-    public static func decode(from decoder: Decoder) throws -> ReceivesSystemMessages {
+    public static func decode(from decoder: Decoder) throws -> _ReceivesSystemMessages {
         guard let context = decoder.actorSerializationContext else {
-            throw ActorCoding.CodingError.missingActorSerializationContext(ReceivesSystemMessages.self, details: "While decoding ReceivesSystemMessages from [\(decoder)]")
+            throw ActorCoding.CodingError.missingActorSerializationContext(_ReceivesSystemMessages.self, details: "While decoding ReceivesSystemMessages from [\(decoder)]")
         }
 
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
@@ -321,7 +321,7 @@ internal extension UnkeyedDecodingContainer {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable SystemMessage
 
-extension SystemMessage: Codable {
+extension _SystemMessage: Codable {
     enum CodingKeys: CodingKey {
         case type
 
@@ -338,8 +338,7 @@ extension SystemMessage: Codable {
         static let terminated = 1
     }
 
-    @usableFromInline
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(Int.self, forKey: CodingKeys.type) {
         case Types.watch:
@@ -362,8 +361,7 @@ extension SystemMessage: Codable {
         }
     }
 
-    @usableFromInline
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         switch self {
         case .watch(let watchee, let watcher):
             var container = encoder.container(keyedBy: CodingKeys.self)

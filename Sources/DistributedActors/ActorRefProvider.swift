@@ -83,7 +83,7 @@ extension RemoteActorRefProvider {
         return self.localProvider.stopAll()
     }
 
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         return self.localProvider._traverse(context: context, visit)
     }
 }
@@ -92,7 +92,7 @@ extension RemoteActorRefProvider {
 // MARK: RemoteActorRefProvider implements resolve differently, by being aware of remote addresses
 
 extension RemoteActorRefProvider {
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         switch context.address._location {
         case .local:
             return self.localProvider._resolve(context: context)
@@ -105,7 +105,7 @@ extension RemoteActorRefProvider {
         }
     }
 
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         if self.localNode == context.address.node {
             return self.localProvider._resolveUntyped(context: context)
         } else {
@@ -171,21 +171,22 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
 }
 
 extension LocalActorRefProvider {
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-        return self.root._traverse(context: context.deeper, visit)
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+        self.root._traverse(context: context.deeper, visit)
     }
 
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        return self.root._resolve(context: context)
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        self.root._resolve(context: context)
     }
 
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        return self.root._resolveUntyped(context: context)
+    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+        self.root._resolveUntyped(context: context)
     }
 }
 
-internal protocol _ActorTreeTraversable {
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T>
+/// :nodoc: INTERNAL API
+public protocol _ActorTreeTraversable {
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T>
 
     /// Resolves the given actor path against the underlying actor tree.
     ///
@@ -217,8 +218,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 
     // TODO: duplicates some logic from _traverse implementation on Actor system (due to initialization dances), see if we can remove the duplication of this
     // TODO: we may be able to pull this off by implementing the "root" as traversable and then we expose it to the Serialization() impl
-    @usableFromInline
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let systemTraversed = self.systemTree._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -252,8 +252,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         }
     }
 
-    @usableFromInline
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable() // i.e. we resolved a "dead reference" as it points to nothing
         }
@@ -266,8 +265,8 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
     }
 }
 
-@usableFromInline
-internal struct TraversalContext<T> {
+/// :nodoc: INTERNAL API: May change without any prior notice.
+public struct TraversalContext<T> {
     var depth: Int
     var accumulated: [T]
     var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
@@ -288,7 +287,7 @@ internal struct TraversalContext<T> {
         self.init(depth: -1, accumulated: [], selectorSegments: [])
     }
 
-    var result: TraversalResult<T> {
+    var result: _TraversalResult<T> {
         if self.accumulated.count > 1 {
             return .results(self.accumulated)
         } else {
@@ -316,17 +315,17 @@ internal struct TraversalContext<T> {
     }
 }
 
-@usableFromInline
-internal struct ResolveContext<Message> {
+/// :nodoc: INTERNAL API: May change without any prior notice.
+public struct ResolveContext<Message> {
     /// The "remaining path" of the resolve being performed
-    var selectorSegments: ArraySlice<ActorPathSegment>
+    public var selectorSegments: ArraySlice<ActorPathSegment>
 
     /// Address that we are trying to resolve.
-    var address: ActorAddress
+    public var address: ActorAddress
 
-    let system: ActorSystem
+    public let system: ActorSystem
 
-    init(address: ActorAddress, system: ActorSystem) {
+    public init(address: ActorAddress, system: ActorSystem) {
         self.address = address
         self.selectorSegments = address.path.segments[...]
         self.system = system
@@ -335,21 +334,22 @@ internal struct ResolveContext<Message> {
     /// Returns copy of traversal context yet "one level deeper."
     ///
     /// Note that this also drops the `path` if it was present, but retains the `incarnation` as we may want to resolve a _specific_ ref after all.
-    var deeper: ResolveContext {
+    public var deeper: ResolveContext {
         var next = self
         next.selectorSegments = self.selectorSegments.dropFirst()
         return next
     }
 
     /// A dead letters reference that is personalized for the context's address, and well  well typed for `Message`.
-    var personalDeadLetters: ActorRef<Message> {
-        return self.system.personalDeadLetters(recipient: self.address)
+    public var personalDeadLetters: ActorRef<Message> {
+        self.system.personalDeadLetters(recipient: self.address)
     }
 }
 
+/// :nodoc: INTERNAL API: Not intended to be used by end users.
+///
 /// Directives that steer the traversal state machine (which, however, always remains depth-first).
-@usableFromInline
-internal enum TraversalDirective<T> {
+public enum _TraversalDirective<T> {
     case `continue`
     // case `return`(T) // immediately return this value
     case accumulateSingle(T)
@@ -357,8 +357,8 @@ internal enum TraversalDirective<T> {
     case abort(Error)
 }
 
-@usableFromInline
-internal enum TraversalResult<T> {
+/// :nodoc: INTERNAL API: Not intended to be used by end users.
+public enum _TraversalResult<T> {
     case result(T)
     case results([T])
     case completed

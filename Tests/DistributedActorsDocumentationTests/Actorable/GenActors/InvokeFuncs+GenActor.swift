@@ -76,7 +76,7 @@ extension InvokeFuncs {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -85,7 +85,8 @@ extension InvokeFuncs {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -96,10 +97,31 @@ extension InvokeFuncs {
 
 extension Actor where A.Message == InvokeFuncs.Message {
 
+    public func doThingsAndRunTask() -> Reply<Int> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
+                .doThingsAndRunTask(_replyTo: _replyTo)}.nioFuture
+        )
+    }
  
 
+    public func doThingsAsync() -> Reply<Reply<Int>> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: Reply<Int>.self, timeout: .effectivelyInfinite) { _replyTo in
+                .doThingsAsync(_replyTo: _replyTo)}.nioFuture
+        )
+    }
  
 
+    internal func internalTask() -> Reply<Int> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
+                .internalTask(_replyTo: _replyTo)}.nioFuture
+        )
+    }
  
 
 }

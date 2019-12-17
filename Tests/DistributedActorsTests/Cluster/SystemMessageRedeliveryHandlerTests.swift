@@ -111,14 +111,14 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     }
 
     func test_systemMessageRedeliveryHandler_receiveAnACK() throws {
-        try self.channel.writeInbound(TransportEnvelope(ack: SystemMessage.ACK(sequenceNr: 1), recipient: ._localRoot))
+        try self.channel.writeInbound(TransportEnvelope(ack: _SystemMessage.ACK(sequenceNr: 1), recipient: ._localRoot))
 
         // no errors; nothing to assert really
         try self.expectNoWrite()
     }
 
     func test_systemMessageRedeliveryHandler_receiveAnACKFromFuture() throws {
-        try self.channel.writeInbound(TransportEnvelope(ack: SystemMessage.ACK(sequenceNr: 1337), recipient: ._localRoot))
+        try self.channel.writeInbound(TransportEnvelope(ack: _SystemMessage.ACK(sequenceNr: 1337), recipient: ._localRoot))
 
         // should log at trace, but generally considered harmless
         try self.logCaptureHandler.shouldContain(prefix: "Received unexpected system message [ACK(1337)]", at: .warning)
@@ -130,7 +130,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         self.remoteControl.sendSystemMessage(.start, recipient: ._deadLetters) // 3
 
         // we act as if we somehow didn't get the 2 but got the 3:
-        try self.channel.writeInbound(TransportEnvelope(nack: SystemMessage.NACK(sequenceNr: 2), recipient: ._localRoot))
+        try self.channel.writeInbound(TransportEnvelope(nack: _SystemMessage.NACK(sequenceNr: 2), recipient: ._localRoot))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

@@ -14,12 +14,16 @@
 
 import DistributedActors
 import XPCActorable
+import NIO
 
 public protocol GreetingsServiceProtocol: XPCActorableProtocol {
 
     func logGreeting(name: String) throws
     func greet(name: String) throws -> String
     func fatalCrash()
+    func greetDirect(who: ActorRef<String>) // can send many values to `who`
+
+    func greetFuture(name: String) -> EventLoopFuture<String> // "leaking" that we use ELFs, but good that allows "async-return"
 
     static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> Self.Message
 }

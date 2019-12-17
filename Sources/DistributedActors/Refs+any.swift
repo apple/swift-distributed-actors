@@ -25,16 +25,16 @@ public struct AddressableActorRef: Hashable {
         case local
 
         var isLocal: Bool {
-            return self == .local
+            self == .local
         }
 
         var isRemote: Bool {
-            return self == .remote
+            self == .remote
         }
     }
 
     @usableFromInline
-    let ref: ReceivesSystemMessages
+    let ref: _ReceivesSystemMessages
 
     @usableFromInline
     let messageTypeId: ObjectIdentifier
@@ -52,13 +52,12 @@ public struct AddressableActorRef: Hashable {
         }
     }
 
-    @inlinable
-    var address: ActorAddress {
-        return self.ref.address
+    public var address: ActorAddress {
+        self.ref.address
     }
 
-    func asReceivesSystemMessages() -> ReceivesSystemMessages {
-        return self.ref
+    func asReceivesSystemMessages() -> _ReceivesSystemMessages {
+        self.ref
     }
 
     func isRemote() -> Bool {
@@ -68,15 +67,14 @@ public struct AddressableActorRef: Hashable {
         }
     }
 
-    @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
-        self.ref.sendSystemMessage(message, file: file, line: line)
+    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+        self.ref._sendSystemMessage(message, file: file, line: line)
     }
 }
 
 extension AddressableActorRef: CustomStringConvertible {
     public var description: String {
-        return "AddressableActorRef(\(self.ref.address))"
+        "AddressableActorRef(\(self.ref.address))"
     }
 }
 
@@ -93,15 +91,16 @@ extension AddressableActorRef {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal unsafe methods
 
-extension AddressableActorRef: ReceivesSystemMessages {
-    @usableFromInline
-    internal func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+extension AddressableActorRef: _ReceivesSystemMessages {
+
+    /// :nodoc: INTERNAL API
+    public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         return self.ref._tellOrDeadLetter(message, file: file, line: line)
     }
 
-    @usableFromInline
-    internal func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
-        return self.ref._unsafeGetRemotePersonality()
+    /// :nodoc: INTERNAL API
+    public func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
+        self.ref._unsafeGetRemotePersonality()
     }
 }
 

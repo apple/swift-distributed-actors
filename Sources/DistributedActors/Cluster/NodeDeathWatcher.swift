@@ -51,7 +51,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
             // thus we have to immediately reply with a termination system message, as otherwise it would never receive one
-            watcher.sendSystemMessage(.nodeTerminated(remoteNode))
+            watcher._sendSystemMessage(.nodeTerminated(remoteNode))
             return
         }
 
@@ -87,7 +87,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         if let watchers = self.remoteWatchers.removeValue(forKey: terminatedNode) {
             for ref in watchers {
                 // we notify each actor that was watching this remote address
-                ref.sendSystemMessage(.nodeTerminated(terminatedNode))
+                ref._sendSystemMessage(.nodeTerminated(terminatedNode))
             }
         }
 

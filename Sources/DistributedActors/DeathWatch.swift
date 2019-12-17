@@ -60,7 +60,7 @@ internal struct DeathWatch<Message> {
             return
         }
 
-        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+        watchee._sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         self.watching.insert(watchee)
 
         // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
@@ -74,7 +74,7 @@ internal struct DeathWatch<Message> {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         if let removed = watching.remove(watchee) {
-            removed.sendSystemMessage(.unwatch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+            removed._sendSystemMessage(.unwatch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         }
     }
 
@@ -137,12 +137,12 @@ internal struct DeathWatch<Message> {
     ///
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
-    public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: ReceivesSystemMessages) {
+    public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: _ReceivesSystemMessages) {
         for watched: AddressableActorRef in self.watching where watched.address.node == terminatedNode {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
             let existenceConfirmed = watched.refType.isLocal && !watched.address.path.starts(with: ._dead)
-            myself.sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, addressTerminated: true), file: #file, line: #line)
+            myself._sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, addressTerminated: true), file: #file, line: #line)
         }
     }
 
@@ -155,7 +155,7 @@ internal struct DeathWatch<Message> {
 
         for watcher in self.watchedBy {
             traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died...")
-            watcher.sendSystemMessage(.terminated(ref: AddressableActorRef(myself), existenceConfirmed: true), file: #file, line: #line)
+            watcher._sendSystemMessage(.terminated(ref: AddressableActorRef(myself), existenceConfirmed: true), file: #file, line: #line)
         }
     }
 

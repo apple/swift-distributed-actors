@@ -25,10 +25,10 @@ import XCTest
 
 /// DO NOT EDIT: Generated TestMembershipOwner messages
 extension TestMembershipOwner {
+
     public enum Message { 
         case replyMembership(_replyTo: ActorRef<Membership?>) 
     }
-
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ extension TestMembershipOwner {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -70,7 +70,8 @@ extension TestMembershipOwner {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -81,13 +82,12 @@ extension TestMembershipOwner {
 
 extension Actor where A.Message == TestMembershipOwner.Message {
 
-    func replyMembership() -> Reply<Membership?> {
+     func replyMembership() -> Reply<Membership?> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: Membership?.self, timeout: .effectivelyInfinite) { _replyTo in
-                .replyMembership(_replyTo: _replyTo)}
-            .nioFuture
-            )
+                .replyMembership(_replyTo: _replyTo)}.nioFuture
+        )
     }
  
 

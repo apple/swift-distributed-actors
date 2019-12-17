@@ -64,7 +64,7 @@ public class LoggingContext {
 }
 
 public struct ActorLogger {
-    static func make<T>(context: ActorContext<T>) -> Logger {
+    public static func make<T>(context: ActorContext<T>) -> Logger {
         if let overrideLogger = context.system.settings.overrideLogger {
             return overrideLogger
         }
@@ -82,7 +82,7 @@ public struct ActorLogger {
         return log
     }
 
-    static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
+    public static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
         // we need to add our own storage, and can't do so to Logger since it is a struct...
         // so we need to make such "proxy log handler", that does out actor specific things.
         var proxyHandler = ActorOriginLogHandler(system)
@@ -287,11 +287,11 @@ public struct LogMessage {
 
 extension Optional where Wrapped == Logger.MetadataValue {
     /// Delays rendering of value by boxing it in a `LazyMetadataBox`
-    static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
+    public static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
         return .stringConvertible(LazyMetadataBox { makeValue() })
     }
 
-    static func lazyString(_ makeValue: @escaping () -> String) -> Logger.Metadata.Value {
+    public static func lazyString(_ makeValue: @escaping () -> String) -> Logger.Metadata.Value {
         return self.lazyStringConvertible(makeValue)
     }
 }

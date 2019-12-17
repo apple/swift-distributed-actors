@@ -24,6 +24,7 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated OwnerOfThings messages
 extension OwnerOfThings {
+
     public enum Message { 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
         case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>) 
@@ -63,7 +64,7 @@ extension OwnerOfThings {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -72,7 +73,8 @@ extension OwnerOfThings {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -83,28 +85,26 @@ extension OwnerOfThings {
 
 extension Actor where A.Message == OwnerOfThings.Message {
 
-    func readLastObservedValue() -> Reply<Reception.Listing<OwnerOfThings>?> {
+     func readLastObservedValue() -> Reply<Reception.Listing<OwnerOfThings>?> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: Reception.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
-                .readLastObservedValue(_replyTo: _replyTo)}
-            .nioFuture
-            )
+                .readLastObservedValue(_replyTo: _replyTo)}.nioFuture
+        )
     }
  
 
-    func performLookup() -> Reply<Reception.Listing<OwnerOfThings>> {
+     func performLookup() -> Reply<Reception.Listing<OwnerOfThings>> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: Result<Reception.Listing<OwnerOfThings>, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .performLookup(_replyTo: _replyTo)}
-            .nioFuture.flatMapThrowing { result in
+                .performLookup(_replyTo: _replyTo)}.nioFuture.flatMapThrowing { result in
                 switch result {
                 case .success(let res): return res
                 case .failure(let err): throw err
                 }
             }
-            )
+        )
     }
  
 

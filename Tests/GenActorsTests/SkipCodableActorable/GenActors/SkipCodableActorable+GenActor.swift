@@ -24,6 +24,7 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated SkipCodableActorable messages
 extension SkipCodableActorable {
+
     public enum Message { 
         case echo(text: String, _replyTo: ActorRef<String>) 
     }
@@ -59,7 +60,7 @@ extension SkipCodableActorable {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -68,7 +69,8 @@ extension SkipCodableActorable {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -79,13 +81,12 @@ extension SkipCodableActorable {
 
 extension Actor where A.Message == SkipCodableActorable.Message {
 
-    func echo(text: String) -> Reply<String> {
+     func echo(text: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .echo(text: text, _replyTo: _replyTo)}
-            .nioFuture
-            )
+                .echo(text: text, _replyTo: _replyTo)}.nioFuture
+        )
     }
  
 

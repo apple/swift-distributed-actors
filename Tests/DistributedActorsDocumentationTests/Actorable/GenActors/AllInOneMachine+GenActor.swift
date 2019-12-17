@@ -84,7 +84,7 @@ extension AllInOneMachine {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -93,7 +93,8 @@ extension AllInOneMachine {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -104,6 +105,9 @@ extension AllInOneMachine {
 
 extension Actor where A.Message == AllInOneMachine.Message {
 
+     func clean() {
+        self.ref.tell(.clean)
+    }
  
 
 }

@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
 import XPC
 import NIO
 
@@ -150,3 +153,8 @@ extension Encoder {
 public extension CodingUserInfoKey {
     static let xpcConnection: CodingUserInfoKey = CodingUserInfoKey(rawValue: "XPCConnection")!
 }
+
+#else
+/// XPC is only available on Apple platforms
+#endif
+

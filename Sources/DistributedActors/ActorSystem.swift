@@ -48,7 +48,7 @@ public final class ActorSystem {
     private var systemProvider: _ActorRefProvider!
     private var userProvider: _ActorRefProvider!
 
-    internal let _root: ReceivesSystemMessages
+    internal let _root: _ReceivesSystemMessages
 
     private let terminationLock = Lock()
 
@@ -133,6 +133,10 @@ public final class ActorSystem {
         settings.cluster.node.systemName = name
         settings.metrics.systemName = name
         configureSettings(&settings)
+
+        settings.cluster.enabled = true
+        settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 1)
+
         self.init(settings: settings)
     }
 
@@ -262,7 +266,7 @@ public final class ActorSystem {
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
         lazyReplicator.wakeUp()
-        for transport in self.settings.transports {
+        for transport in self.settings.transports.values {
             transport.onActorSystemStart(system: self)
         }
         lazyCluster?.wakeUp()
@@ -496,9 +500,8 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-    @usableFromInline
-    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-        let systemTraversed: TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
+        let systemTraversed: _TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
         case .completed:
@@ -518,44 +521,50 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let context = TraversalContext<T>()
         return self._traverse(context: context, visit)
     }
 
     @discardableResult
-    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AddressableActorRef) -> TraversalDirective<Void>) -> TraversalResult<Void> {
-        return self._traverseAll(visit)
+    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AddressableActorRef) -> _TraversalDirective<Void>) -> _TraversalResult<Void> {
+        self._traverseAll(visit)
     }
 
-    @usableFromInline
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
         }
 
-        // TODO some more generic way to register protocol handlers?
-        guard context.address.node?.node.protocol != "xpc" else {
-            // it is an XPC ref thus we return it directly
-            do {
-                return try ActorRef<Message>(.delegate(XPCServiceCellDelegate(
-                    system: self, address: context.address
-                )))
-            } catch {
-                return context.personalDeadLetters
+        if let refProtocol = context.address.node?.node.protocol {
+            // FIXME: "sact" is special cased today but should not be and become a transport I suppose.
+            if refProtocol == "sact" {
+                // definitely a local ref, has no `address.node`
+                switch selector.value {
+                case "system": return self.systemProvider._resolve(context: context)
+                case "user": return self.userProvider._resolve(context: context)
+                case "dead": return context.personalDeadLetters
+                default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+                }
             }
-        }
 
-        switch selector.value {
-        case "system": return self.systemProvider._resolve(context: context)
-        case "user": return self.userProvider._resolve(context: context)
-        case "dead": return context.personalDeadLetters
-        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+            guard let transport = self.settings.transports[refProtocol] else {
+                fatalError("Unknown transport protocol: \(refProtocol), installed transports are: \(self.settings.transports.keys). Ensure to `settings.transports += .some` any transport you intend to use.")
+            }
+
+            return transport._resolve(context: context)
+        } else {
+            // definitely a local ref, has no `address.node`
+            switch selector.value {
+            case "system": return self.systemProvider._resolve(context: context)
+            case "user": return self.userProvider._resolve(context: context)
+            case "dead": return context.personalDeadLetters
+            default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+            }
         }
     }
 
-    @usableFromInline
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable()
         }

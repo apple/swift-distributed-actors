@@ -89,6 +89,8 @@ extension ActorSystem {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Dead letter office
 
+/// :nodoc: INTERNAL API: May change without any prior notice.
+///
 /// Special actor ref personality, which can handle `DeadLetter`s.
 ///
 /// Dead letters are messages or signals which were unable to be delivered to recipient, e.g. because the recipient
@@ -131,8 +133,7 @@ extension ActorSystem {
 /// result in dead letters. The difference here is that in this case the actor _existed_ and the `ActorRef` _was valid_ at some point in time.
 /// Dead references on the other hand have never, and will never be valid, meaning it is useful to distinguish them for debugging and logging purposes,
 /// but not for anything more -- users shall assume that their communication is correct and only debug why a dead reference appeared if it indeed does happen.
-@usableFromInline
-final class DeadLetterOffice {
+public final class DeadLetterOffice {
     let _address: ActorAddress
     let log: Logger
     weak var system: ActorSystem?
@@ -199,7 +200,7 @@ final class DeadLetterOffice {
             recipientString = ""
         }
 
-        if let systemMessage = deadLetter.message as? SystemMessage, self.specialHandled(systemMessage, recipient: deadLetter.recipient) {
+        if let systemMessage = deadLetter.message as? _SystemMessage, self.specialHandled(systemMessage, recipient: deadLetter.recipient) {
             return // system message was special handled; no need to log it anymore
         }
 
@@ -217,7 +218,7 @@ final class DeadLetterOffice {
         """, metadata: metadata, file: file, line: line)
     }
 
-    private func specialHandled(_ message: SystemMessage, recipient: ActorAddress?) -> Bool {
+    private func specialHandled(_ message: _SystemMessage, recipient: ActorAddress?) -> Bool {
         switch message {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
@@ -227,7 +228,7 @@ final class DeadLetterOffice {
             // if a watch message arrived here it either:
             //   - was sent to an actor which has terminated and arrived after the .tombstone, thus was drained to deadLetters
             //   - was indeed sent to deadLetters directly, which immediately shall notify terminated; deadLetters is "undead"
-            watcher.sendSystemMessage(.terminated(ref: watchee, existenceConfirmed: false))
+            watcher._sendSystemMessage(.terminated(ref: watchee, existenceConfirmed: false))
             return true
         case .stop:
             // we special handle some not delivered stop messages, based on the fact that those

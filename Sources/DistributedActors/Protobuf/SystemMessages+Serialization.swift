@@ -19,7 +19,7 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ACK / NACK
 
-extension SystemMessage.ACK: InternalProtobufRepresentable {
+extension _SystemMessage.ACK: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSystemMessageACK
 
     func toProto(context: ActorSerializationContext) -> ProtoSystemMessageACK {
@@ -33,7 +33,7 @@ extension SystemMessage.ACK: InternalProtobufRepresentable {
     }
 }
 
-extension SystemMessage.NACK: InternalProtobufRepresentable {
+extension _SystemMessage.NACK: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSystemMessageNACK
 
     func toProto(context: ActorSerializationContext) -> ProtoSystemMessageNACK {
@@ -69,7 +69,7 @@ extension SystemMessageEnvelope: InternalProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SystemMessage
 
-extension SystemMessage: InternalProtobufRepresentable {
+extension _SystemMessage: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSystemMessage
 
     func toProto(context: ActorSerializationContext) throws -> ProtoSystemMessage {
@@ -114,7 +114,7 @@ extension SystemMessage: InternalProtobufRepresentable {
 
     init(fromProto proto: ProtoSystemMessage, context: ActorSerializationContext) throws {
         guard let payload = proto.payload else {
-            throw SerializationError.missingField("payload", type: String(describing: SystemMessage.self))
+            throw SerializationError.missingField("payload", type: String(describing: _SystemMessage.self))
         }
 
         switch payload {
