@@ -51,14 +51,22 @@ internal class ActorSingletonManager<Message> {
 
     var behavior: Behavior<ManagerMessage> {
         .setup { context in
-            context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
-                try self.receiveClusterEvent(context, event)
-            })
+            if context.system.settings.cluster.enabled {
+                context.system.cluster.events.subscribe(context.subReceive(SubReceiveId(id: "clusterEvent-\(context.name)"), ClusterEvent.self) { event in
+                    try self.receiveClusterEvent(context, event)
+                })
+            } else {
+                context.log.debug("Cluster not enabled. Taking over singleton.")
+                try self.takeOver(context, from: nil)
+            }
 
             return Behavior<ManagerMessage>.receiveMessage { message in
                 switch message {
                 case .linkProxy(let proxy):
+                    context.log.trace("Linking proxy [\(proxy)]")
                     self.proxy = context.watch(proxy)
+                    // Send current ref to proxy, who will be notified if ref changes in the future.
+                    proxy.tell(self.ref)
                     return .same
                 case .stop:
                     try self.handOver(context, to: nil)
@@ -130,7 +138,7 @@ internal class ActorSingletonManager<Message> {
     private func updateRef(_ context: ActorContext<ManagerMessage>, node: UniqueNode?) {
         switch node {
         case .some(let node):
-            let resolveContext = ResolveContext<Message>(address: ._singleton(name: self.settings.name, on: node), system: context.system)
+            let resolveContext = ResolveContext<Message>(address: ._singletonProxy(name: self.settings.name, on: node), system: context.system)
             self.ref = context.system._resolve(context: resolveContext)
         case .none:
             self.ref = nil
@@ -175,6 +183,10 @@ extension ActorAddress {
     internal static func _singleton(name: String, on node: UniqueNode) -> ActorAddress {
         .init(node: node, path: ._singleton(name: name), incarnation: .perpetual)
     }
+
+    internal static func _singletonProxy(name: String, on node: UniqueNode) -> ActorAddress {
+        .init(node: node, path: ._singletonProxy(name: name), incarnation: .perpetual)
+    }
 }
 
 extension ActorPath {
@@ -184,6 +196,10 @@ extension ActorPath {
 
     internal static func _singletonManager(name: String) -> ActorPath {
         try! ActorPath._system.appending("singletonManager-\(name)")
+    }
+
+    internal static func _singletonProxy(name: String) -> ActorPath {
+        try! ActorPath._system.appending("singletonProxy-\(name)")
     }
 
     internal static let _system: ActorPath = try! ActorPath(root: "system")
