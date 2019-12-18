@@ -48,7 +48,7 @@ internal class ActorSingletonProxy<Message> {
     var behavior: Behavior<Message> {
         .setup { context in
             // This is how the proxy receives update from manager on singleton ref changes
-            let singletonSubReceive = context.subReceive(ActorRef<Message>?.self) {
+            let singletonSubReceive = context.subReceive(SubReceiveId(id: "ref-\(context.name)"), ActorRef<Message>?.self) {
                 self.updateSingleton(context, $0)
             }
             // Link manager and proxy
@@ -72,7 +72,7 @@ internal class ActorSingletonProxy<Message> {
     }
 
     private func updateSingleton(_ context: ActorContext<Message>, _ newSingleton: ActorRef<Message>?) {
-        context.log.debug("Reassigning singleton from [\(String(describing: self.singleton))] to [\(String(describing: newSingleton))]")
+        context.log.debug("Updating singleton ref from [\(String(describing: self.singleton))] to [\(String(describing: newSingleton))]")
         self.singleton = newSingleton
 
         // Unstash messages if we have the singleton

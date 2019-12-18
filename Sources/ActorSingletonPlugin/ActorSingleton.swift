@@ -63,12 +63,14 @@ public final class ActorSingleton<Message> {
         // TODO: only spawn the Manager if we are a node that can potentially host the singleton
         self.manager = try system._spawnSystemActor(
             "singletonManager-\(self.settings.name)",
-            ActorSingletonManager(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior
+            ActorSingletonManager(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
+            perpetual: true
         )
 
         self.proxy = try system._spawnSystemActor(
             "singletonProxy-\(self.settings.name)",
-            ActorSingletonProxy(settings: self.settings, manager: self.manager).behavior
+            ActorSingletonProxy(settings: self.settings, manager: self.manager).behavior,
+            perpetual: true
         )
     }
 }
