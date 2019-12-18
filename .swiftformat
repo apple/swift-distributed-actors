@@ -3,6 +3,7 @@
 --exclude .build
 --exclude "**/*.pb.swift"
 --exclude "**/*+GenActor.swift"
+--exclude "**/*+GenCodable.swift"
 
 # format options
 

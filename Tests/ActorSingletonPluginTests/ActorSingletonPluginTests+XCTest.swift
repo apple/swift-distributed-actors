@@ -23,7 +23,8 @@ import XCTest
 extension ActorSingletonPluginTests {
     static var allTests: [(String, (ActorSingletonPluginTests) -> () throws -> Void)] {
         return [
-            ("test_example", test_example),
+            ("test_nonCluster", test_nonCluster),
+            ("test_singletonByClusterLeadership", test_singletonByClusterLeadership),
         ]
     }
 }
