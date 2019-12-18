@@ -61,7 +61,7 @@ internal class ActorSingletonManager<Message> {
                     self.proxy = context.watch(proxy)
                     return .same
                 case .stop:
-                    try self.handOff(context, to: nil)
+                    try self.handOver(context, to: nil)
                     return .stop
                 }
             }.receiveSpecificSignal(Signals.Terminated.self) { context, signal in
@@ -100,8 +100,8 @@ internal class ActorSingletonManager<Message> {
             try self.takeOver(context, from: previousTargetNode)
         default:
             if previousTargetNode == selfNode {
-                context.log.debug("Node \(selfNode) handing off singleton \(self.settings.name)")
-                try self.handOff(context, to: node)
+                context.log.debug("Node \(selfNode) handing over singleton \(self.settings.name)")
+                try self.handOver(context, to: node)
             }
 
             // Update `ref` regardless
@@ -115,12 +115,12 @@ internal class ActorSingletonManager<Message> {
     }
 
     private func takeOver(_ context: ActorContext<ManagerMessage>, from: UniqueNode?) throws {
-        // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over
+        // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
         self.ref = try context.spawn(.unique(self.settings.name), props: self.singletonProps, self.singletonBehavior)
     }
 
-    private func handOff(_ context: ActorContext<ManagerMessage>, to: UniqueNode?) throws {
-        // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off
+    private func handOver(_ context: ActorContext<ManagerMessage>, to: UniqueNode?) throws {
+        // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
         guard let ref = self.ref else {
             return
         }
