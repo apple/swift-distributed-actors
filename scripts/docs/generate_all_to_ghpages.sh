@@ -46,8 +46,8 @@ exit 0
 
 git checkout gh-pages
 
-cp -R /tmp/swift-distributed-actors-docs/api/* api/
-cp -R /tmp/swift-distributed-actors-docs/reference/* reference/
+cp -R "$tmp/api/*" api/
+cp -R "$tmp/reference/*" reference/
 
 echo "Done copying docs to [gh-pages]..."
 

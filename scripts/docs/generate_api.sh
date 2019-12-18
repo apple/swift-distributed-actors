@@ -36,53 +36,35 @@ modules=(
 )
 
 if [[ "$(uname -s)" == "Linux" ]]; then
-  os="x86_64-unknown-linux"
-else
-  os="x86_64-apple-macosx"
+  # build code if required
+  if [[ ! -d "$root_path/.build/x86_64-unknown-linux" ]]; then
+    swift build
+  fi
+  # setup source-kitten if required
+  mkdir -p "$root_path/.build/sourcekitten"
+  source_kitten_source_path="$root_path/.build/sourcekitten/source"
+  if [[ ! -d "$source_kitten_source_path" ]]; then
+    git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
+  fi
+  source_kitten_path="$source_kitten_source_path/.build/x86_64-unknown-linux/debug"
+  if [[ ! -d "$source_kitten_path" ]]; then
+    rm -rf "$source_kitten_source_path/.swift-version"
+    cd "$source_kitten_source_path" && swift build && cd "$root_path"
+  fi
+  # generate
+  for module in "${modules[@]}"; do
+    if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
+      "$source_kitten_path/sourcekitten" doc --spm-module $module > "$root_path/.build/sourcekitten/$module.json"
+    fi
+  done
 fi
 
-# build code if required
-#if [[ ! -d "$root_path/.build/${os}" ]]; then
-  swift build
-#fi
-
-# setup source-kitten if required
-source_kitten_source_path="$root_path/.build/SourceKittenSource"
-if [[ ! -d "$source_kitten_source_path" ]]; then
-  git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
-fi
-source_kitten_path="$source_kitten_source_path/.build/${os}/debug"
-if [[ ! -d "$source_kitten_path" ]]; then
-  rm -rf "$source_kitten_source_path/.swift-version"
-  cd "$source_kitten_source_path" && swift build && cd "$root_path"
-fi
-
-# generate
-mkdir -p "$root_path/.build/sourcekitten"
-for module in "${modules[@]}"; do
-#  if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
-  echo "Parsing sources for module: ${module}"
-  "$source_kitten_path/sourcekitten" doc --spm --module-name $module > "$root_path/.build/sourcekitten/$module.json"
-#  fi
-done
-
-[[ -d swift-distributed-actors.xcodeproj ]] || swift package generate-xcodeproj
-
-# run jazzy
-if ! command -v jazzy > /dev/null; then
-  gem install jazzy --no-document -v 0.10.0
-fi
-
-if [[ "$(jazzy --version)" != "jazzy version: 0.10.0" ]]; then
-    echo "Outdated Jazzy version detected. Please update to 0.10.0"
-    echo "Command: [sudo] gem update jazzy"
-    exit 1
-fi
-
-module_switcher="${root_path}/api/$version/README.md"
-mkdir -p "${root_path}/api/$version/"
+# prep index
+tmp=`mktemp -d`
+module_switcher="${tmp}/README.md"
 touch $module_switcher
 jazzy_args=(--clean
+            --swift-build-tool spm
             --readme "$module_switcher"
             --config "$my_path/.jazzy.json"
             --documentation=${root_path}/Docs/*.md
@@ -90,11 +72,16 @@ jazzy_args=(--clean
             --theme fullwidth
            )
 
+# run jazzy
+if ! command -v jazzy > /dev/null; then
+  gem install jazzy --no-ri --no-rdoc
+fi
+
 mkdir -p "$root_path/.build/docs/api/$version"
 mkdir -p "$root_path/.build/docs/docset/$version"
 for module in "${modules[@]}"; do
-  args=("${jazzy_args[@]}"  --output "$root_path/.build/docs/api/$version/$module" --docset-path "$root_path/.build/docs/docset/$version/$module"  --module "$module")
-  if [[ -f "$root_path/.build/sourcekitten/$module.json" ]]; then
+  args=("${jazzy_args[@]}" --output "$root_path/.build/docs/api/$version/$module" --docset-path "$root_path/.build/docs/docset/$version/$module" --module "$module")
+  if [[ "$(uname -s)" == "Linux" ]]; then
     args+=(--sourcekitten-sourcefile "$root_path/.build/sourcekitten/$module.json")
   fi
 

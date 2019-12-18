@@ -1,8 +1,4 @@
 {
-  "xcodebuild_arguments": [
-    "-project", "swift-distributed-actors.xcodeproj",
-    "-scheme", "swift-distributed-actors-Package"
-  ],
   "author": "Swift Distributed Actors Team",
   "author_url": "https://github.com/apple/swift-distributed-actors",
   "github_url": "https://github.com/apple/swift-distributed-actors",
