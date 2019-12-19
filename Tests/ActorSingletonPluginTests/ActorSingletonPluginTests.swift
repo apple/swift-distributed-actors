@@ -107,7 +107,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             second.shutdown().wait()
             third.shutdown().wait()
             fourth.shutdown().wait()
-            self.logCaptureHandler.printLogs()
+            //self.logCaptureHandler.printLogs()
         }
 
         first.cluster.join(node: second.cluster.node.node)
@@ -125,7 +125,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
 
         let replyProbe3 = ActorTestKit(third).spawnTestProbe(expecting: String.self)
         let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
-        ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))        
+        ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
 
         // `first` has the lowest address so it should be the leader and singleton
         try replyProbe1.expectMessage("Hello-1 Charlie!")
@@ -136,7 +136,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         first.cluster.down(node: first.cluster.node.node)
 
         try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
-        
+
         // No leader so singleton is not available, messages sent should be stashed
         ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
         ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe2.ref))

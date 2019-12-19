@@ -34,7 +34,10 @@ public struct ActorSingletonLookup {
         guard let singleton = self.system.settings.plugins[key] else {
             fatalError("No plugin found for key: [\(key)], installed plugins: \(self.system.settings.plugins)")
         }
-        return singleton.proxy // FIXME: Worried that we never synchronize access to proxy...
+        guard let proxy = singleton.proxy else {
+            fatalError("Singleton[\(key)] not yet initialized")
+        }
+        return proxy // FIXME: Worried that we never synchronize access to proxy...
     }
 
     public func actor<Act: Actorable>(name: String, _ type: Act.Type) throws -> Actor<Act> {

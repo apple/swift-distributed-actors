@@ -26,10 +26,10 @@ import XCTest
 
 /// DO NOT EDIT: Generated GreeterSingleton messages
 extension GreeterSingleton {
+
     public enum Message { 
         case greet(name: String, _replyTo: ActorRef<String>) 
     }
-
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -62,7 +62,7 @@ extension GreeterSingleton {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -71,7 +71,8 @@ extension GreeterSingleton {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -82,13 +83,12 @@ extension GreeterSingleton {
 
 extension Actor where A.Message == GreeterSingleton.Message {
 
-    func greet(name: String) -> Reply<String> {
+     func greet(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greet(name: name, _replyTo: _replyTo)}
-            .nioFuture
-            )
+                .greet(name: name, _replyTo: _replyTo)}.nioFuture
+        )
     }
  
 
