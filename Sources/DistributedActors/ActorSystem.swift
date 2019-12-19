@@ -212,9 +212,6 @@ public final class ActorSystem {
         // serialization
         self.serialization = Serialization(settings: settings, system: self)
 
-        // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
-        self._receptionist = deadLetters.adapted()
-
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
         self._receptionist = lazyReceptionist.ref
@@ -543,9 +540,7 @@ extension ActorSystem: _ActorTreeTraversable {
         self._traverseAll(visit)
     }
 
-    /// Looks up an actor by `context`.
-    ///
-    /// - Warning: This method is NOT intended for normal user actors.
+    /// :nodoc: INTERNAL API: Not intended to be used by end users.
     public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters

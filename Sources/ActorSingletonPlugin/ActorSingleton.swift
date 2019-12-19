@@ -37,11 +37,8 @@ public final class ActorSingleton<Message> {
     /// The singleton behavior
     public let behavior: Behavior<Message>
 
-    /// The `ActorSingletonManager` ref. It's automatically spawned during system initialization so `!` is safe.
-    internal private(set) var manager: ActorRef<ActorSingletonManager<Message>.ManagerMessage>!
-
-    /// The `ActorSingletonProxy` ref. It's automatically spawned during system initialization so `!` is safe.
-    internal private(set) var proxy: ActorRef<Message>!
+    /// The `ActorSingletonProxy` ref
+    internal private(set) var proxy: ActorRef<Message>?
 
     /// Defines a `behavior` as singleton with `settings`.
     public init(settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) {
@@ -59,17 +56,9 @@ public final class ActorSingleton<Message> {
     /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingleManager`).
     internal func spawnAll(_ system: ActorSystem) throws {
         let allocationStrategy = self.settings.allocationStrategy.make(system.settings.cluster, self.settings)
-
-        // TODO: only spawn the Manager if we are a node that can potentially host the singleton
-        self.manager = try system._spawnSystemActor(
-            "singletonManager-\(self.settings.name)",
-            ActorSingletonManager(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
-            perpetual: true
-        )
-
         self.proxy = try system._spawnSystemActor(
             "singletonProxy-\(self.settings.name)",
-            ActorSingletonProxy(settings: self.settings, manager: self.manager).behavior,
+            ActorSingletonProxy(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
             perpetual: true
         )
     }
@@ -97,9 +86,12 @@ extension ActorSingleton: Plugin {
     }
 
     public func stop(_ system: ActorSystem) -> Result<Void, Error> {
-        self.manager.tell(.stop)
-        // We don't control the proxy's directives so we can't tell it to stop, but the proxy
-        // watches the manager so it will stop itself if the manager terminates.
+        // Hand over the singleton gracefully
+        let resolveContext = ResolveContext<ActorSingletonManager<Message>.Directive>(address: ._singletonManager(name: self.settings.name), system: system)
+        let managerRef = system._resolve(context: resolveContext)
+        managerRef.tell(.stop)
+
+        // We don't control the proxy's directives so we can't tell it to stop
         return .success(())
     }
 }
