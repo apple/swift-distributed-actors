@@ -25,6 +25,7 @@ extension LeadershipTests {
         return [
             ("test_LowestReachableMember_selectLeader", test_LowestReachableMember_selectLeader),
             ("test_LowestReachableMember_notEnoughMembersToDecide", test_LowestReachableMember_notEnoughMembersToDecide),
+            ("test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader", test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader),
             ("test_LowestReachableMember_whenCurrentLeaderDown", test_LowestReachableMember_whenCurrentLeaderDown),
             ("test_LowestReachableMember_whenCurrentLeaderUnreachable", test_LowestReachableMember_whenCurrentLeaderUnreachable),
         ]
