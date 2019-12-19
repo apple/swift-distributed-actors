@@ -230,7 +230,15 @@ extension Leadership {
             guard membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide else {
                 // not enough members to make a decision yet
                 context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)]")
-                return .init(context.loop.next().makeSucceededFuture(nil))
+
+                if let currentLeader = membership.leader {
+                    // Clear current leader and trigger `LeadershipChange`
+                    let change = try! membership.applyLeadershipChange(to: nil) // try! safe because we are changing leader to nil
+                    context.log.trace("Removing leader [\(currentLeader)]")
+                    return .init(context.loop.next().makeSucceededFuture(change))
+                } else {
+                    return .init(context.loop.next().makeSucceededFuture(nil))
+                }
             }
 
             // select the leader, by lowest address

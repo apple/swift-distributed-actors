@@ -59,6 +59,23 @@ final class LeadershipTests: XCTestCase {
         change2.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
+    func test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader() throws {
+        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+
+        var membership = self.initialMembership
+        _ = try! membership.applyLeadershipChange(to: self.firstMember) // try! because `firstMember` is a member
+
+        let leader = membership.leader
+        leader.shouldNotBeNil()
+
+        _ = membership.remove(self.firstMember.node)
+
+        // 2 members -> not enough to make decision anymore
+        // Since we go from a leader to without, there should be a change
+        let change: LeadershipChange? = try selection.runElection(context: self.fakeContext, membership: membership).future.wait()
+        change.shouldEqual(LeadershipChange(oldLeader: leader, newLeader: nil))
+    }
+
     func test_LowestReachableMember_whenCurrentLeaderDown() throws {
         let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
