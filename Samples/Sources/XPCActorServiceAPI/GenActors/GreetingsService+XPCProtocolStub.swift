@@ -16,18 +16,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::xpc_example[]
 import DistributedActors
 import DistributedActorsXPC
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsServiceProtocolStub for XPCService consumers of the GreetingsServiceProtocol XPCActorableProtocol
+// MARK: DO NOT EDIT: Generated GreetingsServiceStub for XPCService consumers of the GreetingsService XPCActorableProtocol
 
-/// DO NOT EDIT: Generated GreetingsServiceProtocol messages
+/// DO NOT EDIT: Generated GreetingsService messages
 ///
-/// This type serves only as "stub" in order for callers of an XPCService implementing GreetingsServiceProtocol to be 
-/// able to express `Actor<GreetingsServiceProtocol>`.
-public struct GreetingsServiceProtocolStub: Actorable, GreetingsServiceProtocol {
+/// This type serves only as "stub" in order for callers of an XPCService implementing GreetingsService to be 
+/// able to express `Actor<GreetingsService>`.
+public struct GreetingsServiceStub: Actorable, GreetingsService {
     private init() {
         // Just a Stub, no-one should ever be instantiating it.
     }

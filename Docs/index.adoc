@@ -46,7 +46,7 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :dir_sact_doc_tests:    ../Tests/DistributedActorsDocumentationTests
 :dir_sact_actor:        ../Sources/DistributedActors
 :dir_sact_actor_tests:  ../Tests/DistributedActorsTests
-:dir_sact_int_tests:     ../IntegrationTests
+:dir_sact_samples:      ../Samples/Sources
 
 
 = Swift Distributed Actors Reference Guide

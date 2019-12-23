@@ -15,15 +15,14 @@
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 import DistributedActors
-import XPC
 import Files
+import XPC
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
 /// When an XPC service was sent a "real" actor ref and replies to it, we want to capture this logic in this "proxy"
 /// which will make the reply happen over XPC, in such way that the other side can deserialize the actual destination.
 internal final class XPCProxiedRefDelegate<Message>: CellDelegate<Message>, CustomStringConvertible {
-
     /// The "origin" peer on which the actor we're proxying to lives.
     private let peer: xpc_connection_t
 
@@ -52,10 +51,10 @@ internal final class XPCProxiedRefDelegate<Message>: CellDelegate<Message>, Cust
             xdict = try XPCSerialization.serializeActorMessage(self.system, message: message)
 
             // TODO: Do this as serializeEnvelope
-            try XPCSerialization.serializeRecipient(system, xdict: xdict, address: self.address)
+            try XPCSerialization.serializeRecipient(self.system, xdict: xdict, address: self.address)
         } catch {
             try! _file.append("error \(error)\n")
-            system.log.warning("Failed to serialize [\(String(reflecting: type(of: message)))] message, sent to XPC service actor \(self.address). Error: \(error)")
+            self.system.log.warning("Failed to serialize [\(String(reflecting: type(of: message)))] message, sent to XPC service actor \(self.address). Error: \(error)")
             try! _file.append("Failed to serialize [\(String(reflecting: type(of: message)))] message, sent to XPC service actor \(self.address). Error: \(error)\n")
             return
         }
@@ -69,7 +68,7 @@ internal final class XPCProxiedRefDelegate<Message>: CellDelegate<Message>, Cust
         self.system.log.info("DROPPING system message \(message) sent at \(file):\(line)")
     }
 
-    override func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {
+    override func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
         self.system.log.info("DROPPING closure sent at \(file):\(line)")
     }
 
@@ -82,7 +81,7 @@ internal final class XPCProxiedRefDelegate<Message>: CellDelegate<Message>, Cust
     }
 
     var description: String {
-        "XPCProxiedRefDelegate<\(String(reflecting: Message.self))>(\(_address), peer: \(peer))"
+        "XPCProxiedRefDelegate<\(String(reflecting: Message.self))>(\(self._address), peer: \(self.peer))"
     }
 }
 

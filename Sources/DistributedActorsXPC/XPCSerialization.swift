@@ -15,9 +15,9 @@
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 import DistributedActors
-import XPC
-import NIO
 import Files
+import NIO
+import XPC
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt") // FIXME: remove hacky way to log
 
@@ -26,7 +26,6 @@ fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt") // FIXM
 /// Encapsulates logic how actorables encode messages when putting them through the XPC transport.
 // TODO: could also encode using the NS coding scheme, or "raw" if we want to support those.
 public enum XPCSerialization {
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialize
 
@@ -41,7 +40,7 @@ public enum XPCSerialization {
 
         let buf = try serializer.trySerialize(message)
 
-        // TODO serialize the Envelope
+        // TODO: serialize the Envelope
         let xdict: xpc_object_t = xpc_dictionary_create(nil, nil, 0)
         xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(serializerId))
 
@@ -67,7 +66,6 @@ public enum XPCSerialization {
         var address = address
         address.node?.node.protocol = "xpc"
         try! _file.append("[sending] [TO: \(address)]\n")
-
 
         let buf = try serializer.trySerialize(address)
         buf.withUnsafeReadableBytes { bytes in
@@ -95,7 +93,7 @@ public enum XPCSerialization {
         var length = Int(length64)
 
         let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.message.rawValue, &length)
-        let rawDataBufferPointer = UnsafeRawBufferPointer.init(start: rawDataPointer, count: length)
+        let rawDataBufferPointer = UnsafeRawBufferPointer(start: rawDataPointer, count: length)
 
         var buf = system.serialization.allocator.buffer(capacity: 0)
         buf.writeBytes(rawDataBufferPointer)
@@ -108,19 +106,19 @@ public enum XPCSerialization {
             return try serializer.tryDeserialize(buf)
 
         } catch {
-            // TODO only nowadays since we know its JSON
+            // TODO: only nowadays since we know its JSON
             try! _file.append("FAILED: \(error)")
             throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no payload>", error: error)
         }
     }
 
-    // TODO make as envelope
+    // TODO: make as envelope
     public static func deserializeRecipient(_ system: ActorSystem, xdict: xpc_object_t) throws -> AddressableActorRef {
         let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.recipientLength.rawValue)
         var length = Int(length64)
 
         let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, &length)
-        let rawDataBufferPointer = UnsafeRawBufferPointer.init(start: rawDataPointer, count: length)
+        let rawDataBufferPointer = UnsafeRawBufferPointer(start: rawDataPointer, count: length)
 
         var buf = system.serialization.allocator.buffer(capacity: 0)
         buf.writeBytes(rawDataBufferPointer)
@@ -136,11 +134,10 @@ public enum XPCSerialization {
             try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))
         } catch {
-            // TODO only nowadays since we know its JSON
+            // TODO: only nowadays since we know its JSON
             try! _file.append("error: \(error)")
             throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no recipient>", error: error)
         }
-
     }
 }
 
@@ -180,4 +177,3 @@ public extension CodingUserInfoKey {
 #else
 /// XPC is only available on Apple platforms
 #endif
-

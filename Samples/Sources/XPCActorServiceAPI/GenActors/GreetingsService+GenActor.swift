@@ -16,15 +16,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::xpc_example[]
 import DistributedActors
 import DistributedActorsXPC
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsServiceProtocol messages 
+// MARK: DO NOT EDIT: Generated GreetingsService messages 
 
 extension GeneratedActor.Messages {
-    public enum GreetingsServiceProtocol { 
+    public enum GreetingsService { 
         case logGreeting(name: String) 
         case greet(name: String, _replyTo: ActorRef<Result<String, Error>>) 
         case fatalCrash 
@@ -33,12 +34,12 @@ extension GeneratedActor.Messages {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Boxing GreetingsServiceProtocol for any inheriting actorable `A` 
+// MARK: DO NOT EDIT: Boxing GreetingsService for any inheriting actorable `A` 
 
-extension Actor where A: GreetingsServiceProtocol {
+extension Actor where A: GreetingsService {
 
     public func logGreeting(name: String) {
-        self.ref.tell(A._boxGreetingsServiceProtocol(.logGreeting(name: name)))
+        self.ref.tell(A._boxGreetingsService(.logGreeting(name: name)))
     }
  
 
@@ -46,7 +47,7 @@ extension Actor where A: GreetingsServiceProtocol {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                A._boxGreetingsServiceProtocol(.greet(name: name, _replyTo: _replyTo))
+                A._boxGreetingsService(.greet(name: name, _replyTo: _replyTo))
             }.nioFuture.flatMapThrowing { result in
                 switch result {
                 case .success(let res): return res
@@ -58,12 +59,12 @@ extension Actor where A: GreetingsServiceProtocol {
  
 
     public func fatalCrash() {
-        self.ref.tell(A._boxGreetingsServiceProtocol(.fatalCrash))
+        self.ref.tell(A._boxGreetingsService(.fatalCrash))
     }
  
 
     public func greetDirect(who: ActorRef<String>) {
-        self.ref.tell(A._boxGreetingsServiceProtocol(.greetDirect(who: who)))
+        self.ref.tell(A._boxGreetingsService(.greetDirect(who: who)))
     }
  
 
@@ -71,7 +72,7 @@ extension Actor where A: GreetingsServiceProtocol {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                A._boxGreetingsServiceProtocol(.greetFuture(name: name, _replyTo: _replyTo))
+                A._boxGreetingsService(.greetFuture(name: name, _replyTo: _replyTo))
             }.nioFuture.flatMapThrowing { result in
                 switch result {
                 case .success(let res): return res

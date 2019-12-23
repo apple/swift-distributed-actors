@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+
+// tag::xpc_example[]
+
 import DistributedActors
 import DistributedActorsXPC
 
@@ -20,7 +23,7 @@ let system = ActorSystem("XPCActorServiceProvider") { settings in
     settings.transports += .xpcService
 
     // TODO: simplify serialization so we dont have to register them?
-    settings.serialization.registerCodable(for: GeneratedActor.Messages.GreetingsServiceProtocol.self, underId: 10001)
+    settings.serialization.registerCodable(for: GeneratedActor.Messages.GreetingsService.self, underId: 10001)
     settings.serialization.registerCodable(for: GreetingsServiceImpl.Message.self, underId: 10002)
     settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
 }
@@ -29,3 +32,5 @@ let service = try XPCActorableService(system, GreetingsServiceImpl.init)
 
 service.park()
 // unreachable, park never exits
+
+// end::xpc_example[]

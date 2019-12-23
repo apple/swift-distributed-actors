@@ -32,6 +32,7 @@ echo "Project version: ${version}"
 # all our public modules which we want to document, begin with `DistributedActors`
 modules=(
   DistributedActors
+  DistributedActorsXPC
   DistributedActorsTestKit
 )
 

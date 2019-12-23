@@ -26,11 +26,11 @@ import XCTest
 struct XPCGreetMe: Actorable {
     func greet()
 }
+
 // end::xpc_greeter_api[]
 
 // tag::xpc_greeter_0[]
 protocol XPCGreeter: XPCA {
-
     // direct "reply"
     func greet(name: String) -> String {
         "Hello, \(name)!"
@@ -46,7 +46,7 @@ protocol XPCGreeter: XPCA {
 // end::xpc_greeter_0[]
 
 class XPCExampleCaller {
-// tag::xpc_greeter_caller0[]
+    // tag::xpc_greeter_caller0[]
 
-// end::xpc_greeter_caller[]
+    // end::xpc_greeter_caller[]
 }

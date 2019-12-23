@@ -27,22 +27,22 @@ import NIO
 extension GreetingsServiceImpl.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case _boxGreetingsServiceProtocol
+        case _boxGreetingsService
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case _boxGreetingsServiceProtocol
+        case _boxGreetingsService
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case ._boxGreetingsServiceProtocol:
-            let boxed = try container.decode(GeneratedActor.Messages.GreetingsServiceProtocol.self, forKey: CodingKeys._boxGreetingsServiceProtocol)
-            self = .greetingsServiceProtocol(boxed)
+        case ._boxGreetingsService:
+            let boxed = try container.decode(GeneratedActor.Messages.GreetingsService.self, forKey: CodingKeys._boxGreetingsService)
+            self = .greetingsService(boxed)
 
         }
     }
@@ -50,9 +50,9 @@ extension GreetingsServiceImpl.Message: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .greetingsServiceProtocol(let boxed):
-            try container.encode(DiscriminatorKeys._boxGreetingsServiceProtocol.rawValue, forKey: CodingKeys._case)
-            try container.encode(boxed, forKey: CodingKeys._boxGreetingsServiceProtocol)
+        case .greetingsService(let boxed):
+            try container.encode(DiscriminatorKeys._boxGreetingsService.rawValue, forKey: CodingKeys._case)
+            try container.encode(boxed, forKey: CodingKeys._boxGreetingsService)
 
         }
     }

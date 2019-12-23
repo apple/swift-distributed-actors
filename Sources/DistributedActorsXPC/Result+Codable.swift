@@ -12,16 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
 import DistributedActors
-import XPC
-import NIO
-import Logging
 import Files
+import Logging
+import NIO
+import XPC
 
 // TODO: Offering such by default may be "tricky" or "wrong"...
 
 extension Result: Codable where Success: Codable, Failure: Error {
-
     public enum DiscriminatorKeys: String, Codable {
         case success
         case failure
@@ -47,7 +48,7 @@ extension Result: Codable where Success: Codable, Failure: Error {
         }
     }
 
-    public  init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .success:
@@ -59,17 +60,6 @@ extension Result: Codable where Success: Codable, Failure: Error {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: XPC Errors
-
-public struct XPCGenericError: Error, Codable {
-    public let reason: String
-
-    public init(reason: String) {
-        self.reason = reason
-    }
-
-    public init<E: Error>(error errorType: E.Type) {
-        self.reason = "\(errorType)"
-    }
-}
+#else
+/// XPC is only available on Apple platforms
+#endif

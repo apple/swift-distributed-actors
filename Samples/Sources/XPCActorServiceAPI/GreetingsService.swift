@@ -12,11 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::xpc_example[]
 import DistributedActors
 import DistributedActorsXPC
 import NIO
 
-public protocol GreetingsServiceProtocol: XPCActorableProtocol {
+public protocol GreetingsService: XPCActorableProtocol {
 
     func logGreeting(name: String) throws
     func greet(name: String) throws -> String
@@ -25,5 +26,8 @@ public protocol GreetingsServiceProtocol: XPCActorableProtocol {
 
     func greetFuture(name: String) -> EventLoopFuture<String> // "leaking" that we use ELFs, but good that allows "async-return"
 
-    static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> Self.Message
+    /// Special static function needed to implement an Actorable protocol, for use only by generated code.
+    static func _boxGreetingsService(_ message: GeneratedActor.Messages.GreetingsService) -> Self.Message
 }
+
+// end::xpc_example[]

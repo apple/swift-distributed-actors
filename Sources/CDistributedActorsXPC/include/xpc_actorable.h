@@ -15,6 +15,8 @@
 #ifndef ACTORS_XPC_ACTORABLE_H
 #define ACTORS_XPC_ACTORABLE_H
 
+#ifdef __APPLE__
+
 #include <xpc/xpc.h>
 #include <xpc/connection.h>
 #include <dispatch/dispatch.h>
@@ -27,5 +29,7 @@ typedef void (*SactXPCOnConnectionCallback)(SactXPCHandlerClosureContext, xpc_co
 typedef void (*SactXPCOnMessageCallback)(SactXPCHandlerClosureContext, xpc_connection_t, xpc_object_t);
 
 void sact_xpc_main(SactXPCHandlerClosureContext, SactXPCOnConnectionCallback, SactXPCOnMessageCallback);
+
+#endif //__APPLE__
 
 #endif //ACTORS_XPC_ACTORABLE_H

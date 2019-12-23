@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifdef __APPLE__
+
 #include <xpc/xpc.h>
 #include <xpc/connection.h>
 #include <unistd.h>
@@ -81,3 +83,5 @@ void sact_xpc_main(SactXPCHandlerClosureContext context, SactXPCOnConnectionCall
     xpc_main(sact_xpc_connection_handler);
 }
 
+
+#endif //__APPLE__

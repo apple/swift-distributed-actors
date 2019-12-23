@@ -14,16 +14,14 @@
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
-import DistributedActors
 import Dispatch
-import XPC
+import DistributedActors
 import Files
+import XPC
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
-
 public final class XPCActorTransport: ActorTransport {
-
     private let lock = _Mutex()
 
     private var _master: ActorRef<XPCMaster.Message>?
@@ -44,26 +42,25 @@ public final class XPCActorTransport: ActorTransport {
     }
 
     public static let protocolName: String = "xpc"
-    override public var protocolName: String {
+    public override var protocolName: String {
         Self.protocolName
     }
 
-    override public func onActorSystemStart(system: ActorSystem) {
+    public override func onActorSystemStart(system: ActorSystem) {
         self.lock.synchronized {
             self._master = try! system._spawnSystemActor("xpc", XPCMaster().behavior, perpetual: true)
             self.system = system
         }
     }
 
-    override public func onActorSystemShutdown() {
+    public override func onActorSystemShutdown() {
         self.lock.synchronized {
             self._master?.tell(.stop)
             self.system = nil
         }
     }
 
-
-    override public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
+    public override func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
         guard context.address.starts(with: ._xpc) else {
             return nil
         }
@@ -78,7 +75,7 @@ public final class XPCActorTransport: ActorTransport {
         }
     }
 
-    override public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
+    public override func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
         guard context.address.starts(with: ._xpc) else {
             return nil
         }
@@ -93,7 +90,7 @@ public final class XPCActorTransport: ActorTransport {
         }
     }
 
-    override public func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
+    public override func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
         try XPCServiceCellDelegate(system: system, address: address)
     }
 
@@ -106,9 +103,8 @@ public final class XPCActorTransport: ActorTransport {
     /// Obtain `DispatchQueue` to be used to drive the xpc connection with this service.
     internal func makeServiceQueue(serviceName: String) -> DispatchQueue {
         // similar to NSXPCConnection
-        DispatchQueue.init(label: "com.apple.distributedactors.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
+        DispatchQueue(label: "com.apple.distributedactors.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
     }
-
 }
 
 extension ActorTransport {
@@ -128,7 +124,6 @@ extension Dictionary where Key == ActorSystemSettings.ProtocolName, Value == Act
 // MARK: XPCControl
 
 extension XPCActorTransport: XPCControl {
-
     /// Returns an `Actor` representing a reference to an XPC service with the passed in `serviceName`.
     ///
     /// No validation is performed about matching message type, nor the existence of the service synchronously.
@@ -165,7 +160,6 @@ extension XPCActorTransport: XPCControl {
 // MARK: ActorSystem + XPC
 
 extension ActorSystem {
-
     /// Offers ways to control and perform lookups of `Actorable` XPC services.
     /// - Faults when: the xpc transport is not installed in the system this is called on.
     public var xpc: XPCControl {
@@ -173,7 +167,7 @@ extension ActorSystem {
     }
 
     internal var xpcTransport: XPCActorTransport {
-        guard let transport = self.settings.transports.first(where: {$0.protocolName == XPCActorTransport.protocolName }) else {
+        guard let transport = self.settings.transports.first(where: { $0.protocolName == XPCActorTransport.protocolName }) else {
             fatalError("XPC transport not installed in \(self), installed transports are: \(self.settings.transports). Ensure to `settings.transports += .some` any transport you intend to use.")
         }
 
@@ -190,7 +184,6 @@ extension ActorSystem {
 ///
 /// This corresponds to the `NodeDeathWatcher` for clustered actors.
 final class XPCMaster {
-
     // TODO: key it by XPC ID
     private var watchers: [AddressableActorRef: Set<AddressableActorRef>] = [:]
 
@@ -250,8 +243,8 @@ final class XPCMaster {
 
                     self.watchers[watchee] = existingWatchers
 
-                    // TODO: Test for the racy case when we watch, unwatch, cause a failure; in the ActorCell we guarantee that we will not see such Interrupted then
-                    // but without the cell we lost this guarantee. This would have to be implemented in the XPCServiceCellDelegate
+                // TODO: Test for the racy case when we watch, unwatch, cause a failure; in the ActorCell we guarantee that we will not see such Interrupted then
+                // but without the cell we lost this guarantee. This would have to be implemented in the XPCServiceCellDelegate
                 case .xpcActorUnwatched(let watchee, let watcher):
                     guard let watchers: Set<AddressableActorRef> = self.watchers[watchee] else {
                         // seems that watchee has no watchers, thus no need to remove this one.
@@ -266,7 +259,7 @@ final class XPCMaster {
 
                 case .stop:
                     // FIXME: send terminated to all watchers // TODO: Add tests
-                    self.watchers.forEach { (watchee, watchers) in
+                    self.watchers.forEach { watchee, watchers in
                         let signal = Signals.XPC.Invalidated(address: watchee.address, description: "XPC transport is shutting down.")
                         watchers.forEach {
                             $0._sendSystemMessage(.carrySignal(signal))
@@ -277,12 +270,11 @@ final class XPCMaster {
 
                 return .same
             }
-
         }
     }
 }
 
-// TODO what is the proper way to key a connection
+// TODO: what is the proper way to key a connection
 struct XPCConnectionBox: Hashable {
     let connection: xpc_connection_t
 
@@ -295,7 +287,7 @@ struct XPCConnectionBox: Hashable {
         xpc_connection_get_pid(self.connection).hash(into: &hasher)
     }
 
-    static func ==(lhs: XPCConnectionBox, rhs: XPCConnectionBox) -> Bool {
+    static func == (lhs: XPCConnectionBox, rhs: XPCConnectionBox) -> Bool {
         // FIXME: this is likely wrong
         xpc_connection_get_pid(lhs.connection) == xpc_connection_get_pid(rhs.connection)
     }
@@ -304,4 +296,3 @@ struct XPCConnectionBox: Hashable {
 #else
 /// XPC is only available on Apple platforms
 #endif
-
