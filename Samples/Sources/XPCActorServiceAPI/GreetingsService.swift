@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 // tag::xpc_example[]
 import DistributedActors
 import DistributedActorsXPC
@@ -31,3 +32,4 @@ public protocol GreetingsService: XPCActorableProtocol {
 }
 
 // end::xpc_example[]
+#endif

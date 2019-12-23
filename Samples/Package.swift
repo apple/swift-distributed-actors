@@ -37,6 +37,17 @@ var targets: [PackageDescription.Target] = [
         ],
         path: "Sources/SampleGenActors"
     ),
+
+    /* --- tests --- */
+    
+    // no-tests placeholder project to not have `swift test` fail on Samples/
+    .testTarget(
+        name: "NoopTests",
+        dependencies: [
+            "DistributedActorsTestKit"
+        ],
+        path: "Tests/NoopTests"
+    ),
 ]
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
@@ -56,7 +67,6 @@ targets.append(contentsOf: [
         name: "XPCActorServiceProvider",
         dependencies: [
             "XPCActorServiceAPI",
-            "LoggingOSLog",
         ],
         path: "Sources/XPCActorServiceProvider"
     ),
@@ -67,16 +77,6 @@ targets.append(contentsOf: [
             "Files",
         ],
         path: "Sources/XPCActorCaller"
-    ),
-
-    /* --- tests --- */
-    .testTarget(
-        name: "SampleGenActorsTests",
-        dependencies: [
-            "SampleGenActors",
-            "DistributedActorsTestKit"
-        ],
-        path: "Tests/SampleGenActorsTests"
     ),
 ])
 
@@ -93,7 +93,6 @@ var dependencies: [Package.Dependency] = [
 
     // for mocking logging via files in XPC examples
     .package(url: "https://github.com/JohnSundell/Files", from: "4.0.0"), // MIT license
-    .package(url: "https://github.com/chrisaljoudi/swift-log-oslog.git", from: "0.1.0"), // TODO: waiting for license https://github.com/chrisaljoudi/swift-log-oslog/issues/4
 ]
 
 let package = Package(

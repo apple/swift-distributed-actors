@@ -20,7 +20,7 @@ var targets: [PackageDescription.Target] = [
             "Logging", "Metrics",
             "Backtrace",
 
-            "Files", // TODO: remove
+            "Files", // TODO: remove, currently the codegen needs it 
 
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
@@ -139,32 +139,6 @@ var targets: [PackageDescription.Target] = [
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
     ),
 
-    /* --- XPC Integration Tests --- */
-    .target(
-        name: "it_XPCActorable_echo",
-        dependencies: [
-            "DistributedActorsXPC",
-            "it_XPCActorable_echo_api",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_api",
-        dependencies: [
-            "DistributedActorsXPC"
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_service",
-        dependencies: [
-            "DistributedActorsXPC",
-            "it_XPCActorable_echo_api",
-            "Files",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
-    ),
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
 
@@ -201,8 +175,37 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsConcurrencyHelpers",
         dependencies: ["CDistributedActorsAtomics"]
     ),
-
 ]
+
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+targets.append(contentsOf: [
+    /* --- XPC Integration Tests --- */
+    .target(
+        name: "it_XPCActorable_echo",
+        dependencies: [
+            "DistributedActorsXPC",
+            "it_XPCActorable_echo_api",
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
+    ),
+    .target(
+        name: "it_XPCActorable_echo_api",
+        dependencies: [
+            "DistributedActorsXPC"
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
+    ),
+    .target(
+        name: "it_XPCActorable_echo_service",
+        dependencies: [
+            "DistributedActorsXPC",
+            "it_XPCActorable_echo_api",
+            "Files",
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
+    ),
+])
+#endif
 
 var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.8.0"),

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 // tag::xpc_example[]
 
 import DistributedActors
@@ -34,3 +35,4 @@ service.park()
 // unreachable, park never exits
 
 // end::xpc_example[]
+#endif
