@@ -13,11 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 
 let system = ActorSystem("XPCActorServiceProvider") { settings in
     // TODO make this the source of "truth" what transports are available
-    settings.transports += .xpc
+    settings.transports += .xpcService
 
     // TODO: simplify serialization so we dont have to register them?
     settings.serialization.registerCodable(for: GeneratedActor.Messages.GreetingsServiceProtocol.self, underId: 10001)

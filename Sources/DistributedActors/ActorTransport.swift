@@ -15,23 +15,43 @@
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Transport Settings
+// MARK: ActorTransport
 
+/// :nodoc: INTERNAL API
 /// Internal protocol allowing for introduction of additional transports.
-public class ActorTransport {
-    var `protocol`: String {
+open class ActorTransport {
+
+    public init() {
+        // nothing
+    }
+
+    open var protocolName: String {
         fatalError("Not implemented: \(#function) in \(self) transport!")
     }
 
-    func onActorSystemStart(system: ActorSystem) {
+    open func onActorSystemStart(system: ActorSystem) {
         // do nothing by default
     }
 
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        fatalError("Not implemented: \(#function) in \(self) transport!")
+    open func onActorSystemPark() {
+        // do nothing by default
     }
 
-    func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
+    open func onActorSystemShutdown() {
+        // do nothing by default
+    }
+
+    /// May return `nil` if this transport is NOT able to resolve this ref.
+    open func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
+        fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
+    }
+
+    /// May return `nil` if this transport is NOT able to resolve this ref.
+    open func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
+        fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
+    }
+
+    open func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
         fatalError("Not implemented: \(#function) in \(self) transport!")
     }
 

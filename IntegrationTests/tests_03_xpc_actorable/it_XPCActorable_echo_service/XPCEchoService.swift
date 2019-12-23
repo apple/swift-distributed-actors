@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 import it_XPCActorable_echo_api
 import Files
 

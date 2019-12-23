@@ -38,7 +38,7 @@ public struct Serialization {
     /// Public only for access by other serialization work performed e.g. by other transports.
     public let allocator: ByteBufferAllocator
 
-    internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem, traversable: _ActorTreeTraversable) { // TODO: should take the top level actors
+    internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem) {
         let settings = systemSettings.serialization
 
         self.allocator = settings.allocator
@@ -56,8 +56,7 @@ public struct Serialization {
             log: log,
             localNode: settings.localNode,
             system: system,
-            allocator: self.allocator,
-            traversable: traversable
+            allocator: self.allocator
         )
 
         // register all serializers
@@ -346,8 +345,6 @@ public struct ActorSerializationContext {
     public let log: Logger
     public let system: ActorSystem
 
-    private let traversable: _ActorTreeTraversable
-
     /// Shared among serializers allocator for purposes of (de-)serializing messages.
     public let allocator: ByteBufferAllocator
 
@@ -358,14 +355,12 @@ public struct ActorSerializationContext {
         log: Logger,
         localNode: UniqueNode,
         system: ActorSystem,
-        allocator: ByteBufferAllocator,
-        traversable: _ActorTreeTraversable
+        allocator: ByteBufferAllocator
     ) {
         self.log = log
         self.localNode = localNode
         self.system = system
         self.allocator = allocator
-        self.traversable = traversable
     }
 
     /// Attempts to resolve ("find") an actor reference given its unique path in the current actor tree.
@@ -374,23 +369,26 @@ public struct ActorSerializationContext {
     /// If a "new" actor was started on the same `path`, its `incarnation` would be different, and thus it would not resolve using this method.
     /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
     ///
+    /// Carrying `userInfo` from serialization (Coder) infrastructure may be useful to carry Transport specific information,
+    /// such that a transport may _resolve_ using its own metadata.
+    ///
     /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
-    public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress) -> ActorRef<Message> {
-        let context = ResolveContext<Message>(address: address, system: self.system)
-        return self.traversable._resolve(context: context)
+    public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey : Any] = [:]) -> ActorRef<Message> {
+        let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
+        return self.system._resolve(context: context)
     }
 
     // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
     /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
-    internal func resolveAddressableActorRef(identifiedBy address: ActorAddress) -> AddressableActorRef {
-        let context = ResolveContext<Any>(address: address, system: self.system)
-        return self.traversable._resolveUntyped(context: context)
+    internal func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey : Any] = [:]) -> AddressableActorRef {
+        let context = ResolveContext<Any>(address: address, system: self.system, userInfo: userInfo)
+        return self.system._resolveUntyped(context: context)
     }
 
     /// Currently internal; Needed to restore `Any...` boxes when serializing CRDTs.
     // TODO: consider if this should be opened up, or removed, and solves in some other way
     internal func box<Box>(_ value: Any, ofKnownType: Any.Type, as boxType: Box.Type) -> Box? {
-        return self.system.serialization.box(value, ofKnownType: ofKnownType, as: boxType)
+        self.system.serialization.box(value, ofKnownType: ofKnownType, as: boxType)
     }
 }
 
@@ -514,11 +512,11 @@ open class Serializer<T> {
     public init() {}
 
     open func serialize(message: T) throws -> ByteBuffer {
-        return undefined()
+        undefined()
     }
 
     open func deserialize(bytes: ByteBuffer) throws -> T {
-        return undefined()
+        undefined()
     }
 
     /// Invoked _once_ by `Serialization` during system startup, providing additional context bound to
@@ -552,7 +550,7 @@ extension Serializer: AnySerializer {
     }
 
     public func tryDeserialize(_ bytes: ByteBuffer) throws -> Any {
-        return try self.deserialize(bytes: bytes)
+        try self.deserialize(bytes: bytes)
     }
 }
 

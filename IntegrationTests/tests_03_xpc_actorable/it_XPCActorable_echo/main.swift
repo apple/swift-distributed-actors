@@ -12,10 +12,9 @@
 //sa
 //===----------------------------------------------------------------------===//
 
+import NIO
 import DistributedActors
-import XPCActorable
-import XPC // for dispatchMain()
-import Foundation // for exit()
+import DistributedActorsXPC
 import it_XPCActorable_echo_api
 
 let serviceName = "com.apple.sakkana.XPCLibService"
@@ -28,9 +27,8 @@ let system = ActorSystem("it_XPCActorable_echo") { settings in
     settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
 }
 
-let xpc = XPCServiceLookup(system)
-
-let xpcGreetingsActor: Actor<XPCEchoServiceProtocolStub> = try xpc.actor(XPCEchoServiceProtocolStub.self, serviceName: serviceName)
+let xpcGreetingsActor: Actor<XPCEchoServiceProtocolStub> =
+    try system.xpc.actor(XPCEchoServiceProtocolStub.self, serviceName: serviceName)
 
 switch CommandLine.arguments.dropFirst(1).first {
 case "echo":
@@ -38,7 +36,7 @@ case "echo":
     let reply: Reply<String> = xpcGreetingsActor.echo(string: "Capybara")
 
     // await reply
-    reply._nioFuture.whenComplete {
+    reply.withTimeout(after: .seconds(2))._nioFuture.whenComplete {
         system.log.info("Received reply from \(xpcGreetingsActor): \($0)")
         exit(0) // good, we got the reply
     }
@@ -50,7 +48,7 @@ case "letItCrash":
 
 case let unknown:
     system.log.error("Unknown command: \(unknown)")
+    exit(-1)
 }
 
-// TODO: make it a pattern to call some system.park() so we can manage this (same with process isolated)?
-dispatchMain() // FIXME: this is XPC, make it part of XPCActorable
+system.park()

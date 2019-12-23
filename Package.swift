@@ -41,6 +41,23 @@ var targets: [PackageDescription.Target] = [
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: XPC
+
+    .target(
+        name: "CDistributedActorsXPC",
+        dependencies: [
+        ]
+    ),
+    .target(
+        name: "DistributedActorsXPC",
+        dependencies: [
+            "DistributedActors",
+            "CDistributedActorsXPC",
+            "Files",
+        ]
+    ),
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
 
     /// This target is intended only for use in tests, though we have no way to mark this
@@ -54,7 +71,11 @@ var targets: [PackageDescription.Target] = [
 
     .testTarget(
         name: "DistributedActorsDocumentationTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+        dependencies: [
+            "DistributedActors", 
+            "DistributedActorsXPC", 
+            "DistributedActorsTestKit"
+        ]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -116,6 +137,32 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
+    ),
+
+    /* --- XPC Integration Tests --- */
+    .target(
+        name: "it_XPCActorable_echo",
+        dependencies: [
+            "DistributedActorsXPC",
+            "it_XPCActorable_echo_api",
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
+    ),
+    .target(
+        name: "it_XPCActorable_echo_api",
+        dependencies: [
+            "DistributedActorsXPC"
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
+    ),
+    .target(
+        name: "it_XPCActorable_echo_service",
+        dependencies: [
+            "DistributedActorsXPC",
+            "it_XPCActorable_echo_api",
+            "Files",
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -189,7 +236,7 @@ dependencies.append(contentsOf: [
 fatalError("Currently only Swift 5.1 is supported. 5.0 could be supported, if you need Swift 5.0 support please reach out to to the team.")
 #endif
 
-var products: [PackageDescription.Product] = [
+let products: [PackageDescription.Product] = [
     .library(
         name: "DistributedActors",
         targets: ["DistributedActors"]
@@ -206,74 +253,18 @@ var products: [PackageDescription.Product] = [
         targets: ["GenActors"]
     ),
 
+    /* --- XPC --- */
+    .library(
+        name: "DistributedActorsXPC",
+        targets: ["DistributedActorsXPC"]
+    ),
+
     /* ---  performance --- */
     .executable(
         name: "DistributedActorsBenchmarks",
         targets: ["DistributedActorsBenchmarks"]
     ),
 ]
-
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-
-// ==== ------------------------------------------------------------------------------------------------------------
-// MARK: XPC (only available on Apple platforms)
-
-targets.append(contentsOf: [
-    /* --- XPC --- */
-
-    .target(
-        name: "CXPCActorable",
-        dependencies: [
-            "Files",
-        ]
-    ),
-    .target(
-        name: "XPCActorable",
-        dependencies: [
-            "DistributedActors",
-            "CXPCActorable",
-            "Files",
-        ]
-    ),
-
-    /* --- XPC Integration Tests --- */
-    .target(
-        name: "it_XPCActorable_echo",
-        dependencies: [
-            "DistributedActors",
-            "XPCActorable",
-            "it_XPCActorable_echo_api",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_api",
-        dependencies: [
-            "DistributedActors",
-            "XPCActorable",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_service",
-        dependencies: [
-            "DistributedActors",
-            "XPCActorable",
-            "it_XPCActorable_echo_api",
-            "Files",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
-    ),
-])
-
-products.append(contentsOf: [
-    .library(
-        name: "XPCActorable",
-        targets: ["XPCActorable"]
-    ),
-])
-
-#endif
 
 var package = Package(
     name: "swift-distributed-actors",

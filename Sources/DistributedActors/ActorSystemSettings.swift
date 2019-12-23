@@ -39,20 +39,26 @@ public struct ActorSystemSettings {
     public var serialization: SerializationSettings = .default
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var failure: FailureSettings = .default
+
+    public typealias ProtocolName = String
+    public var transports: [ActorTransport] = []
     public var cluster: ClusterSettings = .default {
         didSet {
             self.serialization.localNode = self.cluster.uniqueBindNode
         }
     }
 
-    public typealias ProtocolName = String
-    public var transports: [ProtocolName: ActorTransport] = [:]
-
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
     public var installSwiftBacktrace: Bool = true
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
+}
+
+extension Array where Element == ActorTransport {
+    public static func += <T: ActorTransport> (transports: inout Self, transport: T) {
+        transports.append(transport)
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

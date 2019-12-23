@@ -17,6 +17,9 @@
 import DistributedActors
 import XPC
 import NIO
+import Files
+
+fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt") // FIXME: remove hacky way to log
 
 /// Serialization to and from `xpc_object_t`.
 ///
@@ -53,12 +56,18 @@ public enum XPCSerialization {
     }
 
     public static func serializeRecipient(_ system: ActorSystem, xdict: xpc_object_t, address: ActorAddress) throws {
-        guard let addressSerializerId = try system.serialization.serializerIdFor(type: ActorAddress.self) else {
-            fatalError("Can't serialize ActorAddress")
+        guard let addressSerializerId = system.serialization.serializerIdFor(type: ActorAddress.self) else {
+            fatalError("Can't serialize ActorAddress: [\(address)], no serializer id")
         }
-        guard let serializer = try system.serialization.serializer(for: addressSerializerId) else {
-            fatalError("Can't serialize ActorAddress")
+        guard let serializer = system.serialization.serializer(for: addressSerializerId) else {
+            fatalError("Can't serialize ActorAddress: [\(address)], no serializer for \(addressSerializerId)")
         }
+
+        // we mutate the reference such that the recipient knows to reply back over the xpc connection
+        var address = address
+        address.node?.node.protocol = "xpc"
+        try! _file.append("[sending] [TO: \(address)]\n")
+
 
         let buf = try serializer.trySerialize(address)
         buf.withUnsafeReadableBytes { bytes in
@@ -76,15 +85,11 @@ public enum XPCSerialization {
     // MARK: Deserialize
 
     public static func deserializeActorMessage(_ system: ActorSystem, peer: xpc_connection_t, xdict: xpc_object_t) throws -> Any {
-        let serializerId = UInt32(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue))
+        let serializerId = Serialization.SerializerId(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue))
 
         guard let serializer = system.serialization.serializer(for: serializerId) else {
             throw SerializationError.noSerializerRegisteredFor(hint: "SerializerId:\(serializerId))")
         }
-
-        // FIXME This means we need to make those value types (!!!!!!!)
-        // by storing the peer connection, we make the Codable infra deserialize a proxy that will reply to this peer
-        serializer.setUserInfo(key: .xpcConnection, value: peer)
 
         let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue)
         var length = Int(length64)
@@ -96,9 +101,15 @@ public enum XPCSerialization {
         buf.writeBytes(rawDataBufferPointer)
 
         do {
+            // FIXME: This means we need to make those value types (!!!!!!!)
+            // by storing the peer connection, we make the Codable infra deserialize a proxy that will reply to this peer
+            serializer.setUserInfo(key: .xpcConnection, value: peer) // FIXME: a `withUserInfo` would be a good way to solve it
+
             return try serializer.tryDeserialize(buf)
+
         } catch {
             // TODO only nowadays since we know its JSON
+            try! _file.append("FAILED: \(error)")
             throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no payload>", error: error)
         }
     }
@@ -122,9 +133,11 @@ public enum XPCSerialization {
                 return system.deadLetters.asAddressable()
             }
             let address = try serializer.tryDeserialize(buf) as! ActorAddress
+            try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))
         } catch {
             // TODO only nowadays since we know its JSON
+            try! _file.append("error: \(error)")
             throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no recipient>", error: error)
         }
 
@@ -135,18 +148,28 @@ public enum XPCSerializationError: Error {
     case decodingError(payload: String, error: Error)
 }
 
+extension ActorPath {
+    public static let _xpc: ActorPath = try! ActorPath(root: "xpc") // also known as "/"
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: User info
 
 extension Decoder {
     public var xpcConnection: xpc_connection_t? {
-        self.userInfo[.xpcConnection] as? xpc_connection_t
+        self.userInfo.xpcConnection
     }
 }
 
 extension Encoder {
     public var xpcConnection: xpc_connection_t? {
-        self.userInfo[.xpcConnection] as? xpc_connection_t
+        self.userInfo.xpcConnection
+    }
+}
+
+extension Dictionary where Key == CodingUserInfoKey, Value == Any {
+    public var xpcConnection: xpc_connection_t? {
+        self[.xpcConnection] as? xpc_connection_t
     }
 }
 

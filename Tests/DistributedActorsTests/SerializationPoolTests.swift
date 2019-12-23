@@ -24,8 +24,8 @@ class SerializationPoolTests: XCTestCase {
         // These locks are used to validate the different ordering guarantees
         // we give in the serialization pool. The locks are used to block
         // the serializer until we want it to complete serialization.
-        static let deserializerLock = Mutex()
-        let lock = Mutex()
+        static let deserializerLock = _Mutex()
+        let lock = _Mutex()
 
         enum CodingKeys: String, CodingKey {
             case test
@@ -47,8 +47,8 @@ class SerializationPoolTests: XCTestCase {
     }
 
     struct Test2: Codable {
-        static let deserializerLock = Mutex()
-        let lock = Mutex()
+        static let deserializerLock = _Mutex()
+        let lock = _Mutex()
 
         enum CodingKeys: String, CodingKey {
             case test

@@ -12,10 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-
 import DistributedActors
-import CXPCActorable
 import XPC
 import NIO
 import Logging
@@ -62,6 +59,9 @@ extension Result: Codable where Success: Codable, Failure: Error {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: XPC Errors
+
 public struct XPCGenericError: Error, Codable {
     public let reason: String
 
@@ -73,8 +73,3 @@ public struct XPCGenericError: Error, Codable {
         self.reason = "\(errorType)"
     }
 }
-
-#else
-/// XPC is only available on Apple platforms
-#endif
-

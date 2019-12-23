@@ -42,7 +42,7 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
     private let target: ActorRef<To>
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
-    private let lock = Mutex()
+    private let lock = _Mutex()
 
     var address: ActorAddress {
         return self.adapterAddress
@@ -238,7 +238,7 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
     private let identifier: AnySubReceiveId
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
-    private let lock = Mutex()
+    private let lock = _Mutex()
 
     var address: ActorAddress {
         return self.adapterAddress

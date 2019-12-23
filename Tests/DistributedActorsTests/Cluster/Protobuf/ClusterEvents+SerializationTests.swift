@@ -22,7 +22,7 @@ final class ClusterEventsSerializationTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
-    lazy var context: ActorSerializationContext! = ActorSerializationContext(log: system.log, localNode: system.cluster.node, system: system, allocator: system.settings.serialization.allocator, traversable: system)
+    lazy var context: ActorSerializationContext! = ActorSerializationContext(log: system.log, localNode: system.cluster.node, system: system, allocator: system.settings.serialization.allocator)
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))

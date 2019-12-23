@@ -15,17 +15,31 @@
 // tag::imports[]
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 
 // end::imports[]
 
 import DistributedActorsTestKit
 import XCTest
 
+// tag::xpc_greeter_api[]
+struct XPCGreetMe: Actorable {
+    func greet()
+}
+// end::xpc_greeter_api[]
+
 // tag::xpc_greeter_0[]
-struct Greeter: Actorable {
+protocol XPCGreeter: XPCA {
+
+    // direct "reply"
     func greet(name: String) -> String {
         "Hello, \(name)!"
+    }
+
+    // passing refs or actors
+    func greetBoth(first: ActorRef<String>, second: Actor<XPCGreetMe>) -> String {
+        first.tell("Hello \(first.path.name)")
+        second.greet()
     }
 }
 

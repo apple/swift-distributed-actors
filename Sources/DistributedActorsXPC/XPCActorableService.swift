@@ -15,7 +15,6 @@
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 import DistributedActors
-import CXPCActorable
 import XPC
 import NIO
 import Logging
@@ -24,7 +23,7 @@ import Files
 // ==== ------------------------------------------------------------------------------------------------------------
 fileprivate let file = try! Folder(path: "/tmp").file(named: "xpc.txt") // FIXME: remove hacky way to log
 
-fileprivate let _storageLock: Mutex = Mutex()
+fileprivate let _storageLock: _Mutex = _Mutex()
 fileprivate var _storage: XPCStorage? = nil
 
 struct XPCStorage {
@@ -53,30 +52,13 @@ public final class XPCActorableService<A: Actorable> {
         let actor = try system.spawn("\(system.name)", { makeActorableHandler($0) })
         self.myself = actor.ref
         self.system = system
+        
+        precondition(
+            self.system.settings.transports.contains(where: { $0.protocolName == XPCServiceActorTransport.protocolName }),
+            "A \(XPCServiceActorTransport.self) is required for creating an \(Self.self), yet the system did only have: \(self.system.settings.transports)"
+            )
 
         // TODO: use xpc_connection_set_context for state management rather than the global; we'll need this for many services in same process
-
-//        // prepare for xpclib interop
-//        self.onConnectionCallback = { ctxPtr, connection in
-//            let f = try! Folder(path: "/tmp").file(named: "xpc.txt")
-//            try! f.append("!!!! INVOKE !!!!")
-//
-//            guard let context = ctxPtr?.assumingMemoryBound(to: XPCHandlerClosureContext.self).pointee else {
-//                return
-//            }
-//
-//            try! f.append("INSIDE INVOKE\n")
-//        }
-//
-//        self.onMessageCallback = { context, connection, object in
-//
-//        }
-//
-//        self.onConnectionContext = XPCHandlerClosureContext(
-//            tell: { object in
-//
-//            }
-//        )
     }
 
     /// Park the current thread and start handling messages using the provided actorable.
@@ -157,12 +139,8 @@ fileprivate func xpc_eventHandler(_ storage: XPCStorage, peer: xpc_connection_t,
     // --- deserialize and deliver ---
     let message: Any
     do {
-        let serializer = storage.system.serialization.serializer(for: 10001)!
-        serializer.setUserInfo(key: .xpcConnection, value: peer)
-        // defer { serializer.setUserInfo(key: .xpcConnection, value: nil as String?) }
-        // try! file.append("Serializer: \(serializer)\n")
-
         message = try XPCSerialization.deserializeActorMessage(storage.system, peer: peer, xdict: xdict)
+        try! file.append("[actor service] \(#file)\(#line) \(message) \n")
     } catch {
         try! file.append("Failed de-serializing xpc message [\(xdict)], error: \(error)\n")
         storage.system.log.warning("Failed de-serializing xpc message, error: \(error)")
@@ -175,24 +153,6 @@ fileprivate func xpc_eventHandler(_ storage: XPCStorage, peer: xpc_connection_t,
     // TODO: rather than always send to myself via this, we should resolve the envelopes recipient and deliver there
     storage.sendMessage(message)
 }
-
-
-//// Since we need to capture some context and pass this function to C.
-//@usableFromInline
-//internal struct XPCHandlerClosureContext {
-//
-//    @usableFromInline
-//    let _tell: (xpc_connection_t) -> Void // TODO signature
-//
-//    @usableFromInline
-//    init(tell: @escaping (xpc_connection_t) -> Void) {
-//        self._tell = tell
-//    }
-//
-//    func tell(_ message: Any) {
-//        pprint("TELL: \(message)")
-//    }
-//}
 
 #else
 /// XPC is only available on Apple platforms

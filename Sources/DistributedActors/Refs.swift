@@ -351,6 +351,10 @@ public extension ActorRef where Message == DeadLetter {
 // TODO we could use this to make TestProbes more "real" rather than wrappers
 open class CellDelegate<Message> {
 
+    public init() {
+        // nothing
+    }
+
     open var system: ActorSystem {
         fatalError("Not implemented: \(#function)")
     }
@@ -432,7 +436,7 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
 ///
 /// Represents the an "top level" actor which is the parent of all actors spawned on by the system itself
 /// (unlike actors spawned from within other actors, by using `context.spawn`).
-public final class Guardian {
+public class Guardian {
     @usableFromInline
     let _address: ActorAddress
     var address: ActorAddress {
@@ -447,7 +451,7 @@ public final class Guardian {
 
     // any access to children has to be protected by `lock`
     private var _children: Children
-    private let _childrenLock: Mutex = Mutex()
+    private let _childrenLock: _Mutex = _Mutex()
     private var children: Children {
         return self._childrenLock.synchronized { () in
             _children

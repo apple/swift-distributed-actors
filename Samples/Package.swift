@@ -38,6 +38,7 @@ var targets: [PackageDescription.Target] = [
         path: "Sources/SampleGenActors"
     ),
 ]
+
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 // ==== ------------------------------------------------------------------------------------------------------------
@@ -47,7 +48,7 @@ targets.append(contentsOf: [
     .target(
         name: "XPCActorServiceAPI",
         dependencies: [
-            "XPCActorable"
+            "DistributedActorsXPC"
         ],
         path: "Sources/XPCActorServiceAPI"
     ),
@@ -77,7 +78,7 @@ targets.append(contentsOf: [
         ],
         path: "Tests/SampleGenActorsTests"
     ),
-]
+])
 
 #endif
 

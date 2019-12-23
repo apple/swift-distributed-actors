@@ -115,7 +115,7 @@ private enum PingPongCommand {
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-private let mutex = Mutex()
+private let mutex = _Mutex()
 
 private var supervisor: ActorRef<PingPongCommand>!
 

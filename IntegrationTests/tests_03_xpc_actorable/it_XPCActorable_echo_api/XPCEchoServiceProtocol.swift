@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 
 public protocol XPCEchoServiceProtocol: XPCActorableProtocol {
     func echo(string: String) -> String

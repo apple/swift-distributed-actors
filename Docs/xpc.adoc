@@ -1,6 +1,6 @@
 
 [[xpc]]
-== XPC Transport
+== ⚠️ PoC: XPC Transport
 
 > As Actors are "only" an abstraction of identifiable entities that communicate _only_ using messaging,
 > they can be used to abstract and ease interactions not only over network but also between processes.
@@ -8,13 +8,50 @@
 > On Apple platforms the recommended IPC mechanism is XPC, and Actors support it as a transport in order to communicate
 > with XPC services defined in Swift, or raw C api.
 
+WARNING: The XPC transport for Actors is only a Proof-of-Concept, and thus is **highly experimental and incomplete**.
+         If you are interested in this transport, please reach out to the team to discuss.
+
 NOTE: See also <<actorable>>, which can be used to define and interact with XPC services as described below.
+
+=== About XPC
+
+https://developer.apple.com/documentation/xpc[XPC] is a system library provided on Apple platforms that provides
+a way to implement inter-process communication (based on property lists). XPC services are managed by `launchd`,
+and thus defining them has to follow some special rules about where they are located within an `*.app`.
+
+This module allows for building and interacting with XPC services using the familiar `Actorable` and actor abstractions,
+allowing to learn a smaller set of APIs and implementing inter-process communication in the same manner (using the same
+core concepts) as one would implement inter-thread or intra-node (clustered) systems.
 
 === Getting Started: (Actorable) XPC Service
 
+Actors along with the `GenActors` source generator may be used to implement and consume XPC services in Swift.
+The user experience is
+
+==== Defining an XPC protocol
+
+The most common way of interacting with XPC services is through a known `protocol`.
+In Actors, this is expressible by defining an protocol conforming to api:XPCActorableProtocol[protocol],
+and generating the needed Actorable message passing infrastructure by invoking `swift run GenActors`.
+
+The following protocol defines an ipc interface that we will be able to invoke from the parent application:
+
 [source]
 ----
-include::{dir_sact_doc_tests}/Actorable/XPCActorableDocExamples.swift[tag=xpc_greeter_0]
+include::{dir_sact_doc_tests}//it_XPCActorable_echo/main.swift[tag=xpc_greeter_0]
+----
+
+
+==== Consuming an XPCActorable Service
+
+Consuming an api:Actorable[protocol] defined protocol is straight-forward.
+
+Make sure to include the `.xpc` transport in the system's settings during its startup, as this will ensure the lookups
+of XPC services are going to
+
+[source]
+----
+include::{dir_sact_doc_tests}/tests_03_xpc_actorable/it_XPCActorable_echo/main.swift[tag=xpc_greeter_0]
 ----
 
 #TODO: Write full docs#

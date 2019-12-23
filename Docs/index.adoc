@@ -21,7 +21,7 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :linkcss:
 :pygments-linenums-mode: table
 
-// we don't want listtings to be prefixed with "Listing N." since not all are named and numbering gets weird
+// we don't want listings to be prefixed with "Listing N." since not all are named and numbering gets weird
 :!listing-caption:
 
 :multipage-level: 1
@@ -46,6 +46,7 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :dir_sact_doc_tests:    ../Tests/DistributedActorsDocumentationTests
 :dir_sact_actor:        ../Sources/DistributedActors
 :dir_sact_actor_tests:  ../Tests/DistributedActorsTests
+:dir_sact_int_tests:     ../IntegrationTests
 
 
 = Swift Distributed Actors Reference Guide
@@ -145,8 +146,8 @@ include::failure_handling.adoc[]
 include::serialization.adoc[]
 include::clustering.adoc[]
 include::observability.adoc[]
-include::xpc.adoc[]
 include::faq.adoc[]
 include::examples.adoc[]
+include::xpc.adoc[]
 include::internals.adoc[]
 include::SWIM.adoc[]

@@ -16,6 +16,11 @@
 set -e
 #set -x # verbose
 
+if [[ "$(uname)" != 'Darwin' ]]; then
+    echo "XPC is only supported on Apple platforms, skipping execution"
+    exit 0
+fi
+
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 
@@ -24,9 +29,6 @@ declare -r app_name='it_XPCActorable_echo'
 cd ${root_path}
 
 source ${my_path}/shared.sh
-
-# ====------------------------------------------------------------------------------------------------------------------
-# MARK: killing servant should make it restart
 
 cd tests_03_xpc_actorable
 

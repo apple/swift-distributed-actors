@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 import NIO
 
 public protocol GreetingsServiceProtocol: XPCActorableProtocol {
