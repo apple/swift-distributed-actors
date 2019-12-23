@@ -112,16 +112,19 @@ final class ReceptionistTests: XCTestCase {
 
         listing.refs.count.shouldEqual(1)
     }
+
     func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
-        let old: ActorRef<String> = try system.spawn(.anonymous,
+        let old: ActorRef<String> = try system.spawn(
+            .anonymous,
             .receiveMessage { _ in
                 .stop
             }
         )
-        let new: ActorRef<String> = try system.spawn(.anonymous,
+        let new: ActorRef<String> = try system.spawn(
+            .anonymous,
             .receiveMessage { _ in
                 .same
             }

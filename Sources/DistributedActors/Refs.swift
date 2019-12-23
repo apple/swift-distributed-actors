@@ -348,9 +348,8 @@ public extension ActorRef where Message == DeadLetter {
 ///
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
-// TODO we could use this to make TestProbes more "real" rather than wrappers
+// TODO: we could use this to make TestProbes more "real" rather than wrappers
 open class CellDelegate<Message> {
-
     public init() {
         // nothing
     }
@@ -371,7 +370,7 @@ open class CellDelegate<Message> {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    open func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {
+    open func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
@@ -383,7 +382,6 @@ open class CellDelegate<Message> {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 }
-
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Special" internal actors, "the Top Level Guardians"

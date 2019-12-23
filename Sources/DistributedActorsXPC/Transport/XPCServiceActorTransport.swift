@@ -14,16 +14,14 @@
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
-import DistributedActors
 import Dispatch
-import XPC
+import DistributedActors
 import Files
+import XPC
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
-
 public final class XPCServiceActorTransport: ActorTransport {
-
     private let lock = _Mutex()
     internal var system: ActorSystem!
 
@@ -32,17 +30,17 @@ public final class XPCServiceActorTransport: ActorTransport {
     }
 
     public static let protocolName: String = "xpcService"
-    override public var protocolName: String {
+    public override var protocolName: String {
         Self.protocolName
     }
 
-    override public func onActorSystemStart(system: ActorSystem) {
+    public override func onActorSystemStart(system: ActorSystem) {
         self.lock.synchronized {
             self.system = system
         }
     }
 
-    override public func onActorSystemShutdown() {
+    public override func onActorSystemShutdown() {
         self.lock.synchronized {
             self.system = nil
         }
@@ -50,7 +48,7 @@ public final class XPCServiceActorTransport: ActorTransport {
 
     // FIXME: This is a bit hacky...
     // We are in an XPC Service and want to deserialize all actor refs as pointing to the application process.
-    override public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
+    public override func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
         try! _file.append("\(#function) @ \(#file):\(#line) trying to resolve: \(context.address): \(context.userInfo.xpcConnection)\n")
 
         guard let xpcConnection = context.userInfo.xpcConnection else {
@@ -62,7 +60,7 @@ public final class XPCServiceActorTransport: ActorTransport {
         return delegate
     }
 
-    override public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
+    public override func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
         guard let xpcConnection = context.userInfo.xpcConnection else {
             return nil
         }
@@ -74,15 +72,14 @@ public final class XPCServiceActorTransport: ActorTransport {
         return delegate
     }
 
-
-    override public func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
+    public override func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
         try XPCServiceCellDelegate(system: system, address: address)
     }
 
     /// Obtain `DispatchQueue` to be used to drive the xpc connection with this service.
     internal func makeServiceQueue(serviceName: String) -> DispatchQueue {
         // similar to NSXPCConnection
-        DispatchQueue.init(label: "com.apple.sakkana.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
+        DispatchQueue(label: "com.apple.sakkana.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
     }
 }
 
@@ -102,4 +99,3 @@ extension Dictionary where Key == ActorSystemSettings.ProtocolName, Value == Act
 #else
 /// XPC is only available on Apple platforms
 #endif
-

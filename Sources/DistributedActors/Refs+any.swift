@@ -92,7 +92,6 @@ extension AddressableActorRef {
 // MARK: Internal unsafe methods
 
 extension AddressableActorRef: _ReceivesSystemMessages {
-
     /// :nodoc: INTERNAL API
     public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         return self.ref._tellOrDeadLetter(message, file: file, line: line)

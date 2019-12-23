@@ -14,9 +14,9 @@
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
+import Dispatch
 import DistributedActors
 import XPC
-import Dispatch
 
 /// Keys used in xpc dictionaries sent as messages.
 public enum ActorableXPCMessageField: String {
@@ -32,4 +32,3 @@ public enum ActorableXPCMessageField: String {
 #else
 /// XPC is only available on Apple platforms
 #endif
-

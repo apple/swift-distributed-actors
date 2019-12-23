@@ -20,7 +20,6 @@ import Logging
 /// :nodoc: INTERNAL API
 /// Internal protocol allowing for introduction of additional transports.
 open class ActorTransport {
-
     public init() {
         // nothing
     }
@@ -54,5 +53,4 @@ open class ActorTransport {
     open func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
         fatalError("Not implemented: \(#function) in \(self) transport!")
     }
-
 }

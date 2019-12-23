@@ -14,7 +14,7 @@
 
 /// :nodoc: INTERNAL API: May change without any prior notice.
 ///
-/// TODO: can this instead be a CellDelegate?
+// TODO: can this instead be a CellDelegate?
 public protocol AbstractAdapter: _ActorTreeTraversable {
     var address: ActorAddress { get }
     var deadLetters: ActorRef<DeadLetter> { get }
@@ -147,7 +147,6 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
 }
 
 extension ActorRefAdapter {
-
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         switch visit(context, self.myself.asAddressable()) {

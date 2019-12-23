@@ -27,12 +27,12 @@ import NIO
 extension GreetingsServiceImpl {
 
     public enum Message { 
-        case greetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsServiceProtocol) 
+        case greetingsService(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsService) 
     }
     
-    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<GreetingsServiceImpl>
-    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> GreetingsServiceImpl.Message {
-        .greetingsServiceProtocol(message)
+    /// Performs boxing of GeneratedActor.Messages.GreetingsService messages such that they can be received by Actor<GreetingsServiceImpl>
+    public static func _boxGreetingsService(_ message: GeneratedActor.Messages.GreetingsService) -> GreetingsServiceImpl.Message {
+        .greetingsService(message)
     } 
     
 }
@@ -52,10 +52,10 @@ extension GreetingsServiceImpl {
                 switch message { 
                 
                 
-                case .greetingsServiceProtocol(.logGreeting(let name)):
+                case .greetingsService(.logGreeting(let name)):
                     try instance.logGreeting(name: name)
  
-                case .greetingsServiceProtocol(.greet(let name, let _replyTo)):
+                case .greetingsService(.greet(let name, let _replyTo)):
                     do {
                     let result = try instance.greet(name: name)
                     _replyTo.tell(.success(result))
@@ -64,13 +64,13 @@ extension GreetingsServiceImpl {
                         _replyTo.tell(.failure(error))
                     }
  
-                case .greetingsServiceProtocol(.fatalCrash):
+                case .greetingsService(.fatalCrash):
                     instance.fatalCrash()
  
-                case .greetingsServiceProtocol(.greetDirect(let who)):
+                case .greetingsService(.greetDirect(let who)):
                     instance.greetDirect(who: who)
  
-                case .greetingsServiceProtocol(.greetFuture(let name, let _replyTo)):
+                case .greetingsService(.greetFuture(let name, let _replyTo)):
                     instance.greetFuture(name: name)
                                     .whenComplete { res in _replyTo.tell(res) } 
                 }

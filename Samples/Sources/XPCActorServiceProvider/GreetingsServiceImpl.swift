@@ -16,7 +16,8 @@ import DistributedActors
 import XPCActorServiceAPI
 import NIO
 
-public struct GreetingsServiceImpl: GreetingsServiceProtocol, Actorable {
+// tag::xpc_example[]
+public struct GreetingsServiceImpl: GreetingsService, Actorable {
 
     // TODO: allow for manually writing the Message enum, for fine control over what to expose as messages?
 
@@ -53,3 +54,4 @@ public struct GreetingsServiceImpl: GreetingsServiceProtocol, Actorable {
     }
 
 }
+// end::xpc_example[]

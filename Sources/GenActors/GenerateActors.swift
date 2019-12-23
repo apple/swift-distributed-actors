@@ -107,7 +107,6 @@ public final class GenerateActors {
 // MARK: Parsing sources
 
 extension GenerateActors {
-
     private func isGeneratedFile(file: File) -> Bool {
         file.name.hasSuffix(self.fileGenActorNameSuffixWithExtension) ||
             file.name.hasSuffix(self.fileGenXPCProtocolStubSuffixWithExtension) ||
@@ -183,8 +182,6 @@ extension GenerateActors {
 // MARK: Generating sources
 
 extension GenerateActors {
-
-
     private func generateAll(resolvedActorables: [ActorableTypeDecl]) throws {
         try resolvedActorables.forEach { actorable in
             guard let parent = actorable.sourceFile.parent else {
@@ -288,7 +285,6 @@ extension GenerateActors {
         self.debug("Generated: \(targetFile.path)")
         return targetFile
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

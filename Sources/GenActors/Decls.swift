@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftSyntax
 import Files
+import SwiftSyntax
 
 struct ActorableTypeDecl {
     enum DeclType {
@@ -70,7 +70,7 @@ struct ActorableTypeDecl {
 
     /// If this decl implements other actorable protocols, those should be included here
     /// Available only after post processing phase
-    var actorableProtocols: Set<ActorableTypeDecl> = [] 
+    var actorableProtocols: Set<ActorableTypeDecl> = []
 
     /// Cleared and Actorable protocols are moved to actorableProtocols in post processing
     var inheritedTypes: Set<String> = []
@@ -85,10 +85,10 @@ struct ActorableTypeDecl {
 // TODO: Identity should include module name
 extension ActorableTypeDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(name)
+        hasher.combine(self.name)
     }
 
-    public static func ==(lhs: ActorableTypeDecl, rhs: ActorableTypeDecl) -> Bool {
+    public static func == (lhs: ActorableTypeDecl, rhs: ActorableTypeDecl) -> Bool {
         if lhs.name != rhs.name {
             return false
         }

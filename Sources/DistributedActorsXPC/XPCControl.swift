@@ -19,7 +19,6 @@ import DistributedActors
 /// Allows obtaining actor references to XPC services.
 /// Returned references may be used to send messages to the targeted services, treating XPC as a transport.
 public protocol XPCControl {
-
     /// Returns an `Actor` representing a reference to an XPC service with the passed in `serviceName`.
     ///
     /// No validation is performed about matching message type, nor the existence of the service synchronously.

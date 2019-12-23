@@ -38,9 +38,29 @@ The following protocol defines an ipc interface that we will be able to invoke f
 
 [source]
 ----
-include::{dir_sact_doc_tests}//it_XPCActorable_echo/main.swift[tag=xpc_greeter_0]
+include::{dir_sact_samples}/XPCActorServiceAPI/GreetingsService.swift[tag=xpc_example]
 ----
 
+==== Implementing an actorable XPC service
+
+Implementing the protocol is the same as implementing any other <<actorable>>.
+
+We need to conform to the `GreetingsService` protocol as well as to the api:Actorable[protocol] in order to trigger
+the source generation for it:
+
+[source]
+----
+include::{dir_sact_samples}/XPCActorServiceProvider/GreetingsServiceImpl.swift[tag=xpc_example]
+----
+
+The XPC service will be spawned on-demand (i.e. on the first message being sent to the service), and is actually
+an entire fresh process. We need to therefore implement a special `main.swift` for purpose of being spawned on demand
+by `launchd` when the service should be started:
+
+[source]
+----
+include::{dir_sact_samples}/XPCActorServiceProvider/main.swift[tag=xpc_example]
+----
 
 ==== Consuming an XPCActorable Service
 
@@ -51,7 +71,44 @@ of XPC services are going to
 
 [source]
 ----
-include::{dir_sact_doc_tests}/tests_03_xpc_actorable/it_XPCActorable_echo/main.swift[tag=xpc_greeter_0]
+include::{dir_sact_samples}/XPCActorCaller/main.swift[tag=xpc_example]
 ----
 
-#TODO: Write full docs#
+=== Complete example
+
+For a complete example refer to https://github.com/apple/swift-distributed-actors/tree/master/Samples/Sources`Samples/Sources/` in which you will find the various bits of n XPC using application:
+
+- `XPCActorServiceAPI` - which defines the shared protocol between the application and the service,
+- `XPCActorCaller` - the main _executable_, which calls the XPC service,
+- `XPCActorServiceProvider` - the _executable_, containing the service implementation,
+- `XPCSupportFiles` - which are the raw `*.plist` files used to configure/announce the application and the xpc service.
+
+The entire application is assembled together using the `Makefile`, so no use of XCode directly is required,
+the application can be built just using SwiftPM and some file movements as explained in the `Makefile`.
+
+You can run the example by running:
+
+[source]
+----
+make
+  # swift run GenActors --clean
+  # swift build
+  # move files to right places within .app
+
+./XPCActorCaller.app/Contents/MacOS/XPCActorCaller
+----
+
+=== XPC Lifecycle Signals
+
+Similar to the `Terminated` signal for plain actors, XPC services also signal messages regarding their lifecycle.
+
+Two signals are available:
+
+- `Signals.XPC.Interrupted` - Will be delivered to the connection's event handler if the remote service exited.
+   The connection is still live even in this case, and resending a message will cause the service to be launched on-demand.
+   This error serves as a client's indication that it should resynchronize any state that it had given the service.
+- `Signals.XPC.Invalidated` - Will be delivered to the connection's event handler if the named service
+   provided to xpc_connection_create() could not be found in the XPC service namespace. The connection is useless and should be disposed of.
+   - This signal *is equivalent* to a `Signals.Terminated` and extends it as well, i.e. just watching and reacting to termination
+     of an actor using the normal watch functions and reacting to it in `receiveSignal` follows the same semantics as actor termination --
+     in a way, the actor that _is_ the service, has terminated and may not be communicated with anymore.

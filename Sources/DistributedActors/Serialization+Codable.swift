@@ -82,7 +82,7 @@ extension ActorRef {
             throw ActorCoding.CodingError.missingActorSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
         }
 
-        // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in 
+        // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in
         // order to resolve a ref. This allows the transport to resolve any actor ref, even if they are contained in user-messages.
         self = context.resolveActorRef(identifiedBy: address, userInfo: decoder.userInfo)
     }

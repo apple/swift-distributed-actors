@@ -26,7 +26,7 @@ struct CodePrinter {
         self.indentation = indentation
     }
 
-    static func content(_ printing: (inout CodePrinter) -> ()) -> String {
+    static func content(_ printing: (inout CodePrinter) -> Void) -> String {
         var printer = CodePrinter()
         printing(&printer)
         return printer.content

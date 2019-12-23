@@ -373,14 +373,14 @@ public struct ActorSerializationContext {
     /// such that a transport may _resolve_ using its own metadata.
     ///
     /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
-    public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey : Any] = [:]) -> ActorRef<Message> {
+    public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> ActorRef<Message> {
         let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
         return self.system._resolve(context: context)
     }
 
     // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
     /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
-    internal func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey : Any] = [:]) -> AddressableActorRef {
+    internal func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
         let context = ResolveContext<Any>(address: address, system: self.system, userInfo: userInfo)
         return self.system._resolveUntyped(context: context)
     }
@@ -581,6 +581,7 @@ internal struct BoxedAnySerializer: AnySerializer {
     func setSerializationContext(_ context: ActorSerializationContext) {
         self.serializer.setSerializationContext(context)
     }
+
     func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
         self.serializer.setUserInfo(key: key, value: value)
     }
@@ -627,7 +628,7 @@ public enum SerializationError: Error {
 // Implementation notes:
 // We need this since we will receive data from the wire and need to pick "the right" deserializer
 // See: https://stackoverflow.com/questions/42459484/make-a-swift-dictionary-where-the-key-is-type
-@usableFromInline 
+@usableFromInline
 struct MetaType<T>: Hashable {
     @usableFromInline
     static func == (lhs: MetaType, rhs: MetaType) -> Bool {
