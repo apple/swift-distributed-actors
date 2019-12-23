@@ -17,7 +17,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated XPCEchoServiceProtocolStub for XPCService consumers of the XPCEchoServiceProtocol XPCActorableProtocol

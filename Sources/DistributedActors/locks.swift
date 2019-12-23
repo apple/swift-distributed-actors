@@ -19,7 +19,8 @@ import Glibc
 #endif
 
 /// :nodoc: Not intended to be used by end users.
-public final class Mutex {
+// FIXME: Why is this here and not in concurrency helpers?
+public final class _Mutex {
     @usableFromInline
     var mutex: pthread_mutex_t = pthread_mutex_t()
 
@@ -124,7 +125,7 @@ public final class Mutex {
 /// it is our most modestly priced receptacle, after all.
 internal final class BlockingReceptacle<Value> {
     @usableFromInline
-    let lock = Mutex()
+    let lock = _Mutex()
     @usableFromInline
     let notEmpty = Condition()
 

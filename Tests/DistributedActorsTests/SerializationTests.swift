@@ -95,8 +95,7 @@ class SerializationTests: XCTestCase {
                 log: self.system.log,
                 localNode: self.system.settings.cluster.uniqueBindNode,
                 system: self.system,
-                allocator: ByteBufferAllocator(),
-                traversable: self.system
+                allocator: ByteBufferAllocator()
             )
 
             encoder.userInfo[.actorSerializationContext] = context

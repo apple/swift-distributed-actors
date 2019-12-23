@@ -229,7 +229,7 @@ class ActorLeakingTests: XCTestCase {
 
     func test_droppedMessages_shouldNotLeak() throws {
         #if SACT_TESTS_LEAKS
-        let lock = Mutex()
+        let lock = _Mutex()
         lock.lock()
         let behavior: Behavior<LeakTestMessage> = .receiveMessage { _ in
             lock.lock()

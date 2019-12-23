@@ -21,7 +21,7 @@ private final class Worker {
     var completedTasks: Int = 0
 
     @usableFromInline
-    let _lock: Mutex = Mutex()
+    let _lock: _Mutex = _Mutex()
 
     @inlinable
     func lock() {

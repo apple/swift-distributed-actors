@@ -17,6 +17,9 @@
 import DistributedActors
 import XPC
 import Dispatch
+import Files
+
+fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
 /// Delegates message handling to an XPC Service.
 ///
@@ -60,14 +63,15 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
         // initialize connection
         let serviceName = address.path.segments.dropFirst().first!.value
 
-        let queue = system.settings.xpc.makeServiceQueue(serviceName: serviceName)
+        let queue = system.xpcTransport.makeServiceQueue(serviceName: serviceName)
         self.peer = xpc_connection_create(serviceName, queue)
 
         super.init()
 
         // register connection with death-watcher (when it is Invalidated, we need to signal Terminated to all watchers)
         let myself = ActorRef<Message>(.delegate(self))
-        // system._xpcMaster.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
+        let master = system.xpcTransport.master
+        master.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
 
         xpc_connection_set_event_handler(self.peer, { (xdict: xpc_object_t) in
             var log = ActorLogger.make(system: system, identifier: "\(myself.address.name)")
@@ -76,20 +80,14 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
 
             switch xpc_get_type(xdict) {
 //            // FIXME: Find a nice way to switch over it rather the string hack
-//            case XPC_TYPE_ERROR where event == _xpc_error_connection_interrupted:
-//                log.error("[xpc] Interrupted: \(event)")
-//                system._xpcMaster.tell(.xpcConnectionInterrupted(self.peer))
-//            case XPC_TYPE_ERROR where event == XPC_ERROR_CONNECTION_INVALID:
-//                log.error("[xpc] Invalidated: \(event)")
-//                system._xpcMaster.tell(.xpcConnectionInvalidated(self.peer))
             case XPC_TYPE_ERROR:
                 if let errorDescription = xpc_dictionary_get_string(xdict, "XPCErrorDescription"), errorDescription.pointee != 0 {
                     if String(cString: errorDescription).contains("Connection interrupted") {
                         // log.error("XPC Interrupted Error: \(xdict)")
-                        system._xpcMaster.tell(.xpcConnectionInterrupted(myself.asAddressable()))
+                        master.tell(.xpcConnectionInterrupted(myself.asAddressable()))
                     } else if String(cString: errorDescription).contains("Connection invalid") { // TODO: Verify this... (or rather, replace with switches)
                         // log.error("XPC Invalid Error: \(xdict)")
-                        system._xpcMaster.tell(.xpcConnectionInvalidated(myself.asAddressable()))
+                        master.tell(.xpcConnectionInvalidated(myself.asAddressable()))
                     } else {
                         log.error("XPC Error: \(xdict)")
                     }
@@ -103,12 +101,12 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
                     message = try XPCSerialization.deserializeActorMessage(system, peer: self.peer, xdict: xdict)
                 } catch {
                     log.error("Dropping message, due to deserialization error: \(error)")
+                    try! _file.append("\(#file)\(#line) FAILED: \(error)")
                     return
                 }
                 
                 do {
-                    let recipient = try XPCSerialization.deserializeRecipient(system, xdict: xdict)
-                    recipient._tellOrDeadLetter(message)
+                    try XPCSerialization.deserializeRecipient(system, xdict: xdict)._tellOrDeadLetter(message)
                 } catch {
                     self.system.log.error("no recipient, error: \(error)")
                     return
@@ -131,15 +129,14 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
         }
 
         xpc_connection_send_message(self.peer, xdict)
-
-        self.system.log.info("Sending to \(self.address): \(message)")
-        // self.system.log.info("Sending to \(self): \(ActorableXPCMessageField.message.rawValue)=\(xdict)")
     }
 
     override func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
         case .watch(let watchee, let watcher):
-            self.system._xpcMaster.tell(.xpcActorWatched(watchee: watchee, watcher: watcher))
+            self.system.xpcTransport.master.tell(.xpcActorWatched(watchee: watchee, watcher: watcher))
+        case .unwatch(let watchee, let watcher):
+            self.system.xpcTransport.master.tell(.xpcActorUnwatched(watchee: watchee, watcher: watcher))
         default: // FIXME handle also unwatch and others, including terminated
             self.system.log.warning("DROPPING SYSTEM MESSAGE in \(self.address): \(message)")
         }

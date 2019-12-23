@@ -26,7 +26,7 @@ extension Decoder {
     ///
     /// This context is only available when the decoder is invoked from the context of `DistributedActors.Serialization`.
     public var actorSerializationContext: ActorSerializationContext? {
-        return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
 }
 
@@ -44,7 +44,7 @@ extension Encoder {
     //     }
     /// ```
     public var actorSerializationContext: ActorSerializationContext? {
-        return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
 }
 
@@ -82,14 +82,9 @@ extension ActorRef {
             throw ActorCoding.CodingError.missingActorSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
         }
 
-        // TODO somehow smarter detect that "this should to over XPC transport"
-        //
-        // FIXME: "if our context means we should deserialize the Proxied refs"
-//        if let xpcConnection = decoder.xpcConnection {
-//            self = ActorRef(.delegate(XPCProxiedRefDelegate(system: context.system, origin: xpcConnection, address: address)))
-//        } else {
-            self = context.resolveActorRef(identifiedBy: address)
-//        }
+        // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in 
+        // order to resolve a ref. This allows the transport to resolve any actor ref, even if they are contained in user-messages.
+        self = context.resolveActorRef(identifiedBy: address, userInfo: decoder.userInfo)
     }
 }
 
@@ -380,7 +375,7 @@ extension _SystemMessage: Codable {
             try container.encode(addressTerminated, forKey: CodingKeys.addressTerminated)
 
         default:
-            return FIXME("Not serializable \(self)")
+            return FIXME("Not serializable: \(self)")
         }
     }
 }

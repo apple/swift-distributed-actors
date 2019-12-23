@@ -14,7 +14,7 @@
 
 import DistributedActors
 import XPC // only for dispatchMain() // TODO: won't bee needed
-import XPCActorable
+import DistributedActorsXPC
 import XPCActorServiceAPI
 
 let serviceName = "com.apple.sakkana.xpc.GreetingsService"
@@ -27,9 +27,8 @@ let system = ActorSystem("XPCActorCaller") { settings in
     settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
 }
 
-let xpc = XPCServiceLookup(system)
-
-let xpcGreetingsActor = try xpc.actor(GreetingsServiceProtocolStub.self, serviceName: serviceName) // TODO: we currently need a ref to the real GreetingsService... since we cannot put a Protocol.self in there...
+// TODO: we currently need a ref to the real GreetingsService... since we cannot put a Protocol.self in there...
+let xpcGreetingsActor = try system.xpc.actor(GreetingsServiceProtocolStub.self, serviceName: serviceName)
 // : Actor<GreetingsServiceProtocolStub>
 
 // we can talk to it directly:
@@ -43,16 +42,3 @@ reply.withTimeout(after: .seconds(3))._nioFuture.whenComplete {
 
 // TODO: make it a pattern to call some system.park() so we can manage this (same with process isolated)?
 dispatchMain()
-
-
-
-
-
-
-
-let ref: ActorRef<String> = try system.spawn("Me", .receive { context, message in
-    context.log.info("GOT: \(message)")
-    return .same
-})
-
-xpcGreetingsActor.greetDirect(who: ref)

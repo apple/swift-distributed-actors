@@ -53,11 +53,20 @@ public struct ActorAddress: Equatable, Hashable {
     /// Returns a remote node's address if the address points to a remote actor,
     /// or `nil` if the referred to actor is local to the system the address was obtained from.
     public var node: UniqueNode? {
-        switch self._location {
-        case .local:
-            return nil // TODO: we could make it such that we return the owning address :thinking:
-        case .remote(let remote):
-            return remote
+        get {
+            switch self._location {
+            case .local:
+                return nil // TODO: we could make it such that we return the owning address :thinking:
+            case .remote(let remote):
+                return remote
+            }
+        }
+        set {
+            if let node = newValue {
+                self._location = .remote(node)
+            } else {
+                self._location = .local
+            }
         }
     }
 
@@ -235,13 +244,14 @@ public struct ActorPath: PathRelationships, Hashable {
         try self.init([ActorPathSegment(root)])
     }
 
-    init(_ segments: [ActorPathSegment]) throws {
+    public init(_ segments: [ActorPathSegment]) throws {
         guard !segments.isEmpty else {
             throw ActorPathError.illegalEmptyActorPath
         }
         self.segments = segments
     }
 
+    /// Only the core module may define roots.
     internal init(root: ActorPathSegment) throws {
         try self.init([root])
     }
@@ -262,7 +272,7 @@ public struct ActorPath: PathRelationships, Hashable {
     }
 
     /// Creates a new path with `segment` appended
-    internal func appending(segment: ActorPathSegment) -> ActorPath {
+    public func appending(segment: ActorPathSegment) -> ActorPath {
         var path = self
         path.append(segment: segment)
         return path
@@ -270,7 +280,7 @@ public struct ActorPath: PathRelationships, Hashable {
 
     /// Creates a new path with `segment` appended
     public func appending(_ name: String) throws -> ActorPath {
-        return try self.appending(segment: ActorPathSegment(name))
+        try self.appending(segment: ActorPathSegment(name))
     }
 
     /// Creates a new path with a known-to-be-unique naming appended, otherwise faults
@@ -329,7 +339,7 @@ extension ActorPath: Comparable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Path relationships
 
-protocol PathRelationships {
+public protocol PathRelationships {
     /// Individual segments of the `ActorPath`.
     var segments: [ActorPathSegment] { get }
     func appending(segment: ActorPathSegment) -> Self
@@ -338,12 +348,12 @@ protocol PathRelationships {
 extension PathRelationships {
     /// Combines the base path with a child segment returning the concatenated path.
     static func / (base: Self, child: ActorPathSegment) -> Self {
-        return base.appending(segment: child)
+        base.appending(segment: child)
     }
 
     /// Checks whether this path starts with the passed in `path`.
-    func starts(with path: ActorPath) -> Bool {
-        return self.segments.starts(with: path.segments)
+    public func starts(with path: ActorPath) -> Bool {
+        self.segments.starts(with: path.segments)
     }
 
     /// Checks whether this [ActorPath] is a direct descendant of the passed in path.
@@ -354,8 +364,8 @@ extension PathRelationships {
     ///
     /// - Parameter path: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
-    func isChildPathOf(_ maybeParentPath: PathRelationships) -> Bool {
-        return Array(self.segments.dropLast()) == maybeParentPath.segments
+    public func isChildPathOf(_ maybeParentPath: PathRelationships) -> Bool {
+        Array(self.segments.dropLast()) == maybeParentPath.segments // TODO: more efficient impl, without the copying
     }
 
     /// Checks whether this [ActorPath] is a direct ancestor of the passed in path.
@@ -366,13 +376,13 @@ extension PathRelationships {
     ///
     /// - Parameter path: The path that is suspected to be a child of `self`
     /// - Returns: `true` if this [ActorPath] is a direct ancestor of `maybeChildPath`, `false` otherwise
-    func isParentOf(_ maybeChildPath: PathRelationships) -> Bool {
-        return maybeChildPath.isChildPathOf(self)
+    public func isParentOf(_ maybeChildPath: PathRelationships) -> Bool {
+        maybeChildPath.isChildPathOf(self)
     }
 
     /// Create a generic path to identify a child path of the current path.
     func makeChildPath(name: String) throws -> ActorPath {
-        return try ActorPath(self.segments).appending(name)
+        try ActorPath(self.segments).appending(name)
     }
 }
 
@@ -381,7 +391,7 @@ extension PathRelationships {
 
 /// Represents a single segment (actor name) of an ActorPath.
 public struct ActorPathSegment: Hashable {
-    let value: String
+    public let value: String
 
     public init(_ name: String) throws {
         try ActorPathSegment.validatePathSegment(name)
@@ -544,7 +554,7 @@ extension ActorIncarnation: Comparable {
 /// - SeeAlso: For more details on unique node ids, refer to: `UniqueNode`.
 public struct Node: Hashable {
     // TODO: collapse into one String and index into it?
-    public let `protocol`: String
+    public var `protocol`: String
     public var systemName: String // TODO: some other name, to signify "this is just for humans"?
     public var host: String
     public var port: Int

@@ -41,7 +41,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: Mutex) {
+    public func wait(_ mutex: _Mutex) {
         let error = pthread_cond_wait(&self.condition, &mutex.mutex)
 
         switch error {
@@ -57,7 +57,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: Mutex, atMost amount: TimeAmount) -> Bool {
+    public func wait(_ mutex: _Mutex, atMost amount: TimeAmount) -> Bool {
 //    clock_gettime(CLOCK_REALTIME, &now)
 //    let reltime = sleep_til_this_absolute_time - now;
 

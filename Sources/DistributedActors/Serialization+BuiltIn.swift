@@ -78,7 +78,6 @@ internal final class JSONCodableSerializer<T: Codable>: Serializer<T>, CustomStr
     internal var encoder: JSONEncoder = JSONEncoder()
     internal var decoder: JSONDecoder = JSONDecoder()
 
-    // TODO: expose the encoder/decoder
     init(allocator: ByteBufferAllocator) {
         self.allocate = allocator
         super.init()

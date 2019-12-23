@@ -38,11 +38,11 @@ private class BoxedClosure {
 /// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public class Thread {
     private let thread: pthread_t
-    private let lock: Mutex
+    private let lock: _Mutex
     private var isRunning: Atomic<Bool>
 
     public init(_ f: @escaping () -> Void) throws {
-        let lock = Mutex()
+        let lock = _Mutex()
         let isRunning = Atomic<Bool>(value: true)
         let ref = Unmanaged.passRetained(BoxedClosure {
             defer {

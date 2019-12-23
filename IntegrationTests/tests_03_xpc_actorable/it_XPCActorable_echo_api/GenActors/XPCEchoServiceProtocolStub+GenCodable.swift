@@ -21,7 +21,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Codable conformance for XPCEchoServiceProtocolStub.Message
