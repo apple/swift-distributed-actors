@@ -118,7 +118,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Imports
 
     func test_imports_shouldBe_carriedToGenActorFile() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldContain("import DistributedActors")
@@ -126,7 +126,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_imports_shouldBe_carriedToGenCodableFile() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable").file(named: "TestActorable+GenCodable.swift")
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenCodable.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldContain("import DistributedActors")
@@ -137,7 +137,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Storing instance in right type of reference
 
     func test_ClassActorableInstance() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case __skipMe")
@@ -151,7 +151,7 @@ final class GenerateActorsTests: XCTestCase {
         do {
             let filename = "SkipCodableActorable+GenCodable.swift"
             _ = try Folder.current
-                .subfolder(at: "Tests/GenActorsTests/SkipCodableActorable")
+                .subfolder(at: "Tests/GenActorsTests/SkipCodableActorable/GenActors")
                 .file(named: filename)
             XCTFail("Expected file \(filename) to NOT exist, since its generation should have been skipped.")
         } catch {

@@ -12,6 +12,7 @@
 //sa
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 // tag::xpc_example[]
 import DistributedActors
 import DistributedActorsXPC
@@ -43,3 +44,4 @@ reply.withTimeout(after: .seconds(3))._nioFuture.whenComplete {
 system.park()
 
 // end::xpc_example[]
+#endif

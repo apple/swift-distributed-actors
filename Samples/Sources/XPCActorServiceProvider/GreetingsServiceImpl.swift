@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
 import DistributedActors
 import XPCActorServiceAPI
 import NIO
@@ -55,3 +57,4 @@ public struct GreetingsServiceImpl: GreetingsService, Actorable {
 
 }
 // end::xpc_example[]
+#endif

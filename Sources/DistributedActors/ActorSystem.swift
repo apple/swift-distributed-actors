@@ -569,7 +569,6 @@ extension ActorSystem: _ActorTreeTraversable {
             resolved = transport._resolveUntyped(context: context)
 
             if let successfullyResolved = resolved {
-                fatalError("\(#file):\(#line):::: successfullyResolved = \(successfullyResolved)")
                 return successfullyResolved
             }
         }
