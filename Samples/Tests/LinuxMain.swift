@@ -21,9 +21,9 @@ import XCTest
 ///
 
 #if os(Linux) || os(FreeBSD)
-@testable import SampleGenActorsTests
+@testable import NoopTests
 
 XCTMain([
-    testCase(ActorAskTests.allTests),
+    testCase(SampleTest.allTests),
 ])
 #endif

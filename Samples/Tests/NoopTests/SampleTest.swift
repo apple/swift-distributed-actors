@@ -13,11 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import struct DistributedActors.TimeAmount
-import DistributedActorsTestKit
-import Foundation
 import XCTest
 
-final class ActorAskTests: XCTestCase {
-
+final class SampleTest: XCTestCase {
+    func test_empty() {
+        // nothing here (so far...)
+    }
 }
