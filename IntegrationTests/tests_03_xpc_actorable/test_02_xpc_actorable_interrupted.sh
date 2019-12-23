@@ -16,6 +16,11 @@
 set -e
 #set -x # verbose
 
+if [[ "$(uname)" != 'Darwin' ]]; then
+    echo "XPC is only supported on Apple platforms, skipping execution"
+    exit 0
+fi
+
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 
@@ -25,9 +30,6 @@ cd ${root_path}
 
 source ${my_path}/shared.sh
 
-# ====------------------------------------------------------------------------------------------------------------------
-# MARK: killing servant should make it restart
-
 cd tests_03_xpc_actorable
 
 make
@@ -36,7 +38,7 @@ rm -rf out
 ./${app_name}.app/Contents/MacOS/${app_name} letItCrash > out 2>&1
 cat out
 
-if [[ $(cat out | grep '\[/user/watcher\] Received receiveSignal(context:signal:): XPCConnectionInterrupted(xpc://' | wc -l) -ne '1' ]]; then
+if [[ $(cat out | grep '\[/user/watcher\] Received receiveSignal(context:signal:): Signals.XPC.Interrupted(xpc://' | wc -l) -ne '1' ]]; then
     printf "${RED}ERROR: The application did receive a connection interrupted when it was expected successful reply!\n"
 
     exit -1

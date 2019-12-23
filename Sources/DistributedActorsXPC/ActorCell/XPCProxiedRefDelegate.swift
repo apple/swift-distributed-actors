@@ -60,12 +60,9 @@ internal final class XPCProxiedRefDelegate<Message>: CellDelegate<Message>, Cust
             return
         }
 
-        try! _file.append("Reply message \(xdict)\n")
-
         self.system.log.info("Sending to \(self.address): \(message)")
         try! _file.append("Sending to \(self): \(message)\n")
         xpc_connection_send_message(self.peer, xdict)
-
     }
 
     override func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {

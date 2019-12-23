@@ -6,47 +6,51 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//sa
+//
 //===----------------------------------------------------------------------===//
+
+// tag::imports[]
 
 import DistributedActors
 import DistributedActorsXPC
 
+// end::imports[]
+
+import DistributedActorsTestKit
+import XCTest
+
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.XPCEchoServiceProtocol
+// MARK: DO NOT EDIT: Codable conformance for XPCGreeter.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension GeneratedActor.Messages.XPCEchoServiceProtocol: Codable {
+extension XPCGreeter.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case echo
-        case letItCrash
+        case greet
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case echo_string
-        case echo__replyTo
+        case greet_name
+        case greet__replyTo
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .echo:
-            let string = try container.decode(String.self, forKey: CodingKeys.echo_string)
-            let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.echo__replyTo)
-            self = .echo(string: string, _replyTo: _replyTo)
-        case .letItCrash:
-            self = .letItCrash
+        case .greet:
+            let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
+            let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.greet__replyTo)
+            self = .greet(name: name, _replyTo: _replyTo)
 
         }
     }
@@ -54,12 +58,10 @@ extension GeneratedActor.Messages.XPCEchoServiceProtocol: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .echo(let string, let _replyTo):
-            try container.encode(DiscriminatorKeys.echo.rawValue, forKey: CodingKeys._case)
-            try container.encode(string, forKey: CodingKeys.echo_string)
-            try container.encode(_replyTo, forKey: CodingKeys.echo__replyTo)
-        case .letItCrash:
-            try container.encode(DiscriminatorKeys.letItCrash.rawValue, forKey: CodingKeys._case)
+        case .greet(let name, let _replyTo):
+            try container.encode(DiscriminatorKeys.greet.rawValue, forKey: CodingKeys._case)
+            try container.encode(name, forKey: CodingKeys.greet_name)
+            try container.encode(_replyTo, forKey: CodingKeys.greet__replyTo)
 
         }
     }

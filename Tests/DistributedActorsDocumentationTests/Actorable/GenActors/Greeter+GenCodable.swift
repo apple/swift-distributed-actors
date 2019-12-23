@@ -19,7 +19,6 @@
 // tag::imports[]
 
 import DistributedActors
-import XPCActorable
 
 // end::imports[]
 

@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-
 import DistributedActors
 import XPC
 import Dispatch
@@ -41,7 +39,7 @@ extension Signals {
         /// silently disposed of. This error will only be given to peer connections.
         ///
         /// - SeeAlso: `XPC_ERROR_CONNECTION_INTERRUPTED` (`connection.h`)
-        public struct XPCConnectionInterrupted: Signal, CustomStringConvertible {
+        public struct Interrupted: Signal, CustomStringConvertible {
             public let address: ActorAddress
             public let _description: String
 
@@ -51,7 +49,7 @@ extension Signals {
             }
 
             public var description: String {
-                "XPCConnectionInterrupted(\(self.address), description: \"\(self._description)\")"
+                "Signals.XPC.Interrupted(\(self.address), description: \"\(self._description)\")"
             }
         }
 
@@ -73,24 +71,23 @@ extension Signals {
         /// This error may be given to any type of connection.
         ///
         /// - SeeAlso: `XPC_ERROR_CONNECTION_INVALID` (`connection.h`)
-        public final class XPCConnectionInvalidated: Signals.Terminated {
+        public final class Invalidated: Signals.Terminated {
             let _description: String
 
             public init(address: ActorAddress, description: String) {
                 self._description = description
-                super.init(address: address, existenceConfirmed: true, nodeTerminated: true) // TODO: the true on nodeTerminated reads a bit weird, we could drop it or rename it
+                let existenceConfirmed = true // TODO: we could know this
+                let nodeTerminated = true // TODO: a bit weird for XPC
+                // TODO: the true on nodeTerminated reads a bit weird, we could drop it or rename it
+                super.init(address: address, existenceConfirmed: existenceConfirmed, nodeTerminated: nodeTerminated)
             }
 
             public override var description: String {
-                "XPCConnectionInvalidated(\(self.address), description: \"\(self._description)\")"
+                "Signals.XPC.Invalidated(\(self.address), description: \"\(self._description)\")"
             }
         }
 
     }
 
 }
-
-#else
-/// XPC is only available on Apple platforms
-#endif
 

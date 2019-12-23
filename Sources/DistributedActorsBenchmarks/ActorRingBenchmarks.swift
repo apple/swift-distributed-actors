@@ -79,7 +79,7 @@ private struct Token {
     }
 }
 
-private let mutex = Mutex()
+private let mutex = _Mutex()
 
 private func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
     return .receive { _, msg in

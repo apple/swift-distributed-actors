@@ -66,7 +66,7 @@ public enum Signals {
     /// hosting this actor having been marked as `.down` and thus any actors residing on it have to be assumed terminated.
     ///
     /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
-    public class Terminated: Signal, CustomStringConvertible {
+    open class Terminated: Signal, CustomStringConvertible {
         /// Address of the terminated actor.
         public let address: ActorAddress
         /// The existence of this actor has been confirmed prior to its termination.
@@ -76,7 +76,7 @@ public enum Signals {
         public let existenceConfirmed: Bool
         /// True if the actor was located on a remote node, and this entire node has terminated (marked as `MemberStatus.down`),
         /// meaning that no communication with any actor on this node will be possible anymore, resulting in this `Terminated` signal.
-        public let nodeTerminated: Bool
+        public let nodeTerminated: Bool // TODO: Making this a `Reason` could be nicer.
 
         public init(address: ActorAddress, existenceConfirmed: Bool, nodeTerminated: Bool = false) {
             self.address = address
@@ -84,8 +84,9 @@ public enum Signals {
             self.nodeTerminated = false
         }
 
-        public var description: String {
-            return "Terminated(\(self.address), existenceConfirmed: \(self.existenceConfirmed), nodeTerminated: \(self.nodeTerminated))"
+        /// Adopters may adjust the specific description as they see fit.
+        open var description: String {
+            "Terminated(\(self.address), existenceConfirmed: \(self.existenceConfirmed), nodeTerminated: \(self.nodeTerminated))"
         }
     }
 

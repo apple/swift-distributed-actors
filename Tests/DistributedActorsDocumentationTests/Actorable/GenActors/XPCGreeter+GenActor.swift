@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,40 +16,35 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::imports[]
+
 import DistributedActors
-import class NIO.EventLoopFuture
+import DistributedActorsXPC
+
+// end::imports[]
+
+import DistributedActorsTestKit
+import XCTest
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated JackOfAllTrades messages 
+// MARK: DO NOT EDIT: Generated XPCGreeter messages 
 
-/// DO NOT EDIT: Generated JackOfAllTrades messages
-extension JackOfAllTrades {
+/// DO NOT EDIT: Generated XPCGreeter messages
+extension XPCGreeter {
 
     public enum Message { 
-        case hello(replyTo: ActorRef<String>) 
-        case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 
-        case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
+        case greet(name: String, _replyTo: ActorRef<String>) 
     }
-    
-    /// Performs boxing of GeneratedActor.Messages.Parking messages such that they can be received by Actor<JackOfAllTrades>
-    public static func _boxParking(_ message: GeneratedActor.Messages.Parking) -> JackOfAllTrades.Message {
-        .parking(message)
-    } 
-    
-    /// Performs boxing of GeneratedActor.Messages.Ticketing messages such that they can be received by Actor<JackOfAllTrades>
-    public static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> JackOfAllTrades.Message {
-        .ticketing(message)
-    } 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated JackOfAllTrades behavior
+// MARK: DO NOT EDIT: Generated XPCGreeter behavior
 
-extension JackOfAllTrades {
+extension XPCGreeter {
 
-    public static func makeBehavior(instance: JackOfAllTrades) -> Behavior<Message> {
+    public static func makeBehavior(instance: XPCGreeter) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<JackOfAllTrades>.Context(underlying: _context)
+            let context = Actor<XPCGreeter>.Context(underlying: _context)
             let instance = instance
 
             /* await */ instance.preStart(context: context)
@@ -57,20 +52,15 @@ extension JackOfAllTrades {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .hello(let replyTo):
-                    instance.hello(replyTo: replyTo)
+                case .greet(let name, let _replyTo):
+                    let result = instance.greet(name: name)
+                    _replyTo.tell(result)
  
                 
-                case .parking(.park):
-                    instance.park()
- 
-                case .ticketing(.makeTicket):
-                    instance.makeTicket()
- 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<JackOfAllTrades>.Context(underlying: _context)
+                let context = Actor<XPCGreeter>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -94,12 +84,16 @@ extension JackOfAllTrades {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for JackOfAllTrades
+// MARK: Extend Actor for XPCGreeter
 
-extension Actor where A.Message == JackOfAllTrades.Message {
+extension Actor where A.Message == XPCGreeter.Message {
 
-    public func hello(replyTo: ActorRef<String>) {
-        self.ref.tell(.hello(replyTo: replyTo))
+     func greet(name: String) -> Reply<String> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
+                .greet(name: name, _replyTo: _replyTo)}.nioFuture
+        )
     }
  
 

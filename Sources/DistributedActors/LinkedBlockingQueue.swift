@@ -32,7 +32,7 @@ public final class LinkedBlockingQueue<A> {
     @usableFromInline
     internal var consumer: Node<A>
     @usableFromInline
-    internal let lock: Mutex = Mutex()
+    internal let lock: _Mutex = _Mutex()
     @usableFromInline
     internal let notEmpty: Condition = Condition()
     @usableFromInline

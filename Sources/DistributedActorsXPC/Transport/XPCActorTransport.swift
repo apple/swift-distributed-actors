@@ -17,44 +17,79 @@
 import DistributedActors
 import Dispatch
 import XPC
+import Files
 
-extension ActorTransport {
+fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
-    public static var xpc: XPCActorTransport {
-        XPCActorTransport()
-    }
-
-}
-
-extension Array where Element == ActorTransport {
-    public static var xpc: [XPCActorTransport] {
-        [XPCActorTransport()]
-    }
-}
 
 public final class XPCActorTransport: ActorTransport {
+
+    private let lock = _Mutex()
+
+    private var _master: ActorRef<XPCMaster.Message>?
+    internal var master: ActorRef<XPCMaster.Message> {
+        self.lock.synchronized {
+            if let m = self._master {
+                return m
+            } else {
+                fatalError("XPCMaster not initialized! This is potentially Actors bug.")
+            }
+        }
+    }
+
+    internal var system: ActorSystem!
 
     public override init() {
         super.init()
     }
 
-    override public var `protocol`: String {
-        "xpc"
+    public static let protocolName: String = "xpc"
+    override public var protocolName: String {
+        Self.protocolName
     }
 
     override public func onActorSystemStart(system: ActorSystem) {
-        _ = try! system._spawnSystemActor("xpc", XPCMaster().behavior, perpetual: true)
+        self.lock.synchronized {
+            self._master = try! system._spawnSystemActor("xpc", XPCMaster().behavior, perpetual: true)
+            self.system = system
+        }
     }
 
-    override public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        assert(context.address.node?.node.protocol == "xpc", "\(XPCActorTransport.self) was requested to resolve a non 'xpc' address, was: \(context.address)")
+    override public func onActorSystemShutdown() {
+        self.lock.synchronized {
+            self._master?.tell(.stop)
+            self.system = nil
+        }
+    }
+
+
+    override public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
+        guard context.address.starts(with: ._xpc) else {
+            return nil
+        }
 
         do {
             return try ActorRef<Message>(
                 .delegate(XPCServiceCellDelegate(system: context.system, address: context.address))
             )
         } catch {
+            context.system.log.error("Failed to \(#function) [\(context.address)] as \(ActorRef<Message>.self), error: \(error)")
             return context.personalDeadLetters
+        }
+    }
+
+    override public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
+        guard context.address.starts(with: ._xpc) else {
+            return nil
+        }
+
+        do {
+            return try ActorRef<Any>(
+                .delegate(XPCServiceCellDelegate(system: context.system, address: context.address))
+            ).asAddressable()
+        } catch {
+            context.system.log.error("Failed to \(#function) [\(context.address)], error: \(error)")
+            return context.personalDeadLetters.asAddressable()
         }
     }
 
@@ -62,21 +97,91 @@ public final class XPCActorTransport: ActorTransport {
         try XPCServiceCellDelegate(system: system, address: address)
     }
 
+    /// BLOCKS THE CALLING THREAD.
+    /// Invokes `Dispatch`'s `dispatchMain()` as it is needed to kick off XPC processing.
+    public override func onActorSystemPark() {
+        dispatchMain()
+    }
+
     /// Obtain `DispatchQueue` to be used to drive the xpc connection with this service.
-    public func makeServiceQueue(serviceName: String) -> DispatchQueue {
+    internal func makeServiceQueue(serviceName: String) -> DispatchQueue {
         // similar to NSXPCConnection
         DispatchQueue.init(label: "com.apple.distributedactors.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
+    }
+
+}
+
+extension ActorTransport {
+    public static var xpc: XPCActorTransport {
+        XPCActorTransport()
+    }
+}
+
+extension Dictionary where Key == ActorSystemSettings.ProtocolName, Value == ActorTransport {
+    public static var xpc: Self {
+        let transport = XPCActorTransport()
+        return [transport.protocolName: transport]
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: XPCDeathWatcher
+// MARK: XPCControl
+
+extension XPCActorTransport: XPCControl {
+
+    /// Returns an `Actor` representing a reference to an XPC service with the passed in `serviceName`.
+    ///
+    /// No validation is performed about matching message type, nor the existence of the service synchronously.
+    ///
+    /// In order to use this API, the service should be implemented as an `Actorable`.
+    public func actor<A: Actorable>(_ actorableType: A.Type, serviceName: String) throws -> Actor<A> {
+        let reference = try self.ref(A.Message.self, serviceName: serviceName)
+        return Actor(ref: reference)
+    }
+
+    /// Returns an `ActorRef` representing a reference to an XPC service with the passed in `serviceName`.
+    ///
+    /// No validation is performed about matching message type, nor the existence of the service synchronously.
+    public func ref<Message>(_ type: Message.Type = Message.self, serviceName: String) throws -> ActorRef<Message> {
+        // fake node; ensure that this does not get us in trouble; e.g. cluster trying to connect to this fake node etc
+        let fakeNode = UniqueNode(protocol: "xpc", systemName: "", host: "localhost", port: 1, nid: .init(1)) // TODO: a bit ugly special "xpc://" would be nicer
+        let targetAddress: ActorAddress = try ActorAddress(
+            node: fakeNode,
+            path: ActorPath([ActorPathSegment("xpc"), ActorPathSegment(serviceName)]),
+            incarnation: .perpetual
+        )
+
+        // TODO: passing such ref over the network would fail; where should we prevent this?
+        let xpcDelegate = try XPCServiceCellDelegate<Message>(
+            system: self.system,
+            address: targetAddress
+        )
+
+        return ActorRef<Message>(.delegate(xpcDelegate))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorSystem + XPC
 
 extension ActorSystem {
-    internal var _xpcMaster: ActorRef<XPCMaster.Message> {
-        let context: ResolveContext<XPCMaster.Message> =
-            try! .init(address: .init(path: ActorPath._system.appending("xpc"), incarnation: .perpetual), system: self)
-        return self._resolve(context: context)
+
+    /// Offers ways to control and perform lookups of `Actorable` XPC services.
+    /// - Faults when: the xpc transport is not installed in the system this is called on.
+    public var xpc: XPCControl {
+        self.xpcTransport
+    }
+
+    internal var xpcTransport: XPCActorTransport {
+        guard let transport = self.settings.transports.first(where: {$0.protocolName == XPCActorTransport.protocolName }) else {
+            fatalError("XPC transport not installed in \(self), installed transports are: \(self.settings.transports). Ensure to `settings.transports += .some` any transport you intend to use.")
+        }
+
+        guard let xpcTransport = transport as? XPCActorTransport else {
+            fatalError("Transport available for protocol [\(XPCActorTransport.protocolName)] but it is not the \(XPCActorTransport.self)! Was: \(transport)")
+        }
+
+        return xpcTransport
     }
 }
 
@@ -98,6 +203,7 @@ final class XPCMaster {
         case xpcActorWatched(watchee: AddressableActorRef, watcher: AddressableActorRef)
         case xpcActorUnwatched(watchee: AddressableActorRef, watcher: AddressableActorRef)
         case watcherTerminated(AddressableActorRef)
+        case stop
     }
 
     var behavior: Behavior<Message> {
@@ -117,7 +223,7 @@ final class XPCMaster {
                         return .same
                     }
 
-                    let interrupted = _SystemMessage.carrySignal(Signals.XPC.XPCConnectionInterrupted(address: serviceRef.address, description: "Connection Interrupted"))
+                    let interrupted = _SystemMessage.carrySignal(Signals.XPC.Interrupted(address: serviceRef.address, description: "Connection Interrupted"))
                     watchers.forEach { (watcher: AddressableActorRef) in
                         watcher._sendSystemMessage(interrupted) // TODO: carry description from transport
                     }
@@ -128,7 +234,7 @@ final class XPCMaster {
                         return .same
                     }
 
-                    let invalidated = _SystemMessage.carrySignal(Signals.XPC.XPCConnectionInvalidated(address: serviceRef.address, description: "Connection Interrupted"))
+                    let invalidated = _SystemMessage.carrySignal(Signals.XPC.Invalidated(address: serviceRef.address, description: "Connection Interrupted"))
                     watchers.forEach { (watcher: AddressableActorRef) in
                         watcher._sendSystemMessage(invalidated)
                     }
@@ -157,6 +263,16 @@ final class XPCMaster {
                 case .watcherTerminated(let watcher):
                     // FIXME: remove watcher
                     ()
+
+                case .stop:
+                    // FIXME: send terminated to all watchers // TODO: Add tests
+                    self.watchers.forEach { (watchee, watchers) in
+                        let signal = Signals.XPC.Invalidated(address: watchee.address, description: "XPC transport is shutting down.")
+                        watchers.forEach {
+                            $0._sendSystemMessage(.carrySignal(signal))
+                        }
+                    }
+                    return .stop
                 }
 
                 return .same

@@ -134,9 +134,6 @@ public final class ActorSystem {
         settings.metrics.systemName = name
         configureSettings(&settings)
 
-        settings.cluster.enabled = true
-        settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 1)
-
         self.init(settings: settings)
     }
 
@@ -213,12 +210,7 @@ public final class ActorSystem {
         self.userProvider = effectiveUserProvider
 
         // serialization
-        let traversable = CompositeActorTreeTraversable(systemTree: effectiveSystemProvider, userTree: effectiveUserProvider)
-
-        self.serialization = Serialization(settings: settings, system: self, traversable: traversable)
-
-        // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
-        self._receptionist = deadLetters.adapted()
+        self.serialization = Serialization(settings: settings, system: self)
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
@@ -266,7 +258,7 @@ public final class ActorSystem {
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
         lazyReplicator.wakeUp()
-        for transport in self.settings.transports.values {
+        for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
         lazyCluster?.wakeUp()
@@ -275,6 +267,16 @@ public final class ActorSystem {
 
     public convenience init() {
         self.init("ActorSystem")
+    }
+
+    /// Some transports require being able to take over the applications thread.
+    /// E.g. this may mean invoking `dispatchMain()` or TODO: `ProcessIsolated.park()`
+    public func park() {
+        self.log.info("Parking actor system...")
+        for transport in self.settings.transports {
+            self.log.info("Offering transport [\(transport.protocolName)] chance to park the thread...")
+            transport.onActorSystemPark()
+        }
     }
 
     deinit {
@@ -409,12 +411,14 @@ extension ActorSystem: ActorRefFactory {
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
 
-    // Implementation note:
-    // `perpetual` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
-    // to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
-    // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
-    // should be configured for these types of actors.
-    internal func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
+    /// :nodoc: INTERNAL API
+    ///
+    /// Implementation note:
+    /// `perpetual` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
+    /// to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
+    /// also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
+    /// should be configured for these types of actors.
+    public func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
         return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
     }
 
@@ -536,31 +540,21 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.personalDeadLetters
         }
 
-        if let refProtocol = context.address.node?.node.protocol {
-            // FIXME: "sact" is special cased today but should not be and become a transport I suppose.
-            if refProtocol == "sact" {
-                // definitely a local ref, has no `address.node`
-                switch selector.value {
-                case "system": return self.systemProvider._resolve(context: context)
-                case "user": return self.userProvider._resolve(context: context)
-                case "dead": return context.personalDeadLetters
-                default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
-                }
+        var resolved: ActorRef<Message>? = nil
+        // TODO: The looping through transports could be ineffective... but realistically we want to ask the XPC once if it's a ref "to it" or a normal one...
+        for transport in context.system.settings.transports {
+            resolved = transport._resolve(context: context)
+            if let successfullyResolved = resolved {
+                return successfullyResolved
             }
+        }
 
-            guard let transport = self.settings.transports[refProtocol] else {
-                fatalError("Unknown transport protocol: \(refProtocol), installed transports are: \(self.settings.transports.keys). Ensure to `settings.transports += .some` any transport you intend to use.")
-            }
-
-            return transport._resolve(context: context)
-        } else {
-            // definitely a local ref, has no `address.node`
-            switch selector.value {
-            case "system": return self.systemProvider._resolve(context: context)
-            case "user": return self.userProvider._resolve(context: context)
-            case "dead": return context.personalDeadLetters
-            default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
-            }
+        // definitely a local ref, has no `address.node`
+        switch selector.value {
+        case "system": return self.systemProvider._resolve(context: context)
+        case "user": return self.userProvider._resolve(context: context)
+        case "dead": return context.personalDeadLetters
+        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
 
@@ -568,10 +562,23 @@ extension ActorSystem: _ActorTreeTraversable {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable()
         }
+
+        var resolved: AddressableActorRef? = nil
+        // TODO: The looping through transports could be ineffective... but realistically we want to ask the XPC once if it's a ref "to it" or a normal one...
+        for transport in context.system.settings.transports {
+            resolved = transport._resolveUntyped(context: context)
+
+            if let successfullyResolved = resolved {
+                fatalError("\(#file):\(#line):::: successfullyResolved = \(successfullyResolved)")
+                return successfullyResolved
+            }
+        }
+
+        // definitely a local ref, has no `address.node`
         switch selector.value {
         case "system": return self.systemProvider._resolveUntyped(context: context)
         case "user": return self.userProvider._resolveUntyped(context: context)
-        case "dead": return context.personalDeadLetters.asAddressable()
+        case "dead": return context.system.deadLetters.asAddressable()
         default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }

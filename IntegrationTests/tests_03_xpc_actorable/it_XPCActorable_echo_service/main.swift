@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPCActorable
+import DistributedActorsXPC
 import it_XPCActorable_echo_api
 import Files
 
@@ -22,7 +22,7 @@ fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 try! _file.append("service starting...\n")
 
 let system = ActorSystem("it_XPCActorable_echo_service") { settings in
-    settings.transports += .xpc
+    settings.transports += .xpcService
 
     settings.cluster.swim.failureDetector.pingTimeout = .seconds(3)
 
@@ -36,4 +36,5 @@ try! _file.append("service booted...\n")
 let service = try XPCActorableService(system, XPCEchoService.init)
 
 service.park()
+//system.park()
 // unreachable, park never exits
