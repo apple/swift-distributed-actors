@@ -540,7 +540,7 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.personalDeadLetters
         }
 
-        var resolved: ActorRef<Message>? = nil
+        var resolved: ActorRef<Message>?
         // TODO: The looping through transports could be ineffective... but realistically we want to ask the XPC once if it's a ref "to it" or a normal one...
         for transport in context.system.settings.transports {
             resolved = transport._resolve(context: context)
@@ -563,7 +563,7 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.personalDeadLetters.asAddressable()
         }
 
-        var resolved: AddressableActorRef? = nil
+        var resolved: AddressableActorRef?
         // TODO: The looping through transports could be ineffective... but realistically we want to ask the XPC once if it's a ref "to it" or a normal one...
         for transport in context.system.settings.transports {
             resolved = transport._resolveUntyped(context: context)

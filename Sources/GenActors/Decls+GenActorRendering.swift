@@ -487,7 +487,7 @@ extension ActorableMessageDecl {
     // // nothing
     // hello: hello
     // hello: hello, two: two
-    func passParams(printer: inout CodePrinter){
+    func passParams(printer: inout CodePrinter) {
         self.renderPassParams(effectiveParamsToo: false, printer: &printer)
     }
 
@@ -622,11 +622,11 @@ extension ActorableMessageDecl.ReturnType {
         case .behavior(let behavior):
             return " -> \(behavior)"
         case .result(let t, let errT):
-            return " -> Result<\(t), \(errT)>" 
+            return " -> Result<\(t), \(errT)>"
         case .nioEventLoopFuture(let t):
-            return " -> EventLoopFuture<\(t)>" 
+            return " -> EventLoopFuture<\(t)>"
         case .type(let t):
-            return " -> \(t)" 
+            return " -> \(t)"
         }
     }
 
@@ -666,8 +666,8 @@ extension ActorFuncDecl {
     func renderFuncStub(printer: inout CodePrinter) throws {
         self.message.renderStubFunc(printer: &printer) { printer in
             printer.print("""
-                          fatalError("Function STUB for XPCActorableProtocol [\(self.message.name)], function: \\(#function).")
-                          """)
+            fatalError("Function STUB for XPCActorableProtocol [\(self.message.name)], function: \\(#function).")
+            """)
         }
     }
 

@@ -14,10 +14,10 @@
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
-import DistributedActors
-import XPC
 import Dispatch
+import DistributedActors
 import Files
+import XPC
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
@@ -26,7 +26,6 @@ fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 /// Messages are serialized as `xpc_dictionary` using the `XPCMessageField` keys, and may be received
 /// by a service implemented in C using `libxpc` or `XPCActorable`.
 internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
-
     /// XPC Connection to the service named `serviceName`
     private let peer: xpc_connection_t
 
@@ -34,15 +33,18 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
     override var system: ActorSystem {
         self._system
     }
+
     private let _address: ActorAddress
     override var address: ActorAddress {
         self._address
     }
 
     convenience init(system: ActorSystem, serviceName: String) {
-        try! self.init(system: system, address: .init(
-            node: UniqueNode(protocol: "xpc", systemName: "", host: "localhost", port: 1, nid: NodeID(1)),
-            path: try! ActorPath(root: "xpc").appending(serviceName), incarnation: .perpetual)
+        try! self.init(
+            system: system, address: .init(
+                node: UniqueNode(protocol: "xpc", systemName: "", host: "localhost", port: 1, nid: NodeID(1)),
+                path: try! ActorPath(root: "xpc").appending(serviceName), incarnation: .perpetual
+            )
         )
     }
 
@@ -73,7 +75,7 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
         let master = system.xpcTransport.master
         master.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
 
-        xpc_connection_set_event_handler(self.peer, { (xdict: xpc_object_t) in
+        xpc_connection_set_event_handler(self.peer) { (xdict: xpc_object_t) in
             var log = ActorLogger.make(system: system, identifier: "\(myself.address.name)")
             log[metadataKey: "actorPath"] = "\(address)"
             // TODO: connection id?
@@ -104,7 +106,7 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
                     try! _file.append("\(#file)\(#line) FAILED: \(error)")
                     return
                 }
-                
+
                 do {
                     try XPCSerialization.deserializeRecipient(system, xdict: xdict)._tellOrDeadLetter(message)
                 } catch {
@@ -112,19 +114,19 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
                     return
                 }
             }
-        })
+        }
         xpc_connection_set_target_queue(self.peer, queue)
         xpc_connection_resume(self.peer)
     }
 
     override func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
-        // TODO offload async the serialization work?
+        // TODO: offload async the serialization work?
         let xdict: xpc_object_t
         do {
             // TODO: optimize serialization some more
-            xdict = try XPCSerialization.serializeActorMessage(system, message: message)
+            xdict = try XPCSerialization.serializeActorMessage(self.system, message: message)
         } catch {
-            system.log.warning("Failed to serialize [\(String(reflecting: type(of: message)))] message, sent to XPC service actor \(self.address). Error: \(error)")
+            self.system.log.warning("Failed to serialize [\(String(reflecting: type(of: message)))] message, sent to XPC service actor \(self.address). Error: \(error)")
             return
         }
 
@@ -137,12 +139,12 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
             self.system.xpcTransport.master.tell(.xpcActorWatched(watchee: watchee, watcher: watcher))
         case .unwatch(let watchee, let watcher):
             self.system.xpcTransport.master.tell(.xpcActorUnwatched(watchee: watchee, watcher: watcher))
-        default: // FIXME handle also unwatch and others, including terminated
+        default: // FIXME: handle also unwatch and others, including terminated
             self.system.log.warning("DROPPING SYSTEM MESSAGE in \(self.address): \(message)")
         }
     }
 
-    override func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {
+    override func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
         fatalError("Attempted to send closure (defined at \(file):\(line)) to XPC Service \(self.address). This is not supported!")
     }
 
@@ -154,7 +156,6 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
         self.system.log.warning("DROPPING adapted \(message) sent at \(file):\(line)") // FIXME: Should be made to work
     }
 }
-
 
 public struct XPCServiceDelegateError: Error {
     let reason: String

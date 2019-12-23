@@ -17,7 +17,6 @@ import Logging
 
 /// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {
-
     public static var `default`: ActorSystemSettings {
         .init()
     }
@@ -56,7 +55,7 @@ public struct ActorSystemSettings {
 }
 
 extension Array where Element == ActorTransport {
-    public static func += <T: ActorTransport> (transports: inout Self, transport: T) {
+    public static func += <T: ActorTransport>(transports: inout Self, transport: T) {
         transports.append(transport)
     }
 }

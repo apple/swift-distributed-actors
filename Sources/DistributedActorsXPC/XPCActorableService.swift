@@ -15,16 +15,16 @@
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 import DistributedActors
-import XPC
-import NIO
-import Logging
 import Files
+import Logging
+import NIO
+import XPC
 
 // ==== ------------------------------------------------------------------------------------------------------------
 fileprivate let file = try! Folder(path: "/tmp").file(named: "xpc.txt") // FIXME: remove hacky way to log
 
 fileprivate let _storageLock: _Mutex = _Mutex()
-fileprivate var _storage: XPCStorage? = nil
+fileprivate var _storage: XPCStorage?
 
 struct XPCStorage {
     let myself: AddressableActorRef
@@ -34,12 +34,10 @@ struct XPCStorage {
     // let sendSystemMessage: (SystemMessage) -> Void
 }
 
-
 /// Allows handling XPC messages using an `Actorable`.
 ///
 /// Once a handler actor is defined the `park()` function MUST be invoked to kick
 public final class XPCActorableService<A: Actorable> {
-
     let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
     let myself: ActorRef<A.Message>
     let system: ActorSystem
@@ -49,14 +47,14 @@ public final class XPCActorableService<A: Actorable> {
 //    let onMessageCallback: SactXPCOnMessageCallback
 
     public init(_ system: ActorSystem, _ makeActorableHandler: @escaping (A.Myself.Context) -> A) throws {
-        let actor = try system.spawn("\(system.name)", { makeActorableHandler($0) })
+        let actor = try system.spawn("\(system.name)") { makeActorableHandler($0) }
         self.myself = actor.ref
         self.system = system
-        
+
         precondition(
             self.system.settings.transports.contains(where: { $0.protocolName == XPCServiceActorTransport.protocolName }),
             "A \(XPCServiceActorTransport.self) is required for creating an \(Self.self), yet the system did only have: \(self.system.settings.transports)"
-            )
+        )
 
         // TODO: use xpc_connection_set_context for state management rather than the global; we'll need this for many services in same process
     }
@@ -82,12 +80,12 @@ public final class XPCActorableService<A: Actorable> {
         }
 
         // TODO: SHARE WITH SERIALIZER INFRA
-        // TODO use set_context instead of the global thing perhaps?
+        // TODO: use set_context instead of the global thing perhaps?
         _storage = XPCStorage(
             myself: self.myself.asAddressable(),
             system: self.system,
             sendMessage: { message in
-                // TODO THIS DUPLICATES LOGIC FROM _tellOrDeadLetter but that we'd like to keep internal...
+                // TODO: THIS DUPLICATES LOGIC FROM _tellOrDeadLetter but that we'd like to keep internal...
                 guard let _message = message as? A.Message else {
                     // traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
                     self.system.deadLetters.tell(DeadLetter(message, recipient: self.myself.address, sentAtFile: #file, sentAtLine: #line))
@@ -101,11 +99,10 @@ public final class XPCActorableService<A: Actorable> {
         )
         _storageLock.unlock()
 
-        // TODO use set_context instead of the global thing perhaps?
+        // TODO: use set_context instead of the global thing perhaps?
         //        sact_xpc_main(&self.onConnectionContext, self.onConnectionCallback, self.onMessageCallback)
         xpc_main(xpc_connectionHandler)
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -119,9 +116,9 @@ fileprivate func xpc_connectionHandler(peer: xpc_connection_t) {
     let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
     try! file.append("[actor service] CONNECT: \(peer)\n")
 
-    xpc_connection_set_event_handler(peer, { (xdict: xpc_object_t) in
+    xpc_connection_set_event_handler(peer) { (xdict: xpc_object_t) in
         xpc_eventHandler(storage, peer: peer, xdict: xdict)
-    })
+    }
 
     xpc_connection_resume(peer)
 }
@@ -134,7 +131,7 @@ fileprivate func xpc_eventHandler(_ storage: XPCStorage, peer: xpc_connection_t,
         return
     }
 
-    // TODO sanity check where to etc?
+    // TODO: sanity check where to etc?
 
     // --- deserialize and deliver ---
     let message: Any
@@ -157,4 +154,3 @@ fileprivate func xpc_eventHandler(_ storage: XPCStorage, peer: xpc_connection_t,
 #else
 /// XPC is only available on Apple platforms
 #endif
-

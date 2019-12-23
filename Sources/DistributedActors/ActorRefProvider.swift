@@ -326,9 +326,9 @@ public struct ResolveContext<Message> {
     public let system: ActorSystem
 
     /// Allows carrying metadata from Coder
-    public let userInfo: [CodingUserInfoKey : Any]
+    public let userInfo: [CodingUserInfoKey: Any]
 
-    public init(address: ActorAddress, system: ActorSystem, userInfo: [CodingUserInfoKey : Any] = [:]) {
+    public init(address: ActorAddress, system: ActorSystem, userInfo: [CodingUserInfoKey: Any] = [:]) {
         self.address = address
         self.selectorSegments = address.path.segments[...]
         self.system = system

@@ -12,15 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import Dispatch
 import DistributedActors
 import XPC
-import Dispatch
 
 extension Signals {
-
     /// Namespace for Signals specific to XPC services.
     public enum XPC {
-
         /// (XPC Message Documentation)
         ///
         /// Will be delivered to the connection's event handler if the remote service
@@ -86,8 +86,7 @@ extension Signals {
                 "Signals.XPC.Invalidated(\(self.address), description: \"\(self._description)\")"
             }
         }
-
     }
-
 }
 
+#endif

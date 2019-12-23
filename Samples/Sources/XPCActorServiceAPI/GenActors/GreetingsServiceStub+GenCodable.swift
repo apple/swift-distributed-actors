@@ -20,20 +20,21 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::xpc_example[]
 import DistributedActors
 import DistributedActorsXPC
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for GreetingsServiceProtocolStub.Message
+// MARK: DO NOT EDIT: Codable conformance for GreetingsServiceStub.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension GreetingsServiceProtocolStub.Message: Codable {
+extension GreetingsServiceStub.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case logGreeting
         case greet
-        case _boxGreetingsServiceProtocol
+        case _boxGreetingsService
 
     }
 
@@ -42,7 +43,7 @@ extension GreetingsServiceProtocolStub.Message: Codable {
         case logGreeting_name
         case greet_name
         case greet__replyTo
-        case _boxGreetingsServiceProtocol
+        case _boxGreetingsService
 
     }
 
@@ -56,9 +57,9 @@ extension GreetingsServiceProtocolStub.Message: Codable {
             let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
             let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.greet__replyTo)
             self = .greet(name: name, _replyTo: _replyTo)
-        case ._boxGreetingsServiceProtocol:
-            let boxed = try container.decode(GeneratedActor.Messages.GreetingsServiceProtocol.self, forKey: CodingKeys._boxGreetingsServiceProtocol)
-            self = .greetingsServiceProtocol(boxed)
+        case ._boxGreetingsService:
+            let boxed = try container.decode(GeneratedActor.Messages.GreetingsService.self, forKey: CodingKeys._boxGreetingsService)
+            self = .greetingsService(boxed)
 
         }
     }
@@ -73,9 +74,9 @@ extension GreetingsServiceProtocolStub.Message: Codable {
             try container.encode(DiscriminatorKeys.greet.rawValue, forKey: CodingKeys._case)
             try container.encode(name, forKey: CodingKeys.greet_name)
             try container.encode(_replyTo, forKey: CodingKeys.greet__replyTo)
-        case .greetingsServiceProtocol(let boxed):
-            try container.encode(DiscriminatorKeys._boxGreetingsServiceProtocol.rawValue, forKey: CodingKeys._case)
-            try container.encode(boxed, forKey: CodingKeys._boxGreetingsServiceProtocol)
+        case .greetingsService(let boxed):
+            try container.encode(DiscriminatorKeys._boxGreetingsService.rawValue, forKey: CodingKeys._case)
+            try container.encode(boxed, forKey: CodingKeys._boxGreetingsService)
 
         }
     }

@@ -42,7 +42,7 @@ struct GatherActorables: SyntaxVisitor {
 
     mutating func visit(_ node: ImportDeclSyntax) -> SyntaxVisitorContinueKind {
         // we store the imports outside the actorable, since we don't know _yet_ if there will be an actorable or not
-        self.imports.append("\(node)") // TODO more special type, since cross module etc
+        self.imports.append("\(node)") // TODO: more special type, since cross module etc
         return .visitChildren
     }
 
@@ -105,10 +105,10 @@ struct GatherActorables: SyntaxVisitor {
                 self.wipActorable.access = "internal"
             } else if modifiers.contains(where: { $0.name.tokenKind == .fileprivateKeyword }) {
                 fatalError("""
-                           Fileprivate actors are not supported with GenActors, \
-                           since multiple files are involved due to the source generation. \
-                           Please change the following to be NOT fileprivate: \(node)
-                           """)
+                Fileprivate actors are not supported with GenActors, \
+                since multiple files are involved due to the source generation. \
+                Please change the following to be NOT fileprivate: \(node)
+                """)
             } else if modifiers.contains(where: { $0.name.tokenKind == .privateKeyword }) {
                 self.wipActorable.access = "private"
             }
@@ -286,7 +286,7 @@ extension GatherActorables {
         "preStart",
         "postStop",
         "receiveTerminated",
-        "receiveSignal"
+        "receiveSignal",
     ] // TODO: more specific with param type matching?
 
     static func shouldSkipGenFor(func node: FunctionDeclSyntax) -> Bool {
@@ -463,6 +463,7 @@ extension SyntaxVisitor {
     func info(_ message: String) {
         print("[gen-actors][INFO] \(message)")
     }
+
     func debug(_ message: String) {
         print("[gen-actors][DEBUG] \(message)")
     }

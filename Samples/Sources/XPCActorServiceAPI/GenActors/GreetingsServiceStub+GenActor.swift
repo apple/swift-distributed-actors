@@ -20,34 +20,35 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::xpc_example[]
 import DistributedActors
 import DistributedActorsXPC
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsServiceProtocolStub messages 
+// MARK: DO NOT EDIT: Generated GreetingsServiceStub messages 
 
-/// DO NOT EDIT: Generated GreetingsServiceProtocolStub messages
-extension GreetingsServiceProtocolStub {
+/// DO NOT EDIT: Generated GreetingsServiceStub messages
+extension GreetingsServiceStub {
 
     public enum Message { 
         case logGreeting(name: String) 
         case greet(name: String, _replyTo: ActorRef<String>) 
-        case greetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsServiceProtocol) 
+        case greetingsService(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsService) 
     }
     
-    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<GreetingsServiceProtocolStub>
-    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> GreetingsServiceProtocolStub.Message {
-        .greetingsServiceProtocol(message)
+    /// Performs boxing of GeneratedActor.Messages.GreetingsService messages such that they can be received by Actor<GreetingsServiceStub>
+    public static func _boxGreetingsService(_ message: GeneratedActor.Messages.GreetingsService) -> GreetingsServiceStub.Message {
+        .greetingsService(message)
     } 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsServiceProtocolStub behavior
+// MARK: DO NOT EDIT: Generated GreetingsServiceStub behavior
 
-extension GreetingsServiceProtocolStub {
+extension GreetingsServiceStub {
 
-    public static func makeBehavior(instance: GreetingsServiceProtocolStub) -> Behavior<Message> {
+    public static func makeBehavior(instance: GreetingsServiceStub) -> Behavior<Message> {
         fatalError("Behavior STUB for XPCActorableProtocol. Not intended to be instantiated.")
     }
 }
