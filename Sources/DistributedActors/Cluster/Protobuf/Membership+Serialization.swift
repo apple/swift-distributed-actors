@@ -26,7 +26,7 @@ extension Membership: InternalProtobufRepresentable {
             try $0.toProto(context: context)
         }
         if let leader = self.leader {
-            proto.leader = try leader.toProto(context: context)
+            proto.leaderNode = try leader.node.toProto(context: context)
         }
         return proto
     }
@@ -38,10 +38,10 @@ extension Membership: InternalProtobufRepresentable {
             let member = try Member(fromProto: protoMember, context: context)
             self._members[member.node] = member
         }
-        if proto.hasLeader {
-            self.leader = try .init(fromProto: proto.leader, context: context)
+        if proto.hasLeaderNode {
+            self._leaderNode = try UniqueNode(fromProto: proto.leaderNode, context: context)
         } else {
-            self.leader = nil
+            self._leaderNode = nil
         }
     }
 }

@@ -100,7 +100,7 @@ public struct LeadershipChange: Equatable {
 
     /// - Faults when: the `oldLeader` and the `newLeader` are equal.
     public init(oldLeader: Member?, newLeader: Member?) {
-        assert(oldLeader != newLeader, "A leadership change MUST NOT be from/to the same member. Both values were: \(oldLeader)")
+        assert(oldLeader != newLeader, "A leadership change MUST NOT be from/to the same member. Both values were: \(oldLeader, orElse: "<no-leader>")")
         self.oldLeader = oldLeader
         self.newLeader = newLeader
     }

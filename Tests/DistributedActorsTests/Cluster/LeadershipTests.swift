@@ -196,7 +196,7 @@ final class LeadershipTests: XCTestCase {
         // STILL no reason to remove the leadership from the first node
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: nil))
+            .shouldEqual(nil)
 
         membership.leader.shouldEqual(nil)
     }
