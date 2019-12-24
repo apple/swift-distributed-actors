@@ -26,7 +26,7 @@ open class ClusteredNodesTestBase: XCTestCase {
     ///
     /// Default: `true`
     open var captureLogs: Bool {
-        return true
+        true
     }
 
     var _nextPort = 9001
@@ -73,6 +73,10 @@ open class ClusteredNodesTestBase: XCTestCase {
         }
 
         self._nodes.forEach { $0.shutdown().wait() }
+
+        self._nodes = []
+        self._testKits = []
+        self._logCaptures = []
     }
 
     func testKit(_ system: ActorSystem) -> ActorTestKit {
