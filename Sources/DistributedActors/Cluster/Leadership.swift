@@ -46,7 +46,7 @@ public protocol LeaderElection {
     /// Select a member to become a leader out of the existing `Membership`.
     ///
     /// Decisions about electing/selecting a leader may be performed asynchronously.
-    func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult
+    mutating func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult
 }
 
 public struct LeaderElectionContext {
@@ -97,6 +97,13 @@ public struct LeadershipChange: Equatable {
     // let role: Role if this leader was of a specific role, carry the info here? same for DC?
     public let oldLeader: Member?
     public let newLeader: Member?
+
+    /// - Faults when: the `oldLeader` and the `newLeader` are equal.
+    public init(oldLeader: Member?, newLeader: Member?) {
+        assert(oldLeader != newLeader, "A leadership change MUST NOT be from/to the same member. Both values were: \(oldLeader)")
+        self.oldLeader = oldLeader
+        self.newLeader = newLeader
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -112,7 +119,7 @@ extension Leadership {
         static let naming: ActorNaming = "leadership"
 
         private var membership: Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
-        private let election: LeaderElection
+        private var election: LeaderElection
 
         init(_ election: LeaderElection) {
             self.election = election
@@ -213,43 +220,100 @@ extension Leadership {
     ///   - This can be advantageous -- perhaps a leader on each side should be responsible if the "side" of a partition
     ///     should better terminate itself as it is the "smaller side of a partition" and may prefer to terminate
     ///     rather than risk data corruption if the nodes `x, y` continued writing data.
+    ///
+    /// #### Mode: loseLeadershipIfBelowMinNrOfMembers
+    /// By default, leadership is elected e.g. among 5 nodes, and if the count of the membership's reachable nodes
+    /// falls below `minimumNrOfMembers` the leader _remains_ being the leader (unless the node which became unreachable
+    /// is the leader itself). This allows for a more stable leadership in face of flaky other nodes.
+    ///
+    /// If you prefer the leader to give up its leadership whenever there is less than `minimumNrOfMembers` reachable
+    /// members, you may set `loseLeadershipIfBelowMinNrOfMembers` to true. Meaning that the leader will only be
+    /// fulfilling this role whenever the minimum number of nodes exist. This may be useful when operation would
+    /// potentially be unsafe given less than `minimumNrOfMembers` nodes.
+    ///
+    // TODO: In situations which need strong guarantees, this leadership election scheme does NOT provide strong enough
+    /// guarantees, and you should consider using another scheme or consensus based modes.
     public struct LowestReachableMember: LeaderElection {
         let minimumNumberOfMembersToDecide: Int
+        let loseLeadershipIfBelowMinNrOfMembers: Bool
 
-        public init(minimumNrOfMembers: Int) {
+        public init(minimumNrOfMembers: Int, loseLeadershipIfBelowMinNrOfMembers: Bool = false) {
             self.minimumNumberOfMembersToDecide = minimumNrOfMembers
+            self.loseLeadershipIfBelowMinNrOfMembers = loseLeadershipIfBelowMinNrOfMembers
         }
 
-        // TODO: not group but context
-        public func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult {
+        public mutating func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult {
             context.log.trace("Selecting leader among: \(membership)")
             var membership = membership
 
             let membersToSelectAmong = membership.members(atMost: .up, reachability: .reachable)
 
-            guard membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide else {
-                // not enough members to make a decision yet
-                context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)]")
-
-                if let currentLeader = membership.leader {
-                    // Clear current leader and trigger `LeadershipChange`
-                    let change = try! membership.applyLeadershipChange(to: nil) // try! safe because we are changing leader to nil
-                    context.log.trace("Removing leader [\(currentLeader)]")
-                    return .init(context.loop.next().makeSucceededFuture(change))
+            let enoughMembers = membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide
+            if enoughMembers {
+                return self.selectByLowestAddress(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
+            } else {
+                context.log.info("Not enough members: \(membersToSelectAmong)")
+                if self.loseLeadershipIfBelowMinNrOfMembers {
+                    return self.notEnoughMembers(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
                 } else {
-                    return .init(context.loop.next().makeSucceededFuture(nil))
+                    return self.belowMinMembersTryKeepStableLeader(context: context, membership: &membership)
                 }
             }
+        }
+
+        internal mutating func notEnoughMembers(context: LeaderElectionContext, membership: inout Membership, membersToSelectAmong: [Member]) -> LeaderElectionResult {
+            // not enough members to make a decision yet
+            context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)]")
+
+            if let currentLeader = membership.leader {
+                // Clear current leader and trigger `LeadershipChange`
+                let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
+                context.log.trace("Removing leader [\(currentLeader)]")
+                return .init(context.loop.next().makeSucceededFuture(change))
+            } else {
+                return .init(context.loop.next().makeSucceededFuture(nil))
+            }
+        }
+
+        /// Attempts to keep the leadership stable (i.e. even if other nodes become unreachable, the leader can still potentially remain the same).
+        ///
+        /// We can do so if:
+        /// - a leader was elected previously
+        /// - it still is reachable and part of the membership
+        ///
+        /// Other nodes MAY NOT be elected, as we are below the minimum members threshold, we can only keep an existing leader, but not elect new ones.
+        internal mutating func belowMinMembersTryKeepStableLeader(context: LeaderElectionContext, membership: inout Membership) -> LeaderElectionResult {
+            guard let currentLeader = membership.leader else {
+                // there was no leader previously, and now we are below `minimumNumberOfMembersToDecide` thus cannot select a new one
+                return .init(context.loop.next().makeSucceededFuture(nil)) // no change
+            }
+
+            guard currentLeader.status <= .up else {
+                // the leader is not up anymore, and we have to remove it (cannot keep trusting it)
+                let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
+                context.log.trace("Removing leader [\(currentLeader)], not enough members to elect new leader.")
+                return .init(context.loop.next().makeSucceededFuture(change))
+            }
+
+            // the leader is still up, regardless of reachability, we still trust it;
+            // as we do not have enough members to do another election, we stick to the node we know.
+            return .init(context.loop.next().makeSucceededFuture(nil))
+        }
+
+        internal mutating func selectByLowestAddress(context: LeaderElectionContext, membership: inout Membership, membersToSelectAmong: [Member]) -> LeaderElectionResult {
+            let oldLeader = membership.leader
 
             // select the leader, by lowest address
             let leader = membersToSelectAmong
                 .sorted { $0.node < $1.node }
                 .first
 
-            // we return the change we are suggesting to take:
-            let change = try! membership.applyLeadershipChange(to: leader) // try! safe, as we KNOW this member is part of membership
-            context.log.trace("Selected leader: [\(reflecting: leader)], out of \(membership)")
-            return .init(context.loop.next().makeSucceededFuture(change))
+            if let change = try! membership.applyLeadershipChange(to: leader) { // try! safe, as we KNOW this member is part of membership
+                context.log.debug("Selected new leader: [previous: \(reflecting: oldLeader)] -> [\(reflecting: leader)], out of \(membership).")
+                return .init(context.loop.next().makeSucceededFuture(change))
+            } else {
+                return .init(context.loop.next().makeSucceededFuture(nil)) // no change, e.g. the new/old leader are the same
+            }
         }
     }
 }

@@ -193,8 +193,11 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leaders
 
-    // TODO: leadership to be defined using various strategies... lowest address is akka style, though we'd also want raft-style where they elect perhaps
-    /// # Leaders are not Masters
+    /// ## Leaders
+    /// A leader is a specific `Member` which was selected to fulfil the leadership role for the time being.
+    /// A leader returning a non-nil value, guarantees that the same Member existing as part of this `Membership` as well (non-members cannot be leaders).
+    ///
+    /// ## Leaders are not Masters
     /// Clustering, as offered by this project, is inherently master-less; yet sometimes a leader may be useful to make decisions more efficient or centralized.
     /// Leaders may be selected using various strategies, the most simple one being sorting members by their addresses and picking the "lowest".
     ///
@@ -203,7 +206,16 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     /// where certain parts of the cluster mark other groups as unreachable.
     ///
     /// Certain actions can only be performed by the "leader" of a group.
-    public internal(set) var leader: Member?
+    public internal(set) var leader: Member? {
+        get {
+            self._leaderNode.flatMap { self.uniqueMember($0) }
+        }
+        set {
+            self._leaderNode = newValue?.node
+        }
+    }
+
+    internal var _leaderNode: UniqueNode?
 
     /// Returns a copy of the membership, though without any leaders assigned.
     public var leaderless: Membership {
@@ -228,9 +240,9 @@ extension Membership: CustomStringConvertible, CustomDebugStringConvertible {
     /// Pretty multi-line output of a membership, useful for manual inspection
     public func prettyDescription(label: String) -> String {
         var res = "Membership \(label):"
-        res += "\n   LEADER: \(self.leader, orElse: ".none")"
+        res += "\n  LEADER: \(self.leader, orElse: ".none")"
         for member in self._members.values.sorted(by: { $0.node.node.port < $1.node.node.port }) {
-            res += "\n   \(reflecting: member.node) STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
+            res += "\n  \(reflecting: member.node) STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
         }
         return res
     }
@@ -272,13 +284,22 @@ extension Membership {
         }
     }
 
+    /// Applies a leadership change, marking the new leader the passed in member.
+    ///
+    /// If the change causes no change in leadership (e.g. the passed in `leader` already is the `self.leader`),
+    /// this function will return `nil`. It is guaranteed that if a non-nil value is returned, the old leader is different from the new leader.
+    ///
     /// - Throws: `MembershipError` when attempt is made to mark a non-member as leader. First add the leader as member, then promote it.
     public mutating func applyLeadershipChange(to leader: Member?) throws -> LeadershipChange? {
         guard let wannabeLeader = leader else {
-            let oldLeader = self.leader
-            // no more leader
-            self.leader = nil
-            return LeadershipChange(oldLeader: oldLeader, newLeader: self.leader)
+            if let oldLeader = self.leader {
+                // no more leader
+                self.leader = nil
+                return LeadershipChange(oldLeader: oldLeader, newLeader: self.leader)
+            } else {
+                // old leader was nil, and new one as well: no change
+                return nil
+            }
         }
 
         // for single node "cluster" we allow becoming the leader myself eagerly (e.g. useful in testing)
@@ -304,7 +325,7 @@ extension Membership {
     /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
     public mutating func applyReachabilityChange(_ change: ReachabilityChange) -> Member? {
-        return self.mark(change.member.node, reachability: change.member.reachability)
+        self.mark(change.member.node, reachability: change.member.reachability)
     }
 }
 
@@ -422,6 +443,33 @@ extension Membership {
         var membership = self
         _ = membership.remove(node)
         return membership
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Applying ClusterEvent to Membership
+
+extension Membership {
+    /// Applies any kind of `ClusterEvent` to the `Membership`, modifying it appropriately.
+    /// This apply does not yield detailed information back about the type of change performed,
+    /// and is useful as a catch-all to keep a `Membership` copy up-to-date, but without reacting on any specific transition.
+    ///
+    /// - SeeAlso: `apply(_:)`, `applyLeadershipChange(to:)`, `applyReachabilityChange(_:)` to receive specific diffs reporting about the effect
+    /// a change had on the membership.
+    public mutating func apply(event: ClusterEvent) throws {
+        switch event {
+        case .snapshot(let snapshot):
+            self = snapshot
+
+        case .membershipChange(let change):
+            _ = self.apply(change)
+
+        case .leadershipChange(let change):
+            _ = try self.applyLeadershipChange(to: change.newLeader)
+
+        case .reachabilityChange(let change):
+            _ = self.applyReachabilityChange(change)
+        }
     }
 }
 

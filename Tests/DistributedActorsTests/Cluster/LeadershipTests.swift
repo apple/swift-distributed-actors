@@ -34,73 +34,170 @@ final class LeadershipTests: XCTestCase {
     // MARK: LowestReachableMember
 
     func test_LowestReachableMember_selectLeader() throws {
-        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         let membership = self.initialMembership
 
-        let change: LeadershipChange? = try selection.runElection(context: self.fakeContext, membership: membership).future.wait()
+        let change: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
         change.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
     }
 
     func test_LowestReachableMember_notEnoughMembersToDecide() throws {
-        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.remove(self.firstMember.node)
 
         // 2 members -> not enough to make decision anymore
-        let change1: LeadershipChange? = try selection.runElection(context: self.fakeContext, membership: membership).future.wait()
+        let change1: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
         change1.shouldBeNil()
 
         _ = membership.join(self.newMember.node)
 
         // 3 members again, should work
-        let change2: LeadershipChange? = try selection.runElection(context: self.fakeContext, membership: membership).future.wait()
+        let change2: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
         change2.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
     func test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader() throws {
-        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = try! membership.applyLeadershipChange(to: self.firstMember) // try! because `firstMember` is a member
 
         let leader = membership.leader
-        leader.shouldNotBeNil()
+        leader.shouldEqual(self.firstMember)
 
-        _ = membership.remove(self.firstMember.node)
+        // leader is down:
+        _ = membership.mark(self.firstMember.node, as: .down)
 
         // 2 members -> not enough to make decision anymore
         // Since we go from a leader to without, there should be a change
-        let change: LeadershipChange? = try selection.runElection(context: self.fakeContext, membership: membership).future.wait()
+        let change: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
         change.shouldEqual(LeadershipChange(oldLeader: leader, newLeader: nil))
     }
 
     func test_LowestReachableMember_whenCurrentLeaderDown() throws {
-        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.join(self.newMember.node)
 
-        (try selection.runElection(context: self.fakeContext, membership: membership).future.wait())
+        (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
         _ = membership.mark(self.firstMember.node, as: .down)
-        (try selection.runElection(context: self.fakeContext, membership: membership).future.wait())
+        (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
-    func test_LowestReachableMember_whenCurrentLeaderUnreachable() throws {
-        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+    func test_LowestReachableMember_whenCurrentLeaderUnreachable_enoughMembers() throws {
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.join(self.newMember.node)
 
-        (try selection.runElection(context: self.fakeContext, membership: membership).future.wait())
+        (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
         _ = membership.mark(self.firstMember.node, reachability: .unreachable)
-        (try selection.runElection(context: self.fakeContext, membership: membership).future.wait())
+        (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
+    }
+
+    func test_LowestReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers() throws {
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+
+        var membership = self.initialMembership
+        let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
+            if let change = change {
+                _ = try membership.applyLeadershipChange(to: change.newLeader)
+            }
+            return change
+        }
+
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+
+        _ = membership.mark(self.firstMember.node, reachability: .unreachable)
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(nil)
+
+        membership.leader.shouldEqual(self.firstMember)
+    }
+
+    func test_LowestReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers() throws {
+        // - 3 nodes join
+        // - first becomes leader
+        // - third leaves
+        // - second leaves
+        // ! no need to drop the leadership from the first node, it shall remain the leader;
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3) // loseLeadershipIfBelowMinNrOfMembers: false by default
+
+        var membership: Membership = self.initialMembership
+        let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
+            if let change = change {
+                _ = try membership.applyLeadershipChange(to: change.newLeader)
+            }
+            return change
+        }
+
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+
+        // down third
+        _ = membership.mark(self.thirdMember.node, as: .down)
+        // no reason to remove the leadership from the first node
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(nil)
+
+        // down second
+        _ = membership.mark(self.secondMember.node, as: .down)
+        // STILL no reason to remove the leadership from the first node
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(nil)
+
+        membership.leader.shouldEqual(self.firstMember)
+    }
+
+    func test_LowestReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers() throws {
+        // - 3 nodes join
+        // - first becomes leader
+        // - third leaves
+        // ! not enough members to sustain leader, it should not be trusted anymore
+        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3, loseLeadershipIfBelowMinNrOfMembers: true)
+
+        var membership: Membership = self.initialMembership
+        let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
+            if let change = change {
+                _ = try membership.applyLeadershipChange(to: change.newLeader)
+            }
+            return change
+        }
+
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+
+        // down third
+        _ = membership.mark(self.thirdMember.node, as: .down)
+        // no reason to remove the leadership from the first node
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(LeadershipChange(oldLeader: self.firstMember, newLeader: nil))
+
+        // down second
+        _ = membership.mark(self.secondMember.node, as: .down)
+        // STILL no reason to remove the leadership from the first node
+        try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+            .map(applyToMembership)
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: nil))
+
+        membership.leader.shouldEqual(nil)
     }
 }
