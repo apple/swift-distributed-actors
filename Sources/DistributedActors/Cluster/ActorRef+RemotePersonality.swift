@@ -107,6 +107,6 @@ public final class RemotePersonality<Message> {
 
 internal extension RemotePersonality where Message == Any {
     func cast<NewMessage>(to: NewMessage.Type) -> RemotePersonality<NewMessage> {
-        return RemotePersonality<NewMessage>(shell: self.clusterShell, address: self.address, system: self.system)
+        RemotePersonality<NewMessage>(shell: self.clusterShell, address: self.address, system: self.system)
     }
 }

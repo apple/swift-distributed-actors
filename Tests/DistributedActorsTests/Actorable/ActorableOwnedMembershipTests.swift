@@ -37,7 +37,7 @@ final class ActorableOwnedMembershipTests: ClusteredNodesTestBase {
                 let membershipReply = owner.replyMembership()
                 let membership = try membershipReply._nioFuture.wait()
                 guard membership?.count(atLeast: .up) == 2 else {
-                    throw Boom("Not yet all joining nodes in lastObservedValue, was: \(membership)")
+                    throw Boom("Not yet all joining nodes in lastObservedValue, was: \(reflecting: membership)")
                 }
             }
         }
