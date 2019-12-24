@@ -119,8 +119,9 @@ final class ReceptionistTests: XCTestCase {
 
         let old: ActorRef<String> = try system.spawn(
             .anonymous,
-            .receiveMessage { _ in
-                .stop
+            .receive { context, _ in
+                context.log.info("Stopping...")
+                return .stop
             }
         )
         let new: ActorRef<String> = try system.spawn(
@@ -136,11 +137,14 @@ final class ReceptionistTests: XCTestCase {
         old.tell("stop")
         receptionist.tell(Receptionist.Register(new, key: key))
 
-        receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+        try self.testKit.eventually(within: .seconds(2)) {
+            receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+            let listing = try lookupProbe.expectMessage()
 
-        let listing = try lookupProbe.expectMessage()
-
-        listing.refs.count.shouldEqual(1)
+            if listing.refs.count != 1 {
+                throw Boom("Listing had more members than 1, expected 1. Listing: \(listing.refs)")
+            }
+        }
     }
 
     func test_receptionist_shouldReplyWithRegistered() throws {
