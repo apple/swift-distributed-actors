@@ -22,7 +22,7 @@ import "ActorAddress.proto";
 
 message ClusterMembership {
     repeated ClusterMember members = 1;
-    ClusterMember leader = 2;
+    UniqueNode leaderNode = 2;
 }
 
 message ClusterMember {

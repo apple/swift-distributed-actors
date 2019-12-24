@@ -143,14 +143,14 @@ struct ProtoClusterMembership {
     set {_uniqueStorage()._members = newValue}
   }
 
-  var leader: ProtoClusterMember {
-    get {return _storage._leader ?? ProtoClusterMember()}
-    set {_uniqueStorage()._leader = newValue}
+  var leaderNode: ProtoUniqueNode {
+    get {return _storage._leaderNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._leaderNode = newValue}
   }
-  /// Returns true if `leader` has been explicitly set.
-  var hasLeader: Bool {return _storage._leader != nil}
-  /// Clears the value of `leader`. Subsequent reads from it will return its default value.
-  mutating func clearLeader() {_uniqueStorage()._leader = nil}
+  /// Returns true if `leaderNode` has been explicitly set.
+  var hasLeaderNode: Bool {return _storage._leaderNode != nil}
+  /// Clears the value of `leaderNode`. Subsequent reads from it will return its default value.
+  mutating func clearLeaderNode() {_uniqueStorage()._leaderNode = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -190,8 +190,6 @@ struct ProtoClusterMember {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-/// TODO: MembershipGossip?
-/// TODO restructure that it should be more about who saw what node in what state, not the ClusterEvents, as the "from" status does not matter
 struct ProtoClusterMembershipGossip {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -245,12 +243,12 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   static let protoMessageName: String = "ClusterMembership"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "members"),
-    2: .same(proto: "leader"),
+    2: .same(proto: "leaderNode"),
   ]
 
   fileprivate class _StorageClass {
     var _members: [ProtoClusterMember] = []
-    var _leader: ProtoClusterMember? = nil
+    var _leaderNode: ProtoUniqueNode? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -258,7 +256,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
     init(copying source: _StorageClass) {
       _members = source._members
-      _leader = source._leader
+      _leaderNode = source._leaderNode
     }
   }
 
@@ -275,7 +273,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeRepeatedMessageField(value: &_storage._members)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._leader)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._leaderNode)
         default: break
         }
       }
@@ -287,7 +285,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       if !_storage._members.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._members, fieldNumber: 1)
       }
-      if let v = _storage._leader {
+      if let v = _storage._leaderNode {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
     }
@@ -300,7 +298,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._members != rhs_storage._members {return false}
-        if _storage._leader != rhs_storage._leader {return false}
+        if _storage._leaderNode != rhs_storage._leaderNode {return false}
         return true
       }
       if !storagesAreEqual {return false}
