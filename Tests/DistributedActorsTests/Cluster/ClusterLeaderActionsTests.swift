@@ -181,7 +181,7 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnFirstSub.shouldContain(.leadershipChange(.init(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))))
+            eventsOnFirstSub.shouldContain(.leadershipChange(LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
 
             // on non-leader node
             let eventsOnSecondSub = try p2.expectMessages(count: 6)
@@ -190,7 +190,7 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .joining)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .up, toStatus: .up))) // FIXME: by doing a real gossip rather then sending "the member" this will be fixed
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .up, toStatus: .up))) // FIXME: by doing a real gossip rather then sending "the member" this will be fixed
-            eventsOnSecondSub.shouldContain(.leadershipChange(.init(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))))
+            eventsOnSecondSub.shouldContain(.leadershipChange(LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
         }
     }
 }
