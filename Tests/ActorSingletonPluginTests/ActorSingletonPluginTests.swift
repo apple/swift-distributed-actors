@@ -107,7 +107,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             second.shutdown().wait()
             third.shutdown().wait()
             fourth.shutdown().wait()
-            //self.logCaptureHandler.printLogs()
+            // self.logCaptureHandler.printLogs()
         }
 
         first.cluster.join(node: second.cluster.node.node)
