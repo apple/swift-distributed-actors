@@ -464,7 +464,7 @@ public class Guardian {
         assert(parent.address == ActorAddress._localRoot, "A Guardian MUST live directly under the `/` path.")
 
         do {
-            self._address = try ActorPath(root: name).makeLocalAddress(incarnation: .perpetual)
+            self._address = try ActorPath(root: name).makeLocalAddress(incarnation: .wellKnown)
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }

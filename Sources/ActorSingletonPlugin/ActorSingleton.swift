@@ -59,7 +59,7 @@ public final class ActorSingleton<Message> {
         self.proxy = try system._spawnSystemActor(
             "singletonProxy-\(self.settings.name)",
             ActorSingletonProxy(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
-            perpetual: true
+            wellKnown: true
         )
     }
 }

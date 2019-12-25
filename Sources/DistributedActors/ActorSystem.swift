@@ -213,10 +213,10 @@ public final class ActorSystem {
         self.serialization = Serialization(settings: settings, system: self)
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
-        let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
+        let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, wellKnown: true)
         self._receptionist = lazyReceptionist.ref
 
-        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
+        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, wellKnown: true)
         self._replicator = lazyReplicator.ref
 
         #if SACT_TESTS_LEAKS
@@ -243,7 +243,7 @@ public final class ActorSystem {
                 lazyNodeDeathWatcher = try self._prepareSystemActor(
                     NodeDeathWatcherShell.naming,
                     NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-                    perpetual: true
+                    wellKnown: true
                 )
                 self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
             }
@@ -419,12 +419,12 @@ extension ActorSystem: ActorRefFactory {
     /// :nodoc: INTERNAL API
     ///
     /// Implementation note:
-    /// `perpetual` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
-    /// to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
+    /// `wellKnown` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
+    /// to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.wellKnown`. This
     /// also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     /// should be configured for these types of actors.
-    public func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
-        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
+    public func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), wellKnown: Bool = false) throws -> ActorRef<Message> {
+        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: wellKnown)
     }
 
     /// Initializes a system actor and enqueues the `.start` message in the mailbox, but does not schedule
@@ -437,8 +437,8 @@ extension ActorSystem: ActorRefFactory {
     /// Otherwise this function behaves the same as `_spawnSystemActor`.
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
-    internal func _prepareSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> LazyStart<Message> {
-        let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual, startImmediately: false)
+    internal func _prepareSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), wellKnown: Bool = false) throws -> LazyStart<Message> {
+        let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: wellKnown, startImmediately: false)
 
         return LazyStart(ref: ref)
     }
@@ -447,7 +447,7 @@ extension ActorSystem: ActorRefFactory {
     internal func _spawn<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), isWellKnown: Bool = false, startImmediately: Bool = true) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
-        let incarnation: ActorIncarnation = isWellKnown ? .perpetual : .random()
+        let incarnation: ActorIncarnation = isWellKnown ? .wellKnown : .random()
 
         // TODO: lock inside provider, not here
         // FIXME: protect the naming context access and name reservation; add a test

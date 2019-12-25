@@ -30,7 +30,7 @@ final class ProtobufRoundTripTests: XCTestCase {
     let node = UniqueNode(node: Node(systemName: "system", host: "127.0.0.1", port: 8888), nid: .random())
     let otherNode = UniqueNode(node: Node(systemName: "system", host: "888.0.0.1", port: 9999), nid: .random())
 
-    let localActorAddress = try! ActorPath._user.appending("hello").makeLocalAddress(incarnation: .perpetual)
+    let localActorAddress = try! ActorPath._user.appending("hello").makeLocalAddress(incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Core actor types

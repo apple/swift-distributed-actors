@@ -48,7 +48,7 @@ public final class XPCActorTransport: ActorTransport {
 
     public override func onActorSystemStart(system: ActorSystem) {
         self.lock.synchronized {
-            self._master = try! system._spawnSystemActor("xpc", XPCMaster().behavior, perpetual: true)
+            self._master = try! system._spawnSystemActor("xpc", XPCMaster().behavior, wellKnown: true)
             self.system = system
         }
     }
@@ -143,7 +143,7 @@ extension XPCActorTransport: XPCControl {
         let targetAddress: ActorAddress = try ActorAddress(
             node: fakeNode,
             path: ActorPath([ActorPathSegment("xpc"), ActorPathSegment(serviceName)]),
-            incarnation: .perpetual
+            incarnation: .wellKnown
         )
 
         // TODO: passing such ref over the network would fail; where should we prevent this?

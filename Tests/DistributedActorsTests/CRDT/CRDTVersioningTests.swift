@@ -17,9 +17,9 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTVersioningTests: XCTestCase {
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .perpetual))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .perpetual))
-    let replicaC: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("c"), incarnation: .perpetual))
+    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaC: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("c"), incarnation: .wellKnown))
 
     private typealias IntContainer = CRDT.VersionedContainer<Int>
 

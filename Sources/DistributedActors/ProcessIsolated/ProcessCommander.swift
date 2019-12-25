@@ -86,7 +86,7 @@ internal struct ProcessCommander {
 
 extension ActorAddress {
     static func ofProcessMaster(on node: UniqueNode) -> ActorAddress {
-        return try! .init(node: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .perpetual)
+        return try! .init(node: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .wellKnown)
     }
 }
 #endif

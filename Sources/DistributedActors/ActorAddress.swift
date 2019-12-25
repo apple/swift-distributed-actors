@@ -129,7 +129,7 @@ extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
 
         res += "\(self.path)"
 
-        if self.incarnation == ActorIncarnation.perpetual {
+        if self.incarnation == ActorIncarnation.wellKnown {
             return res
         } else {
             return "\(res)#\(self.incarnation.value)"
@@ -140,16 +140,16 @@ extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
 extension ActorAddress {
     /// Local root (also known as: "/") actor address.
     /// Only to be used by the "/" root "actor"
-    internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .perpetual)
-    internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .perpetual)
+    internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .wellKnown)
+    internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .wellKnown)
 
-    internal static let _cluster: ActorAddress = ActorPath._cluster.makeLocalAddress(incarnation: .perpetual)
+    internal static let _cluster: ActorAddress = ActorPath._cluster.makeLocalAddress(incarnation: .wellKnown)
     internal static func _cluster(on node: UniqueNode? = nil) -> ActorAddress {
         switch node {
         case .none:
             return ._cluster
         case .some(let node):
-            return ActorPath._cluster.makeRemoteAddress(on: node, incarnation: .perpetual)
+            return ActorPath._cluster.makeRemoteAddress(on: node, incarnation: .wellKnown)
         }
     }
 }
@@ -507,9 +507,9 @@ public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral
 }
 
 public extension ActorIncarnation {
-    /// To be used ONLY by special actors whose existence is perpetual and identity never-changing.
+    /// To be used ONLY by special actors whose existence is wellKnown and identity never-changing.
     /// Examples: `/system/deadLetters` or `/system/cluster`.
-    static let perpetual: ActorIncarnation = ActorIncarnation(0)
+    static let wellKnown: ActorIncarnation = ActorIncarnation(0)
 
     static func random() -> ActorIncarnation {
         return ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))

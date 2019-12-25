@@ -249,6 +249,6 @@ internal enum ClusterReceptionist {
     }
 
     private static func makeRemoteAddress(on node: UniqueNode) -> ActorAddress {
-        return try! .init(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")]), incarnation: .perpetual)
+        return try! .init(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")]), incarnation: .wellKnown)
     }
 }
