@@ -38,7 +38,7 @@ internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly ha
     override var address: ActorAddress {
         var fakePath: ActorPath = ._root
         try! fakePath.append(segment: .init("benchmarkLatch"))
-        return ActorAddress(path: fakePath, incarnation: .perpetual)
+        return ActorAddress(path: fakePath, incarnation: .wellKnown)
     }
 
     func blockUntilMessageReceived() -> Message {

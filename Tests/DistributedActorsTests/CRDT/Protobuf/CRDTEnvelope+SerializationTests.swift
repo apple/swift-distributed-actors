@@ -29,7 +29,7 @@ final class CRDTEnvelopeSerializationTests: XCTestCase {
         self.system.shutdown().wait()
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .perpetual)
+    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
 
     func test_serializationOf_CRDTEnvelope_AnyDeltaCRDT_GCounter() throws {
         try shouldNotThrow {

@@ -144,7 +144,7 @@ internal class ClusterShell {
             ClusterShell.naming,
             self.bind(),
             props: self.props,
-            perpetual: true
+            wellKnown: true
         )
 
         self._ref = delayed.ref
@@ -235,7 +235,7 @@ extension ClusterShell {
 
             // SWIM failure detector and gossiping
             let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
-            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: Props(), swimBehavior, perpetual: true)
+            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: Props(), swimBehavior, wellKnown: true)
 
             // automatic leader for .joining -> .up
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {

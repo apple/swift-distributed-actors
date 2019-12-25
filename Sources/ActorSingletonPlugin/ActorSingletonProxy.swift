@@ -124,7 +124,7 @@ internal class ActorSingletonProxy<Message> {
         self.managerRef = try context.system._spawnSystemActor(
             "singletonManager-\(self.settings.name)",
             ActorSingletonManager(settings: self.settings, props: self.singletonProps, self.singletonBehavior).behavior,
-            perpetual: true
+            wellKnown: true
         )
         // Need the manager to tell us the ref because we can't resolve it due to random incarnation
         let refSubReceive = context.subReceive(SubReceiveId(id: "ref-\(context.name)"), ActorRef<Message>?.self) {
@@ -221,7 +221,7 @@ extension ActorSingletonProxy {
 
 extension ActorAddress {
     internal static func _singletonProxy(name: String, on node: UniqueNode) -> ActorAddress {
-        .init(node: node, path: ._singletonProxy(name: name), incarnation: .perpetual)
+        .init(node: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
     }
 }
 

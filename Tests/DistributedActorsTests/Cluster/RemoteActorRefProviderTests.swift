@@ -103,7 +103,7 @@ class RemoteActorRefProviderTests: XCTestCase {
 
     func test_remoteActorRefProvider_shouldResolveRemoteAlreadyDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
         let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeID(1211))
-        let address: ActorAddress = try .init(node: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .perpetual)
+        let address: ActorAddress = try .init(node: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)
