@@ -60,7 +60,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         let first = self.setUpNode("first") { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
 
-            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 7111
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -71,7 +70,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         let second = self.setUpNode("second") { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
 
-            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 8222
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -82,7 +80,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         let third = self.setUpNode("third") { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
 
-            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 9333
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -92,8 +89,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         }
         let fourth = self.setUpNode("fourth") { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
-            settings.cluster.node.host = "127.0.0.1"
+            
             settings.cluster.node.port = 7444
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
