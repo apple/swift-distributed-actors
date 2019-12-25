@@ -79,7 +79,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             try assertAssociated(second, withExactly: first.cluster.node)
 
             let oldSecond = second
-            oldSecond.shutdown() // kill remote node
+            let shutdown = oldSecond.shutdown() // kill remote node
+            try shutdown.wait(atMost: .seconds(3))
 
             let secondReplacement = self.setUpNode(secondName + "-REPLACEMENT") { settings in
                 settings.cluster.bindPort = remotePort

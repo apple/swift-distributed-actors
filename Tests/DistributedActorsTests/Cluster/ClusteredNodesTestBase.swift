@@ -221,8 +221,12 @@ extension ClusteredNodesTestBase {
                 var diff = Set(associatedNodes)
                 diff.formSymmetricDifference(exactlyNodes)
                 guard diff.isEmpty else {
-                    throw TestError("[\(system)] did not associate the expected nodes: [\(exactlyNodes)]. " +
-                        "Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: exactlyNodes), diff: \(reflecting: diff).")
+                    throw TestError(
+                        """
+                        [\(system)] did not associate the expected nodes: [\(exactlyNodes)].
+                          Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: exactlyNodes),
+                          diff: \(reflecting: diff).
+                        """)
                 }
             }
         }
