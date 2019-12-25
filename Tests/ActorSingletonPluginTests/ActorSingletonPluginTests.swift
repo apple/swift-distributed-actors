@@ -89,21 +89,13 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         }
         let fourth = self.setUpNode("fourth") { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-            
+
             settings.cluster.node.port = 7444
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
             settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-4")))
 
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
-        }
-
-        defer {
-            first.shutdown().wait()
-            second.shutdown().wait()
-            third.shutdown().wait()
-            fourth.shutdown().wait()
-            // self.logCaptureHandler.printLogs()
         }
 
         first.cluster.join(node: second.cluster.node.node)
