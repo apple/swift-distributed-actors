@@ -98,9 +98,12 @@ public struct LeadershipChange: Equatable {
     public let oldLeader: Member?
     public let newLeader: Member?
 
-    /// - Faults when: the `oldLeader` and the `newLeader` are equal.
-    public init(oldLeader: Member?, newLeader: Member?) {
-        assert(oldLeader != newLeader, "A leadership change MUST NOT be from/to the same member. Both values were: \(oldLeader, orElse: "<no-leader>")")
+    /// A change is only returned when `oldLeader` and `newLeader` are different.
+    /// In order to avoid issuing changes which would be no-ops, the initializer fails if they are equal.
+    public init?(oldLeader: Member?, newLeader: Member?) {
+        guard oldLeader != newLeader else {
+            return nil
+        }
         self.oldLeader = oldLeader
         self.newLeader = newLeader
     }

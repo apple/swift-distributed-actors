@@ -47,7 +47,7 @@ final class ClusterEventsSerializationTests: XCTestCase {
     func test_serializationOf_leadershipChange() throws {
         let old = Member(node: UniqueNode(node: Node(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .joining)
         let new = Member(node: UniqueNode(node: Node(systemName: "first", host: "1.2.2.1", port: 2222), nid: .random()), status: .up)
-        let event = ClusterEvent.leadershipChange(.init(oldLeader: old, newLeader: new))
+        let event = ClusterEvent.leadershipChange(LeadershipChange(oldLeader: old, newLeader: new)!) // !-safe, since new/old leader known to be different
 
         let proto = try event.toProto(context: self.context)
         let back = try ClusterEvent(fromProto: proto, context: context)
