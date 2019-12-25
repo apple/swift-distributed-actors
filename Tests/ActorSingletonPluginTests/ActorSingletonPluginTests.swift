@@ -48,6 +48,8 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
 
         // singleton.actor
         let actor = try system.singleton.actor(name: "\(GreeterSingleton.name)-other", GreeterSingleton.self)
+        // TODO: https://github.com/apple/swift-distributed-actors/issues/344
+        //         let string = try probe.expectReply(actor.greet(name: "Charlie", _replyTo: replyProbe.ref))
         actor.ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
 
         try replyProbe.expectMessage("Hi Charlie!")
