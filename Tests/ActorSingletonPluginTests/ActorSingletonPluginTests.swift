@@ -87,15 +87,15 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
 
         try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
 
-        let replyProbe1 = ActorTestKit(first).spawnTestProbe(expecting: String.self)
+        let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
         let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
         ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
 
-        let replyProbe2 = ActorTestKit(second).spawnTestProbe(expecting: String.self)
+        let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
         let ref2 = try second.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
         ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
 
-        let replyProbe3 = ActorTestKit(third).spawnTestProbe(expecting: String.self)
+        let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
         let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
         ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
 
@@ -119,7 +119,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
 
         // No leader so singleton is not available, messages sent should be stashed
         ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
-        ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe2.ref))
+        ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
 
         // `fourth` will become the new leader and singleton
         fourth.cluster.join(node: second.cluster.node.node)
