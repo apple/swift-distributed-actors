@@ -160,7 +160,7 @@ internal class ActorSingletonProxy<Message> {
     }
 
     private func updateRef(_ context: ActorContext<Message>, _ newRef: ActorRef<Message>?) {
-        context.log.debug("Updating ref from [\(String(describing: self.ref))] to [\(String(describing: newRef))]")
+        context.log.debug("Updating ref from [\(String(describing: self.ref))] to [\(String(describing: newRef))], flushing \(self.buffer.count) messages.")
         self.ref = newRef
 
         // Unstash messages if we have the singleton
