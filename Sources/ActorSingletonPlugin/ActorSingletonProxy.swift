@@ -79,6 +79,7 @@ internal class ActorSingletonProxy<Message> {
                 try self.forwardOrStash(context, message: message)
                 return .same
             }.receiveSpecificSignal(Signals.PostStop.self) { context, _ in
+                // TODO: perhaps we can figure out where `to` is next and hand over gracefully?
                 try self.handOver(context, to: nil)
                 return .same
             }
