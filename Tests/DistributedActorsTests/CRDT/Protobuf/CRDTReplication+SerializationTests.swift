@@ -31,8 +31,8 @@ final class CRDTReplicationSerializationTests: XCTestCase {
         self.system.shutdown().wait()
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .perpetual)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .perpetual)
+    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
+    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 
     typealias WriteResult = CRDT.Replicator.RemoteCommand.WriteResult
     typealias ReadResult = CRDT.Replicator.RemoteCommand.ReadResult

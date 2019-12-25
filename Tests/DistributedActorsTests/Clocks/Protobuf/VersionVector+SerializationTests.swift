@@ -33,8 +33,8 @@ final class VersionVectorSerializationTests: XCTestCase {
         self.system.shutdown().wait()
     }
 
-    let actorA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .perpetual)
-    let actorB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .perpetual)
+    let actorA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .wellKnown)
+    let actorB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ReplicaId

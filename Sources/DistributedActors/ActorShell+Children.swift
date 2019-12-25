@@ -315,14 +315,13 @@ extension Children {
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
 extension ActorShell: ChildActorRefFactory {
-    // TODO: Maybe go back to "wellKnown" rather than perpetual, reads better to be honest and more true, since these do not have to live forever, they can come and go, but are "well known"
-    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>, perpetual: Bool = false) throws -> ActorRef<M> {
+    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>, wellKnown: Bool = false) throws -> ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
         try self.validateUniqueName(name) // FIXME: reserve name
 
-        let incarnation: ActorIncarnation = perpetual ? .perpetual : .random()
+        let incarnation: ActorIncarnation = wellKnown ? .wellKnown : .random()
         let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: incarnation)
 
         let dispatcher: MessageDispatcher
@@ -394,7 +393,7 @@ public enum ActorContextError: Error {
     case attemptedStoppingMyselfUsingContext(ref: AddressableActorRef)
     /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system
     /// can stop arbitrary actors of another part of the system which was programmed under the assumption such actor would
-    /// perpetually exist.
+    /// wellKnownly exist.
     case attemptedStoppingNonChildActor(ref: AddressableActorRef)
     /// It is not allowed to spawn
     case duplicateActorPath(path: ActorPath)

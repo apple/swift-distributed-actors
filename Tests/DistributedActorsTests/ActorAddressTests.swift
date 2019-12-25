@@ -152,9 +152,9 @@ final class ActorAddressTests: XCTestCase {
 
     func test_sortingOf_sameNode_ActorAddresses() throws {
         var addresses: [ActorAddress] = []
-        let a: ActorAddress = try ActorPath._user.appending("a").makeLocalAddress(incarnation: .perpetual)
-        let b: ActorAddress = try ActorPath._user.appending("b").makeLocalAddress(incarnation: .perpetual)
-        let c: ActorAddress = try ActorPath._user.appending("c").makeLocalAddress(incarnation: .perpetual)
+        let a: ActorAddress = try ActorPath._user.appending("a").makeLocalAddress(incarnation: .wellKnown)
+        let b: ActorAddress = try ActorPath._user.appending("b").makeLocalAddress(incarnation: .wellKnown)
+        let c: ActorAddress = try ActorPath._user.appending("c").makeLocalAddress(incarnation: .wellKnown)
         addresses.append(c)
         addresses.append(b)
         addresses.append(a)

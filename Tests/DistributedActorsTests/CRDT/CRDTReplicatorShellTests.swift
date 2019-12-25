@@ -35,8 +35,8 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         self.remoteTestKit = super.testKit(self.remoteSystem)
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .perpetual)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .perpetual)
+    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
+    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 
     let timeout = TimeAmount.seconds(1)
 

@@ -22,7 +22,7 @@ class ProtoEnvelopeTests: XCTestCase {
     func test_init_ProtoEnvelopeZeroCopy() throws {
         var proto = ProtoEnvelope()
         proto.payload = Data([1, 2, 3])
-        proto.recipient = ProtoActorAddress(ActorAddress(path: ._user, incarnation: .perpetual))
+        proto.recipient = ProtoActorAddress(ActorAddress(path: ._user, incarnation: .wellKnown))
         proto.serializerID = 5
         let allocator = ByteBufferAllocator()
 

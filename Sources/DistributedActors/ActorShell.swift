@@ -639,7 +639,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // MARK: Spawn implementations
 
     public override func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        return try self._spawn(naming, props: props, behavior, perpetual: false)
+        return try self._spawn(naming, props: props, behavior, wellKnown: false)
     }
 
     public override func spawnWatch<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
@@ -745,7 +745,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             self.messageAdapters.insert(MessageAdapterClosure(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
 
             guard let adapterRef = self.messageAdapterRef else {
-                let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .perpetual)
+                let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
                 let ref = ActorRefAdapter(self.myself, address: adaptedAddress)
                 self.messageAdapterRef = ref
 

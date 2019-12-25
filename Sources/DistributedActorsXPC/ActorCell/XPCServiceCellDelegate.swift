@@ -43,7 +43,7 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
         try! self.init(
             system: system, address: .init(
                 node: UniqueNode(protocol: "xpc", systemName: "", host: "localhost", port: 1, nid: NodeID(1)),
-                path: try! ActorPath(root: "xpc").appending(serviceName), incarnation: .perpetual
+                path: try! ActorPath(root: "xpc").appending(serviceName), incarnation: .wellKnown
             )
         )
     }
