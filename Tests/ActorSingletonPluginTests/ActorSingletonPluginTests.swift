@@ -107,7 +107,15 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         // Take down the leader
         first.cluster.down(node: first.cluster.node.node)
 
-        try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
+        // Make sure that `second` and `third` see `first` as down and become leader-less
+        try self.testKit(second).eventually(within: .seconds(10)) {
+            try self.assertMemberStatus(on: second, node: first.cluster.node, is: .down)
+            try self.assertLeaderNode(on: second, is: nil)
+        }
+        try self.testKit(third).eventually(within: .seconds(10)) {
+            try self.assertMemberStatus(on: third, node: first.cluster.node, is: .down)
+            try self.assertLeaderNode(on: third, is: nil)
+        }
 
         // No leader so singleton is not available, messages sent should be stashed
         ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
