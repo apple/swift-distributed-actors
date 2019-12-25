@@ -18,16 +18,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorSingletonPluginTests: ClusteredNodesTestBase {
-    var logCaptureHandler: LogCapture!
-
-    override func setUp() {
-        self.logCaptureHandler = LogCapture()
-    }
-
-    override func tearDown() {
-        self.logCaptureHandler.printIfFailed(self.testRun)
-    }
-
     func test_nonCluster() throws {
         // Singleton should work just fine without clustering
         let system = ActorSystem("test") { settings in
@@ -60,8 +50,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         singletonSettings.allocationStrategy = .leadership
 
         let first = self.setUpNode("first") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
             settings.cluster.node.port = 7111
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -70,8 +58,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
         }
         let second = self.setUpNode("second") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
             settings.cluster.node.port = 8222
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -80,8 +66,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
         }
         let third = self.setUpNode("third") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
             settings.cluster.node.port = 9333
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -90,8 +74,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
         }
         let fourth = self.setUpNode("fourth") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
             settings.cluster.node.port = 7444
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
