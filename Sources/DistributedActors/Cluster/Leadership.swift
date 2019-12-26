@@ -50,7 +50,7 @@ public protocol LeaderElection {
 }
 
 public struct LeaderElectionContext {
-    public let log: Logger
+    public var log: Logger
     public let loop: EventLoop
 
     internal init<M>(_ ownerContext: ActorContext<M>) {
@@ -166,7 +166,8 @@ extension Leadership {
         }
 
         func runElection(_ context: ActorContext<ClusterEvent>) -> Behavior<ClusterEvent> {
-            let electionContext = LeaderElectionContext(context)
+            var electionContext = LeaderElectionContext(context)
+            electionContext.log[metadataKey: "leadership/election"] = "\(String(reflecting: type(of: self.election)))"
             let electionResult = self.election.runElection(context: electionContext, membership: self.membership)
 
             // TODO: if/when we'd have some election scheme that is async, e.g. "vote" then this timeout should NOT be infinite and should be handled properly
@@ -236,7 +237,7 @@ extension Leadership {
     ///
     // TODO: In situations which need strong guarantees, this leadership election scheme does NOT provide strong enough
     /// guarantees, and you should consider using another scheme or consensus based modes.
-    public struct LowestReachableMember: LeaderElection {
+    public struct LowestAddressMember: LeaderElection {
         let minimumNumberOfMembersToDecide: Int
         let loseLeadershipIfBelowMinNrOfMembers: Bool
 
@@ -249,13 +250,13 @@ extension Leadership {
             context.log.trace("Selecting leader among: \(membership)")
             var membership = membership
 
-            let membersToSelectAmong = membership.members(atMost: .up, reachability: .reachable)
+            let membersToSelectAmong = membership.members(atMost: .up)
 
             let enoughMembers = membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide
             if enoughMembers {
                 return self.selectByLowestAddress(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
             } else {
-                context.log.info("Not enough members: \(membersToSelectAmong)")
+                context.log.info("Not enough members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)] to run election, members: \(membersToSelectAmong)")
                 if self.loseLeadershipIfBelowMinNrOfMembers {
                     return self.notEnoughMembers(context: context, membership: &membership, membersToSelectAmong: membersToSelectAmong)
                 } else {

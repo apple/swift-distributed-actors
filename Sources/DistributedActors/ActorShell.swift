@@ -251,6 +251,17 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Interpreting messages
 
+    @inlinable
+    var runState: ActorRunResult {
+        if self.continueRunning {
+            return .continueRunning
+        } else if self.isSuspended {
+            return .shouldSuspend
+        } else {
+            return .shouldStop
+        }
+    }
+
     /// Interprets the incoming message using the current `Behavior` and swaps it with the
     /// next behavior (as returned by user code, which the message was applied to).
     ///
@@ -268,28 +279,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         self.log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
         #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
-        try self.deferred.invokeAllAfterReceived()
-
-        if next.isChanging {
-            try self.becomeNext(behavior: next)
-        }
-
-        if !self.behavior.isStillAlive {
-            self.children.stopAll()
-        }
-
-        return self.runState
-    }
-
-    @inlinable
-    var runState: ActorRunResult {
-        if self.continueRunning {
-            return .continueRunning
-        } else if self.isSuspended {
-            return .shouldSuspend
-        } else {
-            return .shouldStop
-        }
+        return try self.finishInterpretAnyMessage(next)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -344,15 +334,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             try self.interpretStop()
 
         case .resume(let result):
-            switch self.behavior.underlying {
-            case .suspended(let previousBehavior, let handler):
-                let nextBehavior = try self.supervisor.interpretSupervised(target: previousBehavior, context: self) {
-                    try handler(result)
-                }
-                try self.becomeNext(behavior: previousBehavior.canonicalize(self, next: nextBehavior))
-            default:
-                self.log.error("Received .resume message while being in non-suspended state")
-            }
+            return try self.interpretResume(result)
 
         case .tombstone:
             return self.finishTerminating()
@@ -363,16 +345,9 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     func interpretClosure(_ closure: ActorClosureCarry) throws -> ActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
-
         traceLog_Cell("Applied closure, becoming: \(next)")
 
-        try self.becomeNext(behavior: next)
-
-        if !self.behavior.isStillAlive {
-            self.children.stopAll()
-        }
-
-        return self.runState
+        return try self.finishInterpretAnyMessage(next)
     }
 
     func interpretAdaptedMessage(_ carry: AdaptedMessageCarry) throws -> ActorRunResult {
@@ -392,24 +367,26 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         } else {
             next = .unhandled // TODO: could be .drop
         }
-
         traceLog_Cell("Applied adapted message \(carry.message), becoming: \(next)")
 
-        try self.becomeNext(behavior: next)
-
-        if !self.behavior.isStillAlive {
-            self.children.stopAll()
-        }
-
-        return self.runState
+        return try self.finishInterpretAnyMessage(next)
     }
 
     func interpretSubMessage(_ subMessage: SubMessageCarry) throws -> ActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, subMessage: subMessage)
-
         traceLog_Cell("Applied subMessage \(subMessage.message), becoming: \(next)")
 
-        try self.becomeNext(behavior: next)
+        return try self.finishInterpretAnyMessage(next)
+    }
+
+    /// Handles all actions that MUST be applied after a message is interpreted.
+    @usableFromInline
+    internal func finishInterpretAnyMessage(_ next: Behavior<Message>) throws -> ActorRunResult {
+        try self.deferred.invokeAllAfterReceived()
+
+        if next.isChanging {
+            try self.becomeNext(behavior: next)
+        }
 
         if !self.behavior.isStillAlive {
             self.children.stopAll()
@@ -460,9 +437,6 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     internal func _escalate(failure: Supervision.Failure) -> Behavior<Message> {
         self.behavior = self.behavior.fail(cause: failure)
 
-        // FIXME: should not be needed since we'll signal when we finishTerminating
-        // self._parent.ref.sendSystemMessage(.childTerminated(ref: self.asAddressable, .escalating(failure)), file: #file, line: #line)
-
         return self.behavior
     }
 
@@ -502,7 +476,6 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// which need to suspend the actor, and NOT start it just yet, until the system message awakens it again.
     @inlinable public func _restartComplete(with behavior: Behavior<Message>) throws -> Behavior<Message> {
         try behavior.validateAsInitial()
-
         self.behavior = behavior
         try self.interpretStart()
         return self.behavior
@@ -521,10 +494,34 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     @inlinable
     internal func interpretStart() throws {
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
-
         traceLog_Cell("START with behavior: \(self.behavior)")
+
         let started = try self.supervisor.startSupervised(target: self.behavior, context: self)
         try self.becomeNext(behavior: started)
+    }
+
+    /// Interpret a `resume` with the passed in result, potentially waking up the actor from `suspended` state.
+    /// Interpreting a resume NOT in suspended state is an error and should never happen.
+    @inlinable
+    internal func interpretResume(_ result: Result<Any, Error>) throws -> ActorRunResult {
+        switch self.behavior.underlying {
+        case .suspended(let previousBehavior, let handler):
+            let next = try self.supervisor.interpretSupervised(target: previousBehavior, context: self) {
+                try handler(result)
+            }
+            // We need to ensure the behavior is canonicalized, as perhaps the suspension was wrapping setup or similar
+            let canonicalizedNext = try previousBehavior.canonicalize(self, next: next)
+            return try self.finishInterpretAnyMessage(canonicalizedNext)
+        default:
+            self.log.error(
+                "Received .resume message while being in non-suspended state. Please report this as a bug.",
+                metadata: [
+                    "result": "\(result)",
+                    "behavior": "\(self.behavior)",
+                ]
+            )
+            return self.runState
+        }
     }
 
     // MARK: Lifecycle and DeathWatch TODO move death watch things all into an extension

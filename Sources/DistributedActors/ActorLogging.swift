@@ -70,11 +70,11 @@ public struct ActorLogger {
         }
 
         var proxyHandler = ActorOriginLogHandler(context)
-        proxyHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
+        proxyHandler.metadata["actorPath"] = "\(context.path)"
         if context.system.settings.cluster.enabled {
-            proxyHandler.metadata["node"] = .string("\(context.system.settings.cluster.node)")
+            proxyHandler.metadata["node"] = "\(context.system.settings.cluster.node)"
         } else {
-            proxyHandler.metadata["nodeName"] = .string(context.system.name)
+            proxyHandler.metadata["nodeName"] = "\(context.system.name)"
         }
 
         var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
