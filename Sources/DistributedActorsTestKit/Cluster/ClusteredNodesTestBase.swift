@@ -278,6 +278,27 @@ extension ClusteredNodesTestBase {
             throw testKit.error("Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]")
         }
     }
+
+    /// Asserts the given node is the leader.
+    ///
+    /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
+    public func assertLeaderNode(
+        on system: ActorSystem, is expectedNode: UniqueNode?,
+        file: StaticString = #file, line: UInt = #line
+    ) throws {
+        let testKit = self.testKit(system)
+        let p = testKit.spawnTestProbe(expecting: Membership.self)
+        defer {
+            p.stop()
+        }
+        system.cluster.ref.tell(.query(.currentMembership(p.ref)))
+
+        let membership = try p.expectMessage()
+        let leaderNode = membership.leader?.node
+        if leaderNode != expectedNode {
+            throw testKit.error("Expected \(reflecting: expectedNode) to be leader node on \(reflecting: system.cluster.node) but was [\(reflecting: leaderNode)]")
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

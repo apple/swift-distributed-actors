@@ -18,16 +18,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorSingletonPluginTests: ClusteredNodesTestBase {
-    var logCaptureHandler: LogCapture!
-
-    override func setUp() {
-        self.logCaptureHandler = LogCapture()
-    }
-
-    override func tearDown() {
-        self.logCaptureHandler.printIfFailed(self.testRun)
-    }
-
     func test_nonCluster() throws {
         // Singleton should work just fine without clustering
         let system = ActorSystem("test") { settings in
@@ -48,6 +38,8 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
 
         // singleton.actor
         let actor = try system.singleton.actor(name: "\(GreeterSingleton.name)-other", GreeterSingleton.self)
+        // TODO: https://github.com/apple/swift-distributed-actors/issues/344
+        //         let string = try probe.expectReply(actor.greet(name: "Charlie", _replyTo: replyProbe.ref))
         actor.ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
 
         try replyProbe.expectMessage("Hi Charlie!")
@@ -58,9 +50,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         singletonSettings.allocationStrategy = .leadership
 
         let first = self.setUpNode("first") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
-            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 7111
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -69,9 +58,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
         }
         let second = self.setUpNode("second") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
-            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 8222
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -80,9 +66,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
         }
         let third = self.setUpNode("third") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
-            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 9333
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -91,9 +74,6 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
         }
         let fourth = self.setUpNode("fourth") { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-
-            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 7444
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
 
@@ -102,28 +82,20 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
         }
 
-        defer {
-            first.shutdown().wait()
-            second.shutdown().wait()
-            third.shutdown().wait()
-            fourth.shutdown().wait()
-            // self.logCaptureHandler.printLogs()
-        }
-
         first.cluster.join(node: second.cluster.node.node)
         third.cluster.join(node: second.cluster.node.node)
 
         try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
 
-        let replyProbe1 = ActorTestKit(first).spawnTestProbe(expecting: String.self)
+        let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
         let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
         ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
 
-        let replyProbe2 = ActorTestKit(second).spawnTestProbe(expecting: String.self)
+        let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
         let ref2 = try second.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
         ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
 
-        let replyProbe3 = ActorTestKit(third).spawnTestProbe(expecting: String.self)
+        let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
         let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
         ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
 
@@ -135,11 +107,19 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
         // Take down the leader
         first.cluster.down(node: first.cluster.node.node)
 
-        try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
+        // Make sure that `second` and `third` see `first` as down and become leader-less
+        try self.testKit(second).eventually(within: .seconds(10)) {
+            try self.assertMemberStatus(on: second, node: first.cluster.node, is: .down)
+            try self.assertLeaderNode(on: second, is: nil)
+        }
+        try self.testKit(third).eventually(within: .seconds(10)) {
+            try self.assertMemberStatus(on: third, node: first.cluster.node, is: .down)
+            try self.assertLeaderNode(on: third, is: nil)
+        }
 
         // No leader so singleton is not available, messages sent should be stashed
         ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
-        ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe2.ref))
+        ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
 
         // `fourth` will become the new leader and singleton
         fourth.cluster.join(node: second.cluster.node.node)
