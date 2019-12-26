@@ -106,7 +106,7 @@ public struct ClusterSettings {
             case .none:
                 return nil
             case .lowestAddress(let nr):
-                return Leadership.LowestReachableMember(minimumNrOfMembers: nr)
+                return Leadership.LowestAddressMember(minimumNrOfMembers: nr)
             }
         }
     }

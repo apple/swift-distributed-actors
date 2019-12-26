@@ -44,6 +44,7 @@ class SupervisionTests: XCTestCase {
     enum FaultyMessage {
         case pleaseThrow(error: Error)
         case echo(message: String, replyTo: ActorRef<WorkerMessages>)
+        case pleaseFailAwaiting(message: String)
     }
 
     enum SimpleProbeMessages: Equatable {
@@ -79,6 +80,11 @@ class SupervisionTests: XCTestCase {
                 case .echo(let msg, let sender):
                     sender.tell(.echo(message: "echo:\(msg)"))
                     return .same
+                case .pleaseFailAwaiting(let msg):
+                    let failed: EventLoopFuture<String> = context.system._eventLoopGroup.next().makeFailedFuture(Boom("Failed: \(msg)"))
+                    return context.awaitResultThrowing(of: failed, timeout: .seconds(1)) { _ in
+                        .same
+                    }
                 }
             }
         }
@@ -469,6 +475,12 @@ class SupervisionTests: XCTestCase {
         })
     }
 
+    func test_stopSupervised_throwsInAwaitResult_shouldStop() throws {
+        try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: "throws", makeEvilMessage: { _ in
+            FaultyMessage.pleaseFailAwaiting(message: "Boom!")
+        })
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision
 
@@ -504,6 +516,12 @@ class SupervisionTests: XCTestCase {
         try p.expectMessage("message:two")
 
         id2.shouldNotEqual(id1)
+    }
+
+    func test_restartSupervised_throwsInAwaitResult_shouldRestart() throws {
+        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { _ in
+            FaultyMessage.pleaseFailAwaiting(message: "Boom!")
+        })
     }
 
     class MyCrashingClassBehavior: ClassBehavior<String> {
@@ -690,6 +708,7 @@ class SupervisionTests: XCTestCase {
         // Death Parade:
         try pb.expectTerminated(bottom) // Boom!
         try pab.expectTerminated(almostBottom) // Boom!
+        // Boom!
 
         // the almost bottom has isolated the fault; it does not leak more upwards the tree
         try pm.expectNoTerminationSignal(for: .milliseconds(100))

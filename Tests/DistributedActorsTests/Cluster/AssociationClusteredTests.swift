@@ -75,8 +75,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
             first.cluster.join(node: second.cluster.node.node)
 
-            try assertAssociated(first, withExactly: second.cluster.node)
-            try assertAssociated(second, withExactly: first.cluster.node)
+            try assertAssociated(first, withExactly: second.cluster.node, verbose: true)
+            try assertAssociated(second, withExactly: first.cluster.node, verbose: true)
 
             let oldSecond = second
             let shutdown = oldSecond.shutdown() // kill remote node
@@ -94,8 +94,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             secondReplacement.cluster.join(node: first.cluster.node.node)
 
             // verify we are associated ONLY with the appropriate nodes now;
-            try assertAssociated(first, withExactly: [secondReplacement.cluster.node])
-            try assertAssociated(secondReplacement, withExactly: [first.cluster.node])
+            try assertAssociated(first, withExactly: [secondReplacement.cluster.node], verbose: true)
+            try assertAssociated(secondReplacement, withExactly: [first.cluster.node], verbose: true)
         }
     }
 

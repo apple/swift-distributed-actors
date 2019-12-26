@@ -24,9 +24,11 @@ extension SupervisionTests {
     static var allTests: [(String, (SupervisionTests) -> () throws -> Void)] {
         return [
             ("test_stopSupervised_throws_shouldStop", test_stopSupervised_throws_shouldStop),
+            ("test_stopSupervised_throwsInAwaitResult_shouldStop", test_stopSupervised_throwsInAwaitResult_shouldStop),
             ("test_restartSupervised_throws_shouldRestart", test_restartSupervised_throws_shouldRestart),
             ("test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod", test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod),
             ("test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior", test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior),
+            ("test_restartSupervised_throwsInAwaitResult_shouldRestart", test_restartSupervised_throwsInAwaitResult_shouldRestart),
             ("test_escalateSupervised_throws_shouldKeepEscalatingThrough_watchingParents", test_escalateSupervised_throws_shouldKeepEscalatingThrough_watchingParents),
             ("test_escalateSupervised_throws_shouldKeepEscalatingThrough_nonWatchingParents", test_escalateSupervised_throws_shouldKeepEscalatingThrough_nonWatchingParents),
             ("test_escalateSupervised_throws_shouldKeepEscalatingUntilNonEscalatingParent", test_escalateSupervised_throws_shouldKeepEscalatingUntilNonEscalatingParent),
