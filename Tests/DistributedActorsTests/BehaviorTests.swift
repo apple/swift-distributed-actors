@@ -856,6 +856,41 @@ class BehaviorTests: XCTestCase {
         try p.expectTerminated(ref)
     }
 
+    func test_awaitResult_allowBecomingIntoSetup() throws {
+        let eventLoop = self.eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            p.tell("initializing")
+            return .receiveMessage { _ in
+                context.awaitResult(of: future, timeout: .seconds(3)) { result in
+                    .setup { _ in
+                        suspendProbe.tell(result)
+                        return .same
+                    }
+                }
+            }
+        }
+
+        let ref = try system.spawn(.anonymous, behavior)
+        p.watch(ref)
+        try p.expectMessage("initializing")
+
+        ref.tell("wake up")
+        promise.succeed(13)
+
+        let suspendResult = try suspendProbe.expectMessage()
+        switch suspendResult {
+        case .success(let value):
+            value.shouldEqual(13)
+        default:
+            throw p.error("Expected success, got \(suspendResult)")
+        }
+    }
+
     func test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut() throws {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()

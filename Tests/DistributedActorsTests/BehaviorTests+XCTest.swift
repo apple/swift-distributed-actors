@@ -53,6 +53,7 @@ extension BehaviorTests {
             ("test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut", test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut),
             ("test_awaitResult_shouldWorkWhenReturnedInsideInitialSetup", test_awaitResult_shouldWorkWhenReturnedInsideInitialSetup),
             ("test_awaitResult_shouldCrashWhenReturnedInsideInitialSetup_andReturnSameOnResume", test_awaitResult_shouldCrashWhenReturnedInsideInitialSetup_andReturnSameOnResume),
+            ("test_awaitResult_allowBecomingIntoSetup", test_awaitResult_allowBecomingIntoSetup),
             ("test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut", test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut),
             ("test_suspendedActor_shouldKeepProcessingSystemMessages", test_suspendedActor_shouldKeepProcessingSystemMessages),
             ("test_suspendedActor_shouldKeepProcessingSignals", test_suspendedActor_shouldKeepProcessingSignals),

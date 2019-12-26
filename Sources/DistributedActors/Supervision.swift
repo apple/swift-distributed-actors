@@ -389,7 +389,7 @@ internal enum ProcessingAction<Message> {
     case message(Message)
     case signal(Signal)
     case closure(ActorClosureCarry)
-    case continuation(() throws -> Behavior<Message>)
+    case continuation(() throws -> Behavior<Message>) // TODO: make it a Carry type for better debugging
     case subMessage(SubMessageCarry)
 }
 

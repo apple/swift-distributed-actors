@@ -474,7 +474,7 @@ public class Guardian {
     }
 
     var ref: ActorRef<Never> {
-        return .init(.guardian(self))
+        .init(.guardian(self))
     }
 
     @usableFromInline
@@ -498,17 +498,19 @@ public class Guardian {
             switch circumstances {
             case .escalating(let failure):
                 guard let system = self.system else {
-                    // TODO: What else to do here? print to stderr? we are likely already shutting down or already shut down.")
+                    print("[error] Failure escalated to \(self) yet system already not available. Already shutting down? Failure: \(failure)")
                     return
                 }
                 switch system.settings.failure.onGuardianFailure {
                 case .shutdownActorSystem:
-                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], shutting down ActorSystem! Failure was: \(failure)"
+                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ActorSystem! " +
+                        "(This can be configured in `system.settings.failure.onGuardianFailure`). " +
+                        "Failure was: \(failure)"
                     system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
-                    print(message) // TODO: to stderr
 
                     _ = try! Thread {
                         system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
+                        print("Guardian shutdown of [\(system.name)] ActorSystem complete.")
                     }
                     #if os(iOS) || os(watchOS) || os(tvOS)
                     // not supported on these operating systems

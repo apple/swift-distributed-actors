@@ -125,7 +125,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
     private let root: Guardian
 
     var rootAddress: ActorAddress {
-        return self.root.address
+        self.root.address
     }
 
     init(root: Guardian) {

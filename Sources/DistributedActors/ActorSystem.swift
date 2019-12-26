@@ -282,11 +282,11 @@ public final class ActorSystem {
         }
     }
 
+    #if SACT_TESTS_LEAKS
     deinit {
-        #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.sub(1)
-        #endif
     }
+    #endif
 
     public struct Shutdown {
         private let receptacle: BlockingReceptacle<Void>
@@ -364,7 +364,7 @@ public final class ActorSystem {
 
 extension ActorSystem: Equatable {
     public static func == (lhs: ActorSystem, rhs: ActorSystem) -> Bool {
-        return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+        ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
     }
 }
 

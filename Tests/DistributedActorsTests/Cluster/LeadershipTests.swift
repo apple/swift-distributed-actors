@@ -34,7 +34,7 @@ final class LeadershipTests: XCTestCase {
     // MARK: LowestReachableMember
 
     func test_LowestReachableMember_selectLeader() throws {
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
 
         let membership = self.initialMembership
 
@@ -43,7 +43,7 @@ final class LeadershipTests: XCTestCase {
     }
 
     func test_LowestReachableMember_notEnoughMembersToDecide() throws {
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.remove(self.firstMember.node)
@@ -60,7 +60,7 @@ final class LeadershipTests: XCTestCase {
     }
 
     func test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader() throws {
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = try! membership.applyLeadershipChange(to: self.firstMember) // try! because `firstMember` is a member
@@ -78,7 +78,7 @@ final class LeadershipTests: XCTestCase {
     }
 
     func test_LowestReachableMember_whenCurrentLeaderDown() throws {
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.join(self.newMember.node)
@@ -91,8 +91,8 @@ final class LeadershipTests: XCTestCase {
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
-    func test_LowestReachableMember_whenCurrentLeaderUnreachable_enoughMembers() throws {
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+    func test_LowestReachableMember_whenCurrentLeaderDown_enoughMembers() throws {
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.join(self.newMember.node)
@@ -100,13 +100,13 @@ final class LeadershipTests: XCTestCase {
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
-        _ = membership.mark(self.firstMember.node, reachability: .unreachable)
+        _ = membership.mark(self.firstMember.node, as: .down)
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
     func test_LowestReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers() throws {
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
@@ -134,7 +134,7 @@ final class LeadershipTests: XCTestCase {
         // - third leaves
         // - second leaves
         // ! no need to drop the leadership from the first node, it shall remain the leader;
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3) // loseLeadershipIfBelowMinNrOfMembers: false by default
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3) // loseLeadershipIfBelowMinNrOfMembers: false by default
 
         var membership: Membership = self.initialMembership
         let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
@@ -170,7 +170,7 @@ final class LeadershipTests: XCTestCase {
         // - first becomes leader
         // - third leaves
         // ! not enough members to sustain leader, it should not be trusted anymore
-        var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3, loseLeadershipIfBelowMinNrOfMembers: true)
+        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3, loseLeadershipIfBelowMinNrOfMembers: true)
 
         var membership: Membership = self.initialMembership
         let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
