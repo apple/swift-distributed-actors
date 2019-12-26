@@ -19,19 +19,24 @@ import NIOSSL
 import XCTest
 
 final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking .down
 
     func test_down_beGossipedToOtherNodes() throws {
         try shouldNotThrow {
+            let strategy = ClusterSettings.LeadershipSelectionSettings.lowestAddress(minNumberOfMembers: 3)
             let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = strategy
             }
             let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = strategy
             }
             let third = self.setUpNode("third") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = strategy
             }
 
             first.cluster.join(node: second.cluster.node.node)

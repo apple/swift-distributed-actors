@@ -23,9 +23,15 @@ open class ClusteredNodesTestBase: XCTestCase {
     /// If `true` automatically captures all logs of all `setUpNode` started systems, and prints them if at least one test failure is encountered.
     /// If `false`, log capture is disabled and the systems will log messages normally.
     ///
-    /// Default: `true`
+    /// - Default: `true`
     open var captureLogs: Bool {
         true
+    }
+
+    /// Enables logging all captured logs, even if the test passed successfully.
+    /// - Default: `false`
+    open var alwaysPrintCaptureLogs: Bool {
+        false
     }
 
     var _nextPort = 9001
@@ -65,7 +71,8 @@ open class ClusteredNodesTestBase: XCTestCase {
     }
 
     open override func tearDown() {
-        if self.captureLogs, self.testRun?.failureCount ?? 0 > 0 {
+        let testsFailed = self.testRun?.failureCount ?? 0 > 0
+        if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             for node in self._nodes {
                 self.printCapturedLogs(node)
             }
@@ -88,19 +95,30 @@ open class ClusteredNodesTestBase: XCTestCase {
         return testKit
     }
 
-    public func joinNodes(node: ActorSystem, with other: ActorSystem, ensureMembers: MemberStatus? = nil) throws {
+    public func joinNodes(
+        node: ActorSystem, with other: ActorSystem,
+        ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: MemberStatus? = nil
+    ) throws {
         node.cluster.join(node: other.cluster.node.node)
 
         try assertAssociated(node, withAtLeast: other.settings.cluster.uniqueBindNode)
         try assertAssociated(other, withAtLeast: node.settings.cluster.uniqueBindNode)
+
+        if let expectedStatus = maybeExpectedStatus {
+            if let specificTimeout = ensureWithin {
+                try self.ensureNodes(expectedStatus, on: node, within: specificTimeout, systems: other)
+            } else {
+                try self.ensureNodes(expectedStatus, on: node, systems: other)
+            }
+        }
     }
 
-    public func ensureNodes(_ status: MemberStatus, within: TimeAmount = .seconds(10), systems: ActorSystem...) throws {
-        guard let anySystem = self._nodes.first else {
-            fatalError("Must at least have 1 system present to use [ensureNodes]")
+    public func ensureNodes(_ status: MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), systems: ActorSystem...) throws {
+        guard let onSystem = system ?? self._nodes.first else {
+            fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
-        try self.testKit(anySystem).eventually(within: within) {
+        try self.testKit(onSystem).eventually(within: within) {
             for onSystem in systems {
                 // all members on onMember should have reached this status (e.g. up)
                 for expectSystem in systems {

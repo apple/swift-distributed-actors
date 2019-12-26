@@ -273,6 +273,7 @@ extension ClusterShell {
                     log: context.log
                 )
 
+                // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
                 context.myself.tell(.gossip(.update(from: uniqueBindAddress, [Member(node: state.selfNode, status: .joining)])))
 
                 return self.ready(state: state)
@@ -772,14 +773,13 @@ extension ClusterShell {
 
         var state: ClusterShellState = state
         for memberToDown in membersToDown {
-            state = self.onDownCommand0(context, state: state, member: memberToDown) ?? state // if no change -> nil, thus no change to state
+            state = self.onDownCommand0(context, state: state, member: memberToDown)
         }
 
         return self.ready(state: state)
     }
 
-    /// Returns `nil` if no change was made and we should ignore this command
-    func onDownCommand0(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Member) -> ClusterShellState? {
+    func onDownCommand0(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Member) -> ClusterShellState {
         var state = state
 
         if let change = state.applyMembershipChange(memberToDown.node, toStatus: .down) {
@@ -804,8 +804,8 @@ extension ClusterShell {
         // Down(other node);
 
         guard let association = state.association(with: memberToDown.node.node) else {
-            context.log.debug("Received Down command for not associated node \(reflecting: memberToDown.node.node), ignoring.")
-            return nil
+            context.log.warning("Received Down command for not associated node [\(reflecting: memberToDown.node.node)], ignoring.")
+            return state
         }
 
         // TODO: push more logic into the State (Instance/Shell style)

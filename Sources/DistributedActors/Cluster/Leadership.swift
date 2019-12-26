@@ -321,3 +321,24 @@ extension Leadership {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Leadership settings
+
+extension ClusterSettings {
+    public enum LeadershipSelectionSettings {
+        /// No automatic leader selection, you can write your own logic and issue a `LeadershipChange` `ClusterEvent` to the `system.cluster.events` event stream.
+        case none
+        /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
+        case lowestAddress(minNumberOfMembers: Int)
+
+        func make(_: ClusterSettings) -> LeaderElection? {
+            switch self {
+            case .none:
+                return nil
+            case .lowestAddress(let nr):
+                return Leadership.LowestAddressMember(minimumNrOfMembers: nr)
+            }
+        }
+    }
+}

@@ -14,6 +14,7 @@
 
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
+import struct Foundation.Date
 @testable import Logging
 import XCTest
 
@@ -38,13 +39,13 @@ public final class LogCapture: LogHandler {
     }
 
     public var logs: [CapturedLogMessage] {
-        return self.lock.withLock {
+        self.lock.withLock {
             self._logs
         }
     }
 
     public var deadLetterLogs: [CapturedLogMessage] {
-        return self.lock.withLock {
+        self.lock.withLock {
             self._logs.filter { $0.metadata?.keys.contains("deadLetter") ?? false }
         }
     }
@@ -69,13 +70,13 @@ extension LogCapture {
 extension LogCapture {
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         self.lock.withLockVoid {
-            self._logs.append(CapturedLogMessage(level: level, message: message, metadata: metadata, file: file, function: function, line: line))
+            self._logs.append(CapturedLogMessage(date: Date(), level: level, message: message, metadata: metadata, file: file, function: function, line: line))
         }
     }
 
     public subscript(metadataKey _: String) -> Logger.Metadata.Value? {
         get {
-            return nil
+            nil
         }
         set {
             // ignore
@@ -92,13 +93,13 @@ extension LogCapture {
                 }
                 metadataString = String(metadataString.dropLast(2))
             }
-            print("Captured log [\(self.label)][\(log.file.split(separator: "/").last ?? ""):\(log.line)]: [\(log.level)] \(log.message)\(metadataString)")
+            print("Captured log [\(self.label)][\(log.date)][\(log.file.split(separator: "/").last ?? ""):\(log.line)]: [\(log.level)] \(log.message)\(metadataString)")
         }
     }
 
     public var logLevel: Logger.Level {
         get {
-            return Logger.Level.trace
+            Logger.Level.trace
         }
         set {
             // ignore
@@ -107,6 +108,7 @@ extension LogCapture {
 }
 
 public struct CapturedLogMessage {
+    let date: Date
     let level: Logger.Level
     let message: Logger.Message
     let metadata: Logger.Metadata?
