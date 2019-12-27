@@ -18,19 +18,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorAskTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class ActorAskTests: ActorSystemTestBase {
     struct TestMessage {
         let replyTo: ActorRef<String>
     }

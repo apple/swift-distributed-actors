@@ -17,20 +17,8 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ActorSystemTests: XCTestCase {
+final class ActorSystemTests: ActorSystemTestBase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
-
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
         let _: ActorRef<String> = try system.spawn("test", .ignore)

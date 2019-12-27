@@ -20,10 +20,7 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-class TraversalTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
+class TraversalTests: ActorSystemTestBase {
     struct ActorReady {
         let name: String
         init(_ name: String) {
@@ -32,8 +29,7 @@ class TraversalTests: XCTestCase {
     }
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        super.setUp()
 
         // we use the probe to make sure all actors are started before we start asserting on the tree
         let probe = self.testKit.spawnTestProbe(expecting: ActorReady.self)
@@ -62,10 +58,6 @@ class TraversalTests: XCTestCase {
         probe.stop() // stopping a probe however is still asynchronous...
         // thus we make use of the fact we know probe internals and that the expectNoMessage still will work in this situation
         try! probe.expectNoMessage(for: .milliseconds(300))
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
     }
 
     func test_printTree_shouldPrintActorTree() throws {

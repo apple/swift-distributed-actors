@@ -17,19 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ParentChildActorTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class ParentChildActorTests: ActorSystemTestBase {
     typealias ParentRef = ActorRef<ParentProtocol>
     enum ParentProtocol {
         case spawnChild(name: String, behavior: Behavior<ChildProtocol>)

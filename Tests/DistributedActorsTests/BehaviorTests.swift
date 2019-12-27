@@ -19,22 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-class BehaviorTests: XCTestCase {
-    var system: ActorSystem!
-    var eventLoopGroup: EventLoopGroup!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-        try! self.eventLoopGroup.syncShutdownGracefully()
-    }
-
+final class BehaviorTests: ActorSystemTestBase {
     public struct TestMessage {
         let message: String
         let replyTo: ActorRef<String>

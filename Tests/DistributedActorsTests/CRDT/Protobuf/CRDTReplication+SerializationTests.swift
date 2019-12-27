@@ -16,19 +16,11 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTReplicationSerializationTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
+final class CRDTReplicationSerializationTests: ActorSystemTestBase {
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+        _ = self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.registerProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1001)
         }
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
     }
 
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
@@ -118,7 +110,7 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             guard let ddg1 = deserializedDelta.underlying as? CRDT.GCounterDelta else {
                 throw self.testKit.fail("Should be a GCounter")
             }
-            "\(ddg1.state)".shouldContain("[actor:sact://CRDTReplicationSerializationTests@localhost:7337/user/alpha: 5]")
+            "\(ddg1.state)".shouldContain("[actor:sact://CRDTReplicationSerializationTests@localhost:9001/user/alpha: 5]")
         }
     }
 

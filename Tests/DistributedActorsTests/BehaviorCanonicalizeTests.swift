@@ -17,19 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class BehaviorCanonicalizeTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class BehaviorCanonicalizeTests: ActorSystemTestBase {
     func test_canonicalize_nestedSetupBehaviors() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe1")
 

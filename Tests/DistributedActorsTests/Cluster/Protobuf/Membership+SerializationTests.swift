@@ -18,19 +18,11 @@ import Logging
 import NIO
 import XCTest
 
-final class MembershipSerializationTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
+final class MembershipSerializationTests: ActorSystemTestBase {
     lazy var context: ActorSerializationContext! = ActorSerializationContext(log: system.log, localNode: system.cluster.node, system: system, allocator: system.settings.serialization.allocator)
 
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
     override func tearDown() {
-        self.system.shutdown().wait()
+        super.tearDown()
         self.context = nil
     }
 

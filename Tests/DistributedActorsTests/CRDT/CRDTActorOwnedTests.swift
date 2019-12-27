@@ -16,24 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTActorOwnedTests: XCTestCase {
-    var logCaptureHandler: LogCapture!
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.logCaptureHandler = LogCapture()
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
-        }
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.logCaptureHandler.printIfFailed(self.testRun)
-        self.system.shutdown().wait()
-    }
-
+final class CRDTActorOwnedTests: ActorSystemTestBase {
     private enum OwnerEventProbeMessage {
         case ownerDefinedOnUpdate
         case ownerDefinedOnDelete
@@ -135,7 +118,7 @@ final class CRDTActorOwnedTests: XCTestCase {
 
         // TODO: remove after figuring out why tests are flakey (https://github.com/apple/swift-distributed-actors/issues/157)
         defer {
-            self.logCaptureHandler.printLogs()
+            self.logCapture.printLogs()
         }
 
         // g1 has two owners

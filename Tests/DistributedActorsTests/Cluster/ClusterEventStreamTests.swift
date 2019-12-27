@@ -35,21 +35,9 @@ import DistributedActorsTestKit
 import NIO
 import XCTest
 
-final class ClusterEventStreamTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
+final class ClusterEventStreamTests: ActorSystemTestBase {
     let firstMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let secondMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
-
-    override func setUp() {
-        self.system = ActorSystem("\(type(of: self))")
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
 
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: ClusterEvent.self)
