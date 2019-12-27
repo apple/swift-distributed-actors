@@ -75,8 +75,27 @@ class ActorLifecycleTests: ActorSystemTestBase {
         """) // ka-pi-ba-ra
     }
 
-    func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {
-        pnote("NOT IMPLEMENTED YET") // FIXME: implement me please
+    func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let spawner: Behavior<String> = .receive { context, name in
+            let fromName = context.path
+            let _: ActorRef<Never> = try context.system.spawn("\(name)", .setup { context in
+                p.tell("me:\(context.path) spawned from \(fromName)")
+                return .receiveMessage { _ in .stop } // keep ignoring
+            })
+            return .stop
+        }
+        try system.spawn("a", spawner).tell("charlie")
+        try self.system.spawn("b", spawner).tell("charlie")
+        try self.system.spawn("c", spawner).tell("charlie")
+        try self.system.spawn("d", spawner).tell("charlie")
+        try self.system.spawn("e", spawner).tell("charlie")
+        try self.system.spawn("f", spawner).tell("charlie")
+
+        let spawnedBy = try p.expectMessage()
+        pinfo("Spawned by: \(spawnedBy)")
+
+        try p.expectNoMessage(for: .milliseconds(200))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
