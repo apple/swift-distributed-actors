@@ -17,19 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class PeriodicBroadcastTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class PeriodicBroadcastTests: ActorSystemTestBase {
     // TODO: Way more tests and capabilities; should be able to use receptionist to find nodes to broadcast to
 
     func test_PeriodicBroadcast_send() throws {

@@ -18,19 +18,7 @@ import Foundation
 import XCTest
 
 // TODO: "ActorGroup" perhaps could be better name?
-final class WorkerPoolTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class WorkerPoolTests: ActorSystemTestBase {
     func test_workerPool_registerNewlyStartedActors() throws {
         let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
 

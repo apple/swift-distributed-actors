@@ -16,19 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTEnvelopeSerializationTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
 
     func test_serializationOf_CRDTEnvelope_AnyDeltaCRDT_GCounter() throws {
@@ -52,7 +40,7 @@ final class CRDTEnvelopeSerializationTests: XCTestCase {
 
             gg1.value.shouldEqual(g1.value)
             gg1.delta.shouldNotBeNil()
-            "\(gg1.delta!.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@localhost:7337/user/alpha: 2]")
+            "\(gg1.delta!.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@localhost:9001/user/alpha: 2]")
         }
     }
 
@@ -77,7 +65,7 @@ final class CRDTEnvelopeSerializationTests: XCTestCase {
             }
 
             dg1Delta.state.count.shouldEqual(1)
-            "\(dg1Delta.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@localhost:7337/user/alpha: 2]")
+            "\(dg1Delta.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@localhost:9001/user/alpha: 2]")
         }
     }
 }

@@ -20,12 +20,9 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-class SerializationTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
+class SerializationTests: ActorSystemTestBase {
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+        _ = self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.registerCodable(for: ActorRef<String>.self, underId: 1001)
             settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
 
@@ -34,11 +31,6 @@ class SerializationTests: XCTestCase {
 
             settings.serialization.registerCodable(for: HasReceivesSystemMsgs.self, underId: 1005)
         }
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
     }
 
     func test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
@@ -107,7 +99,7 @@ class SerializationTests: XCTestCase {
             let addressAgain = try decoder.decode(ActorAddress.self, from: encoded)
             pinfo("Deserialized again: \(String(reflecting: addressAgain))")
 
-            "\(addressAgain)".shouldEqual("sact://SerializationTests@localhost:7337/user/hello")
+            "\(addressAgain)".shouldEqual("sact://SerializationTests@localhost:9001/user/hello")
         }
     }
 

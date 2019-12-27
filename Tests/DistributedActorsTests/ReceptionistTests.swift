@@ -17,19 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ReceptionistTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class ReceptionistTests: ActorSystemTestBase {
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()

@@ -19,11 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-final class SystemMessageRedeliveryHandlerTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-    var logCaptureHandler: LogCapture!
-
+final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
     var handler: SystemMessageRedeliveryHandler!
 
     let printLossyNetworkTestLogs = false
@@ -38,11 +34,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     let serEnvelope = TransportEnvelope(systemMessage: .start, recipient: ActorAddress._deadLetters)
 
     override func setUp() {
-        self.logCaptureHandler = LogCapture()
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
-            settings.overrideLogger = Logger(label: "mock", self.logCaptureHandler)
-        }
-        self.testKit = ActorTestKit(self.system)
+        super.setUp()
 
         self.eventLoop = EmbeddedEventLoop()
         self.channel = EmbeddedChannel(loop: self.eventLoop)
@@ -54,7 +46,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         if self.printLossyNetworkTestLogs {
             self.handler = SystemMessageRedeliveryHandler(log: self.system.log, cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         } else {
-            self.handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCaptureHandler), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            self.handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCapture), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         }
         /// reads go this way: vvv
         try! shouldNotThrow { try self.channel.pipeline.addHandler(self.writeRecorder).wait() }
@@ -66,6 +58,8 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     }
 
     override func tearDown() {
+        super.tearDown()
+
         if let channel = self.channel {
             XCTAssertNoThrow(try channel.finish())
             self.channel = nil
@@ -74,10 +68,6 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         self.readRecorder = nil
         self.writeRecorder = nil
         self.handler = nil
-
-        self.system.shutdown().wait()
-        self.system = nil
-        self.testKit = nil
     }
 
     // NOTE: Most of the re-logic is tested in isolation in `SystemMessagesRedeliveryTests`,
@@ -121,7 +111,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         try self.channel.writeInbound(TransportEnvelope(ack: _SystemMessage.ACK(sequenceNr: 1337), recipient: ._localRoot))
 
         // should log at trace, but generally considered harmless
-        try self.logCaptureHandler.shouldContain(prefix: "Received unexpected system message [ACK(1337)]", at: .warning)
+        try self.logCapture.shouldContain(prefix: "Received unexpected system message [ACK(1337)]", at: .warning)
     }
 
     func test_systemMessageRedeliveryHandler_receiveNACK() throws {
@@ -152,7 +142,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         if self.printLossyNetworkTestLogs {
             handler = SystemMessageRedeliveryHandler(log: system.log, cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         } else {
-            handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCaptureHandler), cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCapture), cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         }
 
         var lossySettings = FaultyNetworkSimulationSettings(mode: .drop(probability: 0.25))

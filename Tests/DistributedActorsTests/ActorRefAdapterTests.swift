@@ -17,19 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ActorRefAdapterTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+class ActorRefAdapterTests: ActorSystemTestBase {
     func test_adaptedRef_shouldConvertMessages() throws {
         let probe = self.testKit.spawnTestProbe(expecting: String.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<Int>.self)
@@ -56,24 +44,22 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_overNetwork_shouldConvertMessages() throws {
-        let systemOne = ActorSystem("One-RemoteActorRefAdapterTests") { settings in
+        let firstSystem = self.setUpNode("One-RemoteActorRefAdapterTests") { settings in
             settings.cluster.enabled = true
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 1881
         }
-        defer { systemOne.shutdown().wait() }
-        let firstTestKit = ActorTestKit(systemOne)
+        let firstTestKit = self.testKit(firstSystem)
         let probe = firstTestKit.spawnTestProbe(expecting: String.self)
         let refProbe = firstTestKit.spawnTestProbe(expecting: ActorRef<Int>.self)
 
-        let systemTwo = ActorSystem("Two-RemoteActorRefAdapterTests") { settings in
+        let systemTwo = self.setUpNode("Two-RemoteActorRefAdapterTests") { settings in
             settings.cluster.enabled = true
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 1991
         }
-        defer { systemTwo.shutdown().wait() }
 
-        systemOne.cluster.join(node: systemTwo.settings.cluster.node)
+        firstSystem.cluster.join(node: systemTwo.settings.cluster.node)
 
         sleep(2)
 

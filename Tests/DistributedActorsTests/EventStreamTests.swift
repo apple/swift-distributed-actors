@@ -17,19 +17,7 @@ import DistributedActorsTestKit
 import NIO
 import XCTest
 
-final class EventStreamTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem("\(type(of: self))")
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class EventStreamTests: ActorSystemTestBase {
     func test_eventStream_shouldPublishEventsToAllSubscribers() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: String.self)
         let p2 = self.testKit.spawnTestProbe(expecting: String.self)

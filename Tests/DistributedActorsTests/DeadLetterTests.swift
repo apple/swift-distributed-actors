@@ -17,28 +17,12 @@ import DistributedActorsTestKit
 @testable import Logging
 import XCTest
 
-final class DeadLetterTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-    var logCaptureHandler: LogCapture!
-
-    override func setUp() {
-        self.logCaptureHandler = LogCapture()
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
-            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: "mock")
-        }
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class DeadLetterTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: DeadLetterOffice tests
 
     func test_deadLetters_logWithSourcePosition() throws {
-        let log = Logger(label: "mock", self.logCaptureHandler)
+        let log = Logger(label: "mock", self.logCapture)
 
         let address = try ActorAddress(path: ActorPath._user.appending("someone"), incarnation: .random())
         let office = DeadLetterOffice(log, address: address, system: system)
@@ -94,10 +78,10 @@ final class DeadLetterTests: XCTestCase {
 
     private func awaitLogContaining(text: String) throws {
         return try self.testKit.eventually(within: .seconds(1)) {
-            if !self.logCaptureHandler.logs.contains(where: { log in
+            if !self.logCapture.logs.contains(where: { log in
                 "\(log)".contains(text)
             }) {
-                throw TestError("Keep waiting; Contained only: \(self.logCaptureHandler.logs)")
+                throw TestError("Keep waiting; Contained only: \(self.logCapture.logs)")
             }
         }
     }

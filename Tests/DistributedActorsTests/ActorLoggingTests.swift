@@ -17,10 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ActorLoggingTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
+final class ActorLoggingTests: ActorSystemTestBase {
     var exampleSenderPath: ActorPath!
     let exampleTrace = Trace(
         version: 0,
@@ -31,18 +28,13 @@ class ActorLoggingTests: XCTestCase {
     )
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        super.setUp()
 
         self.exampleSenderPath = try! ActorPath(root: "user")
         self.exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
         self.exampleSenderPath.append(segment: try! ActorPathSegment("deep"))
         self.exampleSenderPath.append(segment: try! ActorPathSegment("path"))
         self.exampleSenderPath.append(segment: try! ActorPathSegment("avoid-rendering-this-if-possible"))
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
     }
 
     func test_actorLogger_shouldIncludeActorPath() throws {

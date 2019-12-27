@@ -18,19 +18,7 @@ import XCTest
 
 @testable import DistributedActors
 
-class TimersTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class TimersTests: ActorSystemTestBase {
     func test_timerKey_shouldPrintNicely() {
         TimerKey("Hello").description.shouldEqual("TimerKey(Hello)")
         TimerKey("Hello", isSystemTimer: true).description.shouldEqual("TimerKey(Hello, isSystemTimer: true)")
