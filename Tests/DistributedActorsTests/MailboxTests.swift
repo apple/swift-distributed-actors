@@ -17,17 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class MailboxTests: XCTestCase {
-    var system: ActorSystem!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class MailboxTests: ActorSystemTestBase {
     func test_sendMessage_shouldDropMessagesWhenFull() {
         let mailbox: Mailbox<Int> = Mailbox(system: self.system, capacity: 2)
 

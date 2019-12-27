@@ -17,17 +17,11 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class RemoteActorRefProviderTests: XCTestCase {
-    var system: ActorSystem!
-
+final class RemoteActorRefProviderTests: ActorSystemTestBase {
     override func setUp() {
-        self.system = ActorSystem("RemoteActorRefProviderTests") { settings in
+        _ = self.setUpNode(String(reflecting: Self.self)) { settings in
             settings.cluster.enabled = true
         }
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
     }
 
     let node = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeID(888_888))

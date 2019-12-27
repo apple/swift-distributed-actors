@@ -24,19 +24,7 @@ import Darwin
 import Glibc
 #endif
 
-class SupervisionTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class SupervisionTests: ActorSystemTestBase {
     enum FaultyError: Error {
         case boom(message: String)
     }

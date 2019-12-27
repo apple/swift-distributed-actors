@@ -19,24 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-class DispatcherTests: XCTestCase {
-    var group: EventLoopGroup!
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-        self.group.shutdownGracefully(queue: DispatchQueue.global()) { error in
-            _ = error.map { err in fatalError("Failed terminating event loops: \(err)") }
-        }
-    }
-
+final class DispatcherTests: ActorSystemTestBase {
     // MARK: Running "on NIO" for fun and profit
 
     func test_runOn_nioEventLoop() throws {
@@ -48,7 +31,7 @@ class DispatcherTests: XCTestCase {
             return .same
         }
 
-        let w = try system.spawn(.anonymous, props: .dispatcher(.nio(self.group.next())), behavior)
+        let w = try system.spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup.next())), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -67,7 +50,7 @@ class DispatcherTests: XCTestCase {
             return .same
         }
 
-        let w = try system.spawn(.anonymous, props: .dispatcher(.nio(self.group)), behavior)
+        let w = try system.spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup)), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()

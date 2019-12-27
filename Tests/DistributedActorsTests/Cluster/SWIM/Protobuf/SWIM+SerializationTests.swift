@@ -16,19 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class SWIMSerializationTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
-    override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
-    }
-
+final class SWIMSerializationTests: ActorSystemTestBase {
     func test_serializationOf_ping() throws {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.Ack.self)

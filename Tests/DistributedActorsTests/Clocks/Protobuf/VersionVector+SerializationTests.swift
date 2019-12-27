@@ -16,21 +16,13 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class VersionVectorSerializationTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
-
+final class VersionVectorSerializationTests: ActorSystemTestBase {
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+        self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.registerProtobufRepresentable(for: ReplicaId.self, underId: 1001)
             settings.serialization.registerProtobufRepresentable(for: VersionVector.self, underId: 1002)
             settings.serialization.registerProtobufRepresentable(for: VersionDot.self, underId: 1003)
         }
-        self.testKit = ActorTestKit(self.system)
-    }
-
-    override func tearDown() {
-        self.system.shutdown().wait()
     }
 
     let actorA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .wellKnown)
@@ -46,7 +38,7 @@ final class VersionVectorSerializationTests: XCTestCase {
             let bytes = try system.serialization.serialize(message: r)
             let deserialized = try system.serialization.deserialize(ReplicaId.self, from: bytes)
 
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:7337/user/A")
+            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A")
         }
     }
 
@@ -61,8 +53,8 @@ final class VersionVectorSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(VersionVector.self, from: bytes)
 
             deserialized.state.count.shouldEqual(2) // replicas A and B
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:7337/user/A: 2")
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:7337/user/B: 5")
+            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A: 2")
+            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/B: 5")
         }
     }
 
@@ -77,7 +69,7 @@ final class VersionVectorSerializationTests: XCTestCase {
         }
     }
 
-    // ==== ------------------------------------------------------------------------------------------------------------
+    // ==== -----------------------------------------------------------------------------------------------------------
     // MARK: VersionDot
 
     func test_serializationOf_VersionDot() throws {
@@ -87,7 +79,7 @@ final class VersionVectorSerializationTests: XCTestCase {
             let bytes = try system.serialization.serialize(message: dot)
             let deserialized = try system.serialization.deserialize(VersionDot.self, from: bytes)
 
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:7337/user/A")
+            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A")
             deserialized.version.shouldEqual(2)
         }
     }

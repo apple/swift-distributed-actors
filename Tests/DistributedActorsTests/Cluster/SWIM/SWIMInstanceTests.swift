@@ -16,19 +16,17 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class SWIMInstanceTests: XCTestCase {
-    var system: ActorSystem!
-    var testKit: ActorTestKit!
+final class SWIMInstanceTests: ActorSystemTestBase {
     var clusterTestProbe: ActorTestProbe<ClusterShell.Message>!
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        super.setUp()
         self.clusterTestProbe = self.testKit.spawnTestProbe()
     }
 
     override func tearDown() {
-        self.system.shutdown().wait()
+        super.tearDown()
+        self.clusterTestProbe = nil
     }
 
     func test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod() {
