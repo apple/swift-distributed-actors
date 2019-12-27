@@ -86,7 +86,7 @@ internal struct HandshakeStateMachine {
         ) {
             precondition(localNode.node != remoteNode, "MUST NOT attempt connecting to own bind address. Address: \(remoteNode)")
             self.settings = settings
-            self.backoff = settings.handshakeBackoffStrategy
+            self.backoff = settings.associationHandshakeBackoffStrategy
             self.localNode = localNode
             self.remoteNode = remoteNode
             self.whenCompleted = whenCompleted
