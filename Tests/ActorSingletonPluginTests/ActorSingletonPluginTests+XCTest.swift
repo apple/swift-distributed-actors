@@ -25,6 +25,8 @@ extension ActorSingletonPluginTests {
         return [
             ("test_nonCluster", test_nonCluster),
             ("test_singletonByClusterLeadership", test_singletonByClusterLeadership),
+            ("test_singletonByClusterLeadership_stashMessagesIfNoLeader", test_singletonByClusterLeadership_stashMessagesIfNoLeader),
+            ("test_singletonByClusterLeadership_withLeaderChange", test_singletonByClusterLeadership_withLeaderChange),
         ]
     }
 }
