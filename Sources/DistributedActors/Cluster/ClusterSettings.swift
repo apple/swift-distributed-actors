@@ -88,7 +88,7 @@ public struct ClusterSettings {
     /// Defines when an association shall be completely dropped from the tombstones list.
     /// An association ("unique connection identifier between two nodes") is kept as tombstone when severing a connection between nodes,
     /// in order to avoid accidental re-connections to given node. Once a node has been downed, removed, and disassociated, it MUST NOT be
-    // communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
+    /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
     public var associationTombstoneTimeToLive: TimeAmount = .hours(24) * 1
 
     // ==== ------------------------------------------------------------------------------------------------------------
