@@ -51,6 +51,23 @@ final class MembershipTests: XCTestCase {
         MemberStatus.removed.shouldBeLessThanOrEqual(.removed)
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: age ordering
+
+    func test_age_ordering() {
+        let ms = [
+            Member(node: firstMember.node, status: .joining),
+            Member(node: firstMember.node, status: .up, upNumber: 1),
+            Member(node: firstMember.node, status: .down, upNumber: 4),
+            Member(node: firstMember.node, status: .up, upNumber: 2),
+        ]
+        let ns = ms.map { $0.upNumber }
+        ns.shouldEqual([nil, 1, 2, 4])
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Member lookups
+
     func test_member_forNonUniqueNode() {
         var membership: Membership = [firstMember, secondMember]
         var secondReplacement = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
@@ -298,7 +315,7 @@ final class MembershipTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: diff
+    // MARK: Diffing
 
     func test_membershipDiff_beEmpty_whenNothingChangedForIt() {
         let changed = self.initialMembership
@@ -340,5 +357,40 @@ final class MembershipTests: XCTestCase {
         diffEntry.node.shouldEqual(self.newMember.node)
         diffEntry.fromStatus.shouldBeNil()
         diffEntry.toStatus.shouldEqual(.joining)
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Merge Memberships
+
+    func test_merge_fromAhead_same() {
+        var membership = self.initialMembership
+        let ahead = self.initialMembership
+
+        let changes = membership.merge(fromAhead: ahead)
+
+        changes.count.shouldEqual(0)
+        membership.shouldEqual(self.initialMembership)
+    }
+
+    func test_merge_fromAhead_membership_withAdditionalMember() {
+        var membership = self.initialMembership
+        var ahead = membership
+        _ = ahead.join(self.newMember.node)
+
+        let changes = membership.merge(fromAhead: ahead)
+
+        changes.count.shouldEqual(1)
+        membership.shouldEqual(self.initialMembership.joining(self.newMember.node))
+    }
+
+    func test_merge_fromAhead_membership_withMemberNowDown() {
+        var membership = self.initialMembership
+        var ahead = membership
+        ahead.mark(self.firstMember.node, as: .down)
+
+        let changes = membership.merge(fromAhead: ahead)
+
+        changes.count.shouldEqual(1)
+        membership.shouldEqual(self.initialMembership)
     }
 }

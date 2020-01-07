@@ -27,7 +27,9 @@ import DistributedActors
 /// singleton is shifted to different nodes.
 ///
 /// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
-///    the singleton allocation.
+///   the singleton allocation.
+/// - SeeAlso: The `ActorSingleton` mechanism conceptually similar to Erlang/OTP's <a href="http://erlang.org/doc/design_principles/distributed_applications.html">`DistributedApplication`</a>,
+//             and <a href="https://doc.akka.io/docs/akka/current/cluster-singleton.html">`ClusterSingleton` in Akka</a>.
 public final class ActorSingleton<Message> {
     /// Settings for the `ActorSingleton`
     public let settings: ActorSingletonSettings
@@ -85,6 +87,7 @@ extension ActorSingleton: Plugin {
         }
     }
 
+    // TODO: Future
     public func stop(_ system: ActorSystem) -> Result<Void, Error> {
         // Hand over the singleton gracefully
         let resolveContext = ResolveContext<ActorSingletonManager<Message>.Directive>(address: ._singletonManager(name: self.settings.name), system: system)
@@ -125,10 +128,10 @@ public enum AllocationStrategySettings {
     /// Singletons will run on the cluster leader
     case leadership
 
-    func make(_: ClusterSettings, _: ActorSingletonSettings) -> AllocationStrategy {
+    func make(_: ClusterSettings, _: ActorSingletonSettings) -> ActorSingletonAllocationStrategy {
         switch self {
         case .leadership:
-            return AllocationByLeadership()
+            return ActorSingletonAllocationByLeadership()
         }
     }
 }

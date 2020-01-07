@@ -40,12 +40,12 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         case .some(.clusterEvent(let protoEvent)):
             self = try .requestMembershipChange(.init(fromProto: protoEvent, context: context))
         case .some(.gossip(let protoGossip)):
-            self = try .gossip(
-                .update(
-                    from: .init(fromProto: protoGossip.from, context: context),
-                    protoGossip.members.map { try Member(fromProto: $0, context: context) }
-                )
-            )
+//            self = try .gossip(
+//                .update(
+//                    from: .init(fromProto: protoGossip.from, context: context),
+            fatalError("TODO: implement serialization") // protoGossip.members.map { try Member(fromProto: $0, context: context) }
+//                )
+//            )
         case .none:
             throw SerializationError.missingField("message", type: "\(InternalProtobufRepresentation.self)")
         }

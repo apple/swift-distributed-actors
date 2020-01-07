@@ -24,6 +24,7 @@ extension MembershipTests {
     static var allTests: [(String, (MembershipTests) -> () throws -> Void)] {
         return [
             ("test_status_ordering", test_status_ordering),
+            ("test_age_ordering", test_age_ordering),
             ("test_member_forNonUniqueNode", test_member_forNonUniqueNode),
             ("test_member_forNonUniqueNode_givenReplacementNodeStored", test_member_forNonUniqueNode_givenReplacementNodeStored),
             ("test_apply_LeadershipChange", test_apply_LeadershipChange),
@@ -41,6 +42,9 @@ extension MembershipTests {
             ("test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt", test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt),
             ("test_membershipDiff_shouldIncludeEntry_whenMemberRemoved", test_membershipDiff_shouldIncludeEntry_whenMemberRemoved),
             ("test_membershipDiff_shouldIncludeEntry_whenMemberAdded", test_membershipDiff_shouldIncludeEntry_whenMemberAdded),
+            ("test_merge_fromAhead_same", test_merge_fromAhead_same),
+            ("test_merge_fromAhead_membership_withAdditionalMember", test_merge_fromAhead_membership_withAdditionalMember),
+            ("test_merge_fromAhead_membership_withMemberNowDown", test_merge_fromAhead_membership_withMemberNowDown),
         ]
     }
 }

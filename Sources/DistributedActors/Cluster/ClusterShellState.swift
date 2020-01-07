@@ -30,7 +30,7 @@ internal protocol ReadOnlyClusterState {
     var backoffStrategy: BackoffStrategy { get }
 
     /// Unique address of the current node.
-    var selfNode: UniqueNode { get }
+    var myselfNode: UniqueNode { get }
     var settings: ClusterSettings { get }
 }
 
@@ -44,16 +44,13 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     let events: EventStream<ClusterEvent>
 
-    let selfNode: UniqueNode
+    let myselfNode: UniqueNode
     let channel: Channel
-
-    // TODO: replace with gossip
-    let gossip: PeriodicBroadcastControl<ClusterShell.Message>
 
     let eventLoopGroup: EventLoopGroup
 
     var backoffStrategy: BackoffStrategy {
-        return self.settings.associationHandshakeBackoffStrategy
+        self.settings.handshakeBackoffStrategy
     }
 
     let allocator: ByteBufferAllocator
@@ -61,19 +58,40 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
     private var _associations: [Node: Association.State] = [:]
 
-    var membership: Membership
+    let gossipControl: ConvergentGossipControl<Membership.Gossip>
 
-    init(settings: ClusterSettings, channel: Channel, events: EventStream<ClusterEvent>, gossip: PeriodicBroadcastControl<ClusterShell.Message>, log: Logger) {
+    /// Updating the `latestGossip` causes the gossiper to be informed about it, such that the next time it does a gossip round
+    /// it uses the latest gossip available.
+    var _latestGossip: Membership.Gossip
+    var latestGossip: Membership.Gossip {
+        get {
+            self._latestGossip
+        }
+        set {
+            self._latestGossip = newValue.incrementingOwnerVersion()
+        }
+    }
+
+    var membership: Membership {
+        get {
+            self.latestGossip.membership
+        }
+        set {
+            self.latestGossip.membership = newValue
+        }
+    }
+
+    init(settings: ClusterSettings, channel: Channel, events: EventStream<ClusterEvent>, gossipControl: ConvergentGossipControl<Membership.Gossip>, log: Logger) {
         self.log = log
         self.settings = settings
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
-        self.selfNode = settings.uniqueBindNode
-        self.membership = .empty
+        self.myselfNode = settings.uniqueBindNode
+        self._latestGossip = Membership.Gossip(ownerNode: settings.uniqueBindNode)
 
         self.events = events
-        self.gossip = gossip
+        self.gossipControl = gossipControl
         self.channel = channel
     }
 
@@ -128,7 +146,7 @@ extension ClusterShellState {
 
         let initiated = HandshakeStateMachine.InitiatedState(
             settings: self.settings,
-            localNode: self.selfNode,
+            localNode: self.myselfNode,
             connectTo: remoteNode,
             whenCompleted: whenCompleted
         )
@@ -420,11 +438,11 @@ extension ClusterShellState {
             return false
         }
 
-        _ = self.tryPerformLeaderTasks()
+        _ = self.tryCollectLeaderActions()
         // TODO: actions may want to be acted upon, they're like directives, we currently have no such need though;
         // such actions be e.g. "kill association right away" or "asap tell that node .down" directly without waiting for gossip etc
 
-        self.log.trace("Membership updated \(self.membership.prettyDescription(label: "\(self.selfNode)")),\n  by \(event)")
+        self.log.trace("Membership updated \(self.membership.prettyDescription(label: "\(self.myselfNode)")),\n  by \(event)")
         return true
     }
 
@@ -441,36 +459,29 @@ extension ClusterShellState {
     }
 
     /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.
-    mutating func tryPerformLeaderTasks() -> [LeaderAction] {
-        guard self.membership.isLeader(self.selfNode) else {
+    // TODO: test the actions when leader, not leader, that only applies to joining ones etc
+    mutating func tryCollectLeaderActions() -> [LeaderAction] {
+        guard self.membership.isLeader(self.myselfNode) else {
+            return [] // since we are not the leader, we perform no tasks
+        }
+
+        func moveMembersUp() -> [LeaderAction] {
+            let joiningMembers = self.membership.members(withStatus: .joining)
+
+            return joiningMembers.map { joiningMember in
+                let change = MembershipChange(member: joiningMember, toStatus: .up)
+                return LeaderAction.moveMember(change)
+            }
+        }
+
+        func removeMembers() -> [LeaderAction] {
+            // TODO: implement member removal; once all nodes have seen a node as Down, we move it to Removed
             return []
         }
 
         var leadershipActions: [LeaderAction] = []
-
-        func moveMembersUp() {
-            let joiningMembers = self.membership.members(withStatus: .joining, reachability: .reachable)
-
-            // TODO; do we really need seen tables here? Need to look at some more cases when "move to up" would be a potentially wrong decision... when really?
-            // TODO: can a seen table be a number of "every they at least know about membership in version X" -- TODO causality checking...
-            guard !joiningMembers.isEmpty else {
-                return
-            }
-
-            for joiningMember in joiningMembers {
-                let movingUp = MembershipChange(member: joiningMember, toStatus: .up)
-                leadershipActions.append(.moveMember(movingUp))
-                let change = self.membership.apply(movingUp)
-
-                // FIXME: the changes should be gossiped rather than sent directly
-                if let change = change {
-                    self.log.info("Leader moving member: \(change)")
-                    self.events.publish(.membershipChange(change))
-                }
-            }
-        }
-
-        moveMembersUp()
+        leadershipActions.append(contentsOf: moveMembersUp())
+        leadershipActions.append(contentsOf: removeMembers())
 
         return leadershipActions
     }
@@ -488,5 +499,9 @@ extension ClusterShellState {
         [
             "membership/count": "\(String(describing: self.membership.count(atLeast: .joining)))",
         ]
+    }
+
+    func logMembership() {
+        self.log.info("MEMBERSHIP:::: \(self.membership.prettyDescription(label: self.myselfNode.node.systemName))")
     }
 }

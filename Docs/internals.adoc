@@ -178,3 +178,11 @@ are not awoken to perform any checks.
 
 
 #TODO consider and explain races of lookups; should be correct by construction (since a watch needs a message send) but do make sure#
+
+==== Vocabulary
+
+- peer - any "peer", could be an actor or a node, used in peer-to-peer / gossip situations
+- member - a member of the cluster, participating in gossip and with its own lifecycle etc
+- node - any node we are talking to, it may not YET be part of the cluster, i.e. every member is a node, but not every node is a member
+- convergence - a situation in which "we know that all other members know" about some information at some given time T (usually in "vector clock time")
+- leader - a leader is a special member within within membership, and may perform special tasks; Leaders are NOT guaranteed to be globally unique (!), it is just a role filed by some node

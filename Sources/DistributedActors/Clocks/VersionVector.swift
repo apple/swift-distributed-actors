@@ -32,17 +32,15 @@
 /// - SeeAlso: [Why Logical Clocks are Easy](https://queue.acm.org/detail.cfm?id=2917756)
 /// - SeeAlso: [Version Vectors are not Vector Clocks](https://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/)
 public struct VersionVector {
-    public typealias ReplicaVersion = (replicaId: ReplicaId, version: Int)
+    // TODO: should we disallow mixing ReplicaId types somehow?
+
+    public typealias ReplicaVersion = (replicaId: ReplicaId, version: Int) // TODO: struct?
 
     // Internal state is a dictionary of replicas and their corresponding version
     internal var state: [ReplicaId: Int] = [:]
 
-    public var isEmpty: Bool {
-        return self.state.isEmpty
-    }
-
-    public var isNotEmpty: Bool {
-        return !self.isEmpty
+    public static func initial(replicaId: ReplicaId) -> Self {
+        .init((replicaId, 1))
     }
 
     public init() {}
@@ -51,11 +49,23 @@ public struct VersionVector {
         self.state.merge(versionVector.state) { _, new in new }
     }
 
+    public init(_ replicaVersion: ReplicaVersion) {
+        self.init([replicaVersion])
+    }
+
     public init(_ replicaVersions: [ReplicaVersion]) {
         for rv in replicaVersions {
             precondition(rv.version > 0, "Version must be greater than 0")
             self.state[rv.replicaId] = rv.version
         }
+    }
+
+    public var isEmpty: Bool {
+        return self.state.isEmpty
+    }
+
+    public var isNotEmpty: Bool {
+        return !self.isEmpty
     }
 
     /// Increment version at the given replica.
@@ -201,6 +211,7 @@ extension VersionDot: CustomStringConvertible {
 
 public enum ReplicaId: Hashable {
     case actorAddress(ActorAddress)
+    case uniqueNode(UniqueNode)
 }
 
 extension ReplicaId: CustomStringConvertible {
@@ -208,6 +219,8 @@ extension ReplicaId: CustomStringConvertible {
         switch self {
         case .actorAddress(let address):
             return "actor:\(address)"
+        case .uniqueNode(let node):
+            return "uniqueNode:\(node)"
         }
     }
 }
@@ -217,6 +230,10 @@ extension ReplicaId: Comparable {
         switch (lhs, rhs) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l < r
+        case (.uniqueNode(let l), .uniqueNode(let r)):
+            return l.nid.value < r.nid.value
+        case (.uniqueNode, _), (.actorAddress, _):
+            return false // TODO: should we even disallow comparing them?
         }
     }
 
@@ -224,6 +241,10 @@ extension ReplicaId: Comparable {
         switch (lhs, rhs) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l == r
+        case (.uniqueNode(let l), .uniqueNode(let r)):
+            return l == r
+        case (.uniqueNode, _), (.actorAddress, _):
+            return false // TODO: should we even disallow comparing them?
         }
     }
 }

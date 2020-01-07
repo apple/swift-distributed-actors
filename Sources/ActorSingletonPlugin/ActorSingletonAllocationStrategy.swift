@@ -18,7 +18,7 @@ import DistributedActors
 // MARK: Protocol for singleton allocation strategy
 
 /// Strategy for choosing a `UniqueNode` to allocate singleton.
-internal protocol AllocationStrategy {
+internal protocol ActorSingletonAllocationStrategy {
     /// Receives and handles the `clusterEvent`.
     ///
     /// - Returns: The current `node` after processing `clusterEvent`.
@@ -32,7 +32,7 @@ internal protocol AllocationStrategy {
 // MARK: AllocationStrategy implementations
 
 /// An `AllocationStrategy` in which selection is based on cluster leadership.
-internal class AllocationByLeadership: AllocationStrategy {
+internal class ActorSingletonAllocationByLeadership: ActorSingletonAllocationStrategy {
     var node: UniqueNode?
 
     init() {}
@@ -49,3 +49,7 @@ internal class AllocationByLeadership: AllocationStrategy {
         return self.node
     }
 }
+
+// TODO: "oldest node"
+
+// TODO: "race to become the host", all nodes race and try CAS-like to set themselves as leader -- this we could do with cas-paxos perhaps or similar; it is less predictable which node wins, which can be good or bad
