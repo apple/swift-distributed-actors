@@ -76,12 +76,12 @@ struct Association {
         let remoteNode: UniqueNode
 
         /// Determines when the Tombstone should be removed from kept tombstones in the ClusterShell.
-        /// End of life of the tombstone is calculated as `now + settings.associationTombstoneTimeToLive`.
+        /// End of life of the tombstone is calculated as `now + settings.associationTombstoneTTL`.
         let removalDeadline: Deadline
 
         init(fromAssociated associated: AssociatedState, settings: ClusterSettings) {
             // TODO: if we made system carry system.time we could always count from that point in time with a TimeAmount; require Clock and settings then
-            self.removalDeadline = Deadline.fromNow(settings.associationTombstoneTimeToLive)
+            self.removalDeadline = Deadline.fromNow(settings.associationTombstoneTTL)
             self.remoteNode = associated.remoteNode
         }
 
