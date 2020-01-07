@@ -51,15 +51,26 @@ public struct ProtoVersionReplicaId {
     set {_uniqueStorage()._value = .actorAddress(newValue)}
   }
 
+  public var uniqueNode: ProtoUniqueNode {
+    get {
+      if case .uniqueNode(let v)? = _storage._value {return v}
+      return ProtoUniqueNode()
+    }
+    set {_uniqueStorage()._value = .uniqueNode(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Value: Equatable {
     case actorAddress(ProtoActorAddress)
+    case uniqueNode(ProtoUniqueNode)
 
   #if !swift(>=4.1)
     public static func ==(lhs: ProtoVersionReplicaId.OneOf_Value, rhs: ProtoVersionReplicaId.OneOf_Value) -> Bool {
       switch (lhs, rhs) {
       case (.actorAddress(let l), .actorAddress(let r)): return l == r
+      case (.uniqueNode(let l), .uniqueNode(let r)): return l == r
+      default: return false
       }
     }
   #endif
@@ -174,6 +185,7 @@ extension ProtoVersionReplicaId: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
   public static let protoMessageName: String = "VersionReplicaId"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "actorAddress"),
+    2: .same(proto: "uniqueNode"),
   ]
 
   fileprivate class _StorageClass {
@@ -208,6 +220,14 @@ extension ProtoVersionReplicaId: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           }
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {_storage._value = .actorAddress(v)}
+        case 2:
+          var v: ProtoUniqueNode?
+          if let current = _storage._value {
+            try decoder.handleConflictingOneOf()
+            if case .uniqueNode(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {_storage._value = .uniqueNode(v)}
         default: break
         }
       }
@@ -216,8 +236,12 @@ extension ProtoVersionReplicaId: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if case .actorAddress(let v)? = _storage._value {
+      switch _storage._value {
+      case .actorAddress(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      case .uniqueNode(let v)?:
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      case nil: break
       }
     }
     try unknownFields.traverse(visitor: &visitor)

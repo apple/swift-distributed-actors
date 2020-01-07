@@ -183,6 +183,11 @@ struct ProtoClusterMember {
     set {_uniqueStorage()._reachability = newValue}
   }
 
+  var upNumber: UInt32 {
+    get {return _storage._upNumber}
+    set {_uniqueStorage()._upNumber = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -314,12 +319,14 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     1: .same(proto: "node"),
     2: .same(proto: "status"),
     3: .same(proto: "reachability"),
+    4: .same(proto: "upNumber"),
   ]
 
   fileprivate class _StorageClass {
     var _node: ProtoUniqueNode? = nil
     var _status: ProtoClusterMemberStatus = .unspecified
     var _reachability: ProtoClusterMemberReachability = .unspecified
+    var _upNumber: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -329,6 +336,7 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       _node = source._node
       _status = source._status
       _reachability = source._reachability
+      _upNumber = source._upNumber
     }
   }
 
@@ -347,6 +355,7 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         case 1: try decoder.decodeSingularMessageField(value: &_storage._node)
         case 2: try decoder.decodeSingularEnumField(value: &_storage._status)
         case 3: try decoder.decodeSingularEnumField(value: &_storage._reachability)
+        case 4: try decoder.decodeSingularUInt32Field(value: &_storage._upNumber)
         default: break
         }
       }
@@ -364,6 +373,9 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       if _storage._reachability != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._reachability, fieldNumber: 3)
       }
+      if _storage._upNumber != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._upNumber, fieldNumber: 4)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -376,6 +388,7 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         if _storage._node != rhs_storage._node {return false}
         if _storage._status != rhs_storage._status {return false}
         if _storage._reachability != rhs_storage._reachability {return false}
+        if _storage._upNumber != rhs_storage._upNumber {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -54,7 +54,7 @@ internal class PeriodicBroadcastShell<Payload> {
         let delay = TimeAmount.seconds(1)
 
         return .setup { context in
-            context.timers.startSingle(key: "broadcast-tick", message: .tick, delay: delay)
+            self.scheduleBroadcastTick(context: context, delay: delay)
 
             var payload: Payload?
             var peers: Set<ActorRef<Payload>> = []
@@ -74,15 +74,20 @@ internal class PeriodicBroadcastShell<Payload> {
                         self.onBroadcastTick(context, peers: peers, payload: payload)
                     }
 
-                    context.timers.startSingle(key: "tick", message: .tick, delay: delay)
+                    self.scheduleBroadcastTick(context: context, delay: delay)
                 }
                 return .same
             }
             .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                 peers = peers.filter { $0.address != terminated.address }
+                // TODO: could pause ticks since we have zero peers now?
                 return .same
             }
         }
+    }
+
+    private func scheduleBroadcastTick(context: ActorContext<Message>, delay: TimeAmount) {
+        context.timers.startSingle(key: "broadcast-tick", message: .tick, delay: delay)
     }
 
     private func onBroadcastTick(_ context: ActorContext<Message>, peers: Set<ActorRef<Payload>>, payload: Payload) {

@@ -244,7 +244,7 @@ internal class ClusterShell {
         /// If the passed in event applied to the current membership is an effective change, the change will be published using the `system.cluster.events`.
         case requestMembershipChange(ClusterEvent) // TODO: make a command
         /// Messages from "high-level" gossip mechanism, sharing Member status among cluster members.
-        case gossip(MembershipGossip)
+        case gossip(Membership.Gossip) // TODO: make this onGossip, to be sent from Gossiper when it receives new ones
     }
 
     // this is basically our API internally for this system
@@ -289,12 +289,12 @@ internal class ClusterShell {
     }
 
     private var behavior: Behavior<Message> {
-        return self.bind() // todo message self to bind?
+        self.bind()
     }
 
     private var props: Props =
         Props()
-        .supervision(strategy: .escalate) // always fail completely
+        .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -313,7 +313,7 @@ extension ClusterShell {
             let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
             self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: Props(), swimBehavior, wellKnown: true)
 
-            // automatic leader for .joining -> .up
+            // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
                 _ = try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
@@ -339,18 +339,21 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                // TODO: make it actual gossip, not broadcast
-                let gossip = try PeriodicBroadcast.start(context, of: ClusterShell.Message.self)
+                let gossipControl = try ConvergentGossip.start(
+                    context, name: "gossip", of: Membership.Gossip.self,
+                    notifyOnGossipRef: context.messageAdapter(from: Membership.Gossip.self) { Optional.some(Message.gossip($0)) }
+                )
+
                 let state = ClusterShellState(
                     settings: clusterSettings,
                     channel: chan,
                     events: self.clusterEvents,
-                    gossip: gossip,
+                    gossipControl: gossipControl,
                     log: context.log
                 )
 
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
-                context.myself.tell(.gossip(.update(from: uniqueBindAddress, [Member(node: state.selfNode, status: .joining)])))
+                context.myself.tell(.gossip(Membership.Gossip(ownerNode: state.myselfNode)))
 
                 return self.ready(state: state)
             }
@@ -361,7 +364,7 @@ extension ClusterShell {
     ///
     /// Serves as main "driver" for handshake and association state machines.
     private func ready(state: ClusterShellState) -> Behavior<Message> {
-        func receiveShellCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
+        func receiveShellCommand(_ context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             state.tracelog(.inbound, message: command)
 
             switch command {
@@ -394,7 +397,7 @@ extension ClusterShell {
             }
         }
 
-        func receiveQuery(context: ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
+        func receiveQuery(_ context: ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
             state.tracelog(.inbound, message: query)
 
             switch query {
@@ -407,7 +410,7 @@ extension ClusterShell {
             }
         }
 
-        func receiveInbound(context: ActorContext<Message>, message: InboundMessage) throws -> Behavior<Message> {
+        func receiveInbound(_ context: ActorContext<Message>, message: InboundMessage) throws -> Behavior<Message> {
             switch message {
             case .handshakeOffer(let offer, let channel, let promise):
                 self.tracelog(context, .receiveUnique(from: offer.from), message: offer)
@@ -428,8 +431,8 @@ extension ClusterShell {
         }
 
         /// Allows processing in one spot, all membership changes which we may have emitted in other places, due to joining, downing etc.
-        func receiveChangeMembershipRequest(context: ActorContext<Message>, event: ClusterEvent) -> Behavior<Message> {
-            self.tracelog(context, .receive(from: state.selfNode.node), message: event)
+        func receiveChangeMembershipRequest(_ context: ActorContext<Message>, event: ClusterEvent) -> Behavior<Message> {
+            self.tracelog(context, .receive(from: state.myselfNode.node), message: event)
             var state = state
             if state.applyClusterMembershipChange(event) {
                 // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
@@ -437,18 +440,30 @@ extension ClusterShell {
             } // else no "effective change", thus we do not publish events
             return self.ready(state: state)
         }
-        // TODO: not final form; gossip should get its own more specialized datatypes
-        func receiveClusterGossip(context: ActorContext<Message>, from gossipOrigin: UniqueNode, members: [Member]) -> Behavior<Message> {
-            tracelog(context, .gossip(from: gossipOrigin), message: MembershipGossip.update(from: gossipOrigin, members))
+
+        func receiveMembershipGossip(
+            _ context: ActorContext<Message>,
+            _ state: ClusterShellState,
+            gossip: Membership.Gossip
+        ) -> Behavior<Message> {
+            context.log.trace("Gossip received [\(gossip)]", metadata: [
+                "tag": "membership",
+                "gossip/origin": "\(gossip.owner)",
+                "gossip/versionVector": "\(gossip.version)",
+                "gossip/localVersionVector": "\(state.latestGossip.version)",
+            ])
+            tracelog(context, .gossip(gossip), message: gossip)
 
             // TODO: this might differ more in the future; a gossip will perform diffing of "known, their observation" etc.
             var state = state
-            for member in members {
-                let event: ClusterEvent = .membershipChange(.init(member: member))
-                if state.applyClusterMembershipChange(event) {
-                    // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
-                    self.clusterEvents.publish(event)
-                }
+            let mergeDirective = state.latestGossip.merge(incoming: gossip) // mutates the gossip
+
+            context.log.trace("Local gossip was \(mergeDirective.causalRelation) compared to incoming one, resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
+                "tag": "membership",
+            ])
+            mergeDirective.effectiveChanges.forEach { effectiveChange in
+                let event: ClusterEvent = .membershipChange(effectiveChange)
+                self.clusterEvents.publish(event)
             }
 
             return self.ready(state: state)
@@ -456,28 +471,28 @@ extension ClusterShell {
 
         // TODO: maybe sub receive them?
 
-        func updateGossip(context: ActorContext<Message>) {
+        func updateGossipPeers(context: ActorContext<Message>) {
             // ==== Update membership information to gossip to our latest "view" ---------------------------------------
-            // TODO: make it cleaner, where the Gossip itself manages what and where to gossip when we change membership.
-            // the State can have a willChange {} perhaps on membership and notify the Gossip with change there...
+            // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
             let members = state.membership.members(atMost: .removed)
             for member in members where member.node != state.selfNode {
-                let remoteClusterShell: ClusterShell.Ref = context.system._resolve(context: .init(address: ._clusterShell(on: member.node), system: context.system))
-                state.gossip.ref.tell(.introduce(peer: remoteClusterShell))
+                if state.myselfNode != member.node {
+                    let gossipPeer: ConvergentGossip<Membership.Gossip>.Ref = context.system._resolve(context: .init(address: ._cluster(on: member.node), system: context.system))
+                    state.gossipControl.introduce(peer: gossipPeer)
             }
-            state.gossip.set(.gossip(.update(from: state.selfNode, members)))
+            // TODO: was this needed here? state.gossipControl.update(Membership.Gossip())
         }
 
         return .setup { context in
-            updateGossip(context: context)
+            updateGossipPeers(context: context)
 
             return .receive { context, message in
                 switch message {
-                case .command(let command): return receiveShellCommand(context: context, command: command)
-                case .query(let query): return receiveQuery(context: context, query: query)
-                case .inbound(let inbound): return try receiveInbound(context: context, message: inbound)
-                case .requestMembershipChange(let event): return receiveChangeMembershipRequest(context: context, event: event)
-                case .gossip(.update(let from, let members)): return receiveClusterGossip(context: context, from: from, members: members)
+                case .command(let command): return receiveShellCommand(context, command: command)
+                case .query(let query): return receiveQuery(context, query: query)
+                case .inbound(let inbound): return try receiveInbound(context, message: inbound)
+                case .requestMembershipChange(let event): return receiveChangeMembershipRequest(context, event: event)
+                case .gossip(let gossip): return receiveMembershipGossip(context, state, gossip: gossip) // FIXME: include from?
                 }
             }
         }
@@ -495,7 +510,7 @@ extension ClusterShell {
     internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, replyTo: ActorRef<HandshakeResult>?) -> Behavior<Message> {
         var state = state
 
-        guard remoteNode != state.selfNode.node else {
+        guard remoteNode != state.myselfNode.node else {
             state.log.debug("Ignoring attempt to handshake with myself; Could have been issued as confused attempt to handshake as induced by discovery via gossip?")
             replyTo?.tell(.failure(.init(node: remoteNode, message: "Would have attempted handshake with self node, aborted handshake.")))
             return .same // TODO: could be drop
@@ -612,7 +627,8 @@ extension ClusterShell {
                 }
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
-                _ = state.tryPerformLeaderTasks() // TODO: refactor to handle or not return
+                let actions = state.tryCollectLeaderActions()
+                self.interpretLeaderActions(&state, actions)
 
                 /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
                 self.recordMetrics(context.system.metrics, membership: state.membership)
@@ -642,6 +658,21 @@ extension ClusterShell {
             state.abortIncomingHandshake(offer: offer, channel: channel)
             promise.fail(error)
             return .same
+        }
+    }
+
+    internal func interpretLeaderActions(_ state: inout ClusterShellState, _ actions: [ClusterShellState.LeaderAction]) {
+        for action in actions {
+            switch action {
+            case .moveMember(let movingUp):
+                let change = state.membership.apply(movingUp) // TODO: include up numbers
+
+                // FIXME: the changes should be gossiped rather than sent directly
+                if let change = change {
+                    state.log.info("Leader moving member: \(change)")
+                    state.events.publish(.membershipChange(change))
+                }
+            }
         }
     }
 }
@@ -722,7 +753,7 @@ extension ClusterShell {
         }
 
         /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
-        _ = state.tryPerformLeaderTasks() // TODO: don't return, or handle them (refactoring)
+        _ = state.tryCollectLeaderActions() // TODO: don't return, or handle them (refactoring)
 
         // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)
         /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
@@ -784,14 +815,14 @@ extension ClusterShell {
             // TODO: also close all associations (!!!)
             switch $0 {
             case .success:
-                context.log.info("Unbound server socket [\(addrDesc)], node: \(reflecting: state.selfNode)")
-                self.serializationPool.shutdown()
+                context.log.info("Unbound server socket [\(addrDesc)], node: \(reflecting: state.myselfNode)")
                 signalOnceUnbound.offerOnce(())
+                self.serializationPool.shutdown()
                 return .stop
             case .failure(let err):
-                context.log.warning("Failed while unbinding server socket [\(addrDesc)], node: \(reflecting: state.selfNode). Error: \(err)")
-                self.serializationPool.shutdown()
+                context.log.warning("Failed while unbinding server socket [\(addrDesc)], node: \(reflecting: state.myselfNode). Error: \(err)")
                 signalOnceUnbound.offerOnce(())
+                self.serializationPool.shutdown()
                 throw err
             }
         }
@@ -872,11 +903,11 @@ extension ClusterShell {
             }
         }
 
-        guard memberToDown.node != state.selfNode else {
+        guard memberToDown.node != state.myselfNode else {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
 
-            self.swimRef.tell(.local(.confirmDead(state.selfNode)))
+            self.swimRef.tell(.local(.confirmDead(state.myselfNode)))
             context.log.warning("Self node was determined [.down]. (TODO: initiate shutdown based on config)") // TODO: initiate a shutdown it configured to do so
 
             return state

@@ -86,6 +86,8 @@ XCTMain([
     testCase(LeadershipTests.allTests),
     testCase(MPSCLinkedQueueTests.allTests),
     testCase(MailboxTests.allTests),
+    testCase(MembershipGossipSeenTableTests.allTests),
+    testCase(MembershipGossipTests.allTests),
     testCase(MembershipSerializationTests.allTests),
     testCase(MembershipTests.allTests),
     testCase(NIOExtensionTests.allTests),

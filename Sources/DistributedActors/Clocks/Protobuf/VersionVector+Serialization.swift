@@ -23,6 +23,8 @@ extension ReplicaId: ProtobufRepresentable {
         switch self {
         case .actorAddress(let actorAddress):
             proto.actorAddress = try actorAddress.toProto(context: context)
+        case .uniqueNode(let node):
+            proto.uniqueNode = try node.toProto(context: context)
         }
         return proto
     }
@@ -36,6 +38,9 @@ extension ReplicaId: ProtobufRepresentable {
         case .actorAddress(let protoActorAddress):
             let actorAddress = try ActorAddress(fromProto: protoActorAddress, context: context)
             self = .actorAddress(actorAddress)
+        case .uniqueNode(let protoNode):
+            let node = try UniqueNode(fromProto: protoNode, context: context)
+            self = .uniqueNode(node)
         }
     }
 }

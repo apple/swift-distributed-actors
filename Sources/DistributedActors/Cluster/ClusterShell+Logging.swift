@@ -85,7 +85,7 @@ extension ClusterShell {
         case send(to: Node)
         case receive(from: Node)
         case receiveUnique(from: UniqueNode)
-        case gossip(from: UniqueNode)
+        case gossip(Membership.Gossip)
 
         var description: String {
             switch self {
@@ -93,8 +93,8 @@ extension ClusterShell {
                 return "     SEND(to:\(to))"
             case .receive(let from):
                 return "     RECV(from:\(from))"
-            case .gossip(let from):
-                return "   GOSSIP(from:\(from))"
+            case .gossip(let gossip):
+                return "   GOSSIP(\(gossip))"
             case .receiveUnique(let from):
                 return "RECV_UNIQ(from:\(from))"
             }

@@ -23,15 +23,30 @@ import Foundation
 public struct Member: Hashable {
     /// Unique node of this cluster member.
     public let node: UniqueNode
+
     /// Cluster membership status of this member, signifying the logical state it resides in the membership.
     /// Note, that a node that is reachable may still become `.down`, e.g. by issuing a manual `cluster.down(node:)` command or similar.
     public var status: MemberStatus
+
     /// Reachability signifies the failure detectors assessment about this members "reachability" i.e. if it is responding to health checks or not.
     public var reachability: MemberReachability
+
+    /// Sequence number at which this node was moved to `.up` by a leader.
+    /// The sequence starts at `1`, and 0 means the node was not moved to up _yet_.
+    public var upNumber: Int?
 
     public init(node: UniqueNode, status: MemberStatus) {
         self.node = node
         self.status = status
+        self.upNumber = nil
+        self.reachability = .reachable
+    }
+
+    internal init(node: UniqueNode, status: MemberStatus, upNumber: Int) {
+        assert(!status.isJoining, "Node \(node) was \(status) yet was given upNumber: \(upNumber). This is incorrect, as only at-least .up members may have upNumbers!")
+        self.node = node
+        self.status = status
+        self.upNumber = upNumber
         self.reachability = .reachable
     }
 
@@ -72,13 +87,26 @@ extension Member {
     }
 }
 
+extension Member {
+    /// Orders nodes by their `.upNumber` which is assigned by the leader when moving a node from joining to up.
+    /// This ordering is useful to find the youngest or "oldest" node.
+    ///
+    /// The oldest node specifically can come in handy, as we in some clusters may assume that a cluster has a stable
+    /// few core nodes which become "old" and tons of ad-hoc spun up nodes which are always "young" as they are spawned
+    /// and stopped on demand. Putting certain types of workloads onto "old(est)" nodes in such clusters has the benefit
+    /// of most likely not needing to balance/move work off them too often (in face of many ad-hoc worker spawns).
+    public static let ageOrdering: (Member, Member) -> Bool = { l, r in
+        (l.upNumber ?? 0) < (r.upNumber ?? 0)
+    }
+}
+
 extension Member: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         "Member(\(self.node), status: \(self.status), reachability: \(self.reachability))"
     }
 
     public var debugDescription: String {
-        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability))"
+        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability)\(self.upNumber.map { ", upNumber: \($0)" }, orElse: ""))"
     }
 }
 
@@ -104,11 +132,11 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     public typealias ArrayLiteralElement = Member
 
     public static var empty: Membership {
-        return .init(members: [])
+        .init(members: [])
     }
 
     internal static func initial(_ myselfNode: UniqueNode) -> Membership {
-        return Membership.empty.joining(myselfNode)
+        Membership.empty.joining(myselfNode)
     }
 
     /// Members MUST be stored `UniqueNode` rather than plain node, since there may exist "replacements" which we need
@@ -149,13 +177,17 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     /// for a non-unique `Node`. In practice, this happens when an existing node is superseded by a "replacement", and the
     /// previous node becomes immediately down.
     public func firstMember(_ node: Node) -> Member? {
-        return self._members.values.sorted(by: MemberStatus.Ordering).first(where: { $0.node.node == node })
+        return self._members.values.sorted(by: MemberStatus.progressOrdering).first(where: { $0.node.node == node })
+    }
+
+    public func youngestMember() -> Member? {
+        self.members(atLeast: .joining).max(by: Member.ageOrdering)
     }
 
     public func members(_ node: Node) -> [Member] {
         return self._members.values
             .filter { $0.node.node == node }
-            .sorted(by: MemberStatus.Ordering)
+            .sorted(by: MemberStatus.progressOrdering)
     }
 
     /// More efficient than using `members(atLeast:)` followed by a `.count`
@@ -338,9 +370,7 @@ extension Membership {
     public mutating func applyReachabilityChange(_ change: ReachabilityChange) -> Member? {
         self.mark(change.member.node, reachability: change.member.reachability)
     }
-}
 
-extension Membership {
     /// Returns the change; e.g. if we replaced a node the change `from` will be populated and perhaps a connection should
     /// be closed to that now-replaced node, since we have replaced it with a new node.
     public mutating func join(_ node: UniqueNode) -> MembershipChange {
@@ -378,6 +408,9 @@ extension Membership {
 
             var updatedMember = existingExactMember
             updatedMember.status = status
+            if status == .up {
+                updatedMember.upNumber = self.youngestMember()?.upNumber ?? 1
+            }
             self._members[existingExactMember.node] = updatedMember
 
             return MembershipChange(member: existingExactMember, toStatus: status)
@@ -449,6 +482,37 @@ extension Membership {
         var membership = self
         _ = membership.remove(node)
         return membership
+    }
+}
+
+extension Membership {
+    /// Merge function working on the assumption that the `incoming` Membership is KNOWN to be "ahead",
+    /// and e.g. if any nodes are NOT present in the incoming membership, they shall be considered `.removed`.
+    ///
+    /// Otherwise, functions as a normal merge, by moving all members "forward" in their respective lifecycles.
+    /// Meaning the following transitions are possible:
+    ///
+    /// ```
+    ///  self        | incoming
+    /// -------------+---------------------------------------
+    ///  <none>     --> [.joining, .up, .down, .leaving, .removed]
+    ///  [.joining] --> [.up, .down, .leaving, .removed]
+    ///  [.up]      --> [.down, .leaving, .removed]
+    ///  [.down]    --> [.leaving, .removed]
+    ///  [.leaving] --> [.removed]
+    ///  [.removed] --> [.removed] (removed is "special" though, and may actually be removed from members list after all)
+    /// ```
+    ///
+    /// - Returns: any membership changes that occurred (and have affected the current membership).
+    public mutating func merge(fromAhead ahead: Membership) -> [MembershipChange] {
+        let diff = Membership.diff(from: self, to: ahead)
+        let changes = diff.entries
+
+        changes.forEach { change in
+            self.apply(change)
+        }
+
+        return changes
     }
 }
 
@@ -645,7 +709,7 @@ public enum MemberStatus: String, Comparable {
 
     public static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding
 
-    public static let Ordering: (Member, Member) -> Bool = { $0.status < $1.status }
+    public static let progressOrdering: (Member, Member) -> Bool = { $0.status < $1.status }
 }
 
 extension MemberStatus {

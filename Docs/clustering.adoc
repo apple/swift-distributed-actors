@@ -133,3 +133,16 @@ which has to be called with the passphrase encoded as `[UInt8]`.
 ----
 include::{dir_sact_doc_tests}/ClusteringDocExamples.swift[tag=config_tls_passphrase]
 ----
+
+=== Gossip
+
+Gossip is a simple and _resilient_ technique for spreading information across a cluster.
+
+Distributed Actors use gossip to inform each other's nodes about the `Membership` as well as for failure detection.
+
+#RANDOM NOTES# Actors offer two kinds of gossip:
+
+- Convergence gossip -- implying that there is a moment in time where "all nodes know about the state being gossiped"
+- Perpetual -- a gossip which keeps going indefinitely, which is useful for failure detection or similar.
+
+
