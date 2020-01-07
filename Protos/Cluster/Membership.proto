@@ -29,6 +29,7 @@ message ClusterMember {
     UniqueNode node = 1;
     ClusterMemberStatus status = 2;
     ClusterMemberReachability reachability = 3;
+    uint32 upNumber = 4;
 }
 
 enum ClusterMemberReachability {

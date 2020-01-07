@@ -35,7 +35,7 @@ internal class ActorSingletonProxy<Message> {
     private let settings: ActorSingletonSettings
 
     /// The strategy that determines which node the singleton will be allocated
-    private let allocationStrategy: AllocationStrategy
+    private let allocationStrategy: ActorSingletonAllocationStrategy
 
     /// Props of the singleton behavior
     private let singletonProps: Props
@@ -54,7 +54,7 @@ internal class ActorSingletonProxy<Message> {
     /// Message buffer in case singleton `ref` is `nil`
     private let buffer: StashBuffer<Message>
 
-    init(settings: ActorSingletonSettings, allocationStrategy: AllocationStrategy, props: Props, _ behavior: Behavior<Message>) {
+    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: Props, _ behavior: Behavior<Message>) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props

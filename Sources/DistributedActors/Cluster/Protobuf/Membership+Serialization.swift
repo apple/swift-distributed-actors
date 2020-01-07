@@ -54,6 +54,9 @@ extension Member: InternalProtobufRepresentable {
         proto.node = try self.node.toProto(context: context)
         proto.status = self.status.toProto(context: context)
         proto.reachability = try self.reachability.toProto(context: context)
+        if let number = self.upNumber {
+            proto.upNumber = UInt32(number)
+        }
         return proto
     }
 
@@ -64,6 +67,7 @@ extension Member: InternalProtobufRepresentable {
         self.node = try .init(fromProto: proto.node, context: context)
         self.status = try .init(fromProto: proto.status, context: context)
         self.reachability = try .init(fromProto: proto.reachability, context: context)
+        self.upNumber = proto.upNumber == 0 ? nil : Int(proto.upNumber)
     }
 }
 
@@ -131,25 +135,27 @@ extension MemberStatus {
     }
 }
 
-extension MembershipGossip: InternalProtobufRepresentable {
+extension Membership.Gossip: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoClusterMembershipGossip
 
     func toProto(context: ActorSerializationContext) throws -> InternalProtobufRepresentation {
         var proto = InternalProtobufRepresentation()
-        switch self {
-        case .update(let from, let members):
-            proto.from = try from.toProto(context: context)
-            proto.members = try members.map { try $0.toProto(context: context) }
-        }
-        return proto
+//        switch self {
+//        case .update(let from, let members):
+        fatalError("TODO: implement me") // FIXME:
+//            proto.from = try from.toProto(context: context)
+//            proto.members = try members.map { try $0.toProto(context: context) }
+//        }
+//        return proto
     }
 
     init(fromProto proto: InternalProtobufRepresentation, context: ActorSerializationContext) throws {
-        guard proto.hasFrom else {
-            throw SerializationError.missingField("from", type: "\(InternalProtobufRepresentation.self)")
-        }
-        let from = try UniqueNode(fromProto: proto.from, context: context)
-        let members = try proto.members.map { try Member(fromProto: $0, context: context) }
-        self = .update(from: from, members)
+        fatalError("TODO: implement me") // FIXME:
+//        guard proto.hasFrom else {
+//            throw SerializationError.missingField("from", type: "\(InternalProtobufRepresentation.self)")
+//        }
+//        let from = try UniqueNode(fromProto: proto.from, context: context)
+//        let members = try proto.members.map { try Member(fromProto: $0, context: context) }
+//        self = .update(from: from, members)
     }
 }

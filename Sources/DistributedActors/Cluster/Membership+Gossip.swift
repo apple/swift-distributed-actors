@@ -17,7 +17,185 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Gossip about Membership
 
-/// High level (as opposed to gossip on failure detector layer) gossip about the status of members in the cluster.
-internal enum MembershipGossip {
-    case update(from: UniqueNode, [Member])
+///// High level (as opposed to gossip on failure detector layer) gossip about the status of members in the cluster.
+// internal enum MembershipGossip { // TODO: remove this, just use Membership.Gossip
+//    case update(from: UniqueNode, Membership.Gossip)
+// }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Membership.Gossip
+
+extension Membership {
+    /// Gossip payload about members in the cluster.
+    ///
+    /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
+    struct Gossip {
+        // TODO: can be moved to generic envelope ---------
+        let owner: UniqueNode
+        /// A table maintaining our perception of other nodes views on the version of membership.
+        /// Each row in the table represents what versionVector we know the given node has observed recently.
+        /// It may have in the mean time of course observed a new version already.
+        // TODO: There is tons of compression opportunity about not having to send full tables around in general, but for now we will just send them around
+        var seen: SeenTable
+        /// The version vector of this gossip and the `Membership` state owned by it.
+        var version: VersionVector {
+            self.seen.table[self.owner]! // !-safe, since we _always)_ know our own world view
+        }
+
+        // TODO: end of can be moved to generic envelope ---------
+
+        // Would be Payload of the generic envelope.
+        var membership: Membership
+
+        init(ownerNode: UniqueNode) {
+            self.owner = ownerNode
+            self.seen = SeenTable(myselfNode: ownerNode, version: VersionVector((.uniqueNode(ownerNode), 1)))
+
+            // The actual payload
+            self.membership = .initial(ownerNode)
+        }
+
+        /// Bumps the version via the owner.
+        mutating func incrementOwnerVersion() {
+            self.seen.incrementVersion(owner: self.owner, at: self.owner)
+        }
+
+        func incrementingOwnerVersion() -> Self {
+            var gossip = self
+            gossip.seen.incrementVersion(owner: self.owner, at: self.owner)
+            return gossip
+        }
+
+        // FIXME: incomplete merge impl
+        /// Merge an incoming gossip _into_ the current gossip.
+        /// Ownership of this gossip is retained, versions are bumped, and membership is merged.
+        mutating func merge(incoming: Gossip) -> MergeDirective {
+            // merge seen tables
+            // self.seen.merge(incoming: incoming.seen)
+            let causalRelation: VersionVector.CausalRelation = self.seen.compareVersion(observedOn: self.owner, to: incoming.version)
+            switch causalRelation {
+            case .happenedAfter:
+                // this version is "ahead" of the incoming one
+                return .init(causalRelation: causalRelation, effectiveChanges: [])
+            case .happenedBefore:
+                // this version is "behind" the incoming one
+                self.seen.merge(owner: self.owner, incoming: incoming)
+                let changes = self.membership.merge(fromAhead: incoming.membership)
+                return .init(causalRelation: causalRelation, effectiveChanges: changes)
+            case .concurrent:
+                // this and the incoming versions are concurrent, we need to merge and gossip with the incoming.owner
+                self.seen.merge(owner: self.owner, incoming: incoming)
+                let changes = self.membership.merge(fromAhead: incoming.membership)
+                return .init(causalRelation: causalRelation, effectiveChanges: changes)
+            case .same:
+                // both versions are the exact same, thus no changes can occur
+                return .init(causalRelation: causalRelation, effectiveChanges: [])
+            }
+        }
+
+        struct MergeDirective {
+            let causalRelation: VersionVector.CausalRelation
+            let effectiveChanges: [MembershipChange]
+        }
+    }
+}
+
+// TODO: Isn't the SeenTable the same as a collection of `VersionDot` in CRDTs?
+// TODO: Technically speaking, since Membership is also a move-only-forward datatype, the SeenTable should not be required
+//       for basic correctness. However thanks to keeping it, we are able to diagnose things much more, thus its main value.
+/// A table containing information about which node has seen the gossip at which version.
+struct SeenTable {
+    var table: [UniqueNode: VersionVector]
+
+    init(myselfNode: UniqueNode, version: VersionVector) {
+        self.table = [myselfNode: version]
+    }
+
+    /// If the table does NOT include the `node`, we assume that the `latestVersion` is "more recent than no information at all."
+    ///
+    /// - Returns: The `node`'s version's relationship to the latest version.
+    ///   E.g. `.happenedBefore` if the latest version is known to be more "recent" than the node's observed version.
+    /// - SeeAlso: The definition of `VersionVector.CausalRelation` for detailed discussion of all possible relations.
+    func compareVersion(observedOn owner: UniqueNode, to incomingVersion: VersionVector) -> VersionVector.CausalRelation {
+        /// We know that the node has seen _at least_ the membership at `nodeVersion`.
+        guard let versionOnNode = self.table[owner] else {
+            return .happenedBefore
+        }
+
+        return versionOnNode.compareTo(that: incomingVersion) // FIXME: tests
+    }
+
+    // FIXME: This could be too many layers;
+    // FIXME: Shouldn't we merge all incoming owner's, from the entire incoming table? !!!!!!!!!!!!!!!!!!!!!!!!
+    //        The information carried in Membership includes all information
+    /// Merging an incoming `Membership.Gossip` into a `SeenTable` means "progressing (version) time"
+    /// for both "us" and the incoming data's owner in "our view" about it.
+    ///
+    /// In other words, we gained information and our membership has "moved forward" as
+    mutating func merge(owner: UniqueNode, incoming: Membership.Gossip) {
+        var ownerVersion = self.table[owner] ?? VersionVector.initial(replicaId: .uniqueNode(owner))
+        ownerVersion.merge(other: incoming.version) // we gained information from the incoming gossip
+        self.table[owner] = ownerVersion
+
+        // This is our "local view" onto what we perceived the `incoming.owners` version to be, we merge it with the most recent version
+        var incomingOwnersVersion = self.table[incoming.owner] ?? VersionVector.initial(replicaId: .uniqueNode(incoming.owner))
+        incomingOwnersVersion.merge(other: incoming.version)
+        self.table[incoming.owner] = incomingOwnersVersion
+    }
+
+    // TODO: func haveNotYetSeen(version: VersionVector): [UniqueNode]
+
+    /// Increments a specific ReplicaVersion, in the view owned by the `owner`.
+    ///
+    /// E.g. if the owner is `A` it may increment its counter in such table:
+    /// ```
+    /// | A | A:1, B:10 |
+    /// +---------------+
+    /// | B | A:1, B:12 |
+    /// ```
+    ///
+    /// To obtain `A | A:2, B:10`, after which we know that our view is "ahead or concurrent" because of the difference
+    /// in the A field, meaning we need to gossip with B to converge those two version vectors.
+    @discardableResult
+    mutating func incrementVersion(owner: UniqueNode, at node: UniqueNode) -> VersionVector {
+        if var version = self.table[owner] {
+            version.increment(at: .uniqueNode(node))
+            self.table[owner] = version
+            return version
+        } else {
+            // we treat incrementing from "nothing" as creating a new entry
+            let version = VersionVector((.uniqueNode(node), 1))
+            self.table[owner] = version
+            return version
+        }
+    }
+
+    /// View a version vector at a specific node.
+    /// This "view" represents "our" latest information about what we know that node has observed.
+    /// This information may (and most likely is) outdated as the nodes continue to gossip to one another.
+    func version(at node: UniqueNode) -> VersionVector? {
+        self.table[node]
+    }
+}
+
+extension SeenTable: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        "SeenTable(\(self.table))"
+    }
+
+    var debugDescription: String {
+        var s = "SeenTable(\n"
+        let entryHeadingPadding = String(repeating: " ", count: 4)
+        let entryPadding = String(repeating: " ", count: 4 * 2)
+        table.forEach { node, vv in
+            let entryHeader = "\(entryHeadingPadding)\(node) observed versions:\n"
+
+            s.append(entryHeader)
+            vv.state.sorted(by: { $0.key < $1.key }).forEach { node, v in
+                s.append("\(entryPadding)\(node) @ \(v)\n")
+            }
+        }
+        s.append(")")
+        return s
+    }
 }
