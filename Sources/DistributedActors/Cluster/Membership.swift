@@ -46,6 +46,17 @@ public struct Member: Hashable {
         res.reachability = .reachable
         return res
     }
+
+    /// Return copy of this member which is marked `.down` if it wasn't already `.down` (or more).
+    /// Used to gossip a `.down` decision, but not accidentally move the node "back" to down if it already was leaving or removed.
+    public var asDownIfNotAlready: Member {
+        switch self.status {
+        case .down, .leaving, .removed:
+            return self
+        case .joining, .up:
+            return Member(node: self.node, status: .down)
+        }
+    }
 }
 
 extension Member {
@@ -424,13 +435,8 @@ extension Membership {
     /// REMOVES (as in, completely, without leaving even a tombstone or `down` marker) a `Member` from the `Membership`.
     ///
     /// If the membership is not aware of this member this is treated as no-op.
-    /// If the membership does contain a member for the Node, however the NodeIDs of the UniqueNodes
-    /// do not match this code will FAULT.
     public mutating func remove(_ node: UniqueNode) -> MembershipChange? {
         if let member = self._members[node] {
-            guard member.node == node else {
-                fatalError("Attempted to remove \(member) by address \(node), yet UID did not match!")
-            }
             self._members.removeValue(forKey: node)
             return .init(member: member, toStatus: .removed)
         } else {

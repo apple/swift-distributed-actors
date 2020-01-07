@@ -233,7 +233,7 @@ public final class DeadLetterOffice {
         case .stop:
             // we special handle some not delivered stop messages, based on the fact that those
             // are inherently racy in the during actor system shutdown:
-            let ignored = recipient == ActorAddress._cluster
+            let ignored = recipient == ActorAddress._clusterShell
             return ignored
 //        case .terminated, .childTerminated:
 //            // we ignore terminated messages in dead letter logging, as those are often harmless side effects of "everyone is shutting down"
@@ -256,5 +256,5 @@ protocol SilentDeadLetter {}
 extension ActorPath {
     internal static let _dead: ActorPath = try! ActorPath(root: "dead")
     internal static let _deadLetters: ActorPath = try! ActorPath._dead.appending("letters")
-    internal static let _cluster: ActorPath = try! ActorPath._system.appendingKnownUnique(ClusterShell.naming)
+    internal static let _clusterShell: ActorPath = try! ActorPath._system.appendingKnownUnique(ClusterShell.naming)
 }

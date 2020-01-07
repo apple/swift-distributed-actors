@@ -143,13 +143,13 @@ extension ActorAddress {
     internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .wellKnown)
     internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .wellKnown)
 
-    internal static let _cluster: ActorAddress = ActorPath._cluster.makeLocalAddress(incarnation: .wellKnown)
-    internal static func _cluster(on node: UniqueNode? = nil) -> ActorAddress {
+    internal static let _clusterShell: ActorAddress = ActorPath._clusterShell.makeLocalAddress(incarnation: .wellKnown)
+    internal static func _clusterShell(on node: UniqueNode? = nil) -> ActorAddress {
         switch node {
         case .none:
-            return ._cluster
+            return ._clusterShell
         case .some(let node):
-            return ActorPath._cluster.makeRemoteAddress(on: node, incarnation: .wellKnown)
+            return ActorPath._clusterShell.makeRemoteAddress(on: node, incarnation: .wellKnown)
         }
     }
 }
