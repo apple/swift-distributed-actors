@@ -460,7 +460,7 @@ extension ActorAddress {
 }
 
 extension ActorPath {
-    internal static let _swim: ActorPath = try! ActorPath._cluster.appending(SWIMShell.name)
+    internal static let _swim: ActorPath = try! ActorPath._clusterShell.appending(SWIMShell.name)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -472,7 +472,7 @@ internal enum TraceLogType: CustomStringConvertible {
     case ask(ActorRef<SWIM.Message>)
 
     static var receive: TraceLogType {
-        return .receive(pinged: nil)
+        .receive(pinged: nil)
     }
 
     var description: String {

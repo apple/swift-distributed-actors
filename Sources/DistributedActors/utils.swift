@@ -135,6 +135,7 @@ internal func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticS
 
 /// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
+@inline(__always)
 internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_SUPERVISION
     pprint("SACT_TRACE_SUPERVISION: \(message())", file: file, line: line)
@@ -143,6 +144,7 @@ internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: S
 
 /// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
+@inline(__always)
 func traceLog_Serialization(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_SERIALIZATION
     pprint("SACT_TRACE_SERIALIZATION: \(message())", file: file, line: line)
@@ -151,9 +153,10 @@ func traceLog_Serialization(_ message: @autoclosure () -> String, file: StaticSt
 
 /// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
-func traceLog_Remote(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+@inline(__always)
+func traceLog_Remote(_ node: UniqueNode, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_REMOTE
-    pprint("SACT_TRACE_REMOTE: \(message())", file: file, line: line)
+    pprint("SACT_TRACE_REMOTE [\(node)]: \(message())", file: file, line: line)
     #endif
 }
 

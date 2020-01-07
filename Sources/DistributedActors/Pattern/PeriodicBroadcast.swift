@@ -54,7 +54,7 @@ internal class PeriodicBroadcastShell<Payload> {
         let delay = TimeAmount.seconds(1)
 
         return .setup { context in
-            context.timers.startSingle(key: "tick", message: .tick, delay: delay)
+            context.timers.startSingle(key: "broadcast-tick", message: .tick, delay: delay)
 
             var payload: Payload?
             var peers: Set<ActorRef<Payload>> = []

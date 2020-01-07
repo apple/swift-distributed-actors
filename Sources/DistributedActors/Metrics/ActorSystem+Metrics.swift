@@ -108,6 +108,8 @@ internal class ActorSystemMetrics {
 
     let _cluster_unreachable_members: Gauge
 
+    let _cluster_association_tombstones: Gauge
+
     func recordMembership(_ membership: Membership) {
         let members = membership.members(atLeast: .joining)
 
@@ -146,6 +148,10 @@ internal class ActorSystemMetrics {
             self._cluster_members_removed.record(removed)
             self._cluster_unreachable_members.record(unreachable)
         }
+    }
+
+    func recordTombstones(count: Int) {
+        self._cluster_association_tombstones.record(count)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -210,5 +216,8 @@ internal class ActorSystemMetrics {
         self._cluster_members_leaving = .init(label: clusterMembersLabel, dimensions: [("status", MemberStatus.leaving.rawValue)])
         self._cluster_members_removed = .init(label: clusterMembersLabel, dimensions: [("status", MemberStatus.removed.rawValue)])
         self._cluster_unreachable_members = .init(label: clusterMembersLabel, dimensions: [("reachability", MemberReachability.unreachable.rawValue)])
+
+        let clusterAssociations = settings.makeLabel("cluster", "associations")
+        self._cluster_association_tombstones = .init(label: clusterAssociations)
     }
 }

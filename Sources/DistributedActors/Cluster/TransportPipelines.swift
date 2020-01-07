@@ -171,7 +171,6 @@ private final class ProtocolMagicBytesPrepender: ChannelOutboundHandler, Removab
         var b = context.channel.allocator.buffer(capacity: 2)
         b.writeInteger(HandshakeMagicBytes, endianness: .big) // first bytes MUST be magic when initiating connection
         context.write(self.wrapOutboundOut(b), promise: nil)
-        traceLog_Remote("WRITE MAGIC")
 
         context.writeAndFlush(data, promise: promise)
         context.pipeline.removeHandler(self, promise: nil)

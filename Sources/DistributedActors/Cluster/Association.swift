@@ -31,7 +31,7 @@ struct Association {
     enum State {
         case associated(AssociatedState)
         // case leaving // so we can receive that another node saw us as DOWN
-        // case tombstone
+        case tombstone(TombstoneState)
     }
 
     struct AssociatedState: CustomStringConvertible {
@@ -52,13 +52,51 @@ struct Association {
             self.channel = channel
         }
 
+        // TODO: resolving only once could be nicer
+//        func resolveClusterShell(system: ActorSystem) -> ClusterShell.Ref {
+//            system._resolve(context: .init(address: ._cluster(on: self.remoteNode), system: system))
+//        }
+
         func makeRemoteControl() -> AssociationRemoteControl {
-            return AssociationRemoteControl(channel: self.channel, remoteNode: self.remoteNode)
+            AssociationRemoteControl(channel: self.channel, remoteNode: self.remoteNode)
             // TODO: RemoteControl should mimic what the ClusterShell does when it sends messages; we want to push
         }
 
+        func makeTombstone(system: ActorSystem) -> TombstoneState {
+            // TODO: we pass the system so we can switch to system.time for calculations in the future
+            TombstoneState(fromAssociated: self, settings: system.settings.cluster)
+        }
+
         var description: String {
-            return "AssociatedState(channel: \(self.channel), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
+            "AssociatedState(channel: \(self.channel), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
+        }
+    }
+
+    struct TombstoneState: Hashable {
+        let remoteNode: UniqueNode
+
+        /// Determines when the Tombstone should be removed from kept tombstones in the ClusterShell.
+        /// End of life of the tombstone is calculated as `now + settings.associationTombstoneTTL`.
+        let removalDeadline: Deadline
+
+        init(fromAssociated associated: AssociatedState, settings: ClusterSettings) {
+            // TODO: if we made system carry system.time we could always count from that point in time with a TimeAmount; require Clock and settings then
+            self.removalDeadline = Deadline.fromNow(settings.associationTombstoneTTL)
+            self.remoteNode = associated.remoteNode
+        }
+
+        /// Used to create "any" tombstone, for being able to lookup in Set<TombstoneSet>
+        init(remoteNode: UniqueNode) {
+            self.removalDeadline = Deadline.uptimeNanoseconds(1) // ANY value here is ok, we do not use it in hash/equals
+            self.remoteNode = remoteNode
+        }
+
+        func hash(into hasher: inout Hasher) {
+            self.remoteNode.hash(into: &hasher)
+        }
+
+        static func == (lhs: TombstoneState, rhs: TombstoneState) -> Bool {
+            lhs.remoteNode == rhs.remoteNode
         }
     }
 }
@@ -83,12 +121,16 @@ internal struct AssociationRemoteControl {
         self.remoteNode = remoteNode
     }
 
-    func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: ActorAddress) {
+    func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
         let transportEnvelope = TransportEnvelope(envelope: envelope, underlyingMessageType: type, recipient: recipient)
-        self.channel.writeAndFlush(NIOAny(transportEnvelope), promise: nil)
+        self.channel.writeAndFlush(NIOAny(transportEnvelope), promise: promise)
     }
 
-    func sendSystemMessage(_ message: _SystemMessage, recipient: ActorAddress) {
-        self.channel.writeAndFlush(NIOAny(TransportEnvelope(systemMessage: message, recipient: recipient)), promise: nil)
+    func sendSystemMessage(_ message: _SystemMessage, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
+        self.channel.writeAndFlush(NIOAny(TransportEnvelope(systemMessage: message, recipient: recipient)), promise: promise)
+    }
+
+    func closeChannel() -> EventLoopFuture<Void> {
+        self.channel.close()
     }
 }

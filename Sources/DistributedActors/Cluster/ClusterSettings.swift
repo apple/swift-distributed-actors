@@ -58,29 +58,45 @@ public struct ClusterSettings {
         }
     }
 
+    /// Node representing this node in the cluster.
+    /// Note that most of the time `uniqueBindNode` is more appropriate, as it includes this node's unique id.
     public var node: Node
+
+    /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
+    public var nid: NodeID
 
     // Reflects the bindAddress however carries an uniquely assigned UID.
     // The UID remains the same throughout updates of the `bindAddress` field.
     public var uniqueBindNode: UniqueNode {
-        return UniqueNode(node: self.node, nid: self.nid)
+        UniqueNode(node: self.node, nid: self.nid)
     }
 
     /// Time after which a the binding of the server port should fail
     public var bindTimeout: TimeAmount = .seconds(3)
 
+    /// Timeout for unbinding the server port of this node (used when shutting down)
+    public var unbindTimeout: TimeAmount = .seconds(3)
+
     /// Time after which a connection attempt will fail if no connection could be established
     public var connectTimeout: TimeAmount = .milliseconds(500)
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
-    public var handshakeBackoffStrategy: BackoffStrategy = Backoff.exponential(initialInterval: .milliseconds(100))
+    public var associationHandshakeBackoffStrategy: BackoffStrategy = Backoff.exponential(initialInterval: .milliseconds(100))
 
-    /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
-    public var nid: NodeID
+    // public var associationHandshakeMaxAttempts: Int TODO: configure number of retries when connecting
+
+    /// Defines the Time-To-Live of an association, i.e. when it shall be completely dropped from the tombstones list.
+    /// An association ("unique connection identifier between two nodes") is kept as tombstone when severing a connection between nodes,
+    /// in order to avoid accidental re-connections to given node. Once a node has been downed, removed, and disassociated, it MUST NOT be
+    /// communicated with again. Tombstones are used to ensure this, even if the downed ("zombie") node, attempts to reconnect.
+    public var associationTombstoneTTL: TimeAmount = .hours(24) * 1
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Cluster protocol versioning
 
     /// `ProtocolVersion` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var protocolVersion: DistributedActors.Version {
-        return self._protocolVersion
+        self._protocolVersion
     }
 
     // Exposed for testing handshake negotiation while joining nodes of different versions
@@ -97,7 +113,7 @@ public struct ClusterSettings {
     public var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNumberOfMembers: 2)
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: TLS & security settings
+    // MARK: TLS & Security settings
 
     /// If set, all communication with other nodes will be secured using TLS
     public var tls: TLSConfiguration?
@@ -114,7 +130,7 @@ public struct ClusterSettings {
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
     public func makeDefaultEventLoopGroup() -> EventLoopGroup {
-        return MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
+        MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
     }
 
     // TODO: Can be removed once we have an implementation based on CRDTs with more robust replication

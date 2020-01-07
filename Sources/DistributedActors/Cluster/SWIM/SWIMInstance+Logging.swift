@@ -20,7 +20,7 @@ import struct Logging.Logger
 extension SWIM.Instance {
     /// While the SWIM.Instance is not meant to be logging by itself, it does offer metadata for loggers to use.
     var metadata: Logger.Metadata {
-        return [
+        [
             "swim/protocolPeriod": "\(self.protocolPeriod)",
             "swim/incarnation": "\(self.incarnation)",
             "swim/memberCount": "\(self.memberCount)",
@@ -56,7 +56,7 @@ extension SWIMShell {
         case ask(ActorRef<SWIM.Message>)
 
         static var receive: TraceLogType {
-            return .receive(pinged: nil)
+            .receive(pinged: nil)
         }
 
         var description: String {

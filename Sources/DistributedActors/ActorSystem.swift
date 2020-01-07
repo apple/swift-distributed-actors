@@ -468,7 +468,7 @@ extension ActorSystem: ActorRefFactory {
         case .nio(let group):
             dispatcher = NIOEventLoopGroupDispatcher(group)
         default:
-            fatalError("selected dispacher [\(props.dispatcher)] not implemented yet; ") // FIXME: remove any not implemented ones simply from API
+            fatalError("selected dispatcher [\(props.dispatcher)] not implemented yet; ") // FIXME: remove any not implemented ones simply from API
         }
 
         return try provider.spawn(
