@@ -175,7 +175,8 @@ public final class ActorSystem {
         let theOne = self._root
 
         // dead letters init
-        var deadLogger = settings.overrideLogger ?? Logger(label: ActorPath._deadLetters.description, factory: {
+        let overrideLogger: Logger? = settings.overrideLoggerFactory.map { f in f("\(ActorPath._deadLetters)") }
+        var deadLogger = overrideLogger ?? Logger(label: "\(ActorPath._deadLetters)", factory: {
             let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.useBuiltInFormatter, dispatcher: nil)
             if settings.cluster.enabled {
                 context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindNode)

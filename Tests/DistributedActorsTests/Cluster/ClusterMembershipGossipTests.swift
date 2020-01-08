@@ -23,6 +23,10 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         true
     }
 
+//    override var captureLogs: Bool {
+//        false
+//    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking .down
 

@@ -18,13 +18,12 @@ public typealias LamportTime = UInt64
 ///
 /// Each node or entity owns its own clock, and updates it each time
 ///
-///
 /// NOTE: Unless two events are causally related, lamport clocks are not able to guarantee causality,
 ///       and thus strict happens-before relationships.
 ///
 /// - SeeAlso: <https://www.microsoft.com/en-us/research/publication/time-clocks-ordering-events-distributed-system/>
 ///            Time, Clocks, and the Ordering of Events in a Distributed System, Leslie Lamport, 1978</a>
-public struct LamportClock: ExpressibleByIntegerLiteral {
+public struct LamportClock: Codable, ExpressibleByIntegerLiteral {
     public typealias IntegerLiteralType = UInt64
 
     private var _time: LamportTime
