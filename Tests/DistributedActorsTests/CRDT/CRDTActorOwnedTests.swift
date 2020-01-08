@@ -17,6 +17,23 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTActorOwnedTests: ActorSystemTestBase {
+    var logCaptureHandler: LogCapture!
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
+
+    override func setUp() {
+        self.logCaptureHandler = LogCapture()
+        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+            settings.overrideLoggerFactory = self.logCaptureHandler.loggerFactory(captureLabel: settings.cluster.node.systemName)
+        }
+        self.testKit = ActorTestKit(self.system)
+    }
+
+    override func tearDown() {
+        self.logCaptureHandler.printIfFailed(self.testRun)
+        self.system.shutdown().wait()
+    }
+
     private enum OwnerEventProbeMessage {
         case ownerDefinedOnUpdate
         case ownerDefinedOnDelete

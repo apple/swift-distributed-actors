@@ -157,7 +157,7 @@ enum NodeDeathWatcherShell {
             case .membershipSnapshot(let membership):
                 let diff = Membership.diff(from: lastMembership, to: membership)
 
-                for change in diff.entries {
+                for change in diff.changes {
                     _ = instance.onMembershipChanged(change) // TODO: return and interpret directives
                 }
 

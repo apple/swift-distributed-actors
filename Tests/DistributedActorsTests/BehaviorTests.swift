@@ -425,7 +425,7 @@ final class BehaviorTests: ActorSystemTestBase {
     func test_makeAsynchronousCallback_shouldPrintNicelyIfThrewInsideClosure() throws {
         let capture = LogCapture()
         let system = ActorSystem("CallbackCrash") { settings in
-            settings.overrideLogger = .some(capture.makeLogger(label: "mock"))
+            settings.overrideLoggerFactory = .some(capture.loggerFactory(captureLabel: "mock"))
         }
         defer {
             system.shutdown().wait()

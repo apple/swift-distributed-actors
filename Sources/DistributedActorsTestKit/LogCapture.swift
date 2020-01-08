@@ -23,19 +23,25 @@ import XCTest
 /// ### Warning
 /// This handler uses locks for each and every operation.
 // TODO: the implementation is quite incomplete and does not allow inspecting metadata setting etc.
-public final class LogCapture: LogHandler {
-    var _logs: [CapturedLogMessage] = []
-    let lock = DistributedActorsConcurrencyHelpers.Lock()
+public final class LogCapture {
+    private var _logs: [CapturedLogMessage] = []
+    private let lock = DistributedActorsConcurrencyHelpers.Lock()
 
-    var label: String = ""
-
-    public var metadata: Logger.Metadata = [:]
+    private var captureLabel: String = ""
 
     public init() {}
 
-    public func makeLogger(label: String) -> Logger {
-        self.label = label
-        return Logger(label: label, self)
+    public func loggerFactory(captureLabel: String) -> ((String) -> Logger) {
+        self.captureLabel = captureLabel
+        return { (label: String) in
+            Logger(label: "LogCapture(\(captureLabel) \(label))", LogCaptureLogHandler(label: label, self))
+        }
+    }
+
+    func append(_ log: CapturedLogMessage) {
+        self.lock.withLockVoid {
+            self._logs.append(log)
+        }
     }
 
     public var logs: [CapturedLogMessage] {
@@ -46,7 +52,54 @@ public final class LogCapture: LogHandler {
 
     public var deadLetterLogs: [CapturedLogMessage] {
         self.lock.withLock {
-            self._logs.filter { $0.metadata?.keys.contains("deadLetter") ?? false }
+            self._logs.filter {
+                $0.metadata?.keys.contains("deadLetter") ?? false
+            }
+        }
+    }
+}
+
+struct LogCaptureLogHandler: LogHandler {
+    let label: String
+    let capture: LogCapture
+
+    init(label: String, _ capture: LogCapture) {
+        self.label = label
+        self.capture = capture
+    }
+
+    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+        let date = Date()
+        var _metadata: Logger.Metadata = metadata ?? [:]
+        _metadata["label"] = "\(self.label)"
+
+        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
+    }
+
+    public subscript(metadataKey _: String) -> Logger.Metadata.Value? {
+        get {
+            nil
+        }
+        set {
+            // ignore
+        }
+    }
+
+    public var metadata: Logging.Logger.Metadata {
+        get {
+            [:]
+        }
+        set {
+            // ignore
+        }
+    }
+
+    public var logLevel: Logger.Level {
+        get {
+            Logger.Level.trace
+        }
+        set {
+            // ignore, we always collect all logs
         }
     }
 }
@@ -62,47 +115,34 @@ extension LogCapture {
             print("========================================================================================================================")
         }
     }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Implement LogHandler API
-
-extension LogCapture {
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
-        self.lock.withLockVoid {
-            self._logs.append(CapturedLogMessage(date: Date(), level: level, message: message, metadata: metadata, file: file, function: function, line: line))
-        }
-    }
-
-    public subscript(metadataKey _: String) -> Logger.Metadata.Value? {
-        get {
-            nil
-        }
-        set {
-            // ignore
-        }
-    }
 
     public func printLogs() {
         for log in self.logs {
             var metadataString: String = ""
-            if let metadata = log.metadata, !metadata.isEmpty {
-                metadataString = "\n\\- metadata: "
-                for key in metadata.keys.sorted() {
-                    metadataString.append("\"\(key)\": \(metadata[key]!), ")
+            var label = "[/?]"
+            if var metadata = log.metadata {
+                if let labelMeta = metadata.removeValue(forKey: "label") {
+                    switch labelMeta {
+                    case .string(let l):
+                        label = "[\(l)]"
+                    case .stringConvertible(let c):
+                        label = "[\(c)]"
+                    default:
+                        label = "[/?]"
+                    }
                 }
-                metadataString = String(metadataString.dropLast(2))
-            }
-            print("Captured log [\(self.label)][\(log.date)][\(log.file.split(separator: "/").last ?? ""):\(log.line)]: [\(log.level)] \(log.message)\(metadataString)")
-        }
-    }
 
-    public var logLevel: Logger.Level {
-        get {
-            Logger.Level.trace
-        }
-        set {
-            // ignore
+                if !metadata.isEmpty {
+                    metadataString = "\n// metadata: "
+                    for key in metadata.keys.sorted() where key != "label" {
+                        metadataString.append("\"\(key)\": \(metadata[key]!), ")
+                    }
+                    metadataString = String(metadataString.dropLast(2))
+                }
+            }
+            let file = log.file.split(separator: "/").last ?? ""
+            let line = log.line
+            print("Captured log [\(self.captureLabel)][\(log.date)] [\(file):\(line)]\(label) [\(log.level)] \(log.message)\(metadataString)")
         }
     }
 }
@@ -110,8 +150,8 @@ extension LogCapture {
 public struct CapturedLogMessage {
     let date: Date
     let level: Logger.Level
-    let message: Logger.Message
-    let metadata: Logger.Metadata?
+    var message: Logger.Message
+    var metadata: Logger.Metadata?
     let file: String
     let function: String
     let line: UInt

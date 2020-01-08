@@ -320,7 +320,7 @@ final class MembershipTests: XCTestCase {
     func test_membershipDiff_beEmpty_whenNothingChangedForIt() {
         let changed = self.initialMembership
         let diff = Membership.diff(from: self.initialMembership, to: changed)
-        diff.entries.count.shouldEqual(0)
+        diff.changes.count.shouldEqual(0)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt() {
@@ -328,8 +328,8 @@ final class MembershipTests: XCTestCase {
 
         let diff = Membership.diff(from: self.initialMembership, to: changed)
 
-        diff.entries.count.shouldEqual(1)
-        let diffEntry = diff.entries.first!
+        diff.changes.count.shouldEqual(1)
+        let diffEntry = diff.changes.first!
         diffEntry.node.shouldEqual(self.firstMember.node)
         diffEntry.fromStatus?.shouldEqual(.up)
         diffEntry.toStatus.shouldEqual(.leaving)
@@ -340,8 +340,8 @@ final class MembershipTests: XCTestCase {
 
         let diff = Membership.diff(from: self.initialMembership, to: changed)
 
-        diff.entries.count.shouldEqual(1)
-        let diffEntry = diff.entries.first!
+        diff.changes.count.shouldEqual(1)
+        let diffEntry = diff.changes.first!
         diffEntry.node.shouldEqual(self.firstMember.node)
         diffEntry.fromStatus?.shouldEqual(.up)
         diffEntry.toStatus.shouldEqual(.removed)
@@ -352,8 +352,8 @@ final class MembershipTests: XCTestCase {
 
         let diff = Membership.diff(from: self.initialMembership, to: changed)
 
-        diff.entries.count.shouldEqual(1)
-        let diffEntry = diff.entries.first!
+        diff.changes.count.shouldEqual(1)
+        let diffEntry = diff.changes.first!
         diffEntry.node.shouldEqual(self.newMember.node)
         diffEntry.fromStatus.shouldBeNil()
         diffEntry.toStatus.shouldEqual(.joining)

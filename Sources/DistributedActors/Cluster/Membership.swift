@@ -106,8 +106,12 @@ extension Member: CustomStringConvertible, CustomDebugStringConvertible {
     }
 
     public var debugDescription: String {
-        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability)\(self.upNumber.map { ", upNumber: \($0)" }, orElse: ""))"
+        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability)\(self.upNumber.map { ", upNumber: \($0)" } ?? ""))"
     }
+}
+
+extension Member: Codable {
+    // synthesized conformance
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -297,6 +301,10 @@ extension Membership: CustomStringConvertible, CustomDebugStringConvertible {
     public var debugDescription: String {
         "Membership(\(String(reflecting: self._members.values))"
     }
+}
+
+extension Membership: Codable {
+    // synthesized conformance
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -506,13 +514,9 @@ extension Membership {
     /// - Returns: any membership changes that occurred (and have affected the current membership).
     public mutating func merge(fromAhead ahead: Membership) -> [MembershipChange] {
         let diff = Membership.diff(from: self, to: ahead)
-        let changes = diff.entries
+        let changes = diff.changes
 
-        changes.forEach { change in
-            self.apply(change)
-        }
-
-        return changes
+        return changes.compactMap { self.apply($0) }
     }
 }
 
@@ -574,19 +578,19 @@ extension Membership {
             entries.append(.init(node: member.node, fromStatus: nil, toStatus: member.status))
         }
 
-        return MembershipDiff(entries: entries)
+        return MembershipDiff(changes: entries)
     }
 }
 
 // TODO: maybe conform to Sequence?
 public struct MembershipDiff {
-    public var entries: [MembershipChange] = []
+    public var changes: [MembershipChange] = []
 }
 
 extension MembershipDiff: CustomDebugStringConvertible {
     public var debugDescription: String {
         var s = "MembershipDiff(\n"
-        for entry in self.entries {
+        for entry in self.changes {
             s += "    \(String(reflecting: entry))\n"
         }
         s += ")"
@@ -699,6 +703,9 @@ extension MembershipChange: CustomDebugStringConvertible {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Member Status
+
 /// Describes the status of a member within the clusters lifecycle.
 public enum MemberStatus: String, Comparable {
     case joining
@@ -756,6 +763,13 @@ extension MemberStatus {
     }
 }
 
+extension MemberStatus: Codable {
+    // synthesized conformance
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Member Reachability
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reachability
 
@@ -772,4 +786,8 @@ public enum MemberReachability: String, Equatable {
     /// Failure detector has determined this node as not reachable.
     /// It may be a candidate to be downed.
     case unreachable
+}
+
+extension MemberReachability: Codable {
+    // synthesized conformance
 }
