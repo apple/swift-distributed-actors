@@ -65,8 +65,8 @@ public class LoggingContext {
 
 public struct ActorLogger {
     public static func make<T>(context: ActorContext<T>) -> Logger {
-        if let overrideLogger = context.system.settings.overrideLogger {
-            return overrideLogger
+        if let overriddenLoggerFactory = context.system.settings.overrideLoggerFactory {
+            return overriddenLoggerFactory("\(context.path)")
         }
 
         var proxyHandler = ActorOriginLogHandler(context)

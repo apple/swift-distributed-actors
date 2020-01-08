@@ -35,6 +35,10 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 
     override func setUp() {
         super.setUp()
+        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+            settings.overrideLoggerFactory = self.logCapture.loggerFactory(captureLabel: "mock")
+        }
+        self.testKit = ActorTestKit(self.system)
 
         self.eventLoop = EmbeddedEventLoop()
         self.channel = EmbeddedChannel(loop: self.eventLoop)

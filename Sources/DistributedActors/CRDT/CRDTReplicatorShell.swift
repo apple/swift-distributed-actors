@@ -99,8 +99,13 @@ extension CRDT.Replicator {
                 let remoteReplicatorRef = makeReplicatorRef(member.node)
                 self.remoteReplicators.remove(remoteReplicatorRef)
 
+            case .snapshot(let snapshot):
+                Membership.diff(from: .empty, to: snapshot).changes.forEach { change in
+                    self.receiveClusterEvent(context, event: .membershipChange(change))
+                }
+
             default:
-                context.log.trace("Ignoring cluster event \(event)", metadata: self.metadata(context))
+                context.log.trace("Ignoring cluster event \(event), only interested in >= .up events", metadata: self.metadata(context))
                 () // ignore other events
             }
         }

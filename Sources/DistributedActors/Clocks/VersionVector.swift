@@ -34,7 +34,7 @@
 public struct VersionVector {
     // TODO: should we disallow mixing ReplicaId types somehow?
 
-    public typealias ReplicaVersion = (replicaId: ReplicaId, version: Int) // TODO: struct?
+    public typealias ReplicaVersion = (replicaId: ReplicaId, version: Int) // TODO: struct? // TODO: UInt?
 
     // Internal state is a dictionary of replicas and their corresponding version
     internal var state: [ReplicaId: Int] = [:]
@@ -61,11 +61,11 @@ public struct VersionVector {
     }
 
     public var isEmpty: Bool {
-        return self.state.isEmpty
+        self.state.isEmpty
     }
 
     public var isNotEmpty: Bool {
-        return !self.isEmpty
+        !self.isEmpty
     }
 
     /// Increment version at the given replica.
@@ -160,14 +160,18 @@ extension VersionVector: Comparable {
     }
 
     public static func == (lhs: VersionVector, rhs: VersionVector) -> Bool {
-        return lhs.state == rhs.state
+        lhs.state == rhs.state
     }
 }
 
 extension VersionVector: CustomStringConvertible {
     public var description: String {
-        return "\(self.state)"
+        "\(self.state)"
     }
+}
+
+extension VersionVector: Codable {
+    // synthesized conformance
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -179,7 +183,7 @@ extension VersionVector: CustomStringConvertible {
 /// to be `Hashable` we have to define a type.
 public struct VersionDot {
     public let replicaId: ReplicaId
-    public let version: Int
+    public let version: Int // TODO: UInt?
 
     init(_ replicaId: ReplicaId, _ version: Int) {
         self.replicaId = replicaId
@@ -202,8 +206,12 @@ extension VersionDot: Comparable {
 
 extension VersionDot: CustomStringConvertible {
     public var description: String {
-        return "Dot(\(self.replicaId),\(self.version))"
+        "Dot(\(self.replicaId),\(self.version))"
     }
+}
+
+extension VersionDot: Codable {
+    // synthesized conformance
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -245,6 +253,39 @@ extension ReplicaId: Comparable {
             return l == r
         case (.uniqueNode, _), (.actorAddress, _):
             return false // TODO: should we even disallow comparing them?
+        }
+    }
+}
+
+extension ReplicaId: Codable {
+    public enum DiscriminatorKeys: String, Decodable {
+        case actorAddress
+        case uniqueNode
+    }
+
+    public enum CodingKeys: CodingKey {
+        case _case
+        case actorAddress_value
+        case uniqueNode_value
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
+        case .actorAddress:
+            self = try .actorAddress(container.decode(ActorAddress.self, forKey: .actorAddress_value))
+        case .uniqueNode:
+            self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .uniqueNode_value))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .actorAddress(let address):
+            try container.encode(address, forKey: .actorAddress_value)
+        case .uniqueNode(let node):
+            try container.encode(node, forKey: .uniqueNode_value)
         }
     }
 }

@@ -353,7 +353,11 @@ extension ClusterShell {
                 )
 
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
-                context.myself.tell(.gossip(Membership.Gossip(ownerNode: state.myselfNode)))
+                var firstGossip = Membership.Gossip(ownerNode: state.myselfNode)
+                _ = firstGossip.membership.join(state.myselfNode) // change will be put into effect by receiving the "self gossip"
+                firstGossip.incrementOwnerVersion()
+                context.myself.tell(.gossip(firstGossip))
+                // TODO: are we ok if we received another gossip first, not our own initial? should be just fine IMHO
 
                 return self.ready(state: state)
             }
@@ -455,10 +459,15 @@ extension ClusterShell {
             tracelog(context, .gossip(gossip), message: gossip)
 
             // TODO: this might differ more in the future; a gossip will perform diffing of "known, their observation" etc.
+            context.log.trace("Membership is: \(state.membership)")
+
             var state = state
+            let beforeGossip = state.latestGossip
             let mergeDirective = state.latestGossip.merge(incoming: gossip) // mutates the gossip
 
-            context.log.trace("Local gossip was \(mergeDirective.causalRelation) compared to incoming one, resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
+            context.log.trace("Membership after merge: \(state.membership)")
+
+            context.log.trace("Local gossip value [.\(mergeDirective.causalRelation)] incoming; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
                 "tag": "membership",
             ])
             mergeDirective.effectiveChanges.forEach { effectiveChange in
@@ -492,7 +501,7 @@ extension ClusterShell {
                 case .query(let query): return receiveQuery(context, query: query)
                 case .inbound(let inbound): return try receiveInbound(context, message: inbound)
                 case .requestMembershipChange(let event): return receiveChangeMembershipRequest(context, event: event)
-                case .gossip(let gossip): return receiveMembershipGossip(context, state, gossip: gossip) // FIXME: include from?
+                case .gossip(let gossip): return receiveMembershipGossip(context, state, gossip: gossip)
                 }
             }
         }

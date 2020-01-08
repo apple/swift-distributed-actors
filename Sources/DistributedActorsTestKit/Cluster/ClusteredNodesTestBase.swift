@@ -48,7 +48,7 @@ open class ClusteredNodesTestBase: XCTestCase {
             settings.cluster.enabled = true
             settings.cluster.node.port = self.nextPort()
             if self.captureLogs {
-                settings.overrideLogger = capture.makeLogger(label: name)
+                settings.overrideLoggerFactory = capture.loggerFactory(captureLabel: name)
             }
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             modifySettings?(&settings)

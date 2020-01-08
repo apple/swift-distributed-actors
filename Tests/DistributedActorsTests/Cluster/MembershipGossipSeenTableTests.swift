@@ -19,6 +19,8 @@ import XCTest
 
 /// Tests of just the datatype
 final class MembershipGossipSeenTableTests: XCTestCase {
+    typealias SeenTable = Membership.SeenTable
+
     var myselfNode: UniqueNode!
     var secondNode: UniqueNode!
     var thirdNode: UniqueNode!
