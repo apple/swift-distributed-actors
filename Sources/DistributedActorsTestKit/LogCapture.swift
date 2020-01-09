@@ -107,21 +107,21 @@ extension LogCapture {
                 }
 
                 if !metadata.isEmpty {
-                    metadataString = "\n// metadata: "
+                    metadataString = "\n// metadata:\n"
                     for key in metadata.keys.sorted() where key != "label" {
-                        var valueString = "\(metadata[key]!)"
-                        if valueString.contains("\n") {
-                            valueString = String(
-                                valueString.split(separator: "\n").map { line in
-                                    if line.starts(with: "// ") {
-                                        return String(line)
+                        var allString = "\n// \"\(key)\": \(metadata[key]!)"
+                        if allString.contains("\n") {
+                            allString = String(
+                                allString.split(separator: "\n").map { valueLine in
+                                    if valueLine.starts(with: "// ") {
+                                        return "\(valueLine)\n"
                                     } else {
-                                        return "// \(line)"
+                                        return "// \(valueLine)\n"
                                     }
-                                }.joined(separator: "\n").dropFirst("// ".count)
+                                }.joined(separator: "")
                             )
                         }
-                        metadataString.append("\"\(key)\": \(valueString), ")
+                        metadataString.append(allString)
                     }
                     metadataString = String(metadataString.dropLast(2))
                 }
@@ -216,6 +216,7 @@ extension LogCapture {
         at level: Logger.Level? = nil,
         expectedFile: String? = nil,
         expectedLine: Int = -1,
+        failTest: Bool = true,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws -> CapturedLogMessage {
         precondition(prefix != nil || message != nil || level != nil, "At least one query parameter must be not `nil`!")
@@ -278,7 +279,9 @@ extension LogCapture {
             at \(file):\(line)
             """
             let callSiteError = callSite.error(message)
-            XCTAssert(false, message, file: callSite.file, line: callSite.line)
+            if failTest {
+                XCTAssert(false, message, file: callSite.file, line: callSite.line)
+            }
             throw callSiteError
         }
     }

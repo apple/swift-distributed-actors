@@ -315,7 +315,9 @@ extension Leadership {
                 .first
 
             if let change = try! membership.applyLeadershipChange(to: leader) { // try! safe, as we KNOW this member is part of membership
-                context.log.debug("Selected new leader: [previous: \(reflecting: oldLeader)] -> [\(reflecting: leader)], out of \(membership).")
+                context.log.debug("Selected new leader: [\(oldLeader, orElse: "nil") -> \(leader, orElse: "nil")]", metadata: [
+                    "membership": "\(membership)",
+                ])
                 return .init(context.loop.next().makeSucceededFuture(change))
             } else {
                 return .init(context.loop.next().makeSucceededFuture(nil)) // no change, e.g. the new/old leader are the same

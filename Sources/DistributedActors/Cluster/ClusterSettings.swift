@@ -81,7 +81,7 @@ public struct ClusterSettings {
     public var connectTimeout: TimeAmount = .milliseconds(500)
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
-    public var associationHandshakeBackoffStrategy: BackoffStrategy = Backoff.exponential(initialInterval: .milliseconds(100))
+    public var associationHandshakeBackoff: BackoffStrategy = Backoff.exponential(initialInterval: .milliseconds(100))
 
     // public var associationHandshakeMaxAttempts: Int TODO: configure number of retries when connecting
 

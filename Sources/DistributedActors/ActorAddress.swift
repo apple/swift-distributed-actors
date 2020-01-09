@@ -78,7 +78,7 @@ public struct ActorAddress: Equatable, Hashable {
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
     public var name: String {
-        return self.path.name
+        self.path.name
     }
 
     /// Uniquely identifies the specific "incarnation" of this actor.
@@ -142,16 +142,6 @@ extension ActorAddress {
     /// Only to be used by the "/" root "actor"
     internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .wellKnown)
     internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .wellKnown)
-
-    internal static let _clusterShell: ActorAddress = ActorPath._clusterShell.makeLocalAddress(incarnation: .wellKnown)
-    internal static func _clusterShell(on node: UniqueNode? = nil) -> ActorAddress {
-        switch node {
-        case .none:
-            return ._clusterShell
-        case .some(let node):
-            return ActorPath._clusterShell.makeRemoteAddress(on: node, incarnation: .wellKnown)
-        }
-    }
 }
 
 extension ActorAddress {

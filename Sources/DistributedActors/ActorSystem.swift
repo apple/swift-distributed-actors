@@ -340,7 +340,7 @@ public final class ActorSystem {
             self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
             if let cluster = self._cluster {
                 let receptacle = BlockingReceptacle<Void>()
-                cluster.ref.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
+                cluster.ref.tell(.command(.shutdown(receptacle))) // FIXME: should be shutdown
                 receptacle.wait(atMost: .milliseconds(300)) // FIXME: configure
             }
             self.userProvider.stopAll()

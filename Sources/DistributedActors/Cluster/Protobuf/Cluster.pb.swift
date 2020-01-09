@@ -52,12 +52,12 @@ struct ProtoClusterShellMessage {
     set {_uniqueStorage()._message = .clusterEvent(newValue)}
   }
 
-  var gossip: ProtoClusterMembershipGossip {
+  var inbound: ProtoClusterInbound {
     get {
-      if case .gossip(let v)? = _storage._message {return v}
-      return ProtoClusterMembershipGossip()
+      if case .inbound(let v)? = _storage._message {return v}
+      return ProtoClusterInbound()
     }
-    set {_uniqueStorage()._message = .gossip(newValue)}
+    set {_uniqueStorage()._message = .inbound(newValue)}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -65,18 +65,87 @@ struct ProtoClusterShellMessage {
   enum OneOf_Message: Equatable {
     /// Not all messages are serializable, on purpose, as they are not intended to cross over the network
     case clusterEvent(ProtoClusterEvent)
-    case gossip(ProtoClusterMembershipGossip)
+    case inbound(ProtoClusterInbound)
 
   #if !swift(>=4.1)
     static func ==(lhs: ProtoClusterShellMessage.OneOf_Message, rhs: ProtoClusterShellMessage.OneOf_Message) -> Bool {
       switch (lhs, rhs) {
       case (.clusterEvent(let l), .clusterEvent(let r)): return l == r
-      case (.gossip(let l), .gossip(let r)): return l == r
+      case (.inbound(let l), .inbound(let r)): return l == r
       default: return false
       }
     }
   #endif
   }
+
+  init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+struct ProtoClusterInbound {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Not all messages are serializable, on purpose, as they are not intended to cross over the network
+  var message: OneOf_Message? {
+    get {return _storage._message}
+    set {_uniqueStorage()._message = newValue}
+  }
+
+  var restInPeace: ProtoClusterRestInPeace {
+    get {
+      if case .restInPeace(let v)? = _storage._message {return v}
+      return ProtoClusterRestInPeace()
+    }
+    set {_uniqueStorage()._message = .restInPeace(newValue)}
+  }
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  /// Not all messages are serializable, on purpose, as they are not intended to cross over the network
+  enum OneOf_Message: Equatable {
+    case restInPeace(ProtoClusterRestInPeace)
+
+  #if !swift(>=4.1)
+    static func ==(lhs: ProtoClusterInbound.OneOf_Message, rhs: ProtoClusterInbound.OneOf_Message) -> Bool {
+      switch (lhs, rhs) {
+      case (.restInPeace(let l), .restInPeace(let r)): return l == r
+      }
+    }
+  #endif
+  }
+
+  init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+struct ProtoClusterRestInPeace {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var targetNode: ProtoUniqueNode {
+    get {return _storage._targetNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._targetNode = newValue}
+  }
+  /// Returns true if `targetNode` has been explicitly set.
+  var hasTargetNode: Bool {return _storage._targetNode != nil}
+  /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
+  mutating func clearTargetNode() {_uniqueStorage()._targetNode = nil}
+
+  var fromNode: ProtoUniqueNode {
+    get {return _storage._fromNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._fromNode = newValue}
+  }
+  /// Returns true if `fromNode` has been explicitly set.
+  var hasFromNode: Bool {return _storage._fromNode != nil}
+  /// Clears the value of `fromNode`. Subsequent reads from it will return its default value.
+  mutating func clearFromNode() {_uniqueStorage()._fromNode = nil}
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 
@@ -89,7 +158,7 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
   static let protoMessageName: String = "ClusterShellMessage"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "clusterEvent"),
-    2: .same(proto: "gossip"),
+    2: .same(proto: "inbound"),
   ]
 
   fileprivate class _StorageClass {
@@ -125,13 +194,13 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {_storage._message = .clusterEvent(v)}
         case 2:
-          var v: ProtoClusterMembershipGossip?
+          var v: ProtoClusterInbound?
           if let current = _storage._message {
             try decoder.handleConflictingOneOf()
-            if case .gossip(let m) = current {v = m}
+            if case .inbound(let m) = current {v = m}
           }
           try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._message = .gossip(v)}
+          if let v = v {_storage._message = .inbound(v)}
         default: break
         }
       }
@@ -143,7 +212,7 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
       switch _storage._message {
       case .clusterEvent(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      case .gossip(let v)?:
+      case .inbound(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       case nil: break
       }
@@ -157,6 +226,143 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._message != rhs_storage._message {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoClusterInbound: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "ClusterInbound"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "restInPeace"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _message: ProtoClusterInbound.OneOf_Message?
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _message = source._message
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1:
+          var v: ProtoClusterRestInPeace?
+          if let current = _storage._message {
+            try decoder.handleConflictingOneOf()
+            if case .restInPeace(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {_storage._message = .restInPeace(v)}
+        default: break
+        }
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if case .restInPeace(let v)? = _storage._message {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: ProtoClusterInbound, rhs: ProtoClusterInbound) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._message != rhs_storage._message {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoClusterRestInPeace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "ClusterRestInPeace"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "targetNode"),
+    2: .same(proto: "fromNode"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _targetNode: ProtoUniqueNode? = nil
+    var _fromNode: ProtoUniqueNode? = nil
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _targetNode = source._targetNode
+      _fromNode = source._fromNode
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._fromNode)
+        default: break
+        }
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._targetNode {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if let v = _storage._fromNode {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: ProtoClusterRestInPeace, rhs: ProtoClusterRestInPeace) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._targetNode != rhs_storage._targetNode {return false}
+        if _storage._fromNode != rhs_storage._fromNode {return false}
         return true
       }
       if !storagesAreEqual {return false}

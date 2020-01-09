@@ -61,7 +61,7 @@ final class MembershipTests: XCTestCase {
             Member(node: firstMember.node, status: .down, upNumber: 4),
             Member(node: firstMember.node, status: .up, upNumber: 2),
         ]
-        let ns = ms.map { $0.upNumber }
+        let ns = ms.sorted(by: Member.ageOrdering).map { $0.upNumber }
         ns.shouldEqual([nil, 1, 2, 4])
     }
 
@@ -226,7 +226,7 @@ final class MembershipTests: XCTestCase {
         // as if the fromStatus is not set we may infer it from other places; but in such change, we definitely want it in the `from`
         change1?.fromStatus.shouldEqual(.joining)
         change1?.toStatus.shouldEqual(.up)
-        "\(change1!)".shouldContain("[joining] -> [     up]")
+        "\(change1!)".shouldContain("fromStatus: joining, toStatus: up)")
 
         membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
         membership.mark(member.node, as: .up).shouldBeNil() // don't move to "same"
@@ -235,7 +235,7 @@ final class MembershipTests: XCTestCase {
         change2.shouldNotBeNil()
         change2?.fromStatus.shouldEqual(.up)
         change2?.toStatus.shouldEqual(.down)
-        "\(change2!)".shouldContain("[     up] -> [   down]")
+        "\(change2!)".shouldContain("fromStatus: up, toStatus: down)")
 
         membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
         membership.mark(member.node, as: .up).shouldBeNil() // can't move "back", from down

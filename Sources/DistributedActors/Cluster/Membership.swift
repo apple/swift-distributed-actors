@@ -694,7 +694,7 @@ extension MembershipChange {
 
 extension MembershipChange: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        "MembershipChange(node: \(node), replaced: \(replaced), fromStatus: \(fromStatus), toStatus: \(toStatus))"
+        "MembershipChange(node: \(node), replaced: \(replaced), fromStatus: \(fromStatus.map { "\($0)" } ?? "nil"), toStatus: \(toStatus))"
     }
 
     public var debugDescription: String {
