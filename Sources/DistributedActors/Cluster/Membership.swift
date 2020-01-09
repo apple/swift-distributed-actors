@@ -194,9 +194,14 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
             .sorted(by: MemberStatus.progressOrdering)
     }
 
+    /// Count of all members (regardless of their `MemberStatus`)
+    public var count: Int {
+        self._members.count
+    }
+
     /// More efficient than using `members(atLeast:)` followed by a `.count`
     public func count(atLeast status: MemberStatus) -> Int {
-        return self._members.values
+        self._members.values
             .lazy
             .filter { member in status <= member.status }
             .count
@@ -295,11 +300,11 @@ extension Membership: CustomStringConvertible, CustomDebugStringConvertible {
     }
 
     public var description: String {
-        "Membership(\(self._members.values))"
+        "Membership(count: \(self.count), leader: \(self.leader, orElse: ".none"), members: \(self._members.values))"
     }
 
     public var debugDescription: String {
-        "Membership(\(String(reflecting: self._members.values))"
+        "Membership(count: \(self.count), leader: \(self.leader, orElse: ".none"), members: \(self._members.values))"
     }
 }
 
@@ -687,7 +692,11 @@ extension MembershipChange {
     }
 }
 
-extension MembershipChange: CustomDebugStringConvertible {
+extension MembershipChange: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        "MembershipChange(node: \(node), replaced: \(replaced), fromStatus: \(fromStatus), toStatus: \(toStatus))"
+    }
+
     public var debugDescription: String {
         let base: String
         if let replaced = self.replaced {

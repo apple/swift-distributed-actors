@@ -127,7 +127,7 @@ public class ProcessIsolated {
                 funRespawnServantProcess: funRespawnServantProcess,
                 funKillServantProcess: funKillServantProcess
             )
-            self.processCommander = try! system._spawnSystemActor(ProcessCommander.naming, processCommander.behavior, wellKnown: true)
+            self.processCommander = try! system._spawnSystemActor(ProcessCommander.naming, processCommander.behavior, props: Props()._asWellKnown)
         } else {
             // on servant node
             guard let joinNodeString = KnownServantParameters.masterNode.extractFirst(arguments) else {

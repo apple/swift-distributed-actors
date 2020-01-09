@@ -34,6 +34,10 @@ open class ClusteredNodesTestBase: XCTestCase {
         false
     }
 
+    open func configureLogCapture(settings: inout LogCapture.Settings) {
+        // just use defaults
+    }
+
     var _nextPort = 9001
     open func nextPort() -> Int {
         defer { self._nextPort += 1 }
@@ -42,7 +46,9 @@ open class ClusteredNodesTestBase: XCTestCase {
 
     /// Set up a new node intended to be clustered.
     open func setUpNode(_ name: String, _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
-        let capture = LogCapture()
+        var captureSettings = LogCapture.Settings()
+        self.configureLogCapture(settings: &captureSettings)
+        let capture = LogCapture(settings: captureSettings)
 
         let node = ActorSystem(name) { settings in
             settings.cluster.enabled = true

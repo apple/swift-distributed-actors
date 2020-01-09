@@ -134,28 +134,3 @@ extension MemberStatus {
         }
     }
 }
-
-extension Membership.Gossip: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoClusterMembershipGossip
-
-    func toProto(context: ActorSerializationContext) throws -> InternalProtobufRepresentation {
-        var proto = InternalProtobufRepresentation()
-//        switch self {
-//        case .update(let from, let members):
-        fatalError("TODO: implement me") // FIXME:
-//            proto.from = try from.toProto(context: context)
-//            proto.members = try members.map { try $0.toProto(context: context) }
-//        }
-//        return proto
-    }
-
-    init(fromProto proto: InternalProtobufRepresentation, context: ActorSerializationContext) throws {
-        fatalError("TODO: implement me") // FIXME:
-//        guard proto.hasFrom else {
-//            throw SerializationError.missingField("from", type: "\(InternalProtobufRepresentation.self)")
-//        }
-//        let from = try UniqueNode(fromProto: proto.from, context: context)
-//        let members = try proto.members.map { try Member(fromProto: $0, context: context) }
-//        self = .update(from: from, members)
-    }
-}

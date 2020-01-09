@@ -125,7 +125,7 @@ internal class ActorSingletonProxy<Message> {
         self.managerRef = try context.system._spawnSystemActor(
             "singletonManager-\(self.settings.name)",
             ActorSingletonManager(settings: self.settings, props: self.singletonProps, self.singletonBehavior).behavior,
-            wellKnown: true
+            props: Props()._asWellKnown
         )
         // Need the manager to tell us the ref because we can't resolve it due to random incarnation
         let refSubReceive = context.subReceive(SubReceiveId(id: "ref-\(context.name)"), ActorRef<Message>?.self) {

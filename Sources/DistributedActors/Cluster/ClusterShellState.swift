@@ -63,12 +63,20 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     /// Updating the `latestGossip` causes the gossiper to be informed about it, such that the next time it does a gossip round
     /// it uses the latest gossip available.
     var _latestGossip: Membership.Gossip
+
+    /// Any change to the gossip data, is propagated to the gossiper immediately.
     var latestGossip: Membership.Gossip {
         get {
             self._latestGossip
         }
         set {
-            self._latestGossip = newValue.incrementingOwnerVersion()
+            // FIXME: do we need the check?
+            if self._latestGossip.membership == newValue.membership {
+                self._latestGossip = newValue
+            } else {
+                self._latestGossip = newValue.incrementingOwnerVersion()
+            }
+            self.gossipControl.update(payload: self._latestGossip)
         }
     }
 
@@ -253,13 +261,13 @@ extension ClusterShellState {
         case .initiated(let initiated):
             /// order on nodes is somewhat arbitrary, but that is fine, since we only need this for tiebreakers
             let tieBreakWinner = initiated.localNode < offer.from
-            self.log.warning("""
+            self.log.info("""
             Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.from)](remote) \
             detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
             """)
             if tieBreakWinner {
                 if let abortedHandshake = self.abortOutgoingHandshake(with: offer.from.node) {
-                    self.log.info("Aborted handshake, as concurrently negotiating another one with same node already; Aborted handshake: \(abortedHandshake)")
+                    self.log.debug("Aborted handshake, as concurrently negotiating another one with same node already; Aborted handshake: \(abortedHandshake)")
                 }
 
                 self.log.debug("Proceed to negotiate handshake offer.")
