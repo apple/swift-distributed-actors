@@ -23,9 +23,11 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         true
     }
 
-//    override var captureLogs: Bool {
-//        false
-//    }
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.filterActorPath = "/system/cluster"
+        settings.excludeActorPaths = ["/system/cluster/swim"] // we assume it works fine
+        settings.excludeGrep = ["with generation"] // exclude timers noise
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking .down

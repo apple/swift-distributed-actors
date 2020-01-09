@@ -22,7 +22,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.logCaptureHandler = LogCapture()
+        self.logCaptureHandler = LogCapture(settings: .init())
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.overrideLoggerFactory = self.logCaptureHandler.loggerFactory(captureLabel: settings.cluster.node.systemName)
         }

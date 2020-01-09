@@ -51,6 +51,8 @@ extension Serialization {
             internal static let CRDTDeleteResult: SerializerId = 15
             internal static let CRDTGCounter: SerializerId = 16
             internal static let CRDTGCounterDelta: SerializerId = 17
+
+            internal static let ConvergentGossipMembership: SerializerId = 18
         }
     }
 }

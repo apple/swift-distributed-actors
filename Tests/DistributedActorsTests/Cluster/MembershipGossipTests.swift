@@ -36,17 +36,19 @@ final class MembershipGossipTests: XCTestCase {
     func test_merge_incomingGossip_firstGossipFromOtherNode() {
         let gossipFromSecond = Membership.Gossip(ownerNode: self.secondNode)
         let directive = self.myGossip.merge(incoming: gossipFromSecond)
+
         directive.effectiveChanges.shouldEqual(
             [MembershipChange(member: Member(node: self.secondNode, status: .joining), toStatus: .joining)]
         )
     }
 
     func test_merge_incomingGossip_sameVersions() {
-        // we act as if we had receive
         self.myGossip.seen.incrementVersion(owner: self.secondNode, at: self.myselfNode) // v: myself:1, second:1
         self.myGossip.membership.join(self.secondNode) // myself:joining, second:joining
 
         let gossipFromSecond = Membership.Gossip(ownerNode: self.secondNode)
-        self.myGossip.merge(incoming: gossipFromSecond)
+        let directive = self.myGossip.merge(incoming: gossipFromSecond)
+
+        directive.effectiveChanges.shouldEqual([])
     }
 }

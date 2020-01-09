@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
+import Logging
 import struct NIO.TimeAmount
 
 @usableFromInline
@@ -114,7 +115,7 @@ public class Timers<Message> {
     @inlinable
     public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
-            self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]")
+            self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
             timer.handle.cancel()
         }
     }
@@ -159,7 +160,7 @@ public class Timers<Message> {
             }
         }
 
-        self.context.log.trace("Started timer [\(key)] with generation [\(generation)]")
+        self.context.log.trace("Started timer [\(key)] with generation [\(generation)]", metadata: self.metadata)
         self.installedTimers[key] = Timer(key: key, message: message, repeated: repeated, generation: generation, handle: handle)
     }
 
@@ -172,13 +173,13 @@ public class Timers<Message> {
         self.context.makeAsynchronousCallback { [weak context = self.context] timerEvent in
             if let context = context {
                 if timerEvent.owner.path != context.path {
-                    context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.")
+                    context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.", metadata: self.metadata)
                     return
                 }
 
                 if let timer = self.installedTimers[timerEvent.key] {
                     if timer.generation != timerEvent.generation {
-                        context.log.warning("Received timer event for old generation [\(timerEvent.generation)], expected [\(timer.generation)]. Will ignore and continue.")
+                        context.log.warning("Received timer event for old generation [\(timerEvent.generation)], expected [\(timer.generation)]. Will ignore and continue.", metadata: self.metadata)
                         return
                     }
 
@@ -192,6 +193,15 @@ public class Timers<Message> {
                 }
             }
         }
+}
+
+extension Timers {
+    @usableFromInline
+    internal var metadata: Logger.Metadata {
+        [
+            "tag": "timers",
+        ]
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -222,7 +232,7 @@ internal extension Timers {
         }
 
         traceLog_Supervision("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)")
-        self.context.log.debug("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)")
+        self.context.log.debug("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)", metadata: self.metadata)
         self.installedTimers[key] = Timer(key: key, message: nil, repeated: false, generation: generation, handle: handle)
     }
 }

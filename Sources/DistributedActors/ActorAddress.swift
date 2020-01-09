@@ -512,7 +512,7 @@ public extension ActorIncarnation {
     static let wellKnown: ActorIncarnation = ActorIncarnation(0)
 
     static func random() -> ActorIncarnation {
-        return ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))
+        ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))
     }
 }
 

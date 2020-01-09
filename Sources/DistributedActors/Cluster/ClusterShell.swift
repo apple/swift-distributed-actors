@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
+import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -219,8 +220,7 @@ internal class ClusterShell {
         let delayed = try system._prepareSystemActor(
             ClusterShell.naming,
             self.bind(),
-            props: self.props,
-            wellKnown: true
+            props: self.props
         )
 
         self._ref = delayed.ref
@@ -292,9 +292,10 @@ internal class ClusterShell {
         self.bind()
     }
 
-    private var props: Props =
+    private let props: Props =
         Props()
         .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
+        ._asWellKnown
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -311,7 +312,7 @@ extension ClusterShell {
 
             // SWIM failure detector and gossiping
             let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
-            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: Props(), swimBehavior, wellKnown: true)
+            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: Props()._asWellKnown, swimBehavior)
 
             // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
@@ -341,7 +342,8 @@ extension ClusterShell {
 
                 let gossipControl = try ConvergentGossip.start(
                     context, name: "gossip", of: Membership.Gossip.self,
-                    notifyOnGossipRef: context.messageAdapter(from: Membership.Gossip.self) { Optional.some(Message.gossip($0)) }
+                    notifyOnGossipRef: context.messageAdapter(from: Membership.Gossip.self) { Optional.some(Message.gossip($0)) },
+                    props: Props()._asWellKnown
                 )
 
                 let state = ClusterShellState(
@@ -439,6 +441,7 @@ extension ClusterShell {
             self.tracelog(context, .receive(from: state.myselfNode.node), message: event)
             var state = state
             if state.applyClusterMembershipChange(event) {
+                state.latestGossip.incrementOwnerVersion()
                 // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
                 self.clusterEvents.publish(event)
             } // else no "effective change", thus we do not publish events
@@ -450,25 +453,20 @@ extension ClusterShell {
             _ state: ClusterShellState,
             gossip: Membership.Gossip
         ) -> Behavior<Message> {
-            context.log.trace("Gossip received [\(gossip)]", metadata: [
-                "tag": "membership",
-                "gossip/origin": "\(gossip.owner)",
-                "gossip/versionVector": "\(gossip.version)",
-                "gossip/localVersionVector": "\(state.latestGossip.version)",
-            ])
             tracelog(context, .gossip(gossip), message: gossip)
-
-            // TODO: this might differ more in the future; a gossip will perform diffing of "known, their observation" etc.
-            context.log.trace("Membership is: \(state.membership)")
-
             var state = state
-            let beforeGossip = state.latestGossip
+
+            let beforeGossipMerge = state.latestGossip
             let mergeDirective = state.latestGossip.merge(incoming: gossip) // mutates the gossip
 
-            context.log.trace("Membership after merge: \(state.membership)")
+            // TODO: here we could check if state.latestGossip.converged { do stuff }
 
-            context.log.trace("Local gossip value [.\(mergeDirective.causalRelation)] incoming; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
+            context.log.trace("Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
                 "tag": "membership",
+                "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
+                "actor/message": "\(gossip)",
+                "gossip/before": "\(beforeGossipMerge)",
+                "gossip/now": "\(state.latestGossip)",
             ])
             mergeDirective.effectiveChanges.forEach { effectiveChange in
                 let event: ClusterEvent = .membershipChange(effectiveChange)
@@ -486,7 +484,11 @@ extension ClusterShell {
             let members = state.membership.members(atMost: .removed)
             for member in members where member.node != state.selfNode {
                 if state.myselfNode != member.node {
-                    let gossipPeer: ConvergentGossip<Membership.Gossip>.Ref = context.system._resolve(context: .init(address: ._cluster(on: member.node), system: context.system))
+                    // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
+                    let remoteGossiperAddress = try! ActorPath._cluster.appending("gossip").makeRemoteAddress(on: member.node, incarnation: .wellKnown) // !-safe, since we know the name is a safe string
+                    let gossipPeer: ConvergentGossip<Membership.Gossip>.Ref = context.system._resolve(
+                        context: .init(address: remoteGossiperAddress, system: context.system)
+                    )
                     state.gossipControl.introduce(peer: gossipPeer)
             }
             // TODO: was this needed here? state.gossipControl.update(Membership.Gossip())

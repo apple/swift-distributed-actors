@@ -636,15 +636,15 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // MARK: Spawn implementations
 
     public override func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        return try self._spawn(naming, props: props, behavior, wellKnown: false)
+        try self._spawn(naming, props: props, behavior)
     }
 
     public override func spawnWatch<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        return self.watch(try self.spawn(naming, props: props, behavior))
+        self.watch(try self.spawn(naming, props: props, behavior))
     }
 
     public override func stop<Message>(child ref: ActorRef<Message>) throws {
-        return try self._stop(child: ref)
+        try self._stop(child: ref)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

@@ -36,6 +36,9 @@ public struct Props {
 
     public var metrics: MetricsProps
 
+    /// INTERNAL API: Allows spawning a "well known" actor. Use with great care, only if a single incarnation of actor will ever exist under the given path.
+    internal var _wellKnown: Bool = false
+
     public init(mailbox: MailboxProps = .default(), dispatcher: DispatcherProps = .default, supervision: SupervisionProps = .default, metrics: MetricsProps = .default) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
@@ -181,5 +184,24 @@ public struct MetricsProps {
     public init(group: String?, dimensions: [(String, String)]) {
         self.group = group
         self.dimensions = dimensions
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Internal Props settings
+
+extension Props {
+    /// Use with great care, and ONLY if a path is known to only ever be occupied by the one and only actor that is going to be spawned using this well known identity.
+    /// Allows spawning actors with "well known" identity (meaning the unique actor incarnation identifier will be set to `ActorIncarnation.wellKnown`).
+    public var _asWellKnown: Self {
+        var p = self
+        p._wellKnown = true
+        return p
+    }
+
+    public var _asNotSoWellKnown: Self {
+        var p = self
+        p._wellKnown = false
+        return p
     }
 }

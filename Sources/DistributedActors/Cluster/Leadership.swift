@@ -247,9 +247,11 @@ extension Leadership {
         }
 
         public mutating func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult {
-            context.log.trace("Selecting leader among: \(membership)")
-            var membership = membership
+            context.log.trace("Attempting leader election", metadata: [
+                "membership": "\(membership)",
+            ])
 
+            var membership = membership
             let membersToSelectAmong = membership.members(atMost: .up)
 
             let enoughMembers = membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide

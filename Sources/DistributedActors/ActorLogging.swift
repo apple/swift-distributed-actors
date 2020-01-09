@@ -102,26 +102,20 @@ public struct ActorLogger {
 
 // TODO: implement logging infrastructure - pipe as messages to dedicated logging actor
 public struct ActorOriginLogHandler: LogHandler {
-    private static func createFormatter() -> DateFormatter {
+    public static func _createFormatter() -> DateFormatter {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSZ"
+        formatter.dateFormat = "y-MM-dd H:m:ss.SSSS"
         formatter.locale = Locale(identifier: "en_US")
         formatter.calendar = Calendar(identifier: .gregorian)
         return formatter
     }
 
-    private static let _formatter = ActorOriginLogHandler.createFormatter()
-
     private let context: LoggingContext
-
-    // TODO: would be moved to actual "LoggingActor"
-    private let formatter: DateFormatter
 
     private var loggingSystemSelectedLogger: Logger
 
     public init(_ context: LoggingContext) {
         self.context = context
-        self.formatter = ActorOriginLogHandler._formatter
 
         self.loggingSystemSelectedLogger = Logger(label: context.identifier)
         self.loggingSystemSelectedLogger.logLevel = self.logLevel

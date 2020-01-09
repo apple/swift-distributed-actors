@@ -48,7 +48,7 @@ public final class XPCActorTransport: ActorTransport {
 
     public override func onActorSystemStart(system: ActorSystem) {
         self.lock.synchronized {
-            self._master = try! system._spawnSystemActor("xpc", XPCMaster().behavior, wellKnown: true)
+            self._master = try! system._spawnSystemActor("xpc", XPCMaster().behavior, props: Props()._asWellKnown)
             self.system = system
         }
     }

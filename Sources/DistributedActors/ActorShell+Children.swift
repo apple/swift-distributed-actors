@@ -315,13 +315,13 @@ extension Children {
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
 extension ActorShell: ChildActorRefFactory {
-    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>, wellKnown: Bool = false) throws -> ActorRef<M> {
+    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
         try self.validateUniqueName(name) // FIXME: reserve name
 
-        let incarnation: ActorIncarnation = wellKnown ? .wellKnown : .random()
+        let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: incarnation)
 
         let dispatcher: MessageDispatcher
