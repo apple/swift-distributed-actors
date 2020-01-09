@@ -18,13 +18,25 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
+import "ActorAddress.proto";
 import "Cluster/ClusterEvents.proto";
-import "Cluster/Membership.proto";
 
 message ClusterShellMessage {
     oneof message {
         // Not all messages are serializable, on purpose, as they are not intended to cross over the network
         ClusterEvent clusterEvent = 1;
-        ClusterMembershipGossip gossip = 2;
+        ClusterInbound inbound = 2;
     }
+}
+
+message ClusterInbound {
+    // Not all messages are serializable, on purpose, as they are not intended to cross over the network
+    oneof message {
+        ClusterRestInPeace restInPeace = 1;
+    }
+}
+
+message ClusterRestInPeace {
+    UniqueNode targetNode = 1;
+    UniqueNode fromNode = 2;
 }

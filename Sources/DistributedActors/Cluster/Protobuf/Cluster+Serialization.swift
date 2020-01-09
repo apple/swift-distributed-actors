@@ -27,10 +27,15 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         switch self {
         case .requestMembershipChange(let event):
             proto.clusterEvent = try event.toProto(context: context)
-//        case .gossip(let gossip):
-//            proto.gossip = try gossip.
+        case .inbound(.restInPeace(let target, let from)):
+            var protoRIP = ProtoClusterRestInPeace()
+            protoRIP.targetNode = try target.toProto(context: context)
+            protoRIP.fromNode = try from.toProto(context: context)
+            var protoInbound = ProtoClusterInbound()
+            protoInbound.restInPeace = protoRIP
+            proto.inbound = protoInbound
         default:
-            fatalError("Serializer not implemented for: \(String(reflecting: type(of: self)))")
+            fatalError("Serializer not implemented for: [\(self)]:\(String(reflecting: type(of: self)))")
         }
         return proto
     }
@@ -39,13 +44,18 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         switch proto.message {
         case .some(.clusterEvent(let protoEvent)):
             self = try .requestMembershipChange(.init(fromProto: protoEvent, context: context))
-//        case .some(.gossip(let protoGossip)):
-//            self = try .gossip(
-//                .update(
-//                    from: .init(fromProto: protoGossip.from, context: context),
-
-//                )
-//            )
+        case .some(.inbound(let inbound)):
+            switch inbound.message {
+            case .some(.restInPeace(let protoRIP)):
+                self = try .inbound(
+                    .restInPeace(
+                        .init(fromProto: protoRIP.targetNode, context: context),
+                        from: .init(fromProto: protoRIP.fromNode, context: context)
+                    )
+                )
+            case .none:
+                throw SerializationError.missingField("inbound.message", type: "\(ProtoClusterInbound.self)")
+            }
         case .none:
             throw SerializationError.missingField("message", type: "\(InternalProtobufRepresentation.self)")
 

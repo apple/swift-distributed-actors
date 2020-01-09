@@ -80,10 +80,11 @@ extension Membership {
         mutating func merge(incoming: Gossip) -> MergeDirective {
             // TODO: note: we could technically always just merge anyway; all data we have here is CRDT like anyway
             let causalRelation: VersionVector.CausalRelation = self.seen.compareVersion(observedOn: self.owner, to: incoming.version)
+            self.seen.merge(owner: self.owner, incoming: incoming) // always merge, as we grow our knowledge about what the other node has "seen"
+
             switch causalRelation {
             case .happenedBefore, .concurrent:
                 // this version is "behind" or "concurrent" with the incoming one
-                self.seen.merge(owner: self.owner, incoming: incoming)
                 let changes = self.membership.merge(fromAhead: incoming.membership)
                 return .init(causalRelation: causalRelation, effectiveChanges: changes)
             case .happenedAfter, .same:
@@ -99,6 +100,8 @@ extension Membership {
         }
     }
 }
+
+extension Membership.Gossip {}
 
 extension Membership.Gossip: Codable {}
 

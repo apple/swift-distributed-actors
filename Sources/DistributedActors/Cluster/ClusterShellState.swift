@@ -27,7 +27,7 @@ internal protocol ReadOnlyClusterState {
     var eventLoopGroup: EventLoopGroup { get } // TODO: or expose the MultiThreaded one...?
 
     /// Base backoff strategy to use in handshake retries // TODO: move it around somewhere so only handshake cares?
-    var backoffStrategy: BackoffStrategy { get }
+    var handshakeBackoff: BackoffStrategy { get }
 
     /// Unique address of the current node.
     var myselfNode: UniqueNode { get }
@@ -49,8 +49,8 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     let eventLoopGroup: EventLoopGroup
 
-    var backoffStrategy: BackoffStrategy {
-        self.settings.handshakeBackoffStrategy
+    var handshakeBackoff: BackoffStrategy {
+        self.settings.associationHandshakeBackoff
     }
 
     let allocator: ByteBufferAllocator
@@ -406,9 +406,11 @@ extension ClusterShellState {
 // MARK: Membership
 
 extension ClusterShellState {
-    /// - Returns: `true` if the change actually caused an effective change, `false` otherwise.
-    mutating func applyClusterMembershipChange(_ event: ClusterEvent) -> Bool {
+    /// Generates and applies changes; generating actions to be taken by the `ClusterShell` if and only if it is the Leader,
+    /// after this change has been applied.
+    mutating func applyClusterEventAsChange(_ event: ClusterEvent) -> AppliedClusterEventDirective {
         let changeWasApplied: Bool
+
         switch event {
         case .leadershipChange(let change):
             do {
@@ -443,15 +445,23 @@ extension ClusterShellState {
         }
 
         guard changeWasApplied else {
-            return false
+            return .init(applied: changeWasApplied, leaderActions: [])
         }
 
-        _ = self.tryCollectLeaderActions()
+        // will be empty if myself node is NOT a leader
+        let leaderActions = self.tryCollectLeaderActions() // TODO: performing actions has been moved to ClusterShell, cleanup here some more
         // TODO: actions may want to be acted upon, they're like directives, we currently have no such need though;
         // such actions be e.g. "kill association right away" or "asap tell that node .down" directly without waiting for gossip etc
 
         self.log.trace("Membership updated \(self.membership.prettyDescription(label: "\(self.myselfNode)")),\n  by \(event)")
-        return true
+        return .init(applied: changeWasApplied, leaderActions: leaderActions)
+    }
+
+    struct AppliedClusterEventDirective {
+        // True if the change was applied, modifying the Membership.
+        let applied: Bool
+        // will be empty if myself node is NOT a Leader
+        let leaderActions: [LeaderAction]
     }
 
     /// - Returns: the `MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,

@@ -286,7 +286,7 @@ internal struct SWIMShell {
                 return // member is already dead, nothing else to do here.
             }
 
-            context.log.debug("Confirming .dead member \(reflecting: member.node)")
+            context.log.trace("Confirming .dead member \(reflecting: member.node)")
 
             // We are diverging from the SWIM paper here in that we store the `.dead` state, instead
             // of removing the node from the member list. We do that in order to prevent dead nodes
