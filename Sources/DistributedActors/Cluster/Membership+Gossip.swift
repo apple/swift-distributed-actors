@@ -45,7 +45,14 @@ extension Membership {
         // TODO: end of can be moved to generic envelope ---------
 
         // Would be Payload of the generic envelope.
-        var membership: Membership
+        /// IMPORTANT: Whenever the membership is updated with an effective change, we MUST move the version forward (!)
+        var membership: Membership // {
+//            didSet {
+//                // Any change to membership, must result in incrementing the gossips version, as it now is "more"
+//                // up to date than the previous observation of the membership.
+//                self.incrementOwnerVersion()
+//            }
+//        }
 
         init(ownerNode: UniqueNode) {
             self.owner = ownerNode
@@ -68,28 +75,19 @@ extension Membership {
             return gossip
         }
 
-        // FIXME: incomplete merge impl
         /// Merge an incoming gossip _into_ the current gossip.
         /// Ownership of this gossip is retained, versions are bumped, and membership is merged.
         mutating func merge(incoming: Gossip) -> MergeDirective {
-            // merge seen tables
-            // self.seen.merge(incoming: incoming.seen)
+            // TODO: note: we could technically always just merge anyway; all data we have here is CRDT like anyway
             let causalRelation: VersionVector.CausalRelation = self.seen.compareVersion(observedOn: self.owner, to: incoming.version)
             switch causalRelation {
-            case .happenedAfter:
-                // this version is "ahead" of the incoming one
-                return .init(causalRelation: causalRelation, effectiveChanges: [])
-            case .happenedBefore:
-                // this version is "behind" the incoming one
+            case .happenedBefore, .concurrent:
+                // this version is "behind" or "concurrent" with the incoming one
                 self.seen.merge(owner: self.owner, incoming: incoming)
                 let changes = self.membership.merge(fromAhead: incoming.membership)
                 return .init(causalRelation: causalRelation, effectiveChanges: changes)
-            case .concurrent:
-                // this and the incoming versions are concurrent, we need to merge and gossip with the incoming.owner
-                self.seen.merge(owner: self.owner, incoming: incoming)
-                let changes = self.membership.merge(fromAhead: incoming.membership)
-                return .init(causalRelation: causalRelation, effectiveChanges: changes)
-            case .same:
+            case .happenedAfter, .same:
+                // this version is "ahead" of the incoming one OR
                 // both versions are the exact same, thus no changes can occur
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
             }
@@ -110,7 +108,7 @@ extension Membership.Gossip: Codable {}
 extension Membership {
     // TODO: Isn't the SeenTable the same as a collection of `VersionDot` in CRDTs?
     // TODO: Technically speaking, since Membership is also a move-only-forward datatype, the SeenTable should not be required
-//       for basic correctness. However thanks to keeping it, we are able to diagnose things much more, thus its main value.
+    //       for basic correctness. However thanks to keeping it, we are able to diagnose things much more, thus its main value.
     /// A table containing information about which node has seen the gossip at which version.
     struct SeenTable {
         var table: [UniqueNode: VersionVector]
@@ -141,12 +139,12 @@ extension Membership {
         ///
         /// In other words, we gained information and our membership has "moved forward" as
         mutating func merge(owner: UniqueNode, incoming: Membership.Gossip) {
-            var ownerVersion = self.table[owner] ?? VersionVector.initial(replicaId: .uniqueNode(owner))
+            var ownerVersion = self.table[owner] ?? VersionVector()
             ownerVersion.merge(other: incoming.version) // we gained information from the incoming gossip
             self.table[owner] = ownerVersion
 
             // This is our "local view" onto what we perceived the `incoming.owners` version to be, we merge it with the most recent version
-            var incomingOwnersVersion = self.table[incoming.owner] ?? VersionVector.initial(replicaId: .uniqueNode(incoming.owner))
+            var incomingOwnersVersion = self.table[incoming.owner] ?? VersionVector()
             incomingOwnersVersion.merge(other: incoming.version)
             self.table[incoming.owner] = incomingOwnersVersion
         }
@@ -196,7 +194,7 @@ extension Membership.SeenTable: CustomStringConvertible, CustomDebugStringConver
         var s = "SeenTable(\n"
         let entryHeadingPadding = String(repeating: " ", count: 4)
         let entryPadding = String(repeating: " ", count: 4 * 2)
-        table.forEach { node, vv in
+        table.sorted(by: { $0.key < $1.key }).forEach { node, vv in
             let entryHeader = "\(entryHeadingPadding)\(node) observed versions:\n"
 
             s.append(entryHeader)

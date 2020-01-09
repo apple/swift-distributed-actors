@@ -13,33 +13,19 @@
 //===----------------------------------------------------------------------===//
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-final class ConvergentGossip<Payload: Codable> { // TODO: Messageable
-    // TODO: configuration, just random or smart etc
+final class ConvergentGossip<Payload: Codable> {
+    let settings: Settings
 
-    enum Message {
-        case updatePayload(Payload)
-        case introducePeer(ActorRef<Message>)
-
-        // gossip
-        case gossip(GossipEnvelope)
-
-        // internal messages
-        case _clusterEvent(ClusterEvent)
-        case _periodicGossipTick
-    }
-
-    struct GossipEnvelope {
-        // TODO: this is to become the generic version what Membership.Gossip is
-        let payload: Payload
-    }
-
+    // TODO: store Envelope and inside it the payload
     private var payload: Payload?
 
     private let notifyOnGossipRef: ActorRef<Payload>
 
-    private var peers: [ActorRef<ConvergentGossip<Payload>.Message>] // TODO: allow finding them via Receptionist, for Membership gossip we manage it directly in ClusterShell tho
+    // TODO: allow finding them via Receptionist, for Membership gossip we manage it directly in ClusterShell tho
+    private var peers: Set<ActorRef<ConvergentGossip<Payload>.Message>>
 
-    fileprivate init(notifyOnGossipRef: ActorRef<Payload>) {
+    fileprivate init(notifyOnGossipRef: ActorRef<Payload>, settings: Settings) {
+        self.settings = settings
         self.payload = nil
         self.peers = [] // TODO: passed in configuration to configure how we find peers
         // TODO: or the entire envelope?
@@ -48,9 +34,7 @@ final class ConvergentGossip<Payload: Codable> { // TODO: Messageable
 
     var behavior: Behavior<Message> {
         .setup { context in
-            self.scheduleGossipRound(context: context)
-
-            context.log.trace("ConvergentGossip started, schedule: XXXXX") // TODO: configuration
+            self.scheduleNextGossipRound(context: context)
 
             // TODO: those timers depend on what the peer lookup strategy is
             // context.system.cluster.autoUpdatedMembership(context) // but we don't offer it for Behaviors, just Actor<>...
@@ -61,68 +45,110 @@ final class ConvergentGossip<Payload: Codable> { // TODO: Messageable
                 case .updatePayload(let payload):
                     self.onLocalPayloadUpdate(context, payload: payload)
                 case .introducePeer(let peer):
-                    context.log.info("Peer \(peer) to be included in gossip")
-                    self.peers.append(context.watch(peer))
-                    context.log.trace("Adding peer: \(peer), total peers: [\(self.peers.count)]: \(self.peers)")
-                    // TODO: consider if we should do a quick gossip to any new peers etc
-                    // TODO: peers are removed when they die, no manual way to do it
+                    self.onIntroducePeer(context, peer: peer)
 
                 case .gossip(let envelope):
-                    context.log.trace("Received gossip: \(envelope)", metadata: [
-                        "message": "\(envelope)",
-                    ])
                     self.receiveGossip(context, envelope: envelope)
 
                 case ._clusterEvent(let event):
-                    fatalError("automatic peer location is not implemented") // FIXME:
+                    fatalError("automatic peer location is not implemented") // FIXME: implement this
+
                 case ._periodicGossipTick:
                     self.onPeriodicGossipTick(context)
                 }
                 return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
                 context.log.trace("Removed terminated peer: \(terminated.address)")
-                self.peers = self.peers.filter { $0.address != terminated.address }
+                self.peers = self.peers.filter {
+                    $0.address != terminated.address
+                }
                 // TODO: could pause ticks since we have zero peers now?
                 return .same
             }
         }
     }
 
+    private func onIntroducePeer(_ context: ActorContext<Message>, peer: ActorRef<Message>) {
+        if self.peers.insert(context.watch(peer)).inserted {
+            context.log.trace("Added peer: \(peer), total peers: [\(self.peers.count)]: \(self.peers)")
+            // TODO: consider if we should do a quick gossip to any new peers etc
+            // TODO: peers are removed when they die, no manual way to do it
+        }
+    }
+
     private func receiveGossip(_ context: ActorContext<ConvergentGossip.Message>, envelope: ConvergentGossip.GossipEnvelope) {
-        // FIXME: merge the payloads and notify the ClusterShell? or just notify the ClusterShell?
-        context.log.warning("RECEIVE the gossip \(envelope), local one was: \(reflecting: self.payload)")
-        // TODO: we need to merge the payloads here right, or at least the envelopes really
-        self.notifyOnGossipRef.tell(envelope.payload)
+        context.log.trace("Received gossip: \(envelope)", metadata: [
+            "gossip/localPayload": "\(String(reflecting: self.payload))",
+            "actor/message": "\(envelope)",
+        ])
+
+        // send to recipient which may then update() the payload we are gossiping
+        self.notifyOnGossipRef.tell(envelope.payload) // could be good as request/reply here
     }
 
     private func onLocalPayloadUpdate(_ context: ActorContext<Message>, payload: Payload) {
-        context.log.trace("Gossip payload updated: \(payload)")
+        context.log.trace("Gossip payload updated: \(payload)", metadata: [
+            "actor/message": "\(payload)",
+            "gossip/previousPayload": "\(self.payload)",
+        ])
         self.payload = payload
-        // TODO: bump local version vector;
+        // TODO: bump local version vector; once it is in the envelope
     }
 
     // FIXME: this is still just broadcasting (!)
     private func onPeriodicGossipTick(_ context: ActorContext<Message>) {
-        context.log.trace("Gossip tick...!")
+        context.log.trace("Gossip tick...! Peers: \(self.peers.count)")
 
         guard let payload = self.payload else {
             context.log.trace("No payload set, skipping gossip round.")
+            self.scheduleNextGossipRound(context: context)
             return
         }
 
+        // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them
+        // That's nicer for small clusters, I guess
+        // let gossipCandidatePeers = self.
+        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks
+
         // FIXME: this gossips to ALL, but should randomly pick some, with preference of nodes which are "behind"
+        context.log.trace("Sending gossip to \(self.peers)", metadata: [
+            "gossip/peers": "\(self.peers)",
+            "actor/message": "\(envelope)",
+        ])
+
         self.peers.forEach { peer in
-            let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks
-            context.log.trace("Sending gossip to: \(peer)", metadata: [
-                "message": "\(envelope)",
-            ])
             peer.tell(.gossip(envelope))
         }
+
+        self.scheduleNextGossipRound(context: context)
     }
 
-    private func scheduleGossipRound(context: ActorContext<Message>) {
+    private func scheduleNextGossipRound(context: ActorContext<Message>) {
         // FIXME: configurable rounds
-        context.timers.startSingle(key: "periodic-gossip", message: ._periodicGossipTick, delay: .seconds(1))
+        let delay = TimeAmount.seconds(1) // TODO: configuration
+        context.log.trace("Schedule next gossip round in \(delay.prettyDescription)")
+        context.timers.startSingle(key: "periodic-gossip", message: ._periodicGossipTick, delay: delay)
+    }
+}
+
+extension ConvergentGossip {
+    enum Message {
+        // gossip
+        case gossip(GossipEnvelope)
+
+        // local messages
+        case updatePayload(Payload)
+        case introducePeer(ActorRef<Message>)
+
+        // internal messages
+        case _clusterEvent(ClusterEvent)
+        case _periodicGossipTick
+    }
+
+    struct GossipEnvelope: Codable {
+        // TODO: this is to become the generic version what Membership.Gossip is
+        let payload: Payload
+        // TODO: var converged: Bool {}
     }
 }
 
@@ -132,10 +158,10 @@ extension ConvergentGossip {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
     static func start<ParentMessage>(
         _ context: ActorContext<ParentMessage>, name naming: ActorNaming, of type: Payload.Type = Payload.self,
-        notifyOnGossipRef: ActorRef<Payload>
+        notifyOnGossipRef: ActorRef<Payload>, props: Props = .init(), settings: Settings = .init()
     ) throws -> ConvergentGossipControl<Payload> {
-        let gossipShell = ConvergentGossip<Payload>(notifyOnGossipRef: notifyOnGossipRef)
-        let ref = try context.spawn(naming, gossipShell.behavior)
+        let gossipShell = ConvergentGossip<Payload>(notifyOnGossipRef: notifyOnGossipRef, settings: settings)
+        let ref = try context.spawn(naming, props: props, gossipShell.behavior)
         return ConvergentGossipControl(ref)
     }
 }
@@ -155,5 +181,14 @@ internal struct ConvergentGossipControl<Payload: Codable> {
     /// Introduce a peer to the gossip group
     func introduce(peer: ConvergentGossip<Payload>.Ref) {
         self.ref.tell(.introducePeer(peer))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ConvergentGossip Settings
+
+extension ConvergentGossip {
+    struct Settings {
+        var gossipInterval: TimeAmount = .seconds(1)
     }
 }

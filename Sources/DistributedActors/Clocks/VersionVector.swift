@@ -39,7 +39,7 @@ public struct VersionVector {
     // Internal state is a dictionary of replicas and their corresponding version
     internal var state: [ReplicaId: Int] = [:]
 
-    public static func initial(replicaId: ReplicaId) -> Self {
+    public static func first(at replicaId: ReplicaId) -> Self {
         .init((replicaId, 1))
     }
 
@@ -239,7 +239,7 @@ extension ReplicaId: Comparable {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l < r
         case (.uniqueNode(let l), .uniqueNode(let r)):
-            return l.nid.value < r.nid.value
+            return l < r
         case (.uniqueNode, _), (.actorAddress, _):
             return false // TODO: should we even disallow comparing them?
         }
@@ -258,13 +258,14 @@ extension ReplicaId: Comparable {
 }
 
 extension ReplicaId: Codable {
-    public enum DiscriminatorKeys: String, Decodable {
+    public enum DiscriminatorKeys: String, Codable {
         case actorAddress
         case uniqueNode
     }
 
     public enum CodingKeys: CodingKey {
         case _case
+
         case actorAddress_value
         case uniqueNode_value
     }
@@ -283,8 +284,10 @@ extension ReplicaId: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .actorAddress(let address):
+            try container.encode(DiscriminatorKeys.actorAddress, forKey: ._case)
             try container.encode(address, forKey: .actorAddress_value)
         case .uniqueNode(let node):
+            try container.encode(DiscriminatorKeys.uniqueNode, forKey: ._case)
             try container.encode(node, forKey: .uniqueNode_value)
         }
     }

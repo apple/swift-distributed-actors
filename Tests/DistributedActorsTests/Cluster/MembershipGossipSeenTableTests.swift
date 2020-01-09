@@ -36,7 +36,7 @@ final class MembershipGossipSeenTableTests: XCTestCase {
         var table = SeenTable(myselfNode: self.myselfNode, version: .init())
         table.incrementVersion(owner: self.myselfNode, at: self.myselfNode) // M:1
 
-        var incomingVersion = VersionVector.initial(replicaId: .uniqueNode(self.secondNode))
+        var incomingVersion = VersionVector.first(at: .uniqueNode(self.secondNode))
         incomingVersion.increment(at: .uniqueNode(self.secondNode))
         incomingVersion.increment(at: .uniqueNode(self.secondNode)) // S:2
 
@@ -73,10 +73,11 @@ final class MembershipGossipSeenTableTests: XCTestCase {
 
     func test_seenTable_merge_notYetSeenInformation() {
         var table = SeenTable(myselfNode: self.myselfNode, version: .init())
-        table.incrementVersion(owner: self.myselfNode, at: self.myselfNode)
+        table.incrementVersion(owner: self.myselfNode, at: self.myselfNode) // M observed: M:1
 
         var incoming = Membership.Gossip(ownerNode: self.secondNode)
-        incoming.incrementOwnerVersion()
+        incoming.incrementOwnerVersion() // S observed: S:1
+        incoming.incrementOwnerVersion() // S observed: S:2
 
         table.merge(owner: self.myselfNode, incoming: incoming)
 
@@ -96,7 +97,8 @@ final class MembershipGossipSeenTableTests: XCTestCase {
         table.incrementVersion(owner: self.myselfNode, at: self.secondNode) // M observed: M:1 S:1
         table.incrementVersion(owner: self.myselfNode, at: self.secondNode) // M observed: M:1 S:2
 
-        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed: S:1
+        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed:
+        incoming.incrementOwnerVersion() // S observed: S:1
         incoming.incrementOwnerVersion() // S observed: S:2
         incoming.seen.incrementVersion(owner: self.secondNode, at: self.myselfNode) // S observed: M:1 S:2
 
@@ -112,7 +114,8 @@ final class MembershipGossipSeenTableTests: XCTestCase {
         var table = SeenTable(myselfNode: self.myselfNode, version: .init())
         table.incrementVersion(owner: self.myselfNode, at: self.myselfNode) // M observed: M:1
 
-        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed: S:1
+        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed:
+        incoming.incrementOwnerVersion() // S observed: S:1
         incoming.incrementOwnerVersion() // S observed: S:2
         incoming.seen.incrementVersion(owner: self.secondNode, at: self.myselfNode) // S observed: M:1 S:2
 
@@ -130,13 +133,39 @@ final class MembershipGossipSeenTableTests: XCTestCase {
         table.incrementVersion(owner: self.myselfNode, at: self.secondNode) // M observed: M:1 S:1
         table.incrementVersion(owner: self.myselfNode, at: self.secondNode) // M observed: M:1 S:2
 
-        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed: S:1
+        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed:
+        incoming.incrementOwnerVersion() // S observed: S:1
         incoming.incrementOwnerVersion() // S observed: S:2
 
         table.merge(owner: self.myselfNode, incoming: incoming)
 
         table.version(at: self.myselfNode).shouldEqual(self.parseVersionVector("M:1 S:2"))
         table.version(at: self.secondNode).shouldEqual(self.parseVersionVector("S:2"))
+    }
+
+    func test_seenTable_merge_concurrentInformation() {
+        // the incoming gossip is "behind"
+
+        var table = SeenTable(myselfNode: self.myselfNode, version: .init())
+        table.incrementVersion(owner: self.myselfNode, at: self.myselfNode) // M observed: M:1
+        table.incrementVersion(owner: self.myselfNode, at: self.secondNode) // M observed: M:1 S:1
+        table.incrementVersion(owner: self.myselfNode, at: self.secondNode) // M observed: M:1 S:2
+        table.incrementVersion(owner: self.myselfNode, at: self.thirdNode) // M observed: M:1 S:2 T:1
+        // M has seen gossip from S, when it was at t=2
+        table.incrementVersion(owner: self.secondNode, at: self.secondNode) // S observed: S:2
+        table.incrementVersion(owner: self.secondNode, at: self.secondNode) // S observed: S:3
+
+        // in reality S is quite more far ahead, already at t=4
+        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed
+        incoming.incrementOwnerVersion() // S observed: S:1
+        incoming.incrementOwnerVersion() // S observed: S:2
+        incoming.incrementOwnerVersion() // S observed: S:3
+        incoming.seen.incrementVersion(owner: self.secondNode, at: self.thirdNode) // S observed: S:3 T:1
+
+        table.merge(owner: self.myselfNode, incoming: incoming)
+
+        table.version(at: self.myselfNode).shouldEqual(self.parseVersionVector("M:1 S:3 T:1"))
+        table.version(at: self.secondNode).shouldEqual(incoming.seen.version(at: self.secondNode))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

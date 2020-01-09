@@ -27,9 +27,12 @@ public final class LogCapture {
     private var _logs: [CapturedLogMessage] = []
     private let lock = DistributedActorsConcurrencyHelpers.Lock()
 
+    let settings: Settings
     private var captureLabel: String = ""
 
-    public init() {}
+    public init(settings: Settings = .init()) {
+        self.settings = settings
+    }
 
     public func loggerFactory(captureLabel: String) -> ((String) -> Logger) {
         self.captureLabel = captureLabel
@@ -59,48 +62,19 @@ public final class LogCapture {
     }
 }
 
-struct LogCaptureLogHandler: LogHandler {
-    let label: String
-    let capture: LogCapture
+extension LogCapture {
+    public struct Settings {
+        public var minimumLogLevel: Logger.Level = .trace
 
-    init(label: String, _ capture: LogCapture) {
-        self.label = label
-        self.capture = capture
-    }
+        /// Filter and capture logs only from actors with the following path prefix
+        public var filterActorPath: String = "/"
+        /// Do not capture log messages which include the following strings.
+        public var excludeActorPaths: Set<String> = []
 
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
-        let date = Date()
-        var _metadata: Logger.Metadata = metadata ?? [:]
-        _metadata["label"] = "\(self.label)"
+        /// Do not capture log messages which include the following strings.
+        public var excludeGrep: Set<String> = []
 
-        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
-    }
-
-    public subscript(metadataKey _: String) -> Logger.Metadata.Value? {
-        get {
-            nil
-        }
-        set {
-            // ignore
-        }
-    }
-
-    public var metadata: Logging.Logger.Metadata {
-        get {
-            [:]
-        }
-        set {
-            // ignore
-        }
-    }
-
-    public var logLevel: Logger.Level {
-        get {
-            Logger.Level.trace
-        }
-        set {
-            // ignore, we always collect all logs
-        }
+        public init() {}
     }
 }
 
@@ -135,14 +109,27 @@ extension LogCapture {
                 if !metadata.isEmpty {
                     metadataString = "\n// metadata: "
                     for key in metadata.keys.sorted() where key != "label" {
-                        metadataString.append("\"\(key)\": \(metadata[key]!), ")
+                        var valueString = "\(metadata[key]!)"
+                        if valueString.contains("\n") {
+                            valueString = String(
+                                valueString.split(separator: "\n").map { line in
+                                    if line.starts(with: "// ") {
+                                        return String(line)
+                                    } else {
+                                        return "// \(line)"
+                                    }
+                                }.joined(separator: "\n").dropFirst("// ".count)
+                            )
+                        }
+                        metadataString.append("\"\(key)\": \(valueString), ")
                     }
                     metadataString = String(metadataString.dropLast(2))
                 }
             }
+            let date = ActorOriginLogHandler._createFormatter().string(from: log.date)
             let file = log.file.split(separator: "/").last ?? ""
             let line = log.line
-            print("Captured log [\(self.captureLabel)][\(log.date)] [\(file):\(line)]\(label) [\(log.level)] \(log.message)\(metadataString)")
+            print("Captured log [\(self.captureLabel)][\(date)] [\(file):\(line)]\(label) [\(log.level)] \(log.message)\(metadataString)")
         }
     }
 }
@@ -155,6 +142,64 @@ public struct CapturedLogMessage {
     let file: String
     let function: String
     let line: UInt
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: LogCapture LogHandler
+
+struct LogCaptureLogHandler: LogHandler {
+    let label: String
+    let capture: LogCapture
+
+    init(label: String, _ capture: LogCapture) {
+        self.label = label
+        self.capture = capture
+    }
+
+    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+        guard self.label.starts(with: self.capture.settings.filterActorPath) else {
+            return // ignore this actor's logs, it was filtered out
+        }
+        guard !self.capture.settings.excludeActorPaths.contains(self.label) else {
+            return // actor was was excluded explicitly
+        }
+        guard !self.capture.settings.excludeGrep.contains(where: { "\(message)".contains($0) }) else {
+            return // actor was was excluded explicitly
+        }
+
+        let date = Date()
+        var _metadata: Logger.Metadata = metadata ?? [:]
+        _metadata["label"] = "\(self.label)"
+
+        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
+    }
+
+    public subscript(metadataKey _: String) -> Logger.Metadata.Value? {
+        get {
+            nil
+        }
+        set {
+            // ignore
+        }
+    }
+
+    public var metadata: Logging.Logger.Metadata {
+        get {
+            [:]
+        }
+        set {
+            // ignore
+        }
+    }
+
+    public var logLevel: Logger.Level {
+        get {
+            self.capture.settings.minimumLogLevel
+        }
+        set {
+            // ignore, we always collect all logs
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
