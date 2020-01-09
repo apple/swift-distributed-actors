@@ -35,10 +35,6 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 
     override func setUp() {
         super.setUp()
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
-            settings.overrideLoggerFactory = self.logCapture.loggerFactory(captureLabel: "mock")
-        }
-        self.testKit = ActorTestKit(self.system)
 
         self.eventLoop = EmbeddedEventLoop()
         self.channel = EmbeddedChannel(loop: self.eventLoop)
@@ -50,14 +46,13 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
         if self.printLossyNetworkTestLogs {
             self.handler = SystemMessageRedeliveryHandler(log: self.system.log, cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         } else {
-            self.handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCapture), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            self.handler = SystemMessageRedeliveryHandler(log: self.logCapture.loggerFactory(captureLabel: "mock")("mock"), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         }
         /// reads go this way: vvv
         try! shouldNotThrow { try self.channel.pipeline.addHandler(self.writeRecorder).wait() }
         try! shouldNotThrow { try self.channel.pipeline.addHandler(self.handler).wait() }
         try! shouldNotThrow { try self.channel.pipeline.addHandler(self.readRecorder).wait() }
         /// writes go this way: ^^^
-
         self.remoteControl = AssociationRemoteControl(channel: self.channel, remoteNode: .init(node: .init(systemName: "sys", host: "127.0.0.1", port: 8228), nid: .random()))
     }
 
@@ -146,7 +141,7 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
         if self.printLossyNetworkTestLogs {
             handler = SystemMessageRedeliveryHandler(log: system.log, cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         } else {
-            handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCapture), cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            handler = SystemMessageRedeliveryHandler(log: self.logCapture.loggerFactory(captureLabel: "mock")("mock"), cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         }
 
         var lossySettings = FaultyNetworkSimulationSettings(mode: .drop(probability: 0.25))

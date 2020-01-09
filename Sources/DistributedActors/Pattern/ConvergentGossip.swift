@@ -58,7 +58,7 @@ final class ConvergentGossip<Payload: Codable> {
                 }
                 return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
-                context.log.trace("Removed terminated peer: \(terminated.address)")
+                context.log.trace("Peer terminated: \(terminated.address), will not gossip to it anymore")
                 self.peers = self.peers.filter {
                     $0.address != terminated.address
                 }
@@ -116,7 +116,8 @@ final class ConvergentGossip<Payload: Codable> {
             "actor/message": "\(envelope)",
         ])
 
-        self.peers.forEach { peer in
+        // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
+        if let peer = self.peers.shuffled().first {
             peer.tell(.gossip(envelope))
         }
 

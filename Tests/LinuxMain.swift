@@ -109,6 +109,7 @@ XCTMain([
     testCase(SWIMShellTests.allTests),
     testCase(SerializationPoolTests.allTests),
     testCase(SerializationTests.allTests),
+    testCase(ShootTheOtherNodeClusteredTests.allTests),
     testCase(StashBufferTests.allTests),
     testCase(SupervisionTests.allTests),
     testCase(SystemMessageRedeliveryHandlerTests.allTests),

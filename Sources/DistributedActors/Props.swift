@@ -199,6 +199,8 @@ extension Props {
         return p
     }
 
+    /// All "normal" actors are not-so well-known.
+    /// Inverse of a well-known actor, i.e. having it's unique identity generated upon spawning.
     public var _asNotSoWellKnown: Self {
         var p = self
         p._wellKnown = false

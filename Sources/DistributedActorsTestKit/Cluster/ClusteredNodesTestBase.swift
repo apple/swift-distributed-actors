@@ -38,6 +38,16 @@ open class ClusteredNodesTestBase: XCTestCase {
         // just use defaults
     }
 
+    /// Configuration to be applied to every actor system.
+    ///
+    /// Order in which configuration is changed:
+    /// - default changes made by `ClusteredNodesTestBase`
+    /// - changes made by `configureActorSystem`
+    /// - changes made by `modifySettings`, which is a parameter of `setUpNode`
+    open func configureActorSystem(settings: inout ActorSystemSettings) {
+        // just use defaults
+    }
+
     var _nextPort = 9001
     open func nextPort() -> Int {
         defer { self._nextPort += 1 }
@@ -57,6 +67,7 @@ open class ClusteredNodesTestBase: XCTestCase {
                 settings.overrideLoggerFactory = capture.loggerFactory(captureLabel: name)
             }
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+            self.configureActorSystem(settings: &settings)
             modifySettings?(&settings)
         }
 
@@ -79,9 +90,7 @@ open class ClusteredNodesTestBase: XCTestCase {
     open override func tearDown() {
         let testsFailed = self.testRun?.failureCount ?? 0 > 0
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
-            for node in self._nodes {
-                self.printCapturedLogs(node)
-            }
+            self.printAllCapturedLogs()
         }
 
         self._nodes.forEach { $0.shutdown().wait() }
@@ -119,12 +128,15 @@ open class ClusteredNodesTestBase: XCTestCase {
         }
     }
 
-    public func ensureNodes(_ status: MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), systems: ActorSystem...) throws {
+    public func ensureNodes(
+        _ status: MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), systems: ActorSystem...,
+        file: StaticString = #file, line: UInt = #line
+    ) throws {
         guard let onSystem = system ?? self._nodes.first else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
-        try self.testKit(onSystem).eventually(within: within) {
+        try self.testKit(onSystem).eventually(within: within, file: file, line: line) {
             for onSystem in systems {
                 // all members on onMember should have reached this status (e.g. up)
                 for expectSystem in systems {
@@ -159,17 +171,27 @@ extension ClusteredNodesTestBase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Logs
+// MARK: Captured Logs
 
 extension ClusteredNodesTestBase {
-    public func printCapturedLogs(_ node: ActorSystem) {
+    public func capturedLogs(of node: ActorSystem) -> LogCapture {
         guard let index = self._nodes.firstIndex(of: node) else {
             fatalError("No such node: [\(node)] in [\(self._nodes)]!")
         }
 
+        return self._logCaptures[index]
+    }
+
+    public func printCapturedLogs(of node: ActorSystem) {
         print("------------------------------------- \(node) ------------------------------------------------")
-        self._logCaptures[index].printLogs()
+        self.capturedLogs(of: node).printLogs()
         print("========================================================================================================================")
+    }
+
+    public func printAllCapturedLogs() {
+        for node in self._nodes {
+            self.printCapturedLogs(of: node)
+        }
     }
 }
 
@@ -299,7 +321,10 @@ extension ClusteredNodesTestBase {
         }
 
         if foundMember.status != expectedStatus {
-            throw testKit.error("Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]")
+            throw testKit.error("""
+            Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
+            to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
+            """, file: file, line: line)
         }
     }
 

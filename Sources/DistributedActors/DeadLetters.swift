@@ -256,5 +256,4 @@ protocol SilentDeadLetter {}
 extension ActorPath {
     internal static let _dead: ActorPath = try! ActorPath(root: "dead")
     internal static let _deadLetters: ActorPath = try! ActorPath._dead.appending("letters")
-    internal static let _clusterShell: ActorPath = try! ActorPath._system.appendingKnownUnique(ClusterShell.naming)
 }
