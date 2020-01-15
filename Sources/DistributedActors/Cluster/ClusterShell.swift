@@ -490,7 +490,7 @@ extension ClusterShell {
             context.log.trace("Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
                 "tag": "membership",
                 "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
-                "actor/message": "\(gossip)",
+                "gossip/incoming": "\(gossip)",
                 "gossip/before": "\(beforeGossipMerge)",
                 "gossip/now": "\(state.latestGossip)",
             ])
@@ -663,7 +663,7 @@ extension ClusterShell {
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
                 let actions = state.tryCollectLeaderActions()
-                self.interpretLeaderActions(&state, actions)
+                self.interpretLeaderActions(&state, actions) // TODO: not so DRY between acceptAndAssociate and onHandshakeAccepted, DRY it up
 
                 /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
                 self.recordMetrics(context.system.metrics, membership: state.membership)
@@ -788,7 +788,8 @@ extension ClusterShell {
         }
 
         /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
-        _ = state.tryCollectLeaderActions() // TODO: don't return, or handle them (refactoring)
+        let actions = state.tryCollectLeaderActions()
+        self.interpretLeaderActions(&state, actions)
 
         // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)
         /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)

@@ -43,9 +43,9 @@ extension MembershipTests {
             ("test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt", test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt),
             ("test_membershipDiff_shouldIncludeEntry_whenMemberRemoved", test_membershipDiff_shouldIncludeEntry_whenMemberRemoved),
             ("test_membershipDiff_shouldIncludeEntry_whenMemberAdded", test_membershipDiff_shouldIncludeEntry_whenMemberAdded),
-            ("test_merge_fromAhead_same", test_merge_fromAhead_same),
-            ("test_merge_fromAhead_membership_withAdditionalMember", test_merge_fromAhead_membership_withAdditionalMember),
-            ("test_merge_fromAhead_membership_withMemberNowDown", test_merge_fromAhead_membership_withMemberNowDown),
+            ("test_mergeForward_fromAhead_same", test_mergeForward_fromAhead_same),
+            ("test_mergeForward_fromAhead_membership_withAdditionalMember", test_mergeForward_fromAhead_membership_withAdditionalMember),
+            ("test_mergeForward_fromAhead_membership_withMemberNowDown", test_mergeForward_fromAhead_membership_withMemberNowDown),
         ]
     }
 }

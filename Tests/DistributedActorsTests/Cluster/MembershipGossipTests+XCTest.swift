@@ -23,9 +23,9 @@ import XCTest
 extension MembershipGossipTests {
     static var allTests: [(String, (MembershipGossipTests) -> () throws -> Void)] {
         return [
-            ("test_merge_incomingGossip_firstGossipFromOtherNode", test_merge_incomingGossip_firstGossipFromOtherNode),
-            ("test_merge_incomingGossip_sameVersions", test_merge_incomingGossip_sameVersions),
-            ("test_merge_incomingGossip_hasNoInformation", test_merge_incomingGossip_hasNoInformation),
+            ("test_mergeForward_incomingGossip_firstGossipFromOtherNode", test_mergeForward_incomingGossip_firstGossipFromOtherNode),
+            ("test_mergeForward_incomingGossip_sameVersions", test_mergeForward_incomingGossip_sameVersions),
+            ("test_mergeForward_incomingGossip_hasNoInformation", test_mergeForward_incomingGossip_hasNoInformation),
         ]
     }
 }

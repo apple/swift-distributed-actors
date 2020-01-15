@@ -82,6 +82,9 @@ extension Membership {
             let causalRelation: VersionVector.CausalRelation = self.seen.compareVersion(observedOn: self.owner, to: incoming.version)
             self.seen.merge(owner: self.owner, incoming: incoming) // always merge, as we grow our knowledge about what the other node has "seen"
 
+            // the guard and avoiding to merge with the causality relation is ENTIRELY OPTIONAL,
+            // and should be seen as an optimization to avoid trying to merge much data when we know it will not yield
+            // new information. The memberships proceed "only forward" like CRDTs and can ALWAYS be safely merged.
             switch causalRelation {
             case .happenedBefore, .concurrent:
                 // this version is "behind" or "concurrent" with the incoming one

@@ -73,6 +73,7 @@ extension LogCapture {
 
         /// Do not capture log messages which include the following strings.
         public var excludeGrep: Set<String> = []
+        public var grep: Set<String> = []
 
         public init() {}
     }
@@ -161,10 +162,13 @@ struct LogCaptureLogHandler: LogHandler {
             return // ignore this actor's logs, it was filtered out
         }
         guard !self.capture.settings.excludeActorPaths.contains(self.label) else {
-            return // actor was was excluded explicitly
+            return // actor was excluded explicitly
+        }
+        guard self.capture.settings.grep.isEmpty || self.capture.settings.grep.contains(where: { "\(message)".contains($0) }) else {
+            return // log was included explicitly
         }
         guard !self.capture.settings.excludeGrep.contains(where: { "\(message)".contains($0) }) else {
-            return // actor was was excluded explicitly
+            return // log was excluded explicitly
         }
 
         let date = Date()

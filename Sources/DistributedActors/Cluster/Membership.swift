@@ -202,6 +202,10 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
         self.members(atLeast: .joining).max(by: Member.ageOrdering)
     }
 
+    public func oldestMember() -> Member? {
+        self.members(atLeast: .joining).min(by: Member.ageOrdering)
+    }
+
     public func members(_ node: Node) -> [Member] {
         return self._members.values
             .filter { $0.node.node == node }
@@ -534,14 +538,14 @@ extension Membership {
     ///   it is safe to remove the member from the membership, i.e. all nodes have converged on seeing it as leaving
     /// ```
     ///
-    /// As
-    ///
     /// - Returns: any membership changes that occurred (and have affected the current membership).
     public mutating func mergeForward(fromAhead ahead: Membership) -> [MembershipChange] {
         var changes: [MembershipChange] = []
+
         for incomingMember in ahead._members.values {
             if var member = self._members[incomingMember.node] {
                 if let change = member.moveForward(incomingMember.status) {
+                    self._members[incomingMember.node] = member
                     changes.append(change)
                 }
             } else {

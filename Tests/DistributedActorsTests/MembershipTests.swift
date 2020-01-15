@@ -416,7 +416,7 @@ final class MembershipTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Merge Memberships
 
-    func test_merge_fromAhead_same() {
+    func test_mergeForward_fromAhead_same() {
         var membership = self.initialMembership
         let ahead = self.initialMembership
 
@@ -426,7 +426,7 @@ final class MembershipTests: XCTestCase {
         membership.shouldEqual(self.initialMembership)
     }
 
-    func test_merge_fromAhead_membership_withAdditionalMember() {
+    func test_mergeForward_fromAhead_membership_withAdditionalMember() {
         var membership = self.initialMembership
         var ahead = membership
         _ = ahead.join(self.newMember.node)
@@ -437,7 +437,7 @@ final class MembershipTests: XCTestCase {
         membership.shouldEqual(self.initialMembership.joining(self.newMember.node))
     }
 
-    func test_merge_fromAhead_membership_withMemberNowDown() {
+    func test_mergeForward_fromAhead_membership_withMemberNowDown() {
         var membership = self.initialMembership
         var ahead = membership
         ahead.mark(self.firstMember.node, as: .down)
