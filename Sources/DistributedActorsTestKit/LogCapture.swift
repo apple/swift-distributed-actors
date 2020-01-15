@@ -123,7 +123,7 @@ extension LogCapture {
                         }
                         metadataString.append(allString)
                     }
-                    metadataString = String(metadataString.dropLast(2))
+                    metadataString = String(metadataString)
                 }
             }
             let date = ActorOriginLogHandler._createFormatter().string(from: log.date)
