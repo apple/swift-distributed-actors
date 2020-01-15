@@ -120,6 +120,11 @@ extension Membership {
             self.table = [myselfNode: version]
         }
 
+        /// Nodes seen by this table
+        var nodes: Dictionary<UniqueNode, VersionVector>.Keys {
+            self.table.keys
+        }
+
         /// If the table does NOT include the `node`, we assume that the `latestVersion` is "more recent than no information at all."
         ///
         /// - Returns: The `node`'s version's relationship to the latest version.
@@ -142,14 +147,19 @@ extension Membership {
         ///
         /// In other words, we gained information and our membership has "moved forward" as
         mutating func merge(owner: UniqueNode, incoming: Membership.Gossip) {
-            var ownerVersion = self.table[owner] ?? VersionVector()
-            ownerVersion.merge(other: incoming.version) // we gained information from the incoming gossip
-            self.table[owner] = ownerVersion
+            for seenNode in incoming.seen.nodes {
+                var seenVersion = self.table[seenNode] ?? VersionVector()
+                seenVersion.merge(other: incoming.seen.version(at: seenNode) ?? VersionVector()) // though always not-nil
+                self.table[seenNode] = seenVersion
+            }
 
-            // This is our "local view" onto what we perceived the `incoming.owners` version to be, we merge it with the most recent version
-            var incomingOwnersVersion = self.table[incoming.owner] ?? VersionVector()
-            incomingOwnersVersion.merge(other: incoming.version)
-            self.table[incoming.owner] = incomingOwnersVersion
+            // in addition, we also merge the incoming table directly with ours,
+            // as the remote's "own" version means that all information it shared with us in gossip
+            // is "at least as up to date" as its version, we've now also seen "at least as much" information
+            // along the vector time.
+            var localVersion = self.table[owner] ?? VersionVector()
+            localVersion.merge(other: incoming.version) // we gained information from the incoming gossip
+            self.table[owner] = localVersion
         }
 
         // TODO: func haveNotYetSeen(version: VersionVector): [UniqueNode]

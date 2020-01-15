@@ -144,7 +144,7 @@ final class MembershipGossipSeenTableTests: XCTestCase {
     }
 
     func test_seenTable_merge_concurrentInformation() {
-        // the incoming gossip is "behind"
+        // the incoming gossip is "concurrent"
 
         var table = SeenTable(myselfNode: self.myselfNode, version: .init())
         table.incrementVersion(owner: self.myselfNode, at: self.myselfNode) // M observed: M:1
@@ -166,6 +166,26 @@ final class MembershipGossipSeenTableTests: XCTestCase {
 
         table.version(at: self.myselfNode).shouldEqual(self.parseVersionVector("M:1 S:3 T:1"))
         table.version(at: self.secondNode).shouldEqual(incoming.seen.version(at: self.secondNode))
+    }
+
+    func test_seenTable_merge_concurrentInformation_unknownMember() {
+        // the incoming gossip is "concurrent", and has a table entry for a node we don't know
+
+        var table = SeenTable(myselfNode: self.myselfNode, version: .init())
+        table.incrementVersion(owner: self.myselfNode, at: self.myselfNode) // M observed: M:1
+
+        var incoming = Membership.Gossip(ownerNode: self.secondNode) // S observed
+        incoming.incrementOwnerVersion() // S observed: S:1
+        incoming.incrementOwnerVersion() // S observed: S:2
+        incoming.seen.incrementVersion(owner: self.secondNode, at: self.thirdNode) // S observed: S:2 T:1
+        // also it knows third is at t1
+        incoming.seen.incrementVersion(owner: self.thirdNode, at: self.thirdNode) // T observed: T:1
+
+        table.merge(owner: self.myselfNode, incoming: incoming)
+
+        table.version(at: self.myselfNode).shouldEqual(self.parseVersionVector("M:1 S:2 T:1"))
+        table.version(at: self.secondNode).shouldEqual(self.parseVersionVector("S:2 T:1"))
+        table.version(at: self.thirdNode).shouldEqual(self.parseVersionVector("T:1"))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
