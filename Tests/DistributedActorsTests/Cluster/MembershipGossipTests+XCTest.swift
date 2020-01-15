@@ -25,6 +25,7 @@ extension MembershipGossipTests {
         return [
             ("test_merge_incomingGossip_firstGossipFromOtherNode", test_merge_incomingGossip_firstGossipFromOtherNode),
             ("test_merge_incomingGossip_sameVersions", test_merge_incomingGossip_sameVersions),
+            ("test_merge_incomingGossip_hasNoInformation", test_merge_incomingGossip_hasNoInformation),
         ]
     }
 }

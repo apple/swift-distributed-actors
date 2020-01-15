@@ -77,7 +77,7 @@ extension Membership {
 
         /// Merge an incoming gossip _into_ the current gossip.
         /// Ownership of this gossip is retained, versions are bumped, and membership is merged.
-        mutating func merge(incoming: Gossip) -> MergeDirective {
+        mutating func mergeForward(incoming: Gossip) -> MergeDirective {
             // TODO: note: we could technically always just merge anyway; all data we have here is CRDT like anyway
             let causalRelation: VersionVector.CausalRelation = self.seen.compareVersion(observedOn: self.owner, to: incoming.version)
             self.seen.merge(owner: self.owner, incoming: incoming) // always merge, as we grow our knowledge about what the other node has "seen"
@@ -85,7 +85,7 @@ extension Membership {
             switch causalRelation {
             case .happenedBefore, .concurrent:
                 // this version is "behind" or "concurrent" with the incoming one
-                let changes = self.membership.merge(fromAhead: incoming.membership)
+                let changes = self.membership.mergeForward(fromAhead: incoming.membership)
                 return .init(causalRelation: causalRelation, effectiveChanges: changes)
             case .happenedAfter, .same:
                 // this version is "ahead" of the incoming one OR

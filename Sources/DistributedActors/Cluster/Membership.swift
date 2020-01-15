@@ -72,6 +72,20 @@ public struct Member: Hashable {
             return Member(node: self.node, status: .down)
         }
     }
+
+    /// Moves forward the member in its lifecycle (if appropriate), returning the change if one was made.
+    ///
+    /// Note that moving only happens along the lifecycle of a member, e.g. trying to move forward from .up do .joining
+    /// will result in a `nil` change and no changes being made to the member.
+    public mutating func moveForward(_ status: MemberStatus) -> MembershipChange? {
+        guard self.status < status else {
+            return nil
+        }
+        let oldMember = self
+        self.status = status
+        // FIXME: potential to lose upNumbers here! Need to revisit the upNumber things anyway, not in love with it
+        return MembershipChange(member: oldMember, toStatus: status)
+    }
 }
 
 extension Member {
@@ -499,29 +513,45 @@ extension Membership {
 }
 
 extension Membership {
-    /// Merge function working on the assumption that the `incoming` Membership is KNOWN to be "ahead",
+    /// Special Merge function that only moves members "forward" however never removes them, as removal MUST ONLY be
+    /// issued specifically by a leader working on the assumption that the `incoming` Membership is KNOWN to be "ahead",
     /// and e.g. if any nodes are NOT present in the incoming membership, they shall be considered `.removed`.
     ///
     /// Otherwise, functions as a normal merge, by moving all members "forward" in their respective lifecycles.
     /// Meaning the following transitions are possible:
     ///
     /// ```
-    ///  self        | incoming
-    /// -------------+---------------------------------------
-    ///  <none>     --> [.joining, .up, .down, .leaving, .removed]
-    ///  [.joining] --> [.up, .down, .leaving, .removed]
-    ///  [.up]      --> [.down, .leaving, .removed]
-    ///  [.down]    --> [.leaving, .removed]
-    ///  [.leaving] --> [.removed]
-    ///  [.removed] --> [.removed] (removed is "special" though, and may actually be removed from members list after all)
+    ///  self          | incoming
+    /// ---------------+----------------------------------------------|-------------------------
+    ///  <none>       --> [.joining, .up, .leaving, .down, .removed] --> <incoming status>
+    ///  [.joining]   --> [.joining, .up, .leaving, .down, .removed] --> <incoming status>
+    ///  [.up]        --> [.up, .leaving, .down, .removed]           --> <incoming status>
+    ///  [.leaving]   --> [.leaving, .down, .removed]                --> <incoming status>
+    ///  [.down]      --> [.down, .removed]                          --> <incoming status>
+    ///  [.removed]*  --> [.removed]                                 --> <incoming status>
+    ///  <any status> --> <none>                                     --> <self status>
+    /// * realistically a .removed will never be _stored_ it may be incoming which means that a leader has decided that we
+    ///   it is safe to remove the member from the membership, i.e. all nodes have converged on seeing it as leaving
     /// ```
     ///
+    /// As
+    ///
     /// - Returns: any membership changes that occurred (and have affected the current membership).
-    public mutating func merge(fromAhead ahead: Membership) -> [MembershipChange] {
-        let diff = Membership.diff(from: self, to: ahead)
-        let changes = diff.changes
+    public mutating func mergeForward(fromAhead ahead: Membership) -> [MembershipChange] {
+        var changes: [MembershipChange] = []
+        for incomingMember in ahead._members.values {
+            if var member = self._members[incomingMember.node] {
+                if let change = member.moveForward(incomingMember.status) {
+                    changes.append(change)
+                }
+            } else {
+                // member not known locally
+                self._members[incomingMember.node] = incomingMember
+                changes.append(.init(member: incomingMember))
+            }
+        }
 
-        return changes.compactMap { self.apply($0) }
+        return changes
     }
 }
 
@@ -717,10 +747,47 @@ extension MembershipChange: CustomStringConvertible, CustomDebugStringConvertibl
 
 /// Describes the status of a member within the clusters lifecycle.
 public enum MemberStatus: String, Comparable {
+    /// Describes a node which is connected to at least one other member in the cluster,
+    /// it may want to serve some traffic, however should await the leader moving it to .up
+    /// before it takes on serious work.
     case joining
+    /// Describes a node which at some point was known to the leader and moved to `.up`
+    /// by whichever strategy it implements for this. Generally, up members are fully ready
+    /// members of the cluster and are most likely known to many if not all other nodes in the cluster.
     case up
-    case down
+    /// A self-announced, optional, state which a member may advertise when it knowingly and gracefully initiates
+    /// a shutdown and intends to leave the cluster with nicely handing over its responsibilities to another member.
+    /// A leaving node will eventually become .down, either by lack of response to failure detectors or by ".downing itself"
+    /// and telling other members about this fact before it shuts down completely.
+    ///
+    /// Noticing a leaving node is a good opportunity to initiate hand-over processes from the node to others,
+    /// how these are implemented is application and sub-system specific. Some plugins may handle these automatically.
     case leaving
+    /// Describes a member believed to be "down", either by announcement by the member itself, another member,
+    /// a human operator, or an automatic failure detector. It is important to note that it is not a 100% guarantee
+    /// that the member/node process really is not running anymore, as detecting this with full confidence is not possible
+    /// in distributed systems. It can be said however, that with as much confidence as the failure detector, or whichever
+    /// mechanism triggered the `.down` that node may indeed be down, or perhaps unresponsive (or too-slow to respond)
+    /// that it shall be assumed as-if dead anyway.
+    ///
+    /// A node which notices itself marked as .down in membership can automatically initiate an automatic graceful shutdown sequence.
+    ///
+    /// If a "down" node attempts to still communicate with other members which already have seen it as `.down`,
+    /// they MUST refuse communication with the node and may offer it one last .restInPeace message severing any further communication.
+    /// The rule is simple: once a node is down/dead, it may never again be considered up/alive, and it is *not safe* to communicate
+    /// with members which have been down as they may contain severely outdated opinions about the cluster and state that it contains.
+    /// In other words: "Members don't talk to zombies."
+    case down
+    /// Describes a member which is safe to _completely remove_ from future gossips.
+    /// This status is managed internally and not really of concern to end users (it could be treated equivalent to .down
+    /// by applications safely). Notably, this status should never really be "stored" in membership, other than for purposes
+    /// of gossiping to other nodes that they also may remove the node.
+    ///
+    /// The result of a .removed being gossiped is the complete removal of the associated member from any membership information
+    /// in the future. As this may pose a risk, e.g. if a `.down` node remains active for many hours for some reason, and
+    /// we'd have removed it from the membership completely, it would allow such node to "join again" and be (seemingly)
+    /// a "new node", leading to all kinds of potential issues. Thus the margin to remove members has to be threaded carefully and
+    /// managed by a leader action, rather than (as .down is) be possible to invoke by any node at any time.
     case removed
 
     public static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding
@@ -734,10 +801,10 @@ extension MemberStatus {
         case .joining:
             return rhs != .joining
         case .up:
-            return rhs == .down || rhs == .leaving || rhs == .removed
-        case .down:
-            return rhs == .leaving || rhs == .removed
+            return rhs == .leaving || rhs == .down || rhs == .removed
         case .leaving:
+            return rhs == .down || rhs == .removed
+        case .down:
             return rhs == .removed
         case .removed:
             return false
@@ -756,14 +823,14 @@ extension MemberStatus {
         self == .up
     }
 
-    /// Convenience function to check if a status is `.down`
-    public var isDown: Bool {
-        self == .down
-    }
-
     /// Convenience function to check if a status is `.leaving`
     public var isLeaving: Bool {
         self == .leaving
+    }
+
+    /// Convenience function to check if a status is `.down`
+    public var isDown: Bool {
+        self == .down
     }
 
     /// Convenience function to check if a status is `.removed`

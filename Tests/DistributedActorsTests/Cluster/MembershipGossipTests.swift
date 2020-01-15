@@ -22,6 +22,7 @@ final class MembershipGossipTests: XCTestCase {
     var myselfNode: UniqueNode!
     var secondNode: UniqueNode!
     var thirdNode: UniqueNode!
+    var fourthNode: UniqueNode!
 
     var myGossip: Membership.Gossip!
 
@@ -30,12 +31,13 @@ final class MembershipGossipTests: XCTestCase {
         self.myselfNode = UniqueNode(protocol: "sact", systemName: "myself", host: "127.0.0.1", port: 7111, nid: .random())
         self.secondNode = UniqueNode(protocol: "sact", systemName: "second", host: "127.0.0.1", port: 7222, nid: .random())
         self.thirdNode = UniqueNode(protocol: "sact", systemName: "third", host: "127.0.0.1", port: 7333, nid: .random())
+        self.fourthNode = UniqueNode(protocol: "sact", systemName: "third", host: "127.0.0.1", port: 7444, nid: .random())
         self.myGossip = Membership.Gossip(ownerNode: self.myselfNode)
     }
 
     func test_merge_incomingGossip_firstGossipFromOtherNode() {
         let gossipFromSecond = Membership.Gossip(ownerNode: self.secondNode)
-        let directive = self.myGossip.merge(incoming: gossipFromSecond)
+        let directive = self.myGossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual(
             [MembershipChange(member: Member(node: self.secondNode, status: .joining), toStatus: .joining)]
@@ -47,8 +49,30 @@ final class MembershipGossipTests: XCTestCase {
         _ = self.myGossip.membership.join(self.secondNode) // myself:joining, second:joining
 
         let gossipFromSecond = Membership.Gossip(ownerNode: self.secondNode)
-        let directive = self.myGossip.merge(incoming: gossipFromSecond)
+        let directive = self.myGossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual([])
+    }
+
+    func test_merge_incomingGossip_hasNoInformation() {
+        _ = self.myGossip.membership.join(self.myselfNode)
+        self.myGossip.incrementOwnerVersion()
+        _ = self.myGossip.membership.join(self.secondNode)
+        self.myGossip.seen.incrementVersion(owner: self.secondNode, at: self.secondNode)
+        _ = self.myGossip.membership.join(self.thirdNode)
+        self.myGossip.seen.incrementVersion(owner: self.thirdNode, at: self.thirdNode)
+
+        // only knows about fourth, while myGossip has first, second and third
+        var incomingGossip = Membership.Gossip(ownerNode: self.fourthNode)
+        _ = incomingGossip.membership.join(self.fourthNode)
+        incomingGossip.incrementOwnerVersion()
+
+        let directive = self.myGossip.mergeForward(incoming: incomingGossip)
+
+        // this test also covers so <none> does not accidentally cause changes into .removed, which would be catastrophic
+        directive.causalRelation.shouldEqual(.concurrent)
+        directive.effectiveChanges.shouldEqual(
+            [MembershipChange(member: Member(node: self.fourthNode, status: .joining), toStatus: .joining)]
+        )
     }
 }

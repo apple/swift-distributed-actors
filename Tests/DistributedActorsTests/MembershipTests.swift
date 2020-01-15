@@ -314,6 +314,60 @@ final class MembershipTests: XCTestCase {
         change.isUp.shouldBeTrue() // up is the status of the replacement
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Moving members along their lifecycle
+
+    func test_moveForward_MemberStatus() {
+        var member = self.firstMember
+        member.status = .joining
+        let joiningMember = member
+
+        member.status = .up
+        let upMember = member
+
+        member.status = .leaving
+        let leavingMember = member
+        member.status = .down
+        let downMember = member
+        member.status = .removed
+        let removedMember = member
+
+        member.status = .joining
+
+        member.moveForward(.up).shouldEqual(MembershipChange(member: joiningMember, toStatus: .up))
+        member.status.shouldEqual(.up)
+        member.moveForward(.joining).shouldEqual(nil) // no change, cannot move back
+
+        member.moveForward(.up).shouldEqual(nil) // no change, cannot move to same status
+        member.moveForward(.leaving).shouldEqual(MembershipChange(member: upMember, toStatus: .leaving))
+        member.status.shouldEqual(.leaving)
+
+        member.moveForward(.joining).shouldEqual(nil) // no change, cannot move back
+        member.moveForward(.up).shouldEqual(nil) // no change, cannot move back
+        member.moveForward(.leaving).shouldEqual(nil) // no change, same
+        member.moveForward(.down).shouldEqual(MembershipChange(member: leavingMember, toStatus: .down))
+        member.status.shouldEqual(.down)
+
+        member.moveForward(.joining).shouldEqual(nil) // no change, cannot move back
+        member.moveForward(.up).shouldEqual(nil) // no change, cannot move back
+        member.moveForward(.leaving).shouldEqual(nil) // no change, cannot move back
+        member.moveForward(.down).shouldEqual(nil) // no change, same
+        member.moveForward(.removed).shouldEqual(MembershipChange(member: downMember, toStatus: .removed))
+        member.status.shouldEqual(.removed)
+
+        member.status = .joining
+        member.moveForward(.leaving).shouldEqual(MembershipChange(member: joiningMember, toStatus: .leaving))
+        member.status.shouldEqual(.leaving)
+
+        member.status = .joining
+        member.moveForward(.down).shouldEqual(MembershipChange(member: joiningMember, toStatus: .down))
+        member.status.shouldEqual(.down)
+
+        member.status = .up
+        member.moveForward(.removed).shouldEqual(MembershipChange(member: upMember, toStatus: .removed))
+        member.status.shouldEqual(.removed)
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Diffing
 
@@ -366,7 +420,7 @@ final class MembershipTests: XCTestCase {
         var membership = self.initialMembership
         let ahead = self.initialMembership
 
-        let changes = membership.merge(fromAhead: ahead)
+        let changes = membership.mergeForward(fromAhead: ahead)
 
         changes.count.shouldEqual(0)
         membership.shouldEqual(self.initialMembership)
@@ -377,7 +431,7 @@ final class MembershipTests: XCTestCase {
         var ahead = membership
         _ = ahead.join(self.newMember.node)
 
-        let changes = membership.merge(fromAhead: ahead)
+        let changes = membership.mergeForward(fromAhead: ahead)
 
         changes.count.shouldEqual(1)
         membership.shouldEqual(self.initialMembership.joining(self.newMember.node))
@@ -388,7 +442,7 @@ final class MembershipTests: XCTestCase {
         var ahead = membership
         ahead.mark(self.firstMember.node, as: .down)
 
-        let changes = membership.merge(fromAhead: ahead)
+        let changes = membership.mergeForward(fromAhead: ahead)
 
         changes.count.shouldEqual(1)
         membership.shouldEqual(self.initialMembership)
