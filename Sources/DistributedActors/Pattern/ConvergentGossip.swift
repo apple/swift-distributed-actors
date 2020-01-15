@@ -97,8 +97,6 @@ final class ConvergentGossip<Payload: Codable> {
 
     // FIXME: this is still just broadcasting (!)
     private func onPeriodicGossipTick(_ context: ActorContext<Message>) {
-        context.log.trace("Gossip tick...! Peers: \(self.peers.count)")
-
         guard let payload = self.payload else {
             context.log.trace("No payload set, skipping gossip round.")
             self.scheduleNextGossipRound(context: context)
