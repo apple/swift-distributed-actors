@@ -19,10 +19,6 @@ import NIOSSL
 import XCTest
 
 final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
-    override var alwaysPrintCaptureLogs: Bool {
-        true
-    }
-
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.filterActorPath = "/system/cluster"
         settings.excludeActorPaths = ["/system/cluster/swim"] // we assume it works fine
