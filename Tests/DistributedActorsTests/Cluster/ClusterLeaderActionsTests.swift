@@ -19,12 +19,6 @@ import NIOSSL
 import XCTest
 
 final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
-    override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.excludeGrep = [
-            "with generation", // exclude timer scheduling
-        ]
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 

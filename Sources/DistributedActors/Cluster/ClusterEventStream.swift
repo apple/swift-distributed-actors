@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// Specialized event stream behavior which takes into account emitting a snapshot event on first subscription,
 /// followed by a stream of `ClusterEvent`s.
 ///
@@ -55,7 +57,11 @@ enum ClusterEventStream {
                         for subscriber in subscribers.values {
                             subscriber.tell(event)
                         }
-                        context.log.trace("Published event \(event) to \(subscribers.count) subscribers")
+                        context.log.trace("Published event \(event) to \(subscribers.count) subscribers", metadata: [
+                            "eventStream/subscribers": Logger.MetadataValue.array(subscribers.map {
+                                Logger.MetadataValue.stringConvertible($0.key)
+                            }),
+                        ])
                     }
 
                     return .same
