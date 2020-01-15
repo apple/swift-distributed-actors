@@ -485,7 +485,7 @@ extension ClusterShell {
             var state = state
 
             let beforeGossipMerge = state.latestGossip
-            let mergeDirective = state.latestGossip.merge(incoming: gossip) // mutates the gossip
+            let mergeDirective = state.latestGossip.mergeForward(incoming: gossip) // mutates the gossip
             // TODO: here we could check if state.latestGossip.converged { do stuff }
             context.log.trace("Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
                 "tag": "membership",

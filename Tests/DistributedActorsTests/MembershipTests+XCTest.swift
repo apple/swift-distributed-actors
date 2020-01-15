@@ -38,6 +38,7 @@ extension MembershipTests {
             ("test_join_overAnExistingMode_replacement", test_join_overAnExistingMode_replacement),
             ("test_mark_replacement", test_mark_replacement),
             ("test_replacement_changeCreation", test_replacement_changeCreation),
+            ("test_moveForward_MemberStatus", test_moveForward_MemberStatus),
             ("test_membershipDiff_beEmpty_whenNothingChangedForIt", test_membershipDiff_beEmpty_whenNothingChangedForIt),
             ("test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt", test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt),
             ("test_membershipDiff_shouldIncludeEntry_whenMemberRemoved", test_membershipDiff_shouldIncludeEntry_whenMemberRemoved),
