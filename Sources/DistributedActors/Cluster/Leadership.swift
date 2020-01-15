@@ -247,7 +247,7 @@ extension Leadership {
         }
 
         public mutating func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult {
-            context.log.trace("Attempting leader election", metadata: [
+            context.log.trace("Attempting leader election, members: \(membership.count)", metadata: [
                 "membership": "\(membership)",
             ])
 
