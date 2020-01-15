@@ -22,7 +22,7 @@ final class DeadLetterTests: ActorSystemTestBase {
     // MARK: DeadLetterOffice tests
 
     func test_deadLetters_logWithSourcePosition() throws {
-        let log = self.logCapture.loggerFactory(captureLabel: "mock")("mock")
+        let log = self.logCapture.loggerFactory(captureLabel: "/dead/letters")("/dead/letters")
 
         let address = try ActorAddress(path: ActorPath._user.appending("someone"), incarnation: .random())
         let office = DeadLetterOffice(log, address: address, system: system)
@@ -76,8 +76,8 @@ final class DeadLetterTests: ActorSystemTestBase {
         try self.awaitLogContaining(text: "/user/ludwig")
     }
 
-    private func awaitLogContaining(text: String) throws {
-        return try self.testKit.eventually(within: .seconds(1)) {
+    private func awaitLogContaining(text: String, file: StaticString = #file, line: UInt = #line) throws {
+        return try self.testKit.eventually(within: .seconds(3), file: file, line: line) {
             if !self.logCapture.logs.contains(where: { log in
                 "\(log)".contains(text)
             }) {

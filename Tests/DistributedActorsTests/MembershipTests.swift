@@ -41,12 +41,12 @@ final class MembershipTests: XCTestCase {
         MemberStatus.up.shouldBeLessThan(.leaving)
         MemberStatus.up.shouldBeLessThan(.removed)
 
-        MemberStatus.down.shouldBeLessThanOrEqual(.down)
-        MemberStatus.down.shouldBeLessThan(.leaving)
-        MemberStatus.down.shouldBeLessThan(.removed)
-
         MemberStatus.leaving.shouldBeLessThanOrEqual(.leaving)
+        MemberStatus.leaving.shouldBeLessThan(.down)
         MemberStatus.leaving.shouldBeLessThan(.removed)
+
+        MemberStatus.down.shouldBeLessThanOrEqual(.down)
+        MemberStatus.down.shouldBeLessThan(.removed)
 
         MemberStatus.removed.shouldBeLessThanOrEqual(.removed)
     }
@@ -159,8 +159,8 @@ final class MembershipTests: XCTestCase {
         _ = changed.mark(self.firstMember.node, as: .down)
         changed.count(atLeast: .joining).shouldEqual(3)
         changed.count(atLeast: .up).shouldEqual(3)
+        changed.count(atLeast: .leaving).shouldEqual(1)
         changed.count(atLeast: .down).shouldEqual(1)
-        changed.count(atLeast: .leaving).shouldEqual(0)
         changed.count(atLeast: .removed).shouldEqual(0)
     }
 
@@ -201,8 +201,8 @@ final class MembershipTests: XCTestCase {
 
         changed.members(atLeast: .joining, reachability: .unreachable).count.shouldEqual(2)
         changed.members(atLeast: .up, reachability: .unreachable).count.shouldEqual(2)
+        changed.members(atLeast: .leaving, reachability: .unreachable).count.shouldEqual(1)
         changed.members(atLeast: .down, reachability: .unreachable).count.shouldEqual(1)
-        changed.members(atLeast: .leaving, reachability: .unreachable).count.shouldEqual(0)
         changed.members(atLeast: .removed, reachability: .unreachable).count.shouldEqual(0)
     }
 
