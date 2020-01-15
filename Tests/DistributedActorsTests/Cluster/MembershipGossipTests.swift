@@ -38,6 +38,7 @@ final class MembershipGossipTests: XCTestCase {
     func test_mergeForward_incomingGossip_firstGossipFromOtherNode() {
         var gossipFromSecond = Membership.Gossip(ownerNode: self.secondNode)
         _ = gossipFromSecond.membership.join(self.secondNode)
+
         let directive = self.myGossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual(

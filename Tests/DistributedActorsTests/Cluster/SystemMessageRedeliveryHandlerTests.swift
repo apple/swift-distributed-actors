@@ -46,7 +46,7 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
         if self.printLossyNetworkTestLogs {
             self.handler = SystemMessageRedeliveryHandler(log: self.system.log, cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         } else {
-            self.handler = SystemMessageRedeliveryHandler(log: self.logCapture.loggerFactory(captureLabel: "mock")("mock"), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            self.handler = SystemMessageRedeliveryHandler(log: self.logCapture.loggerFactory(captureLabel: "/")("/"), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         }
         /// reads go this way: vvv
         try! shouldNotThrow { try self.channel.pipeline.addHandler(self.writeRecorder).wait() }
