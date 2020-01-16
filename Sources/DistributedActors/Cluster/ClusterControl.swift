@@ -24,11 +24,11 @@ public struct ClusterControl {
     public let settings: ClusterSettings
 
     /// Read only view of the settings in use by the cluster.
-    public let events: EventStream<ClusterEvent>
+    public let events: EventStream<Cluster.Event>
 
     internal let ref: ClusterShell.Ref
 
-    init(_ settings: ClusterSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<ClusterEvent>) {
+    init(_ settings: ClusterSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
         self.settings = settings
         self.ref = clusterRef
         self.events = eventStream
@@ -47,7 +47,7 @@ public struct ClusterControl {
         self.ref.tell(.command(.initJoin(node)))
     }
 
-    /// Mark as `MemberStatus.down` _any_ incarnation of a member matching the passed in `node`.
+    /// Mark as `Cluster.MemberStatus.down` _any_ incarnation of a member matching the passed in `node`.
     public func down(node: Node) {
         self.ref.tell(.command(.downCommand(node)))
     }

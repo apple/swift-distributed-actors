@@ -140,12 +140,12 @@ extension ConvergentGossip {
         case introducePeer(ActorRef<Message>)
 
         // internal messages
-        case _clusterEvent(ClusterEvent)
+        case _clusterEvent(Cluster.Event)
         case _periodicGossipTick
     }
 
     struct GossipEnvelope: Codable {
-        // TODO: this is to become the generic version what Membership.Gossip is
+        // TODO: this is to become the generic version what Cluster.Gossip is
         let payload: Payload
         // TODO: var converged: Bool {}
     }

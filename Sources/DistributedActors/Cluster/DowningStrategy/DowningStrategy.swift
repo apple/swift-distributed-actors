@@ -13,13 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 internal protocol DowningStrategy {
-    func onLeaderChange(to: Member?) throws -> DowningStrategyDirectives.LeaderChangeDirective
-    func onTimeout(_ member: Member) -> DowningStrategyDirectives.TimeoutDirective
+    func onLeaderChange(to: Cluster.Member?) throws -> DowningStrategyDirectives.LeaderChangeDirective
+    func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirectives.TimeoutDirective
 
-    func onMemberUnreachable(_ member: Member) -> DowningStrategyDirectives.MemberUnreachableDirective
-    func onMemberReachable(_ member: Member) -> DowningStrategyDirectives.MemberReachableDirective
+    func onMemberUnreachable(_ member: Cluster.Member) -> DowningStrategyDirectives.MemberUnreachableDirective
+    func onMemberReachable(_ member: Cluster.Member) -> DowningStrategyDirectives.MemberReachableDirective
 
-    func onMemberRemoved(_ member: Member) -> DowningStrategyDirectives.MemberRemovedDirective
+    func onMemberRemoved(_ member: Cluster.Member) -> DowningStrategyDirectives.MemberRemovedDirective
 }
 
 internal enum DowningStrategyDirectives {
@@ -50,7 +50,7 @@ internal enum DowningStrategyDirectives {
 }
 
 internal enum DowningStrategyMessage {
-    case timeout(Member)
+    case timeout(Cluster.Member)
 }
 
 internal struct DowningStrategyShell {
@@ -65,7 +65,7 @@ internal struct DowningStrategyShell {
 
     var behavior: Behavior<Message> {
         return .setup { context in
-            let clusterEventSubRef = context.subReceive(ClusterEvent.self) { event in
+            let clusterEventSubRef = context.subReceive(Cluster.Event.self) { event in
                 do {
                     try self.receiveClusterEvent(context, event: event)
                 } catch {
@@ -102,7 +102,7 @@ internal struct DowningStrategyShell {
         context.system.cluster.down(node: node.node)
     }
 
-    func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) throws {
+    func receiveClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) throws {
         switch event {
         case .snapshot:
             () // ignore, we don't need the full membership for decisions // TODO: or do we...

@@ -33,7 +33,7 @@ import NIO
 /// Allows manually mocking membership changes to trigger terminated notifications.
 internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     private let selfNode: UniqueNode
-    private var membership: Membership
+    private var membership: Cluster.Membership
 
     /// Members which have been `removed`
     // TODO: clear after a few days
@@ -69,7 +69,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         self.remoteWatchers[remoteNode] = existingWatchers
     }
 
-    func onMembershipChanged(_ change: MembershipChange) {
+    func onMembershipChanged(_ change: Cluster.MembershipChange) {
         guard let change = self.membership.apply(change) else {
             return // no change, nothing to act on
         }
@@ -82,7 +82,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         }
     }
 
-    func handleAddressDown(_ change: MembershipChange) {
+    func handleAddressDown(_ change: Cluster.MembershipChange) {
         let terminatedNode = change.node
         if let watchers = self.remoteWatchers.removeValue(forKey: terminatedNode) {
             for ref in watchers {
@@ -109,14 +109,14 @@ internal protocol NodeDeathWatcher {
     /// A failure detector should signal termination signals if it notices that a previously monitored node has now
     /// left the cluster.
     // TODO: this will change to subscribing to cluster events once those land
-    func onMembershipChanged(_ change: MembershipChange)
+    func onMembershipChanged(_ change: Cluster.MembershipChange)
 }
 
 enum NodeDeathWatcherShell {
     typealias Ref = ActorRef<Message>
 
     static var naming: ActorNaming {
-        return "nodeDeathWatcher" // TODO: String -> ActorNaming
+        "nodeDeathWatcher"
     }
 
     /// Message protocol for interacting with the failure detector.
@@ -124,15 +124,15 @@ enum NodeDeathWatcherShell {
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
-        case membershipSnapshot(Membership) // TODO: remove?
-        case membershipChange(MembershipChange) // TODO: remove as well
+        case membershipSnapshot(Cluster.Membership)
+        case membershipChange(Cluster.MembershipChange)
     }
 
-    static func behavior(clusterEvents: EventStream<ClusterEvent>) -> Behavior<Message> {
+    static func behavior(clusterEvents: EventStream<Cluster.Event>) -> Behavior<Message> {
         return .setup { context in
             let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.cluster.uniqueBindNode)
 
-            context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
+            context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
                 switch event {
                 case .membershipChange(let change) where change.isAtLeastDown:
                     instance.handleAddressDown(change)
@@ -148,14 +148,14 @@ enum NodeDeathWatcherShell {
     static func behavior(_ instance: NodeDeathWatcherInstance) -> Behavior<Message> {
         return .receiveMessage { message in
 
-            let lastMembership: Membership = .empty // TODO: To be mutated based on membership changes
+            let lastMembership: Cluster.Membership = .empty // TODO: To be mutated based on membership changes
 
             switch message {
             case .remoteActorWatched(let watcher, let remoteNode):
                 _ = instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
 
             case .membershipSnapshot(let membership):
-                let diff = Membership.diff(from: lastMembership, to: membership)
+                let diff = Cluster.Membership.diff(from: lastMembership, to: membership)
 
                 for change in diff.changes {
                     _ = instance.onMembershipChanged(change) // TODO: return and interpret directives
@@ -173,6 +173,6 @@ enum NodeDeathWatcherShell {
 // MARK: Errors
 
 public enum NodeDeathWatcherError: Error {
-    case attemptedToFailUnknownAddress(Membership, UniqueNode)
+    case attemptedToFailUnknownAddress(Cluster.Membership, UniqueNode)
     case watcherActorWasNotLocal(watcherAddress: ActorAddress, localNode: UniqueNode?)
 }

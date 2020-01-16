@@ -22,7 +22,7 @@ internal protocol ActorSingletonAllocationStrategy {
     /// Receives and handles the `clusterEvent`.
     ///
     /// - Returns: The current `node` after processing `clusterEvent`.
-    func onClusterEvent(_ clusterEvent: ClusterEvent) -> UniqueNode?
+    func onClusterEvent(_ clusterEvent: Cluster.Event) -> UniqueNode?
 
     /// The currently allocated `node` for the singleton.
     var node: UniqueNode? { get }
@@ -37,7 +37,7 @@ internal class ActorSingletonAllocationByLeadership: ActorSingletonAllocationStr
 
     init() {}
 
-    func onClusterEvent(_ clusterEvent: ClusterEvent) -> UniqueNode? {
+    func onClusterEvent(_ clusterEvent: Cluster.Event) -> UniqueNode? {
         switch clusterEvent {
         case .leadershipChange(let change):
             self.node = change.newLeader?.node

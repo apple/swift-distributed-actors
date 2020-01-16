@@ -68,8 +68,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             let secondName = second.cluster.node.node.systemName
             let remotePort = second.cluster.node.port
 
-            let firstEventsProbe = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
-            let secondEventsProbe = self.testKit(second).spawnTestProbe(expecting: ClusterEvent.self)
+            let firstEventsProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+            let secondEventsProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
             first.cluster.events.subscribe(firstEventsProbe.ref)
             second.cluster.events.subscribe(secondEventsProbe.ref)
 
@@ -85,7 +85,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             let secondReplacement = self.setUpNode(secondName + "-REPLACEMENT") { settings in
                 settings.cluster.bindPort = remotePort
             }
-            let secondReplacementEventsProbe = self.testKit(secondReplacement).spawnTestProbe(expecting: ClusterEvent.self)
+            let secondReplacementEventsProbe = self.testKit(secondReplacement).spawnTestProbe(expecting: Cluster.Event.self)
             secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
             second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
 
@@ -271,8 +271,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
             first.cluster.down(node: first.cluster.node.node)
 
-            let localProbe = self.testKit(first).spawnTestProbe(expecting: Membership.self)
-            let remoteProbe = self.testKit(second).spawnTestProbe(expecting: Membership.self)
+            let localProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
+            let remoteProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Membership.self)
 
             // we we down local on local, it should become down there:
             try self.testKit(first).eventually(within: .seconds(3)) {

@@ -19,14 +19,14 @@ import NIO
 import XCTest
 
 final class LeadershipTests: XCTestCase {
-    let firstMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
-    let secondMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
-    let thirdMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
-    let newMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .up)
+    let firstMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
+    let secondMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
+    let thirdMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
+    let newMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .up)
 
     let fakeContext = LeaderElectionContext(log: Logger(label: "mock"), eventLoop: EmbeddedEventLoop())
 
-    lazy var initialMembership: Membership = [
+    lazy var initialMembership: Cluster.Membership = [
         firstMember, secondMember, thirdMember,
     ]
 
@@ -38,8 +38,8 @@ final class LeadershipTests: XCTestCase {
 
         let membership = self.initialMembership
 
-        let change: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
-        change.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+        let change: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+        change.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
     }
 
     func test_LowestReachableMember_notEnoughMembersToDecide() throws {
@@ -49,14 +49,14 @@ final class LeadershipTests: XCTestCase {
         _ = membership.remove(self.firstMember.node)
 
         // 2 members -> not enough to make decision anymore
-        let change1: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+        let change1: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
         change1.shouldBeNil()
 
         _ = membership.join(self.newMember.node)
 
         // 3 members again, should work
-        let change2: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
-        change2.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
+        let change2: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+        change2.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
     func test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader() throws {
@@ -73,8 +73,8 @@ final class LeadershipTests: XCTestCase {
 
         // 2 members -> not enough to make decision anymore
         // Since we go from a leader to without, there should be a change
-        let change: LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
-        change.shouldEqual(LeadershipChange(oldLeader: leader, newLeader: nil))
+        let change: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+        change.shouldEqual(Cluster.LeadershipChange(oldLeader: leader, newLeader: nil))
     }
 
     func test_LowestReachableMember_whenCurrentLeaderDown() throws {
@@ -84,11 +84,11 @@ final class LeadershipTests: XCTestCase {
         _ = membership.join(self.newMember.node)
 
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
         _ = membership.mark(self.firstMember.node, as: .down)
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
     func test_LowestReachableMember_whenCurrentLeaderDown_enoughMembers() throws {
@@ -98,18 +98,18 @@ final class LeadershipTests: XCTestCase {
         _ = membership.join(self.newMember.node)
 
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
         _ = membership.mark(self.firstMember.node, as: .down)
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
     func test_LowestReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers() throws {
         var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
+        let applyToMembership: (Cluster.LeadershipChange?) throws -> (Cluster.LeadershipChange?) = { change in
             if let change = change {
                 _ = try membership.applyLeadershipChange(to: change.newLeader)
             }
@@ -118,7 +118,7 @@ final class LeadershipTests: XCTestCase {
 
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
         _ = membership.mark(self.firstMember.node, reachability: .unreachable)
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
@@ -136,8 +136,8 @@ final class LeadershipTests: XCTestCase {
         // ! no need to drop the leadership from the first node, it shall remain the leader;
         var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3) // loseLeadershipIfBelowMinNrOfMembers: false by default
 
-        var membership: Membership = self.initialMembership
-        let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
+        var membership: Cluster.Membership = self.initialMembership
+        let applyToMembership: (Cluster.LeadershipChange?) throws -> (Cluster.LeadershipChange?) = { change in
             if let change = change {
                 _ = try membership.applyLeadershipChange(to: change.newLeader)
             }
@@ -146,7 +146,7 @@ final class LeadershipTests: XCTestCase {
 
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
         // down third
         _ = membership.mark(self.thirdMember.node, as: .down)
@@ -172,8 +172,8 @@ final class LeadershipTests: XCTestCase {
         // ! not enough members to sustain leader, it should not be trusted anymore
         var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3, loseLeadershipIfBelowMinNrOfMembers: true)
 
-        var membership: Membership = self.initialMembership
-        let applyToMembership: (LeadershipChange?) throws -> (LeadershipChange?) = { change in
+        var membership: Cluster.Membership = self.initialMembership
+        let applyToMembership: (Cluster.LeadershipChange?) throws -> (Cluster.LeadershipChange?) = { change in
             if let change = change {
                 _ = try membership.applyLeadershipChange(to: change.newLeader)
             }
@@ -182,14 +182,14 @@ final class LeadershipTests: XCTestCase {
 
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
-            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
         // down third
         _ = membership.mark(self.thirdMember.node, as: .down)
         // no reason to remove the leadership from the first node
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
-            .shouldEqual(LeadershipChange(oldLeader: self.firstMember, newLeader: nil))
+            .shouldEqual(Cluster.LeadershipChange(oldLeader: self.firstMember, newLeader: nil))
 
         // down second
         _ = membership.mark(self.secondMember.node, as: .down)
