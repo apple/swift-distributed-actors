@@ -89,7 +89,7 @@ final class ConvergentGossip<Payload: Codable> {
     private func onLocalPayloadUpdate(_ context: ActorContext<Message>, payload: Payload) {
         context.log.trace("Gossip payload updated: \(payload)", metadata: [
             "actor/message": "\(payload)",
-            "gossip/previousPayload": "\(self.payload)",
+            "gossip/previousPayload": "\(self.payload, orElse: "nil")",
         ])
         self.payload = payload
         // TODO: bump local version vector; once it is in the envelope

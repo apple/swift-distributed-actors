@@ -614,7 +614,7 @@ extension Cluster.MembershipChange {
 
 extension Cluster.MembershipChange: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        "Cluster.MembershipChange(node: \(node), replaced: \(replaced), fromStatus: \(fromStatus.map { "\($0)" } ?? "nil"), toStatus: \(toStatus))"
+        "Cluster.MembershipChange(node: \(node), replaced: \(replaced, orElse: "nil"), fromStatus: \(fromStatus.map { "\($0)" } ?? "nil"), toStatus: \(toStatus))"
     }
 
     public var debugDescription: String {
