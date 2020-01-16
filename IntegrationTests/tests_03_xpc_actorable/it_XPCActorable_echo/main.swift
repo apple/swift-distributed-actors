@@ -47,7 +47,7 @@ case "letItCrash":
     xpcGreetingsActor.letItCrash()
 
 case let unknown:
-    system.log.error("Unknown command: \(unknown)")
+    system.log.error("Unknown command: \(unknown, orElse: "nil")")
     exit(-1)
 }
 

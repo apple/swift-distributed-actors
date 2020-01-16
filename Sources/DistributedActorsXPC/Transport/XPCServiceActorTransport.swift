@@ -49,7 +49,7 @@ public final class XPCServiceActorTransport: ActorTransport {
     // FIXME: This is a bit hacky...
     // We are in an XPC Service and want to deserialize all actor refs as pointing to the application process.
     public override func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
-        try! _file.append("\(#function) @ \(#file):\(#line) trying to resolve: \(context.address): \(context.userInfo.xpcConnection)\n")
+        try! _file.append("\(#function) @ \(#file):\(#line) trying to resolve: \(context.address): \(context.userInfo.xpcConnection, orElse: "nil")\n")
 
         guard let xpcConnection = context.userInfo.xpcConnection else {
             return nil
