@@ -29,9 +29,9 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 1)
             }
 
-            let p = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
+            let p = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
 
-            _ = try first.spawn("selfishSingleLeader", Behavior<ClusterEvent>.setup { context in
+            _ = try first.spawn("selfishSingleLeader", Behavior<Cluster.Event>.setup { context in
                 context.system.cluster.events.subscribe(context.myself)
 
                 return .receiveMessage { event in
@@ -156,13 +156,13 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             }
-            let p1 = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
+            let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
             first.cluster.events.subscribe(p1.ref)
 
             let second = self.setUpNode("second") { settings in
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             }
-            let p2 = self.testKit(second).spawnTestProbe(expecting: ClusterEvent.self)
+            let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
             second.cluster.events.subscribe(p2.ref)
 
             first.cluster.join(node: second.cluster.node.node)
@@ -179,7 +179,7 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnFirstSub.shouldContain(.leadershipChange(LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+            eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
 
             // on non-leader node
             let eventsOnSecondSub = try p2.expectMessages(count: 6)
@@ -188,7 +188,7 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .joining)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnSecondSub.shouldContain(.leadershipChange(LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+            eventsOnSecondSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
         }
     }
 }

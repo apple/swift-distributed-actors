@@ -230,7 +230,7 @@ public final class ActorSystem {
             if let cluster = self._cluster {
                 // try!-safe, this will spawn under /system/... which we have full control over,
                 // and there /system namespace and it is known there will be no conflict for this name
-                let clusterEvents = try! EventStream<ClusterEvent>(
+                let clusterEvents = try! EventStream<Cluster.Event>(
                     self,
                     name: "clusterEvents",
                     systemStream: true,

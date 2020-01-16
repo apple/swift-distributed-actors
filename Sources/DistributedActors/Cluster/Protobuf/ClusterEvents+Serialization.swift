@@ -17,7 +17,7 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension ClusterEvent: InternalProtobufRepresentable {
+extension Cluster.Event: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoClusterEvent
 
     func toProto(context: ActorSerializationContext) throws -> ProtoClusterEvent {
@@ -29,7 +29,7 @@ extension ClusterEvent: InternalProtobufRepresentable {
         case .membershipChange(let change):
             proto.event = .membershipChange(try change.toProto(context: context))
         case .leadershipChange(let change):
-            // technically should not be gossiped around, but let us cover all the messages of ClusterEvent
+            // technically should not be gossiped around, but let us cover all the messages of Cluster.Event
             proto.event = .leadershipChange(try change.toProto(context: context))
         default:
             fatalError("Serialization not implemented for: \(self)")
@@ -52,7 +52,7 @@ extension ClusterEvent: InternalProtobufRepresentable {
     }
 }
 
-extension MembershipChange: InternalProtobufRepresentable {
+extension Cluster.MembershipChange: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoClusterMembershipChange
 
     func toProto(context: ActorSerializationContext) throws -> ProtoClusterMembershipChange {
@@ -69,7 +69,7 @@ extension MembershipChange: InternalProtobufRepresentable {
 
     init(fromProto proto: ProtoClusterMembershipChange, context: ActorSerializationContext) throws {
         guard proto.hasNode else {
-            throw SerializationError.missingField("node", type: "\(MembershipChange.self)")
+            throw SerializationError.missingField("node", type: "\(Cluster.MembershipChange.self)")
         }
 
         self = try .init(
@@ -80,7 +80,7 @@ extension MembershipChange: InternalProtobufRepresentable {
     }
 }
 
-extension LeadershipChange: InternalProtobufRepresentable {
+extension Cluster.LeadershipChange: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoClusterLeadershipChange
 
     func toProto(context: ActorSerializationContext) throws -> InternalProtobufRepresentation {
@@ -98,13 +98,13 @@ extension LeadershipChange: InternalProtobufRepresentable {
 
     init(fromProto proto: InternalProtobufRepresentation, context: ActorSerializationContext) throws {
         if proto.hasOldLeader {
-            self.oldLeader = try Member(fromProto: proto.oldLeader, context: context)
+            self.oldLeader = try Cluster.Member(fromProto: proto.oldLeader, context: context)
         } else {
             self.oldLeader = nil
         }
 
         if proto.hasNewLeader {
-            self.newLeader = try Member(fromProto: proto.newLeader, context: context)
+            self.newLeader = try Cluster.Member(fromProto: proto.newLeader, context: context)
         } else {
             self.newLeader = nil
         }

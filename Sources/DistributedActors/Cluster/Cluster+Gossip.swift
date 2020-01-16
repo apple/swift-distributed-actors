@@ -12,20 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Gossip about Membership
+// MARK: Cluster.Gossip
 
-///// High level (as opposed to gossip on failure detector layer) gossip about the status of members in the cluster.
-// internal enum MembershipGossip { // TODO: remove this, just use Membership.Gossip
-//    case update(from: UniqueNode, Membership.Gossip)
-// }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Membership.Gossip
-
-extension Membership {
+extension Cluster {
     /// Gossip payload about members in the cluster.
     ///
     /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
@@ -36,7 +26,7 @@ extension Membership {
         /// Each row in the table represents what versionVector we know the given node has observed recently.
         /// It may have in the mean time of course observed a new version already.
         // TODO: There is tons of compression opportunity about not having to send full tables around in general, but for now we will just send them around
-        var seen: SeenTable
+        var seen: Cluster.Gossip.SeenTable
         /// The version vector of this gossip and the `Membership` state owned by it.
         var version: VersionVector {
             self.seen.table[self.owner]! // !-safe, since we _always)_ know our own world view
@@ -46,18 +36,12 @@ extension Membership {
 
         // Would be Payload of the generic envelope.
         /// IMPORTANT: Whenever the membership is updated with an effective change, we MUST move the version forward (!)
-        var membership: Membership // {
-//            didSet {
-//                // Any change to membership, must result in incrementing the gossips version, as it now is "more"
-//                // up to date than the previous observation of the membership.
-//                self.incrementOwnerVersion()
-//            }
-//        }
+        var membership: Cluster.Membership
 
         init(ownerNode: UniqueNode) {
             self.owner = ownerNode
-            // self.seen = SeenTable(myselfNode: ownerNode, version: VersionVector((.uniqueNode(ownerNode), 1)))
-            self.seen = SeenTable(myselfNode: ownerNode, version: VersionVector())
+            // self.seen = Cluster.Gossip.SeenTable(myselfNode: ownerNode, version: VersionVector((.uniqueNode(ownerNode), 1)))
+            self.seen = Cluster.Gossip.SeenTable(myselfNode: ownerNode, version: VersionVector())
 
             // The actual payload
             // self.membership = .initial(ownerNode)
@@ -95,21 +79,34 @@ extension Membership {
 
         struct MergeDirective {
             let causalRelation: VersionVector.CausalRelation
-            let effectiveChanges: [MembershipChange]
+            let effectiveChanges: [Cluster.MembershipChange]
         }
     }
 }
 
-extension Membership.Gossip: Codable {}
+extension Cluster.Gossip: Codable {
+    // Codable: synthesized conformance
+}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: SeenTable
+// MARK: Cluster.Gossip.SeenTable
 
-extension Membership {
-    // TODO: Isn't the SeenTable the same as a collection of `VersionDot` in CRDTs?
-    // TODO: Technically speaking, since Membership is also a move-only-forward datatype, the SeenTable should not be required
-    //       for basic correctness. However thanks to keeping it, we are able to diagnose things much more, thus its main value.
+extension Cluster.Gossip {
     /// A table containing information about which node has seen the gossip at which version.
+    ///
+    /// It is best visualized as a series of views (by "owners" of a row) onto the state of the cluster.
+    ///
+    /// ```
+    /// | A | A:2, B:10, C:2 |
+    /// | B | A:2, B:12      |
+    /// | C | C:5            |
+    /// ```
+    ///
+    /// E.g. by reading the above table, we can know that:
+    /// - node A: has seen some gossips from B, yet is behind by 2 updates on B, it has received early gossip from C
+    /// - node B: is the "farthest" along the vector timeline, yet has never seen gossip from C
+    /// - node C (we think): has never seen any gossip from either A or B, realistically though it likely has,
+    ///   however it has not yet sent a gossip to "us" such that we could have gotten its updated version vector.
     struct SeenTable {
         var table: [UniqueNode: VersionVector]
 
@@ -138,12 +135,12 @@ extension Membership {
 
         // FIXME: This could be too many layers;
         // FIXME: Shouldn't we merge all incoming owner's, from the entire incoming table? !!!!!!!!!!!!!!!!!!!!!!!!
-        //        The information carried in Membership includes all information
-        /// Merging an incoming `Membership.Gossip` into a `SeenTable` means "progressing (version) time"
+        //        The information carried in Cluster.Membership includes all information
+        /// Merging an incoming `Cluster.Gossip` into a `Cluster.Gossip.SeenTable` means "progressing (version) time"
         /// for both "us" and the incoming data's owner in "our view" about it.
         ///
         /// In other words, we gained information and our membership has "moved forward" as
-        mutating func merge(owner: UniqueNode, incoming: Membership.Gossip) {
+        mutating func merge(owner: UniqueNode, incoming: Cluster.Gossip) {
             for seenNode in incoming.seen.nodes {
                 var seenVersion = self.table[seenNode] ?? VersionVector()
                 seenVersion.merge(other: incoming.seen.version(at: seenNode) ?? VersionVector()) // though always not-nil
@@ -195,13 +192,13 @@ extension Membership {
     }
 }
 
-extension Membership.SeenTable: CustomStringConvertible, CustomDebugStringConvertible {
+extension Cluster.Gossip.SeenTable: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        "SeenTable(\(self.table))"
+        "Cluster.Gossip.SeenTable(\(self.table))"
     }
 
     var debugDescription: String {
-        var s = "SeenTable(\n"
+        var s = "Cluster.Gossip.SeenTable(\n"
         let entryHeadingPadding = String(repeating: " ", count: 4)
         let entryPadding = String(repeating: " ", count: 4 * 2)
         table.sorted(by: { $0.key < $1.key }).forEach { node, vv in
@@ -217,4 +214,6 @@ extension Membership.SeenTable: CustomStringConvertible, CustomDebugStringConver
     }
 }
 
-extension Membership.SeenTable: Codable {}
+extension Cluster.Gossip.SeenTable: Codable {
+    // Codable: synthesized conformance
+}

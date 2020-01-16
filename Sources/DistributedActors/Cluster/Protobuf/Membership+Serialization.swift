@@ -17,7 +17,7 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension Membership: InternalProtobufRepresentable {
+extension Cluster.Membership: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoClusterMembership
 
     func toProto(context: ActorSerializationContext) throws -> ProtoClusterMembership {
@@ -35,7 +35,7 @@ extension Membership: InternalProtobufRepresentable {
         self._members = [:]
         self._members.reserveCapacity(proto.members.count)
         for protoMember in proto.members {
-            let member = try Member(fromProto: protoMember, context: context)
+            let member = try Cluster.Member(fromProto: protoMember, context: context)
             self._members[member.node] = member
         }
         if proto.hasLeaderNode {
@@ -46,7 +46,7 @@ extension Membership: InternalProtobufRepresentable {
     }
 }
 
-extension Member: InternalProtobufRepresentable {
+extension Cluster.Member: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoClusterMember
 
     func toProto(context: ActorSerializationContext) throws -> ProtoClusterMember {
@@ -72,7 +72,7 @@ extension Member: InternalProtobufRepresentable {
 }
 
 // not conforming to InternalProtobufRepresentable since it is a raw `enum` not a Message
-extension MemberReachability {
+extension Cluster.MemberReachability {
     func toProto(context: ActorSerializationContext) throws -> ProtoClusterMemberReachability {
         switch self {
         case .reachable:
@@ -97,7 +97,7 @@ extension MemberReachability {
 }
 
 // not conforming to InternalProtobufRepresentable since this is a raw `enum` not a Message
-extension MemberStatus {
+extension Cluster.MemberStatus {
     func toProto(context: ActorSerializationContext) -> ProtoClusterMemberStatus {
         var proto = ProtoClusterMemberStatus()
         switch self {

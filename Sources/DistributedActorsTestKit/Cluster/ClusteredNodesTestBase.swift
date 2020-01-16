@@ -112,7 +112,7 @@ open class ClusteredNodesTestBase: XCTestCase {
 
     public func joinNodes(
         node: ActorSystem, with other: ActorSystem,
-        ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: MemberStatus? = nil
+        ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil
     ) throws {
         node.cluster.join(node: other.cluster.node.node)
 
@@ -129,7 +129,7 @@ open class ClusteredNodesTestBase: XCTestCase {
     }
 
     public func ensureNodes(
-        _ status: MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), systems: ActorSystem...,
+        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), systems: ActorSystem...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first else {
@@ -153,7 +153,7 @@ open class ClusteredNodesTestBase: XCTestCase {
 extension ClusteredNodesTestBase {
     public func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
         let testKit = self.testKit(system)
-        let p = testKit.spawnTestProbe(expecting: Membership.self)
+        let p = testKit.spawnTestProbe(expecting: Cluster.Membership.self)
 
         system.cluster.ref.tell(.query(.currentMembership(p.ref)))
         let membership = try! p.expectMessage()
@@ -305,11 +305,11 @@ extension ClusteredNodesTestBase {
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     public func assertMemberStatus(
-        on system: ActorSystem, node: UniqueNode, is expectedStatus: MemberStatus,
+        on system: ActorSystem, node: UniqueNode, is expectedStatus: Cluster.MemberStatus,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         let testKit = self.testKit(system)
-        let p = testKit.spawnTestProbe(expecting: Membership.self)
+        let p = testKit.spawnTestProbe(expecting: Cluster.Membership.self)
         defer {
             p.stop()
         }
@@ -336,7 +336,7 @@ extension ClusteredNodesTestBase {
         file: StaticString = #file, line: UInt = #line
     ) throws {
         let testKit = self.testKit(system)
-        let p = testKit.spawnTestProbe(expecting: Membership.self)
+        let p = testKit.spawnTestProbe(expecting: Cluster.Membership.self)
         defer {
             p.stop()
         }

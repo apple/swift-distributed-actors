@@ -42,7 +42,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     var log: Logger
     let settings: ClusterSettings
 
-    let events: EventStream<ClusterEvent>
+    let events: EventStream<Cluster.Event>
 
     let myselfNode: UniqueNode
     let channel: Channel
@@ -58,14 +58,14 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
     private var _associations: [Node: Association.State] = [:]
 
-    let gossipControl: ConvergentGossipControl<Membership.Gossip>
+    let gossipControl: ConvergentGossipControl<Cluster.Gossip>
 
     /// Updating the `latestGossip` causes the gossiper to be informed about it, such that the next time it does a gossip round
     /// it uses the latest gossip available.
-    var _latestGossip: Membership.Gossip
+    var _latestGossip: Cluster.Gossip
 
     /// Any change to the gossip data, is propagated to the gossiper immediately.
-    var latestGossip: Membership.Gossip {
+    var latestGossip: Cluster.Gossip {
         get {
             self._latestGossip
         }
@@ -80,7 +80,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         }
     }
 
-    var membership: Membership {
+    var membership: Cluster.Membership {
         get {
             self.latestGossip.membership
         }
@@ -89,14 +89,14 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         }
     }
 
-    init(settings: ClusterSettings, channel: Channel, events: EventStream<ClusterEvent>, gossipControl: ConvergentGossipControl<Membership.Gossip>, log: Logger) {
+    init(settings: ClusterSettings, channel: Channel, events: EventStream<Cluster.Event>, gossipControl: ConvergentGossipControl<Cluster.Gossip>, log: Logger) {
         self.log = log
         self.settings = settings
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         self.myselfNode = settings.uniqueBindNode
-        self._latestGossip = Membership.Gossip(ownerNode: settings.uniqueBindNode)
+        self._latestGossip = Cluster.Gossip(ownerNode: settings.uniqueBindNode)
 
         self.events = events
         self.gossipControl = gossipControl
@@ -338,8 +338,8 @@ extension ClusterShellState {
         // In that case, the join will return a change; Though if the node is already known, e.g. we were told about it
         // via gossip from other nodes, though didn't yet complete associating until just now, so we can make a `change`
         // based on the stored member
-        let changeOption: MembershipChange? = self.membership.apply(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
-            self.membership.uniqueMember(handshake.remoteNode).map { MembershipChange(member: $0) }
+        let changeOption: Cluster.MembershipChange? = self.membership.apply(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
+            self.membership.uniqueMember(handshake.remoteNode).map { Cluster.MembershipChange(member: $0) }
         guard let change = changeOption else {
             fatalError("""
             Attempt to associate with \(reflecting: handshake.remoteNode) failed; It was neither a new node .joining, \
@@ -376,7 +376,7 @@ extension ClusterShellState {
     }
 
     struct AssociatedDirective {
-        let membershipChange: MembershipChange
+        let membershipChange: Cluster.MembershipChange
         let association: Association.AssociatedState
 
         /// An association was replaced by the `membershipChange` and this "old" association must be terminated, pruned from caches, and tombstoned.
@@ -406,12 +406,12 @@ extension ClusterShellState {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Membership
+// MARK: Cluster.Membership
 
 extension ClusterShellState {
     /// Generates and applies changes; generating actions to be taken by the `ClusterShell` if and only if it is the Leader,
     /// after this change has been applied.
-    mutating func applyClusterEventAsChange(_ event: ClusterEvent) -> AppliedClusterEventDirective {
+    mutating func applyClusterEventAsChange(_ event: Cluster.Event) -> AppliedClusterEventDirective {
         let changeWasApplied: Bool
 
         switch event {
@@ -467,15 +467,15 @@ extension ClusterShellState {
         let leaderActions: [LeaderAction]
     }
 
-    /// - Returns: the `MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,
+    /// - Returns: the `Cluster.MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,
     ///    or `nil` if no (observable) change resulted from this move (e.g. marking a `.dead` node as `.dead` again, is not a "change").
-    mutating func applyMembershipChange(_ node: UniqueNode, toStatus: MemberStatus) -> MembershipChange? {
-        return self.membership.apply(MembershipChange(member: Member(node: node, status: toStatus)))
+    mutating func applyMembershipChange(_ node: UniqueNode, toStatus: Cluster.MemberStatus) -> Cluster.MembershipChange? {
+        return self.membership.apply(Cluster.MembershipChange(member: Cluster.Member(node: node, status: toStatus)))
     }
 
     /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
-    mutating func applyMemberReachabilityChange(_ change: ReachabilityChange) -> Member? {
+    mutating func applyMemberReachabilityChange(_ change: Cluster.ReachabilityChange) -> Cluster.Member? {
         return self.membership.applyReachabilityChange(change)
     }
 
@@ -490,7 +490,7 @@ extension ClusterShellState {
             let joiningMembers = self.membership.members(withStatus: .joining)
 
             return joiningMembers.map { joiningMember in
-                let change = MembershipChange(member: joiningMember, toStatus: .up)
+                let change = Cluster.MembershipChange(member: joiningMember, toStatus: .up)
                 return LeaderAction.moveMember(change)
             }
         }
@@ -508,7 +508,7 @@ extension ClusterShellState {
     }
 
     enum LeaderAction {
-        case moveMember(MembershipChange)
+        case moveMember(Cluster.MembershipChange)
     }
 }
 

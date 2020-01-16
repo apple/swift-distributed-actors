@@ -53,7 +53,7 @@ extension CRDT.Replicator {
 
                 if context.system.settings.cluster.enabled {
                     // Not getting replicators listing through receptionist to prevent potential circular dependency
-                    context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
+                    context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
                         self.receiveClusterEvent(context, event: event)
                     })
                 }
@@ -76,7 +76,7 @@ extension CRDT.Replicator {
         // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Track replicators in the cluster
 
-        private func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) {
+        private func receiveClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) {
             let makeReplicatorRef: (UniqueNode) -> ActorRef<Message> = { node in
                 let resolveContext = ResolveContext<Message>(address: ._crdtReplicator(on: node), system: context.system)
                 return context.system._resolve(context: resolveContext)
@@ -100,7 +100,7 @@ extension CRDT.Replicator {
                 self.remoteReplicators.remove(remoteReplicatorRef)
 
             case .snapshot(let snapshot):
-                Membership.diff(from: .empty, to: snapshot).changes.forEach { change in
+                Cluster.Membership.diff(from: .empty, to: snapshot).changes.forEach { change in
                     self.receiveClusterEvent(context, event: .membershipChange(change))
                 }
 

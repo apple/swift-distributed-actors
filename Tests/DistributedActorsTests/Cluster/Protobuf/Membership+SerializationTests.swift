@@ -27,13 +27,13 @@ final class MembershipSerializationTests: ActorSystemTestBase {
     }
 
     func test_serializationOf_membership() throws {
-        let membership: Membership = [
-            Member(node: UniqueNode(node: Node(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .up),
-            Member(node: UniqueNode(node: Node(systemName: "second", host: "2.2.2.2", port: 8228), nid: .random()), status: .down),
+        let membership: Cluster.Membership = [
+            Cluster.Member(node: UniqueNode(node: Node(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), status: .up),
+            Cluster.Member(node: UniqueNode(node: Node(systemName: "second", host: "2.2.2.2", port: 8228), nid: .random()), status: .down),
         ]
 
         let proto = try membership.toProto(context: self.context)
-        let back = try Membership(fromProto: proto, context: context)
+        let back = try Cluster.Membership(fromProto: proto, context: self.context)
 
         back.shouldEqual(membership)
     }

@@ -159,7 +159,7 @@ struct ProtoClusterLeadershipChange {
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoClusterEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "ClusterEvent"
+  static let protoMessageName: String = "Cluster.Event"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "snapshot"),
     2: .same(proto: "membershipChange"),

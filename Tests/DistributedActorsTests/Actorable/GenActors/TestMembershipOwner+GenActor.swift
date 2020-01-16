@@ -27,7 +27,7 @@ import XCTest
 extension TestMembershipOwner {
 
     public enum Message { 
-        case replyMembership(_replyTo: ActorRef<Membership?>) 
+        case replyMembership(_replyTo: ActorRef<Cluster.Membership?>)
     }
     
 }
@@ -82,10 +82,10 @@ extension TestMembershipOwner {
 
 extension Actor where A.Message == TestMembershipOwner.Message {
 
-     func replyMembership() -> Reply<Membership?> {
+     func replyMembership() -> Reply<Cluster.Membership?> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
-            self.ref.ask(for: Membership?.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Cluster.Membership?.self, timeout: .effectivelyInfinite) { _replyTo in
                 .replyMembership(_replyTo: _replyTo)}.nioFuture
         )
     }
