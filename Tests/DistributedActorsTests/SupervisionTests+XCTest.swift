@@ -39,7 +39,6 @@ extension SupervisionTests {
             ("test_restart_throws_shouldFailAfterMaxFailuresInSetup", test_restart_throws_shouldFailAfterMaxFailuresInSetup),
             ("test_compositeSupervisor_shouldHandleUsingTheRightHandler", test_compositeSupervisor_shouldHandleUsingTheRightHandler),
             ("test_throwInSignalHandling_shouldRestart", test_throwInSignalHandling_shouldRestart),
-            ("test_supervise_notSuperviseStackOverflow", test_supervise_notSuperviseStackOverflow),
             ("test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType", test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType),
             ("test_supervisor_shouldOnlyHandle_anyThrows", test_supervisor_shouldOnlyHandle_anyThrows),
             ("test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting", test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting),
