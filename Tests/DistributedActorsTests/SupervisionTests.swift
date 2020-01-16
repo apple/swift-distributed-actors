@@ -821,58 +821,6 @@ final class SupervisionTests: ActorSystemTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
-
-    func test_supervise_notSuperviseStackOverflow() throws {
-        #if !SACT_TESTS_CRASH
-        pnote("Skipping test \(#function); The test exists to confirm that this type of fault remains NOT supervised. See it crash run with `-D SACT_TESTS_CRASH`")
-        return ()
-        #endif
-        _ = "Skipping test \(#function); The test exists to confirm that this type of fault remains NOT supervised. See it crash run with `-D SACT_TESTS_CRASH`"
-
-        let p = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = self.testKit.spawnTestProbe(expecting: Never.self)
-
-        let stackOverflowFaulty: Behavior<SupervisionTests.FaultyMessage> = .setup { context in
-            p.tell(.setupRunning(ref: context.myself))
-            return .receiveMessage { _ in
-                self.daDoRunRunRunDaDoRunRun()
-            }
-        }
-
-        let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessage> = try context.spawn(
-                "bad-decision-erroring-2",
-                props: .supervision(strategy: .restart(atMost: 3, within: .seconds(5))),
-                stackOverflowFaulty
-            )
-            return .same
-        }
-        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
-
-        let parent: ActorRef<Never> = try system.spawn("bad-decision-parent-2", behavior)
-        pp.watch(parent)
-
-        guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
-        p.watch(faultyWorker)
-
-        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
-        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
-
-        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 1st (bad-decision)")))
-        try p.expectTerminated(faultyWorker) // faulty worker DID terminate, since the decision was bogus (".same")
-        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
-    }
-
-    func daDoRunRunRun() -> Behavior<SupervisionTests.FaultyMessage> {
-        return self.daDoRunRunRunDaDoRunRun() // mutually recursive to not trigger warnings; cause stack overflow
-    }
-
-    func daDoRunRunRunDaDoRunRun() -> Behavior<SupervisionTests.FaultyMessage> {
-        return self.daDoRunRunRun() // mutually recursive to not trigger warnings; cause stack overflow
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Tests for selective failure handlers
 
     /// Throws all Errors it receives, EXCEPT `PleaseReply` to which it replies to the probe
