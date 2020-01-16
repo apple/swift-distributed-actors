@@ -58,9 +58,6 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
             }
         case .none:
             throw SerializationError.missingField("message", type: "\(InternalProtobufRepresentation.self)")
-
-        default:
-            fatalError("Serialization not implemented for: \(proto.message)") // protoGossip.members.map { try Member(fromProto: $0, context: context) }
         }
     }
 }

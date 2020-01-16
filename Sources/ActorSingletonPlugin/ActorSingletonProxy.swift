@@ -65,8 +65,8 @@ internal class ActorSingletonProxy<Message> {
     var behavior: Behavior<Message> {
         .setup { context in
             if context.system.settings.cluster.enabled {
-                // Subscribe to `ClusterEvent` in order to update `targetNode`
-                context.system.cluster.events.subscribe(context.subReceive(SubReceiveId(id: "clusterEvent-\(context.name)"), ClusterEvent.self) { event in
+                // Subscribe to `Cluster.Event` in order to update `targetNode`
+                context.system.cluster.events.subscribe(context.subReceive(SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
                     try self.receiveClusterEvent(context, event)
                 })
             } else {
@@ -86,7 +86,7 @@ internal class ActorSingletonProxy<Message> {
         }
     }
 
-    private func receiveClusterEvent(_ context: ActorContext<Message>, _ event: ClusterEvent) throws {
+    private func receiveClusterEvent(_ context: ActorContext<Message>, _ event: Cluster.Event) throws {
         // Feed the event to `AllocationStrategy` then forward the result to `updateTargetNode`,
         // which will determine if `targetNode` has changed and react accordingly.
         let node = self.allocationStrategy.onClusterEvent(event)

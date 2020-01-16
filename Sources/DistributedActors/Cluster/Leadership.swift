@@ -39,14 +39,14 @@ import NIO // Future
 /// e.g. when a partition in the cluster occurs. This is usually beneficial to _liveness_
 ///
 /// ### Leadership Change Cluster Event
-/// If a new member is selected as leader, a `ClusterEvent` carrying `LeadershipChange` will be emitted.
+/// If a new member is selected as leader, a `Cluster.Event` carrying `Cluster.LeadershipChange` will be emitted.
 /// Other actors may subscribe to `system.cluster.events` in order to receive and react to such changes,
 /// e.g. if an actor should only perform its duties if it is residing on the current leader node.
 public protocol LeaderElection {
     /// Select a member to become a leader out of the existing `Membership`.
     ///
     /// Decisions about electing/selecting a leader may be performed asynchronously.
-    mutating func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult
+    mutating func runElection(context: LeaderElectionContext, membership: Cluster.Membership) -> LeaderElectionResult
 }
 
 public struct LeaderElectionContext {
@@ -71,16 +71,16 @@ public struct LeaderElectionContext {
 /// to reach out to the other members and them performing a "vote" about who shall become the leader. As this involves
 /// actor coordination, the result of such election is going to be provided asynchronously.
 ///
-/// A change in leadership will result in a `LeadershipChange` event being emitted in the system's cluster event stream.
+/// A change in leadership will result in a `Cluster.LeadershipChange` event being emitted in the system's cluster event stream.
 public struct LeaderElectionResult: AsyncResult {
-    public typealias Value = LeadershipChange?
-    let future: EventLoopFuture<LeadershipChange?>
+    public typealias Value = Cluster.LeadershipChange?
+    let future: EventLoopFuture<Cluster.LeadershipChange?>
 
-    init(_ future: EventLoopFuture<LeadershipChange?>) {
+    init(_ future: EventLoopFuture<Cluster.LeadershipChange?>) {
         self.future = future
     }
 
-    public func _onComplete(_ callback: @escaping (Result<LeadershipChange?, Error>) -> Void) {
+    public func _onComplete(_ callback: @escaping (Result<Cluster.LeadershipChange?, Error>) -> Void) {
         self.future.whenComplete(callback)
     }
 
@@ -90,22 +90,24 @@ public struct LeaderElectionResult: AsyncResult {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ClusterEvent: LeadershipChange
+// MARK: Cluster.LeadershipChange
 
-/// Emitted when a change in leader is decided.
-public struct LeadershipChange: Equatable {
-    // let role: Role if this leader was of a specific role, carry the info here? same for DC?
-    public let oldLeader: Member?
-    public let newLeader: Member?
+extension Cluster {
+    /// Emitted when a change in leader is decided.
+    public struct LeadershipChange: Equatable {
+        // let role: Role if this leader was of a specific role, carry the info here? same for DC?
+        public let oldLeader: Cluster.Member?
+        public let newLeader: Cluster.Member?
 
-    /// A change is only returned when `oldLeader` and `newLeader` are different.
-    /// In order to avoid issuing changes which would be no-ops, the initializer fails if they are equal.
-    public init?(oldLeader: Member?, newLeader: Member?) {
-        guard oldLeader != newLeader else {
-            return nil
+        /// A change is only returned when `oldLeader` and `newLeader` are different.
+        /// In order to avoid issuing changes which would be no-ops, the initializer fails if they are equal.
+        public init?(oldLeader: Cluster.Member?, newLeader: Cluster.Member?) {
+            guard oldLeader != newLeader else {
+                return nil
+            }
+            self.oldLeader = oldLeader
+            self.newLeader = newLeader
         }
-        self.oldLeader = oldLeader
-        self.newLeader = newLeader
     }
 }
 
@@ -121,7 +123,7 @@ extension Leadership {
     final class Shell {
         static let naming: ActorNaming = "leadership"
 
-        private var membership: Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
+        private var membership: Cluster.Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
         private var election: LeaderElection
 
         init(_ election: LeaderElection) {
@@ -129,18 +131,18 @@ extension Leadership {
             self.membership = .empty
         }
 
-        var behavior: Behavior<ClusterEvent> {
+        var behavior: Behavior<Cluster.Event> {
             return .setup { context in
                 context.log.trace("Spawned \(context.path) to run \(self.election)")
                 context.system.cluster.events.subscribe(context.myself)
 
                 // FIXME: we have to add "own node" since we're not getting the .snapshot... so we have to manually act as if..
-                _ = self.membership.apply(MembershipChange(node: context.system.cluster.node, fromStatus: nil, toStatus: .joining))
+                _ = self.membership.apply(Cluster.MembershipChange(node: context.system.cluster.node, fromStatus: nil, toStatus: .joining))
                 return self.runElection(context)
             }
         }
 
-        private var ready: Behavior<ClusterEvent> {
+        private var ready: Behavior<Cluster.Event> {
             return .receive { context, event in
                 switch event {
                 case .snapshot(let membership):
@@ -165,7 +167,7 @@ extension Leadership {
             }
         }
 
-        func runElection(_ context: ActorContext<ClusterEvent>) -> Behavior<ClusterEvent> {
+        func runElection(_ context: ActorContext<Cluster.Event>) -> Behavior<Cluster.Event> {
             var electionContext = LeaderElectionContext(context)
             electionContext.log[metadataKey: "leadership/election"] = "\(String(reflecting: type(of: self.election)))"
             let electionResult = self.election.runElection(context: electionContext, membership: self.membership)
@@ -246,7 +248,7 @@ extension Leadership {
             self.loseLeadershipIfBelowMinNrOfMembers = loseLeadershipIfBelowMinNrOfMembers
         }
 
-        public mutating func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult {
+        public mutating func runElection(context: LeaderElectionContext, membership: Cluster.Membership) -> LeaderElectionResult {
             var membership = membership
             let membersToSelectAmong = membership.members(atMost: .up)
 
@@ -263,12 +265,12 @@ extension Leadership {
             }
         }
 
-        internal mutating func notEnoughMembers(context: LeaderElectionContext, membership: inout Membership, membersToSelectAmong: [Member]) -> LeaderElectionResult {
+        internal mutating func notEnoughMembers(context: LeaderElectionContext, membership: inout Cluster.Membership, membersToSelectAmong: [Cluster.Member]) -> LeaderElectionResult {
             // not enough members to make a decision yet
             context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)]")
 
             if let currentLeader = membership.leader {
-                // Clear current leader and trigger `LeadershipChange`
+                // Clear current leader and trigger `Cluster.LeadershipChange`
                 let change = try! membership.applyLeadershipChange(to: nil) // try!-safe, because changing leader to nil is safe
                 context.log.trace("Removing leader [\(currentLeader)]")
                 return .init(context.loop.next().makeSucceededFuture(change))
@@ -284,7 +286,7 @@ extension Leadership {
         /// - it still is reachable and part of the membership
         ///
         /// Other nodes MAY NOT be elected, as we are below the minimum members threshold, we can only keep an existing leader, but not elect new ones.
-        internal mutating func belowMinMembersTryKeepStableLeader(context: LeaderElectionContext, membership: inout Membership) -> LeaderElectionResult {
+        internal mutating func belowMinMembersTryKeepStableLeader(context: LeaderElectionContext, membership: inout Cluster.Membership) -> LeaderElectionResult {
             guard let currentLeader = membership.leader else {
                 // there was no leader previously, and now we are below `minimumNumberOfMembersToDecide` thus cannot select a new one
                 return .init(context.loop.next().makeSucceededFuture(nil)) // no change
@@ -302,7 +304,7 @@ extension Leadership {
             return .init(context.loop.next().makeSucceededFuture(nil))
         }
 
-        internal mutating func selectByLowestAddress(context: LeaderElectionContext, membership: inout Membership, membersToSelectAmong: [Member]) -> LeaderElectionResult {
+        internal mutating func selectByLowestAddress(context: LeaderElectionContext, membership: inout Cluster.Membership, membersToSelectAmong: [Cluster.Member]) -> LeaderElectionResult {
             let oldLeader = membership.leader
 
             // select the leader, by lowest address
@@ -327,7 +329,7 @@ extension Leadership {
 
 extension ClusterSettings {
     public enum LeadershipSelectionSettings {
-        /// No automatic leader selection, you can write your own logic and issue a `LeadershipChange` `ClusterEvent` to the `system.cluster.events` event stream.
+        /// No automatic leader selection, you can write your own logic and issue a `Cluster.LeadershipChange` `Cluster.Event` to the `system.cluster.events` event stream.
         case none
         /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
         case lowestAddress(minNumberOfMembers: Int)

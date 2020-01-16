@@ -16,6 +16,9 @@ import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
 
+/// Cluster namespace.
+public struct Cluster {}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal Shell responsible for all clustering (i.e. connection management) state.
 
@@ -50,7 +53,7 @@ internal class ClusterShell {
         return ref
     }
 
-    private var clusterEvents: EventStream<ClusterEvent>!
+    private var clusterEvents: EventStream<Cluster.Event>!
 
     // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
     // any earlier access to the pool is a bug (in our library) and must be treated as such.
@@ -223,7 +226,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func start(system: ActorSystem, clusterEvents: EventStream<ClusterEvent>) throws -> LazyStart<Message> {
+    internal func start(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
         self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
         self.clusterEvents = clusterEvents
 
@@ -249,15 +252,15 @@ internal class ClusterShell {
         case inbound(InboundMessage)
         /// Used to request making a change to the membership owned by the ClusterShell;
         /// Issued by downing or leader election and similar facilities. Thanks to centralizing the application of changes,
-        /// we can ensure that a `ClusterEvent` is signalled only once, and only when it is really needed.
+        /// we can ensure that a `Cluster.Event` is signalled only once, and only when it is really needed.
         /// E.g. signalling a down twice for whatever reason, needs not be notified two times to all subscribers of cluster events.
         ///
         /// If the passed in event applied to the current membership is an effective change, the change will be published using the `system.cluster.events`.
-        case requestMembershipChange(ClusterEvent) // TODO: make a command
+        case requestMembershipChange(Cluster.Event) // TODO: make a command
         /// Gossiping is handled by /system/cluster/gossip, however acting on it still is our task,
         /// thus the gossiper forwards gossip whenever interesting things happen ("more up to date gossip")
         /// to the shell, using this message, so we may act on it -- e.g. perform leader actions or change membership that we store.
-        case gossipFromGossiper(Membership.Gossip)
+        case gossipFromGossiper(Cluster.Gossip)
     }
 
     // this is basically our API internally for this system
@@ -271,7 +274,7 @@ internal class ClusterShell {
         case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
 
-        case reachabilityChanged(UniqueNode, MemberReachability)
+        case reachabilityChanged(UniqueNode, Cluster.MemberReachability)
 
         /// Used to signal a "down was issued" either by the user, or another part of the system.
         case downCommand(Node)
@@ -280,8 +283,7 @@ internal class ClusterShell {
 
     enum QueryMessage: NoSerializationVerification {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO: better type here
-        case currentMembership(ActorRef<Membership>)
-        // TODO: case subscribeAssociations(ActorRef<[UniqueNode]>) // to receive events about it one by one
+        case currentMembership(ActorRef<Cluster.Membership>)
     }
 
     internal enum InboundMessage {
@@ -361,8 +363,8 @@ extension ClusterShell {
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
                 let gossipControl = try ConvergentGossip.start(
-                    context, name: "\(ActorAddress._clusterGossip.name)", of: Membership.Gossip.self,
-                    notifyOnGossipRef: context.messageAdapter(from: Membership.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) },
+                    context, name: "\(ActorAddress._clusterGossip.name)", of: Cluster.Gossip.self,
+                    notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) },
                     props: ._wellKnown
                 )
 
@@ -375,7 +377,7 @@ extension ClusterShell {
                 )
 
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
-                var firstGossip = Membership.Gossip(ownerNode: state.myselfNode)
+                var firstGossip = Cluster.Gossip(ownerNode: state.myselfNode)
                 _ = firstGossip.membership.join(state.myselfNode) // change will be put into effect by receiving the "self gossip"
                 firstGossip.incrementOwnerVersion()
                 context.myself.tell(.gossipFromGossiper(firstGossip))
@@ -409,9 +411,9 @@ extension ClusterShell {
                 }
                 switch reachability {
                 case .reachable:
-                    return self.onReachabilityChange(context, state: state, change: ReachabilityChange(member: member.asReachable))
+                    return self.onReachabilityChange(context, state: state, change: Cluster.ReachabilityChange(member: member.asReachable))
                 case .unreachable:
-                    return self.onReachabilityChange(context, state: state, change: ReachabilityChange(member: member.asUnreachable))
+                    return self.onReachabilityChange(context, state: state, change: Cluster.ReachabilityChange(member: member.asUnreachable))
                 }
 
             case .shutdown(let receptacle):
@@ -460,7 +462,7 @@ extension ClusterShell {
         }
 
         /// Allows processing in one spot, all membership changes which we may have emitted in other places, due to joining, downing etc.
-        func receiveChangeMembershipRequest(_ context: ActorContext<Message>, event: ClusterEvent) -> Behavior<Message> {
+        func receiveChangeMembershipRequest(_ context: ActorContext<Message>, event: Cluster.Event) -> Behavior<Message> {
             self.tracelog(context, .receive(from: state.myselfNode.node), message: event)
             var state = state
 
@@ -479,7 +481,7 @@ extension ClusterShell {
         func receiveMembershipGossip(
             _ context: ActorContext<Message>,
             _ state: ClusterShellState,
-            gossip: Membership.Gossip
+            gossip: Cluster.Gossip
         ) -> Behavior<Message> {
             tracelog(context, .gossip(gossip), message: gossip)
             var state = state
@@ -495,7 +497,7 @@ extension ClusterShell {
                 "gossip/now": "\(state.latestGossip)",
             ])
             mergeDirective.effectiveChanges.forEach { effectiveChange in
-                let event: ClusterEvent = .membershipChange(effectiveChange)
+                let event: Cluster.Event = .membershipChange(effectiveChange)
                 self.clusterEvents.publish(event)
             }
 
@@ -509,13 +511,13 @@ extension ClusterShell {
             for member in members {
                 if state.myselfNode != member.node {
                     // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
-                    let gossipPeer: ConvergentGossip<Membership.Gossip>.Ref = context.system._resolve(
+                    let gossipPeer: ConvergentGossip<Cluster.Gossip>.Ref = context.system._resolve(
                         context: .init(address: ._clusterGossip(on: member.node), system: context.system)
                     )
                     state.gossipControl.introduce(peer: gossipPeer)
                 }
             }
-            // TODO: was this needed here? state.gossipControl.update(Membership.Gossip())
+            // TODO: was this needed here? state.gossipControl.update(Cluster.Gossip())
         }
 
         return .setup { context in
@@ -920,7 +922,7 @@ extension ClusterShell {
     func onReachabilityChange(
         _ context: ActorContext<Message>,
         state: ClusterShellState,
-        change: ReachabilityChange
+        change: Cluster.ReachabilityChange
     ) -> Behavior<Message> {
         var state = state
 
@@ -952,7 +954,7 @@ extension ClusterShell {
         return self.ready(state: state)
     }
 
-    func onDownCommand0(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Member) -> ClusterShellState {
+    func onDownCommand0(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Cluster.Member) -> ClusterShellState {
         var state = state
 
         if let change = state.applyMembershipChange(memberToDown.node, toStatus: .down) {
@@ -1026,7 +1028,7 @@ extension ActorPath {
 // MARK: Cluster Metrics recording
 
 extension ClusterShell {
-    func recordMetrics(_ metrics: ActorSystemMetrics, membership: Membership) {
+    func recordMetrics(_ metrics: ActorSystemMetrics, membership: Cluster.Membership) {
         metrics.recordMembership(membership)
         self._associationsLock.withLockVoid {
             metrics._cluster_association_tombstones.record(self._associationTombstones.count)

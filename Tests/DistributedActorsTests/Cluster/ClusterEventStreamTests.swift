@@ -36,17 +36,17 @@ import NIO
 import XCTest
 
 final class ClusterEventStreamTests: ActorSystemTestBase {
-    let firstMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
-    let secondMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
+    let firstMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
+    let secondMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: ClusterEvent.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: ClusterEvent.self)
+        let p1 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
 
         let eventStream = try EventStream(
             system,
             name: "ClusterEventStream",
-            of: ClusterEvent.self,
+            of: Cluster.Event.self,
             systemStream: false,
             customBehavior: ClusterEventStream.Shell.behavior
         )
@@ -95,12 +95,12 @@ final class ClusterEventStreamTests: ActorSystemTestBase {
     }
 
     func test_clusterEventStream_collapseManyEventsIntoSnapshot() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: ClusterEvent.self)
+        let p1 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
 
         let eventStream = try EventStream(
             system,
             name: "ClusterEventStream",
-            of: ClusterEvent.self,
+            of: Cluster.Event.self,
             systemStream: false,
             customBehavior: ClusterEventStream.Shell.behavior
         )

@@ -171,7 +171,7 @@ extension VersionVector: CustomStringConvertible {
 }
 
 extension VersionVector: Codable {
-    // synthesized conformance
+    // Codable: synthesized conformance
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -211,7 +211,7 @@ extension VersionDot: CustomStringConvertible {
 }
 
 extension VersionDot: Codable {
-    // synthesized conformance
+    // Codable: synthesized conformance
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

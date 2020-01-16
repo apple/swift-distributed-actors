@@ -18,7 +18,7 @@ import XCTest
 
 final class VersionVectorSerializationTests: ActorSystemTestBase {
     override func setUp() {
-        self.setUpNode(String(describing: type(of: self))) { settings in
+        _ = self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.registerProtobufRepresentable(for: ReplicaId.self, underId: 1001)
             settings.serialization.registerProtobufRepresentable(for: VersionVector.self, underId: 1002)
             settings.serialization.registerProtobufRepresentable(for: VersionDot.self, underId: 1003)

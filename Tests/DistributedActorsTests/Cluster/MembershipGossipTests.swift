@@ -24,7 +24,7 @@ final class MembershipGossipTests: XCTestCase {
     var thirdNode: UniqueNode!
     var fourthNode: UniqueNode!
 
-    var myGossip: Membership.Gossip!
+    var myGossip: Cluster.Gossip!
 
     override func setUp() {
         super.setUp()
@@ -32,17 +32,17 @@ final class MembershipGossipTests: XCTestCase {
         self.secondNode = UniqueNode(protocol: "sact", systemName: "second", host: "127.0.0.1", port: 7222, nid: .random())
         self.thirdNode = UniqueNode(protocol: "sact", systemName: "third", host: "127.0.0.1", port: 7333, nid: .random())
         self.fourthNode = UniqueNode(protocol: "sact", systemName: "third", host: "127.0.0.1", port: 7444, nid: .random())
-        self.myGossip = Membership.Gossip(ownerNode: self.myselfNode)
+        self.myGossip = Cluster.Gossip(ownerNode: self.myselfNode)
     }
 
     func test_mergeForward_incomingGossip_firstGossipFromOtherNode() {
-        var gossipFromSecond = Membership.Gossip(ownerNode: self.secondNode)
+        var gossipFromSecond = Cluster.Gossip(ownerNode: self.secondNode)
         _ = gossipFromSecond.membership.join(self.secondNode)
 
         let directive = self.myGossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual(
-            [MembershipChange(member: Member(node: self.secondNode, status: .joining), toStatus: .joining)]
+            [Cluster.MembershipChange(member: Cluster.Member(node: self.secondNode, status: .joining), toStatus: .joining)]
         )
     }
 
@@ -50,7 +50,7 @@ final class MembershipGossipTests: XCTestCase {
         self.myGossip.seen.incrementVersion(owner: self.secondNode, at: self.myselfNode) // v: myself:1, second:1
         _ = self.myGossip.membership.join(self.secondNode) // myself:joining, second:joining
 
-        let gossipFromSecond = Membership.Gossip(ownerNode: self.secondNode)
+        let gossipFromSecond = Cluster.Gossip(ownerNode: self.secondNode)
         let directive = self.myGossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual([])
@@ -65,7 +65,7 @@ final class MembershipGossipTests: XCTestCase {
         self.myGossip.seen.incrementVersion(owner: self.thirdNode, at: self.thirdNode)
 
         // only knows about fourth, while myGossip has first, second and third
-        var incomingGossip = Membership.Gossip(ownerNode: self.fourthNode)
+        var incomingGossip = Cluster.Gossip(ownerNode: self.fourthNode)
         _ = incomingGossip.membership.join(self.fourthNode)
         incomingGossip.incrementOwnerVersion()
 
@@ -74,7 +74,7 @@ final class MembershipGossipTests: XCTestCase {
         // this test also covers so <none> does not accidentally cause changes into .removed, which would be catastrophic
         directive.causalRelation.shouldEqual(.concurrent)
         directive.effectiveChanges.shouldEqual(
-            [MembershipChange(member: Member(node: self.fourthNode, status: .joining), toStatus: .joining)]
+            [Cluster.MembershipChange(member: Cluster.Member(node: self.fourthNode, status: .joining), toStatus: .joining)]
         )
     }
 }

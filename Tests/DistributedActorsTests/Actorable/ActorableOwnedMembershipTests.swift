@@ -46,7 +46,7 @@ final class ActorableOwnedMembershipTests: ClusteredNodesTestBase {
 
 struct TestMembershipOwner: Actorable {
     let context: Myself.Context
-    let membership: ActorableOwned<Membership>
+    let membership: ActorableOwned<Cluster.Membership>
 
     static var generateCodableConformance: Bool {
         false
@@ -57,7 +57,7 @@ struct TestMembershipOwner: Actorable {
         self.membership = context.system.cluster.autoUpdatedMembership(context)
     }
 
-    func replyMembership() -> Membership? {
+    func replyMembership() -> Cluster.Membership? {
         self.membership.lastObservedValue
     }
 }

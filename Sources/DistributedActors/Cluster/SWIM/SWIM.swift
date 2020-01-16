@@ -137,7 +137,7 @@ extension SWIM {
     ///
     /// The `.unreachable` state is set when a classic SWIM implementation would have declared a node `.down`,
     /// yet since we allow for the higher level membership to decide when and how to eject members from a cluster,
-    /// only the `.unreachable` state is set and an `ReachabilityChange` cluster event is emitted. In response to this
+    /// only the `.unreachable` state is set and an `Cluster.ReachabilityChange` cluster event is emitted. In response to this
     /// most clusters will immediately adhere to SWIM's advice and mark the unreachable node as `.down`, resulting in
     /// confirming the node as `.dead` in SWIM terms.
     ///

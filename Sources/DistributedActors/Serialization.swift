@@ -78,7 +78,7 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: NumberSerializer(UInt64.self, self.allocator), underId: Serialization.Id.InternalSerializer.UInt64)
 
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<ClusterShell.Message>(allocator: self.allocator), for: ClusterShell.Message.self, underId: Serialization.Id.InternalSerializer.ClusterShellMessage)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<ClusterEvent>(allocator: self.allocator), for: ClusterEvent.self, underId: Serialization.Id.InternalSerializer.ClusterEvent)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<Cluster.Event>(allocator: self.allocator), for: Cluster.Event.self, underId: Serialization.Id.InternalSerializer.ClusterEvent)
 
         // Cluster Receptionist
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.Id.InternalSerializer.FullStateRequest)
@@ -103,7 +103,7 @@ public struct Serialization {
         self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyDeltaCRDT.self) { set in AnyDeltaCRDT(set) }
         self.registerBoxing(from: CRDT.ORSet<String>.Delta.self, into: AnyCvRDT.self) { set in AnyCvRDT(set) }
 
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer<DistributedActors.ConvergentGossip<DistributedActors.Membership.Gossip>.Message>(allocator: self.allocator), underId: Serialization.Id.InternalSerializer.ConvergentGossipMembership)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer<DistributedActors.ConvergentGossip<DistributedActors.Cluster.Gossip>.Message>(allocator: self.allocator), underId: Serialization.Id.InternalSerializer.ConvergentGossipMembership)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {

@@ -103,7 +103,7 @@ public struct ClusterSettings {
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Membership Gossip
+    // MARK: Cluster.Membership Gossip
 
     public var membershipGossipInterval: TimeAmount = .milliseconds(500)
 

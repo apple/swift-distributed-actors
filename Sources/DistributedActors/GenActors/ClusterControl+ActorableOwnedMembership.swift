@@ -19,12 +19,12 @@ extension ClusterControl {
     ///
     /// - SeeAlso: `ActorableOwned`
     /// - SeeAlso: `Membership`
-    public func autoUpdatedMembership<Act: Actorable>(_ ownerContext: Actor<Act>.Context) -> ActorableOwned<Membership> {
-        let owned: ActorableOwned<Membership> = ActorableOwned(ownerContext)
-        owned.update(newValue: Membership.empty)
+    public func autoUpdatedMembership<Act: Actorable>(_ ownerContext: Actor<Act>.Context) -> ActorableOwned<Cluster.Membership> {
+        let owned: ActorableOwned<Cluster.Membership> = ActorableOwned(ownerContext)
+        owned.update(newValue: Cluster.Membership.empty)
 
-        self.events.subscribe(ownerContext._underlying.subReceive(ClusterEvent.self) { (event: ClusterEvent) in
-            var membership = owned.lastObservedValue ?? Membership.empty
+        self.events.subscribe(ownerContext._underlying.subReceive(Cluster.Event.self) { (event: Cluster.Event) in
+            var membership = owned.lastObservedValue ?? Cluster.Membership.empty
             try membership.apply(event: event)
             owned.update(newValue: membership)
         })

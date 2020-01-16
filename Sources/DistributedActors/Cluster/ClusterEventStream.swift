@@ -15,27 +15,27 @@
 import Logging
 
 /// Specialized event stream behavior which takes into account emitting a snapshot event on first subscription,
-/// followed by a stream of `ClusterEvent`s.
+/// followed by a stream of `Cluster.Event`s.
 ///
 /// This ensures that every subscriber to cluster events never misses any of the membership events, meaning
 /// it is possible for anyone to maintain a local up-to-date copy of `Membership` by applying all these events to that copy.
 enum ClusterEventStream {
     enum Shell {
-        static var behavior: Behavior<EventStreamShell.Message<ClusterEvent>> {
+        static var behavior: Behavior<EventStreamShell.Message<Cluster.Event>> {
             .setup { context in
 
                 // We maintain a snapshot i.e. the "latest version of the membership",
                 // in order to eagerly publish it to anyone who subscribes immediately,
-                // followed by joining them to the subsequent `ClusterEvent` publishes.
+                // followed by joining them to the subsequent `Cluster.Event` publishes.
                 //
                 // Thanks to this, any subscriber immediately gets a pretty recent view of the membership,
                 // followed by the usual updates via events. Since all events are published through this
                 // event stream actor, all subscribers are guaranteed to see events in the right order,
                 // and not miss any information as long as they apply all events they receive.
-                var snapshot = Membership.empty
-                var subscribers: [ActorAddress: ActorRef<ClusterEvent>] = [:]
+                var snapshot = Cluster.Membership.empty
+                var subscribers: [ActorAddress: ActorRef<Cluster.Event>] = [:]
 
-                let behavior: Behavior<EventStreamShell.Message<ClusterEvent>> = .receiveMessage { message in
+                let behavior: Behavior<EventStreamShell.Message<Cluster.Event>> = .receiveMessage { message in
                     switch message {
                     case .subscribe(let ref):
                         subscribers[ref.address] = ref
