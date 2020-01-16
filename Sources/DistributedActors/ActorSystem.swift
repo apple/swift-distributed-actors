@@ -214,10 +214,10 @@ public final class ActorSystem {
         self.serialization = Serialization(settings: settings, system: self)
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
-        let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: Props()._asWellKnown)
+        let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionist = lazyReceptionist.ref
 
-        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, props: Props()._asWellKnown)
+        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, props: ._wellKnown)
         self._replicator = lazyReplicator.ref
 
         #if SACT_TESTS_LEAKS
@@ -244,7 +244,7 @@ public final class ActorSystem {
                 lazyNodeDeathWatcher = try self._prepareSystemActor(
                     NodeDeathWatcherShell.naming,
                     NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-                    props: Props()._asWellKnown
+                    props: ._wellKnown
                 )
                 self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
             }

@@ -332,7 +332,7 @@ extension ClusterShell {
 
             // SWIM failure detector and gossiping
             let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
-            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: Props()._asWellKnown, swimBehavior)
+            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: ._wellKnown, swimBehavior)
 
             // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
@@ -363,7 +363,7 @@ extension ClusterShell {
                 let gossipControl = try ConvergentGossip.start(
                     context, name: "\(ActorAddress._clusterGossip.name)", of: Membership.Gossip.self,
                     notifyOnGossipRef: context.messageAdapter(from: Membership.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) },
-                    props: Props()._asWellKnown
+                    props: ._wellKnown
                 )
 
                 let state = ClusterShellState(

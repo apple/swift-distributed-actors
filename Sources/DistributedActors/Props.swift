@@ -191,6 +191,10 @@ public struct MetricsProps {
 // MARK: Internal Props settings
 
 extension Props {
+    /// Shorthand for `Props()._asSellKnown`
+    /// - SeeAlso: `Props._asWellKnown`
+    public static let _wellKnown: Self = Props()._asWellKnown
+
     /// Use with great care, and ONLY if a path is known to only ever be occupied by the one and only actor that is going to be spawned using this well known identity.
     /// Allows spawning actors with "well known" identity (meaning the unique actor incarnation identifier will be set to `ActorIncarnation.wellKnown`).
     public var _asWellKnown: Self {
