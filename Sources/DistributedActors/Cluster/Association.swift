@@ -52,11 +52,6 @@ struct Association {
             self.channel = channel
         }
 
-        // TODO: resolving only once could be nicer
-//        func resolveClusterShell(system: ActorSystem) -> ClusterShell.Ref {
-//            system._resolve(context: .init(address: ._cluster(on: self.remoteNode), system: system))
-//        }
-
         func makeRemoteControl() -> AssociationRemoteControl {
             AssociationRemoteControl(channel: self.channel, remoteNode: self.remoteNode)
             // TODO: RemoteControl should mimic what the ClusterShell does when it sends messages; we want to push
