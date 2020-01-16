@@ -266,7 +266,7 @@ extension ClusterShellState {
             detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
             """)
             if tieBreakWinner {
-                if let abortedHandshake = self.abortOutgoingHandshake(with: offer.from.node) {
+                if self.abortOutgoingHandshake(with: offer.from.node) != nil {
                     self.log.debug("Aborted handshake, as concurrently negotiating another one with same node already", metadata: [
                         "handshake/status": "abort-incoming,offer",
                         "handshake/from": "\(offer.from)",
