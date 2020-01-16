@@ -100,8 +100,6 @@ extension Membership {
     }
 }
 
-extension Membership.Gossip {}
-
 extension Membership.Gossip: Codable {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
