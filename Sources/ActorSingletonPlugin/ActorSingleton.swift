@@ -116,7 +116,7 @@ public struct ActorSingletonSettings {
     }
 
     /// Controls allocation of the node on which the singleton runs.
-    public var allocationStrategy: AllocationStrategySettings = .leadership
+    public var allocationStrategy: AllocationStrategySettings = .byLeadership
 
     public init(name: String) {
         self.name = name
@@ -126,11 +126,11 @@ public struct ActorSingletonSettings {
 /// Singleton node allocation strategies.
 public enum AllocationStrategySettings {
     /// Singletons will run on the cluster leader
-    case leadership
+    case byLeadership
 
     func make(_: ClusterSettings, _: ActorSingletonSettings) -> ActorSingletonAllocationStrategy {
         switch self {
-        case .leadership:
+        case .byLeadership:
             return ActorSingletonAllocationByLeadership()
         }
     }
