@@ -243,7 +243,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
                 ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
                 guard let reply3 = try replyProbe3.maybeExpectMessage() else {
                     pprint("lost msg @ node 3")
-                    throw TestError("No reply to \(replyProbe2) yet, singleton still rebalancing...?")
+                    throw TestError("No reply to \(replyProbe3) yet, singleton still rebalancing...?")
                 }
                 reply3.shouldEqual("Hello-4 Charlie-3!")
             }
