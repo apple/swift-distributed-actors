@@ -2,6 +2,15 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
+import class Foundation.ProcessInfo
+
+// Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
+// and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
+// targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
+// TODO: Follow up to https://github.com/apple/swift-distributed-actors/issues/23 by removing Files and Stencil, then we can remove this workaround
+let globalSwiftSettings: [SwiftSetting] = ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] == nil ? [
+    SwiftSetting.unsafeFlags(["-warnings-as-errors"])
+] : []
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -290,7 +299,10 @@ var package = Package(
 
     dependencies: dependencies,
 
-    targets: targets,
+    targets: targets.map { target in
+        target.swiftSettings?.append(contentsOf: globalSwiftSettings)
+        return target
+    },
 
     cxxLanguageStandard: .cxx11
 )
