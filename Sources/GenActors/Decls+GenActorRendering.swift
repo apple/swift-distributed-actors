@@ -115,7 +115,7 @@ extension Rendering {
                                 instance.postStop(context: context)
                                 return .same
                             case let terminated as Signals.Terminated:
-                                switch try instance.receiveTerminated(context: context, terminated: terminated) {
+                                switch {{tryIfReceiveTerminatedIsThrowing}}instance.receiveTerminated(context: context, terminated: terminated) {
                                 case .unhandled: 
                                     return .unhandled
                                 case .stop: 
@@ -124,7 +124,7 @@ extension Rendering {
                                     return .same
                                 }
                             default:
-                                try instance.receiveSignal(context: context, signal: signal)
+                                {{tryIfReceiveSignalIsThrowing}}instance.receiveSignal(context: context, signal: signal)
                                 return .same
                             }
                         }
@@ -202,6 +202,9 @@ extension Rendering {
                         try actorableFunc.renderBoxFuncTell(self.actorable, printer: &printer)
                     }
                 } : [],
+
+                "tryIfReceiveTerminatedIsThrowing": self.actorable.receiveTerminatedIsThrowing ? "try " : " ",
+                "tryIfReceiveSignalIsThrowing": self.actorable.receiveSignalIsThrowing ? "try " : " ",
             ]
 
             var rendered: String = "\n"

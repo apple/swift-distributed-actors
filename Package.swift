@@ -238,8 +238,8 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~ only for GenActors ~~~
     // swift-syntax is Swift version dependent, and added  as such below
-    .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.0"), // BSD license
-    .package(url: "https://github.com/JohnSundell/Files", from: "4.0.0"), // MIT license
+    .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.1"), // BSD license
+    .package(url: "https://github.com/JohnSundell/Files", from: "4.1.0"), // MIT license
 ]
 
 #if swift(>=5.1)

@@ -27,7 +27,7 @@ import XCTest
 extension TestMembershipOwner {
 
     public enum Message { 
-        case replyMembership(_replyTo: ActorRef<Cluster.Membership?>)
+        case replyMembership(_replyTo: ActorRef<Cluster.Membership?>) 
     }
     
 }
