@@ -98,7 +98,7 @@ public final class ActorSystem {
     // MARK: Logging
 
     public var log: Logger {
-        var l = ActorLogger.make(system: self) // we only do this to go "through" the proxy; we may not need it in the future?
+        var l = ActorLogger.make(system: self)
         l.logLevel = self.settings.defaultLogLevel
         return l
     }

@@ -29,8 +29,8 @@ final class DeadLetterTests: ActorSystemTestBase {
 
         office.deliver("Hello")
 
-        try self.awaitLogContaining(text: "[Hello]:Swift.String was not delivered")
-        try self.awaitLogContaining(text: "/user/someone")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "[Hello]:Swift.String was not delivered")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "/user/someone")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -48,8 +48,8 @@ final class DeadLetterTests: ActorSystemTestBase {
 
         ref.tell("Are you still there?")
 
-        try self.awaitLogContaining(text: "Are you still there?")
-        try self.awaitLogContaining(text: "/user/ludwig")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "Are you still there?")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "/user/ludwig")
     }
 
     func test_askingTerminatedActor_shouldResultInDeadLetter() throws {
@@ -72,17 +72,7 @@ final class DeadLetterTests: ActorSystemTestBase {
             try answer.nioFuture.wait()
         }
 
-        try self.awaitLogContaining(text: "This is a question")
-        try self.awaitLogContaining(text: "/user/ludwig")
-    }
-
-    private func awaitLogContaining(text: String, file: StaticString = #file, line: UInt = #line) throws {
-        return try self.testKit.eventually(within: .seconds(3), file: file, line: line) {
-            if !self.logCapture.logs.contains(where: { log in
-                "\(log)".contains(text)
-            }) {
-                throw TestError("Keep waiting; Contained only: \(self.logCapture.logs)")
-            }
-        }
+        try self.logCapture.awaitLogContaining(self.testKit, text: "This is a question")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "/user/ludwig")
     }
 }

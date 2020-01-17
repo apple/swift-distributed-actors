@@ -143,7 +143,14 @@ public struct ClusterSettings {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster membership and failure detection
 
+    /// Strategy how members determine if others (or myself) shall be marked as `.down`.
+    /// This strategy should be set to the same (or compatible) strategy on all members of a cluster to avoid split brain situations.
     public var downingStrategy: DowningStrategySettings = .none
+
+    /// When this member node notices it has been marked as `.down` in the membership, it can automatically perform an action.
+    /// This setting determines which action to take. Generally speaking, the best course of action is to quickly and gracefully
+    /// shut down the node and process, potentially leaving a higher level orchestrator to replace the node (e.g. k8s starting a new pod for the cluster).
+    public var onDownAction: OnDownActionStrategySettings = .shutdown
 
     /// Configures the SWIM failure failure detector.
     public var swim: SWIM.Settings = .default
@@ -169,6 +176,9 @@ public struct ClusterSettings {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: DowningStrategySettings
+
 public enum DowningStrategySettings {
     case none
     case timeout(TimeoutBasedDowningStrategySettings)
@@ -179,6 +189,32 @@ public enum DowningStrategySettings {
             return nil
         case .timeout(let settings):
             return TimeoutBasedDowningStrategy(settings, selfNode: clusterSettings.uniqueBindNode)
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: OnDownActionStrategySettings
+
+public enum OnDownActionStrategySettings {
+    /// Take no (automatic) action upon noticing that this member is marked as `.down`.
+    ///
+    /// When using this mode you should take special care to implement some form of shutting down of this node (!).
+    /// As a `Cluster.MemberStatus.down` node is effectively useless for the rest of the cluster -- i.e. other
+    /// members MUST refuse communication with this down node.
+    case none
+    /// Upon noticing that this member is marked as `.down`, initiate a shutdown.
+    case shutdown
+
+    func make() -> (ActorSystem) -> Void {
+        switch self {
+        case .none:
+            return { _ in () } // do nothing
+        case .shutdown:
+            return { system in
+                system.log.warning("This node was marked as `.down` in membership. Performing OnDownAction as configured: shutting down the system.")
+                system.shutdown()
+            }
         }
     }
 }

@@ -60,6 +60,17 @@ public final class LogCapture {
             }
         }
     }
+
+    public func awaitLogContaining(_ testKit: ActorTestKit, text: String, within: TimeAmount = .seconds(3), file: StaticString = #file, line: UInt = #line) throws {
+        return try testKit.eventually(within: within, file: file, line: line) {
+            let logs = self.logs
+            if !logs.contains(where: { log in
+                "\(log)".contains(text)
+            }) {
+                throw TestError("Logs did not contain [\(text)].")
+            }
+        }
+    }
 }
 
 extension LogCapture {
