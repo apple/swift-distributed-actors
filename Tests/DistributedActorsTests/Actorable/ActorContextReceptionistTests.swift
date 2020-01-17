@@ -62,7 +62,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
         let n = 3000
 
-        let ownerRef = try! self.system.spawn("owner") {
+        _ = try! self.system.spawn("owner") {
             OwnerOfThings(context: $0, probe: p.ref, onListingUpdated: { probe, newValue in
                 if newValue.actors.count == n {
                     probe.tell(newValue)

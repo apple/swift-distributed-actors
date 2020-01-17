@@ -361,7 +361,9 @@ struct ExampleWorker {
     internal static var props: Props = Props().dispatcher(.pinnedThread)
 }
 
-enum WorkerMessages {}
+enum WorkerMessages {
+    case something
+}
 
 func run(system: ActorSystem) throws {
     let (b, props) = ExampleWorker.suggested // TODO: replace with class/Shell pattern?
