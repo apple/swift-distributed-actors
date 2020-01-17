@@ -685,7 +685,7 @@ extension ClusterShell {
                 self.tryIntroduceGossipPeer(context, state, change: directive.membershipChange)
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
-                let actions = state.tryCollectLeaderActions()
+                let actions = state.collectLeaderActions()
                 self.interpretLeaderActions(&state, actions) // TODO: not so DRY between acceptAndAssociate and onHandshakeAccepted, DRY it up
 
                 /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
@@ -719,9 +719,9 @@ extension ClusterShell {
         }
     }
 
-    internal func interpretLeaderActions(_ state: inout ClusterShellState, _ actions: [ClusterShellState.LeaderAction]) {
-        for action in actions {
-            switch action {
+    internal func interpretLeaderActions(_ state: inout ClusterShellState, _ leaderActions: [ClusterShellState.LeaderAction]) {
+        for leaderAction in leaderActions {
+            switch leaderAction {
             case .moveMember(let movingUp):
                 let change = state.membership.apply(movingUp) // TODO: include up numbers
 
@@ -730,6 +730,16 @@ extension ClusterShell {
                     state.log.info("Leader moving member: \(change)")
                     state.events.publish(.membershipChange(change))
                 }
+
+            case .removeDownMember(let memberToRemove):
+                // FIXME: implement this !!!
+                state.log.info("Leader removing member: \(memberToRemove), all nodes are certain to have seen it as [.down] before")
+                if let removalChange = state.membership.remove(memberToRemove.node) {
+                    // TODO: will this "just work" as we removed from membership, so gossip will tell others...?
+                    // or do we need to push a round of gossip with .removed anyway?
+                    state.events.publish(.membershipChange(removalChange))
+                }
+                // FIXME: add integration test
             }
         }
     }
@@ -813,7 +823,7 @@ extension ClusterShell {
         }
 
         /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
-        let actions = state.tryCollectLeaderActions()
+        let actions = state.collectLeaderActions()
         self.interpretLeaderActions(&state, actions)
 
         // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)

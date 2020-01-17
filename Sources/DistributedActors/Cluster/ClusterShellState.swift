@@ -452,7 +452,7 @@ extension ClusterShellState {
         }
 
         // will be empty if myself node is NOT a leader
-        let leaderActions = self.tryCollectLeaderActions() // TODO: performing actions has been moved to ClusterShell, cleanup here some more
+        let leaderActions = self.collectLeaderActions()
         // TODO: actions may want to be acted upon, they're like directives, we currently have no such need though;
         // such actions be e.g. "kill association right away" or "asap tell that node .down" directly without waiting for gossip etc
 
@@ -469,12 +469,12 @@ extension ClusterShellState {
 
     /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.
     // TODO: test the actions when leader, not leader, that only applies to joining ones etc
-    mutating func tryCollectLeaderActions() -> [LeaderAction] {
+    func collectLeaderActions() -> [LeaderAction] {
         guard self.membership.isLeader(self.myselfNode) else {
             return [] // since we are not the leader, we perform no tasks
         }
 
-        func moveMembersUp() -> [LeaderAction] {
+        func collectMemberUpMoves() -> [LeaderAction] {
             let joiningMembers = self.membership.members(withStatus: .joining)
 
             return joiningMembers.map { joiningMember in
@@ -483,20 +483,51 @@ extension ClusterShellState {
             }
         }
 
-        func removeMembers() -> [LeaderAction] {
-            // TODO: implement member removal; once all nodes have seen a node as Down, we move it to Removed
-            return []
+        func collectMemberRemovals() -> [LeaderAction] {
+            let membersWhichShouldSeeTheDownMember = self.membership.members(atMost: .up)
+            let currentGossipVersion = self.latestGossip.version
+
+            // TODO: we could optimize and know at which seen the .down was first observed, here we might be running away from convergence a bit by moving on?
+            // TODO: this is sub-group convergence, provide a function for it
+            let allMembersSeenEnoughInformation = membersWhichShouldSeeTheDownMember.allSatisfy { member in
+                if let memberSeenAtLeastVersion = self.latestGossip.seen.version(at: member.node) { // TODO: rename the version method?
+                    switch memberSeenAtLeastVersion.compareTo(that: currentGossipVersion) { // TODO: make small helper for this? "at least up to date as..."?
+                    case .happenedBefore, .same:
+                        return true
+                    case .happenedAfter, .concurrent:
+                        return false
+                    }
+                } else {
+                    return false // no version (weird), so we cannot know if that member has seen enough information
+                }
+            }
+
+            guard allMembersSeenEnoughInformation else {
+                self.log.trace("Not all members have seen the latest gossip", metadata: [
+                    "membership/seen": "\(self.latestGossip.seen)",
+                    "tag": "leader/action",
+                ])
+                return []
+            }
+
+            let toBeRemovedMembers = self.membership.members(withStatus: .down)
+
+            return toBeRemovedMembers.map { member in
+                assert(member.status == .down, "Only .down members may be removed. Attempted to remove \(member)")
+                return LeaderAction.removeDownMember(alreadyDownMember: member)
+            }
         }
 
         var leadershipActions: [LeaderAction] = []
-        leadershipActions.append(contentsOf: moveMembersUp())
-        leadershipActions.append(contentsOf: removeMembers())
+        leadershipActions.append(contentsOf: collectMemberUpMoves())
+        leadershipActions.append(contentsOf: collectMemberRemovals())
 
         return leadershipActions
     }
 
-    enum LeaderAction {
+    enum LeaderAction: Equatable {
         case moveMember(Cluster.MembershipChange)
+        case removeDownMember(alreadyDownMember: Cluster.Member)
     }
 }
 
