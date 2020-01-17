@@ -968,9 +968,12 @@ extension ClusterShell {
         guard memberToDown.node != state.myselfNode else {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
+            context.log.warning("Self node was determined [.down]!", metadata: [
+                "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
+            ])
 
             self.swimRef.tell(.local(.confirmDead(state.myselfNode)))
-            context.log.warning("Self node was determined [.down]. (TODO: initiate shutdown based on config)") // TODO: initiate a shutdown it configured to do so
+            context.system.settings.cluster.onDownAction.make()(context.system)
 
             return state
         }
