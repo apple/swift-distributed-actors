@@ -24,40 +24,14 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
 
     let systemName = "RemoteHandshakeStateMachineTests"
 
-    // usual reminder that Swift Distributed Actors is not inherently "client/server" once associated, only the handshake is
-    enum HandshakeSide: String {
-        case client
-        case server
-    }
-
-    func makeMockKernelState(side: HandshakeSide, configureSettings: (inout ClusterSettings) -> Void = { _ in () }) -> ClusterShellState {
-        var settings = ClusterSettings(
-            node: Node(
-                systemName: systemName,
-                host: "127.0.0.1",
-                port: 7337
-            )
-        )
-        configureSettings(&settings)
-        let log = Logger(label: "handshake-\(side)") // TODO: could be a mock logger we can assert on?
-
-        return ClusterShellState(
-            settings: settings,
-            channel: EmbeddedChannel(),
-            events: EventStream(ref: ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
-            gossipControl: ConvergentGossipControl(ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
-            log: log
-        )
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Happy path handshakes
 
     func test_handshake_happyPath() throws {
-        let serverKernel = self.makeMockKernelState(side: .server)
+        let serverKernel = ClusterShellState.makeTestMock(side: .server)
         let serverAddress = serverKernel.myselfNode
 
-        let clientKernel = self.makeMockKernelState(side: .client) { settings in
+        let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 2222
         }
 
@@ -93,10 +67,10 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
     // MARK: Version negotiation
 
     func test_negotiate_server_shouldAcceptClient_newerPatch() throws {
-        let serverKernel = self.makeMockKernelState(side: .server)
+        let serverKernel = ClusterShellState.makeTestMock(side: .server)
         let serverAddress = serverKernel.myselfNode
 
-        let clientKernel = self.makeMockKernelState(side: .client) { settings in
+        let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 2222
             settings._protocolVersion.patch += 1
         }
@@ -118,10 +92,10 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
     }
 
     func test_negotiate_server_shouldRejectClient_newerMajor() throws {
-        let serverKernel = self.makeMockKernelState(side: .server)
+        let serverKernel = ClusterShellState.makeTestMock(side: .server)
         let serverAddress = serverKernel.myselfNode
 
-        let clientKernel = self.makeMockKernelState(side: .client) { settings in
+        let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 2222
             settings._protocolVersion.major += 1
         }
@@ -149,10 +123,10 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
     // MARK: Handshake timeout causing retries
 
     func test_onTimeout_shouldReturnNewHandshakeOffersMultipleTimes() throws {
-        let serverKernel = self.makeMockKernelState(side: .server)
+        let serverKernel = ClusterShellState.makeTestMock(side: .server)
         let serverAddress = serverKernel.myselfNode
 
-        let clientKernel = self.makeMockKernelState(side: .client) { settings in
+        let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 8228
         }
 
