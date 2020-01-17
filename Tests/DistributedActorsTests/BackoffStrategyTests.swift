@@ -80,6 +80,6 @@ class BackoffStrategyTests: XCTestCase {
     }
 
     func test_exponentialBackoff_withLargeInitial_shouldAdjustCap() {
-        Backoff.exponential(initialInterval: .seconds(60)) // cap used to be hardcoded which would cause this to precondition crash
+        _ = Backoff.exponential(initialInterval: .seconds(60)) // cap used to be hardcoded which would cause this to precondition crash
     }
 }
