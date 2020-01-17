@@ -83,6 +83,10 @@ public struct ActorLogger {
     }
 
     public static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
+        if let overriddenLoggerFactory = system.settings.overrideLoggerFactory {
+            return overriddenLoggerFactory(identifier ?? system.name)
+        }
+
         // we need to add our own storage, and can't do so to Logger since it is a struct...
         // so we need to make such "proxy log handler", that does out actor specific things.
         var proxyHandler = ActorOriginLogHandler(system)

@@ -403,7 +403,6 @@ internal struct SWIMShell {
         case .associated(let control):
             continueWithAssociation(.success(control.remoteNode))
         case .tombstone:
-            context.log.info("TOMBSTONE: \(remoteNode)")
             let msg = "Association target node is already .tombstoned, not associating. Node \(reflecting: remoteNode) likely to be removed from gossip shortly."
             continueWithAssociation(.failure(EnsureAssociationError(msg)))
             return // we shall not associate with this tombstoned node (!)
