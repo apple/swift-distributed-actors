@@ -204,7 +204,7 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             let ref2 = try second.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
             ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
 
-            let replyProbe3/**/ = self.testKit(third).spawnTestProbe(expecting: String.self)
+            let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
             let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
             ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
 
