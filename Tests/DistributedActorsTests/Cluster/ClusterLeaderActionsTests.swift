@@ -18,177 +18,113 @@ import Foundation
 import NIOSSL
 import XCTest
 
-final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
+// Unit tests of the actions, see `ClusterLeaderActionsClusteredTests` for integration tests
+final class ClusterLeaderActionsTests: XCTestCase {
+    let _firstNode = Node(systemName: "System", host: "1.1.1.1", port: 7337)
+    let _secondNode = Node(systemName: "System", host: "2.2.2.2", port: 8228)
+    let _thirdNode = Node(systemName: "System", host: "3.3.3.3", port: 9119)
+
+    var first: ClusterShellState!
+    var second: ClusterShellState!
+    var third: ClusterShellState!
+
+    var firstNode: UniqueNode {
+        self.first.myselfNode
+    }
+
+    var secondNode: UniqueNode {
+        self.second.myselfNode
+    }
+
+    var thirdNode: UniqueNode {
+        self.third.myselfNode
+    }
+
+    override func setUp() {
+        self.first = ClusterShellState.makeTestMock(side: .server) { settings in
+            settings.node = self._firstNode
+        }
+        self.second = ClusterShellState.makeTestMock(side: .server) { settings in
+            settings.node = self._secondNode
+        }
+        self.third = ClusterShellState.makeTestMock(side: .server) { settings in
+            settings.node = self._thirdNode
+        }
+
+        _ = self.first.membership.join(self.firstNode)
+        _ = self.first.membership.join(self.secondNode)
+        _ = self.first.membership.join(self.thirdNode)
+
+        _ = self.second.membership.join(self.firstNode)
+        _ = self.second.membership.join(self.secondNode)
+        _ = self.second.membership.join(self.thirdNode)
+
+        _ = self.third.membership.join(self.firstNode)
+        _ = self.third.membership.join(self.secondNode)
+        _ = self.third.membership.join(self.thirdNode)
+        _ = self.first.latestGossip.mergeForward(incoming: self.second.latestGossip)
+
+        _ = self.first.latestGossip.mergeForward(incoming: self.third.latestGossip)
+
+        _ = self.second.latestGossip.mergeForward(incoming: self.first.latestGossip)
+        _ = self.third.latestGossip.mergeForward(incoming: self.first.latestGossip)
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: leader decision: .joining -> .up
+    // MARK: Moving members to .removed
 
-    func test_singleLeader() throws {
-        try shouldNotThrow {
-            let first = self.setUpNode("first") { settings in
-                settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
-            }
+    func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
+        // make F the leader
+        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.first.membership.firstMember(self.firstNode.node)!)!
+        self.first.applyClusterEventAsChange(.leadershipChange(makeFirstTheLeader))
 
-            let p = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+        // time to mark S as .down
+        _ = self.first.membership.mark(self.secondNode, as: .down) // only F knows that S is .down
 
-            _ = try first.spawn("selfishSingleLeader", Behavior<Cluster.Event>.setup { context in
-                context.system.cluster.events.subscribe(context.myself)
+        // no removal action yet
+        let moveMembersUp = self.first.collectLeaderActions()
+        moveMembersUp.shouldContain(.moveMember(Cluster.MembershipChange(member: .init(node: self.firstNode, status: .joining), toStatus: .up)))
+        moveMembersUp.shouldContain(.moveMember(Cluster.MembershipChange(member: .init(node: self.thirdNode, status: .joining), toStatus: .up)))
+        moveMembersUp.count.shouldEqual(2) // S is down, but F and T shall move to .up
 
-                return .receiveMessage { event in
-                    switch event {
-                    case .leadershipChange:
-                        p.tell(event)
-                        return .same
-                    default:
-                        return .same
-                    }
-                }
+        // apply the changes manually (as we don't run the actual real shell)
+        _ = self.first.membership.mark(self.firstNode, as: .up)
+        _ = self.first.membership.mark(self.thirdNode, as: .up)
 
-            })
+        // we tell others about the latest gossip, that S is down
+        // second does not get the information, let's assume we cannot communicate with it
+        self.gossip(from: self.first, to: &self.third)
 
-            switch try p.expectMessage() {
-            case .leadershipChange(let change):
-                guard let leader = change.newLeader else {
-                    throw self.testKit(first).fail("Expected \(first.cluster.node) to be leader")
-                }
-                leader.node.shouldEqual(first.cluster.node)
-            default:
-                throw self.testKit(first).fail("Expected leader change event")
-            }
+        // all non-down nodes now know that S is .down
+        self.first.membership.uniqueMember(self.secondNode)!.status.shouldEqual(.down)
+        // assuming second is dead, do not gossip to it
+        self.third.membership.uniqueMember(self.secondNode)!.status.shouldEqual(.down)
+
+        let firstLeaderActionsNotYet = self.first.collectLeaderActions()
+        firstLeaderActionsNotYet.shouldBeEmpty() // since we don't know if T has seen the [.down] yet
+
+        // once T gossips to F, and now we know it has seen the .down information we told it about
+        self.gossip(from: self.third, to: &self.first)
+
+        let hopefullyRemovalActions = self.first.collectLeaderActions()
+        hopefullyRemovalActions.shouldBeNotEmpty()
+        guard case .some(.removeDownMember(let member)) = (hopefullyRemovalActions.first { "\($0)".starts(with: "remove") }) else {
+            // TODO: more type-ish assertion
+            XCTFail("Expected a member removal action, but did not get one, actions: \(hopefullyRemovalActions)")
+            return
         }
+
+        member.status.isDown.shouldBeTrue()
+        member.node.shouldEqual(self.secondNode)
     }
 
-    func test_joining_to_up_decisionByLeader() throws {
-        try shouldNotThrow {
-            let first = self.setUpNode("first") { settings in
-                settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-            }
-            let second = self.setUpNode("second") { settings in
-                settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-            }
-            let third = self.setUpNode("third") { settings in
-                settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-            }
-
-            first.cluster.join(node: second.cluster.node.node)
-            third.cluster.join(node: second.cluster.node.node)
-
-            try assertAssociated(first, withAtLeast: second.cluster.node)
-            try assertAssociated(second, withAtLeast: third.cluster.node)
-            try assertAssociated(first, withAtLeast: third.cluster.node)
-
-            try self.testKit(first).eventually(within: .seconds(10)) {
-                try self.assertMemberStatus(on: first, node: first.cluster.node, is: .up)
-                try self.assertMemberStatus(on: first, node: second.cluster.node, is: .up)
-                try self.assertMemberStatus(on: first, node: third.cluster.node, is: .up)
-            }
-
-            try self.testKit(second).eventually(within: .seconds(10)) {
-                try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
-                try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
-                try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
-            }
-
-            try self.testKit(third).eventually(within: .seconds(10)) {
-                try self.assertMemberStatus(on: third, node: first.cluster.node, is: .up)
-                try self.assertMemberStatus(on: third, node: second.cluster.node, is: .up)
-                try self.assertMemberStatus(on: third, node: third.cluster.node, is: .up)
-            }
-        }
+    @discardableResult
+    private func gossip(from: ClusterShellState, to: inout ClusterShellState) -> Cluster.Gossip.MergeDirective {
+        to.latestGossip.mergeForward(incoming: from.latestGossip)
     }
 
-    func test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus() throws {
-        try shouldNotThrow {
-            // This showcases a racy situation, where we allow a leader elected when at least 2 nodes joined
-            // yet we actually join 3 nodes -- meaning that the joining up is _slightly_ racy:
-            // - maybe nodes 1 and 2 join each other first and 1 starts upping
-            // - maybe nodes 2 and 3 join each other and 2 starts upping
-            // - and at the same time, maybe while 1 and 2 have started joining, 2 and 3 already joined, and 2 issued up for itself and 3
-            //
-            // All this is _fine_. The cluster leader is such that under whichever rules we allowed it to be elected
-            // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
-            // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
-            // the ->up forever.
-            //
-            // In other words, this test exercises that there must be _some_ (gossip, or similar "push" membership once a new member joins),
-            // to a new member.
-            //
-            let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            }
-            let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            }
-            let third = self.setUpNode("third") { settings in
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            }
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Moving members .up
 
-            let fourth = self.setUpNode("fourth") { settings in
-                settings.cluster.autoLeaderElection = .none // even without election running, it will be notified by things by the others
-            }
-
-            first.cluster.join(node: second.cluster.node.node)
-            third.cluster.join(node: second.cluster.node.node)
-            try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
-
-            // Even the fourth node now could join and be notified about all the existing up members.
-            // It does not even have to run any leadership election -- there are leaders in the cluster.
-            //
-            // We only join one arbitrary node, we will be notified about all nodes:
-            fourth.cluster.join(node: third.cluster.node.node)
-
-            try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third, fourth)
-        }
-    }
-
-    func test_ensureAllSubscribersGetMovingUpEvents() throws {
-        try shouldNotThrow {
-            // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
-            // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
-            // the ->up forever.
-            //
-            // In other words, this test exercises that there must be _some_ (gossip, or similar "push" membership once a new member joins),
-            // to a new member.
-            //
-            let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            }
-            let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
-            first.cluster.events.subscribe(p1.ref)
-
-            let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-            }
-            let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
-            second.cluster.events.subscribe(p2.ref)
-
-            first.cluster.join(node: second.cluster.node.node)
-
-            // this ensures that the membership, as seen in ClusterShell converged on all members being up
-            try self.ensureNodes(.up, systems: first, second)
-
-            // the following tests confirm that the manually subscribed actors, got all the events they expected
-
-            // on the leader node, the other node noticed as up:
-            let eventsOnFirstSub = try p1.expectMessages(count: 6)
-            eventsOnFirstSub.shouldContain(.snapshot(.empty))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .joining)))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
-
-            // on non-leader node
-            let eventsOnSecondSub = try p2.expectMessages(count: 6)
-            eventsOnSecondSub.shouldContain(.snapshot(.empty))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .joining)))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnSecondSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
-        }
-    }
+    // TODO: same style of tests for upNumbers and moving members up
 }

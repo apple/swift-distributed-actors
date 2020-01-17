@@ -137,7 +137,7 @@ extension Cluster {
                 reachability == nil || member.reachability == reachability
             }
             return self._members.values.filter {
-                status >= $0.status && reachabilityFilter($0)
+                $0.status <= status && reachabilityFilter($0)
             }
         }
 
