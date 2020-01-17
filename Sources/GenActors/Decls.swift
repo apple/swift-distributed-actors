@@ -80,6 +80,16 @@ struct ActorableTypeDecl {
 
     /// Only expected in case of a `protocol` for
     var boxingFunc: ActorFuncDecl?
+
+    /// Stores if the `receiveTerminated` implementation is `throws` or not
+    /// The default is true since the protocols signature is such, however if users implement it without throws
+    /// we must not invoke it with `try` prefixed.
+    var receiveTerminatedIsThrowing = true
+
+    /// Stores if the `receiveSignal` implementation is `throws` or not
+    /// The default is true since the protocols signature is such, however if users implement it without throws
+    /// we must not invoke it with `try` prefixed.
+    var receiveSignalIsThrowing = true
 }
 
 // TODO: Identity should include module name

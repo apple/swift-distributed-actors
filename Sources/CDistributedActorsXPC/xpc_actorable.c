@@ -34,16 +34,16 @@ xpc_connection_t sact_xpc_get_connection() {
 //        int64_t threadId = 0;
 //        pthread_threadid_np(NULL, &threadId);
 
-        FILE* fp;
-        fp = fopen("/tmp/xpc.txt", "a+");
-        fprintf(fp, "[CLIENT, pid:%d] Received: %s: echo=%s    [event: %s]\n",
-                pid,
-//                threadId,
-                (xpc_type_get_name(xpc_get_type(event))),
-                xpc_dictionary_get_string(event, "echo"),
-                xpc_dictionary_get_string(event, _xpc_error_key_description)
-        );
-        fclose(fp);
+//        FILE* fp;
+//        fp = fopen("/tmp/xpc.txt", "a+");
+//        fprintf(fp, "[CLIENT, pid:%d] Received: %s: echo=%s    [event: %s]\n",
+//                pid,
+////                threadId,
+//                (xpc_type_get_name(xpc_get_type(event))),
+//                xpc_dictionary_get_string(event, "echo"),
+//                xpc_dictionary_get_string(event, _xpc_error_key_description)
+//        );
+//        fclose(fp);
     });
     xpc_connection_set_target_queue(c, q);
     xpc_connection_resume(c);
@@ -53,20 +53,19 @@ xpc_connection_t sact_xpc_get_connection() {
 
 static void sact_xpc_connection_handler(xpc_connection_t peer) {
     xpc_connection_set_event_handler(peer, ^(xpc_object_t event) {
-
-        pid_t pid = getpid();
-        int64_t threadId = 0;
-        pthread_threadid_np(NULL, &threadId);
-
-        FILE* fp;
-        fp = fopen("/tmp/xpc.txt", "a+");
-        fprintf(fp, "[SERVICE, pid:%d,tid:%lld] received: %s : %s   (error: %s)\n",
-                pid, threadId,
-                (xpc_type_get_name(xpc_get_type(event))),
-                xpc_dictionary_get_string(event, "M"),
-                xpc_dictionary_get_string(event, _xpc_error_key_description)
-        );
-        fclose(fp);
+//        pid_t pid = getpid();
+//        int64_t threadId = 0;
+//        pthread_threadid_np(NULL, &threadId);
+//
+//        FILE* fp;
+//        fp = fopen("/tmp/xpc.txt", "a+");
+//        fprintf(fp, "[SERVICE, pid:%d,tid:%lld] received: %s : %s   (error: %s)\n",
+//                pid, threadId,
+//                (xpc_type_get_name(xpc_get_type(event))),
+//                xpc_dictionary_get_string(event, "M"),
+//                xpc_dictionary_get_string(event, _xpc_error_key_description)
+//        );
+//        fclose(fp);
 
         // reply
         xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);

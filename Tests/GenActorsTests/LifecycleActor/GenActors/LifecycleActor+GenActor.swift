@@ -67,7 +67,7 @@ extension LifecycleActor {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch  instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
