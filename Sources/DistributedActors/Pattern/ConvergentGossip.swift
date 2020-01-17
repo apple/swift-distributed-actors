@@ -50,8 +50,8 @@ final class ConvergentGossip<Payload: Codable> {
                 case .gossip(let envelope):
                     self.receiveGossip(context, envelope: envelope)
 
-                case ._clusterEvent(let event):
-                    fatalError("automatic peer location is not implemented") // FIXME: implement this
+                case ._clusterEvent:
+                    fatalError("automatic peer location is not implemented") // FIXME: implement this https://github.com/apple/swift-distributed-actors/issues/371
 
                 case ._periodicGossipTick:
                     self.onPeriodicGossipTick(context)

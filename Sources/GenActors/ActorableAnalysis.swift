@@ -228,6 +228,22 @@ struct GatherActorables: SyntaxVisitor {
                 return .skipChildren
             }
 
+            // skip all Actorable lifecycle methods
+            if Self.actorableLifecycleMethods.contains(where: { name in node.identifier.text == name }) {
+                // if it is one of those functions, we at least need to store if the implementation is throwing or not,
+                // as it affects if the generated code needs to prefix the call with try or not.
+                // if it was not defined, the protocols signature wins and thus we assume it is throwing
+                switch node.identifier.text {
+                case "receiveTerminated" where node.signature.throwsOrRethrowsKeyword == nil:
+                    self.wipActorable.receiveTerminatedIsThrowing = false
+                case "receiveSignal" where node.signature.throwsOrRethrowsKeyword == nil:
+                    self.wipActorable.receiveSignalIsThrowing = false
+                default:
+                    () // nothing to do
+                }
+                return .skipChildren
+            }
+
             guard !modifierTokenKinds.contains(.privateKeyword),
                 !modifierTokenKinds.contains(.staticKeyword) else {
                 return .skipChildren
@@ -282,7 +298,7 @@ extension GatherActorables {
     /// We skip generating messages for methods prefixed like this, regardless if they are public etc.
     /// We DO allow `_` methods and treat them as "this is only for the actor to message _itself_
     static let skipMethodsStartingWith = ["__", "$"]
-    static let skipMethods = [
+    static let actorableLifecycleMethods = [
         "preStart",
         "postStop",
         "receiveTerminated",
@@ -291,17 +307,8 @@ extension GatherActorables {
 
     static func shouldSkipGenFor(func node: FunctionDeclSyntax) -> Bool {
         // Skip all "internal" methods
-        if Self.skipMethodsStartingWith.contains(where: { prefix in node.identifier.text.starts(with: prefix) }) {
-            // we always skip `_` prefixed methods; this is a way to allow public/internal methods but still not expose them as the actor interface.
-            return true
-        }
-
-        // skip all Actorable lifecycle methods
-        if Self.skipMethods.contains(where: { name in node.identifier.text == name }) {
-            return true
-        }
-
-        return false
+        // we always skip `_` prefixed methods; this is a way to allow public/internal methods but still not expose them as the actor interface.
+        Self.skipMethodsStartingWith.contains(where: { prefix in node.identifier.text.starts(with: prefix) })
     }
 }
 

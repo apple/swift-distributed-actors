@@ -205,7 +205,7 @@ final class XPCMaster {
 
             return .receiveMessage { message in
                 switch message {
-                case .xpcRegisterService(let connection, let ref):
+                case .xpcRegisterService(_, let ref):
                     // self.services[.init(connection: connection)] = ref
                     context.log.info("Registered: \(ref)")
 
@@ -245,17 +245,19 @@ final class XPCMaster {
 
                 // TODO: Test for the racy case when we watch, unwatch, cause a failure; in the ActorCell we guarantee that we will not see such Interrupted then
                 // but without the cell we lost this guarantee. This would have to be implemented in the XPCServiceCellDelegate
-                case .xpcActorUnwatched(let watchee, let watcher):
-                    guard let watchers: Set<AddressableActorRef> = self.watchers[watchee] else {
-                        // seems that watchee has no watchers, thus no need to remove this one.
-                        // Realistically this should not happen in normal operations, but nothing is stopping people from issuing many `unwatch()`
-                        // calls on the same reference after all, thus we only silently ignore them here.
-                        return .same
-                    }
+                case .xpcActorUnwatched:
+                    // FIXME: this is incomplete, see https://github.com/apple/swift-distributed-actors/issues/372
+//                    guard let watchers: Set<AddressableActorRef> = self.watchers[watchee] else {
+//                        // seems that watchee has no watchers, thus no need to remove this one.
+//                        // Realistically this should not happen in normal operations, but nothing is stopping people from issuing many `unwatch()`
+//                        // calls on the same reference after all, thus we only silently ignore them here.
+//                        return .same
+//                    }
+                    context.log.warning("Unwatch is not implemented yet for XPC transport, see https://github.com/apple/swift-distributed-actors/issues/372")
 
-                case .watcherTerminated(let watcher):
-                    // FIXME: remove watcher
-                    ()
+                case .watcherTerminated:
+                    // FIXME: remove watcher; this is incomplete, see https://github.com/apple/swift-distributed-actors/issues/372
+                    context.log.warning("NOT IMPLEMENTED; watcherTerminated should remove watcher from watcher lists, see https://github.com/apple/swift-distributed-actors/issues/372")
 
                 case .stop:
                     // FIXME: send terminated to all watchers // TODO: Add tests
