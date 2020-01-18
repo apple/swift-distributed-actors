@@ -25,6 +25,7 @@ extension ClusterMembershipGossipTests {
         return [
             ("test_down_beGossipedToOtherNodes", test_down_beGossipedToOtherNodes),
             ("test_join_swimDiscovered_thirdNode", test_join_swimDiscovered_thirdNode),
+            ("test_remove_memberOnceAllMembersSeenItDown", test_remove_memberOnceAllMembersSeenItDown),
         ]
     }
 }

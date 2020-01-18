@@ -77,9 +77,49 @@ extension Cluster {
             return .init(causalRelation: causalRelation, effectiveChanges: changes)
         }
 
+        // TODO: tests for this
+        /// Remove member from `membership` and prune the seen tables of any trace of the removed node.
+        // TODO: ensure that this works always correctly!!!!!!! (think about it)
+        mutating func pruneMember(_ member: Member) -> Cluster.MembershipChange? {
+            self.seen.prune(member.node) // always prune is okey
+            return self.membership.removeCompletely(member.node)
+        }
+
         struct MergeDirective {
             let causalRelation: VersionVector.CausalRelation
             let effectiveChanges: [Cluster.MembershipChange]
+        }
+
+        /// Checks for convergence of the membership (seen table) among members.
+        ///
+        /// ### Convergence
+        /// Convergence means that "all (considered) members" have seen at-least the version that the convergence
+        /// is checked against (this version). In other words, if a member is seen as `.joining` in this version
+        /// other members are guaranteed to have seen this information, or their membership may have progressed further
+        /// e.g. the member may have already moved to `.up` or further in their perception.
+        ///
+        /// By default, only `.up` and `.leaving` members are considered, since joining members are "too early"
+        /// to matter in decisions, and down members shall never participate in decision making.
+        func converged(among membersWithStatus: Set<Cluster.MemberStatus> = [.up, .leaving]) -> Bool {
+            let members = self.membership.members(withStatus: membersWithStatus)
+            let requiredVersion = self.version
+
+            guard !members.isEmpty else {
+                pprint("members is empty")
+                return false // if no members present, we cannot call it "converged"
+            }
+
+            pprint("requiredVersion = \(requiredVersion)")
+            let allMembersSeenRequiredVersion = members.allSatisfy { member in
+                if let memberSeenVersion = self.seen.version(at: member.node) {
+                    pprint("memberSeenVersion = \(memberSeenVersion)")
+                    return requiredVersion < memberSeenVersion || requiredVersion == memberSeenVersion
+                } else {
+                    return false // no version (weird), so we cannot know if that member has seen enough information
+                }
+            }
+
+            return allMembersSeenRequiredVersion
         }
     }
 }
@@ -188,6 +228,23 @@ extension Cluster.Gossip {
         /// This information may (and most likely is) outdated as the nodes continue to gossip to one another.
         func version(at node: UniqueNode) -> VersionVector? {
             self.table[node]
+        }
+
+        /// Prunes any trace of the passed in node from the seen table.
+        /// This includes the version vector that this node may have observed, and also any part of other's version vectors
+        /// where this node was present.
+        ///
+        /// Performing this operation should be done with great care, as it means that if "the same exact node" were
+        /// to "come back" it would be indistinguishable from being a new node. Measures to avoid this from happening
+        /// must be taken on the cluster layer, by using and checking for tombstones. // TODO: make a nasty test for this, a simple one we got; See MembershipGossipSeenTableTests
+        mutating func prune(_ nodeToPrune: UniqueNode) {
+            _ = self.table.removeValue(forKey: nodeToPrune)
+            let replicaToPrune: ReplicaId = .uniqueNode(nodeToPrune)
+
+            for (key, version) in self.table where version.contains(replicaToPrune, 0) {
+                self.table[key] = version.pruneReplica(replicaToPrune)
+                // TODO: test removing non existing member
+            }
         }
     }
 }

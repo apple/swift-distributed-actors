@@ -188,7 +188,33 @@ final class MembershipGossipSeenTableTests: XCTestCase {
         table.version(at: self.thirdNode).shouldEqual(self.parseVersionVector("T:1"))
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Prune
+
+    func test_prune_removeNodeFromSeenTable() {
+        var table = Cluster.Gossip.SeenTable(myselfNode: self.myselfNode, version: .init())
+        table.incrementVersion(owner: self.myselfNode, at: self.myselfNode)
+        table.incrementVersion(owner: self.myselfNode, at: self.thirdNode)
+
+        table.incrementVersion(owner: self.secondNode, at: self.thirdNode)
+        table.incrementVersion(owner: self.secondNode, at: self.secondNode)
+        table.incrementVersion(owner: self.secondNode, at: self.myselfNode)
+
+        table.incrementVersion(owner: self.thirdNode, at: self.thirdNode)
+        table.incrementVersion(owner: self.thirdNode, at: self.myselfNode)
+
+        table.version(at: self.myselfNode).shouldEqual(self.parseVersionVector("M:1 T:1"))
+        table.version(at: self.secondNode).shouldEqual(self.parseVersionVector("S:1 M:1 T:1"))
+        table.version(at: self.thirdNode).shouldEqual(self.parseVersionVector("T:1 M:1"))
+
+        table.prune(self.thirdNode)
+
+        table.version(at: self.myselfNode).shouldEqual(self.parseVersionVector("M:1"))
+        table.version(at: self.secondNode).shouldEqual(self.parseVersionVector("S:1 M:1"))
+        table.version(at: self.thirdNode).shouldBeNil()
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Utilities
 
     func parseVersionVector(_ s: String) -> VersionVector {

@@ -113,4 +113,9 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         // excellent, all nodes know each other
         pinfo("Associated: third <~> first")
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Pruning (removing) a member once everyone has seen it down
+
+    func test_remove_memberOnceAllMembersSeenItDown() {}
 }

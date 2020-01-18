@@ -26,7 +26,8 @@ extension ClusterLeaderActionsClusteredTests {
             ("test_singleLeader", test_singleLeader),
             ("test_joining_to_up_decisionByLeader", test_joining_to_up_decisionByLeader),
             ("test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus", test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus),
-            ("test_ensureAllSubscribersGetMovingUpEvents", test_ensureAllSubscribersGetMovingUpEvents),
+            ("test_up_ensureAllSubscribersGetMovingUpEvents", test_up_ensureAllSubscribersGetMovingUpEvents),
+            ("test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown", test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown),
         ]
     }
 }

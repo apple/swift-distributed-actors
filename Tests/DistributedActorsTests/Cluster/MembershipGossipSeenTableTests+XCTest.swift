@@ -31,6 +31,7 @@ extension MembershipGossipSeenTableTests {
             ("test_seenTable_merge_behindInformation", test_seenTable_merge_behindInformation),
             ("test_seenTable_merge_concurrentInformation", test_seenTable_merge_concurrentInformation),
             ("test_seenTable_merge_concurrentInformation_unknownMember", test_seenTable_merge_concurrentInformation_unknownMember),
+            ("test_prune_removeNodeFromSeenTable", test_prune_removeNodeFromSeenTable),
         ]
     }
 }

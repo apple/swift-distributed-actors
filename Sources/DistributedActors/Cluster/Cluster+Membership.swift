@@ -115,15 +115,23 @@ extension Cluster {
         }
 
         public func members(withStatus status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
+            self.members(withStatus: [status], reachability: reachability)
+        }
+
+        public func members(withStatus statuses: Set<Cluster.MemberStatus>, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
             let reachabilityFilter: (Cluster.Member) -> Bool = { member in
                 reachability == nil || member.reachability == reachability
             }
             return self._members.values.filter {
-                $0.status == status && reachabilityFilter($0)
+                statuses.contains($0.status) && reachabilityFilter($0)
             }
         }
 
         public func members(atLeast status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
+            if status == .joining, reachability == nil {
+                return Array(self._members.values)
+            }
+
             let reachabilityFilter: (Cluster.Member) -> Bool = { member in
                 reachability == nil || member.reachability == reachability
             }
@@ -133,6 +141,10 @@ extension Cluster {
         }
 
         public func members(atMost status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
+            if status == .removed, reachability == nil {
+                return Array(self._members.values)
+            }
+
             let reachabilityFilter: (Cluster.Member) -> Bool = { member in
                 reachability == nil || member.reachability == reachability
             }
@@ -385,9 +397,11 @@ extension Cluster.Membership {
     }
 
     /// REMOVES (as in, completely, without leaving even a tombstone or `down` marker) a `Member` from the `Membership`.
-    ///
     /// If the membership is not aware of this member this is treated as no-op.
-    public mutating func remove(_ node: UniqueNode) -> Cluster.MembershipChange? {
+    ///
+    /// - Warning: When removing nodes from cluster one MUST also prune the seen tables (!) of the gossip.
+    ///            Rather than calling this function directly, invoke `Cluster.Gossip.removeMember()` which performs all needed cleanups.
+    public mutating func removeCompletely(_ node: UniqueNode) -> Cluster.MembershipChange? {
         if let member = self._members[node] {
             self._members.removeValue(forKey: node)
             return .init(member: member, toStatus: .removed)
@@ -397,9 +411,9 @@ extension Cluster.Membership {
     }
 
     /// Returns new membership while removing an existing member, identified by the passed in node.
-    public func removing(_ node: UniqueNode) -> Cluster.Membership {
+    public func removingCompletely(_ node: UniqueNode) -> Cluster.Membership {
         var membership = self
-        _ = membership.remove(node)
+        _ = membership.removeCompletely(node)
         return membership
     }
 }
