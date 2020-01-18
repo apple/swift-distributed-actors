@@ -46,7 +46,7 @@ final class LeadershipTests: XCTestCase {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        _ = membership.remove(self.firstMember.node)
+        _ = membership.removeCompletely(self.firstMember.node)
 
         // 2 members -> not enough to make decision anymore
         let change1: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()

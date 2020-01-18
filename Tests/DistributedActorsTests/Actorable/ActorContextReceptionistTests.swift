@@ -30,7 +30,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
             return listing
         }
 
-        listing.actors.first!.shouldEqual(owner)
+        listing.actors.first.shouldEqual(owner)
     }
 
     func test_autoUpdatedListing_invokesOnUpdate() throws {
