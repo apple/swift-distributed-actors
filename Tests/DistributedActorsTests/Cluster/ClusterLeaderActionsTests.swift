@@ -107,15 +107,24 @@ final class ClusterLeaderActionsTests: XCTestCase {
         self.gossip(from: self.third, to: &self.first)
 
         let hopefullyRemovalActions = self.first.collectLeaderActions()
-        hopefullyRemovalActions.shouldBeNotEmpty()
-        guard case .some(.removeDownMember(let member)) = (hopefullyRemovalActions.first { "\($0)".starts(with: "remove") }) else {
-            // TODO: more type-ish assertion
+        hopefullyRemovalActions.count.shouldEqual(1)
+        guard case .some(.removeDownMember(let member)) = hopefullyRemovalActions.first else {
             XCTFail("Expected a member removal action, but did not get one, actions: \(hopefullyRemovalActions)")
             return
         }
 
         member.status.isDown.shouldBeTrue()
         member.node.shouldEqual(self.secondNode)
+
+        pprint("self.first.latestGossip.seen.version(at: self.first.myselfNode) = \(self.first.latestGossip)")
+
+        // once we (leader) have performed removal and talk to others, they should also remove and prune seen tables
+        self.gossip(from: self.first, to: &self.second)
+
+        // once a node is removed, it should not be seen in gossip seen tables anymore ---------------------------------
+        pprint("self.first.latestGossip.seen.version(at: self.first.myselfNode) = \(self.first.latestGossip)")
+        let secondMemberStillKnown = self.first.latestGossip.membership.uniqueMember(self.second.myselfNode)
+        secondMemberStillKnown.shouldBeNil()
     }
 
     @discardableResult

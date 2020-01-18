@@ -387,7 +387,7 @@ final class MembershipTests: XCTestCase {
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenMemberRemoved() {
-        let changed = self.initialMembership.removing(self.firstMember.node)
+        let changed = self.initialMembership.removingCompletely(self.firstMember.node)
 
         let diff = Cluster.Membership.diff(from: self.initialMembership, to: changed)
 

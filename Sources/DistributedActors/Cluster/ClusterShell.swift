@@ -721,6 +721,8 @@ extension ClusterShell {
 
     internal func interpretLeaderActions(_ state: inout ClusterShellState, _ leaderActions: [ClusterShellState.LeaderAction]) {
         for leaderAction in leaderActions {
+            pprint("leaderAction = \(leaderAction)")
+
             switch leaderAction {
             case .moveMember(let movingUp):
                 let change = state.membership.apply(movingUp) // TODO: include up numbers
@@ -734,7 +736,7 @@ extension ClusterShell {
             case .removeDownMember(let memberToRemove):
                 // FIXME: implement this !!!
                 state.log.info("Leader removing member: \(memberToRemove), all nodes are certain to have seen it as [.down] before")
-                if let removalChange = state.membership.remove(memberToRemove.node) {
+                if let removalChange = state.latestGossip.pruneMember(memberToRemove) {
                     // TODO: will this "just work" as we removed from membership, so gossip will tell others...?
                     // or do we need to push a round of gossip with .removed anyway?
                     state.events.publish(.membershipChange(removalChange))

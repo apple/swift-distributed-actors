@@ -276,6 +276,16 @@ extension Cluster {
     }
 }
 
+extension Cluster.MemberReachability {
+    public var isReachable: Bool {
+        self == .reachable
+    }
+
+    public var isUnreachable: Bool {
+        self == .unreachable
+    }
+}
+
 extension Cluster.MemberReachability: Codable {
     // Codable: synthesized conformance
 }

@@ -474,6 +474,11 @@ extension ClusterShellState {
             return [] // since we are not the leader, we perform no tasks
         }
 
+        // TODO: act only on leader actions when convergence? https://github.com/apple/swift-distributed-actors/issues/385
+        //        guard self.latestGossip.converged(members: [.up, .leaving]) else {
+        //            return [] // leader actions are only performed when
+        //        }
+
         func collectMemberUpMoves() -> [LeaderAction] {
             let joiningMembers = self.membership.members(withStatus: .joining)
 
@@ -484,25 +489,8 @@ extension ClusterShellState {
         }
 
         func collectMemberRemovals() -> [LeaderAction] {
-            let membersWhichShouldSeeTheDownMember = self.membership.members(atMost: .up)
-            let currentGossipVersion = self.latestGossip.version
-
             // TODO: we could optimize and know at which seen the .down was first observed, here we might be running away from convergence a bit by moving on?
-            // TODO: this is sub-group convergence, provide a function for it
-            let allMembersSeenEnoughInformation = membersWhichShouldSeeTheDownMember.allSatisfy { member in
-                if let memberSeenAtLeastVersion = self.latestGossip.seen.version(at: member.node) { // TODO: rename the version method?
-                    switch memberSeenAtLeastVersion.compareTo(that: currentGossipVersion) { // TODO: make small helper for this? "at least up to date as..."?
-                    case .happenedBefore, .same:
-                        return true
-                    case .happenedAfter, .concurrent:
-                        return false
-                    }
-                } else {
-                    return false // no version (weird), so we cannot know if that member has seen enough information
-                }
-            }
-
-            guard allMembersSeenEnoughInformation else {
+            guard self.latestGossip.converged() else {
                 self.log.trace("Not all members have seen the latest gossip", metadata: [
                     "membership/seen": "\(self.latestGossip.seen)",
                     "tag": "leader/action",
@@ -511,6 +499,7 @@ extension ClusterShellState {
             }
 
             let toBeRemovedMembers = self.membership.members(withStatus: .down)
+            pprint("toBeRemovedMembers = \(toBeRemovedMembers)")
 
             return toBeRemovedMembers.map { member in
                 assert(member.status == .down, "Only .down members may be removed. Attempted to remove \(member)")

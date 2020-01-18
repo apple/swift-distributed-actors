@@ -19,6 +19,10 @@ import NIOSSL
 import XCTest
 
 final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 
@@ -26,7 +30,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 1)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
             }
 
             let p = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
@@ -62,15 +66,15 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             }
 
             first.cluster.join(node: second.cluster.node.node)
@@ -117,13 +121,13 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             // to a new member.
             //
             let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let third = self.setUpNode("third") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
 
             let fourth = self.setUpNode("fourth") { settings in
@@ -144,7 +148,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
         }
     }
 
-    func test_ensureAllSubscribersGetMovingUpEvents() throws {
+    func test_up_ensureAllSubscribersGetMovingUpEvents() throws {
         try shouldNotThrow {
             // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,
             // via gossip or some other way about the ->up of other nodes once it joins the "others", it'd be stuck waiting for
@@ -154,13 +158,13 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             // to a new member.
             //
             let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
             first.cluster.events.subscribe(p1.ref)
 
             let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
             second.cluster.events.subscribe(p2.ref)
@@ -189,6 +193,67 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnSecondSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+        }
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: .down -> removal
+
+    func test_down_to_removed_ensureRemovalHappensWhenAllHaveSeenDown() throws {
+        try shouldNotThrow {
+            let first = self.setUpNode("first") { settings in
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+            }
+            let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+            first.cluster.events.subscribe(p1.ref)
+
+            let second = self.setUpNode("second") { settings in
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+            }
+            let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
+            second.cluster.events.subscribe(p2.ref)
+
+            let third = self.setUpNode("third") { settings in
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+            }
+            let p3 = self.testKit(third).spawnTestProbe(expecting: Cluster.Event.self)
+            second.cluster.events.subscribe(p3.ref)
+
+            try self.joinNodes(node: first, with: second)
+            try self.joinNodes(node: second, with: third)
+            try self.joinNodes(node: first, with: third)
+
+            try self.ensureNodes(.up, systems: first, second, third)
+
+            first.cluster.down(node: second.cluster.node.node)
+
+            // other nodes have observed it down
+            try self.ensureNodes(.down, on: first, systems: second)
+            try self.ensureNodes(.down, on: third, systems: second)
+
+            // on the leader node, the other node noticed as up:
+            let eventsOnFirstSub = try p1.expectMessages(count: 9)
+            eventsOnFirstSub.shouldContain(.snapshot(.empty))
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .joining)))
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
+            eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.node, fromStatus: nil, toStatus: .joining)))
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.node, fromStatus: .joining, toStatus: .up)))
+
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .up, toStatus: .down)))
+//            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .down, toStatus: .removed)))
+
+            try self.testKit(first).eventually(within: .seconds(3)) {
+                let p1s = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
+                first.cluster.ref.tell(.query(.currentMembership(p1s.ref)))
+                let membership = try p1s.expectMessage()
+                pprint("reflecting: membership = \(reflecting: membership)")
+            }
         }
     }
 }

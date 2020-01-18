@@ -89,6 +89,14 @@ public struct VersionVector {
         self.state.merge(other.state, uniquingKeysWith: max)
     }
 
+    /// Prune any trace of the passed in replica id.
+    ///
+    public func pruneReplica(_ replicaId: ReplicaId) -> Self {
+        var s = self
+        s.state.removeValue(forKey: replicaId)
+        return s
+    }
+
     /// Obtain current version at the given replica. If the replica is unknown, the default version is 0.
     ///
     /// - Parameter replicaId: The replica whose version is being queried.
