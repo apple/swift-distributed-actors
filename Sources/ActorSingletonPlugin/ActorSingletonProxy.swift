@@ -115,7 +115,6 @@ internal class ActorSingletonProxy<Message> {
             }
 
             // Update `ref` regardless
-            context.log.debug("Updating ref for singleton [\(self.settings.name)] to node [\(String(describing: node))]")
             self.updateRef(context, node: node)
         }
     }
@@ -161,34 +160,42 @@ internal class ActorSingletonProxy<Message> {
     }
 
     private func updateRef(_ context: ActorContext<Message>, _ newRef: ActorRef<Message>?) {
-        context.log.debug("Updating ref from [\(String(describing: self.ref))] to [\(String(describing: newRef))], flushing \(self.buffer.count) messages.")
+        context.log.debug("Updating ref from [\(String(describing: self.ref))] to [\(String(describing: newRef))], flushing \(self.buffer.count) messages")
         self.ref = newRef
 
         // Unstash messages if we have the singleton
-        if let ref = self.ref {
-            while let stashed = self.buffer.take() {
-                ref.tell(stashed)
-            }
+        guard let singleton = self.ref else {
+            return
+        }
+
+        while let stashed = self.buffer.take() {
+            context.log.debug("Flushing \(stashed), to \(singleton)")
+            singleton.tell(stashed)
         }
     }
 
     private func forwardOrStash(_ context: ActorContext<Message>, message: Message) throws {
         // Forward the message if `singleton` is not `nil`, else stash it.
         if let singleton = self.ref {
-            context.log.trace("forwarding message: \(singleton.address)")
+            context.log.trace("Forwarding message \(message), to: \(singleton.address)", metadata: self.metadata(context))
             singleton.tell(message)
         } else {
-            context.log.trace("stashing message")
-            if self.buffer.isFull {
-                // TODO: log this warning only "once in while" after buffer becomes full
-                context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
-                // Move the oldest message to dead letters to make room
-                if let oldestMessage = self.buffer.take() {
-                    context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.address))
+            do {
+                try self.buffer.stash(message: message)
+                context.log.trace("Stashed message: \(message)", metadata: self.metadata(context))
+            } catch {
+                switch error {
+                case StashError.full:
+                    // TODO: log this warning only "once in while" after buffer becomes full
+                    context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
+                    // Move the oldest message to dead letters to make room
+                    if let oldestMessage = self.buffer.take() {
+                        context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.address))
+                    }
+                default:
+                    context.log.warning("Unable to stash message, error: \(error)", metadata: self.metadata(context))
                 }
             }
-
-            try self.buffer.stash(message: message)
         }
     }
 }
@@ -199,18 +206,19 @@ internal class ActorSingletonProxy<Message> {
 extension ActorSingletonProxy {
     func metadata<Message>(_: ActorContext<Message>) -> Logger.Metadata {
         var metadata: Logger.Metadata = [
-            "name": "\(self.settings.name)",
-            "buffer": "\(self.buffer.count)/\(self.settings.bufferCapacity)",
+            "tag": "singleton",
+            "singleton/name": "\(self.settings.name)",
+            "singleton/buffer": "\(self.buffer.count)/\(self.settings.bufferCapacity)",
         ]
 
         if let targetNode = self.targetNode {
             metadata["targetNode"] = "\(targetNode)"
         }
         if let ref = self.ref {
-            metadata["ref"] = "\(ref)"
+            metadata["ref"] = "\(ref.address)"
         }
         if let managerRef = self.managerRef {
-            metadata["managerRef"] = "\(managerRef)"
+            metadata["managerRef"] = "\(managerRef.address)"
         }
 
         return metadata
