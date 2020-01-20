@@ -544,7 +544,7 @@ public class Guardian {
     func makeChild<Message>(path: ActorPath, spawn: () throws -> ActorShell<Message>) throws -> ActorRef<Message> {
         return try self._childrenLock.synchronized {
             if self.stopping {
-                throw ActorContextError.alreadyStopping
+                throw ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
             }
 
             if self._children.contains(name: path.name) {

@@ -135,7 +135,7 @@ extension LogCapture {
                         }
                         metadataString.append(allString)
                     }
-                    metadataString = String(metadataString)
+                    metadataString = String(metadataString.dropLast(1))
                 }
             }
             let date = ActorOriginLogHandler._createFormatter().string(from: log.date)
@@ -228,13 +228,14 @@ extension LogCapture {
     public func shouldContain(
         prefix: String? = nil,
         message: String? = nil,
+        grep: String? = nil,
         at level: Logger.Level? = nil,
         expectedFile: String? = nil,
         expectedLine: Int = -1,
         failTest: Bool = true,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws -> CapturedLogMessage {
-        precondition(prefix != nil || message != nil || level != nil, "At least one query parameter must be not `nil`!")
+        precondition(prefix != nil || message != nil || grep != nil || level != nil || level != nil || expectedFile != nil, "At least one query parameter must be not `nil`!")
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         let found = self.logs.lazy
@@ -251,6 +252,12 @@ extension LogCapture {
             }.filter { log in
                 if let expected = prefix {
                     return "\(log.message)".starts(with: expected)
+                } else {
+                    return true
+                }
+            }.filter { log in
+                if let expected = grep {
+                    return "\(log)".contains(expected)
                 } else {
                     return true
                 }

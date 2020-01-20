@@ -82,7 +82,7 @@ public class ActorTestProbe<Message> {
         do {
             self.internalRef = try spawn(behavior)
         } catch {
-            fatalError("Failed to spawn \(ActorTestProbe<Message>.self): \(error)", file: file, line: line)
+            fatalError("Failed to spawn \(ActorTestProbe<Message>.self): [\(error)]:\(String(reflecting: type(of: error)))", file: file, line: line)
         }
 
         self.name = self.internalRef.address.name

@@ -435,7 +435,7 @@ extension ClusterShellState {
                 changeWasApplied = false
             }
         case .reachabilityChange(let change):
-            if self.applyMemberReachabilityChange(change) != nil {
+            if self.membership.applyReachabilityChange(change) != nil {
                 self.log.trace("Applied reachability change: \(change)", metadata: self.metadata)
                 changeWasApplied = true
             } else {
@@ -465,18 +465,6 @@ extension ClusterShellState {
         let applied: Bool
         // will be empty if myself node is NOT a Leader
         let leaderActions: [LeaderAction]
-    }
-
-    /// - Returns: the `Cluster.MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,
-    ///    or `nil` if no (observable) change resulted from this move (e.g. marking a `.dead` node as `.dead` again, is not a "change").
-    mutating func applyMembershipChange(_ node: UniqueNode, toStatus: Cluster.MemberStatus) -> Cluster.MembershipChange? {
-        return self.membership.apply(Cluster.MembershipChange(member: Cluster.Member(node: node, status: toStatus)))
-    }
-
-    /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
-    ///            or `nil` if the reachability is the same as already known by the membership.
-    mutating func applyMemberReachabilityChange(_ change: Cluster.ReachabilityChange) -> Cluster.Member? {
-        return self.membership.applyReachabilityChange(change)
     }
 
     /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.

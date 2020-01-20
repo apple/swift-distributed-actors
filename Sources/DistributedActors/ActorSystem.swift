@@ -337,7 +337,7 @@ public final class ActorSystem {
         self.settings.plugins.stopAll(self)
 
         DispatchQueue.global().async {
-            self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+            self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
             if let cluster = self._cluster {
                 let receptacle = BlockingReceptacle<Void>()
                 cluster.ref.tell(.command(.shutdown(receptacle))) // FIXME: should be shutdown

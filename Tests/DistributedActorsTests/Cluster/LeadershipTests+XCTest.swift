@@ -23,14 +23,16 @@ import XCTest
 extension LeadershipTests {
     static var allTests: [(String, (LeadershipTests) -> () throws -> Void)] {
         return [
-            ("test_LowestReachableMember_selectLeader", test_LowestReachableMember_selectLeader),
-            ("test_LowestReachableMember_notEnoughMembersToDecide", test_LowestReachableMember_notEnoughMembersToDecide),
-            ("test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader", test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader),
-            ("test_LowestReachableMember_whenCurrentLeaderDown", test_LowestReachableMember_whenCurrentLeaderDown),
-            ("test_LowestReachableMember_whenCurrentLeaderDown_enoughMembers", test_LowestReachableMember_whenCurrentLeaderDown_enoughMembers),
-            ("test_LowestReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers", test_LowestReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers),
-            ("test_LowestReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers", test_LowestReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers),
-            ("test_LowestReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers", test_LowestReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers),
+            ("test_LowestAddressReachableMember_selectLeader", test_LowestAddressReachableMember_selectLeader),
+            ("test_LowestAddressReachableMember_notEnoughMembersToDecide", test_LowestAddressReachableMember_notEnoughMembersToDecide),
+            ("test_LowestAddressReachableMember_notEnoughReachableMembersToDecide", test_LowestAddressReachableMember_notEnoughReachableMembersToDecide),
+            ("test_LowestAddressReachableMember_onlyUnreachableMembers_cantDecide", test_LowestAddressReachableMember_onlyUnreachableMembers_cantDecide),
+            ("test_LowestAddressReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader", test_LowestAddressReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader),
+            ("test_LowestAddressReachableMember_whenCurrentLeaderDown", test_LowestAddressReachableMember_whenCurrentLeaderDown),
+            ("test_LowestAddressReachableMember_whenCurrentLeaderDown_enoughMembers", test_LowestAddressReachableMember_whenCurrentLeaderDown_enoughMembers),
+            ("test_LowestAddressReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers", test_LowestAddressReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers),
+            ("test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers", test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers),
+            ("test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers", test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers),
         ]
     }
 }

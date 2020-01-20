@@ -19,7 +19,7 @@ import Logging
 
 public struct SWIMSettings {
     public static var `default`: SWIMSettings {
-        return .init()
+        .init()
     }
 
     /// Optional "SWIM instance name" to be included in log statements,
@@ -88,11 +88,13 @@ public struct SWIMFailureDetectorSettings {
 
     // FIXME: those timeouts are not the actual timeout, the actual timeout is recalculated each time when we get more `suspect` information
 
-    /// Suspicion timeouts are specified as number of probe intervals. E.g. a `probeInterval`
-    /// of 300 milliseconds and `suspicionTimeoutMax` means that a suspicious node will be
-    /// marked `.dead` after approx. 900ms.
+    /// Suspicion timeouts are specified as number of probe intervals.
+    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutMax = 3` means that a suspicious node
+    /// will be escalated as `.unreachable` after approximately 900ms. Once it is confirmed dead by the high-level
+    /// membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
+    /// and `.down` in the high-level membership.
     public var suspicionTimeoutPeriodsMax: Int = 10
-    public var suspicionTimeoutPeriodsMin: Int = 10
+    // public var suspicionTimeoutPeriodsMin: Int = 10 // FIXME: this is once we have LHA, Local Health Aware Suspicion
 
     public var probeInterval: TimeAmount = .seconds(1)
     public var pingTimeout: TimeAmount = .milliseconds(300)

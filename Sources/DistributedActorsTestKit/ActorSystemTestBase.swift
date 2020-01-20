@@ -14,46 +14,46 @@
 
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
-import DistributedActorsTestKit
 import NIO
 import XCTest
 
 /// Base class to handle the repetitive setUp/tearDown code involved in most ActorSystem requiring tests.
-class ActorSystemTestBase: ClusteredNodesTestBase {
-    var system: ActorSystem {
+// TODO: Document and API guarantees
+open class ActorSystemTestBase: ClusteredNodesTestBase {
+    public var system: ActorSystem {
         guard let node = self._nodes.first else {
             fatalError("No system spawned!")
         }
         return node
     }
 
-    var eventLoopGroup: EventLoopGroup {
+    public var eventLoopGroup: EventLoopGroup {
         self.system._eventLoopGroup
     }
 
-    var testKit: ActorTestKit {
+    public var testKit: ActorTestKit {
         self.testKit(self.system)
     }
 
-    var logCapture: LogCapture {
+    public var logCapture: LogCapture {
         guard let handler = self._logCaptures.first else {
             fatalError("No log capture installed!")
         }
         return handler
     }
 
-    override func setUp() {
+    open override func setUp() {
         super.setUp()
         _ = self.setUpNode(String(describing: type(of: self))) { _ in
             ()
         }
     }
 
-    override func tearDown() {
+    open override func tearDown() {
         super.tearDown()
     }
 
-    override func setUpNode(_ name: String, _ modifySettings: ((inout ActorSystemSettings) -> Void)?) -> ActorSystem {
+    open override func setUpNode(_ name: String, _ modifySettings: ((inout ActorSystemSettings) -> Void)?) -> ActorSystem {
         super.setUpNode(name) { settings in
             settings.cluster.enabled = false
             modifySettings?(&settings)
