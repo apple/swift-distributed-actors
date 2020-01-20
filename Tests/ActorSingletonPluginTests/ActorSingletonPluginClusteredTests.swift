@@ -18,6 +18,10 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
     func test_singletonByClusterLeadership() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
@@ -25,7 +29,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
 
@@ -33,7 +37,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
 
@@ -41,7 +45,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
 
@@ -79,7 +83,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
 
@@ -87,7 +91,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
 
@@ -95,7 +99,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
 
@@ -105,15 +109,15 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             // No leader so singleton is not available, messages sent should be stashed
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
             let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
-            ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
+            ref1.tell(.greet(name: "Charlie-1", _replyTo: replyProbe1.ref))
 
             let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
             let ref2 = try second.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
-            ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
+            ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
 
             let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
             let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
-            ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
+            ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
 
             try replyProbe1.expectNoMessage(for: .milliseconds(200))
             try replyProbe2.expectNoMessage(for: .milliseconds(200))
@@ -125,9 +129,9 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             // `first` becomes the leader (lowest address) and runs the singleton
             try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
 
-            try replyProbe1.expectMessage("Hello-1 Charlie!")
-            try replyProbe2.expectMessage("Hello-1 Charlie!")
-            try replyProbe3.expectMessage("Hello-1 Charlie!")
+            try replyProbe1.expectMessage("Hello-1 Charlie-1!")
+            try replyProbe2.expectMessage("Hello-1 Charlie-2!")
+            try replyProbe3.expectMessage("Hello-1 Charlie-3!")
         }
     }
 
@@ -138,7 +142,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
 
@@ -146,7 +150,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
 
@@ -154,7 +158,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
 
@@ -162,7 +166,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             }
             let fourth = self.setUpNode("fourth") { settings in
                 settings.cluster.node.port = 7444
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-4")))
 
@@ -192,8 +196,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             try replyProbe3.expectMessage("Hello-1 Charlie!")
 
             // Take down the leader
-            first.cluster.down(node: first.cluster.node.node) // TODO: minimize a test just for the self downing
-//            third.cluster.down(node: first.cluster.node.node)
+            first.cluster.leave()
 
             // Make sure that `second` and `third` see `first` as down and become leader-less
             try self.testKit(second).eventually(within: .seconds(10)) {

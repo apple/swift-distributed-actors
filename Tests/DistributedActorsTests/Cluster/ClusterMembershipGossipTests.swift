@@ -30,7 +30,7 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
 
     func test_down_beGossipedToOtherNodes() throws {
         try shouldNotThrow {
-            let strategy = ClusterSettings.LeadershipSelectionSettings.lowestAddress(minNumberOfMembers: 3)
+            let strategy = ClusterSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
             let first = self.setUpNode("first") { settings in
                 settings.cluster.autoLeaderElection = strategy
             }
