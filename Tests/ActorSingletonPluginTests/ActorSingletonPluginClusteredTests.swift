@@ -18,10 +18,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
-    override var alwaysPrintCaptureLogs: Bool {
-        true
-    }
-
     func test_singletonByClusterLeadership() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
