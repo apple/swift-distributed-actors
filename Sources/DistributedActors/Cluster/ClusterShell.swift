@@ -946,6 +946,10 @@ extension ClusterShell {
             return .same
         }
 
+        if membersToDown.contains(where: { m in m.node == state.myselfNode }) {
+            state.log.warning("Downing self node [\(state.myselfNode)]. Prefer issuing `cluster.leave()` when leaving gracefully.")
+        }
+
         var state: ClusterShellState = state
         for memberToDown in membersToDown {
             state = self.onDownCommand0(context, state: state, member: memberToDown)
@@ -972,7 +976,7 @@ extension ClusterShell {
                 "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
             ])
 
-            self.swimRef.tell(.local(.confirmDead(state.myselfNode)))
+            self.swimRef.tell(.local(.confirmDead(memberToDown.node)))
             context.system.settings.cluster.onDownAction.make()(context.system)
 
             return state
