@@ -398,5 +398,5 @@ public enum ActorContextError: Error {
     /// It is not allowed to spawn
     case duplicateActorPath(path: ActorPath)
     /// It is not allowed to spawn new actors when the system is stopping
-    case alreadyStopping
+    case alreadyStopping(String)
 }

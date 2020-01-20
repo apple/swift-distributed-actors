@@ -232,7 +232,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         ref.tell(.local(.pingRandomMember))
 
         let message = try firstClusterProbe.expectMessage()
-        guard case .command(.reachabilityChanged(let address, .unreachable)) = message else {
+        guard case .command(.failureDetectorReachabilityChanged(let address, .unreachable)) = message else {
             throw self.testKit(first).fail("expected to receive `.command(.markUnreachable)`, but got `\(message)`")
         }
         try self.holdStatus(.unreachable(incarnation: 0), for: remoteMemberRef, on: ref, within: .milliseconds(200))

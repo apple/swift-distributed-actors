@@ -14,6 +14,8 @@
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
 final class ConvergentGossip<Payload: Codable> {
+    typealias GossipPeerRef = ActorRef<Message>
+
     let settings: Settings
 
     // TODO: store Envelope and inside it the payload
@@ -68,9 +70,15 @@ final class ConvergentGossip<Payload: Codable> {
         }
     }
 
-    private func onIntroducePeer(_ context: ActorContext<Message>, peer: ActorRef<Message>) {
+    private func onIntroducePeer(_ context: ActorContext<Message>, peer: GossipPeerRef) {
         if self.peers.insert(context.watch(peer)).inserted {
-            context.log.trace("Added peer: \(peer), total peers: [\(self.peers.count)]: \(self.peers)")
+            context.log.trace("Got introduced to peer [\(peer)], pushing initial gossip immediately", metadata: [
+                "gossip/peerCount": "\(self.peers.count)",
+                "gossip/peers": "\(self.peers.map { $0.address })",
+            ])
+
+            // TODO: implement this rather as "high priority peer to gossip to"
+            self.sendGossip(context, to: peer)
             // TODO: consider if we should do a quick gossip to any new peers etc
             // TODO: peers are removed when they die, no manual way to do it
         }
@@ -97,29 +105,35 @@ final class ConvergentGossip<Payload: Codable> {
 
     // FIXME: this is still just broadcasting (!)
     private func onPeriodicGossipTick(_ context: ActorContext<Message>) {
-        guard let payload = self.payload else {
-            context.log.trace("No payload set, skipping gossip round.")
-            self.scheduleNextGossipRound(context: context)
+        guard let target = self.peers.shuffled().first else {
+            // no peer to gossip to...
             return
         }
 
-        // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them
-        // That's nicer for small clusters, I guess
-        // let gossipCandidatePeers = self.
-        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks
+        self.sendGossip(context, to: target)
+        self.scheduleNextGossipRound(context: context)
+    }
 
-        // FIXME: this gossips to ALL, but should randomly pick some, with preference of nodes which are "behind"
-        context.log.trace("Sending gossip to \(self.peers)", metadata: [
-            "gossip/peers": "\(self.peers)",
+    private func sendGossip(_ context: ActorContext<Message>, to target: GossipPeerRef) {
+        guard let payload = self.payload else {
+            context.log.trace("No payload set, skipping gossip round", metadata: [
+                "gossip/target": "\(target)",
+            ])
+            return
+        }
+
+        // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them that's nicer for small clusters, I guess
+        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
+
+        // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
+        context.log.trace("Sending gossip to \(target)", metadata: [
+            "gossip/target": "\(target.address)",
+            "gossip/peerCount": "\(self.peers.count)",
+            "gossip/peers": "\(self.peers.map { $0.address })",
             "actor/message": "\(envelope)",
         ])
 
-        // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
-        if let peer = self.peers.shuffled().first {
-            peer.tell(.gossip(envelope))
-        }
-
-        self.scheduleNextGossipRound(context: context)
+        target.tell(.gossip(envelope))
     }
 
     private func scheduleNextGossipRound(context: ActorContext<Message>) {
@@ -137,7 +151,7 @@ extension ConvergentGossip {
 
         // local messages
         case updatePayload(Payload)
-        case introducePeer(ActorRef<Message>)
+        case introducePeer(GossipPeerRef)
 
         // internal messages
         case _clusterEvent(Cluster.Event)

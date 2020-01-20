@@ -28,6 +28,11 @@ extension Cluster {
         public var status: Cluster.MemberStatus
 
         /// Reachability signifies the failure detectors assessment about this members "reachability" i.e. if it is responding to health checks or not.
+        ///
+        /// ### Reachability of .down or .removed nodes
+        /// Worth pointing out that a `.down` member may still have a `.reachable` reachability field,
+        /// this usually means that the decision to move the member `.down` was not made by the failure detection layer,
+        /// but rather issued programmatically, or by some other non-reachability provoked reason.
         public var reachability: Cluster.MemberReachability
 
         /// Sequence number at which this node was moved to `.up` by a leader.

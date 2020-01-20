@@ -274,10 +274,13 @@ internal class ClusterShell {
         case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
 
-        case reachabilityChanged(UniqueNode, Cluster.MemberReachability)
+        case failureDetectorReachabilityChanged(UniqueNode, Cluster.MemberReachability)
 
         /// Used to signal a "down was issued" either by the user, or another part of the system.
         case downCommand(Node)
+        /// Used to signal a "down was issued" either by the user, or another part of the system.
+        case downCommandMember(Cluster.Member)
+
         case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
     }
 
@@ -404,8 +407,7 @@ extension ClusterShell {
             case .retryHandshake(let initiated):
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)
 
-            // FIXME: this is now a cluster event !!!!!
-            case .reachabilityChanged(let node, let reachability):
+            case .failureDetectorReachabilityChanged(let node, let reachability):
                 guard let member = state.membership.uniqueMember(node) else {
                     return .same // reachability change of unknown node
                 }
@@ -420,7 +422,11 @@ extension ClusterShell {
                 return self.onShutdownCommand(context, state: state, signalOnceUnbound: receptacle)
 
             case .downCommand(let node):
-                return self.onDownCommand(context, state: state, node: node)
+                return self.ready(state: state.membership.members(node).reduce(state) { _, member in
+                    self.onDownCommand(context, state: state, member: member)
+                })
+            case .downCommandMember(let member):
+                return self.ready(state: self.onDownCommand(context, state: state, member: member))
             }
         }
 
@@ -469,6 +475,10 @@ extension ClusterShell {
             let changeDirective = state.applyClusterEventAsChange(event)
             self.interpretLeaderActions(&state, changeDirective.leaderActions)
 
+            if case .membershipChange(let change) = event {
+                self.tryIntroduceGossipPeer(context, state, change: change)
+            }
+
             if changeDirective.applied {
                 state.latestGossip.incrementOwnerVersion()
                 // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
@@ -496,7 +506,12 @@ extension ClusterShell {
                 "gossip/before": "\(beforeGossipMerge)",
                 "gossip/now": "\(state.latestGossip)",
             ])
+
             mergeDirective.effectiveChanges.forEach { effectiveChange in
+//                /// we are careful to only introduce here, and only "new" members
+//                // TODO: consider reusing receptionist for this (!)
+//                self.tryIntroduceGossipPeer(context, state, change: effectiveChange)
+//
                 let event: Cluster.Event = .membershipChange(effectiveChange)
                 self.clusterEvents.publish(event)
             }
@@ -504,26 +519,8 @@ extension ClusterShell {
             return self.ready(state: state)
         }
 
-        func updateGossipPeers(context: ActorContext<Message>) {
-            // ==== Update membership information to gossip to our latest "view" ---------------------------------------
-            // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
-            let members = state.membership.members(atMost: .removed)
-            for member in members {
-                if state.myselfNode != member.node {
-                    // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
-                    let gossipPeer: ConvergentGossip<Cluster.Gossip>.Ref = context.system._resolve(
-                        context: .init(address: ._clusterGossip(on: member.node), system: context.system)
-                    )
-                    state.gossipControl.introduce(peer: gossipPeer)
-                }
-            }
-            // TODO: was this needed here? state.gossipControl.update(Cluster.Gossip())
-        }
-
         return .setup { context in
-            updateGossipPeers(context: context)
-
-            return .receive { context, message in
+            .receive { context, message in
                 switch message {
                 case .command(let command): return receiveShellCommand(context, command: command)
                 case .query(let query): return receiveQuery(context, query: query)
@@ -533,6 +530,24 @@ extension ClusterShell {
                 }
             }
         }
+    }
+
+    func tryIntroduceGossipPeer(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange, file: String = #file, line: UInt = #line) {
+        guard change.toStatus < .down else {
+            return
+        }
+        guard change.member.node != state.myselfNode else {
+            return
+        }
+        // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
+
+        // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
+        let gossipPeer: ConvergentGossip<Cluster.Gossip>.Ref = context.system._resolve(
+            context: .init(address: ._clusterGossip(on: change.member.node), system: context.system)
+        )
+        // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...
+        // today it can happen that a node goes down but we dont know yet so we add it again :O
+        state.gossipControl.introduce(peer: gossipPeer)
     }
 }
 
@@ -663,6 +678,9 @@ extension ClusterShell {
                     state = self.finishTerminateAssociation(context.system, state: state, removalDirective: removalDirective)
                 }
 
+                // TODO: try to pull off with receptionist the same dance
+                self.tryIntroduceGossipPeer(context, state, change: directive.membershipChange)
+
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
                 let actions = state.tryCollectLeaderActions()
                 self.interpretLeaderActions(&state, actions) // TODO: not so DRY between acceptAndAssociate and onHandshakeAccepted, DRY it up
@@ -778,6 +796,8 @@ extension ClusterShell {
         self.cacheAssociationRemoteControl(directive.association)
         state.log.debug("Associated with: \(reflecting: completed.remoteNode); Membership change: \(directive.membershipChange), resulting in: \(state.membership)")
 
+        self.tryIntroduceGossipPeer(context, state, change: directive.membershipChange)
+
         // by emitting these `change`s, we not only let anyone interested know about this,
         // but we also enable the shell (or leadership) to update the leader if it needs changing.
         if directive.membershipChange.replaced != nil,
@@ -849,7 +869,13 @@ extension ClusterShell {
         state.log.warning("Received .restInPeace from \(fromNode), meaning this node is known to be .down or worse, and should terminate. Initiating self .down-ing.", metadata: [
             "sender/node": "\(String(reflecting: fromNode))",
         ])
-        return self.onDownCommand(context, state: state, node: myselfNode.node)
+
+        guard let myselfMember = state.membership.uniqueMember(myselfNode) else {
+            state.log.error("Unable to find Cluster.Member for \(myselfNode) self node! This should not happen, please file an issue.")
+            return .same
+        }
+
+        return self.ready(state: self.onDownCommand(context, state: state, member: myselfMember))
     }
 
     private func notifyHandshakeFailure(state: HandshakeStateMachine.State, node: Node, error: Error) {
@@ -867,24 +893,23 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Unbind
+// MARK: Shutdown
 
 extension ClusterShell {
-    // TODO: become "shutdown" rather than just unbind
     fileprivate func onShutdownCommand(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
         let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
         return context.awaitResult(of: state.channel.close(), timeout: context.system.settings.cluster.unbindTimeout) {
-            // TODO: also close all associations (!!!)
+            // FIXME: also close all associations (!!!)
             switch $0 {
             case .success:
                 context.log.info("Unbound server socket [\(addrDesc)], node: \(reflecting: state.myselfNode)")
-                signalOnceUnbound.offerOnce(())
                 self.serializationPool.shutdown()
+                signalOnceUnbound.offerOnce(())
                 return .stop
             case .failure(let err):
                 context.log.warning("Failed while unbinding server socket [\(addrDesc)], node: \(reflecting: state.myselfNode). Error: \(err)")
-                signalOnceUnbound.offerOnce(())
                 self.serializationPool.shutdown()
+                signalOnceUnbound.offerOnce(())
                 throw err
             }
         }
@@ -927,7 +952,7 @@ extension ClusterShell {
         var state = state
 
         // TODO: make sure we don't end up infinitely spamming reachability events
-        if state.applyMemberReachabilityChange(change) != nil {
+        if state.membership.applyReachabilityChange(change) != nil {
             self.clusterEvents.publish(.reachabilityChange(change))
             self.recordMetrics(context.system.metrics, membership: state.membership)
             return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot
@@ -938,30 +963,10 @@ extension ClusterShell {
 
     /// Convenience function for directly handling down command in shell.
     /// Attempts to locate which member to down and delegates further.
-    func onDownCommand(_ context: ActorContext<Message>, state: ClusterShellState, node: Node) -> Behavior<Message> {
-        let membersToDown = state.membership.members(node).filter { $0.status < .down }
-
-        guard !membersToDown.isEmpty else {
-            state.log.info("No members to .down; Known members of non-unique node [\(node)]: \(state.membership.members(node))")
-            return .same
-        }
-
-        if membersToDown.contains(where: { m in m.node == state.myselfNode }) {
-            state.log.warning("Downing self node [\(state.myselfNode)]. Prefer issuing `cluster.leave()` when leaving gracefully.")
-        }
-
-        var state: ClusterShellState = state
-        for memberToDown in membersToDown {
-            state = self.onDownCommand0(context, state: state, member: memberToDown)
-        }
-
-        return self.ready(state: state)
-    }
-
-    func onDownCommand0(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Cluster.Member) -> ClusterShellState {
+    func onDownCommand(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Cluster.Member) -> ClusterShellState {
         var state = state
 
-        if let change = state.applyMembershipChange(memberToDown.node, toStatus: .down) {
+        if let change = state.membership.apply(.init(member: memberToDown, toStatus: .down)) {
             self.clusterEvents.publish(.membershipChange(change))
 
             if let logChangeLevel = state.settings.logMembershipChanges {
@@ -972,12 +977,19 @@ extension ClusterShell {
         guard memberToDown.node != state.myselfNode else {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
-            context.log.warning("Self node was determined [.down]!", metadata: [
+            context.log.warning("Self node was marked [.down]!", metadata: [ // TODO: carry reason why -- was it gossip, manual or other
                 "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
             ])
 
             self.swimRef.tell(.local(.confirmDead(memberToDown.node)))
-            context.system.settings.cluster.onDownAction.make()(context.system)
+
+            do {
+                let onDownAction = context.system.settings.cluster.onDownAction.make()
+                try onDownAction(context.system) // TODO: return a future and run with a timeout
+            } catch {
+                context.system.log.error("Failed to executed onDownAction! Shutting down system forcefully! Error: \(error)")
+                context.system.shutdown()
+            }
 
             return state
         }

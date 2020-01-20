@@ -17,39 +17,11 @@ import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorSingletonPluginTests: ActorSystemTestBase {
-    func test_ClusterSingleton_shouldWorkWithoutCluster() throws {
-        // Singleton should work just fine without clustering
-        let system = ActorSystem("test") { settings in
-            settings.cluster.enabled = false
-            settings += ActorSingleton(GreeterSingleton.name, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello")))
-            settings += ActorSingleton("\(GreeterSingleton.name)-other", GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hi")))
-        }
-
-        defer {
-            system.shutdown().wait()
-        }
-
-        // singleton.ref
-        let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
-        let ref = try system.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
-
-        ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
-        try replyProbe.expectMessage("Hello Charlie!")
-
-        // singleton.actor
-        let actor = try system.singleton.actor(name: "\(GreeterSingleton.name)-other", GreeterSingleton.self)
-        // TODO: https://github.com/apple/swift-distributed-actors/issues/344
-        // let string = try probe.expectReply(actor.greet(name: "Charlie", _replyTo: replyProbe.ref))
-        actor.ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
-
-        try replyProbe.expectMessage("Hi Charlie!")
-    }
-
+final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
     func test_singletonByClusterLeadership() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-            singletonSettings.allocationStrategy = .byLeadership
+            singletonSettings.allocationStrategy = .leadership
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
@@ -103,7 +75,7 @@ final class ActorSingletonPluginTests: ActorSystemTestBase {
     func test_singletonByClusterLeadership_stashMessagesIfNoLeader() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-            singletonSettings.allocationStrategy = .byLeadership
+            singletonSettings.allocationStrategy = .leadership
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
@@ -162,39 +134,44 @@ final class ActorSingletonPluginTests: ActorSystemTestBase {
     func test_singletonByClusterLeadership_withLeaderChange() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-            singletonSettings.allocationStrategy = .byLeadership
+            singletonSettings.allocationStrategy = .leadership
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
+
+                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.node.port = 8222
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
+
+                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.node.port = 9333
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
+
+                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let fourth = self.setUpNode("fourth") { settings in
                 settings.cluster.node.port = 7444
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
 
                 settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-4")))
+
+                settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
 
-            try self.joinNodes(node: first, with: second)
-            try self.joinNodes(node: third, with: second)
+            first.cluster.join(node: second.cluster.node.node)
+            third.cluster.join(node: second.cluster.node.node)
+
             try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
@@ -215,40 +192,31 @@ final class ActorSingletonPluginTests: ActorSystemTestBase {
             try replyProbe3.expectMessage("Hello-1 Charlie!")
 
             // Take down the leader
-            // first.cluster.down(node: first.cluster.node.node) // FIXME: must also work when the node downs itself and shuts down (!!!) (we do not move to down currently, no default downing impl)
-            second.cluster.down(node: first.cluster.node.node)
+            first.cluster.down(node: first.cluster.node.node) // TODO: minimize a test just for the self downing
+//            third.cluster.down(node: first.cluster.node.node)
 
-            // Ensure the node is seen down
-            try self.ensureNodes(.down, on: second, systems: first)
-            try self.ensureNodes(.down, on: third, systems: first)
-
-            // At the same time, since the node was downed, it is not the leader anymore
-            try self.testKit(third).eventually(within: .seconds(10)) {
-                try self.assertLeaderNode(on: third, is: nil)
+            // Make sure that `second` and `third` see `first` as down and become leader-less
+            try self.testKit(second).eventually(within: .seconds(10)) {
+                try self.assertMemberStatus(on: second, node: first.cluster.node, is: .down)
                 try self.assertLeaderNode(on: second, is: nil)
             }
+            try self.testKit(third).eventually(within: .seconds(10)) {
+                try self.assertMemberStatus(on: third, node: first.cluster.node, is: .down)
+                try self.assertLeaderNode(on: third, is: nil)
+            }
+
+            // No leader so singleton is not available, messages sent should be stashed
+            ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
+            ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
 
             // `fourth` will become the new leader and singleton
-            try self.joinNodes(node: fourth, with: second)
+            fourth.cluster.join(node: second.cluster.node.node)
+
             try self.ensureNodes(.up, within: .seconds(10), systems: fourth, second, third)
 
-            try self.testKit(first).eventually(within: .seconds(10)) {
-                // The stashed messages get routed to new singleton running on `fourth`
-
-                ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
-                guard let reply2 = try replyProbe2.maybeExpectMessage() else {
-                    pprint("lost msg @ node 2")
-                    throw TestError("No reply to \(replyProbe2) yet, singleton still rebalancing...?")
-                }
-                reply2.shouldEqual("Hello-4 Charlie-2!")
-
-                ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
-                guard let reply3 = try replyProbe3.maybeExpectMessage() else {
-                    pprint("lost msg @ node 3")
-                    throw TestError("No reply to \(replyProbe3) yet, singleton still rebalancing...?")
-                }
-                reply3.shouldEqual("Hello-4 Charlie-3!")
-            }
+            // The stashed messages get routed to new singleton running on `fourth`
+            try replyProbe2.expectMessage("Hello-4 Charlie-2!")
+            try replyProbe3.expectMessage("Hello-4 Charlie-3!")
         }
     }
 }

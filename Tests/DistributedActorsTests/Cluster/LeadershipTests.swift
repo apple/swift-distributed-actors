@@ -31,10 +31,10 @@ final class LeadershipTests: XCTestCase {
     ]
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: LowestReachableMember
+    // MARK: LowestAddressReachableMember
 
-    func test_LowestReachableMember_selectLeader() throws {
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
+    func test_LowestAddressReachableMember_selectLeader() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
 
         let membership = self.initialMembership
 
@@ -42,8 +42,8 @@ final class LeadershipTests: XCTestCase {
         change.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
     }
 
-    func test_LowestReachableMember_notEnoughMembersToDecide() throws {
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
+    func test_LowestAddressReachableMember_notEnoughMembersToDecide() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.remove(self.firstMember.node)
@@ -59,8 +59,37 @@ final class LeadershipTests: XCTestCase {
         change2.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
-    func test_LowestReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader() throws {
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
+    func test_LowestAddressReachableMember_notEnoughReachableMembersToDecide() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
+
+        var membership = self.initialMembership
+        _ = membership.mark(self.secondMember.node, reachability: .unreachable)
+
+        // 2 reachable members -> not enough to make decision anymore
+        let change1: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+        change1.shouldBeNil()
+
+        _ = membership.join(self.newMember.node)
+
+        // 3 reachable members again, 1 unreachable, should work
+        let change2: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+        change2.shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+    }
+
+    func test_LowestAddressReachableMember_onlyUnreachableMembers_cantDecide() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
+
+        var membership = self.initialMembership
+        _ = membership.mark(self.firstMember.node, reachability: .unreachable)
+        _ = membership.mark(self.secondMember.node, reachability: .unreachable)
+
+        // 1 reachable member -> not enough to make decision anymore
+        let change1: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
+        change1.shouldBeNil()
+    }
+
+    func test_LowestAddressReachableMember_notEnoughMembersToDecide_fromWithToWithoutLeader() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = try! membership.applyLeadershipChange(to: self.firstMember) // try! because `firstMember` is a member
@@ -77,8 +106,8 @@ final class LeadershipTests: XCTestCase {
         change.shouldEqual(Cluster.LeadershipChange(oldLeader: leader, newLeader: nil))
     }
 
-    func test_LowestReachableMember_whenCurrentLeaderDown() throws {
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
+    func test_LowestAddressReachableMember_whenCurrentLeaderDown() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.join(self.newMember.node)
@@ -91,8 +120,8 @@ final class LeadershipTests: XCTestCase {
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
-    func test_LowestReachableMember_whenCurrentLeaderDown_enoughMembers() throws {
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
+    func test_LowestAddressReachableMember_whenCurrentLeaderDown_enoughMembers() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         _ = membership.join(self.newMember.node)
@@ -105,8 +134,8 @@ final class LeadershipTests: XCTestCase {
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 
-    func test_LowestReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers() throws {
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3)
+    func test_LowestAddressReachableMember_whenCurrentLeaderUnreachable_notEnoughMinMembers() throws {
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
         let applyToMembership: (Cluster.LeadershipChange?) throws -> (Cluster.LeadershipChange?) = { change in
@@ -128,13 +157,13 @@ final class LeadershipTests: XCTestCase {
         membership.leader.shouldEqual(self.firstMember)
     }
 
-    func test_LowestReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers() throws {
+    func test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_NOT_loseLeadershipIfBelowMinNrOfMembers() throws {
         // - 3 nodes join
         // - first becomes leader
         // - third leaves
         // - second leaves
         // ! no need to drop the leadership from the first node, it shall remain the leader;
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3) // loseLeadershipIfBelowMinNrOfMembers: false by default
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3) // loseLeadershipIfBelowMinNrOfMembers: false by default
 
         var membership: Cluster.Membership = self.initialMembership
         let applyToMembership: (Cluster.LeadershipChange?) throws -> (Cluster.LeadershipChange?) = { change in
@@ -165,12 +194,12 @@ final class LeadershipTests: XCTestCase {
         membership.leader.shouldEqual(self.firstMember)
     }
 
-    func test_LowestReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers() throws {
+    func test_LowestAddressReachableMember_keepLeader_notEnoughMembers_DO_loseLeadershipIfBelowMinNrOfMembers() throws {
         // - 3 nodes join
         // - first becomes leader
         // - third leaves
         // ! not enough members to sustain leader, it should not be trusted anymore
-        var election = Leadership.LowestAddressMember(minimumNrOfMembers: 3, loseLeadershipIfBelowMinNrOfMembers: true)
+        var election = Leadership.LowestAddressReachableMember(minimumNrOfMembers: 3, loseLeadershipIfBelowMinNrOfMembers: true)
 
         var membership: Cluster.Membership = self.initialMembership
         let applyToMembership: (Cluster.LeadershipChange?) throws -> (Cluster.LeadershipChange?) = { change in
