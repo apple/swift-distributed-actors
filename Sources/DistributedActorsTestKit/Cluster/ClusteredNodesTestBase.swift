@@ -63,10 +63,15 @@ open class ClusteredNodesTestBase: XCTestCase {
         let node = ActorSystem(name) { settings in
             settings.cluster.enabled = true
             settings.cluster.node.port = self.nextPort()
+
             if self.captureLogs {
                 settings.overrideLoggerFactory = capture.loggerFactory(captureLabel: name)
             }
+
             settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+
+            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 3
+
             self.configureActorSystem(settings: &settings)
             modifySettings?(&settings)
         }

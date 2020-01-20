@@ -236,7 +236,8 @@ extension Cluster.Membership {
             if self.firstMember(change.node.node) == nil { // TODO: more general? // TODO this entire method should be simpler
                 _ = self.join(change.node)
             }
-            return self.mark(change.node, as: status)
+            let change = self.mark(change.node, as: status)
+            return change
         }
     }
 
@@ -276,6 +277,11 @@ extension Cluster.Membership {
             self.leader = wannabeLeader
             return Cluster.LeadershipChange(oldLeader: oldLeader, newLeader: wannabeLeader)
         }
+    }
+
+    /// Alias for `applyLeadershipChange(to:)`
+    public mutating func applyLeadershipChange(_ change: Cluster.LeadershipChange?) throws -> Cluster.LeadershipChange? {
+        try self.applyLeadershipChange(to: change?.newLeader)
     }
 
     /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),

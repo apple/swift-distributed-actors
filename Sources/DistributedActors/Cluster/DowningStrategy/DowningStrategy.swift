@@ -12,40 +12,24 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
+/// Allows implementing downing strategies, without having to re-implement and reinvent logging and subscription logic.
+/// Downing strategies can focus on inspecting the membership and issuing timers if needed.
 internal protocol DowningStrategy {
-    func onLeaderChange(to: Cluster.Member?) throws -> DowningStrategyDirectives.LeaderChangeDirective
-    func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirectives.TimeoutDirective
+    func onClusterEvent(event: Cluster.Event) throws -> DowningStrategyDirective
 
-    func onMemberUnreachable(_ member: Cluster.Member) -> DowningStrategyDirectives.MemberUnreachableDirective
-    func onMemberReachable(_ member: Cluster.Member) -> DowningStrategyDirectives.MemberReachableDirective
-
-    func onMemberRemoved(_ member: Cluster.Member) -> DowningStrategyDirectives.MemberRemovedDirective
+    func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective
 }
 
-internal enum DowningStrategyDirectives {
-    enum LeaderChangeDirective {
-        case none
-        case markAsDown(Set<UniqueNode>)
-    }
+internal enum DowningStrategyDirective {
+    case none
+    case markAsDown(Set<Cluster.Member>)
+    case startTimer(key: TimerKey, message: DowningStrategyMessage, delay: TimeAmount)
+    case cancelTimer(key: TimerKey)
 
-    enum TimeoutDirective {
-        case none
-        case markAsDown(UniqueNode)
-    }
-
-    enum MemberReachableDirective {
-        case none
-        case cancelTimer
-    }
-
-    enum MemberRemovedDirective {
-        case none
-        case cancelTimer
-    }
-
-    enum MemberUnreachableDirective {
-        case none
-        case startTimer(key: TimerKey, message: DowningStrategyMessage, delay: TimeAmount)
+    static func markAsDown(_ member: Cluster.Member) -> Self {
+        Self.markAsDown([member])
     }
 }
 
@@ -64,7 +48,7 @@ internal struct DowningStrategyShell {
     }
 
     var behavior: Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             let clusterEventSubRef = context.subReceive(Cluster.Event.self) { event in
                 do {
                     try self.receiveClusterEvent(context, event: event)
@@ -77,13 +61,9 @@ internal struct DowningStrategyShell {
             return .receiveMessage { message in
                 switch message {
                 case .timeout(let member):
-                    context.log.debug("Received timeout for [\(member)]")
-                    switch self.strategy.onTimeout(member) {
-                    case .markAsDown(let node):
-                        self.markAsDown(context, member: node)
-                    case .none:
-                        () // nothing to be done
-                    }
+                    let directive = self.strategy.onTimeout(member)
+                    context.log.debug("Received timeout for [\(member)], resulting in: \(directive)")
+                    self.interpret(context, directive)
                 }
 
                 return .same
@@ -91,61 +71,42 @@ internal struct DowningStrategyShell {
         }
     }
 
-    func markAsDown(_ context: ActorContext<Message>, members: Set<UniqueNode>) {
-        for member in members {
-            self.markAsDown(context, member: member)
-        }
-    }
-
-    func markAsDown(_ context: ActorContext<Message>, member node: UniqueNode) {
-        context.log.info("Strategy [\(type(of: self.strategy))] decision about unreachable member [\(node)]: marking as: .down")
-        context.system.cluster.down(node: node.node)
-    }
-
     func receiveClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) throws {
-        switch event {
-        case .snapshot:
-            () // ignore, we don't need the full membership for decisions // TODO: or do we...
-        case .leadershipChange(let change):
-            let directive = try self.strategy.onLeaderChange(to: change.newLeader)
-            switch directive {
-            case .markAsDown(let downMembers):
-                self.markAsDown(context, members: downMembers)
-            case .none:
-                () // no members to mark down
-            }
+        let directive: DowningStrategyDirective = try self.strategy.onClusterEvent(event: event)
+        context.log.trace("Downing strategy reaction to \(event) resulted in: \(directive)", metadata: self.metadata)
+        self.interpret(context, directive)
+    }
 
-        case .membershipChange(let change) where change.isRemoval:
-            context.log.debug("Member [\(change.member)] has been removed")
-            let directive = self.strategy.onMemberRemoved(change.member)
-            switch directive {
-            case .cancelTimer:
-                context.timers.cancel(for: TimerKey(change.member))
-            case .none:
-                () // this member was not marked unreachable, so ignore
-            }
-        case .membershipChange: // TODO: actually store and act based on membership
-            () //
+    func interpret(_ context: ActorContext<Message>, _ directive: DowningStrategyDirective) {
+        switch directive {
+        case .markAsDown(let members):
+            self.markAsDown(context, members: members)
 
-        case .reachabilityChange(let change):
-            context.log.debug("Member [\(change)] has become \(change.member.reachability)")
+        case .startTimer(let key, let message, let delay):
+            context.log.trace("Start timer \(key), message: \(message), delay: \(delay)")
+            context.timers.startSingle(key: key, message: message, delay: delay)
+        case .cancelTimer(let key):
+            context.log.trace("Cancel timer \(key)")
+            context.timers.cancel(for: key)
 
-            if change.toReachable {
-                let directive = self.strategy.onMemberReachable(change.member)
-                switch directive {
-                case .cancelTimer:
-                    context.timers.cancel(for: TimerKey(change.member.node))
-                case .none:
-                    () // this member was not marked unreachable, so ignore
-                }
-            } else {
-                switch self.strategy.onMemberUnreachable(change.member) {
-                case .startTimer(let key, let message, let delay):
-                    context.timers.startSingle(key: key, message: message, delay: delay)
-                case .none:
-                    () // nothing to be done
-                }
-            }
+        case .none:
+            () // nothing to be done
         }
+    }
+
+    func markAsDown(_ context: ActorContext<Message>, members: Set<Cluster.Member>) {
+        for member in members {
+            context.log.info("Decision to [.down] member [\(member)]!", metadata: self.metadata.merging([
+                "downing/member": "\(member)",
+            ], uniquingKeysWith: { l, _ in l }))
+            context.system.cluster.down(member: member)
+        }
+    }
+
+    var metadata: Logger.Metadata {
+        [
+            "tag": "downing",
+            "downing/strategy": "\(type(of: self.strategy))",
+        ]
     }
 }

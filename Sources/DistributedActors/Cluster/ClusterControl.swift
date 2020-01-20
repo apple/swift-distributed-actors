@@ -47,12 +47,16 @@ public struct ClusterControl {
         self.ref.tell(.command(.initJoin(node)))
     }
 
-//    func leave() {
-//        // issue a .leaving and then ensure everyone has seen it, then become down
-//    }
+    public func leave() {
+        self.ref.tell(.command(.downCommand(self.node.node)))
+    }
 
     /// Mark as `Cluster.MemberStatus.down` _any_ incarnation of a member matching the passed in `node`.
     public func down(node: Node) {
         self.ref.tell(.command(.downCommand(node)))
+    }
+
+    public func down(member: Cluster.Member) {
+        self.ref.tell(.command(.downCommandMember(member)))
     }
 }

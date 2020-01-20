@@ -327,16 +327,30 @@ internal struct SWIMShell {
         // TODO: push more of logic into SWIM instance, the calculating
         // FIXME: use decaying timeout as proposed in lifeguard paper
         let timeoutPeriods = (self.swim.protocolPeriod - self.swim.settings.failureDetector.suspicionTimeoutPeriodsMax)
-        for member in self.swim.suspects where member.protocolPeriod <= timeoutPeriods {
+        context.log.trace("Checking suspicion timeouts...", metadata: [
+            "swim/suspects": "\(self.swim.suspects)",
+            "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
+            "swim/timeoutPeriods": "\(timeoutPeriods)",
+        ])
+        for member in self.swim.suspects {
+            context.log.trace("Checking \(member)...")
+            if member.protocolPeriod <= timeoutPeriods {
+                () // ok, continue checking
+            } else {
+                continue // skip
+            }
+
             if let node = member.ref.address.node {
                 if let incarnation = member.status.incarnation {
+                    context.log.trace("Marking \(member.node) as .unreachable!")
                     self.swim.mark(member.ref, as: .unreachable(incarnation: incarnation))
                 }
                 // if unreachable or dead, we don't need to notify the clusterRef
                 if member.status.isUnreachable || member.status.isDead {
                     continue
                 }
-                self.clusterRef.tell(.command(.reachabilityChanged(node, .unreachable)))
+                context.log.info("Notifying cluster, node \(member.node) is unreachable!")
+                self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(node, .unreachable)))
             }
         }
     }

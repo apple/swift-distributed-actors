@@ -197,13 +197,17 @@ extension Leadership {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: LowestReachableMember election strategy
+// MARK: LowestAddressReachableMember election strategy
 
 extension Leadership {
     /// Simple strategy which does not require any additional coordination from members to select a leader.
     ///
     /// All `MemberStatus.joining`, `MemberStatus.up` _reachable_ members are sorted by their addresses,
-    /// and the "lowest" is selected as the leader. // TODO: to be extended to respect member roles as well
+    /// and the "lowest" is selected as the leader.
+    ///
+    /// Only REACHABLE nodes are taken into account. This means that in a situation with a cluster partition,
+    /// there WILL be multiple leaders. In this coordination free scheme, this is needed in order to avoid "getting stuck",
+    /// without a leader to perform the unreachable -> down move. // TODO keep thinking if we can do better here, we could to a quorum downing IMHO, and remove this impl completely as it's very "bad".
     ///
     /// ### Use cases
     /// This strategy works well for non critical tasks, which nevertheless benefit from performing them more centrally
@@ -239,7 +243,7 @@ extension Leadership {
     ///
     // TODO: In situations which need strong guarantees, this leadership election scheme does NOT provide strong enough
     /// guarantees, and you should consider using another scheme or consensus based modes.
-    public struct LowestAddressMember: LeaderElection {
+    public struct LowestAddressReachableMember: LeaderElection {
         let minimumNumberOfMembersToDecide: Int
         let loseLeadershipIfBelowMinNrOfMembers: Bool
 
@@ -250,7 +254,7 @@ extension Leadership {
 
         public mutating func runElection(context: LeaderElectionContext, membership: Cluster.Membership) -> LeaderElectionResult {
             var membership = membership
-            let membersToSelectAmong = membership.members(atMost: .up)
+            let membersToSelectAmong = membership.members(atMost: .up, reachability: .reachable)
 
             let enoughMembers = membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide
             if enoughMembers {
@@ -339,7 +343,7 @@ extension ClusterSettings {
             case .none:
                 return nil
             case .lowestAddress(let nr):
-                return Leadership.LowestAddressMember(minimumNrOfMembers: nr)
+                return Leadership.LowestAddressReachableMember(minimumNrOfMembers: nr)
             }
         }
     }
