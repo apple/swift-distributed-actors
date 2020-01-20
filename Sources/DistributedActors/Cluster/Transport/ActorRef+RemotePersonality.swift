@@ -43,9 +43,8 @@ public final class RemotePersonality<Message> {
     // The structure of the shell is such that the only thing that is a field in the class is this associations / remote controls map,
     // which refs access. all other state is not accessible by anyone else since it is hidden in the actor itself.
 
-    // TODO: again... this may be accessed concurrently since many actors invoke send on this ref
-    // Access only via `self.remoteControl`
-    private var _cachedAssociationRemoteControl: AssociationRemoteControl?
+//    // Access only via `self.remoteControl`
+//    private var _cachedAssociationRemoteControl: AssociationRemoteControl?
 
     private let clusterShell: ClusterShell
     let system: ActorSystem // TODO: maybe don't need to store it and access via clusterShell?
@@ -65,7 +64,8 @@ public final class RemotePersonality<Message> {
             // TODO: optionally carry file/line?
             remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .message(message)), recipient: self.address)
         } else {
-            self.deadLetters.adapted().tell(message, file: file, line: line)
+            pprint("no remote control!!!! \(self.address)")
+            self.system.personalDeadLetters(recipient: self.address).adapted().tell(message, file: file, line: line)
         }
     }
 
@@ -81,26 +81,26 @@ public final class RemotePersonality<Message> {
         }
     }
 
+    // FIXME: The test_singletonByClusterLeadership_stashMessagesIfNoLeader exposes that we sometimes need to spin here!!! This is very bad, investigate
+    // FIXME: https://github.com/apple/swift-distributed-actors/issues/382
     private var remoteControl: AssociationRemoteControl? {
-        // optimally we would:
-        if let control = self._cachedAssociationRemoteControl {
-            return control
-        } else {
-            // FIXME: has to be done atomically... since other senders also reaching here
-            guard let remoteAddress = self.address.node else {
-                fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug.")
-            }
-            switch self.clusterShell.associationRemoteControl(with: remoteAddress) {
-            case .unknown:
-                return nil
-            case .associated(let remoteControl):
-                self._cachedAssociationRemoteControl = remoteControl // TODO: atomically...
-                return remoteControl
-            case .tombstone:
-                return nil
-            }
-            // FIXME: not safe, should ?? deadletters perhaps; OR keep internal mini buffer?
-            // TODO: should check if association died in the meantime?
+        // optimally we would be abe to cache the remote control // FIXME: optimization change?
+        //        if let control = self._cachedAssociationRemoteControl {
+        //            return control
+        //        } else { ...
+
+        guard let remoteAddress = self.address.node else {
+            fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug.")
+        }
+        switch self.clusterShell.associationRemoteControl(with: remoteAddress) {
+        case .unknown:
+            // FIXME: how can we end up in a situation with no association yet; likely we got gossiped a node's address, but not open yet...
+            return self.remoteControl // FIXME: only limited spins should be allowed (!!!!)
+        case .associated(let remoteControl):
+            // self._cachedAssociationRemoteControl = remoteControl // TODO: atomically cache a remote control?
+            return remoteControl
+        case .tombstone:
+            return nil
         }
     }
 }
