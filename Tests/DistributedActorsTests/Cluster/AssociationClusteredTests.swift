@@ -264,11 +264,14 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
     func test_down_self_shouldChangeMembershipSelfToBeDown() throws {
         try shouldNotThrow {
-            let (first, second) = setUpPair()
+            let (first, second) = setUpPair { settings in
+                settings.cluster.onDownAction = .none // as otherwise we can't inspect if we really changed the status to .down, as we might shutdown too quickly :-)
+            }
 
             second.cluster.join(node: first.cluster.node.node)
             try assertAssociated(first, withExactly: second.cluster.node)
 
+            // down myself
             first.cluster.down(node: first.cluster.node.node)
 
             let localProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
