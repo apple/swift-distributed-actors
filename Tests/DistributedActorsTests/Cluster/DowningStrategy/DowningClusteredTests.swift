@@ -27,13 +27,13 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
     func shared_stoppingSelfNode_shouldPropagateToOtherNodes(stopMethod: NodeStopMethod) throws {
         let (first, second) = self.setUpPair { settings in
             settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
             settings.cluster.downingStrategy = .timeout(.default)
         }
         let third = self.setUpNode("third") { settings in
             settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
-            settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
             settings.cluster.downingStrategy = .timeout(.default)
         }

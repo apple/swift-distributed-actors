@@ -68,7 +68,7 @@ open class ClusteredNodesTestBase: XCTestCase {
                 settings.overrideLoggerFactory = capture.loggerFactory(captureLabel: name)
             }
 
-            settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
             settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 3
 

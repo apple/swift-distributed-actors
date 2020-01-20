@@ -20,10 +20,10 @@ final class ActorableOwnedMembershipTests: ClusteredNodesTestBase {
     func test_autoUpdatedMembership_updatesAutomatically() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
 
             try self.joinNodes(node: first, with: second, ensureMembers: .up)
