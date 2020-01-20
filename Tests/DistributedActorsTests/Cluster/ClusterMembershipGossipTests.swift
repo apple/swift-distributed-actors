@@ -33,12 +33,15 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
             let strategy = ClusterSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
             let first = self.setUpNode("first") { settings in
                 settings.cluster.autoLeaderElection = strategy
+                settings.cluster.onDownAction = .none
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.autoLeaderElection = strategy
+                settings.cluster.onDownAction = .none
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.autoLeaderElection = strategy
+                settings.cluster.onDownAction = .none
             }
 
             first.cluster.join(node: second.cluster.node.node)
