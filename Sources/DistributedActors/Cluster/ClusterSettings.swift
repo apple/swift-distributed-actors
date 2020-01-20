@@ -110,7 +110,7 @@ public struct ClusterSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leader Election
 
-    public var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNumberOfMembers: 2)
+    public var autoLeaderElection: LeadershipSelectionSettings = .lowestReachable(minNumberOfMembers: 2)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings

@@ -26,7 +26,7 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 1)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
             }
 
             let p = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
@@ -62,15 +62,15 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
             }
 
             first.cluster.join(node: second.cluster.node.node)
@@ -117,13 +117,13 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             // to a new member.
             //
             let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let third = self.setUpNode("third") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
 
             let fourth = self.setUpNode("fourth") { settings in
@@ -154,13 +154,13 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             // to a new member.
             //
             let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
             first.cluster.events.subscribe(p1.ref)
 
             let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
+                settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
             let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
             second.cluster.events.subscribe(p2.ref)
