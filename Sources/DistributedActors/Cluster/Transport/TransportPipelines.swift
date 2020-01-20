@@ -368,8 +368,8 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             self.tracelog(.outbound, message: redeliveryEnvelope)
             context.writeAndFlush(self.wrapOutboundOut(redeliveryEnvelope), promise: promise)
         case .bufferOverflowMustAbortAssociation:
+            self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).")
             if let node = transportEnvelope.recipient.node {
-                // TODO: use ClusterControl once implemented
                 self.clusterShell.tell(.command(.downCommand(node.node)))
             }
         }
@@ -667,10 +667,9 @@ extension ClusterShell {
 
                 let log = ActorLogger.make(system: system, identifier: "server")
 
-                // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS! // TODO: tests about killing connections the hard way
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
                 let inboundSysMsgs = InboundSystemMessages(settings: .default)
-                // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                 // TODO: Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
                 let otherHandlers: [(String?, ChannelHandler)] = [

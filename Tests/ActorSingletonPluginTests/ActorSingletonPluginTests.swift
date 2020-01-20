@@ -214,7 +214,8 @@ final class ActorSingletonPluginTests: ClusteredNodesTestBase {
             try replyProbe3.expectMessage("Hello-1 Charlie!")
 
             // Take down the leader
-            first.cluster.down(node: first.cluster.node.node)
+            // first.cluster.down(node: first.cluster.node.node) // FIXME: must also work when the node downs itself and shuts down (!!!) (we do not move to down currently, no default downing impl)
+            second.cluster.down(node: first.cluster.node.node)
 
             // Ensure the node is seen down
             try self.ensureNodes(.down, on: second, systems: first)

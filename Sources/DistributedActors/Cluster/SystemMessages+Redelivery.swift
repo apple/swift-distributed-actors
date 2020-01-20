@@ -346,7 +346,7 @@ extension InboundSystemMessages.InboundSystemMessageArrivalDirective {
 // MARK: Settings
 
 public struct OutboundSystemMessageRedeliverySettings {
-    public static let `default` = OutboundSystemMessageRedeliverySettings()
+    public static let `default`: OutboundSystemMessageRedeliverySettings = .init()
 
     /// When enabled, logs all outbound messages using the tracelog facility.
     /// Logs lines will be marked with: [tracelog:sys-msg-redelivery]
@@ -359,7 +359,7 @@ public struct OutboundSystemMessageRedeliverySettings {
     var redeliveryInterval: TimeAmount = .seconds(1)
 
     internal var makeRedeliveryBackoff: ConstantBackoffStrategy {
-        return Backoff.constant(self.redeliveryInterval)
+        Backoff.constant(self.redeliveryInterval)
     }
 
     /// Configures the maximum number (per association)
