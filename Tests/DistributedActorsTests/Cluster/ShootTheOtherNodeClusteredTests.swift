@@ -18,10 +18,6 @@ import NIO
 import XCTest
 
 final class ShootTheOtherNodeClusteredTests: ClusteredNodesTestBase {
-    override var alwaysPrintCaptureLogs: Bool {
-        true
-    }
-
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeGrep = [
             "TimerKey",
@@ -50,9 +46,7 @@ final class ShootTheOtherNodeClusteredTests: ClusteredNodesTestBase {
             // we do NOT failTest:, since we are in an eventuallyBlock and are waiting for the logs to happen still
             // the eventually block will escalate the thrown errors if they do not cease within the time limit.
             try self.capturedLogs(of: remote).shouldContain(prefix: "Received .restInPeace", failTest: false)
-            try self.capturedLogs(of: remote).shouldContain(prefix: "Self node was determined [.down]", failTest: false)
+            try self.capturedLogs(of: remote).shouldContain(prefix: "Self node was marked [.down]", failTest: false)
         }
-
-//        try self.assertMemberStatus(on: local, node: remote.cluster.node, is: .down)
     }
 }

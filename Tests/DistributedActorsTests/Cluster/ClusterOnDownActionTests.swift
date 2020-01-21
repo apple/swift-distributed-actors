@@ -20,17 +20,19 @@ import XCTest
 final class ClusterOnDownActionTests: ClusteredNodesTestBase {
     func test_onNodeDowned_performShutdown() throws {
         try shouldNotThrow {
-            let (first, second) = self.setUpPair()
+            let (first, second) = self.setUpPair { settings in
+                settings.cluster.onDownAction = .gracefulShutdown(delay: .milliseconds(300))
+            }
 
             try self.joinNodes(node: first, with: second)
 
             second.cluster.down(node: first.cluster.node.node)
 
-            try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was determined [.down]!")
+            try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was marked [.down]!")
 
-            try self.testKit(first).eventually(within: .seconds(1)) {
+            try self.testKit(first).eventually(within: .seconds(3)) {
                 guard first.isShuttingDown else {
-                    throw TestError("First system should be shutting down, it was marked down and the default onDownAction should have triggered!")
+                    throw TestError("System \(first) was not shutting down. It was marked down and the default onDownAction should have triggered!")
                 }
             }
         }
@@ -46,7 +48,7 @@ final class ClusterOnDownActionTests: ClusteredNodesTestBase {
 
             second.cluster.down(node: first.cluster.node.node)
 
-            try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was determined [.down]!")
+            try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "Self node was marked [.down]!")
 
             first.isShuttingDown.shouldBeFalse()
         }

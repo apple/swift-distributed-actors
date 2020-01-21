@@ -21,7 +21,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
     func test_singletonByClusterLeadership() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-            singletonSettings.allocationStrategy = .leadership
+            singletonSettings.allocationStrategy = .byLeadership
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
@@ -75,7 +75,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
     func test_singletonByClusterLeadership_stashMessagesIfNoLeader() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-            singletonSettings.allocationStrategy = .leadership
+            singletonSettings.allocationStrategy = .byLeadership
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
@@ -134,7 +134,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
     func test_singletonByClusterLeadership_withLeaderChange() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
-            singletonSettings.allocationStrategy = .leadership
+            singletonSettings.allocationStrategy = .byLeadership
 
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
