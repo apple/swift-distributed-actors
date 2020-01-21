@@ -130,7 +130,7 @@ extension Cluster.Gossip {
                 return .happenedBefore
             }
 
-            return versionOnNode.compareTo(that: incomingVersion) // FIXME: tests
+            return versionOnNode.compareTo(incomingVersion)
         }
 
         // FIXME: This could be too many layers;

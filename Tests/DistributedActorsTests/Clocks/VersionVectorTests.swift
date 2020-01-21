@@ -122,7 +122,7 @@ final class VersionVectorTests: XCTestCase {
         // Not every entry in lhs is <= rhs
         (VV([(replicaA, 1), (replicaB, 3)]) < VV([(replicaA, 2), (replicaB, 2)])).shouldBeFalse()
         // At least one entry in lhs must be strictly less than
-        (VV([(replicaA, 1), (replicaB, 2)]) < VV([(replicaA, 2), (replicaB, 2)])).shouldBeFalse()
+        (VV([(replicaA, 1), (replicaB, 2)]) < VV([(replicaA, 2), (replicaB, 2)])).shouldBeTrue()
 
         // Two empty version vectors should be considered equal instead of greater than
         (VV() > VV()).shouldBeFalse()
@@ -133,7 +133,7 @@ final class VersionVectorTests: XCTestCase {
         // Not every entry in lhs is >= rhs
         (VV([(replicaA, 2), (replicaB, 2)]) > VV([(replicaA, 1), (replicaB, 3)])).shouldBeFalse()
         // At least one entry in lhs must be strictly greater than
-        (VV([(replicaA, 2), (replicaB, 2)]) > VV([(replicaA, 1), (replicaB, 2)])).shouldBeFalse()
+        (VV([(replicaA, 2), (replicaB, 2)]) > VV([(replicaA, 1), (replicaB, 2)])).shouldBeTrue()
 
         // Two empty version vectors are considered equal
         (VV() == VV()).shouldBeTrue()
@@ -154,28 +154,34 @@ final class VersionVectorTests: XCTestCase {
     }
 
     func test_VersionVector_compareTo() throws {
-        guard case .happenedBefore = VV().compareTo(that: VV([(replicaA, 2)])) else {
+        guard case .happenedBefore = VV().compareTo(VV([(replicaA, 2)])) else {
             throw shouldNotHappen("An empty version vector is always before a non-empty one")
         }
-        guard case .happenedBefore = VV([(replicaA, 1), (replicaB, 2)]).compareTo(that: VV([(replicaA, 2), (replicaB, 3)])) else {
+        guard case .happenedBefore = VV([(replicaA, 1), (replicaB, 2)]).compareTo(VV([(replicaA, 2), (replicaB, 3)])) else {
             throw shouldNotHappen("Should be .happenedBefore relation since all entries in LHS are strictly less than RHS")
         }
+        guard case .happenedBefore = VV([(replicaA, 1), (replicaB, 1), (replicaC, 1)]).compareTo(VV([(replicaA, 1), (replicaB, 1), (replicaC, 2)])) else {
+            throw shouldNotHappen("Should be .happenedBefore relation since 2 entries in LHS are equal, and at least one is strictly less than RHS")
+        }
 
-        guard case .happenedAfter = VV([(replicaA, 2)]).compareTo(that: VV()) else {
+        guard case .happenedAfter = VV([(replicaA, 2)]).compareTo(VV()) else {
             throw shouldNotHappen("A non-empty version vector is always after an empty one")
         }
-        guard case .happenedAfter = VV([(replicaA, 2), (replicaB, 3)]).compareTo(that: VV([(replicaA, 1), (replicaB, 2)])) else {
+        guard case .happenedAfter = VV([(replicaA, 2), (replicaB, 3)]).compareTo(VV([(replicaA, 1), (replicaB, 2)])) else {
+            throw shouldNotHappen("Should be .happenedAfter relation since all entries in LHS are strictly greater than RHS")
+        }
+        guard case .happenedAfter = VV([(replicaA, 1), (replicaB, 1), (replicaC, 2)]).compareTo(VV([(replicaA, 1), (replicaB, 1), (replicaC, 1)])) else {
             throw shouldNotHappen("Should be .happenedAfter relation since all entries in LHS are strictly greater than RHS")
         }
 
-        guard case .same = VV().compareTo(that: VV()) else {
+        guard case .same = VV().compareTo(VV()) else {
             throw shouldNotHappen("Two empty version vectors should be considered the same")
         }
-        guard case .same = VV([(replicaA, 2), (replicaB, 1)]).compareTo(that: VV([(replicaB, 1), (replicaA, 2)])) else {
+        guard case .same = VV([(replicaA, 2), (replicaB, 1)]).compareTo(VV([(replicaB, 1), (replicaA, 2)])) else {
             throw shouldNotHappen("Two version vectors should be considered the same if elements are equal")
         }
 
-        guard case .concurrent = VV([(replicaA, 1), (replicaB, 4), (replicaC, 6)]).compareTo(that: VV([(replicaA, 2), (replicaB, 7), (replicaC, 2)])) else {
+        guard case .concurrent = VV([(replicaA, 1), (replicaB, 4), (replicaC, 6)]).compareTo(VV([(replicaA, 2), (replicaB, 7), (replicaC, 2)])) else {
             throw shouldNotHappen("Must be .concurrent relation if the two version vectors are not ordered or the same")
         }
     }
