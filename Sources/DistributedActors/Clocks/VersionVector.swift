@@ -103,15 +103,15 @@ public struct VersionVector {
     /// - Parameter version: The version of interest
     /// - Returns: True if the replica's version in the `VersionVector` is greater than or equal to `version`. False otherwise.
     public func contains(_ replicaId: ReplicaId, _ version: Int) -> Bool {
-        return self[replicaId] >= version
+        self[replicaId] >= version
     }
 
-    /// Compare this `VersionVector` with another and determine causality between the two. They can be ordered (i.e.,
-    /// one happened before or after another), same, or concurrent.
+    /// Compare this `VersionVector` with another and determine causality between the two.
+    /// They can be ordered (i.e., one happened before or after another), same, or concurrent.
     ///
     /// - Parameter that: The `VersionVector` to compare this `VersionVector` to.
     /// - Returns: The causal relation between this and the given `VersionVector`.
-    public func compareTo(that: VersionVector) -> CausalRelation {
+    public func compareTo(_ that: VersionVector) -> CausalRelation {
         if self < that {
             return .happenedBefore
         }
@@ -146,17 +146,17 @@ extension VersionVector: Comparable {
 
         // If every entry in version vector X is less than or equal to the corresponding entry in
         // version vector Y, and at least one entry is strictly smaller, then X < Y.
-        var hasEqual = false
+        var hasAtLeastOneStrictlyLessThan = false
         for (replicaId, lVersion) in lhs.state {
             let rVersion = rhs[replicaId]
             if lVersion > rVersion {
                 return false
             }
-            if lVersion == rVersion {
-                hasEqual = true
+            if lVersion < rVersion {
+                hasAtLeastOneStrictlyLessThan = true
             }
         }
-        return !hasEqual
+        return hasAtLeastOneStrictlyLessThan
     }
 
     public static func == (lhs: VersionVector, rhs: VersionVector) -> Bool {
