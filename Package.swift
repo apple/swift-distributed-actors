@@ -273,11 +273,18 @@ let products: [PackageDescription.Product] = [
         targets: ["DistributedActorsTestKit"]
     ),
 
-    /* --- genActors --- */
+    /* --- GenActors --- */
 
     .executable(
         name: "GenActors",
         targets: ["GenActors"]
+    ),
+
+    /* --- Plugins --- */
+
+    .library(
+        name: "ActorSingletonPlugin",
+        targets: ["ActorSingletonPlugin"]
     ),
 
     /* --- XPC --- */
