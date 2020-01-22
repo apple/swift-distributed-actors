@@ -26,9 +26,10 @@ extension MembershipGossipTests {
             ("test_mergeForward_incomingGossip_firstGossipFromOtherNode", test_mergeForward_incomingGossip_firstGossipFromOtherNode),
             ("test_mergeForward_incomingGossip_sameVersions", test_mergeForward_incomingGossip_sameVersions),
             ("test_mergeForward_incomingGossip_hasNoInformation", test_mergeForward_incomingGossip_hasNoInformation),
-            ("test_converged_shouldBeFalse_forNoMembers", test_converged_shouldBeFalse_forNoMembers),
+            ("test_converged_shouldBeTrue_forNoMembers", test_converged_shouldBeTrue_forNoMembers),
             ("test_converged_amongUpMembers", test_converged_amongUpMembers),
             ("test_converged_joiningOrDownMembersDoNotCount", test_converged_joiningOrDownMembersDoNotCount),
+            ("test_gossip_eventuallyConverges", test_gossip_eventuallyConverges),
         ]
     }
 }
