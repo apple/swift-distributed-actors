@@ -72,7 +72,7 @@ extension CRDT {
         public mutating func compact() {
             // Sort dots by replica then by version in ascending order. We need this ordering to check for continuity.
             for dot in self.gaps.sorted() {
-                if dot.version == self.vv[dot.replicaId] + 1 {
+                if dot.version == (self.vv[dot.replicaId] ?? 0) + 1 {
                     // If the dot's version follows replica's version in `vv`, it is no longer detached and can be added to `vv`.
                     self.vv.increment(at: dot.replicaId)
                     self.gaps.remove(dot)

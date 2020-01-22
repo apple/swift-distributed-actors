@@ -44,7 +44,6 @@ extension Cluster {
             self.seen = Cluster.Gossip.SeenTable(myselfNode: ownerNode, version: VersionVector())
 
             // The actual payload
-            // self.membership = .initial(ownerNode)
             self.membership = .empty // MUST be empty, as on the first "self gossip, we cause all ClusterEvents
         }
 
@@ -98,28 +97,30 @@ extension Cluster {
         /// other members are guaranteed to have seen this information, or their membership may have progressed further
         /// e.g. the member may have already moved to `.up` or further in their perception.
         ///
-        /// By default, only `.up` and `.leaving` members are considered, since joining members are "too early"
+        /// Only `.up` and `.leaving` members are considered, since joining members are "too early"
         /// to matter in decisions, and down members shall never participate in decision making.
-        func converged(among membersWithStatus: Set<Cluster.MemberStatus> = [.up, .leaving]) -> Bool {
-            let members = self.membership.members(withStatus: membersWithStatus)
+        func converged() -> Bool {
+            let members = self.membership.members(withStatus: [.up, .leaving])
             let requiredVersion = self.version
 
-            guard !members.isEmpty else {
-                pprint("members is empty")
-                return false // if no members present, we cannot call it "converged"
+            if members.isEmpty {
+                return true // no-one is around disagree with me! }:-)
             }
 
-            pprint("requiredVersion = \(requiredVersion)")
-            let allMembersSeenRequiredVersion = members.allSatisfy { member in
+            let laggingBehindMemberFound = members.contains { member in
                 if let memberSeenVersion = self.seen.version(at: member.node) {
-                    pprint("memberSeenVersion = \(memberSeenVersion)")
-                    return requiredVersion < memberSeenVersion || requiredVersion == memberSeenVersion
+                    switch memberSeenVersion.compareTo(requiredVersion) {
+                    case .happenedBefore, .concurrent:
+                        return true // found an offending member, it is lagging behind, thus no convergence
+                    case .happenedAfter, .same:
+                        return false
+                    }
                 } else {
-                    return false // no version (weird), so we cannot know if that member has seen enough information
+                    return true // no version in other member, thus we have no idea where it's at -> assuming it is behind
                 }
             }
 
-            return allMembersSeenRequiredVersion
+            return !laggingBehindMemberFound
         }
     }
 }
