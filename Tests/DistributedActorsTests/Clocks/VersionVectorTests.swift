@@ -184,6 +184,9 @@ final class VersionVectorTests: XCTestCase {
         guard case .concurrent = VV([(replicaA, 1), (replicaB, 4), (replicaC, 6)]).compareTo(VV([(replicaA, 2), (replicaB, 7), (replicaC, 2)])) else {
             throw shouldNotHappen("Must be .concurrent relation if the two version vectors are not ordered or the same")
         }
+        guard case .concurrent = VV([(replicaA, 1)]).compareTo(VV([(replicaA, 1), (replicaB, 1)])) else {
+            throw shouldNotHappen("Should be .concurrent, since even if rhs has more information, there is not at least `one strictly less than`")
+        }
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
