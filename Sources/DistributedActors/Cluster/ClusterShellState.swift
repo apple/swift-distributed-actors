@@ -474,10 +474,9 @@ extension ClusterShellState {
             return [] // since we are not the leader, we perform no tasks
         }
 
-        // TODO: act only on leader actions when convergence? https://github.com/apple/swift-distributed-actors/issues/385
-        //        guard self.latestGossip.converged(members: [.up, .leaving]) else {
-        //            return [] // leader actions are only performed when
-        //        }
+        guard self.latestGossip.converged(members: [.up, .leaving]) else {
+            return [] // leader actions are only performed when
+        }
 
         func collectMemberUpMoves() -> [LeaderAction] {
             let joiningMembers = self.membership.members(withStatus: .joining)
