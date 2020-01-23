@@ -65,7 +65,7 @@ public final class RemotePersonality<Message> {
             // TODO: optionally carry file/line?
             remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .message(message)), recipient: self.address)
         } else {
-            pprint("no remote control!!!! \(self.address)")
+            self.system.log.warning("[SWIM] No remote control, while sending to: \(self.address)")
             self.system.personalDeadLetters(recipient: self.address).adapted().tell(message, file: file, line: line)
         }
     }
@@ -90,7 +90,7 @@ public final class RemotePersonality<Message> {
         }
 
         // FIXME: this is a hack/workaround, see https://github.com/apple/swift-distributed-actors/issues/383
-        let maxWorkaroundSpins = 100
+        let maxWorkaroundSpins = 500
         for spinNr in 1 ... maxWorkaroundSpins {
             switch self.clusterShell.associationRemoteControl(with: remoteAddress) {
             case .unknown:
@@ -100,7 +100,7 @@ public final class RemotePersonality<Message> {
                 } // else, fall through to the return nil below
             case .associated(let remoteControl):
                 if spinNr > 1 {
-                    self.system.log.warning("FIXME: Workaround, ActorRef's RemotePersonality had to spin \(spinNr) times to obtain remoteControl to send message to \(self.address)")
+                    self.system.log.debug("FIXME: Workaround, ActorRef's RemotePersonality had to spin \(spinNr) times to obtain remoteControl to send message to \(self.address)")
                 }
                 // self._cachedAssociationRemoteControl = remoteControl // TODO: atomically cache a remote control?
                 return remoteControl

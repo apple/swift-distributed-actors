@@ -37,12 +37,12 @@ extension Cluster {
 
         /// Sequence number at which this node was moved to `.up` by a leader.
         /// The sequence starts at `1`, and 0 means the node was not moved to up _yet_.
-        public var upNumber: Int?
+        public var _upNumber: Int?
 
         public init(node: UniqueNode, status: Cluster.MemberStatus) {
             self.node = node
             self.status = status
-            self.upNumber = nil
+            self._upNumber = nil
             self.reachability = .reachable
         }
 
@@ -50,7 +50,7 @@ extension Cluster {
             assert(!status.isJoining, "Node \(node) was \(status) yet was given upNumber: \(upNumber). This is incorrect, as only at-least .up members may have upNumbers!")
             self.node = node
             self.status = status
-            self.upNumber = upNumber
+            self._upNumber = upNumber
             self.reachability = .reachable
         }
 
@@ -70,10 +70,10 @@ extension Cluster {
         /// Used to gossip a `.down` decision, but not accidentally move the node "back" to down if it already was leaving or removed.
         public var asDownIfNotAlready: Member {
             switch self.status {
-            case .down, .leaving, .removed:
-                return self
-            case .joining, .up:
+            case .joining, .up, .leaving:
                 return Member(node: self.node, status: .down)
+            case .down, .removed:
+                return self
             }
         }
 
@@ -81,28 +81,30 @@ extension Cluster {
         ///
         /// Note that moving only happens along the lifecycle of a member, e.g. trying to move forward from .up do .joining
         /// will result in a `nil` change and no changes being made to the member.
-        public mutating func moveForward(_ status: Cluster.MemberStatus) -> Cluster.MembershipChange? {
+        public mutating func moveForward(to status: Cluster.MemberStatus) -> Cluster.MembershipChange? {
             guard self.status < status else {
                 return nil
             }
             let oldMember = self
             self.status = status
-            // FIXME: potential to lose upNumbers here! Need to revisit the upNumber things anyway, not in love with it
             return Cluster.MembershipChange(member: oldMember, toStatus: status)
+        }
+
+        public func movingForward(to status: MemberStatus) -> Self {
+            var m = self
+            _ = m.moveForward(to: status)
+            return m
         }
     }
 }
 
-extension Cluster.Member {
+extension Cluster.Member: Equatable {
     public func hash(into hasher: inout Hasher) {
         self.node.hash(into: &hasher)
     }
 
     public static func == (lhs: Cluster.Member, rhs: Cluster.Member) -> Bool {
-        if lhs.node != rhs.node {
-            return false
-        }
-        return true
+        lhs.node == rhs.node
     }
 }
 
@@ -115,7 +117,13 @@ extension Cluster.Member {
     /// and stopped on demand. Putting certain types of workloads onto "old(est)" nodes in such clusters has the benefit
     /// of most likely not needing to balance/move work off them too often (in face of many ad-hoc worker spawns).
     public static let ageOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
-        (l.upNumber ?? 0) < (r.upNumber ?? 0)
+        (l._upNumber ?? 0) < (r._upNumber ?? 0)
+    }
+
+    /// An ordering by the members' `node` properties, e.g. 1.1.1.1 is "lower" than 2.2.2.2.
+    /// This ordering somewhat unusual, however always consistent and used to select a leader -- see `LowestReachableMember`.
+    public static let lowestAddressOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
+        l.node < r.node
     }
 }
 
@@ -125,7 +133,7 @@ extension Cluster.Member: CustomStringConvertible, CustomDebugStringConvertible 
     }
 
     public var debugDescription: String {
-        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability)\(self.upNumber.map { ", upNumber: \($0)" } ?? ""))"
+        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability)\(self._upNumber.map { ", upNumber: \($0)" } ?? ""))"
     }
 }
 
@@ -138,7 +146,7 @@ extension Cluster.Member: Codable {
 
 extension Cluster {
     /// Describes the status of a member within the clusters lifecycle.
-    public enum MemberStatus: String, Comparable {
+    public enum MemberStatus: String, CaseIterable, Comparable {
         /// Describes a node which is connected to at least one other member in the cluster,
         /// it may want to serve some traffic, however should await the leader moving it to .up
         /// before it takes on serious work.
@@ -170,6 +178,7 @@ extension Cluster {
         /// with members which have been down as they may contain severely outdated opinions about the cluster and state that it contains.
         /// In other words: "Members don't talk to zombies."
         case down
+
         /// Describes a member which is safe to _completely remove_ from future gossips.
         /// This status is managed internally and not really of concern to end users (it could be treated equivalent to .down
         /// by applications safely). Notably, this status should never really be "stored" in membership, other than for purposes

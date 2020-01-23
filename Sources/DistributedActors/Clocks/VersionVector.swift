@@ -39,6 +39,8 @@ public struct VersionVector {
     // Internal state is a dictionary of replicas and their corresponding version
     internal var state: [ReplicaId: Int] = [:]
 
+    public static let empty: VersionVector = .init()
+
     public static func first(at replicaId: ReplicaId) -> Self {
         .init((replicaId, 1))
     }

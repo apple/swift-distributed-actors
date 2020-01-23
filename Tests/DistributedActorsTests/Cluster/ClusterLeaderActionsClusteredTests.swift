@@ -19,10 +19,6 @@ import NIOSSL
 import XCTest
 
 final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
-    override var alwaysPrintCaptureLogs: Bool {
-        true
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 
@@ -179,7 +175,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             // on the leader node, the other node noticed as up:
             let eventsOnFirstSub = try p1.expectMessages(count: 6)
             eventsOnFirstSub.shouldContain(.snapshot(.empty))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .joining)))
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
@@ -189,7 +185,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             let eventsOnSecondSub = try p2.expectMessages(count: 6)
             eventsOnSecondSub.shouldContain(.snapshot(.empty))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .joining)))
+            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnSecondSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
@@ -237,7 +233,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             // on the leader node, the other node noticed as up:
             let eventsOnFirstSub = try p1.expectMessages(count: 9)
             eventsOnFirstSub.shouldContain(.snapshot(.empty))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .joining)))
+            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
@@ -246,13 +242,10 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.node, fromStatus: .joining, toStatus: .up)))
 
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .up, toStatus: .down)))
-//            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .down, toStatus: .removed)))
 
             try self.testKit(first).eventually(within: .seconds(3)) {
                 let p1s = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
                 first.cluster.ref.tell(.query(.currentMembership(p1s.ref)))
-                let membership = try p1s.expectMessage()
-                pprint("reflecting: membership = \(reflecting: membership)")
             }
         }
     }

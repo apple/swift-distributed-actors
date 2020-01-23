@@ -314,7 +314,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 }
 
 extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "Cluster.Member"
+  static let protoMessageName: String = "ClusterMember"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "node"),
     2: .same(proto: "status"),

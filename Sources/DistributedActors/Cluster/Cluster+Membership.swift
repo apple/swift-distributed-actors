@@ -30,18 +30,13 @@ extension Cluster {
     /// and attempts to connect to the same cluster as its previous "incarnation". Such situation is called a replacement, and by the assumption
     /// of that it should not be possible to run many nodes on exact same host+port the previous node is immediately ejected and marked down.
     ///
-    // TODO: diagram of state transitions for the members
-    // TODO: how does seen table relate to this
-    // TODO: should we not also mark other nodes observations of members in here?
-    public struct Membership: Hashable, ExpressibleByArrayLiteral {
+    /// ### Member state transitions
+    /// Members can only move "forward" along their status lifecycle, refer to `Cluster.MemberStatus` docs for a diagram of legal transitions.
+    public struct Membership: ExpressibleByArrayLiteral {
         public typealias ArrayLiteralElement = Cluster.Member
 
         public static var empty: Cluster.Membership {
             .init(members: [])
-        }
-
-        internal static func initial(_ myselfNode: UniqueNode) -> Cluster.Membership {
-            Cluster.Membership.empty.joining(myselfNode)
         }
 
         /// Members MUST be stored `UniqueNode` rather than plain node, since there may exist "replacements" which we need
@@ -69,14 +64,14 @@ extension Cluster {
         /// This operation is guaranteed to return a member if it was added to the membership UNLESS the member has been `.removed`
         /// and dropped which happens only after an extended period of time. // FIXME: That period of time is not implemented
         public func uniqueMember(_ node: UniqueNode) -> Cluster.Member? {
-            return self._members[node]
+            self._members[node]
         }
 
         /// Picks "first", in terms of least progressed among its lifecycle member in presence of potentially multiple members
         /// for a non-unique `Node`. In practice, this happens when an existing node is superseded by a "replacement", and the
         /// previous node becomes immediately down.
-        public func firstMember(_ node: Node) -> Cluster.Member? {
-            return self._members.values.sorted(by: Cluster.MemberStatus.lifecycleOrdering).first(where: { $0.node.node == node })
+        public func member(_ node: Node) -> Cluster.Member? {
+            self._members.values.sorted(by: Cluster.MemberStatus.lifecycleOrdering).first(where: { $0.node.node == node })
         }
 
         public func youngestMember() -> Cluster.Member? {
@@ -85,12 +80,6 @@ extension Cluster {
 
         public func oldestMember() -> Cluster.Member? {
             self.members(atLeast: .joining).min(by: Cluster.Member.ageOrdering)
-        }
-
-        public func members(_ node: Node) -> [Cluster.Member] {
-            return self._members.values
-                .filter { $0.node.node == node }
-                .sorted(by: Cluster.MemberStatus.lifecycleOrdering)
         }
 
         /// Count of all members (regardless of their `MemberStatus`)
@@ -200,6 +189,43 @@ extension Cluster {
     }
 }
 
+// Implementation nodes: Membership/Member equality
+// Membership equality is special, as it manually DOES take into account the Member's states (status, reachability),
+// whilst the Member equality by itself does not. This is somewhat ugly, however it allows us to perform automatic
+// seen table owner version updates whenever "the membership has changed." We may want to move away from this and make
+// these explicit methods, though for now this seems to be the equality we always want when we use Membership, and the
+// one we want when we compare members -- as we want to know "does a thing contain this member" rather than "does a thing
+// contain this full exact state of a member," whereas for Membership we want to know "is the state of the membership exactly the same."
+extension Cluster.Membership: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self._leaderNode)
+        for member in self._members.values {
+            hasher.combine(member.node)
+            hasher.combine(member.status)
+            hasher.combine(member.reachability)
+        }
+    }
+
+    public static func == (lhs: Cluster.Membership, rhs: Cluster.Membership) -> Bool {
+        guard lhs._leaderNode == rhs._leaderNode else {
+            return false
+        }
+        guard lhs._members.count == rhs._members.count else {
+            return false
+        }
+        for (lNode, lMember) in lhs._members {
+            if let rMember = rhs._members[lNode],
+                lMember.node != rMember.node ||
+                lMember.status != rMember.status ||
+                lMember.reachability != rMember.reachability {
+                return false
+            }
+        }
+
+        return true
+    }
+}
+
 extension Cluster.Membership: CustomStringConvertible, CustomDebugStringConvertible {
     /// Pretty multi-line output of a membership, useful for manual inspection
     public func prettyDescription(label: String) -> String {
@@ -236,19 +262,25 @@ extension Cluster.Membership {
     /// - Returns: the resulting change that was applied to the membership; note that this may be `nil`,
     ///   if the change did not cause any actual change to the membership state (e.g. signaling a join of the same node twice).
     public mutating func apply(_ change: Cluster.MembershipChange) -> Cluster.MembershipChange? {
-        switch change.toStatus {
-        case .joining:
-            if self.uniqueMember(change.node) != nil {
-                // If we actually already have this node, it is a MARK, not a join "over"
-                return self.mark(change.node, as: change.toStatus)
-            } else {
-                return self.join(change.node)
-            }
-        case let status:
-            if self.firstMember(change.node.node) == nil { // TODO: more general? // TODO this entire method should be simpler
-                _ = self.join(change.node)
-            }
-            let change = self.mark(change.node, as: status)
+        if case .removed = change.toStatus {
+            return self.removeCompletely(change.node)
+        }
+
+        if let knownUnique = self.uniqueMember(change.node) {
+            // it is known uniquely, so we just update its status
+            return self.mark(knownUnique.node, as: change.toStatus)
+        }
+
+        if let previousMember = self.member(change.node.node) {
+            // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
+            _ = self.removeCompletely(previousMember.node) // the replacement event will handle the down notifications
+            self._members[change.node] = change.member
+
+            // emit a replacement membership change, this will cause down cluster events for previous member
+            return .init(replaced: previousMember, by: change.member)
+        } else {
+            // node is normally joining
+            self._members[change.member.node] = change.member
             return change
         }
     }
@@ -304,19 +336,10 @@ extension Cluster.Membership {
 
     /// Returns the change; e.g. if we replaced a node the change `from` will be populated and perhaps a connection should
     /// be closed to that now-replaced node, since we have replaced it with a new node.
-    public mutating func join(_ node: UniqueNode) -> Cluster.MembershipChange {
-        let newMember = Cluster.Member(node: node, status: .joining)
-
-        if let member = self.firstMember(node.node) {
-            // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
-            self._members[member.node] = Cluster.Member(node: member.node, status: .down)
-            self._members[node] = newMember
-            return .init(replaced: member, by: newMember)
-        } else {
-            // node is normally joining
-            self._members[node] = newMember
-            return .init(node: node, fromStatus: nil, toStatus: .joining)
-        }
+    public mutating func join(_ node: UniqueNode) -> Cluster.MembershipChange? {
+        var change = Cluster.MembershipChange(member: Cluster.Member(node: node, status: .joining))
+        change.fromStatus = nil
+        return self.apply(change)
     }
 
     public func joining(_ node: UniqueNode) -> Cluster.Membership {
@@ -340,12 +363,12 @@ extension Cluster.Membership {
             var updatedMember = existingExactMember
             updatedMember.status = status
             if status == .up {
-                updatedMember.upNumber = self.youngestMember()?.upNumber ?? 1
+                updatedMember._upNumber = self.youngestMember()?._upNumber ?? 1
             }
             self._members[existingExactMember.node] = updatedMember
 
             return Cluster.MembershipChange(member: existingExactMember, toStatus: status)
-        } else if let beingReplacedMember = self.firstMember(node.node) {
+        } else if let beingReplacedMember = self.member(node.node) {
             // We did not get a member by exact UniqueNode match, but we got one by Node match...
             // this means this new node that we are trying to mark is a "replacement" and the `beingReplacedNode` must be .downed!
 
@@ -355,11 +378,11 @@ extension Cluster.Membership {
 
             // replacement:
             let replacedNode = Cluster.Member(node: beingReplacedMember.node, status: .down)
-            let newNode = Cluster.Member(node: node, status: status)
+            let nodeD = Cluster.Member(node: node, status: status)
             self._members[replacedNode.node] = replacedNode
-            self._members[newNode.node] = newNode
+            self._members[nodeD.node] = nodeD
 
-            return Cluster.MembershipChange(replaced: beingReplacedMember, by: newNode)
+            return Cluster.MembershipChange(replaced: beingReplacedMember, by: nodeD)
         } else {
             // no such member -> no change applied
             return nil
@@ -419,41 +442,59 @@ extension Cluster.Membership {
 }
 
 extension Cluster.Membership {
-    /// Special Merge function that only moves members "forward" however never removes them, as removal MUST ONLY be
+    /// Special merge function that only moves members "forward" however never removes them, as removal MUST ONLY be
     /// issued specifically by a leader working on the assumption that the `incoming` Membership is KNOWN to be "ahead",
     /// and e.g. if any nodes are NOT present in the incoming membership, they shall be considered `.removed`.
     ///
     /// Otherwise, functions as a normal merge, by moving all members "forward" in their respective lifecycles.
-    /// Meaning the following transitions are possible:
+    ///
+    /// The following table illustrates the possible state transitions of a node during a merge:
     ///
     /// ```
-    ///  self          | incoming
-    /// ---------------+----------------------------------------------|-------------------------
-    ///  <none>       --> [.joining, .up, .leaving, .down, .removed] --> <incoming status>
-    ///  [.joining]   --> [.joining, .up, .leaving, .down, .removed] --> <incoming status>
-    ///  [.up]        --> [.up, .leaving, .down, .removed]           --> <incoming status>
-    ///  [.leaving]   --> [.leaving, .down, .removed]                --> <incoming status>
-    ///  [.down]      --> [.down, .removed]                          --> <incoming status>
-    ///  [.removed]*  --> [.removed]                                 --> <incoming status>
-    ///  <any status> --> <none>                                     --> <self status>
-    /// * realistically a .removed will never be _stored_ it may be incoming which means that a leader has decided that we
+    /// node's status     | "ahead" node's status            | resulting node's status
+    /// ----------------+------------------------------------|-------------------------
+    ///  <none>        --> [.joining, .up, .leaving]        --> <ahead status>
+    ///  <none>        --> [.down, .removed]                --> <none>
+    ///  [.joining]    --> [.joining, .up, .leaving, .down] --> <ahead status>
+    ///  [.up]         --> [.up, .leaving, .down]           --> <ahead status>
+    ///  [.leaving]    --> [.leaving, .down]                --> <ahead status>
+    ///  [.down]       --> [.down]                          --> <ahead status>
+    ///  <any status>* --> [.removed]                       --> <none>
+    ///  <any status>  --> <none>                           --> <previous status>
+    /// * a .removed will never be _stored_ it may be incoming which means that a leader has decided that we
     ///   it is safe to remove the member from the membership, i.e. all nodes have converged on seeing it as leaving
     /// ```
     ///
+    /// Warning: Leaders are not "merged", they get elected by each node (!).
+    ///
     /// - Returns: any membership changes that occurred (and have affected the current membership).
-    public mutating func mergeForward(fromAhead ahead: Cluster.Membership) -> [Cluster.MembershipChange] {
+    public mutating func mergeFrom(ahead: Cluster.Membership) -> [Cluster.MembershipChange] {
         var changes: [Cluster.MembershipChange] = []
 
         for incomingMember in ahead._members.values {
-            if var member = self._members[incomingMember.node] {
-                if let change = member.moveForward(incomingMember.status) {
-                    self._members[incomingMember.node] = member
-                    changes.append(change)
-                }
-            } else {
+            guard var knownMember = self._members[incomingMember.node] else {
                 // member not known locally
-                self._members[incomingMember.node] = incomingMember
-                changes.append(.init(member: incomingMember))
+                if Cluster.MemberStatus.down <= incomingMember.status {
+                    // no need to do anything if it is a removal coming in, yet we already do not know this node
+                    continue
+                } else {
+                    // it is information about a new member, merge it in
+                    self._members[incomingMember.node] = incomingMember
+
+                    var change: Cluster.MembershipChange = .init(member: incomingMember)
+                    change.fromStatus = nil // since "new"
+                    changes.append(change)
+                    continue
+                }
+            }
+            // it is a known member
+            if let change = knownMember.moveForward(to: incomingMember.status) {
+                if change.toStatus.isRemoved {
+                    self._members.removeValue(forKey: incomingMember.node)
+                } else {
+                    self._members[incomingMember.node] = knownMember
+                }
+                changes.append(change)
             }
         }
 
@@ -493,8 +534,8 @@ extension Cluster.Membership {
 
 extension Cluster.Membership {
     /// Compute a diff between two membership states.
-    /// The diff includes any member state changes, as well as
-    internal static func diff(from: Cluster.Membership, to: Cluster.Membership) -> MembershipDiff {
+    // TODO: diffing is not super well tested, may lose up numbers
+    internal static func _diff(from: Cluster.Membership, to: Cluster.Membership) -> MembershipDiff {
         var entries: [Cluster.MembershipChange] = []
         entries.reserveCapacity(max(from._members.count, to._members.count))
 
@@ -506,11 +547,11 @@ extension Cluster.Membership {
             if let toMember = to.uniqueMember(member.node) {
                 to._members.removeValue(forKey: member.node)
                 if member.status != toMember.status {
-                    entries.append(.init(node: member.node, fromStatus: member.status, toStatus: toMember.status))
+                    entries.append(.init(member: member, toStatus: toMember.status))
                 }
             } else {
                 // member is not present `to`, thus it was removed
-                entries.append(.init(node: member.node, fromStatus: member.status, toStatus: .removed))
+                entries.append(.init(member: member, toStatus: .removed))
             }
         }
 
@@ -555,25 +596,47 @@ extension Cluster {
     /// Represents a change made to a `Membership`, it can be received from gossip and shall be applied to local memberships,
     /// or may originate from local decisions (such as joining or downing).
     public struct MembershipChange: Equatable {
+        /// Current member that is part of the membership after this change
+        public internal(set) var member: Cluster.Member
+
         /// The node which the change concerns.
-        public let node: UniqueNode
+        public var node: UniqueNode {
+            self.member.node
+        }
 
         /// Only set if the change is a "replacement", which can happen only if a node joins
         /// from the same physical address (host + port), however its UID has changed.
-        public private(set) var replaced: Cluster.Member?
+        internal private(set) var replaced: Cluster.Member?
 
-        public private(set) var fromStatus: Cluster.MemberStatus?
+        /// A replacement means that a new node appeared on the same host/port, and thus the old node must be assumed down.
+        internal var replacementDownPreviousNodeChange: Cluster.MembershipChange? {
+            guard let replacedMember = self.replaced else {
+                return nil
+            }
+            return .init(member: replacedMember, toStatus: .down)
+        }
+
+        public internal(set) var fromStatus: Cluster.MemberStatus?
         public let toStatus: Cluster.MemberStatus
 
         init(member: Cluster.Member, toStatus: Cluster.MemberStatus? = nil) {
-            self.node = member.node
-            self.replaced = nil
-            self.fromStatus = member.status
-            self.toStatus = toStatus ?? member.status
+            if let to = toStatus {
+                var m = member
+                m.status = to
+                self.member = m
+                self.replaced = nil
+                self.fromStatus = member.status
+                self.toStatus = to
+            } else {
+                self.member = member
+                self.replaced = nil
+                self.fromStatus = nil
+                self.toStatus = member.status
+            }
         }
 
         init(node: UniqueNode, fromStatus: Cluster.MemberStatus?, toStatus: Cluster.MemberStatus) {
-            self.node = node
+            self.member = .init(node: node, status: toStatus)
             self.replaced = nil
             self.fromStatus = fromStatus
             self.toStatus = toStatus
@@ -585,14 +648,9 @@ extension Cluster {
             assert(replaced.node.port == newMember.node.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
 
             self.replaced = replaced
-            self.node = newMember.node
-            self.fromStatus = nil // a replacement means that the new member is "new" after all, so the move is from unknown
+            self.member = newMember
+            self.fromStatus = replaced.status
             self.toStatus = newMember.status
-        }
-
-        /// Current member that is part of the membership after this change
-        public var member: Cluster.Member {
-            Cluster.Member(node: self.node, status: self.toStatus)
         }
     }
 }

@@ -148,22 +148,26 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         // we are the leader, if a timeout happens, we should issue .down
         _ = try self.instance.onLeaderChange(to: self.selfMember)
 
-        let directive = self.instance.onMemberUnreachable(.init(member: self.otherMember.asUnreachable))
-        guard case .startTimer = directive else {
-            throw TestError("Expected .startTimer, but got \(directive)")
+        let unreachableMember = self.otherMember.asUnreachable
+
+        try shouldNotThrow {
+            let directive = self.instance.onMemberUnreachable(.init(member: unreachableMember))
+            guard case .startTimer = directive else {
+                throw TestError("Expected .startTimer, but got \(directive)")
+            }
+
+            let downDecision = self.instance.onTimeout(unreachableMember)
+            guard case .markAsDown(let nodesToDown) = downDecision else {
+                throw TestError("Expected .markAsDown, but got \(directive)")
+            }
+
+            nodesToDown.shouldEqual([unreachableMember])
+
+            // since we signalled the .down, no need to retain the member as "to be marked down" anymore,
+            // if we never cleaned that set it could be technically a memory leak, continuing to accumulate
+            // all members that we downed over the lifetime of the cluster.
+            self.instance._markAsDown.shouldBeEmpty()
         }
-
-        let downDecision = self.instance.onTimeout(self.otherMember)
-        guard case .markAsDown(let nodesToDown) = downDecision else {
-            throw TestError("Expected .markAsDown, but got \(directive)")
-        }
-
-        nodesToDown.shouldEqual([self.otherMember])
-
-        // since we signalled the .down, no need to retain the member as "to be marked down" anymore,
-        // if we never cleaned that set it could be technically a memory leak, continuing to accumulate
-        // all members that we downed over the lifetime of the cluster.
-        self.instance._markAsDown.shouldBeEmpty()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -238,6 +242,6 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         guard case .startTimer = self.instance.onMemberUnreachable(.init(member: member.asUnreachable)) else {
             throw TestError("Expected directive to be .startTimer")
         }
-        self.instance._unreachable.shouldContain(member)
+        self.instance._unreachable.shouldContain(member.asUnreachable)
     }
 }

@@ -16,6 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
+// "Get down!"
 final class DowningClusteredTests: ClusteredNodesTestBase {
     enum NodeStopMethod {
         case leaveSelf // TODO: eventually this one will be more graceful, ensure others see us leave etc
@@ -23,6 +24,9 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
         case shutdownSelf
         case downFromSecond
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Downing
 
     func shared_stoppingSelfNode_shouldPropagateToOtherNodes(stopMethod: NodeStopMethod) throws {
         let (first, second) = self.setUpPair { settings in

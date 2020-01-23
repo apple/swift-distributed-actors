@@ -285,8 +285,9 @@ extension LogCapture {
             return found
         } else {
             let query = [
-                message.map { "message: \"\($0)\"" },
                 prefix.map { "prefix: \"\($0)\"" },
+                message.map { "message: \"\($0)\"" },
+                grep.map { "grep: \"\($0)\"" },
                 level.map { "level: \($0)" } ?? "",
                 expectedFile.map { "expectedFile: \"\($0)\"" },
                 (expectedLine > -1 ? Optional(expectedLine) : nil).map { "expectedLine: \($0)" },
