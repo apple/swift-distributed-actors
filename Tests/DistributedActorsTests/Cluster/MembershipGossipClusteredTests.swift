@@ -18,11 +18,18 @@ import Foundation
 import NIOSSL
 import XCTest
 
-final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
+final class MembershipGossipClusteredTests: ClusteredNodesTestBase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
         settings.filterActorPaths = ["/system/cluster"]
         settings.excludeActorPaths = ["/system/cluster/swim"] // we assume it works fine
-        settings.excludeGrep = ["with generation"] // exclude timers noise
+            "/system/receptionist",
+        ]
+        settings.excludeGrep = [
+            "TimerKey",
+            "schedule next gossip",
+            "Gossip payload updated",
+        ]
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -117,5 +124,50 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Pruning (removing) a member once everyone has seen it down
 
-    func test_remove_memberOnceAllMembersSeenItDown() {}
+    func test_downingNode_eventuallyResultsInRemovalFromGossip() throws {
+        // This action is carefully orchestrated by the leader -- on our case: first
+        let (first, second) = self.setUpPair { settings in
+            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+
+            settings.cluster.downingStrategy = .timeout(.default)
+        }
+        let third = self.setUpNode("third") { settings in
+            settings.cluster.onDownAction = .gracefulShutdown(delay: .seconds(0))
+            settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
+
+            settings.cluster.downingStrategy = .timeout(.default)
+        }
+        try self.joinNodes(node: first, with: second, ensureMembers: .up)
+        try self.joinNodes(node: third, with: second, ensureMembers: .up)
+
+        first.cluster.down(node: second.cluster.node.node)
+        first.log.info("LEADER ISSUE DOWN  = \(second.cluster.node)")
+
+        let firstCapturedLogs = self.capturedLogs(of: first)
+
+        _ = try shouldNotThrow {
+            let testKit: ActorTestKit = self.testKit(first)
+
+            try testKit.eventually(within: .seconds(20), interval: .seconds(1)) {
+                try firstCapturedLogs.shouldContain(
+                    grep:
+                    "Leader moving member: Cluster.MembershipChange(node: sact://third@localhost:9003, replaced: [nil], fromStatus: joining, toStatus: up)", failTest: false
+                )
+            }
+
+            try testKit.eventually(within: .seconds(20), interval: .seconds(1)) {
+                try firstCapturedLogs.shouldContain(
+                    grep:
+                    "Leader removing member: Member(sact://second@localhost:9002, status: down, reachability: reachable)", failTest: false
+                )
+            }
+
+            Thread.sleep(.seconds(5))
+
+            firstCapturedLogs.logs.filter { log in
+                "\(log)".contains("Leader removing member")
+            }.count.shouldEqual(1)
+        }
+    }
 }

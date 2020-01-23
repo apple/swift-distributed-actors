@@ -211,11 +211,11 @@ public struct Serialization {
     }
 
     public func serializerIdFor(metaType: AnyMetaType) -> SerializerId? {
-        return self.serializerIds[metaType.asHashable()]
+        self.serializerIds[metaType.asHashable()]
     }
 
     public func serializer(for id: SerializerId) -> AnySerializer? {
-        return self.serializers[id]
+        self.serializers[id]
     }
 
     internal func debugPrintSerializerTable(header: String = "") {
@@ -223,7 +223,7 @@ public struct Serialization {
         for (key, id) in self.serializerIds.sorted(by: { $0.value < $1.value }) {
             p += "  Serializer (id:\(id)) key:\(key) = \(self.serializers[id], orElse: "<undefined>")\n"
         }
-        print(p)
+        self.log.debug("\(p)")
     }
 }
 

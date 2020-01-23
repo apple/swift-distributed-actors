@@ -25,9 +25,14 @@ extension MembershipGossipTests {
         return [
             ("test_mergeForward_incomingGossip_firstGossipFromOtherNode", test_mergeForward_incomingGossip_firstGossipFromOtherNode),
             ("test_mergeForward_incomingGossip_sameVersions", test_mergeForward_incomingGossip_sameVersions),
-            ("test_mergeForward_incomingGossip_hasNoInformation", test_mergeForward_incomingGossip_hasNoInformation),
+            ("test_mergeForward_incomingGossip_fromFourth_onlyKnowsAboutItself", test_mergeForward_incomingGossip_fromFourth_onlyKnowsAboutItself),
+            ("test_mergeForward_incomingGossip_localHasRemoved_incomingHasOldViewWithDownNode", test_mergeForward_incomingGossip_localHasRemoved_incomingHasOldViewWithDownNode),
+            ("test_mergeForward_incomingGossip_concurrent_leaderDisagreement", test_mergeForward_incomingGossip_concurrent_leaderDisagreement),
+            ("test_mergeForward_incomingGossip_concurrent_simple", test_mergeForward_incomingGossip_concurrent_simple),
+            ("test_mergeForward_incomingGossip_hasNewNode", test_mergeForward_incomingGossip_hasNewNode),
             ("test_converged_shouldBeTrue_forNoMembers", test_converged_shouldBeTrue_forNoMembers),
             ("test_converged_amongUpMembers", test_converged_amongUpMembers),
+            ("test_converged_othersAreOnlyDownOrJoining", test_converged_othersAreOnlyDownOrJoining),
             ("test_converged_joiningOrDownMembersDoNotCount", test_converged_joiningOrDownMembersDoNotCount),
             ("test_gossip_eventuallyConverges", test_gossip_eventuallyConverges),
         ]

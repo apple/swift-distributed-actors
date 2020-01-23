@@ -564,11 +564,11 @@ public struct Node: Hashable {
 
 extension Node: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "\(self.protocol)://\(self.systemName)@\(self.host):\(self.port)"
+        "\(self.protocol)://\(self.systemName)@\(self.host):\(self.port)"
     }
 
     public var debugDescription: String {
-        return self.description
+        self.description
     }
 }
 
@@ -576,7 +576,7 @@ extension Node: Comparable {
     // Silly but good enough comparison for deciding "who is lower node"
     // as we only use those for "tie-breakers" any ordering is fine to be honest here.
     public static func < (lhs: Node, rhs: Node) -> Bool {
-        return "\(lhs)" < "\(rhs)"
+        "\(lhs)" < "\(rhs)"
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -586,7 +586,7 @@ extension Node: Comparable {
     }
 
     public static func == (lhs: Node, rhs: Node) -> Bool {
-        return lhs.protocol == rhs.protocol && lhs.host == rhs.host && lhs.port == rhs.port
+        lhs.protocol == rhs.protocol && lhs.host == rhs.host && lhs.port == rhs.port
     }
 }
 
@@ -624,7 +624,7 @@ public struct UniqueNode: Hashable {
             self.node.host = newValue
         }
         get {
-            return self.node.host
+            self.node.host
         }
     }
 
@@ -633,14 +633,14 @@ public struct UniqueNode: Hashable {
             self.node.port = newValue
         }
         get {
-            return self.node.port
+            self.node.port
         }
     }
 }
 
 extension UniqueNode: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "\(self.node)"
+        "\(self.node)"
     }
 
     public var debugDescription: String {
@@ -652,7 +652,7 @@ extension UniqueNode: CustomStringConvertible, CustomDebugStringConvertible {
 extension UniqueNode: Comparable {
     public static func == (lhs: UniqueNode, rhs: UniqueNode) -> Bool {
         // we first compare the NodeIDs since they're quicker to compare and for diff systems always would differ, even if on same physical address
-        return lhs.nid == rhs.nid && lhs.node == rhs.node
+        lhs.nid == rhs.nid && lhs.node == rhs.node
     }
 
     // Silly but good enough comparison for deciding "who is lower node"

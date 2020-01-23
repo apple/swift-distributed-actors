@@ -100,7 +100,7 @@ extension CRDT.Replicator {
                 self.remoteReplicators.remove(remoteReplicatorRef)
 
             case .snapshot(let snapshot):
-                Cluster.Membership.diff(from: .empty, to: snapshot).changes.forEach { change in
+                Cluster.Membership._diff(from: .empty, to: snapshot).changes.forEach { change in
                     self.receiveClusterEvent(context, event: .membershipChange(change))
                 }
 

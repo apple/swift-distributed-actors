@@ -19,7 +19,7 @@ extension Cluster {
     /// Gossip payload about members in the cluster.
     ///
     /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
-    struct Gossip {
+    struct Gossip: Equatable {
         // TODO: can be moved to generic envelope ---------
         let owner: UniqueNode
         /// A table maintaining our perception of other nodes views on the version of membership.
@@ -29,7 +29,7 @@ extension Cluster {
         var seen: Cluster.Gossip.SeenTable
         /// The version vector of this gossip and the `Membership` state owned by it.
         var version: VersionVector {
-            self.seen.table[self.owner]! // !-safe, since we _always)_ know our own world view
+            self.seen.underlying[self.owner]! // !-safe, since we _always_ know our own world view
         }
 
         // TODO: end of can be moved to generic envelope ---------
@@ -61,27 +61,65 @@ extension Cluster {
         /// Merge an incoming gossip _into_ the current gossip.
         /// Ownership of this gossip is retained, versions are bumped, and membership is merged.
         mutating func mergeForward(incoming: Gossip) -> MergeDirective {
-            // TODO: note: we could technically always just merge anyway; all data we have here is CRDT like anyway
-            let causalRelation: VersionVector.CausalRelation = self.seen.compareVersion(observedOn: self.owner, to: incoming.version)
-            self.seen.merge(owner: self.owner, incoming: incoming) // always merge, as we grow our knowledge about what the other node has "seen"
+            var incoming = incoming
 
-            if case .happenedAfter = causalRelation {
-                // our local view happened strictly _after_ the incoming one, thus it is guaranteed
-                // it will not provide us with new information; This is only an optimization, and would work correctly without it.
-                // TODO: consider doing the same for .same?
+            // 1) decide the relationship between this gossip and the incoming one
+            let causalRelation: VersionVector.CausalRelation = self.version.compareTo(incoming.version)
+
+            // 1.1) Protect the node from any gossip from a .down node (!), it cannot and MUST NOT be trusted.
+            let incomingGossipOwnerKnownLocally = self.membership.uniqueMember(incoming.owner)
+            guard let incomingOwnerMember = incoming.membership.uniqueMember(incoming.owner) else {
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
             }
+            switch incomingGossipOwnerKnownLocally {
+            case .some(let locallyKnownTo) where locallyKnownTo.status.isDown:
+                // we have NOT removed it yet, but it is down, so we ignore it
+                return .init(causalRelation: causalRelation, effectiveChanges: [])
+            case .none where Cluster.MemberStatus.down <= incomingOwnerMember.status:
+                // we have likely removed it, and it is down anyway, so we ignore it completely
+                return .init(causalRelation: causalRelation, effectiveChanges: [])
+            default:
+                () // ok, so it is fine and still alive
+            }
 
-            let changes = self.membership.mergeForward(fromAhead: incoming.membership)
+            // 1.2) Protect from zombies: Any nodes that we know are dead or down, we should not accept any information from
+            let incomingConcurrentDownMembers = incoming.membership.members(atLeast: .down)
+            for pruneFromIncomingBeforeMerge in incomingConcurrentDownMembers
+                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.node) == nil {
+                _ = incoming.pruneMember(pruneFromIncomingBeforeMerge)
+            }
+
+            // 2) calculate membership changes; if this gossip is strictly more recent than the incoming one,
+            // we can skip this as we "know" that we already know everything that the incoming has to offer (optimization)
+            let changes: [MembershipChange]
+            if case .happenedAfter = causalRelation {
+                // ignore all changes >>
+                // our local view happened strictly _after_ the incoming one, thus it is guaranteed
+                // it will not provide us with new information; This is only an optimization, and would work correctly without it.
+                changes = []
+                // self.seen.merge(selfOwner: self.owner, incoming: incoming)
+            } else {
+                changes = self.membership.mergeFrom(ahead: incoming.membership)
+                // same version, meaning there's nothing to merge
+                // self.seen.merge(owner: self.owner, incoming: incoming)
+            }
+
+//            pprint("self.seen = \(self.seen)")
+//            pprint("incoming = \(incoming.seen)")
+            self.seen.merge(selfOwner: self.owner, incoming: incoming.seen)
+//            pprint("self.owner = \(self.owner)")
+//            pprint("self.seen = \(self.seen)")
+//
+//            pprint("self = \(self)")
+
             return .init(causalRelation: causalRelation, effectiveChanges: changes)
         }
 
-        // TODO: tests for this
         /// Remove member from `membership` and prune the seen tables of any trace of the removed node.
-        // TODO: ensure that this works always correctly!!!!!!! (think about it)
         mutating func pruneMember(_ member: Member) -> Cluster.MembershipChange? {
             self.seen.prune(member.node) // always prune is okey
-            return self.membership.removeCompletely(member.node)
+            let change = self.membership.removeCompletely(member.node)
+            return change
         }
 
         struct MergeDirective {
@@ -103,7 +141,14 @@ extension Cluster {
             let members = self.membership.members(withStatus: [.up, .leaving])
             let requiredVersion = self.version
 
+//            pprint("considering members")
+//            for member in members {
+//                pprint("considering member: \(member)")
+//                pprint("                  : \(self.seen.version(at: member.node))")
+//            }
+
             if members.isEmpty {
+//                pprint("converged")
                 return true // no-one is around disagree with me! }:-)
             }
 
@@ -111,8 +156,10 @@ extension Cluster {
                 if let memberSeenVersion = self.seen.version(at: member.node) {
                     switch memberSeenVersion.compareTo(requiredVersion) {
                     case .happenedBefore, .concurrent:
+//                        pprint("memberSeenVersion.compareTo(requiredVersion) = \(memberSeenVersion.compareTo(requiredVersion)) WITH \(requiredVersion)")
                         return true // found an offending member, it is lagging behind, thus no convergence
                     case .happenedAfter, .same:
+//                        pprint("memberSeenVersion.compareTo(requiredVersion) = \(memberSeenVersion.compareTo(requiredVersion)) WITH \(requiredVersion)")
                         return false
                     }
                 } else {
@@ -148,16 +195,19 @@ extension Cluster.Gossip {
     /// - node B: is the "farthest" along the vector timeline, yet has never seen gossip from C
     /// - node C (we think): has never seen any gossip from either A or B, realistically though it likely has,
     ///   however it has not yet sent a gossip to "us" such that we could have gotten its updated version vector.
-    struct SeenTable {
-        var table: [UniqueNode: VersionVector]
+    struct SeenTable: Equatable {
+        var underlying: [UniqueNode: VersionVector]
 
-        init(myselfNode: UniqueNode, version: VersionVector) {
-            self.table = [myselfNode: version]
+        init() {
+            self.underlying = [:]
         }
 
-        /// Nodes seen by this table
+        init(myselfNode: UniqueNode, version: VersionVector) {
+            self.underlying = [myselfNode: version]
+        }
+
         var nodes: Dictionary<UniqueNode, VersionVector>.Keys {
-            self.table.keys
+            self.underlying.keys
         }
 
         /// If the table does NOT include the `node`, we assume that the `latestVersion` is "more recent than no information at all."
@@ -167,34 +217,26 @@ extension Cluster.Gossip {
         /// - SeeAlso: The definition of `VersionVector.CausalRelation` for detailed discussion of all possible relations.
         func compareVersion(observedOn owner: UniqueNode, to incomingVersion: VersionVector) -> VersionVector.CausalRelation {
             /// We know that the node has seen _at least_ the membership at `nodeVersion`.
-            guard let versionOnNode = self.table[owner] else {
-                return .happenedBefore
-            }
-
-            return versionOnNode.compareTo(incomingVersion)
+            (self.underlying[owner] ?? VersionVector()).compareTo(incomingVersion)
         }
 
-        // FIXME: This could be too many layers;
-        // FIXME: Shouldn't we merge all incoming owner's, from the entire incoming table? !!!!!!!!!!!!!!!!!!!!!!!!
-        //        The information carried in Cluster.Membership includes all information
         /// Merging an incoming `Cluster.Gossip` into a `Cluster.Gossip.SeenTable` means "progressing (version) time"
         /// for both "us" and the incoming data's owner in "our view" about it.
         ///
-        /// In other words, we gained information and our membership has "moved forward" as
-        mutating func merge(owner: UniqueNode, incoming: Cluster.Gossip) {
-            for seenNode in incoming.seen.nodes {
-                var seenVersion = self.table[seenNode] ?? VersionVector()
-                seenVersion.merge(other: incoming.seen.version(at: seenNode) ?? VersionVector()) // though always not-nil
-                self.table[seenNode] = seenVersion
-            }
+        /// In other words, we gained information and our membership has "moved forward".
+        ///
+        mutating func merge(selfOwner: UniqueNode, incoming: SeenTable) {
+            var ownerVersion = self.version(at: selfOwner) ?? VersionVector()
 
-            // in addition, we also merge the incoming table directly with ours,
-            // as the remote's "own" version means that all information it shared with us in gossip
-            // is "at least as up to date" as its version, we've now also seen "at least as much" information
-            // along the vector time.
-            var localVersion = self.table[owner] ?? VersionVector()
-            localVersion.merge(other: incoming.version) // we gained information from the incoming gossip
-            self.table[owner] = localVersion
+            for incomingNode in incoming.nodes {
+                if let incomingVersion = incoming.version(at: incomingNode) {
+                    var thatNodeVersion = self.underlying[incomingNode] ?? VersionVector()
+                    thatNodeVersion.merge(other: incomingVersion)
+                    ownerVersion.merge(other: thatNodeVersion)
+                    self.underlying[incomingNode] = thatNodeVersion
+                }
+            }
+            self.underlying[selfOwner] = ownerVersion
         }
 
         // TODO: func haveNotYetSeen(version: VersionVector): [UniqueNode]
@@ -212,14 +254,14 @@ extension Cluster.Gossip {
         /// in the A field, meaning we need to gossip with B to converge those two version vectors.
         @discardableResult
         mutating func incrementVersion(owner: UniqueNode, at node: UniqueNode) -> VersionVector {
-            if var version = self.table[owner] {
+            if var version = self.underlying[owner] {
                 version.increment(at: .uniqueNode(node))
-                self.table[owner] = version
+                self.underlying[owner] = version
                 return version
             } else {
                 // we treat incrementing from "nothing" as creating a new entry
                 let version = VersionVector((.uniqueNode(node), 1))
-                self.table[owner] = version
+                self.underlying[owner] = version
                 return version
             }
         }
@@ -228,7 +270,7 @@ extension Cluster.Gossip {
         /// This "view" represents "our" latest information about what we know that node has observed.
         /// This information may (and most likely is) outdated as the nodes continue to gossip to one another.
         func version(at node: UniqueNode) -> VersionVector? {
-            self.table[node]
+            self.underlying[node]
         }
 
         /// Prunes any trace of the passed in node from the seen table.
@@ -239,11 +281,11 @@ extension Cluster.Gossip {
         /// to "come back" it would be indistinguishable from being a new node. Measures to avoid this from happening
         /// must be taken on the cluster layer, by using and checking for tombstones. // TODO: make a nasty test for this, a simple one we got; See MembershipGossipSeenTableTests
         mutating func prune(_ nodeToPrune: UniqueNode) {
-            _ = self.table.removeValue(forKey: nodeToPrune)
+            _ = self.underlying.removeValue(forKey: nodeToPrune)
             let replicaToPrune: ReplicaId = .uniqueNode(nodeToPrune)
 
-            for (key, version) in self.table where version.contains(replicaToPrune, 0) {
-                self.table[key] = version.pruneReplica(replicaToPrune)
+            for (key, version) in self.underlying where version.contains(replicaToPrune, 0) {
+                self.underlying[key] = version.pruneReplica(replicaToPrune)
                 // TODO: test removing non existing member
             }
         }
@@ -252,14 +294,14 @@ extension Cluster.Gossip {
 
 extension Cluster.Gossip.SeenTable: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        "Cluster.Gossip.SeenTable(\(self.table))"
+        "Cluster.Gossip.SeenTable(\(self.underlying))"
     }
 
     var debugDescription: String {
         var s = "Cluster.Gossip.SeenTable(\n"
         let entryHeadingPadding = String(repeating: " ", count: 4)
         let entryPadding = String(repeating: " ", count: 4 * 2)
-        table.sorted(by: { $0.key < $1.key }).forEach { node, vv in
+        underlying.sorted(by: { $0.key < $1.key }).forEach { node, vv in
             let entryHeader = "\(entryHeadingPadding)\(node) observed versions:\n"
 
             s.append(entryHeader)

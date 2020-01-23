@@ -425,9 +425,11 @@ extension ClusterShell {
                 return self.onShutdownCommand(context, state: state, signalOnceUnbound: receptacle)
 
             case .downCommand(let node):
-                return self.ready(state: state.membership.members(node).reduce(state) { _, member in
-                    self.onDownCommand(context, state: state, member: member)
-                })
+                if let member = state.membership.member(node) {
+                    return self.ready(state: self.onDownCommand(context, state: state, member: member))
+                } else {
+                    return self.ready(state: state)
+                }
             case .downCommandMember(let member):
                 return self.ready(state: self.onDownCommand(context, state: state, member: member))
             }
@@ -475,7 +477,7 @@ extension ClusterShell {
             self.tracelog(context, .receive(from: state.myselfNode.node), message: event)
             var state = state
 
-            let changeDirective = state.applyClusterEventAsChange(event)
+            let changeDirective = state.applyClusterEvent(event)
             self.interpretLeaderActions(&state, changeDirective.leaderActions)
 
             if case .membershipChange(let change) = event {
@@ -500,8 +502,8 @@ extension ClusterShell {
             var state = state
 
             let beforeGossipMerge = state.latestGossip
+
             let mergeDirective = state.latestGossip.mergeForward(incoming: gossip) // mutates the gossip
-            // TODO: here we could check if state.latestGossip.converged { do stuff }
             context.log.trace("Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
                 "tag": "membership",
                 "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
@@ -511,13 +513,22 @@ extension ClusterShell {
             ])
 
             mergeDirective.effectiveChanges.forEach { effectiveChange in
-//                /// we are careful to only introduce here, and only "new" members
-//                // TODO: consider reusing receptionist for this (!)
-//                self.tryIntroduceGossipPeer(context, state, change: effectiveChange)
-//
+                // a change COULD have also been a replacement, in which case we need to publish it as well
+                // the removal od the
+                if let replacementChange = effectiveChange.replacementDownPreviousNodeChange {
+                    self.clusterEvents.publish(.membershipChange(replacementChange))
+                }
                 let event: Cluster.Event = .membershipChange(effectiveChange)
                 self.clusterEvents.publish(event)
             }
+
+            let leaderActions = state.collectLeaderActions()
+            if !leaderActions.isEmpty {
+                state.log.trace("Leadership actions upon gossip: \(leaderActions)", metadata: [
+                    "tag": "membership",
+                ])
+            }
+            self.interpretLeaderActions(&state, leaderActions)
 
             return self.ready(state: state)
         }
@@ -686,7 +697,7 @@ extension ClusterShell {
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
                 let actions = state.collectLeaderActions()
-                self.interpretLeaderActions(&state, actions) // TODO: not so DRY between acceptAndAssociate and onHandshakeAccepted, DRY it up
+                self.interpretLeaderActions(&state, actions)
 
                 /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
                 self.recordMetrics(context.system.metrics, membership: state.membership)
@@ -719,31 +730,55 @@ extension ClusterShell {
         }
     }
 
-    internal func interpretLeaderActions(_ state: inout ClusterShellState, _ leaderActions: [ClusterShellState.LeaderAction]) {
-        for leaderAction in leaderActions {
-            pprint("leaderAction = \(leaderAction)")
+    internal func interpretLeaderActions(_ state: inout ClusterShellState, _ leaderActions: [ClusterShellState.LeaderAction], file: String = #file, line: UInt = #line) {
+        guard !leaderActions.isEmpty else {
+            return
+        }
 
+        state.log.trace("Performing leader actions: \(leaderActions)")
+
+        for leaderAction in leaderActions {
             switch leaderAction {
             case .moveMember(let movingUp):
-                let change = state.membership.apply(movingUp) // TODO: include up numbers
-
-                // FIXME: the changes should be gossiped rather than sent directly
-                if let change = change {
-                    state.log.info("Leader moving member: \(change)")
+                if let change = state.membership.apply(movingUp) {
+                    state.log.info("Leader moving member: \(change)", metadata: [
+                        "tag": "leader-action",
+                        "leader/interpret/location": "\(file):\(line)",
+                    ])
+                    if let downReplacedNodeChange = change.replacementDownPreviousNodeChange {
+                        state.log.info("Downing replaced member: \(change)", metadata: [
+                            "tag": "leader-action",
+                            "leader/interpret/location": "\(file):\(line)",
+                        ])
+                        state.events.publish(.membershipChange(downReplacedNodeChange))
+                    }
                     state.events.publish(.membershipChange(change))
                 }
 
-            case .removeDownMember(let memberToRemove):
-                // FIXME: implement this !!!
-                state.log.info("Leader removing member: \(memberToRemove), all nodes are certain to have seen it as [.down] before")
-                if let removalChange = state.latestGossip.pruneMember(memberToRemove) {
+            case .removeMember(let memberToRemove):
+                state.log.info("Leader removing member: \(memberToRemove), all nodes are certain to have seen it as [.down] before", metadata: [
+                    "tag": "leader-action",
+                    "leader/interpretation/position": "\(file):\(line)",
+                    "gossip/current": "\(state.latestGossip)",
+                ])
+
+                // !!! IMPORTANT !!!
+                // We MUST perform the prune on the _latestGossip, not the wrapper,
+                // as otherwise the wrapper enforces "vector time moves forward"
+                if let removalChange = state._latestGossip.pruneMember(memberToRemove) {
+                    // TODO: do we need terminate association here? or was it done already
+                    state._latestGossip.incrementOwnerVersion()
+                    state.gossipControl.update(payload: state._latestGossip)
+                    // TODO: automate emote so we dont miss the update, make it funcs when we update things?
+
                     // TODO: will this "just work" as we removed from membership, so gossip will tell others...?
                     // or do we need to push a round of gossip with .removed anyway?
                     state.events.publish(.membershipChange(removalChange))
                 }
-                // FIXME: add integration test
             }
         }
+
+        state.log.trace("Membership state after leader actions: \(state.membership)")
     }
 }
 
@@ -1006,6 +1041,8 @@ extension ClusterShell {
                 context.system.shutdown()
             }
 
+            self.interpretLeaderActions(&state, state.collectLeaderActions())
+
             return state
         }
 
@@ -1014,14 +1051,18 @@ extension ClusterShell {
 
         guard let association = state.association(with: memberToDown.node.node) else {
             context.log.warning("Received Down command for not associated node [\(reflecting: memberToDown.node.node)], ignoring.")
+            self.interpretLeaderActions(&state, state.collectLeaderActions())
             return state
         }
 
         switch association {
         case .associated(let associated):
-            return self.terminateAssociation(context.system, state: state, associated)
+            state = self.terminateAssociation(context.system, state: state, associated)
+            self.interpretLeaderActions(&state, state.collectLeaderActions())
+            return state
         case .tombstone:
             state.log.warning("Attempted to .down already tombstoned association/node: [\(memberToDown)]")
+            self.interpretLeaderActions(&state, state.collectLeaderActions())
             return state
         }
     }

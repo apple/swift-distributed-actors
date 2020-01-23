@@ -36,8 +36,8 @@ import NIO
 import XCTest
 
 final class ClusterEventStreamTests: ActorSystemTestBase {
-    let firstMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
-    let secondMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
+    let memberA = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
+    let memberB = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
@@ -52,9 +52,9 @@ final class ClusterEventStreamTests: ActorSystemTestBase {
         )
 
         eventStream.subscribe(p1.ref) // sub before first -> up was published
-        eventStream.publish(.membershipChange(.init(member: self.firstMember, toStatus: .up)))
+        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
         eventStream.subscribe(p2.ref)
-        eventStream.publish(.membershipChange(.init(member: self.secondMember, toStatus: .up)))
+        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
 
         // ==== p1 ---------------------
 
@@ -66,13 +66,13 @@ final class ClusterEventStreamTests: ActorSystemTestBase {
         }
         switch try p1.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.firstMember.node)
+            change.node.shouldEqual(self.memberA.node)
         default:
             throw p1.error("Expected a membershipChange")
         }
         switch try p1.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.secondMember.node)
+            change.node.shouldEqual(self.memberB.node)
         default:
             throw p1.error("Expected a membershipChange")
         }
@@ -81,14 +81,14 @@ final class ClusterEventStreamTests: ActorSystemTestBase {
 
         switch try p2.expectMessage() {
         case .snapshot(let snapshot):
-            snapshot.members(self.firstMember.node.node).shouldEqual([firstMember])
+            snapshot.uniqueMember(self.memberA.node).shouldEqual(self.memberA)
             () // ok
         default:
             throw p2.error("Expected a snapshot first")
         }
         switch try p2.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.secondMember.node)
+            change.node.shouldEqual(self.memberB.node)
         default:
             throw p2.error("Expected a membershipChange")
         }
@@ -105,10 +105,10 @@ final class ClusterEventStreamTests: ActorSystemTestBase {
             customBehavior: ClusterEventStream.Shell.behavior
         )
 
-        eventStream.publish(.membershipChange(.init(member: self.firstMember, toStatus: .joining)))
-        eventStream.publish(.membershipChange(.init(member: self.firstMember, toStatus: .up)))
-        eventStream.publish(.membershipChange(.init(member: self.secondMember, toStatus: .joining)))
-        eventStream.publish(.membershipChange(.init(member: self.secondMember, toStatus: .up)))
+        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
+        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
+        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
+        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
         eventStream.subscribe(p1.ref)
 
         // ==== p1 ---------------------
@@ -116,7 +116,7 @@ final class ClusterEventStreamTests: ActorSystemTestBase {
         switch try p1.expectMessage() {
         case .snapshot(let snapshot):
             let members = snapshot.members(atLeast: .joining)
-            Set(members).shouldEqual(Set([firstMember, secondMember]))
+            Set(members).shouldEqual(Set([memberA, memberB]))
 
         default:
             throw p1.error("Expected a snapshot with all the data")

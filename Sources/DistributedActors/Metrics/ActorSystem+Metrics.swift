@@ -102,8 +102,8 @@ internal class ActorSystemMetrics {
     /// cluster.members
     let _cluster_members_joining: Gauge
     let _cluster_members_up: Gauge
-    let _cluster_members_down: Gauge
     let _cluster_members_leaving: Gauge
+    let _cluster_members_down: Gauge
     let _cluster_members_removed: Gauge
 
     let _cluster_unreachable_members: Gauge
@@ -115,8 +115,8 @@ internal class ActorSystemMetrics {
 
         var joining = 0
         var up = 0
-        var down = 0
         var leaving = 0
+        var down = 0
         var removed = 0
         var unreachable = 0
         for b in members {
@@ -143,8 +143,8 @@ internal class ActorSystemMetrics {
             self._cluster_members.record(up)
             self._cluster_members_joining.record(joining)
             self._cluster_members_up.record(up)
-            self._cluster_members_down.record(down)
             self._cluster_members_leaving.record(leaving)
+            self._cluster_members_down.record(down)
             self._cluster_members_removed.record(removed)
             self._cluster_unreachable_members.record(unreachable)
         }
@@ -212,9 +212,9 @@ internal class ActorSystemMetrics {
         self._cluster_members = .init(label: clusterMembersLabel)
         self._cluster_members_joining = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.joining.rawValue)])
         self._cluster_members_up = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.joining.rawValue)])
-        self._cluster_members_down = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.down.rawValue)])
         self._cluster_members_leaving = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.leaving.rawValue)])
-        self._cluster_members_removed = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.removed.rawValue)])
+        self._cluster_members_down = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.down.rawValue)])
+        self._cluster_members_removed = .init(label: clusterMembersLabel, dimensions: [("status", Cluster.MemberStatus.removed.rawValue)]) // TODO: this is equal to number of stored tombstones kind of
         self._cluster_unreachable_members = .init(label: clusterMembersLabel, dimensions: [("reachability", Cluster.MemberReachability.unreachable.rawValue)])
 
         let clusterAssociations = settings.makeLabel("cluster", "associations")
