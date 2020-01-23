@@ -267,6 +267,12 @@ public final class ActorSystem {
 
         /// Starts plugins after the system is fully initialized
         self.settings.plugins.startAll(self)
+
+        self.log.info("Actor System [\(self.name)] initialized.")
+        if settings.cluster.enabled {
+            self.log.info("Configured with: Cluster.autoLeaderElection: \(self.settings.cluster.autoLeaderElection)")
+            self.log.info("Configured with: Cluster.downingStrategy: \(self.settings.cluster.downingStrategy)")
+        }
     }
 
     public convenience init() {

@@ -19,75 +19,237 @@ import XCTest
 
 /// Tests of just the datatype
 final class MembershipGossipTests: XCTestCase {
-    var firstNode: UniqueNode!
-    var secondNode: UniqueNode!
-    var thirdNode: UniqueNode!
+    var nodeA: UniqueNode!
+    var nodeB: UniqueNode!
+    var nodeC: UniqueNode!
     var fourthNode: UniqueNode!
-
-    var gossip: Cluster.Gossip!
+    lazy var allNodes = [
+        self.nodeA!, self.nodeB!, self.nodeC!, self.fourthNode!,
+    ]
 
     override func setUp() {
         super.setUp()
-        self.firstNode = UniqueNode(protocol: "sact", systemName: "myself", host: "127.0.0.1", port: 7111, nid: .random())
-        self.secondNode = UniqueNode(protocol: "sact", systemName: "second", host: "127.0.0.1", port: 7222, nid: .random())
-        self.thirdNode = UniqueNode(protocol: "sact", systemName: "third", host: "127.0.0.1", port: 7333, nid: .random())
-        self.fourthNode = UniqueNode(protocol: "sact", systemName: "fourth", host: "127.0.0.1", port: 7444, nid: .random())
-
-        self.gossip = Cluster.Gossip(ownerNode: self.firstNode)
-        _ = self.gossip.membership.join(self.firstNode)
+        self.nodeA = UniqueNode(protocol: "sact", systemName: "firstA", host: "127.0.0.1", port: 7111, nid: .random())
+        self.nodeB = UniqueNode(protocol: "sact", systemName: "secondB", host: "127.0.0.1", port: 7222, nid: .random())
+        self.nodeC = UniqueNode(protocol: "sact", systemName: "thirdC", host: "127.0.0.1", port: 7333, nid: .random())
+        self.fourthNode = UniqueNode(protocol: "sact", systemName: "fourthD", host: "127.0.0.1", port: 7444, nid: .random())
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Merging gossips
 
     func test_mergeForward_incomingGossip_firstGossipFromOtherNode() {
-        var gossipFromSecond = Cluster.Gossip(ownerNode: self.secondNode)
-        _ = gossipFromSecond.membership.join(self.secondNode)
+        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        _ = gossip.membership.join(self.nodeA)
 
-        let directive = self.gossip.mergeForward(incoming: gossipFromSecond)
+        var gossipFromSecond = Cluster.Gossip(ownerNode: self.nodeB)
+        _ = gossipFromSecond.membership.join(self.nodeB)
+
+        let directive = gossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual(
-            [Cluster.MembershipChange(member: Cluster.Member(node: self.secondNode, status: .joining), toStatus: .joining)]
+            [Cluster.MembershipChange(node: self.nodeB, fromStatus: nil, toStatus: .joining)]
         )
     }
 
     func test_mergeForward_incomingGossip_sameVersions() {
-        self.gossip.seen.incrementVersion(owner: self.secondNode, at: self.firstNode) // v: myself:1, second:1
-        _ = self.gossip.membership.join(self.secondNode) // myself:joining, second:joining
+        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        _ = gossip.membership.join(self.nodeA)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeA) // v: myself:1, second:1
+        _ = gossip.membership.join(self.nodeB) // myself:joining, second:joining
 
-        let gossipFromSecond = Cluster.Gossip(ownerNode: self.secondNode)
-        let directive = self.gossip.mergeForward(incoming: gossipFromSecond)
+        let gossipFromSecond = Cluster.Gossip(ownerNode: self.nodeB)
+        let directive = gossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual([])
     }
 
-    func test_mergeForward_incomingGossip_hasNoInformation() {
-        _ = self.gossip.membership.join(self.firstNode)
-        self.gossip.incrementOwnerVersion()
-        _ = self.gossip.membership.join(self.secondNode)
-        self.gossip.seen.incrementVersion(owner: self.secondNode, at: self.secondNode)
-        _ = self.gossip.membership.join(self.thirdNode)
-        self.gossip.seen.incrementVersion(owner: self.thirdNode, at: self.thirdNode)
+    func test_mergeForward_incomingGossip_fromFourth_onlyKnowsAboutItself() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.joining B.joining B.joining
+            A: A@1 B@1 C@1
+            """, owner: self.nodeA, nodes: self.allNodes
+        )
 
         // only knows about fourth, while myGossip has first, second and third
-        var incomingGossip = Cluster.Gossip(ownerNode: self.fourthNode)
-        _ = incomingGossip.membership.join(self.fourthNode)
-        incomingGossip.incrementOwnerVersion()
+        let incomingGossip = Cluster.Gossip.parse(
+            """
+            D.joining
+            D: D@1
+            """, owner: self.fourthNode, nodes: self.allNodes
+        )
 
-        let directive = self.gossip.mergeForward(incoming: incomingGossip)
+        let directive = gossip.mergeForward(incoming: incomingGossip)
 
         // this test also covers so <none> does not accidentally cause changes into .removed, which would be catastrophic
         directive.causalRelation.shouldEqual(.concurrent)
         directive.effectiveChanges.shouldEqual(
-            [Cluster.MembershipChange(member: Cluster.Member(node: self.fourthNode, status: .joining), toStatus: .joining)]
+            [Cluster.MembershipChange(node: self.fourthNode, fromStatus: nil, toStatus: .joining)]
         )
+        gossip.shouldEqual(Cluster.Gossip.parse(
+            """
+            A.joining B.joining C.joining
+            A: A@1 B@1 C@1 D@1
+            D: D@1
+            """, owner: self.nodeA, nodes: self.allNodes
+        ))
+    }
+
+    func test_mergeForward_incomingGossip_localHasRemoved_incomingHasOldViewWithDownNode() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.up B.down C.up
+            A: A@5 B@5 C@6 
+            B: A@5 B@5 C@6
+            C: A@5 B@5 C@6
+            """,
+            owner: self.nodeA, nodes: self.allNodes
+        )
+
+        // while we just removed it:
+        gossip.converged().shouldBeTrue() // sanity check
+        let removedMember: Cluster.Member = gossip.membership.uniqueMember(self.nodeB)!
+        _ = gossip.pruneMember(removedMember)
+        _ = gossip.incrementOwnerVersion()
+
+        let incomingOldGossip = Cluster.Gossip.parse(
+            """
+            A.up B.down C.up
+            A: A@5 B@5  C@6
+            B: A@5 B@10 C@6
+            C: A@5 B@5  C@6
+            """,
+            owner: self.nodeB, nodes: self.allNodes
+        ) // TODO: this will be rejected since owner is the downe node (!) add another test with third sending the same info
+
+        pprint("gossipBeforeMergeForward = \(gossip)")
+        pprint("++++++++++++++++++++++++++++++")
+        pprint("incomingOldGossip        = \(incomingOldGossip)")
+
+        let gossipBeforeMerge = gossip
+        let directive = gossip.mergeForward(incoming: incomingOldGossip)
+
+        pprint("RESULT                   = \(gossip)")
+        pprint("--------------------------------------------------------------------")
+
+        directive.causalRelation.shouldEqual(.concurrent)
+        directive.effectiveChanges.shouldEqual(
+            [] // no effect
+        )
+
+        gossip.membership.members(atLeast: .joining).shouldNotContain(removedMember)
+        gossip.seen.nodes.shouldNotContain(removedMember.node)
+
+        gossip.seen.shouldEqual(gossipBeforeMerge.seen)
+        gossip.membership.shouldEqual(gossipBeforeMerge.membership)
+    }
+
+    func test_mergeForward_incomingGossip_concurrent_leaderDisagreement() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.up B.down [leader:A]
+            A: A@5 B@5 
+            B: A@5 B@5
+            """,
+            owner: self.nodeA, nodes: self.allNodes
+        )
+
+        // this may happen after healing a cluster partition,
+        // once the nodes talk to each other again, they will run leader election and resolve the double leader situation
+        // until that happens, the two leaders indeed remain as-is -- as the membership itself is not the right place to resolve
+        // who shall be leader
+        let incomingGossip = Cluster.Gossip.parse(
+            """
+            B.down C.up [leader:B]
+            B: B@2 C@1
+            C: B@2 C@9
+            """,
+            owner: self.nodeC, nodes: self.allNodes
+        )
+
+        let directive = gossip.mergeForward(incoming: incomingGossip)
+
+        directive.causalRelation.shouldEqual(.concurrent)
+        directive.effectiveChanges.shouldEqual(
+            [
+                // such unknown -> up may indeed happen, if we have a large cluster, which ends up partitioned into two
+                // each side keeps adding new nodes, and then the partition heals. The core membership does NOT prevent this,
+                // what WOULD prevent this is how the leaders are selected -- e.g. dynamic quorum etc. Though even quorums can be cheated
+                // in dramatic situations (e.g. we add more nodes on one side than quorum, so it gets "its illegal quorum"),
+                // such is the case with any "dynamic" quorum however. We CAN and will provide strategies to select leaders which
+                // strongly militate such risk though.
+                Cluster.MembershipChange(node: self.nodeC, fromStatus: nil, toStatus: .up),
+                // note that this has NO effect on the leader; we keep trusting "our" leader,
+                // leader election should kick in and reconcile those two
+            ]
+        )
+
+        gossip.membership.leader?.node.shouldEqual(self.nodeA)
+        incomingGossip.membership.leader?.node.shouldEqual(self.nodeB)
+    }
+
+    func test_mergeForward_incomingGossip_concurrent_simple() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.up B.joining
+            A: A@4
+            """, owner: self.nodeA, nodes: self.allNodes
+        )
+
+        let concurrent = Cluster.Gossip.parse(
+            """
+            A.joining B.joining
+            B: B@2
+            """, owner: self.nodeB, nodes: self.allNodes
+        )
+
+        pprint("membership = \(gossip)")
+        pprint("ahead = \(concurrent)")
+
+        let directive = gossip.mergeForward(incoming: concurrent)
+        pprint("membership.version = \(gossip.version)")
+
+        gossip.owner.shouldEqual(self.nodeA)
+        directive.effectiveChanges.count.shouldEqual(0)
+        gossip.shouldEqual(Cluster.Gossip.parse(
+            """
+            A.up B.joining
+            A: A@4 B@2
+            B: B@2
+            """, owner: self.nodeA, nodes: self.allNodes
+        ))
+    }
+
+    func test_mergeForward_incomingGossip_hasNewNode() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.up
+            A: A@5
+            """,
+            owner: self.nodeA, nodes: self.allNodes
+        )
+
+        var incomingGossip = gossip
+        _ = incomingGossip.membership.join(self.nodeB)
+        incomingGossip.incrementOwnerVersion()
+
+        let directive = gossip.mergeForward(incoming: incomingGossip)
+
+        directive.causalRelation.shouldEqual(.happenedBefore)
+        directive.effectiveChanges.shouldEqual(
+            [Cluster.MembershipChange(node: self.nodeB, fromStatus: nil, toStatus: .joining)]
+        )
+
+        gossip.membership.members(atLeast: .joining).shouldContain(Cluster.Member(node: self.nodeB, status: .joining))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Convergence
 
     func test_converged_shouldBeTrue_forNoMembers() {
-        var gossip = self.gossip!
+        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        _ = gossip.membership.join(self.nodeA)
         gossip.converged().shouldBeTrue()
 
         gossip.incrementOwnerVersion()
@@ -95,68 +257,84 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_converged_amongUpMembers() {
-        var gossip = self.gossip!
-        _ = gossip.membership.mark(self.firstNode, as: .up)
+        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        _ = gossip.membership.join(self.nodeA)
+        _ = gossip.membership.mark(self.nodeA, as: .up)
 
-        _ = gossip.membership.join(self.secondNode)
-        _ = gossip.membership.mark(self.secondNode, as: .up)
+        _ = gossip.membership.join(self.nodeB)
+        _ = gossip.membership.mark(self.nodeB, as: .up)
 
-        _ = gossip.membership.join(self.thirdNode)
-        _ = gossip.membership.mark(self.thirdNode, as: .up)
+        _ = gossip.membership.join(self.nodeC)
+        _ = gossip.membership.mark(self.nodeC, as: .up)
 
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.firstNode)
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.secondNode)
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.nodeA)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.nodeB)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.nodeC)
         // we are "ahead" of others
         gossip.converged().shouldBeFalse()
 
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.firstNode)
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.secondNode)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeA)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeB)
         // others still catching up
         gossip.converged().shouldBeFalse()
 
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeC)
         // second has caught up, but third still not
         gossip.converged().shouldBeFalse()
 
-        gossip.seen.incrementVersion(owner: self.thirdNode, at: self.firstNode)
+        gossip.seen.incrementVersion(owner: self.nodeC, at: self.nodeA)
         // second has caught up, but third catching up
         gossip.converged().shouldBeFalse()
 
-        gossip.seen.incrementVersion(owner: self.thirdNode, at: self.secondNode)
-        gossip.seen.incrementVersion(owner: self.thirdNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeC, at: self.nodeB)
+        gossip.seen.incrementVersion(owner: self.nodeC, at: self.nodeC)
         // second and third have caught up
         gossip.converged().shouldBeTrue()
 
         // if second and third keep moving on, they still have at-least seen our version,
         // co convergence still should remain true
-        gossip.seen.incrementVersion(owner: self.thirdNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeC, at: self.nodeC)
 
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.thirdNode)
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeC)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeC)
+        gossip.converged().shouldBeTrue()
+    }
+
+    func test_converged_othersAreOnlyDownOrJoining() {
+        let gossip = Cluster.Gossip.parse(
+            """
+            A.up B.down C.joining
+            A: A@8 B@5 C@7
+            B: B@6 C@5
+            C: A@7 B@5 C@7
+            """, owner: self.nodeA, nodes: self.allNodes
+        )
+
+        // since all other nodes other than A are down or joining, thus we do not count them in convergence
         gossip.converged().shouldBeTrue()
     }
 
     func test_converged_joiningOrDownMembersDoNotCount() {
-        var gossip = self.gossip!
+        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        _ = gossip.membership.join(self.nodeA)
 
-        _ = gossip.membership.join(self.secondNode)
-        _ = gossip.membership.mark(self.secondNode, as: .joining)
+        _ = gossip.membership.join(self.nodeB)
+        _ = gossip.membership.mark(self.nodeB, as: .joining)
 
-        _ = gossip.membership.join(self.thirdNode)
-        _ = gossip.membership.mark(self.thirdNode, as: .down)
+        _ = gossip.membership.join(self.nodeC)
+        _ = gossip.membership.mark(self.nodeC, as: .down)
 
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.firstNode)
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.secondNode)
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.nodeA)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.nodeB)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.nodeC)
 
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.firstNode)
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.secondNode)
-        gossip.seen.incrementVersion(owner: self.secondNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeA)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeB)
+        gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeC)
 
-        gossip.seen.incrementVersion(owner: self.thirdNode, at: self.firstNode)
-        gossip.seen.incrementVersion(owner: self.thirdNode, at: self.secondNode)
-        gossip.seen.incrementVersion(owner: self.thirdNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.nodeC, at: self.nodeA)
+        gossip.seen.incrementVersion(owner: self.nodeC, at: self.nodeB)
+        gossip.seen.incrementVersion(owner: self.nodeC, at: self.nodeC)
 
         // all have caught up, however they are only .down or .joining (!)
         gossip.converged().shouldBeTrue()
@@ -170,19 +348,19 @@ final class MembershipGossipTests: XCTestCase {
         // as such, we are not converged
         gossip.converged().shouldBeFalse()
 
-        gossip.seen.incrementVersion(owner: self.fourthNode, at: self.firstNode)
-        gossip.seen.incrementVersion(owner: self.fourthNode, at: self.secondNode)
-        gossip.seen.incrementVersion(owner: self.fourthNode, at: self.thirdNode)
+        gossip.seen.incrementVersion(owner: self.fourthNode, at: self.nodeA)
+        gossip.seen.incrementVersion(owner: self.fourthNode, at: self.nodeB)
+        gossip.seen.incrementVersion(owner: self.fourthNode, at: self.nodeC)
         // it moved a bit fast:
         gossip.seen.incrementVersion(owner: self.fourthNode, at: self.fourthNode)
         gossip.seen.incrementVersion(owner: self.fourthNode, at: self.fourthNode)
         gossip.seen.incrementVersion(owner: self.fourthNode, at: self.fourthNode)
         gossip.seen.incrementVersion(owner: self.fourthNode, at: self.fourthNode)
         // but we're up to date with this:
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.fourthNode)
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.fourthNode)
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.fourthNode)
-        gossip.seen.incrementVersion(owner: self.firstNode, at: self.fourthNode)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.fourthNode)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.fourthNode)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.fourthNode)
+        gossip.seen.incrementVersion(owner: self.nodeA, at: self.fourthNode)
 
         // the new node has caught up:
         gossip.converged().shouldBeTrue()
@@ -193,26 +371,28 @@ final class MembershipGossipTests: XCTestCase {
             var gossip = Cluster.Gossip(ownerNode: node)
             _ = gossip.membership.join(node)
             _ = gossip.membership.mark(node, as: .joining)
-            (1 ... Int.random(in: 10 ... 100)).forEach { _ in
-                gossip.incrementOwnerVersion()
-            }
+            var vv = VersionVector()
+            vv.state[.uniqueNode(node)] = node.port
+            gossip.seen.underlying[node] = .init(vv)
+
             // know just enough that we're not alone and thus need to communicate:
-            _ = gossip.membership.join(self.firstNode)
-            _ = gossip.membership.mark(self.firstNode, as: .up)
+            _ = gossip.membership.join(self.nodeA)
+            _ = gossip.membership.mark(self.nodeA, as: .up)
+            _ = gossip.seen.incrementVersion(owner: self.nodeA, at: self.nodeA)
+            _ = gossip.seen.incrementVersion(owner: node, at: self.nodeA)
 
-            _ = gossip.seen.incrementVersion(owner: self.firstNode, at: self.firstNode)
-            _ = gossip.seen.incrementVersion(owner: node, at: self.firstNode)
-
-            _ = gossip.membership.join(self.secondNode)
-            _ = gossip.membership.mark(self.secondNode, as: .up)
-            _ = gossip.seen.incrementVersion(owner: self.secondNode, at: self.secondNode)
-            _ = gossip.seen.incrementVersion(owner: node, at: self.secondNode)
+            _ = gossip.membership.join(self.nodeB)
+            _ = gossip.membership.mark(self.nodeB, as: .up)
+            _ = gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeB)
+            _ = gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeB)
+            _ = gossip.seen.incrementVersion(owner: node, at: self.nodeB)
+            _ = gossip.seen.incrementVersion(owner: node, at: self.nodeB)
             return gossip
         }
 
-        let firstGossip = makeRandomGossip(owner: self.firstNode)
-        let secondGossip = makeRandomGossip(owner: self.secondNode)
-        let thirdGossip = makeRandomGossip(owner: self.thirdNode)
+        let firstGossip = makeRandomGossip(owner: self.nodeA)
+        let secondGossip = makeRandomGossip(owner: self.nodeB)
+        let thirdGossip = makeRandomGossip(owner: self.nodeC)
         let fourthGossip = makeRandomGossip(owner: self.fourthNode)
 
         var gossips = [
@@ -229,11 +409,19 @@ final class MembershipGossipTests: XCTestCase {
         var gossipSend = 0
         let gossipSendsMax = 100
         while gossipSend < gossipSendsMax {
-            let (_, from) = gossips.shuffled().first!
-            var (toId, target) = gossips.shuffled().first!
+            let (_, from) = gossips.randomElement()!
+            var (toId, target) = gossips.randomElement()!
+
+            pprint("------------------------------------------------------------------------------------")
+            pprint("target   = \(target)")
+            pprint("++++++++++++++++++++")
+            pprint("INCOMING = \(from)")
 
             _ = target.mergeForward(incoming: from)
             gossips[toId] = target
+
+            pprint("RESULT   = \(target)")
+            pprint("------------------------------------------------------------------------------------")
 
             if gossips.allSatisfy({ $1.converged() }) {
                 break
@@ -251,7 +439,10 @@ final class MembershipGossipTests: XCTestCase {
                 Resulting: \(gossips[id]!)
                 """)
             }
-            XCTFail("Gossips among \(gossips.count) members did NOT converge after \(gossipSend) (individual) sends")
+            XCTFail("""
+            Gossips among \(gossips.count) members did NOT converge after \(gossipSend) (individual) sends.
+            \(gossips.values.map { "\($0)" }.joined(separator: "\n"))
+            """)
             return
         }
 

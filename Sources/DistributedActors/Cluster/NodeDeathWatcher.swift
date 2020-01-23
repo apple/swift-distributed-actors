@@ -128,6 +128,7 @@ enum NodeDeathWatcherShell {
         case membershipChange(Cluster.MembershipChange)
     }
 
+    // FIXME: death watcher is incomplete, should handle snapshot!!
     static func behavior(clusterEvents: EventStream<Cluster.Event>) -> Behavior<Message> {
         return .setup { context in
             let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.cluster.uniqueBindNode)
@@ -155,7 +156,7 @@ enum NodeDeathWatcherShell {
                 _ = instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
 
             case .membershipSnapshot(let membership):
-                let diff = Cluster.Membership.diff(from: lastMembership, to: membership)
+                let diff = Cluster.Membership._diff(from: lastMembership, to: membership)
 
                 for change in diff.changes {
                     _ = instance.onMembershipChanged(change) // TODO: return and interpret directives

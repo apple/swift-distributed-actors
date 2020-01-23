@@ -54,7 +54,7 @@ extension Cluster.Member: InternalProtobufRepresentable {
         proto.node = try self.node.toProto(context: context)
         proto.status = self.status.toProto(context: context)
         proto.reachability = try self.reachability.toProto(context: context)
-        if let number = self.upNumber {
+        if let number = self._upNumber {
             proto.upNumber = UInt32(number)
         }
         return proto
@@ -67,7 +67,7 @@ extension Cluster.Member: InternalProtobufRepresentable {
         self.node = try .init(fromProto: proto.node, context: context)
         self.status = try .init(fromProto: proto.status, context: context)
         self.reachability = try .init(fromProto: proto.reachability, context: context)
-        self.upNumber = proto.upNumber == 0 ? nil : Int(proto.upNumber)
+        self._upNumber = proto.upNumber == 0 ? nil : Int(proto.upNumber)
     }
 }
 
@@ -105,10 +105,10 @@ extension Cluster.MemberStatus {
             proto = .joining
         case .up:
             proto = .up
-        case .down:
-            proto = .down
         case .leaving:
             proto = .leaving
+        case .down:
+            proto = .down
         case .removed:
             proto = .removed
         }
@@ -125,10 +125,10 @@ extension Cluster.MemberStatus {
             self = .joining
         case .up:
             self = .up
-        case .down:
-            self = .down
         case .leaving:
             self = .leaving
+        case .down:
+            self = .down
         case .removed:
             self = .removed
         }

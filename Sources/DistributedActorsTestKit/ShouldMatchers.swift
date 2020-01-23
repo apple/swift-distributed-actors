@@ -47,9 +47,9 @@ public extension TestMatchers where T: Equatable {
         XCTAssertEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
     }
 
-    func toNotEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
-        XCTAssertNotEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
+    func toNotEqual(_ unexpectedEqual: T) {
+        let msg = self.callSite.detailedMessage(got: self.it, unexpectedEqual: unexpectedEqual)
+        XCTAssertNotEqual(self.it, unexpectedEqual, msg, file: self.callSite.file, line: self.callSite.line)
     }
 
     func toBe<Other>(_ expected: Other.Type) {
@@ -79,7 +79,8 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
             m += "\(self.it.dropFirst(partialMatch.underestimatedCount))] "
             m += "to start with prefix: "
-            if isTty { m += "\n                " } // align with "[error] Expected "
+            if isTty { m += "\n" }
+            if isTty { m += String(repeating: " ", count: "[error] Expected ".count) } // align with the error message prefix
             m += "["
             if isTty { m += "\(ANSIColors.bold.rawValue)" }
             m += "\(partialMatch)"
@@ -100,6 +101,23 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             m += self.it.map { "\($0)" }.joined(separator: "\n    ")
             m += "\n"
             m += "to contain: ["
+            if isTty { m += "\(ANSIColors.bold.rawValue)" }
+            m += "\(el)"
+            if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
+            m += "]"
+
+            let msg = self.callSite.detailedMessage(m)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+        }
+    }
+
+    func toNotContain(_ el: T.Element) {
+        if self.it.contains(el) {
+            // fancy printout:
+            var m = "Expected \(T.self):\n    "
+            m += self.it.map { "\($0)" }.joined(separator: "\n    ")
+            m += "\n"
+            m += "to NOT contain: ["
             if isTty { m += "\(ANSIColors.bold.rawValue)" }
             m += "\(el)"
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
@@ -296,6 +314,11 @@ extension Collection where Element: Equatable {
         return TestMatchers(it: self, callSite: csInfo).toContain(el)
     }
 
+    public func shouldNotContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toNotContain(el)
+    }
+
     /// Applies the `where` predicate while trying to locate at least one element in the collection.
     public func shouldContain(where predicate: (Element) -> Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -414,6 +437,11 @@ struct CallSiteInfo {
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func detailedMessage(got it: Any, expected: Any) -> String {
         let msg = "[\(it)] does not equal expected: [\(expected)]\n"
+        return self.detailedMessage(msg)
+    }
+
+    func detailedMessage(got it: Any, unexpectedEqual: Any) -> String {
+        let msg = "[\(it)] does equal: [\(unexpectedEqual)]\n"
         return self.detailedMessage(msg)
     }
 

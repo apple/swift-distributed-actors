@@ -54,11 +54,15 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
                 return .none
             }
 
-            if change.isAtLeastDown || change.isRemoval || change.isReplacement {
+            if change.isAtLeastDown || change.isRemoval {
                 // it was marked as down by someone, we don't need to track it anymore
                 _ = self._markAsDown.remove(change.member)
                 _ = self._unreachable.remove(change.member)
                 return .cancelTimer(key: self.timerKey(change.member))
+            } else if let replaced = change.replaced {
+                _ = self._markAsDown.remove(replaced)
+                _ = self._unreachable.remove(replaced)
+                return .markAsDown([replaced])
             }
 
             return .none
@@ -113,7 +117,7 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
 
     func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective {
         guard let nodeToDown = self._unreachable.remove(member) else {
-            return .none
+            return .none // perhaps we removed it already for other reasons (e.g. node replacement)
         }
         if self.isLeader {
             return .markAsDown([nodeToDown])

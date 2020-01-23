@@ -86,8 +86,8 @@ final class ConvergentGossip<Payload: Codable> {
 
     private func receiveGossip(_ context: ActorContext<ConvergentGossip.Message>, envelope: ConvergentGossip.GossipEnvelope) {
         context.log.trace("Received gossip: \(envelope)", metadata: [
-            "gossip/localPayload": "\(String(reflecting: self.payload))",
-            "actor/message": "\(envelope)",
+            "gossip/current": "\(String(reflecting: self.payload))",
+            "gossip/incoming": "\(envelope)",
         ])
 
         // send to recipient which may then update() the payload we are gossiping
@@ -103,15 +103,12 @@ final class ConvergentGossip<Payload: Codable> {
         // TODO: bump local version vector; once it is in the envelope
     }
 
-    // FIXME: this is still just broadcasting (!)
     private func onPeriodicGossipTick(_ context: ActorContext<Message>) {
-        guard let target = self.peers.shuffled().first else {
-            // no peer to gossip to...
-            return
-        }
-
-        self.sendGossip(context, to: target)
         self.scheduleNextGossipRound(context: context)
+
+        if let target = self.peers.shuffled().first {
+            self.sendGossip(context, to: target)
+        }
     }
 
     private func sendGossip(_ context: ActorContext<Message>, to target: GossipPeerRef) {
@@ -126,7 +123,7 @@ final class ConvergentGossip<Payload: Codable> {
         let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
 
         // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
-        context.log.trace("Sending gossip to \(target)", metadata: [
+        context.log.info("Sending gossip to \(target)", metadata: [
             "gossip/target": "\(target.address)",
             "gossip/peerCount": "\(self.peers.count)",
             "gossip/peers": "\(self.peers.map { $0.address })",

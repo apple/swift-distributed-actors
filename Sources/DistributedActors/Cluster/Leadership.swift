@@ -314,7 +314,7 @@ extension Leadership {
 
             // select the leader, by lowest address
             let leader = membersToSelectAmong
-                .sorted { $0.node < $1.node }
+                .sorted(by: Cluster.Member.lowestAddressOrdering)
                 .first
 
             if let change = try! membership.applyLeadershipChange(to: leader) { // try! safe, as we KNOW this member is part of membership

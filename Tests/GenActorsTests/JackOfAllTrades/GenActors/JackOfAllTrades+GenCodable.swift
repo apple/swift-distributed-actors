@@ -27,16 +27,16 @@ extension JackOfAllTrades.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case hello
-        case _boxParking
         case _boxTicketing
+        case _boxParking
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
         case hello_replyTo
-        case _boxParking
         case _boxTicketing
+        case _boxParking
 
     }
 
@@ -46,12 +46,12 @@ extension JackOfAllTrades.Message: Codable {
         case .hello:
             let replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.hello_replyTo)
             self = .hello(replyTo: replyTo)
-        case ._boxParking:
-            let boxed = try container.decode(GeneratedActor.Messages.Parking.self, forKey: CodingKeys._boxParking)
-            self = .parking(boxed)
         case ._boxTicketing:
             let boxed = try container.decode(GeneratedActor.Messages.Ticketing.self, forKey: CodingKeys._boxTicketing)
             self = .ticketing(boxed)
+        case ._boxParking:
+            let boxed = try container.decode(GeneratedActor.Messages.Parking.self, forKey: CodingKeys._boxParking)
+            self = .parking(boxed)
 
         }
     }
@@ -62,12 +62,12 @@ extension JackOfAllTrades.Message: Codable {
         case .hello(let replyTo):
             try container.encode(DiscriminatorKeys.hello.rawValue, forKey: CodingKeys._case)
             try container.encode(replyTo, forKey: CodingKeys.hello_replyTo)
-        case .parking(let boxed):
-            try container.encode(DiscriminatorKeys._boxParking.rawValue, forKey: CodingKeys._case)
-            try container.encode(boxed, forKey: CodingKeys._boxParking)
         case .ticketing(let boxed):
             try container.encode(DiscriminatorKeys._boxTicketing.rawValue, forKey: CodingKeys._case)
             try container.encode(boxed, forKey: CodingKeys._boxTicketing)
+        case .parking(let boxed):
+            try container.encode(DiscriminatorKeys._boxParking.rawValue, forKey: CodingKeys._case)
+            try container.encode(boxed, forKey: CodingKeys._boxParking)
 
         }
     }

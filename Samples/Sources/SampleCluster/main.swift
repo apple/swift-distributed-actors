@@ -15,12 +15,8 @@
 import Dispatch
 import DistributedActors
 
-print("Getting args")
-
 var args = CommandLine.arguments
 args.removeFirst()
-
-print("got args")
 
 print("\(args)")
 
@@ -42,11 +38,8 @@ let ref = try system.spawn("hello", of: Cluster.Event.self, .receive { context, 
 system.cluster.events.subscribe(ref)
 
 if args.count >= 3 {
-    print("getting host")
     let host = args[1]
-    print("parsing port")
     let port = Int(args[2])!
-    print("Joining")
     system.cluster.join(node: Node(systemName: "System", host: host, port: port))
 }
 

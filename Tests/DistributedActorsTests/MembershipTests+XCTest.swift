@@ -25,11 +25,13 @@ extension MembershipTests {
         return [
             ("test_status_ordering", test_status_ordering),
             ("test_age_ordering", test_age_ordering),
-            ("test_member_forNonUniqueNode", test_member_forNonUniqueNode),
-            ("test_member_forNonUniqueNode_givenReplacementNodeStored", test_member_forNonUniqueNode_givenReplacementNodeStored),
+            ("test_membership_equality", test_membership_equality),
+            ("test_member_equality", test_member_equality),
+            ("test_member_replacement_shouldOfferChange", test_member_replacement_shouldOfferChange),
             ("test_apply_LeadershipChange", test_apply_LeadershipChange),
             ("test_join_memberReplacement", test_join_memberReplacement),
             ("test_apply_memberReplacement", test_apply_memberReplacement),
+            ("test_apply_memberRemoval", test_apply_memberRemoval),
             ("test_members_listing", test_members_listing),
             ("test_members_listing_filteringByReachability", test_members_listing_filteringByReachability),
             ("test_mark_shouldOnlyProceedForwardInStatuses", test_mark_shouldOnlyProceedForwardInStatuses),
@@ -46,6 +48,9 @@ extension MembershipTests {
             ("test_mergeForward_fromAhead_same", test_mergeForward_fromAhead_same),
             ("test_mergeForward_fromAhead_membership_withAdditionalMember", test_mergeForward_fromAhead_membership_withAdditionalMember),
             ("test_mergeForward_fromAhead_membership_withMemberNowDown", test_mergeForward_fromAhead_membership_withMemberNowDown),
+            ("test_mergeForward_fromAhead_membership_withNonMemberNowDown", test_mergeForward_fromAhead_membership_withNonMemberNowDown),
+            ("test_mergeForward_fromAhead_membership_withExistingMemberNowRemoved", test_mergeForward_fromAhead_membership_withExistingMemberNowRemoved),
+            ("test_mergeForward_fromAhead_membership_withNonMemberNowRemoved", test_mergeForward_fromAhead_membership_withNonMemberNowRemoved),
         ]
     }
 }

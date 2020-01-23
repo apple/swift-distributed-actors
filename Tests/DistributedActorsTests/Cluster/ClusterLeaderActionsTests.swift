@@ -20,54 +20,54 @@ import XCTest
 
 // Unit tests of the actions, see `ClusterLeaderActionsClusteredTests` for integration tests
 final class ClusterLeaderActionsTests: XCTestCase {
-    let _firstNode = Node(systemName: "System", host: "1.1.1.1", port: 7337)
-    let _secondNode = Node(systemName: "System", host: "2.2.2.2", port: 8228)
-    let _thirdNode = Node(systemName: "System", host: "3.3.3.3", port: 9119)
+    let _nodeA = Node(systemName: "System", host: "1.1.1.1", port: 7337)
+    let _nodeB = Node(systemName: "System", host: "2.2.2.2", port: 8228)
+    let _nodeC = Node(systemName: "System", host: "3.3.3.3", port: 9119)
 
-    var first: ClusterShellState!
-    var second: ClusterShellState!
-    var third: ClusterShellState!
+    var stateA: ClusterShellState!
+    var stateB: ClusterShellState!
+    var stateC: ClusterShellState!
 
-    var firstNode: UniqueNode {
-        self.first.myselfNode
+    var nodeA: UniqueNode {
+        self.stateA.myselfNode
     }
 
-    var secondNode: UniqueNode {
-        self.second.myselfNode
+    var nodeB: UniqueNode {
+        self.stateB.myselfNode
     }
 
-    var thirdNode: UniqueNode {
-        self.third.myselfNode
+    var nodeC: UniqueNode {
+        self.stateC.myselfNode
     }
 
     override func setUp() {
-        self.first = ClusterShellState.makeTestMock(side: .server) { settings in
-            settings.node = self._firstNode
+        self.stateA = ClusterShellState.makeTestMock(side: .server) { settings in
+            settings.node = self._nodeA
         }
-        self.second = ClusterShellState.makeTestMock(side: .server) { settings in
-            settings.node = self._secondNode
+        self.stateB = ClusterShellState.makeTestMock(side: .server) { settings in
+            settings.node = self._nodeB
         }
-        self.third = ClusterShellState.makeTestMock(side: .server) { settings in
-            settings.node = self._thirdNode
+        self.stateC = ClusterShellState.makeTestMock(side: .server) { settings in
+            settings.node = self._nodeC
         }
 
-        _ = self.first.membership.join(self.firstNode)
-        _ = self.first.membership.join(self.secondNode)
-        _ = self.first.membership.join(self.thirdNode)
+        _ = self.stateA.membership.join(self.nodeA)
+        _ = self.stateA.membership.join(self.nodeB)
+        _ = self.stateA.membership.join(self.nodeC)
 
-        _ = self.second.membership.join(self.firstNode)
-        _ = self.second.membership.join(self.secondNode)
-        _ = self.second.membership.join(self.thirdNode)
+        _ = self.stateB.membership.join(self.nodeA)
+        _ = self.stateB.membership.join(self.nodeB)
+        _ = self.stateB.membership.join(self.nodeC)
 
-        _ = self.third.membership.join(self.firstNode)
-        _ = self.third.membership.join(self.secondNode)
-        _ = self.third.membership.join(self.thirdNode)
-        _ = self.first.latestGossip.mergeForward(incoming: self.second.latestGossip)
+        _ = self.stateC.membership.join(self.nodeA)
+        _ = self.stateC.membership.join(self.nodeB)
+        _ = self.stateC.membership.join(self.nodeC)
+        _ = self.stateA.latestGossip.mergeForward(incoming: self.stateB.latestGossip)
 
-        _ = self.first.latestGossip.mergeForward(incoming: self.third.latestGossip)
+        _ = self.stateA.latestGossip.mergeForward(incoming: self.stateC.latestGossip)
 
-        _ = self.second.latestGossip.mergeForward(incoming: self.first.latestGossip)
-        _ = self.third.latestGossip.mergeForward(incoming: self.first.latestGossip)
+        _ = self.stateB.latestGossip.mergeForward(incoming: self.stateA.latestGossip)
+        _ = self.stateC.latestGossip.mergeForward(incoming: self.stateA.latestGossip)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -75,56 +75,57 @@ final class ClusterLeaderActionsTests: XCTestCase {
 
     func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
         // make F the leader
-        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.first.membership.firstMember(self.firstNode.node)!)!
-        self.first.applyClusterEventAsChange(.leadershipChange(makeFirstTheLeader))
+        let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.member(self.nodeA.node)!)!
+        _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
 
         // time to mark S as .down
-        _ = self.first.membership.mark(self.secondNode, as: .down) // only F knows that S is .down
+        _ = self.stateA.membership.mark(self.nodeB, as: .down) // only F knows that S is .down
 
-        // no removal action yet
-        let moveMembersUp = self.first.collectLeaderActions()
-        moveMembersUp.shouldContain(.moveMember(Cluster.MembershipChange(member: .init(node: self.firstNode, status: .joining), toStatus: .up)))
-        moveMembersUp.shouldContain(.moveMember(Cluster.MembershipChange(member: .init(node: self.thirdNode, status: .joining), toStatus: .up)))
-        moveMembersUp.count.shouldEqual(2) // S is down, but F and T shall move to .up
+        // ensure some nodes are up, so they participate in the convergence check
+        _ = self.stateA.membership.mark(self.nodeA, as: .up)
+        _ = self.stateA.membership.mark(self.nodeC, as: .up)
 
-        // apply the changes manually (as we don't run the actual real shell)
-        _ = self.first.membership.mark(self.firstNode, as: .up)
-        _ = self.first.membership.mark(self.thirdNode, as: .up)
+        // not yet converged, the first/third members need to chat some more, to ensure first knows that third knows that second is down
+        self.stateA.latestGossip.converged().shouldBeFalse()
+        let moveMembersUp = self.stateA.collectLeaderActions()
+        moveMembersUp.count.shouldEqual(0)
 
         // we tell others about the latest gossip, that S is down
         // second does not get the information, let's assume we cannot communicate with it
-        self.gossip(from: self.first, to: &self.third)
+        self.gossip(from: self.stateA, to: &self.stateC)
 
-        // all non-down nodes now know that S is .down
-        self.first.membership.uniqueMember(self.secondNode)!.status.shouldEqual(.down)
-        // assuming second is dead, do not gossip to it
-        self.third.membership.uniqueMember(self.secondNode)!.status.shouldEqual(.down)
+        // first and second now know that second is down
+        self.stateA.membership.uniqueMember(self.nodeB)!.status.shouldEqual(.down)
+        self.stateC.membership.uniqueMember(self.nodeB)!.status.shouldEqual(.down)
 
-        let firstLeaderActionsNotYet = self.first.collectLeaderActions()
-        firstLeaderActionsNotYet.shouldBeEmpty() // since we don't know if T has seen the [.down] yet
+        // we gossiped to third, and it knows, but we don't know yet if it knows (if it has received the information)
+        self.stateA.latestGossip.converged().shouldBeFalse()
 
-        // once T gossips to F, and now we know it has seen the .down information we told it about
-        self.gossip(from: self.third, to: &self.first)
+        // after a gossip back...
+        self.gossip(from: self.stateC, to: &self.stateA)
 
-        let hopefullyRemovalActions = self.first.collectLeaderActions()
+        // now first knows that all other up/leaving members also know about second being .down
+        self.stateA.latestGossip.converged().shouldBeTrue()
+        self.stateC.latestGossip.converged().shouldBeTrue() // also true, but not needed for the leader to make the decision
+
+        let hopefullyRemovalActions = self.stateA.collectLeaderActions()
         hopefullyRemovalActions.count.shouldEqual(1)
-        guard case .some(.removeDownMember(let member)) = hopefullyRemovalActions.first else {
+        guard case .some(.removeMember(let member)) = hopefullyRemovalActions.first else {
             XCTFail("Expected a member removal action, but did not get one, actions: \(hopefullyRemovalActions)")
             return
         }
-
         member.status.isDown.shouldBeTrue()
-        member.node.shouldEqual(self.secondNode)
+        member.node.shouldEqual(self.nodeB)
 
-        pprint("self.first.latestGossip.seen.version(at: self.first.myselfNode) = \(self.first.latestGossip)")
+        // interpret leader actions would interpret it by removing the member now and tombstone-ing it,
+        // see `interpretLeaderActions`
+        _ = self.stateA.membership.removeCompletely(self.nodeB)
+        self.stateA.latestGossip.membership.uniqueMember(self.nodeB).shouldBeNil()
 
         // once we (leader) have performed removal and talk to others, they should also remove and prune seen tables
-        self.gossip(from: self.first, to: &self.second)
-
-        // once a node is removed, it should not be seen in gossip seen tables anymore ---------------------------------
-        pprint("self.first.latestGossip.seen.version(at: self.first.myselfNode) = \(self.first.latestGossip)")
-        let secondMemberStillKnown = self.first.latestGossip.membership.uniqueMember(self.second.myselfNode)
-        secondMemberStillKnown.shouldBeNil()
+        //
+        // once a node is removed, it should not be seen in gossip seen tables anymore
+        let directive = self.gossip(from: self.stateA, to: &self.stateC)
     }
 
     @discardableResult
