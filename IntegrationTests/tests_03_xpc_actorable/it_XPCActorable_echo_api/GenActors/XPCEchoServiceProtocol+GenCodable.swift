@@ -13,7 +13,7 @@
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//sa
+//
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
