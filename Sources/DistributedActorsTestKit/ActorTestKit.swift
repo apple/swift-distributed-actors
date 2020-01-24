@@ -451,3 +451,33 @@ internal extension ActorTestKit {
         return intValue
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Receptionist
+
+extension ActorTestKit {
+    /// Ensures that a given number of refs are registered with the Receptionist under `key`.
+    /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
+    public func ensureRegistered<Message>(
+        key: Receptionist.RegistrationKey<Message>,
+        expectedCount: Int = 1,
+        expectedRefs: Set<ActorRef<Message>>? = nil,
+        within: TimeAmount = .seconds(3)
+    ) throws {
+        let lookupProbe = self.spawnTestProbe(expecting: Receptionist.Listing<Message>.self)
+
+        try self.eventually(within: within) {
+            self.system.receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+
+            let listing = try lookupProbe.expectMessage()
+            guard listing.refs.count == expectedCount else {
+                throw self.error("Expected Receptionist.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
+            }
+            if let expectedRefs = expectedRefs {
+                guard listing.refs == expectedRefs else {
+                    throw self.error("Expected Receptionist.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
+                }
+            }
+        }
+    }
+}

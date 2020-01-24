@@ -75,6 +75,17 @@ final class ActorTestKitTests: XCTestCase {
         }
     }
 
+    func test_ensureRegistered_countAndRefs() throws {
+        let greeterProbe1 = self.testKit.spawnTestProbe(expecting: String.self)
+        let greeterProbe2 = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let key = Receptionist.RegistrationKey(String.self, id: "greeter")
+        self.system.receptionist.tell(Receptionist.Register(greeterProbe1.ref, key: key))
+        self.system.receptionist.tell(Receptionist.Register(greeterProbe2.ref, key: key))
+
+        try self.testKit.ensureRegistered(key: key, expectedCount: 2, expectedRefs: [greeterProbe2.ref, greeterProbe1.ref])
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actorable
 
