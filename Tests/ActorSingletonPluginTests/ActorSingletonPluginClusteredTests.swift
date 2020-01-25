@@ -52,7 +52,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             third.cluster.join(node: second.cluster.node.node)
 
             // `first` will be the leader (lowest address) and runs the singleton
-            try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
+            try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
             let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
@@ -123,7 +123,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             third.cluster.join(node: second.cluster.node.node)
 
             // `first` becomes the leader (lowest address) and runs the singleton
-            try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
+            try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             try replyProbe1.expectMessage("Hello-1 Charlie-1!")
             try replyProbe2.expectMessage("Hello-1 Charlie-2!")
@@ -172,7 +172,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             third.cluster.join(node: second.cluster.node.node)
 
-            try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
+            try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
             let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
@@ -211,7 +211,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             // `fourth` will become the new leader and singleton
             fourth.cluster.join(node: second.cluster.node.node)
 
-            try self.ensureNodes(.up, within: .seconds(10), systems: fourth, second, third)
+            try self.ensureNodes(.up, within: .seconds(10), nodes: fourth.cluster.node, second.cluster.node, third.cluster.node)
 
             // The stashed messages get routed to new singleton running on `fourth`
             try replyProbe2.expectMessage("Hello-4 Charlie-2!")

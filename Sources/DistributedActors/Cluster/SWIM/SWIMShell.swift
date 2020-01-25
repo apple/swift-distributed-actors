@@ -225,7 +225,12 @@ internal struct SWIMShell {
         switch result {
         case .failure(let err):
             if let timeoutError = err as? TimeoutError {
-                context.log.warning("Did not receive ack from \(reflecting: pingedMember.address) within [\(timeoutError.timeout.prettyDescription)]. Sending ping requests to other members.")
+                context.log.warning("""
+                Did not receive ack from \(reflecting: pingedMember.address) within [\(timeoutError.timeout.prettyDescription)]. \
+                Sending ping requests to other members.
+                """, metadata: [
+                    "swim/target": "\(self.swim.member(for: pingedMember), orElse: "nil")",
+                ])
             } else {
                 context.log.warning("\(err) Did not receive ack from \(reflecting: pingedMember.address) within configured timeout. Sending ping requests to other members.")
             }
@@ -329,7 +334,7 @@ internal struct SWIMShell {
     func checkSuspicionTimeouts(context: ActorContext<SWIM.Message>) {
         // TODO: push more of logic into SWIM instance, the calculating
         // FIXME: use decaying timeout as proposed in lifeguard paper
-        let timeoutSuspectsBeforePeriod = (self.swim.protocolPeriod - self.swim.settings.failureDetector.suspicionTimeoutPeriodsMax)
+        let timeoutSuspectsBeforePeriod = self.swim.timeoutSuspectsBeforePeriod
         context.log.trace("Checking suspicion timeouts...", metadata: [
             "swim/suspects": "\(self.swim.suspects)",
             "swim/all": "\(self.swim._allMembersDict)",
@@ -398,7 +403,7 @@ internal struct SWIMShell {
 
             case .ignored(let level, let message):
                 if let level = level, let message = message {
-                    context.log.log(level: level, message)
+                    context.log.log(level: level, message, metadata: self.swim.metadata)
                 }
 
             case .applied(let change, _, _):

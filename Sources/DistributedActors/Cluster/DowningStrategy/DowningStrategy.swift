@@ -61,6 +61,7 @@ internal struct DowningStrategyShell {
             return .receiveMessage { message in
                 switch message {
                 case .timeout(let member):
+                    context.log.info("GOT: \(message)")
                     let directive = self.strategy.onTimeout(member)
                     context.log.debug("Received timeout for [\(member)], resulting in: \(directive)")
                     self.interpret(context, directive)
@@ -73,7 +74,6 @@ internal struct DowningStrategyShell {
 
     func receiveClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) throws {
         let directive: DowningStrategyDirective = try self.strategy.onClusterEvent(event: event)
-        context.log.trace("Downing strategy reaction to \(event) resulted in: \(directive)", metadata: self.metadata)
         self.interpret(context, directive)
     }
 

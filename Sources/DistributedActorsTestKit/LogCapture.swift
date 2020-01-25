@@ -297,9 +297,7 @@ extension LogCapture {
             let message = """
             Did not find expected log, matching query: 
                 [\(query)]
-            in captured logs: 
-                \(logs.map { "\($0)" }.joined(separator: "\n    "))\n
-            at \(file):\(line)
+            in captured logs at \(file):\(line)
             """
             let callSiteError = callSite.error(message)
             if failTest {

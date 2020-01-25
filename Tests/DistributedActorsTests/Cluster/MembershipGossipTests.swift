@@ -39,17 +39,73 @@ final class MembershipGossipTests: XCTestCase {
     // MARK: Merging gossips
 
     func test_mergeForward_incomingGossip_firstGossipFromOtherNode() {
-        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
-        _ = gossip.membership.join(self.nodeA)
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.joining
+            A: A:1
+            """, owner: self.nodeA, nodes: self.allNodes
+        )
 
-        var gossipFromSecond = Cluster.Gossip(ownerNode: self.nodeB)
-        _ = gossipFromSecond.membership.join(self.nodeB)
+        let incoming = Cluster.Gossip.parse(
+            """
+            B.joining
+            B: B:1
+            """, owner: self.nodeB, nodes: self.allNodes
+        )
 
-        let directive = gossip.mergeForward(incoming: gossipFromSecond)
+        let directive = gossip.mergeForward(incoming: incoming)
 
         directive.effectiveChanges.shouldEqual(
             [Cluster.MembershipChange(node: self.nodeB, fromStatus: nil, toStatus: .joining)]
         )
+
+        gossip.shouldEqual(Cluster.Gossip.parse(
+            """
+            A.joining B.joining
+            A: A:1 B:1
+            B: B:1
+            """, owner: self.nodeA, nodes: self.allNodes
+        ))
+    }
+
+    func test_mergeForward_incomingGossip_firstGossipFromOtherNodes() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.joining
+            A: A:1
+            """, owner: self.nodeA, nodes: self.allNodes
+        )
+
+        let incoming = Cluster.Gossip.parse(
+            """
+            B.joining C.joining
+            B: B:1 C:1
+            C: B:1 C:1
+            """, owner: self.nodeB, nodes: self.allNodes
+        )
+
+        let directive = gossip.mergeForward(incoming: incoming)
+
+        Set(directive.effectiveChanges).shouldEqual(Set([
+            Cluster.MembershipChange(node: self.nodeB, fromStatus: nil, toStatus: .joining),
+            Cluster.MembershipChange(node: self.nodeC, fromStatus: nil, toStatus: .joining),
+        ]))
+
+        let expected = Cluster.Gossip.parse(
+            """
+            A.joining B.joining C.joining
+            A: A:1 B:1 C:1
+            B: B:1 C:1
+            C: B:1 C:1
+            """, owner: self.nodeA, nodes: self.allNodes
+        )
+
+        gossip.seen.shouldEqual(expected.seen)
+        gossip.seen.version(at: self.nodeA).shouldEqual(expected.seen.version(at: self.nodeA))
+        gossip.seen.version(at: self.nodeB).shouldEqual(expected.seen.version(at: self.nodeB))
+        gossip.seen.version(at: self.nodeC).shouldEqual(expected.seen.version(at: self.nodeC))
+        gossip.membership.shouldEqual(expected.membership)
+        gossip.shouldEqual(expected)
     }
 
     func test_mergeForward_incomingGossip_sameVersions() {
@@ -123,15 +179,8 @@ final class MembershipGossipTests: XCTestCase {
             owner: self.nodeB, nodes: self.allNodes
         ) // TODO: this will be rejected since owner is the downe node (!) add another test with third sending the same info
 
-        pprint("gossipBeforeMergeForward = \(gossip)")
-        pprint("++++++++++++++++++++++++++++++")
-        pprint("incomingOldGossip        = \(incomingOldGossip)")
-
         let gossipBeforeMerge = gossip
         let directive = gossip.mergeForward(incoming: incomingOldGossip)
-
-        pprint("RESULT                   = \(gossip)")
-        pprint("--------------------------------------------------------------------")
 
         directive.causalRelation.shouldEqual(.concurrent)
         directive.effectiveChanges.shouldEqual(
@@ -148,7 +197,7 @@ final class MembershipGossipTests: XCTestCase {
     func test_mergeForward_incomingGossip_concurrent_leaderDisagreement() {
         var gossip = Cluster.Gossip.parse(
             """
-            A.up B.down [leader:A]
+            A.up B.joining [leader:A]
             A: A@5 B@5 
             B: A@5 B@5
             """,
@@ -161,9 +210,9 @@ final class MembershipGossipTests: XCTestCase {
         // who shall be leader
         let incomingGossip = Cluster.Gossip.parse(
             """
-            B.down C.up [leader:B]
+            A.up B.joining C.up [leader:B]
             B: B@2 C@1
-            C: B@2 C@9
+            C: B@5 C@9
             """,
             owner: self.nodeC, nodes: self.allNodes
         )
@@ -185,8 +234,18 @@ final class MembershipGossipTests: XCTestCase {
             ]
         )
 
-        gossip.membership.leader?.node.shouldEqual(self.nodeA)
-        incomingGossip.membership.leader?.node.shouldEqual(self.nodeB)
+        let expected = Cluster.Gossip.parse(
+            """
+            A.up B.joining C.up [leader:A]
+            A: A:5 B:5 C:9
+            B: A:5 B:5 C@1
+            C:     B:5 C:9
+            """, owner: self.nodeA, nodes: self.allNodes
+        )
+
+        gossip.seen.shouldEqual(expected.seen)
+        gossip.membership.shouldEqual(expected.membership)
+        gossip.shouldEqual(expected)
     }
 
     func test_mergeForward_incomingGossip_concurrent_simple() {
@@ -242,6 +301,87 @@ final class MembershipGossipTests: XCTestCase {
         )
 
         gossip.membership.members(atLeast: .joining).shouldContain(Cluster.Member(node: self.nodeB, status: .joining))
+    }
+
+    func test_mergeForward_removal_incomingGossip_isAhead_hasRemovedNodeKnownToBeDown() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.up B.down C.up [leader:A]
+            A: A@5 B@5 C@6
+            B: A@5 B@5 C@6
+            C: A@5 B@5 C@6
+            """,
+            owner: self.nodeA, nodes: self.allNodes
+        )
+
+        let incomingGossip = Cluster.Gossip.parse(
+            """
+            A.up C.up
+            A: A@5 C@6
+            C: A@5 C@7
+            """, owner: self.nodeC, nodes: self.allNodes
+        )
+
+        let directive = gossip.mergeForward(incoming: incomingGossip)
+
+        directive.causalRelation.shouldEqual(.concurrent)
+        // v-clock wise this indeed is concurrent, however due to down/removal involved, we can handle it
+
+        directive.effectiveChanges.shouldEqual([
+            Cluster.MembershipChange(node: self.nodeB, fromStatus: .down, toStatus: .removed),
+        ])
+
+        gossip.shouldEqual(Cluster.Gossip.parse(
+            """
+            A.up C.up [leader:A]
+            A: A@5 C@7
+            C: A@5 C@7
+            """, owner: self.nodeA, nodes: self.allNodes
+        ))
+    }
+
+    func test_mergeForward_incomingGossip_removal_isAhead_hasMyNodeRemoved_thusWeKeepItAsRemoved() {
+        var gossip = Cluster.Gossip.parse(
+            """
+            A.up B.down C.up
+            A: A@5 B@5 C@6
+            B: A@5 B@5 C@6
+            C: A@5 B@5 C@6
+            """,
+            owner: self.nodeB, nodes: self.allNodes
+        )
+
+        let incomingGossip = Cluster.Gossip.parse(
+            """
+            A.up C.up
+            A: A@5 C@6
+            C: A@5 C@7
+            """, owner: self.nodeC, nodes: self.allNodes
+        )
+
+        let directive = gossip.mergeForward(incoming: incomingGossip)
+
+        directive.causalRelation.shouldEqual(.concurrent)
+        directive.effectiveChanges.shouldEqual([
+            Cluster.MembershipChange(node: self.nodeB, fromStatus: .down, toStatus: .removed),
+        ])
+
+        // we MIGHT receive a removal of "our node" however we must never apply such change!
+        // we know we are `.down` and that's the most "we" will ever perceive ourselves as -- i.e. removed is only for "others".
+        let expected = Cluster.Gossip.parse(
+            """
+            A.up B.removed C.up
+            A: A@5 B@5 C@6
+            B: A@5 B@5 C@7
+            C: A@5 B@5 C@7
+            """, owner: self.nodeB, nodes: self.allNodes
+        )
+        gossip.seen.version(at: self.nodeA).shouldEqual(expected.seen.version(at: self.nodeA))
+        gossip.seen.version(at: self.nodeB).shouldEqual(expected.seen.version(at: self.nodeB))
+        gossip.seen.version(at: self.nodeC).shouldEqual(expected.seen.version(at: self.nodeC))
+//        gossip.seen.shouldEqual(expected.seen)
+//        gossip.membership.shouldEqual(expected.membership)
+        gossip.shouldEqual(expected)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

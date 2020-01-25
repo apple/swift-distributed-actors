@@ -48,9 +48,8 @@ extension MembershipTests {
             ("test_mergeForward_fromAhead_same", test_mergeForward_fromAhead_same),
             ("test_mergeForward_fromAhead_membership_withAdditionalMember", test_mergeForward_fromAhead_membership_withAdditionalMember),
             ("test_mergeForward_fromAhead_membership_withMemberNowDown", test_mergeForward_fromAhead_membership_withMemberNowDown),
-            ("test_mergeForward_fromAhead_membership_withNonMemberNowDown", test_mergeForward_fromAhead_membership_withNonMemberNowDown),
-            ("test_mergeForward_fromAhead_membership_withExistingMemberNowRemoved", test_mergeForward_fromAhead_membership_withExistingMemberNowRemoved),
-            ("test_mergeForward_fromAhead_membership_withNonMemberNowRemoved", test_mergeForward_fromAhead_membership_withNonMemberNowRemoved),
+            ("test_mergeForward_fromAhead_membership_withDownMembers", test_mergeForward_fromAhead_membership_withDownMembers),
+            ("test_mergeForward_fromAhead_membership_ignoreRemovedWithoutPreceedingDown", test_mergeForward_fromAhead_membership_ignoreRemovedWithoutPreceedingDown),
         ]
     }
 }

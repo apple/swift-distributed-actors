@@ -23,10 +23,14 @@ import XCTest
 extension DowningClusteredTests {
     static var allTests: [(String, (DowningClusteredTests) -> () throws -> Void)] {
         return [
-            ("test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_leaveSelf", test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_leaveSelf),
-            ("test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_downSelf", test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_downSelf),
-            ("test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_shutdownSelf", test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_shutdownSelf),
-            ("test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_downFromSecond", test_stoppingSelfNode_shouldPropagateToOtherNodes_downedBy_downFromSecond),
+            ("test_stopLeader_by_leaveSelfNode_shouldPropagateToOtherNodes", test_stopLeader_by_leaveSelfNode_shouldPropagateToOtherNodes),
+            ("test_stopMember_by_leaveSelfNode_shouldPropagateToOtherNodes", test_stopMember_by_leaveSelfNode_shouldPropagateToOtherNodes),
+            ("test_stopLeader_by_downSelf_shouldPropagateToOtherNodes", test_stopLeader_by_downSelf_shouldPropagateToOtherNodes),
+            ("test_stopMember_by_downSelf_shouldPropagateToOtherNodes", test_stopMember_by_downSelf_shouldPropagateToOtherNodes),
+            ("test_stopLeader_by_downByMember_shouldPropagateToOtherNodes", test_stopLeader_by_downByMember_shouldPropagateToOtherNodes),
+            ("test_stopMember_by_downByMember_shouldPropagateToOtherNodes", test_stopMember_by_downByMember_shouldPropagateToOtherNodes),
+            ("test_stopLeader_by_shutdownSelf_shouldPropagateToOtherNodes", test_stopLeader_by_shutdownSelf_shouldPropagateToOtherNodes),
+            ("test_stopMember_by_shutdownSelf_shouldPropagateToOtherNodes", test_stopMember_by_shutdownSelf_shouldPropagateToOtherNodes),
         ]
     }
 }

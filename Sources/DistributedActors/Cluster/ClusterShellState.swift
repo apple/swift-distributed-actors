@@ -503,7 +503,7 @@ extension ClusterShellState {
     /// Generates and applies changes; generating actions to be taken by the `ClusterShell` if and only if it is the Leader,
     /// after this change has been applied.
     mutating func applyClusterEvent(_ event: Cluster.Event) -> AppliedClusterEventDirective {
-        let changeWasApplied: Bool
+        var changeWasApplied: Bool
 
         switch event {
         case .leadershipChange(let change):
@@ -532,10 +532,14 @@ extension ClusterShellState {
             } else {
                 changeWasApplied = false
             }
-        case .snapshot:
-            // TODO: not handling snapshot here, we are a source of snapshots... yet what about gossip vs. "push membership", we may want ot handle here, by diff+apply
-            self.log.info("SNAPSHOT NOT APPLIED, NOT IMPLEMENTED; \(event)")
+        case .snapshot(let snapshot):
+            /// Realistically we are a SOURCE of snapshots, not a destination of them, however for completeness let's implement it:
             changeWasApplied = false
+            for change in Cluster.Membership._diff(from: .empty, to: snapshot).changes {
+                let directive = self.applyClusterEvent(.membershipChange(change))
+                changeWasApplied = changeWasApplied || directive.applied
+                // actions we'll calculate below, once
+            }
         }
 
         guard changeWasApplied else {
@@ -557,46 +561,6 @@ extension ClusterShellState {
         // will be empty if myself node is NOT a Leader
         let leaderActions: [LeaderAction]
     }
-
-    /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.
-    // TODO: test the actions when leader, not leader, that only applies to joining ones etc
-    func collectLeaderActions() -> [LeaderAction] {
-        guard self.membership.isLeader(self.myselfNode) else {
-            return [] // since we are not the leader, we perform no tasks
-        }
-
-        guard self.latestGossip.converged() else {
-            return [] // leader actions are only performed when
-        }
-
-        func collectMemberUpMoves() -> [LeaderAction] {
-            let joiningMembers = self.membership.members(withStatus: .joining).sorted(by: Cluster.Member.ageOrdering)
-
-            return joiningMembers.map { joiningMember in
-                let change = Cluster.MembershipChange(member: joiningMember, toStatus: .up)
-                return LeaderAction.moveMember(change)
-            }
-        }
-
-        func collectDownMemberRemovals() -> [LeaderAction] {
-            let toExitMembers = self.membership.members(withStatus: .down)
-
-            return toExitMembers.map { member in
-                LeaderAction.removeMember(alreadyDownMember: member)
-            }
-        }
-
-        var leadershipActions: [LeaderAction] = []
-        leadershipActions.append(contentsOf: collectMemberUpMoves())
-        leadershipActions.append(contentsOf: collectDownMemberRemovals())
-
-        return leadershipActions
-    }
-
-    enum LeaderAction: Equatable {
-        case moveMember(Cluster.MembershipChange)
-        case removeMember(alreadyDownMember: Cluster.Member)
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -607,9 +571,5 @@ extension ClusterShellState {
         [
             "membership/count": "\(String(describing: self.membership.count(atLeast: .joining)))",
         ]
-    }
-
-    func logMembership() {
-        self.log.info("MEMBERSHIP:::: \(self.membership.prettyDescription(label: self.myselfNode.node.systemName))")
     }
 }

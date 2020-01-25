@@ -82,12 +82,23 @@ extension Cluster {
         /// Note that moving only happens along the lifecycle of a member, e.g. trying to move forward from .up do .joining
         /// will result in a `nil` change and no changes being made to the member.
         public mutating func moveForward(to status: Cluster.MemberStatus) -> Cluster.MembershipChange? {
+            // only allow moving "forward"
             guard self.status < status else {
                 return nil
             }
-            let oldMember = self
+            // special handle if we are about to move to .removed, this is only allowed from .down
+            if status == .removed {
+                // special handle removals
+                if self.status == .down {
+                    return .init(member: self, toStatus: .removed)
+                } else {
+                    return nil
+                }
+            }
+
+            let previousSelf = self
             self.status = status
-            return Cluster.MembershipChange(member: oldMember, toStatus: status)
+            return Cluster.MembershipChange(member: previousSelf, toStatus: status)
         }
 
         public func movingForward(to status: MemberStatus) -> Self {
@@ -179,16 +190,16 @@ extension Cluster {
         /// In other words: "Members don't talk to zombies."
         case down
 
-        /// Describes a member which is safe to _completely remove_ from future gossips.
-        /// This status is managed internally and not really of concern to end users (it could be treated equivalent to .down
-        /// by applications safely). Notably, this status should never really be "stored" in membership, other than for purposes
-        /// of gossiping to other nodes that they also may remove the node.
+        /// Describes a member which _has been completely removed_ from the membership and gossips.
         ///
-        /// The result of a .removed being gossiped is the complete removal of the associated member from any membership information
-        /// in the future. As this may pose a risk, e.g. if a `.down` node remains active for many hours for some reason, and
-        /// we'd have removed it from the membership completely, it would allow such node to "join again" and be (seemingly)
-        /// a "new node", leading to all kinds of potential issues. Thus the margin to remove members has to be threaded carefully and
-        /// managed by a leader action, rather than (as .down is) be possible to invoke by any node at any time.
+        /// This value is not gossiped, rather, in face if an "ahead" (as per version vector time) incoming gossip
+        /// with a missing entry for a known .down member shall be assumed removed.
+        ///
+        /// Moving into the .removed state may ONLY be performed from a .down state, and must be performed by the cluster
+        /// leader if and only if the cluster views of all live members are `Cluster.Gossip.converged()`.
+        ///
+        /// Note, that a removal also ensures storage of tombstones on the networking layer, such that any future attempts
+        /// of such node re-connecting will be automatically rejected, disallowing the node to "come back" (which we'd call a "zombie" node).
         case removed
 
         public static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding

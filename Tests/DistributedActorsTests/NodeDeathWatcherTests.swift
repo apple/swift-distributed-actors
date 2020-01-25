@@ -54,7 +54,7 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
                 }
             })
 
-            try self.ensureNodes(.up, systems: first, second)
+            try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
             first.cluster.down(node: second.cluster.node.node)
 
             // should cause termination of all remote actors, observed by the local actors on [first]
