@@ -20,9 +20,11 @@ import XCTest
 
 final class MembershipGossipClusteredTests: ClusteredNodesTestBase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.filterActorPaths = [
+            "/system/cluster",
+        ]
         settings.excludeActorPaths = [
-        settings.filterActorPaths = ["/system/cluster"]
-        settings.excludeActorPaths = ["/system/cluster/swim"] // we assume it works fine
+            "/system/cluster/swim", // we assume it works fine
             "/system/receptionist",
         ]
         settings.excludeGrep = [

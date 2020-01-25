@@ -20,9 +20,13 @@ import XCTest
 
 // Unit tests of the actions, see `ClusterLeaderActionsClusteredTests` for integration tests
 final class ClusterLeaderActionsTests: XCTestCase {
-    let _nodeA = Node(systemName: "System", host: "1.1.1.1", port: 7337)
-    let _nodeB = Node(systemName: "System", host: "2.2.2.2", port: 8228)
-    let _nodeC = Node(systemName: "System", host: "3.3.3.3", port: 9119)
+    let _nodeA = Node(systemName: "nodeA", host: "1.1.1.1", port: 7337)
+    let _nodeB = Node(systemName: "nodeB", host: "2.2.2.2", port: 8228)
+    let _nodeC = Node(systemName: "nodeC", host: "3.3.3.3", port: 9119)
+
+    var allNodes: [UniqueNode] {
+        [self.nodeA, self.nodeB, self.nodeC]
+    }
 
     var stateA: ClusterShellState!
     var stateB: ClusterShellState!
@@ -74,11 +78,11 @@ final class ClusterLeaderActionsTests: XCTestCase {
     // MARK: Moving members to .removed
 
     func test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers() {
-        // make F the leader
+        // make A the leader
         let makeFirstTheLeader = Cluster.LeadershipChange(oldLeader: nil, newLeader: self.stateA.membership.member(self.nodeA.node)!)!
         _ = self.stateA.applyClusterEvent(.leadershipChange(makeFirstTheLeader))
 
-        // time to mark S as .down
+        // time to mark B as .down
         _ = self.stateA.membership.mark(self.nodeB, as: .down) // only F knows that S is .down
 
         // ensure some nodes are up, so they participate in the convergence check
@@ -90,7 +94,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
         let moveMembersUp = self.stateA.collectLeaderActions()
         moveMembersUp.count.shouldEqual(0)
 
-        // we tell others about the latest gossip, that S is down
+        // we tell others about the latest gossip, that B is down
         // second does not get the information, let's assume we cannot communicate with it
         self.gossip(from: self.stateA, to: &self.stateC)
 
@@ -98,7 +102,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
         self.stateA.membership.uniqueMember(self.nodeB)!.status.shouldEqual(.down)
         self.stateC.membership.uniqueMember(self.nodeB)!.status.shouldEqual(.down)
 
-        // we gossiped to third, and it knows, but we don't know yet if it knows (if it has received the information)
+        // we gossiped to C, and it knows, but we don't know yet if it knows (if it has received the information)
         self.stateA.latestGossip.converged().shouldBeFalse()
 
         // after a gossip back...
@@ -125,7 +129,23 @@ final class ClusterLeaderActionsTests: XCTestCase {
         // once we (leader) have performed removal and talk to others, they should also remove and prune seen tables
         //
         // once a node is removed, it should not be seen in gossip seen tables anymore
-        let directive = self.gossip(from: self.stateA, to: &self.stateC)
+        _ = self.gossip(from: self.stateA, to: &self.stateC)
+    }
+
+    func test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet() {
+        // A is .down, but
+        _ = self.stateB._latestGossip = .parse(
+            """
+            A.down B.up C.up [leader:B]
+            A: A:7 B:2
+            B: A:7 B:10 C:6
+            C: A:7 B:5 C:6
+            """, owner: self.nodeB, nodes: self.allNodes
+        )
+
+        self.stateB.latestGossip.converged().shouldBeFalse()
+        let moveMembersUp = self.stateA.collectLeaderActions()
+        moveMembersUp.count.shouldEqual(0)
     }
 
     @discardableResult

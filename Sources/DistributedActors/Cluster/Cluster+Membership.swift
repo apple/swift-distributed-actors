@@ -451,43 +451,59 @@ extension Cluster.Membership {
     /// The following table illustrates the possible state transitions of a node during a merge:
     ///
     /// ```
-    /// node's status     | "ahead" node's status            | resulting node's status
-    /// ----------------+------------------------------------|-------------------------
-    ///  <none>        --> [.joining, .up, .leaving]        --> <ahead status>
-    ///  <none>        --> [.down, .removed]                --> <none>
-    ///  [.joining]    --> [.joining, .up, .leaving, .down] --> <ahead status>
-    ///  [.up]         --> [.up, .leaving, .down]           --> <ahead status>
-    ///  [.leaving]    --> [.leaving, .down]                --> <ahead status>
-    ///  [.down]       --> [.down]                          --> <ahead status>
-    ///  <any status>* --> [.removed]                       --> <none>
-    ///  <any status>  --> <none>                           --> <previous status>
-    /// * a .removed will never be _stored_ it may be incoming which means that a leader has decided that we
-    ///   it is safe to remove the member from the membership, i.e. all nodes have converged on seeing it as leaving
-    /// ```
+    /// node's status  | "ahead" node's status                | resulting node's status
+    /// ---------------+--------------------------------------|-------------------------
+    ///  <none>       -->  [.joining, .up, .leaving]         --> <ahead status>
+    ///  <none>       -->  [.down, .removed]                 --> <none>
+    ///  [.joining]   -->  [.joining, .up, .leaving, .down]  --> <ahead status>
+    ///  [.up]        -->  [.up, .leaving, .down]            --> <ahead status>
+    ///  [.leaving]   -->  [.leaving, .down]                 --> <ahead status>
+    ///  [.down]      -->  [.down]                           --> <ahead status>
+    ///  [.down]      -->  <none> (if some node removed)     --> <none>
+    ///  [.down]      -->  <none> (iff myself node removed)  --> .removed
+    ///  <any status> -->  [.removed]**                      --> <none>
+    ///  <any status> -->  [.removed]**                      --> <none>
+    ///
+    /// * `.removed` is never stored EXCEPT if the `myself` member has been seen removed by other members of the cluster.
+    /// ** `.removed` should never be gossiped/incoming within the cluster, but if it were to happen it is treated like a removal.
     ///
     /// Warning: Leaders are not "merged", they get elected by each node (!).
     ///
     /// - Returns: any membership changes that occurred (and have affected the current membership).
-    public mutating func mergeFrom(ahead: Cluster.Membership) -> [Cluster.MembershipChange] {
+    public mutating func mergeFrom(incoming: Cluster.Membership, myself: UniqueNode?) -> [Cluster.MembershipChange] {
         var changes: [Cluster.MembershipChange] = []
 
-        for incomingMember in ahead._members.values {
+        // Set of nodes whose members are currently .down, and not present in the incoming gossip.
+        //
+        // as we apply incoming member statuses, remove members from this set
+        // if any remain in the set, it means they were removed in the incoming membership
+        // since we strongly assume the incoming one is "ahead" (i.e. `self happenedBefore ahead`),
+        // we remove these members and emit .removed changes.
+        var downNodesToRemove: Set<UniqueNode> = Set(self.members(withStatus: .down).map { $0.node })
+
+        // 1) move forward any existing members or new members according to the `ahead` statuses
+        for incomingMember in incoming._members.values {
+            downNodesToRemove.remove(incomingMember.node)
+
             guard var knownMember = self._members[incomingMember.node] else {
-                // member not known locally
-                if Cluster.MemberStatus.down <= incomingMember.status {
+                // member NOT known locally ----------------------------------------------------------------------------
+
+                // only proceed if the member isn't already on it's way out
+                guard incomingMember.status < Cluster.MemberStatus.down else {
                     // no need to do anything if it is a removal coming in, yet we already do not know this node
                     continue
-                } else {
-                    // it is information about a new member, merge it in
-                    self._members[incomingMember.node] = incomingMember
-
-                    var change: Cluster.MembershipChange = .init(member: incomingMember)
-                    change.fromStatus = nil // since "new"
-                    changes.append(change)
-                    continue
                 }
+
+                // it is information about a new member, merge it in
+                self._members[incomingMember.node] = incomingMember
+
+                var change = Cluster.MembershipChange(member: incomingMember)
+                change.fromStatus = nil // since "new"
+                changes.append(change)
+                continue
             }
-            // it is a known member
+
+            // it is a known member ------------------------------------------------------------------------------------
             if let change = knownMember.moveForward(to: incomingMember.status) {
                 if change.toStatus.isRemoved {
                     self._members.removeValue(forKey: incomingMember.node)
@@ -497,6 +513,24 @@ extension Cluster.Membership {
                 changes.append(change)
             }
         }
+
+        // 2) if any nodes we know about locally, were not included in the `ahead` membership
+        changes.append(contentsOf: downNodesToRemove.compactMap { nodeToRemove in
+            if nodeToRemove == myself {
+                // we do NOT remove ourselves completely from our own membership, we remain .removed however
+                return self.mark(nodeToRemove, as: .removed)
+            } else {
+                // This is safe since we KNOW the node used to be .down before,
+                // and removals are only performed on convergent cluster state.
+                // Thus all members in the cluster have seen the node as down, or already removed it.
+                // Removal also causes the unique node to be tombstoned in cluster and connections severed,
+                // such that it shall never be contacted again.
+                //
+                // Even if received "old" concurrent gossips with the node still present, we know it would be at-least
+                // down, and thus we'd NOT add it to the membership again, due to the `<none> + .down = .<none>` merge rule.
+                return self.removeCompletely(nodeToRemove)
+            }
+        })
 
         return changes
     }
@@ -595,7 +629,7 @@ extension Cluster {
 extension Cluster {
     /// Represents a change made to a `Membership`, it can be received from gossip and shall be applied to local memberships,
     /// or may originate from local decisions (such as joining or downing).
-    public struct MembershipChange: Equatable {
+    public struct MembershipChange: Hashable {
         /// Current member that is part of the membership after this change
         public internal(set) var member: Cluster.Member
 
@@ -620,6 +654,14 @@ extension Cluster {
         public let toStatus: Cluster.MemberStatus
 
         init(member: Cluster.Member, toStatus: Cluster.MemberStatus? = nil) {
+            assertBacktrace(
+                toStatus == nil || !(toStatus == .removed && member.status != .down),
+                """
+                Only legal and expected -> [.removed] transitions are from [.down], \
+                yet attempted to move \(member) to \(toStatus, orElse: "nil")
+                """
+            )
+
             if let to = toStatus {
                 var m = member
                 m.status = to
@@ -636,6 +678,13 @@ extension Cluster {
         }
 
         init(node: UniqueNode, fromStatus: Cluster.MemberStatus?, toStatus: Cluster.MemberStatus) {
+            assertBacktrace(
+                !(toStatus == .removed && fromStatus != .down),
+                """
+                Only legal and expected -> [.removed] transitions are from [.down], \
+                yet attempted to move \(node) from \(fromStatus, orElse: "nil") to \(toStatus)
+                """
+            )
             self.member = .init(node: node, status: toStatus)
             self.replaced = nil
             self.fromStatus = fromStatus

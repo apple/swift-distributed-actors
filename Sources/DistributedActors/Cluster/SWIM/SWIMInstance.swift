@@ -228,7 +228,15 @@ final class SWIMInstance {
     }
 
     var protocolPeriod: Int {
-        return self._protocolPeriod
+        self._protocolPeriod
+    }
+
+    /// When checking suspicion timeouts, any member suspect observation older or equal to this protocol period shall considered unreachable
+    ///
+    /// Note that this value may be negative, which simply implies "we are not at a protocol period old enough that any of the
+    /// suspects could have been old enough to be marked unreachable yet."
+    var timeoutSuspectsBeforePeriod: Int {
+        self.protocolPeriod - self.settings.failureDetector.suspicionTimeoutPeriodsMax
     }
 
     func status(of ref: ActorRef<SWIM.Message>) -> SWIM.Status? {
@@ -518,9 +526,6 @@ extension SWIM.Instance {
         /// we could get information through the seed nodes about the new members; but we still have never talked to them,
         /// thus we need to ensure we have a connection to them, before we consider adding them to the membership).
         case connect(node: UniqueNode, onceConnected: (Result<UniqueNode, Error>) -> Void)
-//        case markedSuspect(member: SWIM.Member)
-//        /// Meaning the node is now marked `DEAD`.
-//        case confirmedDead(member: SWIM.Member)
     }
 
     struct MemberStatusChange {

@@ -84,15 +84,13 @@ internal class ClusterShell {
     }
 
     /// Terminate an association including its connection, and store a tombstone for it
-    internal func terminateAssociation(_ system: ActorSystem, state: ClusterShellState, _ associated: Association.AssociatedState) -> ClusterShellState {
+    internal func terminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, _ associated: Association.AssociatedState) {
         traceLog_Remote(system.cluster.node, "Terminate association [\(associated.remoteNode)]")
-        var state = state
 
-        if let directive = state.removeAssociation(system, associatedNode: associated.remoteNode) {
-            return self.finishTerminateAssociation(system, state: state, removalDirective: directive)
+        if let removalDirective = state.removeAssociation(system, associatedNode: associated.remoteNode) {
+            self.finishTerminateAssociation(system, state: &state, removalDirective: removalDirective)
         } else {
-            // no association to remove, thus nothing to act on
-            return state
+            () // no association to remove, thus nothing to act on
         }
     }
 
@@ -102,10 +100,8 @@ internal class ClusterShell {
     /// - ensures node is at least .down in the Membership
     ///
     /// Can be invoked as result of a direct .down being issued, or because of a node replacement happening.
-    internal func finishTerminateAssociation(_ system: ActorSystem, state: ClusterShellState, removalDirective: ClusterShellState.RemoveAssociationDirective) -> ClusterShellState {
+    internal func finishTerminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, removalDirective: ClusterShellState.RemoveAssociationDirective) {
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(removalDirective.tombstone.remoteNode)]")
-        var state = state
-
         let remoteNode = removalDirective.tombstone.remoteNode
 
         // tombstone the association in the shell immediately.
@@ -118,7 +114,7 @@ internal class ClusterShell {
 
         // if the association was removed, we need to close it and ensure that other layers are synced up with this decision
         guard let removedAssociation = removalDirective.removedAssociation else {
-            return state
+            return
         }
 
         // notify the failure detector, that we shall assume this node as dead from here on.
@@ -129,13 +125,15 @@ internal class ClusterShell {
         // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
         if state.membership.mark(remoteNode, as: .down) == nil {
             // it was already removed, nothing to do
-            state.log.trace("Finish association with \(remoteNode), yet node not in membership already?")
+            state.log.trace("Finish association with \(remoteNode), yet node not in membership already?", metadata: [
+                "cluster/membership": "\(state.membership)",
+            ])
         } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
 
+        // The lat thing we attempt to do with the other node is to shoot it, in case it's a "zombie" that still may
+        // receive messages for some reason.
         let remoteControl = removedAssociation.makeRemoteControl()
         ClusterShell.shootTheOtherNodeAndCloseConnection(system: system, targetNodeRemoteControl: remoteControl)
-
-        return state
     }
 
     /// Final action performed when severing ties with another node.
@@ -478,7 +476,7 @@ extension ClusterShell {
             var state = state
 
             let changeDirective = state.applyClusterEvent(event)
-            self.interpretLeaderActions(&state, changeDirective.leaderActions)
+            state = self.interpretLeaderActions(context.system, state, changeDirective.leaderActions)
 
             if case .membershipChange(let change) = event {
                 self.tryIntroduceGossipPeer(context, state, change: change)
@@ -528,7 +526,7 @@ extension ClusterShell {
                     "tag": "membership",
                 ])
             }
-            self.interpretLeaderActions(&state, leaderActions)
+            state = self.interpretLeaderActions(context.system, state, leaderActions)
 
             return self.ready(state: state)
         }
@@ -689,7 +687,7 @@ extension ClusterShell {
                 if directive.membershipChange.replaced != nil,
                     let removalDirective = directive.beingReplacedAssociationToTerminate {
                     state.log.warning("Tombstone association: \(reflecting: removalDirective.tombstone.remoteNode)")
-                    state = self.finishTerminateAssociation(context.system, state: state, removalDirective: removalDirective)
+                    self.finishTerminateAssociation(context.system, state: &state, removalDirective: removalDirective)
                 }
 
                 // TODO: try to pull off with receptionist the same dance
@@ -697,7 +695,7 @@ extension ClusterShell {
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
                 let actions = state.collectLeaderActions()
-                self.interpretLeaderActions(&state, actions)
+                state = self.interpretLeaderActions(context.system, state, actions)
 
                 /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
                 self.recordMetrics(context.system.metrics, membership: state.membership)
@@ -728,57 +726,6 @@ extension ClusterShell {
             promise.fail(error)
             return .same
         }
-    }
-
-    internal func interpretLeaderActions(_ state: inout ClusterShellState, _ leaderActions: [ClusterShellState.LeaderAction], file: String = #file, line: UInt = #line) {
-        guard !leaderActions.isEmpty else {
-            return
-        }
-
-        state.log.trace("Performing leader actions: \(leaderActions)")
-
-        for leaderAction in leaderActions {
-            switch leaderAction {
-            case .moveMember(let movingUp):
-                if let change = state.membership.apply(movingUp) {
-                    state.log.info("Leader moving member: \(change)", metadata: [
-                        "tag": "leader-action",
-                        "leader/interpret/location": "\(file):\(line)",
-                    ])
-                    if let downReplacedNodeChange = change.replacementDownPreviousNodeChange {
-                        state.log.info("Downing replaced member: \(change)", metadata: [
-                            "tag": "leader-action",
-                            "leader/interpret/location": "\(file):\(line)",
-                        ])
-                        state.events.publish(.membershipChange(downReplacedNodeChange))
-                    }
-                    state.events.publish(.membershipChange(change))
-                }
-
-            case .removeMember(let memberToRemove):
-                state.log.info("Leader removing member: \(memberToRemove), all nodes are certain to have seen it as [.down] before", metadata: [
-                    "tag": "leader-action",
-                    "leader/interpretation/position": "\(file):\(line)",
-                    "gossip/current": "\(state.latestGossip)",
-                ])
-
-                // !!! IMPORTANT !!!
-                // We MUST perform the prune on the _latestGossip, not the wrapper,
-                // as otherwise the wrapper enforces "vector time moves forward"
-                if let removalChange = state._latestGossip.pruneMember(memberToRemove) {
-                    // TODO: do we need terminate association here? or was it done already
-                    state._latestGossip.incrementOwnerVersion()
-                    state.gossipControl.update(payload: state._latestGossip)
-                    // TODO: automate emote so we dont miss the update, make it funcs when we update things?
-
-                    // TODO: will this "just work" as we removed from membership, so gossip will tell others...?
-                    // or do we need to push a round of gossip with .removed anyway?
-                    state.events.publish(.membershipChange(removalChange))
-                }
-            }
-        }
-
-        state.log.trace("Membership state after leader actions: \(state.membership)")
     }
 }
 
@@ -856,12 +803,12 @@ extension ClusterShell {
             // MUST be finishTerminate... and not terminate... because if we started a full terminateAssociation here
             // we would terminate the _current_ association which was already removed by the associate() because
             // it already _replaced_ some existing association (held in beingReplacedAssociation)
-            state = self.finishTerminateAssociation(context.system, state: state, removalDirective: replacedNodeRemovalDirective)
+            self.finishTerminateAssociation(context.system, state: &state, removalDirective: replacedNodeRemovalDirective)
         }
 
         /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
         let actions = state.collectLeaderActions()
-        self.interpretLeaderActions(&state, actions)
+        state = self.interpretLeaderActions(context.system, state, actions)
 
         // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)
         /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
@@ -1041,7 +988,7 @@ extension ClusterShell {
                 context.system.shutdown()
             }
 
-            self.interpretLeaderActions(&state, state.collectLeaderActions())
+            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
 
             return state
         }
@@ -1051,18 +998,18 @@ extension ClusterShell {
 
         guard let association = state.association(with: memberToDown.node.node) else {
             context.log.warning("Received Down command for not associated node [\(reflecting: memberToDown.node.node)], ignoring.")
-            self.interpretLeaderActions(&state, state.collectLeaderActions())
+            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
             return state
         }
 
         switch association {
         case .associated(let associated):
-            state = self.terminateAssociation(context.system, state: state, associated)
-            self.interpretLeaderActions(&state, state.collectLeaderActions())
+            self.terminateAssociation(context.system, state: &state, associated)
+            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
             return state
         case .tombstone:
             state.log.warning("Attempted to .down already tombstoned association/node: [\(memberToDown)]")
-            self.interpretLeaderActions(&state, state.collectLeaderActions())
+            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
             return state
         }
     }
