@@ -86,6 +86,77 @@ final class ActorTestKitTests: XCTestCase {
         try self.testKit.ensureRegistered(key: key, expectedCount: 2, expectedRefs: [greeterProbe2.ref, greeterProbe1.ref])
     }
 
+    func test_fishForMessages() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        p.tell("yes-1")
+        p.tell("yes-2")
+        p.tell("no-1")
+        p.tell("no-2")
+        p.tell("yes-3")
+        p.tell("yes-end")
+
+        let messages = try p.fishForMessages(within: .seconds(30)) { message in
+            if message.contains("yes-end") {
+                return .catchComplete
+            } else if message.contains("yes") {
+                return .catchContinue
+            } else {
+                return .ignore
+            }
+        }
+
+        messages.shouldEqual([
+            "yes-1",
+            "yes-2",
+            "yes-3",
+            "yes-end",
+        ])
+    }
+
+    func test_fishForTransformed() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        p.tell("yes-1")
+        p.tell("yes-2")
+        p.tell("no-1")
+        p.tell("no-2")
+        p.tell("yes-3")
+        p.tell("yes-end")
+
+        let messages = try p.fishFor(String.self, within: .seconds(30)) { message in
+            if message.contains("yes-end") {
+                return .catchComplete("\(message)!!!")
+            } else if message.contains("yes") {
+                return .catchContinue("\(message)!!!")
+            } else {
+                return .ignore
+            }
+        }
+
+        messages.shouldEqual([
+            "yes-1!!!",
+            "yes-2!!!",
+            "yes-3!!!",
+            "yes-end!!!",
+        ])
+    }
+
+    func test_fishFor_canThrow() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        p.tell("yes-1")
+
+        do {
+            _ = try p.fishForMessages(within: .seconds(30)) { message in
+                throw TestError("Boom: \(message)")
+            }
+            throw self.testKit.fail("Should have thrown")
+        } catch {
+            "\(error)".shouldContain("Boom: yes-1")
+        }
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actorable
 
