@@ -126,15 +126,15 @@ open class ClusteredNodesTestBase: XCTestCase {
 
         if let expectedStatus = maybeExpectedStatus {
             if let specificTimeout = ensureWithin {
-                try self.ensureNodes(expectedStatus, on: node, within: specificTimeout, systems: other)
+                try self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node)
             } else {
-                try self.ensureNodes(expectedStatus, on: node, systems: other)
+                try self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node)
             }
         }
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), systems: ActorSystem...,
+        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first else {
@@ -142,11 +142,13 @@ open class ClusteredNodesTestBase: XCTestCase {
         }
 
         try self.testKit(onSystem).eventually(within: within, file: file, line: line) {
-            for onSystem in systems {
+            do {
                 // all members on onMember should have reached this status (e.g. up)
-                for expectSystem in systems {
-                    try self.assertMemberStatus(on: onSystem, node: expectSystem.cluster.node, is: status)
+                for node in nodes {
+                    try self.assertMemberStatus(on: onSystem, node: node, is: status, file: file, line: line)
                 }
+            } catch {
+                throw error
             }
         }
     }

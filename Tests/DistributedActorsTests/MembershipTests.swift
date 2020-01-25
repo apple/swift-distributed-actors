@@ -164,6 +164,8 @@ final class MembershipTests: XCTestCase {
         }
     }
 
+    // TODO: what if leadership change oldLeader also implies the oldLeader -> .down
+
     func test_join_memberReplacement() {
         var membership = self.initialMembership
 
@@ -485,7 +487,7 @@ final class MembershipTests: XCTestCase {
         var membership = self.initialMembership
         let ahead = self.initialMembership
 
-        let changes = membership.mergeFrom(ahead: ahead)
+        let changes = membership.mergeFrom(incoming: ahead, myself: nil)
 
         changes.count.shouldEqual(0)
         membership.shouldEqual(self.initialMembership)
@@ -496,7 +498,7 @@ final class MembershipTests: XCTestCase {
         var ahead = membership
         _ = ahead.join(self.memberD.node)!
 
-        let changes = membership.mergeFrom(ahead: ahead)
+        let changes = membership.mergeFrom(incoming: ahead, myself: nil)
 
         changes.count.shouldEqual(1)
         membership.shouldEqual(self.initialMembership.joining(self.memberD.node))
@@ -515,7 +517,7 @@ final class MembershipTests: XCTestCase {
             """, nodes: self.allNodes
         )
 
-        let changes = membership.mergeFrom(ahead: ahead)
+        let changes = membership.mergeFrom(incoming: ahead, myself: nil)
 
         changes.count.shouldEqual(1)
         var expected = membership
@@ -523,7 +525,7 @@ final class MembershipTests: XCTestCase {
         membership.shouldEqual(expected)
     }
 
-    func test_mergeForward_fromAhead_membership_withNonMemberNowDown() {
+    func test_mergeForward_fromAhead_membership_withDownMembers() {
         var membership = Cluster.Membership.parse(
             """
             A.up B.up
@@ -536,37 +538,30 @@ final class MembershipTests: XCTestCase {
             """, nodes: self.allNodes
         )
 
-        let changes = membership.mergeFrom(ahead: ahead)
+        let changes = membership.mergeFrom(incoming: ahead, myself: nil)
 
         changes.count.shouldEqual(1)
+        changes.shouldEqual([
+            Cluster.MembershipChange(node: self.nodeA, fromStatus: .up, toStatus: .down),
+            // we do not ADD .down members to our view
+        ])
         var expected = membership
         _ = expected.mark(self.nodeA, as: .down)
         membership.shouldEqual(expected)
     }
 
-    func test_mergeForward_fromAhead_membership_withExistingMemberNowRemoved() {
-        var membership = self.initialMembership
-        var ahead = membership
-        _ = ahead.mark(self.memberA.node, as: .removed)
+    func test_mergeForward_fromAhead_membership_ignoreRemovedWithoutPreceedingDown() {
+        var membership = Cluster.Membership.parse(
+            "A.up B.up C.up [leader:C]", nodes: self.allNodes
+        )
 
-        let changes = membership.mergeFrom(ahead: ahead)
+        let ahead = Cluster.Membership.parse(
+            "A.removed B.up C.up [leader:C]", nodes: self.allNodes
+        )
 
-        changes.count.shouldEqual(1)
-        changes.first!.toStatus.shouldEqual(.removed)
-        membership.shouldEqual(self.initialMembership.removingCompletely(self.memberA.node))
-    }
+        let changes = membership.mergeFrom(incoming: ahead, myself: self.nodeA)
 
-    func test_mergeForward_fromAhead_membership_withNonMemberNowRemoved() {
-        var membership = self.initialMembership
-        _ = membership.removeCompletely(self.memberA.node)
-
-        var ahead = membership
-        _ = ahead.mark(self.memberA.node, as: .removed)
-
-        let changes = membership.mergeFrom(ahead: ahead)
-
-        // it already was removed, thus a removal causes no change
-        changes.count.shouldEqual(0)
-        membership.shouldEqual(self.initialMembership.removingCompletely(self.memberA.node))
+        // removed MUST follow a .down, yet A was never down, so we ignore this.
+        changes.shouldEqual([])
     }
 }

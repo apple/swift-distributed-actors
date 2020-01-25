@@ -24,6 +24,7 @@ extension ClusterLeaderActionsTests {
     static var allTests: [(String, (ClusterLeaderActionsTests) -> () throws -> Void)] {
         return [
             ("test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers", test_leaderActions_removeDownMembers_ifKnownAsDownToAllMembers),
+            ("test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet", test_leaderActions_removeDownMembers_dontRemoveIfDownNotKnownToAllMembersYet),
         ]
     }
 }

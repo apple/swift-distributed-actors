@@ -99,9 +99,8 @@ extension Cluster {
                 changes = []
                 // self.seen.merge(selfOwner: self.owner, incoming: incoming)
             } else {
-                changes = self.membership.mergeFrom(ahead: incoming.membership)
-                // same version, meaning there's nothing to merge
-                // self.seen.merge(owner: self.owner, incoming: incoming)
+                // incoming is concurrent, ahead, or same
+                changes = self.membership.mergeFrom(incoming: incoming.membership, myself: self.owner)
             }
 
 //            pprint("self.seen = \(self.seen)")
@@ -111,6 +110,12 @@ extension Cluster {
 //            pprint("self.seen = \(self.seen)")
 //
 //            pprint("self = \(self)")
+
+            // 3) if any removals happened, we need to prune the removed nodes from the seen table
+            for change in changes
+                where change.toStatus.isRemoved && change.member.node != self.owner {
+                self.seen.prune(change.member.node)
+            }
 
             return .init(causalRelation: causalRelation, effectiveChanges: changes)
         }
@@ -138,13 +143,15 @@ extension Cluster {
         /// Only `.up` and `.leaving` members are considered, since joining members are "too early"
         /// to matter in decisions, and down members shall never participate in decision making.
         func converged() -> Bool {
-            let members = self.membership.members(withStatus: [.up, .leaving])
+            let members = self.membership.members(withStatus: [.joining, .up, .leaving])
             let requiredVersion = self.version
+
+//            pprint("requiredVersion = \(requiredVersion)")
 
 //            pprint("considering members")
 //            for member in members {
 //                pprint("considering member: \(member)")
-//                pprint("                  : \(self.seen.version(at: member.node))")
+//                pprint("                  : \(self.seen.version(at: member.node), orElse: "nil")")
 //            }
 
             if members.isEmpty {
@@ -157,6 +164,7 @@ extension Cluster {
                     switch memberSeenVersion.compareTo(requiredVersion) {
                     case .happenedBefore, .concurrent:
 //                        pprint("memberSeenVersion.compareTo(requiredVersion) = \(memberSeenVersion.compareTo(requiredVersion)) WITH \(requiredVersion)")
+//                        pprint("laggingBehindMemberFound = \(member)")
                         return true // found an offending member, it is lagging behind, thus no convergence
                     case .happenedAfter, .same:
 //                        pprint("memberSeenVersion.compareTo(requiredVersion) = \(memberSeenVersion.compareTo(requiredVersion)) WITH \(requiredVersion)")
@@ -167,6 +175,7 @@ extension Cluster {
                 }
             }
 
+//            pprint("laggingBehindMemberFound = \(laggingBehindMemberFound)")
             return !laggingBehindMemberFound
         }
     }

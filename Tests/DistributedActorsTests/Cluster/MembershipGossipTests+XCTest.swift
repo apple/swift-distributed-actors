@@ -24,12 +24,15 @@ extension MembershipGossipTests {
     static var allTests: [(String, (MembershipGossipTests) -> () throws -> Void)] {
         return [
             ("test_mergeForward_incomingGossip_firstGossipFromOtherNode", test_mergeForward_incomingGossip_firstGossipFromOtherNode),
+            ("test_mergeForward_incomingGossip_firstGossipFromOtherNodes", test_mergeForward_incomingGossip_firstGossipFromOtherNodes),
             ("test_mergeForward_incomingGossip_sameVersions", test_mergeForward_incomingGossip_sameVersions),
             ("test_mergeForward_incomingGossip_fromFourth_onlyKnowsAboutItself", test_mergeForward_incomingGossip_fromFourth_onlyKnowsAboutItself),
             ("test_mergeForward_incomingGossip_localHasRemoved_incomingHasOldViewWithDownNode", test_mergeForward_incomingGossip_localHasRemoved_incomingHasOldViewWithDownNode),
             ("test_mergeForward_incomingGossip_concurrent_leaderDisagreement", test_mergeForward_incomingGossip_concurrent_leaderDisagreement),
             ("test_mergeForward_incomingGossip_concurrent_simple", test_mergeForward_incomingGossip_concurrent_simple),
             ("test_mergeForward_incomingGossip_hasNewNode", test_mergeForward_incomingGossip_hasNewNode),
+            ("test_mergeForward_removal_incomingGossip_isAhead_hasRemovedNodeKnownToBeDown", test_mergeForward_removal_incomingGossip_isAhead_hasRemovedNodeKnownToBeDown),
+            ("test_mergeForward_incomingGossip_removal_isAhead_hasMyNodeRemoved_thusWeKeepItAsRemoved", test_mergeForward_incomingGossip_removal_isAhead_hasMyNodeRemoved_thusWeKeepItAsRemoved),
             ("test_converged_shouldBeTrue_forNoMembers", test_converged_shouldBeTrue_forNoMembers),
             ("test_converged_amongUpMembers", test_converged_amongUpMembers),
             ("test_converged_othersAreOnlyDownOrJoining", test_converged_othersAreOnlyDownOrJoining),
