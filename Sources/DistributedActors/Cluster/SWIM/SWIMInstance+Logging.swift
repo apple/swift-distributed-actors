@@ -21,6 +21,7 @@ extension SWIM.Instance {
     /// While the SWIM.Instance is not meant to be logging by itself, it does offer metadata for loggers to use.
     var metadata: Logger.Metadata {
         [
+            "swim/membersToPing": "\(self.membersToPing)",
             "swim/protocolPeriod": "\(self.protocolPeriod)",
             "swim/incarnation": "\(self.incarnation)",
             "swim/memberCount": "\(self.memberCount)",
@@ -64,11 +65,11 @@ extension SWIMShell {
             case .receive(nil):
                 return "RECV"
             case .receive(let .some(pinged)):
-                return "RECV(pinged:\(pinged.path))"
+                return "RECV(pinged:\(pinged.address))"
             case .reply(let to):
-                return "REPL(to:\(to.path))"
+                return "REPL(to:\(to.address))"
             case .ask(let who):
-                return "ASK(\(who.path))"
+                return "ASK(\(who.address))"
             }
         }
     }

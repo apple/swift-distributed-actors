@@ -38,13 +38,12 @@ internal struct SWIMShell {
     // MARK: Behaviors
 
     /// Initial behavior, kicks off timers and becomes `ready`.
-    // FIXME: utilize FailureObserver
     var behavior: Behavior<SWIM.Message> {
-        return .setup { context in
+        .setup { context in
 
             // TODO: install an .cluster.down(my node) with context.defer in case we crash? Or crash system when this crashes: issue #926
 
-            let probeInterval = self.swim.settings.gossip.probeInterval
+            let probeInterval = self.swim.settings.failureDetector.probeInterval
             context.timers.startPeriodic(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), interval: probeInterval)
 
             self.swim.addMyself(context.myself, node: context.system.cluster.node)
@@ -54,7 +53,7 @@ internal struct SWIMShell {
     }
 
     var ready: Behavior<SWIM.Message> {
-        return .receive { context, wrappedMessage in
+        .receive { context, wrappedMessage in
             switch wrappedMessage {
             case .remote(let message):
                 self.receiveRemoteMessage(context: context, message: message)
@@ -151,8 +150,8 @@ internal struct SWIMShell {
         }
 
         // timeout is already handled by the ask, so we can set it to infinite here to not have two timeouts
-        context.onResultAsync(of: response, timeout: .effectivelyInfinite) {
-            self.handlePingResponse(context: context, result: $0, pingedMember: target, pingReqOrigin: pingReqOrigin)
+        context.onResultAsync(of: response, timeout: .effectivelyInfinite) { res in
+            self.handlePingResponse(context: context, result: res, pingedMember: target, pingReqOrigin: pingReqOrigin)
             return .same
         }
     }
@@ -232,7 +231,7 @@ internal struct SWIMShell {
             }
         case .success(let ack):
             context.log.trace("Received ack from [\(ack.pinged)] with incarnation [\(ack.incarnation)] and payload [\(ack.payload)]")
-            self.swim.mark(ack.pinged, as: .alive(incarnation: ack.incarnation)) // TODO: log ?
+            self.swim.mark(ack.pinged, as: .alive(incarnation: ack.incarnation))
             pingReqOrigin?.tell(ack)
             self.processGossipPayload(context: context, payload: ack.payload)
         }
@@ -295,26 +294,26 @@ internal struct SWIMShell {
             // TODO: GC tombstones after a day
 
             switch self.swim.mark(member.ref, as: .dead) {
-            case .applied(let .some(previousState)):
+            case .applied(let .some(previousState), let currentState):
                 if previousState.isSuspect || previousState.isUnreachable {
-                    context.log.warning("""
-                    Marked [\(member)] as DEAD. \
-                    Was marked \(previousState) in protocol period [\(member.protocolPeriod)], current period [\(self.swim.protocolPeriod)].
-                    """)
+                    context.log.warning("Marked [\(member)] as [.dead]. Was marked \(previousState) in protocol period [\(member.protocolPeriod)]", metadata: [
+                        "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
+                        "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
+                    ])
                 } else {
-                    context.log.warning("""
-                    Marked [\(member)] as DEAD. \
-                    Node was previously alive, and now forced DEAD. Current period [\(self.swim.protocolPeriod)].
-                    """)
+                    context.log.warning("Marked [\(member)] as [.dead]. Node was previously [.alive], and now forced [.dead].", metadata: [
+                        "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
+                        "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
+                    ])
                 }
-            case .applied(nil):
+            case .applied(nil, _):
                 // TODO: marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
-                context.log.warning("Marked [\(member)] as dead. Node was not previously known to SWIM.")
-                // TODO: add tracelog about marking a node dead here?
+                context.log.warning("Marked [\(member)] as [.dead]. Node was not previously known to SWIM.")
+                // TODO: should we not issue a escalateUnreachable here? depends how we learnt about that node...
 
             case .ignoredDueToOlderStatus:
                 // TODO: make sure a fatal error in SWIM.Shell causes a system shutdown?
-                fatalError("Marking [\(member)] as DEAD failed! This should never happen, dead is the terminal status. SWIM instance: \(self.swim)")
+                fatalError("Marking [\(member)] as [.dead] failed! This should never happen, dead is the terminal status. SWIM instance: \(self.swim)")
             }
         } else {
             context.log.warning("Attempted to .confirmDead(\(node)), yet no such member known to \(self)!") // TODO: would want to see if this happens when we fail these tests
@@ -329,29 +328,32 @@ internal struct SWIMShell {
         let timeoutPeriods = (self.swim.protocolPeriod - self.swim.settings.failureDetector.suspicionTimeoutPeriodsMax)
         context.log.trace("Checking suspicion timeouts...", metadata: [
             "swim/suspects": "\(self.swim.suspects)",
+            "swim/all": "\(self.swim._allMembersDict)",
             "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
             "swim/timeoutPeriods": "\(timeoutPeriods)",
         ])
-        for member in self.swim.suspects {
-            context.log.trace("Checking \(member)...")
-            if member.protocolPeriod <= timeoutPeriods {
-                () // ok, continue checking
-            } else {
+        for suspect in self.swim.suspects {
+            context.log.trace("Checking \(suspect)...")
+
+            // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
+            guard suspect.protocolPeriod <= timeoutPeriods else {
                 continue // skip
             }
+//            guard let node = suspect.ref.address.node else {
+//                continue // is not a remote node
+//            }
 
-            if let node = member.ref.address.node {
-                if let incarnation = member.status.incarnation {
-                    context.log.trace("Marking \(member.node) as .unreachable!")
-                    self.swim.mark(member.ref, as: .unreachable(incarnation: incarnation))
-                }
-                // if unreachable or dead, we don't need to notify the clusterRef
-                if member.status.isUnreachable || member.status.isDead {
-                    continue
-                }
-                context.log.info("Notifying cluster, node \(member.node) is unreachable!")
-                self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(node, .unreachable)))
+            if let incarnation = suspect.status.incarnation {
+                context.log.trace("Marking \(suspect.node) as .unreachable!")
+                self.swim.mark(suspect.ref, as: .unreachable(incarnation: incarnation))
             }
+
+            // if the member was already unreachable or dead before, we don't need to notify the clusterRef
+            // (as we already did so once before, and do not want to issue multiple events about this)
+            if suspect.status.isUnreachable || suspect.status.isDead {
+                continue
+            }
+            self.escalateMemberUnreachable(context: context, member: suspect)
         }
     }
 
@@ -361,16 +363,23 @@ internal struct SWIMShell {
         case .membership(let members):
             for member in members {
                 switch self.swim.onGossipPayload(about: member) {
+                case .applied where member.status.isUnreachable || member.status.isDead:
+                    // FIXME: rather, we should return in applied if it was a change or not, only if it was we should emit...
+
+                    // TODO: ensure we don't double emit this
+                    self.escalateMemberUnreachable(context: context, member: member)
+
                 case .applied:
-                    () // ok, nothing to do
+                    ()
 
                 case .connect(let node, let continueAddingMember):
                     // ensuring a connection is asynchronous, but executes callback in actor context
                     self.ensureAssociated(context, remoteNode: node) { uniqueAddressResult in
                         switch uniqueAddressResult {
                         case .success(let uniqueAddress):
-                            continueAddingMember(uniqueAddress)
+                            continueAddingMember(.success(uniqueAddress))
                         case .failure(let error):
+                            continueAddingMember(.failure(error))
                             context.log.warning("Unable ensure association with \(node), could it have been tombstoned? Error: \(error)")
                         }
                     }
@@ -380,15 +389,32 @@ internal struct SWIMShell {
                         context.log.log(level: level, message)
                     }
 
+                case .markedSuspect(let member):
+                    context.log.info("Marked member \(member) [.suspect], if it is not found [.alive] again within \(self.settings.failureDetector.suspicionTimeoutPeriodsMax) protocol periods, it will be marked [.unreachable].")
+
                 case .confirmedDead(let member):
-                    context.log.info("Detected [.dead] node. Information received: \(member).")
-                    context.system.cluster.down(node: member.node.node)
+                    context.log.warning("Detected [.dead] node: \(member.node).", metadata: [
+                        "swim/member": "\(member)",
+                    ])
+                    context.system.cluster.down(node: member.node.node) // TODO: should w really, or rather mark unreachable and let the downing do this?
                 }
             }
 
         case .none:
             return // ok
         }
+    }
+
+    private func escalateMemberUnreachable(context: ActorContext<SWIM.Message>, member: SWIM.Member) {
+        context.log.warning(
+            """
+            Node \(member.node) determined [.unreachable]!\
+            The node is not yet marked [.down], a downing strategy or other Cluster.Event subscriber may act upon this information.
+            """, metadata: [
+                "swim/member": "\(member)",
+            ]
+        )
+        self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(member.node, .unreachable)))
     }
 
     /// Use to ensure an association to given remote node exists; as one may not always be sure a connection has been already established,
@@ -453,6 +479,14 @@ internal struct SWIMShell {
 
         let resolveContext = ResolveContext<SWIM.Message>(address: remoteSwimAddress, system: context.system)
         let remoteSwimRef = context.system._resolve(context: resolveContext)
+
+        // We need to include the member immediately, rather than when we have ensured the association.
+        // This is because if we're not able to establish the association, we still want to re-try soon (in the next ping round),
+        // and perhaps then the other node would accept the association (perhaps some transient network issues occurred OR the node was
+        // already dead when we first try to ping it). In those situations, we need to continue the protocol until we're certain it is
+        // suspect and unreachable, as without signalling unreachable the high-level membership would not have a chance to notice and
+        // call the node [Cluster.MemberStatus.down].
+        self.swim.addMember(remoteSwimRef, status: .alive(incarnation: 0))
 
         // TODO: we are sending the ping here to initiate cluster membership. Once available this should do a state sync instead
         self.sendPing(context: context, to: remoteSwimRef, lastKnownStatus: .alive(incarnation: 0), pingReqOrigin: nil)
