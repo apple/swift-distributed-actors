@@ -113,7 +113,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func onFullStateRequest(context: ActorContext<Receptionist.Message>, request: ClusterReceptionist.FullStateRequest, storage: Receptionist.Storage) {
-        context.log.debug("Received full state request from [\(request.replyTo)]") // TODO: tracelog style
+        context.log.trace("Received full state request from [\(request.replyTo)]") // TODO: tracelog style
         var registrations: [AnyRegistrationKey: [ActorAddress]] = [:]
         registrations.reserveCapacity(storage._registrations.count)
         for (key, values) in storage._registrations {
@@ -141,7 +141,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func onFullState(context: ActorContext<Receptionist.Message>, fullState: ClusterReceptionist.FullState, storage: Receptionist.Storage) throws {
-        context.log.debug("Received full state \(fullState)") // TODO: tracelog style
+        context.log.trace("Received full state \(fullState)") // TODO: tracelog style
         for (key, paths) in fullState.registrations {
             var anyAdded = false
             for path in paths {

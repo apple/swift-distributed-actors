@@ -168,6 +168,13 @@ var targets: [PackageDescription.Target] = [
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
     ),
+    .target(
+        name: "it_Clustered_swim_suspension_reachability",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_04_cluster/it_Clustered_swim_suspension_reachability"
+    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks

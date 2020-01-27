@@ -99,17 +99,31 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(6)
     }
 
-    func test_mark_shouldNotApplyOlderStatus() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+    func test_mark_shouldNotApplyOlderStatus_suspect() throws {
         let swim = SWIM.Instance(.default)
 
-        swim.addMember(probe.ref, status: .suspect(incarnation: 1))
+        // ==== Suspect member -----------------------------------------------------------------------------------------
+        let suspectMember = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        swim.addMember(suspectMember.ref, status: .suspect(incarnation: 1))
         swim.incrementProtocolPeriod()
 
-        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 0), shouldSucceed: false)
-        try self.validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: 1), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: suspectMember.ref, status: .suspect(incarnation: 0), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: suspectMember.ref, status: .alive(incarnation: 1), shouldSucceed: false)
 
-        swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(0)
+        swim.member(for: suspectMember.ref)!.protocolPeriod.shouldEqual(0)
+    }
+
+    func test_mark_shouldNotApplyOlderStatus_unreachable() throws {
+        let swim = SWIM.Instance(.default)
+
+        let unreachableMember = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        swim.addMember(unreachableMember.ref, status: .unreachable(incarnation: 1))
+        swim.incrementProtocolPeriod()
+
+        try self.validateMark(swim: swim, member: unreachableMember.ref, status: .suspect(incarnation: 0), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: unreachableMember.ref, status: .alive(incarnation: 1), shouldSucceed: false)
+
+        swim.member(for: unreachableMember.ref)!.protocolPeriod.shouldEqual(0)
     }
 
     func test_mark_shouldApplyDead() throws {

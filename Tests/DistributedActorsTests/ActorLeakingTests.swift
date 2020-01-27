@@ -159,7 +159,7 @@ class ActorLeakingTests: ActorSystemTestBase {
             } else {
                 for _ in 1 ... childCount {
                     let b: Behavior<String> = .receiveMessage { _ in .same }
-                    try context.spawn(.anonymous, b)
+                    _ = try context.spawn(.anonymous, b)
                 }
                 return .same
             }

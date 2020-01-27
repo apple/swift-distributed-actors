@@ -56,9 +56,8 @@ final class SWIMInstance {
 
     // The protocol period represents the number of times we have pinged a random member
     // of the cluster. At the end of every ping cycle, the number will be incremented.
-    // Suspicion timeouts are based on the protocol period, e.g. if the ping interval
-    // is 300ms and the suspicion timeout is set to 10 periods, a suspected node will
-    // be declared `.dead` after not receiving an `.alive` for approx. 3 seconds.
+    // Suspicion timeouts are based on the protocol period, i.e. if a probe did not
+    // reply within any of the `suspicionTimeoutPeriodsMax` rounds, it would be marked as `.suspect`.
     private var _protocolPeriod: Int = 0
 
     // We store the owning SWIMShell ref in order avoid adding it to the `membersToPing` list
@@ -408,7 +407,7 @@ extension SWIM.Instance {
     }
 
     private func onMyselfGossipPayload(myself incoming: SWIM.Member) -> SWIM.Instance.OnGossipPayloadDirective {
-        assert(self.myShellMyself == incoming.ref, "Attempted to process gossip as-if about myself, but was not the same ref, was: \(incoming). Myself: \(self.myShellMyself)")
+        assert(self.myShellMyself == incoming.ref, "Attempted to process gossip as-if about myself, but was not the same ref, was: \(incoming). Myself: \(self.myShellMyself, orElse: "nil")")
 
         // Note, we don't yield changes for myself node observations, thus the self node will never be reported as unreachable,
         // after all, we can always reach ourselves. We may reconsider this if we wanted to allow SWIM to inform us about
@@ -474,7 +473,7 @@ extension SWIM.Instance {
     }
 
     private func onOtherMemberGossipPayload(member: SWIM.Member) -> SWIM.Instance.OnGossipPayloadDirective {
-        assert(self.myShellMyself != member.ref, "Attempted to process gossip as-if not-myself, but WAS same ref, was: \(member). Myself: \(self.myShellMyself)")
+        assert(self.myShellMyself != member.ref, "Attempted to process gossip as-if not-myself, but WAS same ref, was: \(member). Myself: \(self.myShellMyself, orElse: "nil")")
 
         if self.isMember(member.ref) {
             switch self.mark(member.ref, as: member.status) {
@@ -489,7 +488,7 @@ extension SWIM.Instance {
         } else if let remoteMemberNode = member.ref.address.node {
             return .connect(node: remoteMemberNode, onceConnected: {
                 switch $0 {
-                case .success(let uniqueNode):
+                case .success:
                     self.addMember(member.ref, status: member.status)
                 case .failure:
                     self.addMember(member.ref, status: .suspect(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)

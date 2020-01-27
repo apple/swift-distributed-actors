@@ -34,10 +34,12 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
     }
 
     override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.filterActorPath = "/system/cluster/swim"
+        settings.filterActorPaths = ["/user/SWIM"] // the mocked one
+//         settings.filterActorPaths = ["/system/cluster/swim"] // in case we test against the real one
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Pinging nodes
 
     func test_swim_shouldRespondWithAckToPing() throws {
         let first = self.setUpFirst()
@@ -213,6 +215,51 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         try self.awaitStatus(.alive(incarnation: 1), for: remoteProbeRef, on: ref, within: .seconds(1))
     }
 
+    // FIXME: Can't seem to implement a hardened test like this...
+    func ignored_test_swim_shouldNotifyClusterAboutUnreachableNode_andThenReachableAgain() throws {
+        try shouldNotThrow {
+            let first = self.setUpFirst { settings in
+                settings.cluster.swim.disabled = true // since we drive one manually
+            }
+            let second = self.setUpSecond { settings in
+                settings.cluster.swim.disabled = true // since we drive one manually
+            }
+
+            first.cluster.join(node: second.cluster.node.node)
+            try assertAssociated(first, withExactly: second.cluster.node)
+
+            let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+            let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+
+            let pingTimeout: TimeAmount = .milliseconds(100)
+            let ref = try first.spawn("SWIM", self.swimBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref, configuredWith: { settings in
+                settings.failureDetector.suspicionTimeoutPeriodsMax = 3
+                settings.failureDetector.pingTimeout = pingTimeout
+            }))
+
+            // spin not-replying for more than timeoutPeriodsMax, such that the member will be marked as unreachable
+            for _ in 0 ..< SWIMSettings.default.failureDetector.suspicionTimeoutPeriodsMax + 100 {
+                ref.tell(.local(.pingRandomMember))
+                try self.expectPing(on: p, reply: false)
+            }
+
+            // should become unreachable
+            guard case .command(.failureDetectorReachabilityChanged(_, .unreachable)) = try firstClusterProbe.expectMessage() else {
+                throw self.testKit(first).fail("expected to receive `.command(.failureDetectorReachabilityChanged)`, but got `\(firstClusterProbe.lastMessage, orElse: "nil")`")
+            }
+
+            // if it'd directly reply while unreachable (which is an "extended period suspect" really), it can come back alive
+            ref.tell(.local(.pingRandomMember))
+            try self.expectPing(on: p, reply: true, incarnation: 2)
+
+            // since we replied again with alive, should become reachable
+            try self.awaitStatus(.alive(incarnation: 2), for: remoteMemberRef, on: ref, within: .seconds(1))
+            guard case .command(.failureDetectorReachabilityChanged(_, .reachable)) = try firstClusterProbe.expectMessage() else {
+                throw self.testKit(first).fail("expected to receive `.command(.failureDetectorReachabilityChanged)`, but got `\(firstClusterProbe.lastMessage, orElse: "nil")`")
+            }
+        }
+    }
+
     func test_swim_shouldNotifyClusterAboutUnreachableNode_afterConfiguredSuspicionTimeout_andMarkDeadWhenConfirmed() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
@@ -226,7 +273,6 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         let ref = try first.spawn("SWIM", self.swimBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
-
         try self.expectPing(on: p, reply: false)
 
         try self.awaitStatus(.suspect(incarnation: 0), for: remoteMemberRef, on: ref, within: .seconds(1))
@@ -240,9 +286,8 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         // and have the SWIM actor mark the remote node as dead
         ref.tell(.local(.pingRandomMember))
 
-        let message = try firstClusterProbe.expectMessage()
-        guard case .command(.failureDetectorReachabilityChanged(let address, .unreachable)) = message else {
-            throw self.testKit(first).fail("expected to receive `.command(.markUnreachable)`, but got `\(message)`")
+        guard case .command(.failureDetectorReachabilityChanged(let address, .unreachable)) = try firstClusterProbe.expectMessage() else {
+            throw self.testKit(first).fail("expected to receive `.command(.failureDetectorReachabilityChanged)`, but got `\(firstClusterProbe.lastMessage, orElse: "nil")`")
         }
         try self.holdStatus(.unreachable(incarnation: 0), for: remoteMemberRef, on: ref, within: .milliseconds(200))
 
@@ -291,11 +336,6 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         // we also expect the snapshot to include the right reachability information now
         try self.expectReachabilityInSnapshot(firstTestKit, node: secondNode, expect: .unreachable)
         try self.expectReachabilityInSnapshot(thirdTestKit, node: secondNode, expect: .unreachable)
-    }
-
-    func test_swim_shouldNotifyClusterAboutUnreachableNode_andThenReachableAgain() throws {
-        // TODO: Implement this once the transport is pluggable and we can make it drop random messages
-        pnote("TODO: Implement this once the transport is pluggable and we can make it drop random messages")
     }
 
     /// Passed in `eventStreamProbe` is expected to have been subscribed to the event stream as early as possible,
