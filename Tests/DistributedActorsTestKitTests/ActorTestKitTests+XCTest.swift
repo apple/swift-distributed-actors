@@ -28,6 +28,9 @@ extension ActorTestKitTests {
             ("test_fail_shouldNotImmediatelyFailWithinEventuallyBlock", test_fail_shouldNotImmediatelyFailWithinEventuallyBlock),
             ("test_nestedEventually_shouldProperlyHandleFailures", test_nestedEventually_shouldProperlyHandleFailures),
             ("test_ensureRegistered_countAndRefs", test_ensureRegistered_countAndRefs),
+            ("test_fishForMessages", test_fishForMessages),
+            ("test_fishForTransformed", test_fishForTransformed),
+            ("test_fishFor_canThrow", test_fishFor_canThrow),
             ("test_ActorableTestProbe_shouldWork", test_ActorableTestProbe_shouldWork),
         ]
     }
