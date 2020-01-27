@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch
 import DistributedActors
 
 print("Getting args")
@@ -20,23 +19,28 @@ print("Getting args")
 var args = CommandLine.arguments
 args.removeFirst()
 
-print("got args")
-
-print("\(args)")
+print("got args: \(args)")
 
 guard args.count >= 1 else {
     fatalError("no port given")
 }
 
 let system = ActorSystem("System") { settings in
+    settings.defaultLogLevel = .info
+
     settings.cluster.enabled = true
     settings.cluster.bindPort = Int(args[0])!
+
+    settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 3
+    settings.cluster.swim.failureDetector.pingTimeout = .milliseconds(100)
+    settings.cluster.swim.failureDetector.probeInterval = .milliseconds(300)
+
+    settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
     settings.cluster.downingStrategy = .none
-    settings.defaultLogLevel = .debug
 }
 
-let ref = try system.spawn("hello", of: Cluster.Event.self, .receive { context, event in 
-    context.log.info("event = \(event)")
+let ref = try system.spawn("streamWatcher", of: Cluster.Event.self, .receive { context, event in
+    context.log.info("Event: \(event)")
     return .same
 })
 system.cluster.events.subscribe(ref)
@@ -50,4 +54,4 @@ if args.count >= 3 {
     system.cluster.join(node: Node(systemName: "System", host: host, port: port))
 }
 
-Thread.sleep(.minutes(10))
+Thread.sleep(.seconds(120))

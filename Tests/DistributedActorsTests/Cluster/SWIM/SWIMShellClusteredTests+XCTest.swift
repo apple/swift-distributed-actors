@@ -32,7 +32,6 @@ extension SWIMShellClusteredTests {
             ("test_swim_shouldMarkSuspectedMembersAsAlive_whenPingingSucceedsWithinSuspicionTimeout", test_swim_shouldMarkSuspectedMembersAsAlive_whenPingingSucceedsWithinSuspicionTimeout),
             ("test_swim_shouldNotifyClusterAboutUnreachableNode_afterConfiguredSuspicionTimeout_andMarkDeadWhenConfirmed", test_swim_shouldNotifyClusterAboutUnreachableNode_afterConfiguredSuspicionTimeout_andMarkDeadWhenConfirmed),
             ("test_swim_shouldNotifyClusterAboutUnreachableNode_whenUnreachableDiscoveredByOtherNode", test_swim_shouldNotifyClusterAboutUnreachableNode_whenUnreachableDiscoveredByOtherNode),
-            ("test_swim_shouldNotifyClusterAboutUnreachableNode_andThenReachableAgain", test_swim_shouldNotifyClusterAboutUnreachableNode_andThenReachableAgain),
             ("test_swim_shouldSendGossipInAck", test_swim_shouldSendGossipInAck),
             ("test_swim_shouldSendGossipInPing", test_swim_shouldSendGossipInPing),
             ("test_swim_shouldSendGossipInPingReq", test_swim_shouldSendGossipInPingReq),
