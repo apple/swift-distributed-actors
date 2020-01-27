@@ -26,7 +26,7 @@ import XCTest
 /// The `ActorTestKit` offers a number of helpers such as test probes and helper functions to
 /// make testing actor based "from the outside" code manageable and pleasant.
 public final class ActorTestKit {
-    internal let system: ActorSystem
+    public let system: ActorSystem
 
     private let spawnProbesLock = Lock()
     /// Access should be protected by `spawnProbesLock`, in order to guarantee unique names.
@@ -113,6 +113,15 @@ extension ActorTestKit {
 
             return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
         }, settings: self.settings)
+    }
+
+    /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
+    ///
+    /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
+    public func spawnTestProbe<Event>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
+        let p = self.spawnTestProbe(.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
+        eventStream.subscribe(p.ref)
+        return p
     }
 }
 

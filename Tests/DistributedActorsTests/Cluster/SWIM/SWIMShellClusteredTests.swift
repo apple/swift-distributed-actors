@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class SWIMShellTests: ClusteredNodesTestBase {
+final class SWIMShellClusteredTests: ClusteredNodesTestBase {
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
@@ -32,6 +32,12 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         self.secondClusterProbe = self.testKit(second).spawnTestProbe()
         return second
     }
+
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.filterActorPath = "/system/cluster/swim"
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
 
     func test_swim_shouldRespondWithAckToPing() throws {
         let first = self.setUpFirst()
@@ -100,7 +106,10 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         response.incarnation.shouldEqual(0)
     }
 
-    func test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested() throws {
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Marking suspect nodes
+
+    func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
@@ -119,7 +128,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         try self.awaitStatus(.suspect(incarnation: 0), for: remoteProbeRef, on: ref, within: .seconds(1))
     }
 
-    func test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing() throws {
+    func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() throws {
         let first = self.setUpFirst()
 
         let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
@@ -149,7 +158,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         try self.awaitStatus(.suspect(incarnation: 0), for: suspiciousRef, on: ref, within: .seconds(1))
     }
 
-    func test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing() throws {
+    func test_swim_shouldNotMarkSuspects_whenPingFailsButRequestedNodesSucceedToPing() throws {
         let first = self.setUpFirst()
 
         let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
@@ -180,7 +189,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         try self.holdStatus(.alive(incarnation: 0), for: suspiciousRef, on: ref, within: .seconds(1))
     }
 
-    func test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout() throws {
+    func test_swim_shouldMarkSuspectedMembersAsAlive_whenPingingSucceedsWithinSuspicionTimeout() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
@@ -204,7 +213,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         try self.awaitStatus(.alive(incarnation: 1), for: remoteProbeRef, on: ref, within: .seconds(1))
     }
 
-    func test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed() throws {
+    func test_swim_shouldNotifyClusterAboutUnreachableNode_afterConfiguredSuspicionTimeout_andMarkDeadWhenConfirmed() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
@@ -241,6 +250,99 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         try self.awaitStatus(.dead, for: remoteMemberRef, on: ref, within: .seconds(1))
     }
 
+    func test_swim_shouldNotifyClusterAboutUnreachableNode_whenUnreachableDiscoveredByOtherNode() throws {
+        let first = self.setUpFirst { settings in
+            // purposefully too large timeouts, we want the first node to be informed by the third node
+            // about the second node being unreachable/dead, and ensure that the first node also signals an
+            // unreachability event to the cluster upon such discovery.
+            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 100
+            settings.cluster.swim.failureDetector.pingTimeout = .seconds(3)
+        }
+        let second = self.setUpSecond()
+        let secondNode = second.cluster.node
+        let third = self.setUpNode("third") { settings in
+            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 2
+            settings.cluster.swim.failureDetector.pingTimeout = .milliseconds(300)
+        }
+
+        first.cluster.join(node: second.cluster.node.node)
+        third.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: [second.cluster.node, third.cluster.node])
+        try assertAssociated(second, withExactly: [first.cluster.node, third.cluster.node])
+        try assertAssociated(third, withExactly: [first.cluster.node, second.cluster.node])
+
+        let firstTestKit = self.testKit(first)
+        let p1 = firstTestKit.spawnTestProbe(expecting: Cluster.Event.self)
+        first.cluster.events.subscribe(p1.ref)
+
+        let thirdTestKit = self.testKit(third)
+        let p3 = thirdTestKit.spawnTestProbe(expecting: Cluster.Event.self)
+        third.cluster.events.subscribe(p3.ref)
+
+        try self.expectReachabilityInSnapshot(firstTestKit, node: secondNode, expect: .reachable)
+        try self.expectReachabilityInSnapshot(thirdTestKit, node: secondNode, expect: .reachable)
+
+        // kill the second node
+        second.shutdown()
+
+        try self.expectReachabilityEvent(thirdTestKit, p3, node: secondNode, expect: .unreachable)
+        try self.expectReachabilityEvent(firstTestKit, p1, node: secondNode, expect: .unreachable)
+
+        // we also expect the snapshot to include the right reachability information now
+        try self.expectReachabilityInSnapshot(firstTestKit, node: secondNode, expect: .unreachable)
+        try self.expectReachabilityInSnapshot(thirdTestKit, node: secondNode, expect: .unreachable)
+    }
+
+    func test_swim_shouldNotifyClusterAboutUnreachableNode_andThenReachableAgain() throws {
+        // TODO: Implement this once the transport is pluggable and we can make it drop random messages
+        pnote("TODO: Implement this once the transport is pluggable and we can make it drop random messages")
+    }
+
+    /// Passed in `eventStreamProbe` is expected to have been subscribed to the event stream as early as possible,
+    /// as we want to expect the specific reachability event to be sent
+    private func expectReachabilityEvent(
+        _ testKit: ActorTestKit, _ eventStreamProbe: ActorTestProbe<Cluster.Event>,
+        node uniqueNode: UniqueNode, expect expected: Cluster.MemberReachability
+    ) throws {
+        let messages = try eventStreamProbe.fishFor(Cluster.ReachabilityChange.self, within: .seconds(10)) { event in
+            switch event {
+            case .reachabilityChange(let change):
+                return .catchComplete(change)
+            default:
+                return .ignore
+            }
+        }
+        messages.count.shouldEqual(1)
+        guard let change: Cluster.ReachabilityChange = messages.first else {
+            throw testKit.fail("Expected a reachability change, but did not get one on \(testKit.system.cluster.node)")
+        }
+        change.member.node.shouldEqual(uniqueNode)
+        change.member.reachability.shouldEqual(expected)
+    }
+
+    private func expectReachabilityInSnapshot(_ testKit: ActorTestKit, node: UniqueNode, expect expected: Cluster.MemberReachability) throws {
+        try testKit.eventually(within: .seconds(3)) {
+            let p11 = testKit.spawnTestProbe(subscribedTo: testKit.system.cluster.events)
+            guard case .some(Cluster.Event.snapshot(let snapshot)) = try p11.maybeExpectMessage() else {
+                throw testKit.error("Expected snapshot, was: \(String(reflecting: p11.lastMessage))")
+            }
+
+            if let secondMember = snapshot.uniqueMember(node) {
+                if secondMember.reachability == expected {
+                    return
+                } else {
+                    throw testKit.error("Expected \(node) on \(testKit.system.cluster.node) to be [\(expected)] but was: \(secondMember)")
+                }
+            } else {
+                pinfo("Unable to assert reachability of \(node) on \(testKit.system.cluster.node) since membership did not contain it. Was: \(snapshot)")
+                () // it may have technically been removed already, so this is "fine"
+            }
+        }
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Gossiping
+
     func test_swim_shouldSendGossipInAck() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
@@ -272,7 +374,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
-    func test_swim_shouldSendGossipInPing_() throws {
+    func test_swim_shouldSendGossipInPing() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
@@ -451,7 +553,8 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     func expectPing(
         on probe: ActorTestProbe<SWIM.Message>, reply: Bool, incarnation: SWIM.Incarnation = 0,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-        assertPayload: (SWIM.Payload) throws -> Void = { _ in }
+        assertPayload: (SWIM.Payload) throws -> Void = { _ in
+        }
     ) throws {
         switch try probe.expectMessage(file: file, line: line, column: column) {
         case .remote(.ping(_, let replyTo, let payload)):
@@ -468,7 +571,8 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         for: ActorRef<SWIM.Message>, on probe: ActorTestProbe<SWIM.Message>,
         reply: Bool, incarnation: SWIM.Incarnation = 0,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-        assertPayload: (SWIM.Payload) throws -> Void = { _ in }
+        assertPayload: (SWIM.Payload) throws -> Void = { _ in
+        }
     ) throws {
         switch try probe.expectMessage(file: file, line: line, column: column) {
         case .remote(.pingReq(let toPing, _, let replyTo, let payload)):
@@ -518,7 +622,8 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
-    func makeSWIM(for address: ActorAddress, members: [ActorRef<SWIM.Message>], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in }) -> SWIM.Instance {
+    func makeSWIM(for address: ActorAddress, members: [ActorRef<SWIM.Message>], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in
+    }) -> SWIM.Instance {
         var memberStatus: [ActorRef<SWIM.Message>: SWIM.Status] = [:]
         for member in members {
             memberStatus[member] = .alive(incarnation: 0)
@@ -526,7 +631,8 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         return self.makeSWIM(for: address, members: memberStatus, configuredWith: configure)
     }
 
-    func makeSWIM(for address: ActorAddress, members: [ActorRef<SWIM.Message>: SWIM.Status], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in }) -> SWIM.Instance {
+    func makeSWIM(for address: ActorAddress, members: [ActorRef<SWIM.Message>: SWIM.Status], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in
+    }) -> SWIM.Instance {
         var settings = SWIM.Settings()
         configure(&settings)
         let instance = SWIM.Instance(settings)
@@ -536,7 +642,8 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         return instance
     }
 
-    func swimBehavior(members: [ActorRef<SWIM.Message>], clusterRef: ClusterShell.Ref, configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in }) -> Behavior<SWIM.Message> {
+    func swimBehavior(members: [ActorRef<SWIM.Message>], clusterRef: ClusterShell.Ref, configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in
+    }) -> Behavior<SWIM.Message> {
         return .setup { context in
             let swim = self.makeSWIM(for: context.address, members: members, configuredWith: configure)
             swim.addMyself(context.myself)

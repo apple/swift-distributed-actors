@@ -21,10 +21,10 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
     func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
-                settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
+                settings.cluster.swim.failureDetector.probeInterval = .milliseconds(100)
             }
             let second = self.setUpNode("second") { settings in
-                settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
+                settings.cluster.swim.failureDetector.probeInterval = .milliseconds(100)
             }
 
             try self.joinNodes(node: first, with: second)

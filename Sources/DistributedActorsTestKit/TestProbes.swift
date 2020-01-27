@@ -64,7 +64,8 @@ public class ActorTestProbe<Message> {
     /// Blocking linked queue, specialized for keeping only termination signals (so that we can assert terminations, independently of other signals)
     private let terminationsQueue = LinkedBlockingQueue<Signals.Terminated>()
 
-    private var lastMessageObserved: Message?
+    /// Last message received (by using an `expect...` call), by this probe.
+    public var lastMessage: Message?
 
     /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
     internal init(
@@ -188,7 +189,7 @@ extension ActorTestProbe {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
                 continue
             }
-            self.lastMessageObserved = message
+            self.lastMessage = message
             return message
         }
 
@@ -283,7 +284,7 @@ extension ActorTestProbe {
     ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or a message is received by the actor.
     public func maybeExpectMessage() throws -> Message? {
-        return try self.maybeExpectMessage(within: self.expectationTimeout)
+        try self.maybeExpectMessage(within: self.expectationTimeout)
     }
 
     /// Expects a message to "maybe" arrive at the `ActorTestProbe` and returns it for further assertions,
@@ -309,7 +310,7 @@ extension ActorTestProbe {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
                 continue
             }
-            self.lastMessageObserved = message
+            self.lastMessage = message
             return message
         }
 
@@ -338,7 +339,7 @@ extension ActorTestProbe where Message: Equatable {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         do {
             let receivedMessage = try self.receiveMessage(within: timeout)
-            self.lastMessageObserved = receivedMessage
+            self.lastMessage = receivedMessage
             guard receivedMessage == message else {
                 throw callSite.error(callSite.detailedMessage(got: receivedMessage, expected: message))
             }
@@ -356,7 +357,7 @@ extension ActorTestProbe where Message: Equatable {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         let receivedMessage = try self.receiveMessage(within: timeout)
-        self.lastMessageObserved = receivedMessage
+        self.lastMessage = receivedMessage
         guard receivedMessage is T else {
             throw callSite.error(callSite.detailedMessage(got: receivedMessage, expected: type))
         }
@@ -392,7 +393,7 @@ extension ActorTestProbe {
                 do {
                     let message = try self.receiveMessage(within: deadline.timeLeft)
                     receivedMessages.append(message)
-                    self.lastMessageObserved = message
+                    self.lastMessage = message
 
                     if receivedMessages.count == count {
                         return receivedMessages
@@ -427,7 +428,7 @@ extension ActorTestProbe where Message: Equatable {
 
             while !messages.isEmpty {
                 let receivedMessage = try self.receiveMessage(within: deadline.timeLeft)
-                self.lastMessageObserved = receivedMessage
+                self.lastMessage = receivedMessage
                 guard let index = messages.firstIndex(where: { $0 == receivedMessage }) else {
                     throw callSite.error("Received unexpected message [\(receivedMessage)]")
                 }
@@ -539,7 +540,7 @@ extension ActorTestProbe {
 
         var fullMessage: String = message ?? "ActorTestProbe failure."
 
-        switch self.lastMessageObserved {
+        switch self.lastMessage {
         case .some(let m):
             fullMessage += " Last message observed was: [\(m)]."
         case .none:
