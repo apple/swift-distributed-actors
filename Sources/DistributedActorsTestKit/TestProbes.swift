@@ -194,6 +194,82 @@ extension ActorTestProbe {
 
         throw ExpectationError.noMessagesInQueue
     }
+
+    /// Allows for "fishing out" certain messages from the stream of incoming messages to this probe.
+    /// Messages can be caught or ignored using the passed in function.
+    ///
+    /// Allows transforming the caught messages to `CaughtMessage` (e.g. extracting a specific payload from all incoming messages).
+    /// If you need to aggregate the exact `Message` types, you prefer using `fishForMessages`.
+    ///
+    /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
+    /// the function returns all so-far accumulated messages.
+    public func fishFor<CaughtMessage>(
+        _ type: CaughtMessage.Type, within timeout: TimeAmount,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        _ fisher: (Message) throws -> FishingDirective<CaughtMessage>
+    ) throws -> [CaughtMessage] {
+        let deadline = Deadline.fromNow(timeout)
+
+        var caughtMessages: [CaughtMessage] = []
+        while deadline.hasTimeLeft() {
+            if let message = try self.maybeExpectMessage(within: deadline.timeLeft) {
+                switch try fisher(message) {
+                case .catchContinue(let caught):
+                    caughtMessages.append(caught)
+                case .catchComplete(let caught):
+                    caughtMessages.append(caught)
+                    return caughtMessages
+                case .ignore:
+                    ()
+                case .complete:
+                    return caughtMessages
+                }
+            }
+        }
+
+        return caughtMessages
+    }
+
+    public enum FishingDirective<CaughtMessage> {
+        case catchContinue(CaughtMessage)
+        case catchComplete(CaughtMessage)
+        case ignore
+        case complete
+    }
+
+    /// Allows for "fishing out" certain messages from the stream of incoming messages to this probe.
+    /// Messages can be caught or ignored using the passed in function.
+    ///
+    /// The accumulated messages are assumed to be transforming the caught messages to `CaughtMessage` (e.g. extracting a specific payload from all incoming messages).
+    /// If you need to aggregate the exact `Message` types, you prefer using `fishForMessages`.
+    ///
+    /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
+    /// the function returns all so-far accumulated messages.
+    public func fishForMessages(
+        within timeout: TimeAmount,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        _ fisher: (Message) throws -> MessageFishingDirective
+    ) throws -> [Message] {
+        try self.fishFor(Message.self, within: timeout, file: file, line: line, column: column) { message in
+            switch try fisher(message) {
+            case .catchContinue:
+                return .catchContinue(message)
+            case .catchComplete:
+                return .catchComplete(message)
+            case .ignore:
+                return .ignore
+            case .complete:
+                return .complete
+            }
+        }
+    }
+
+    public enum MessageFishingDirective {
+        case catchContinue
+        case catchComplete
+        case ignore
+        case complete
+    }
 }
 
 extension ActorTestProbe {
