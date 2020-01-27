@@ -8,9 +8,15 @@ import class Foundation.ProcessInfo
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
 // TODO: Follow up to https://github.com/apple/swift-distributed-actors/issues/23 by removing Files and Stencil, then we can remove this workaround
-let globalSwiftSettings: [SwiftSetting] = ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] == nil ? [
-    SwiftSetting.unsafeFlags(["-warnings-as-errors"])
-] : []
+let globalSwiftSettings: [SwiftSetting]
+if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
+    print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
+    globalSwiftSettings = [
+        SwiftSetting.unsafeFlags(["-warnings-as-errors"])
+    ]
+} else {
+    globalSwiftSettings = []
+}
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -307,7 +313,11 @@ var package = Package(
     dependencies: dependencies,
 
     targets: targets.map { target in
-        target.swiftSettings?.append(contentsOf: globalSwiftSettings)
+        var swiftSettings = target.swiftSettings ?? []
+        swiftSettings.append(contentsOf: globalSwiftSettings)
+        if !swiftSettings.isEmpty {
+            target.swiftSettings = swiftSettings
+        }
         return target
     },
 
