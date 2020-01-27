@@ -24,6 +24,12 @@ public struct SWIMSettings {
 
     // var timeSource: TimeSource // TODO would be nice?
 
+    /// Allows for completely disabling the SWIM distributed failure detector.
+    /// - Warning: disabling this means that no reachability events will be created automatically,
+    ///   which also means that most `DowningStrategy` implementations will not be able to act and `.down` members!
+    ///   Use with great caution, ONLY if you knowingly provide a different method of detecting cluster member node failures.
+    public var disabled: Bool = false
+
     public var gossip: SWIMGossipSettings = .default
 
     public var failureDetector: SWIMFailureDetectorSettings = .default

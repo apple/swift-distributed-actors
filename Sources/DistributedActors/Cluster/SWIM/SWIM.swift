@@ -39,7 +39,7 @@ public enum SWIM {
     internal enum Message {
         case remote(RemoteMessage)
         case local(LocalMessage)
-        case testing(TestingMessage) // TODO: hopefully no need for this soon once cluster events land
+        case _testing(TestingMessage)
     }
 
     internal enum RemoteMessage {
@@ -48,7 +48,7 @@ public enum SWIM {
         /// "Ping Request" requests a SWIM probe.
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
 
-        /// Extension: Lifeguard, Local Health Aware Probe
+        // TODO: Implement Extension: Lifeguard, Local Health Aware Probe
         /// LHAProbe adds a `nack` message to the fault detector protocol,
         /// which is sent in the case of failed indirect probes. This gives the member that
         ///  initiates the indirect probe a way to check if it is receiving timely responses
