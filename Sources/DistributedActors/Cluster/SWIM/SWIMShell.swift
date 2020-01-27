@@ -170,11 +170,16 @@ internal struct SWIMShell {
         guard !membersToPingRequest.isEmpty else {
             // no nodes available to ping, so we have to assume the node suspect right away
             if let lastIncarnation = lastKnownStatus.incarnation {
-                context.log.info("No members to ping-req through, marking [\(toPing)] immediately as [.suspect]. Members: [\(self.swim._allMembersDict)]")
-                self.swim.mark(toPing, as: .suspect(incarnation: lastIncarnation))
-                return
+                switch self.swim.mark(toPing, as: .suspect(incarnation: lastIncarnation)) {
+                case .applied(_, let currentStatus):
+                    context.log.info("No members to ping-req through, marked [\(toPing)] immediately as [\(currentStatus)].")
+                    return
+                case .ignoredDueToOlderStatus(let currentStatus):
+                    context.log.info("No members to ping-req through to [\(toPing)], was already [\(currentStatus)].")
+                    return
+                }
             } else {
-                context.log.debug("Not marking .suspect, as [\(toPing)] is already dead.") // "You are already dead!"
+                context.log.trace("Not marking .suspect, as [\(toPing)] is already dead.") // "You are already dead!"
                 return
             }
         }
@@ -230,10 +235,9 @@ internal struct SWIMShell {
                 self.sendPingRequests(context: context, toPing: pingedMember)
             }
         case .success(let ack):
-            context.log.trace("Received ack from [\(ack.pinged)] with incarnation [\(ack.incarnation)] and payload [\(ack.payload)]")
-            self.swim.mark(ack.pinged, as: .alive(incarnation: ack.incarnation))
+            context.log.debug("Received ack from [\(ack.pinged)] with incarnation [\(ack.incarnation)] and payload [\(ack.payload)]", metadata: self.swim.metadata)
+            self.markMember(context, latest: ack.pingedAliveMember(protocolPeriod: self.swim.protocolPeriod))
             pingReqOrigin?.tell(ack)
-            self.processGossipPayload(context: context, payload: ack.payload)
         }
     }
 
@@ -255,7 +259,7 @@ internal struct SWIMShell {
     // MARK: Handling local messages
 
     func handlePingRandomMember(_ context: ActorContext<SWIM.Message>) {
-        context.log.trace("Received periodic trigger to ping random member, among: \(self.swim._allMembersDict.count)", metadata: self.swim.metadata)
+        context.log.trace("Periodic ping random member, among: \(self.swim._allMembersDict.count)", metadata: self.swim.metadata)
 
         // needs to be done first, so we can gossip out the most up to date state
         self.checkSuspicionTimeouts(context: context)
@@ -294,7 +298,7 @@ internal struct SWIMShell {
             // TODO: GC tombstones after a day
 
             switch self.swim.mark(member.ref, as: .dead) {
-            case .applied(let .some(previousState), let currentState):
+            case .applied(let .some(previousState), _):
                 if previousState.isSuspect || previousState.isUnreachable {
                     context.log.warning("Marked [\(member)] as [.dead]. Was marked \(previousState) in protocol period [\(member.protocolPeriod)]", metadata: [
                         "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
@@ -325,19 +329,20 @@ internal struct SWIMShell {
     func checkSuspicionTimeouts(context: ActorContext<SWIM.Message>) {
         // TODO: push more of logic into SWIM instance, the calculating
         // FIXME: use decaying timeout as proposed in lifeguard paper
-        let timeoutPeriods = (self.swim.protocolPeriod - self.swim.settings.failureDetector.suspicionTimeoutPeriodsMax)
+        let timeoutSuspectsBeforePeriod = (self.swim.protocolPeriod - self.swim.settings.failureDetector.suspicionTimeoutPeriodsMax)
         context.log.trace("Checking suspicion timeouts...", metadata: [
             "swim/suspects": "\(self.swim.suspects)",
             "swim/all": "\(self.swim._allMembersDict)",
             "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-            "swim/timeoutPeriods": "\(timeoutPeriods)",
+            "swim/timeoutSuspectsBeforePeriod": "\(timeoutSuspectsBeforePeriod)",
         ])
+
         for suspect in self.swim.suspects {
             context.log.trace("Checking suspicion timeout for: \(suspect)...")
 
             // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
-            guard suspect.protocolPeriod <= timeoutPeriods else {
-                continue // skip
+            guard suspect.protocolPeriod <= timeoutSuspectsBeforePeriod else {
+                continue // skip, this suspect is not timed-out yet
             }
 
             guard let incarnation = suspect.status.incarnation else {
@@ -347,14 +352,21 @@ internal struct SWIMShell {
 
             var unreachableSuspect = suspect
             unreachableSuspect.status = .unreachable(incarnation: incarnation)
+            _ = self.markMember(context, latest: unreachableSuspect)
+        }
+    }
 
-            switch self.swim.mark(unreachableSuspect.ref, as: unreachableSuspect.status) {
-            case .applied(let previousStatus, _):
-                let statusChange = SWIM.Instance.MemberStatusChange(fromStatus: previousStatus, member: unreachableSuspect)
-                self.tryAnnounceMemberReachability(context, change: statusChange)
-            case .ignoredDueToOlderStatus:
-                return
-            }
+    private func markMember(_ context: ActorContext<SWIM.Message>, latest: SWIM.Member) {
+        switch self.swim.mark(latest.ref, as: latest.status) {
+        case .applied(let previousStatus, _):
+            context.log.trace("Marked \(latest.node) as \(latest.status), announcing reachability change", metadata: [
+                "swim/member": "\(latest)",
+                "swim/previousStatus": "\(previousStatus, orElse: "nil")",
+            ])
+            let statusChange = SWIM.Instance.MemberStatusChange(fromStatus: previousStatus, member: latest)
+            self.tryAnnounceMemberReachability(context, change: statusChange)
+        case .ignoredDueToOlderStatus:
+            () // context.log.trace("No change \(latest), currentStatus remains [\(currentStatus)]. No reachability change to announce")
         }
     }
 
@@ -389,15 +401,6 @@ internal struct SWIMShell {
                     context.log.log(level: level, message)
                 }
 
-//            case .markedSuspect(let member):
-//                context.log.info("Marked member \(member) [.suspect], if it is not found [.alive] again within \(self.settings.failureDetector.suspicionTimeoutPeriodsMax) protocol periods, it will be marked [.unreachable].")
-//
-//            case .confirmedDead(let member):
-//                context.log.warning("Detected [.dead] node: \(member.node).", metadata: [
-//                    "swim/member": "\(member)",
-//                ])
-//                context.system.cluster.down(node: member.node.node) // TODO: should w really, or rather mark unreachable and let the downing do this?
-
             case .applied(let change, _, _):
                 self.tryAnnounceMemberReachability(context, change: change)
             }
@@ -422,7 +425,7 @@ internal struct SWIMShell {
         case .unreachable:
             context.log.info(
                 """
-                Node \(change.member.node) determined [.unreachable]!" \
+                Node \(change.member.node) determined [.unreachable]! \
                 The node is not yet marked [.down], a downing strategy or other Cluster.Event subscriber may act upon this information.
                 """, metadata: [
                     "swim/member": "\(change.member)",

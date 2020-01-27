@@ -78,7 +78,7 @@ extension LogCapture {
         public var minimumLogLevel: Logger.Level = .trace
 
         /// Filter and capture logs only from actors with the following path prefix
-        public var filterActorPath: String = "/"
+        public var filterActorPaths: Set<String> = ["/"]
         /// Do not capture log messages which include the following strings.
         public var excludeActorPaths: Set<String> = []
 
@@ -169,7 +169,7 @@ struct LogCaptureLogHandler: LogHandler {
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
-        guard self.label.starts(with: self.capture.settings.filterActorPath) else {
+        guard self.capture.settings.filterActorPaths.contains(where: { path in self.label.starts(with: path) }) else {
             return // ignore this actor's logs, it was filtered out
         }
         guard !self.capture.settings.excludeActorPaths.contains(self.label) else {

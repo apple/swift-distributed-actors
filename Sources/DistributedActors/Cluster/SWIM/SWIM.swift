@@ -66,6 +66,11 @@ public enum SWIM {
         let pinged: ActorRef<Message>
         let incarnation: Incarnation
         let payload: Payload
+
+        /// Represents the pinged member in alive status, since it clearly has replied to our ping, so it must be alive.
+        func pingedAliveMember(protocolPeriod: Int) -> SWIM.Member {
+            .init(ref: self.pinged, status: .alive(incarnation: self.incarnation), protocolPeriod: protocolPeriod)
+        }
     }
 
     internal struct MembershipState {
@@ -231,7 +236,7 @@ extension SWIM.Status {
         switch self {
         case .dead:
             return true
-        case .alive, .unreachable, .suspect:
+        case .alive, .suspect, .unreachable:
             return false
         }
     }

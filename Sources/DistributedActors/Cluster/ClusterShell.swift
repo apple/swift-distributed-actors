@@ -46,12 +46,6 @@ internal class ClusterShell {
     private var _associationTombstones: Set<Association.TombstoneState>
 
     private var _swimRef: SWIM.Ref?
-    private var swimRef: SWIM.Ref {
-        guard let ref = _swimRef else {
-            return fatalErrorBacktrace("Illegal early access to ClusterShell._swimRef detected! This ref is initialized during bind(), and must not be accessed earlier than that.")
-        }
-        return ref
-    }
 
     private var clusterEvents: EventStream<Cluster.Event>!
 
@@ -130,7 +124,7 @@ internal class ClusterShell {
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
-        self.swimRef.tell(.local(.confirmDead(remoteNode)))
+        self._swimRef?.tell(.local(.confirmDead(remoteNode)))
 
         // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
         if state.membership.mark(remoteNode, as: .down) == nil {
@@ -341,10 +335,10 @@ extension ClusterShell {
                 self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: ._wellKnown, swimBehavior)
             } else {
                 context.log.warning("""
-                                    SWIM Failure Detector has been [disabled]! \
-                                    Reachability events will NOT be emitted, meaning that most downing strategies will not be able to perform \
-                                    their duties. Please ensure that an external mechanism for detecting failed cluster nodes is used.
-                                    """)
+                SWIM Failure Detector has been [disabled]! \
+                Reachability events will NOT be emitted, meaning that most downing strategies will not be able to perform \
+                their duties. Please ensure that an external mechanism for detecting failed cluster nodes is used.
+                """)
                 self._swimRef = nil
             }
 
@@ -939,7 +933,7 @@ extension ClusterShell {
             switch res {
             case .success(.success(let uniqueNode)):
                 context.log.debug("Associated \(uniqueNode), informing SWIM to monitor this node.")
-                self.swimRef.tell(.local(.monitor(uniqueNode)))
+                self._swimRef?.tell(.local(.monitor(uniqueNode)))
                 return .same // .same, since state was modified since inside the handshakeWith (!)
             case .success(.failure(let error)):
                 context.log.debug("Handshake with \(reflecting: node) failed: \(error)")
@@ -990,7 +984,7 @@ extension ClusterShell {
                 "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
             ])
 
-            self.swimRef.tell(.local(.confirmDead(memberToDown.node)))
+            self._swimRef?.tell(.local(.confirmDead(memberToDown.node)))
 
             do {
                 let onDownAction = context.system.settings.cluster.onDownAction.make()

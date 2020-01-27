@@ -99,7 +99,9 @@ public final class RemotePersonality<Message> {
                     return self.remoteControl
                 } // else, fall through to the return nil below
             case .associated(let remoteControl):
-                self.system.log.warning("FIXME: Workaround, ActorRef's RemotePersonality had to spin \(spinNr) times to obtain remoteControl to send message to \(self.address)")
+                if spinNr > 1 {
+                    self.system.log.warning("FIXME: Workaround, ActorRef's RemotePersonality had to spin \(spinNr) times to obtain remoteControl to send message to \(self.address)")
+                }
                 // self._cachedAssociationRemoteControl = remoteControl // TODO: atomically cache a remote control?
                 return remoteControl
             case .tombstone:
