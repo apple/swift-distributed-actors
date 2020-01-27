@@ -14,16 +14,16 @@
 
 /// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).
 ///
-/// SWIM serves as a low-level membership and distributed failure detector mechanism.
+/// SWIM serves as a low-level distributed failure detector mechanism.
+/// It also maintains its own membership in order to monitor and select nodes to ping with periodic health checks,
+/// however this membership is not directly the same as the high-level membership exposed by the `Cluster`.
+///
+/// SWIM is first and foremost used to determine if nodes are reachable or not (in SWIM terms if they are `.dead`),
+/// however the final decision to mark a node `.dead` is made by the cluster by issuing a `Cluster.MemberStatus.down`
+/// (usually in reaction to SWIM informing it about a node being `SWIM.Member.Status
+///
 /// Cluster members may be discovered though SWIM gossip, yet will be asked to participate in the high-level
 /// cluster membership as driven by the `ClusterShell`.
-///
-/// ### Modifications
-/// See the documentation of this swim implementation in the reference documentation.
-///
-/// ### Related Papers
-/// - SeeAlso: [SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol](https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf) paper
-///
 /// ### See Also
 /// - SeeAlso: `SWIM.Instance` for a detailed discussion on the implementation.
 /// - SeeAlso: `SWIM.Shell` for the interpretation and actor driving the interactions.
@@ -46,7 +46,6 @@ public enum SWIM {
         case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
 
         /// "Ping Request" requests a SWIM probe.
-        // TODO: target -- node rather than the ref?
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
 
         /// Extension: Lifeguard, Local Health Aware Probe
@@ -69,7 +68,6 @@ public enum SWIM {
         let payload: Payload
     }
 
-    // TODO: make sure that those are in a "testing" and not just "remote" namespace?
     internal struct MembershipState {
         let membershipState: [ActorRef<SWIM.Message>: Status]
     }
@@ -133,8 +131,9 @@ public enum SWIM {
 // MARK: SWIM Member Status
 
 extension SWIM {
-    /// The SWIM membership status reflects.
+    /// The SWIM membership status reflects how a node is perceived by the distributed failure detector.
     ///
+    /// ### Modification: Unreachable status
     /// The `.unreachable` state is set when a classic SWIM implementation would have declared a node `.down`,
     /// yet since we allow for the higher level membership to decide when and how to eject members from a cluster,
     /// only the `.unreachable` state is set and an `Cluster.ReachabilityChange` cluster event is emitted. In response to this
@@ -248,13 +247,12 @@ extension SWIM.Status {
 // MARK: SWIM Member
 
 internal struct SWIMMember: Hashable {
-    // TODO: would want to swap it around, nodes are members, not actors
     var node: UniqueNode {
         return self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
     }
 
     /// Each (SWIM) cluster member is running a `probe` actor which we interact with when gossiping the SWIM messages.
-    let ref: ActorRef<SWIM.Message> // TODO: better name for `ref` is it a `probeRef` (sounds right?) or `swimmerRef` (meh)?
+    let ref: ActorRef<SWIM.Message>
 
     var status: SWIM.Status
 
@@ -268,15 +266,19 @@ internal struct SWIMMember: Hashable {
     }
 
     var isAlive: Bool {
-        return self.status.isAlive
+        self.status.isAlive
     }
 
     var isSuspect: Bool {
-        return self.status.isSuspect
+        self.status.isSuspect
+    }
+
+    var isUnreachable: Bool {
+        self.status.isUnreachable
     }
 
     var isDead: Bool {
-        return self.status.isDead
+        self.status.isDead
     }
 }
 

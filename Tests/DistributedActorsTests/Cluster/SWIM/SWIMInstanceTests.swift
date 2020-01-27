@@ -519,7 +519,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         self.validateSuspects(swim, expected: [])
 
-        swim.mark(p1, as: .suspect(incarnation: 0)).shouldEqual(.applied(previousStatus: aliveAtZero))
+        swim.mark(p1, as: .suspect(incarnation: 0)).shouldEqual(.applied(previousStatus: aliveAtZero, currentStatus: .suspect(incarnation: 0)))
         self.validateSuspects(swim, expected: [p1])
 
         _ = swim.mark(p3, as: .suspect(incarnation: 0))

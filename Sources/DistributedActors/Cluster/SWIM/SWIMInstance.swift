@@ -16,25 +16,31 @@ import Logging
 
 /// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).
 ///
-/// Namespace containing message types used to implement the SWIM protocol.
+/// Implementation of the SWIM protocol in abstract terms, see [SWIMShell] for the actor acting upon directives issued by this instance.
 ///
 /// > As you swim lazily through the milieu,
 /// > The secrets of the world will infect you.
 ///
-/// - SeeAlso: <a href="https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf">Scalable Weakly-consistent Infection-style Process Group Membership Protocol</a>
-/// - SeeAlso: <a href="https://arxiv.org/abs/1707.00788">Lifeguard: Local Health Awareness for More Accurate Failure Detection</a>
+/// ### Modifications
+/// - Random, stable order members to ping selection: Unlike the completely random selection in the original paper.
+///
+/// See the reference documentation of this swim implementation in the reference documentation.
+///
+/// ### Related Papers
+/// - SeeAlso: [SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol](https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf)
+/// - SeeAlso: [Lifeguard: Local Health Awareness for More Accurate Failure Detection](https://arxiv.org/abs/1707.00788)
 final class SWIMInstance {
     let settings: SWIM.Settings
 
     /// Main members storage, map to values to obtain current members.
     private var members: [ActorRef<SWIM.Message>: SWIMMember]
-    //    private var members: [UniqueNode: SWIMMember] // FIXME: this really should talk about nodes, not the members in the keys
 
+    /// List of members maintained in random yet stable order, see `addMember` for details.
+    internal var membersToPing: [SWIMMember]
     /// Constantly mutated by `nextMemberToPing` in an effort to keep the order in which we ping nodes evenly distributed.
-    private var membersToPing: [SWIMMember]
     private var _membersToPingIndex: Int = 0
     private var membersToPingIndex: Int {
-        return self._membersToPingIndex
+        self._membersToPingIndex
     }
 
     /// The incarnation number is used to get a sense of ordering of events, so if an `.alive` or `.suspect`
@@ -43,7 +49,7 @@ final class SWIMInstance {
     /// be incremented by the respective node itself and will happen if that node receives a `.suspect` for
     /// itself, to which it will respond with an `.alive` with the incremented incarnation.
     var incarnation: SWIM.Incarnation {
-        return self._incarnation
+        self._incarnation
     }
 
     private var _incarnation: SWIM.Incarnation = 0
@@ -55,11 +61,10 @@ final class SWIMInstance {
     // be declared `.dead` after not receiving an `.alive` for approx. 3 seconds.
     private var _protocolPeriod: Int = 0
 
-    // We need to store the path to the owning SWIMShell to avoid adding it to the `membersToPing` list
-    // private var myRemoteAddress: ActorAddress? = nil
+    // We store the owning SWIMShell ref in order avoid adding it to the `membersToPing` list
     private var myShellMyself: ActorRef<SWIM.Message>?
     private var myShellAddress: ActorAddress? {
-        return self.myShellMyself?.address
+        self.myShellMyself?.address
     }
 
     private var myNode: UniqueNode?
@@ -90,7 +95,6 @@ final class SWIMInstance {
             return .newerMemberAlreadyPresent(existingMember)
         }
 
-        // FIXME: store with node as key, not ref
         let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod)
         self.members[ref] = member
 
@@ -114,11 +118,11 @@ final class SWIMInstance {
 
         self.addToGossip(member: member)
 
-        return .added
+        return .added(member)
     }
 
     enum AddMemberDirective {
-        case added
+        case added(SWIM.Member)
         case newerMemberAlreadyPresent(SWIM.Member)
     }
 
@@ -129,7 +133,7 @@ final class SWIMInstance {
     ///
     /// - Note:
     ///   SWIM 4.3: [...] The failure detection protocol at member works by maintaining a list (intuitively, an array) of the known
-    ///   elements of the current membership list, and select- ing ping targets not randomly from this list,
+    ///   elements of the current membership list, and select-ing ping targets not randomly from this list,
     ///   but in a round-robin fashion. Instead, a newly joining member is inserted in the membership list at
     ///   a position that is chosen uniformly at random. On completing a traversal of the entire list,
     ///   rearranges the membership list to a random reordering.
@@ -137,8 +141,8 @@ final class SWIMInstance {
         if self.membersToPing.isEmpty {
             return nil
         }
-        defer { self.advanceMembersToPingIndex() }
 
+        defer { self.advanceMembersToPingIndex() }
         return self.membersToPing[self.membersToPingIndex].ref
     }
 
@@ -195,12 +199,25 @@ final class SWIMInstance {
             self.removeFromMembersToPing(member)
         }
 
-        return .applied(previousStatus: previousStatusOption)
+        return .applied(previousStatus: previousStatusOption, currentStatus: status)
     }
 
     enum MarkedDirective: Equatable {
         case ignoredDueToOlderStatus(currentStatus: SWIM.Status)
-        case applied(previousStatus: SWIM.Status?)
+        case applied(previousStatus: SWIM.Status?, currentStatus: SWIM.Status)
+
+        /// True if the directive was `applied` and the from/to statuses differ, meaning that a change notification has issued.
+        var isEffectiveStatusChange: Bool {
+            switch self {
+            case .ignoredDueToOlderStatus:
+                return false
+            case .applied(nil, _):
+                // from no status, to any status is definitely an effective change
+                return true
+            case .applied(.some(let previousStatus), let currentStatus):
+                return previousStatus != currentStatus
+            }
+        }
     }
 
     func incrementProtocolPeriod() {
@@ -441,11 +458,17 @@ extension SWIM.Instance {
         } else {
             if self.isMember(member.ref) {
                 switch self.mark(member.ref, as: member.status) {
-                case .applied:
-                    if member.status.isDead {
+                case .applied(_, let currentStatus):
+                    switch currentStatus {
+                    case .unreachable:
+                        return .applied(level: .notice, message: "Member \(member) marked [.unreachable] from incoming gossip")
+                    case .alive:
+                        // TODO: could be another spot that we have to issue a reachable though?
+                        return .ignored
+                    case .suspect:
+                        return .markedSuspect(member: member)
+                    case .dead:
                         return .confirmedDead(member: member)
-                    } else {
-                        return .applied
                     }
                 case .ignoredDueToOlderStatus(let currentStatus):
                     return .ignored(
@@ -454,9 +477,13 @@ extension SWIM.Instance {
                     )
                 }
             } else if let remoteMemberNode = member.ref.address.node {
-                // TODO: store that we're now handshaking with it already?
-                return .connect(node: remoteMemberNode, onceConnected: { _ in
-                    self.addMember(member.ref, status: member.status)
+                return .connect(node: remoteMemberNode, onceConnected: {
+                    switch $0 {
+                    case .success(let uniqueNode):
+                        self.addMember(member.ref, status: member.status)
+                    case .failure(let error):
+                        self.addMember(member.ref, status: .suspect(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)
+                    }
                 })
             } else {
                 return .ignored(
@@ -482,7 +509,8 @@ extension SWIM.Instance {
         /// and do not have a connection to it either (e.g. we joined only seed nodes, and more nodes joined them later
         /// we could get information through the seed nodes about the new members; but we still have never talked to them,
         /// thus we need to ensure we have a connection to them, before we consider adding them to the membership).
-        case connect(node: UniqueNode, onceConnected: (UniqueNode) -> Void)
+        case connect(node: UniqueNode, onceConnected: (Result<UniqueNode, Error>) -> Void)
+        case markedSuspect(member: SWIM.Member)
         /// Meaning the node is now marked `DEAD`.
         /// SWIM will continue to gossip about the dead node for a while.
         /// We should also notify the high-level membership that the node shall be considered `DOWN`.

@@ -58,7 +58,7 @@ final class SWIMInstanceClusteredTests: ClusteredNodesTestBase {
             swim.memberCount.shouldEqual(1) // the new member should not yet be added until we can confirm we are able to connect
 
             // we act as if we connected successfully
-            onceConnected(remote.settings.cluster.uniqueBindNode)
+            onceConnected(.success(remote.settings.cluster.uniqueBindNode))
 
             swim.memberCount.shouldEqual(2) // successfully joined
             swim.member(for: remoteShell)!.status.shouldEqual(remoteMember.status)

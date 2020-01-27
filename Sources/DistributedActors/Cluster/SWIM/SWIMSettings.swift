@@ -22,15 +22,15 @@ public struct SWIMSettings {
         .init()
     }
 
-    /// Optional "SWIM instance name" to be included in log statements,
-    /// useful when multiple instances of SWIM are run on the same process (e.g. for debugging).
-    public var name: String?
-
     // var timeSource: TimeSource // TODO would be nice?
 
     public var gossip: SWIMGossipSettings = .default
 
     public var failureDetector: SWIMFailureDetectorSettings = .default
+
+    /// Optional "SWIM instance name" to be included in log statements,
+    /// useful when multiple instances of SWIM are run on the same node (e.g. for debugging).
+    internal var name: String?
 
     /// When enabled traces _all_ incoming SWIM protocol communication (remote messages).
     /// These logs will contain SWIM.Instance metadata, as offered by `SWIM.Instance.metadata`.
@@ -48,31 +48,26 @@ extension SWIM {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Gossip Settings
+// MARK: SWIM Gossip Settings
 
 public struct SWIMGossipSettings {
     public static var `default`: SWIMGossipSettings {
-        return .init()
+        .init()
     }
 
-    /// Interval at which gossip messages should be issued.
-    /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
-    public var probeInterval: TimeAmount = .seconds(1)
-
-    // FIXME: investigate size of messages and find good default
-    //
-    // max number of messages included in any gossip payload
+    // TODO: investigate size of messages and find good default
+    /// Max number of messages included in any gossip payload
     public var maxNumberOfMessages: Int = 20
 
     public var maxGossipCountPerMessage: Int = 6
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: FailureDetector Settings
+// MARK: SWIM FailureDetector Settings
 
 public struct SWIMFailureDetectorSettings {
     public static var `default`: SWIMFailureDetectorSettings {
-        return .init()
+        .init()
     }
 
     /// Number of indirect probes that will be issued once a direct ping probe has failed to reply in time with an ack.
@@ -96,6 +91,15 @@ public struct SWIMFailureDetectorSettings {
     public var suspicionTimeoutPeriodsMax: Int = 10
     // public var suspicionTimeoutPeriodsMin: Int = 10 // FIXME: this is once we have LHA, Local Health Aware Suspicion
 
+    /// Interval at which gossip messages should be issued.
+    /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
     public var probeInterval: TimeAmount = .seconds(1)
+
+    /// Time amount after which a sent ping without ack response is considered timed-out.
+    /// This drives how a node becomes a suspect, by missing such ping/ack rounds.
+    ///
+    /// Note that after an initial ping/ack timeout, secondary indirect probes are issued,
+    /// and only after exceeding `suspicionTimeoutPeriodsMax` shall the node be declared as `.unreachable`,
+    /// which results in an `Cluster.MemberReachabilityChange` `Cluster.Event` which downing strategies may act upon.
     public var pingTimeout: TimeAmount = .milliseconds(300)
 }
