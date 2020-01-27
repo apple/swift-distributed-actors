@@ -336,8 +336,17 @@ extension ClusterShell {
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 
             // SWIM failure detector and gossiping
-            let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
-            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: ._wellKnown, swimBehavior)
+            if !clusterSettings.swim.disabled {
+                let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
+                self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: ._wellKnown, swimBehavior)
+            } else {
+                context.log.warning("""
+                                    SWIM Failure Detector has been [disabled]! \
+                                    Reachability events will NOT be emitted, meaning that most downing strategies will not be able to perform \
+                                    their duties. Please ensure that an external mechanism for detecting failed cluster nodes is used.
+                                    """)
+                self._swimRef = nil
+            }
 
             // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {

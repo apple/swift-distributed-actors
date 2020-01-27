@@ -250,6 +250,57 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         }
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Detecting when a change is "effective"
+
+    func test_MarkedDirective_isEffectiveChange() {
+        let p = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+
+        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 1), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+
+        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+
+        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+
+        // those are illegal, but even IF they happened at least we'd never bubble them up to high level
+        // moving from .dead to any other state is illegal and will assert
+        // illegal, precondition crash: SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+        // illegal, precondition crash: SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2), protocolPeriod: 1))
+        // illegal, precondition crash: SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: handling gossip about the receiving node
 
@@ -266,7 +317,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .applied(_, let warning) where warning == nil:
+        case .applied(_, _, let warning) where warning == nil:
             ()
         default:
             throw self.testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
@@ -287,7 +338,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.incarnation.shouldEqual(currentIncarnation + 1)
 
         switch res {
-        case .applied(_, let warning) where warning == nil:
+        case .applied(_, _, let warning) where warning == nil:
             ()
         default:
             throw self.testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
@@ -300,6 +351,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
+
         var myselfMember = swim.member(for: myself)!
 
         // necessary to increment incarnation
@@ -314,10 +366,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .applied(nil, nil):
+        case .ignored(nil, nil):
             ()
         default:
-            throw self.testKit.fail("Expected [applied(level: nil, message: nil)], got [\(res)]")
+            throw self.testKit.fail("Expected [ignored(level: nil, message: nil)], got [\(res)]")
         }
     }
 
@@ -335,7 +387,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .applied(_, let warning) where warning != nil:
+        case .applied(nil, _, let warning) where warning != nil:
             ()
         default:
             throw self.testKit.fail("Expected `.none(message)`, got \(res)")
@@ -352,11 +404,14 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         myselfMember.status = .dead
         let res = swim.onGossipPayload(about: myselfMember)
 
+        let myMember = swim.member(for: myself)!
+        myMember.status.shouldEqual(.dead)
+
         switch res {
-        case .confirmedDead(let member):
-            member.shouldEqual(myselfMember)
+        case .applied(.some(let change), _, _) where change.toStatus.isDead:
+            change.member.shouldEqual(myselfMember)
         default:
-            throw self.testKit.fail("Expected `.confirmedDead`, got \(res)")
+            throw self.testKit.fail("Expected `.applied(.some(change to dead)`, got: \(res)")
         }
     }
 
@@ -364,9 +419,9 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let swim = SWIM.Instance(.default)
 
         let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
-        swim.addMyself(myself)
-
         let other = try system.spawn("SWIM-B", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
+
+        swim.addMyself(myself)
         swim.addMember(other, status: .alive(incarnation: 0))
 
         var otherMember = swim.member(for: other)!
@@ -374,10 +429,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onGossipPayload(about: otherMember)
 
         switch res {
-        case .confirmedDead(let member):
-            member.shouldEqual(otherMember)
+        case .applied(.some(let change), _, _) where change.toStatus.isDead:
+            change.member.shouldEqual(otherMember)
         default:
-            throw self.testKit.fail("Expected `.confirmedDead`, got \(res)")
+            throw self.testKit.fail("Expected `.applied(.some(change to dead))`, got \(res)")
         }
     }
 

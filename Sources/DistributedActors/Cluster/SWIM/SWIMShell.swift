@@ -63,7 +63,7 @@ internal struct SWIMShell {
                 self.receiveLocalMessage(context: context, message: message)
                 return .same
 
-            case .testing(let message):
+            case ._testing(let message):
                 switch message {
                 case .getMembershipState(let replyTo):
                     context.log.trace("getMembershipState from \(replyTo), state: \(self.swim._allMembersDict)")
@@ -333,27 +333,28 @@ internal struct SWIMShell {
             "swim/timeoutPeriods": "\(timeoutPeriods)",
         ])
         for suspect in self.swim.suspects {
-            context.log.trace("Checking \(suspect)...")
+            context.log.trace("Checking suspicion timeout for: \(suspect)...")
 
             // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
             guard suspect.protocolPeriod <= timeoutPeriods else {
                 continue // skip
             }
-//            guard let node = suspect.ref.address.node else {
-//                continue // is not a remote node
-//            }
 
-            if let incarnation = suspect.status.incarnation {
-                context.log.trace("Marking \(suspect.node) as .unreachable!")
-                self.swim.mark(suspect.ref, as: .unreachable(incarnation: incarnation))
+            guard let incarnation = suspect.status.incarnation else {
+                // suspect had no incarnation number? that means it is .dead already and should be recycled soon
+                return
             }
 
-            // if the member was already unreachable or dead before, we don't need to notify the clusterRef
-            // (as we already did so once before, and do not want to issue multiple events about this)
-            if suspect.status.isUnreachable || suspect.status.isDead {
-                continue
+            var unreachableSuspect = suspect
+            unreachableSuspect.status = .unreachable(incarnation: incarnation)
+
+            switch self.swim.mark(unreachableSuspect.ref, as: unreachableSuspect.status) {
+            case .applied(let previousStatus, _):
+                let statusChange = SWIM.Instance.MemberStatusChange(fromStatus: previousStatus, member: unreachableSuspect)
+                self.tryAnnounceMemberReachability(context, change: statusChange)
+            case .ignoredDueToOlderStatus:
+                return
             }
-            self.escalateMemberUnreachable(context: context, member: suspect)
         }
     }
 
@@ -361,60 +362,87 @@ internal struct SWIMShell {
     func processGossipPayload(context: ActorContext<SWIM.Message>, payload: SWIM.Payload) {
         switch payload {
         case .membership(let members):
-            for member in members {
-                switch self.swim.onGossipPayload(about: member) {
-                case .applied where member.status.isUnreachable || member.status.isDead:
-                    // FIXME: rather, we should return in applied if it was a change or not, only if it was we should emit...
-
-                    // TODO: ensure we don't double emit this
-                    self.escalateMemberUnreachable(context: context, member: member)
-
-                case .applied:
-                    ()
-
-                case .connect(let node, let continueAddingMember):
-                    // ensuring a connection is asynchronous, but executes callback in actor context
-                    self.ensureAssociated(context, remoteNode: node) { uniqueAddressResult in
-                        switch uniqueAddressResult {
-                        case .success(let uniqueAddress):
-                            continueAddingMember(.success(uniqueAddress))
-                        case .failure(let error):
-                            continueAddingMember(.failure(error))
-                            context.log.warning("Unable ensure association with \(node), could it have been tombstoned? Error: \(error)")
-                        }
-                    }
-
-                case .ignored(let level, let message):
-                    if let level = level, let message = message {
-                        context.log.log(level: level, message)
-                    }
-
-                case .markedSuspect(let member):
-                    context.log.info("Marked member \(member) [.suspect], if it is not found [.alive] again within \(self.settings.failureDetector.suspicionTimeoutPeriodsMax) protocol periods, it will be marked [.unreachable].")
-
-                case .confirmedDead(let member):
-                    context.log.warning("Detected [.dead] node: \(member.node).", metadata: [
-                        "swim/member": "\(member)",
-                    ])
-                    context.system.cluster.down(node: member.node.node) // TODO: should w really, or rather mark unreachable and let the downing do this?
-                }
-            }
+            self.processGossipedMembership(members: members, context: context)
 
         case .none:
             return // ok
         }
     }
 
-    private func escalateMemberUnreachable(context: ActorContext<SWIM.Message>, member: SWIM.Member) {
-        context.log.warning(
-            """
-            Node \(member.node) determined [.unreachable]!\
-            The node is not yet marked [.down], a downing strategy or other Cluster.Event subscriber may act upon this information.
-            """, metadata: [
-                "swim/member": "\(member)",
-            ]
-        )
-        self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(member.node, .unreachable)))
+    func processGossipedMembership(members: SWIM.Members, context: ActorContext<SWIM.Message>) {
+        for member in members {
+            switch self.swim.onGossipPayload(about: member) {
+            case .connect(let node, let continueAddingMember):
+                // ensuring a connection is asynchronous, but executes callback in actor context
+                self.ensureAssociated(context, remoteNode: node) { uniqueAddressResult in
+                    switch uniqueAddressResult {
+                    case .success(let uniqueAddress):
+                        continueAddingMember(.success(uniqueAddress))
+                    case .failure(let error):
+                        continueAddingMember(.failure(error))
+                        context.log.warning("Unable ensure association with \(node), could it have been tombstoned? Error: \(error)")
+                    }
+                }
+
+            case .ignored(let level, let message):
+                if let level = level, let message = message {
+                    context.log.log(level: level, message)
+                }
+
+//            case .markedSuspect(let member):
+//                context.log.info("Marked member \(member) [.suspect], if it is not found [.alive] again within \(self.settings.failureDetector.suspicionTimeoutPeriodsMax) protocol periods, it will be marked [.unreachable].")
+//
+//            case .confirmedDead(let member):
+//                context.log.warning("Detected [.dead] node: \(member.node).", metadata: [
+//                    "swim/member": "\(member)",
+//                ])
+//                context.system.cluster.down(node: member.node.node) // TODO: should w really, or rather mark unreachable and let the downing do this?
+
+            case .applied(let change, _, _):
+                self.tryAnnounceMemberReachability(context, change: change)
+            }
+        }
+    }
+
+    /// Announce to the `ClusterShell` a change in reachability of a member.
+    private func tryAnnounceMemberReachability(_ context: ActorContext<SWIM.Message>, change: SWIM.Instance.MemberStatusChange?) {
+        guard let change = change else {
+            // this means it likely was a change to the same status or it was about us, so we do not need to announce anything
+            return
+        }
+
+        guard change.isReachabilityChange else {
+            // the change is from a reachable to another reachable (or an unreachable to another unreachable-like (e.g. dead) state),
+            // and thus we must not act on it, as the shell was already notified before about the change into the current status.
+            return
+        }
+
+        // Log the transition
+        switch change.toStatus {
+        case .unreachable:
+            context.log.info(
+                """
+                Node \(change.member.node) determined [.unreachable]!" \
+                The node is not yet marked [.down], a downing strategy or other Cluster.Event subscriber may act upon this information.
+                """, metadata: [
+                    "swim/member": "\(change.member)",
+                ]
+            )
+        default:
+            context.log.info("Node \(change.member.node) determined [.\(change.toStatus)] (was [\(change.fromStatus, orElse: "nil")].", metadata: [
+                "swim/member": "\(change.member)",
+            ])
+        }
+
+        let reachability: Cluster.MemberReachability
+        switch change.toStatus {
+        case .alive, .suspect:
+            reachability = .reachable
+        case .unreachable, .dead:
+            reachability = .unreachable
+        }
+
+        self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(change.member.node, reachability)))
     }
 
     /// Use to ensure an association to given remote node exists; as one may not always be sure a connection has been already established,
