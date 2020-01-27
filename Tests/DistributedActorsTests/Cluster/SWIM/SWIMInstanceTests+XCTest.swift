@@ -36,6 +36,7 @@ extension SWIMInstanceTests {
             ("test_onPing_shouldOfferAckMessageWithMyselfReference", test_onPing_shouldOfferAckMessageWithMyselfReference),
             ("test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation", test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation),
             ("test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation", test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation),
+            ("test_MarkedDirective_isEffectiveChange", test_MarkedDirective_isEffectiveChange),
             ("test_onGossipPayload_myself_withAlive", test_onGossipPayload_myself_withAlive),
             ("test_onGossipPayload_myself_withSuspectAndSameIncarnation_shouldIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndSameIncarnation_shouldIncrementIncarnation),
             ("test_onGossipPayload_myself_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnation),
