@@ -240,7 +240,7 @@ extension ActorTestProbe {
     /// Allows for "fishing out" certain messages from the stream of incoming messages to this probe.
     /// Messages can be caught or ignored using the passed in function.
     ///
-    /// The accumulated messages are assumed to be  transforming the caught messages to `CaughtMessage` (e.g. extracting a specific payload from all incoming messages).
+    /// The accumulated messages are assumed to be transforming the caught messages to `CaughtMessage` (e.g. extracting a specific payload from all incoming messages).
     /// If you need to aggregate the exact `Message` types, you prefer using `fishForMessages`.
     ///
     /// Once `MessageFishingDirective.catchComplete` or `MessageFishingDirective.complete` is returned,
