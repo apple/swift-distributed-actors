@@ -29,3 +29,9 @@ Swift:
 
 - Swift 5.1+
   - if you need Swift 5.0 support, let us know
+
+Operating Systems:
+
+- Linux systems (Ubuntu and friends)
+- macOS
+- should work but not verified: iOS, iPadOS (get in touch if you need it)
