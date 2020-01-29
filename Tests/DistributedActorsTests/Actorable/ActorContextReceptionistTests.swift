@@ -55,6 +55,21 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         try reply._nioFuture.wait().first.shouldEqual(owner)
     }
 
+    func test_subscribe_genericType() throws {
+        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
+            OwnerOfThings(context: $0, probe: p.ref)
+        }
+
+        let ps = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+
+        owner.performSubscribe(p: ps.ref)
+        try ps.expectMessage(.init(refs: [owner.ref]))
+
+        let anotherOwner = try self.system.spawn("anotherOwner") { OwnerOfThings(context: $0, probe: p.ref) }
+        try ps.expectMessage(.init(refs: [owner.ref, anotherOwner.ref]))
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Performance
 

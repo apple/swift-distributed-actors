@@ -28,6 +28,7 @@ extension OwnerOfThings {
     public enum Message { 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
         case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>) 
+        case performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) 
     }
     
 }
@@ -53,6 +54,9 @@ extension OwnerOfThings {
                 case .performLookup(let _replyTo):
                     instance.performLookup()
                                     .whenComplete { res in _replyTo.tell(res) } 
+                case .performSubscribe(let p):
+                    instance.performSubscribe(p: p)
+ 
                 
                 }
                 return .same
@@ -105,6 +109,11 @@ extension Actor where A.Message == OwnerOfThings.Message {
                 }
             }
         )
+    }
+ 
+
+     func performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) {
+        self.ref.tell(.performSubscribe(p: p))
     }
  
 
