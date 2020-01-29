@@ -74,6 +74,9 @@ extension Actor.Context {
         /// A new `Reception.Listing<Act>` is emitted whenever new actors join (or leave) the reception, and the `onListingChange` is then
         /// invoked on the actors context.
         ///
+        /// Current Limitation: Only ONE (the most recently set using this API) `onListingChange` for a given `key` is going to be executed.
+        /// This is done to avoid growing the number of callbacks infinitely, in case one would continuously invoke this API in every actorable call.
+        ///
         /// - Parameters:
         ///   - key: selects which actors we are interested in.
         ///   - onListingChange: invoked whenever actors join/leave the reception or when they terminate.
@@ -81,9 +84,10 @@ extension Actor.Context {
         ///
         /// SeeAlso: `autoUpdatedListing(_:)` for an automatically managed wrapped variable containing a `Reception.Listing<Act>`
         public func subscribe<Act: Actorable>(_ key: Reception.Key<Act>, onListingChange: @escaping (Reception.Listing<Act>) -> Void) {
+            // TODO: Implementing this without sub-receive would be preferable, as today we either create many subs or override them
             self.underlying.system.receptionist.subscribe(
                 key: key.underlying,
-                subscriber: self.underlying.subReceive("subscribe-\(key)", SystemReceptionist.Listing<Act.Message>.self) { listing in
+                subscriber: self.underlying.subReceive(.init(id: String(reflecting: Act.self)), SystemReceptionist.Listing<Act.Message>.self) { listing in
                     onListingChange(.init(refs: listing.refs))
                 }
             )
