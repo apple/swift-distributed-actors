@@ -137,7 +137,7 @@ open class ClusteredNodesTestBase: XCTestCase {
         _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
-        guard let onSystem = system ?? self._nodes.first else {
+        guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
 
