@@ -654,13 +654,14 @@ extension Cluster {
         public let toStatus: Cluster.MemberStatus
 
         init(member: Cluster.Member, toStatus: Cluster.MemberStatus? = nil) {
-            assertBacktrace(
-                toStatus == nil || !(toStatus == .removed && member.status != .down),
-                """
-                Only legal and expected -> [.removed] transitions are from [.down], \
-                yet attempted to move \(member) to \(toStatus, orElse: "nil")
-                """
-            )
+            // FIXME: enable these assertions
+//            assertBacktrace(
+//                toStatus == nil || !(toStatus == .removed && member.status != .down),
+//                """
+//                Only legal and expected -> [.removed] transitions are from [.down], \
+//                yet attempted to move \(member) to \(toStatus, orElse: "nil")
+//                """
+//            )
 
             if let to = toStatus {
                 var m = member
@@ -678,13 +679,14 @@ extension Cluster {
         }
 
         init(node: UniqueNode, fromStatus: Cluster.MemberStatus?, toStatus: Cluster.MemberStatus) {
-            assertBacktrace(
-                !(toStatus == .removed && fromStatus != .down),
-                """
-                Only legal and expected -> [.removed] transitions are from [.down], \
-                yet attempted to move \(node) from \(fromStatus, orElse: "nil") to \(toStatus)
-                """
-            )
+            // FIXME: enable these assertions
+//          assertBacktrace(
+//                !(toStatus == .removed && fromStatus != .down),
+//                """
+//                Only legal and expected -> [.removed] transitions are from [.down], \
+//                yet attempted to move \(node) from \(fromStatus, orElse: "nil") to \(toStatus)
+//                """
+//            )
             self.member = .init(node: node, status: toStatus)
             self.replaced = nil
             self.fromStatus = fromStatus

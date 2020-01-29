@@ -440,13 +440,13 @@ final class MembershipGossipTests: XCTestCase {
         gossip.converged().shouldBeTrue()
     }
 
-    func test_converged_othersAreOnlyDownOrJoining() {
+    func test_converged_othersAreOnlyDown() {
         let gossip = Cluster.Gossip.parse(
             """
-            A.up B.down C.joining
-            A: A@8 B@5 C@7
-            B: B@6 C@5
-            C: A@7 B@5 C@7
+            A.up B.down
+            A: A@8 B@5 
+            B: B@6
+            C: A@7 B@5
             """, owner: self.nodeA, nodes: self.allNodes
         )
 
