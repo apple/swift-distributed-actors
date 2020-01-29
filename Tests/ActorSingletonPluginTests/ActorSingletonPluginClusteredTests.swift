@@ -192,15 +192,16 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             try replyProbe3.expectMessage("Hello-1 Charlie!")
 
             // Take down the leader
+            let firstNode = first.cluster.node
             first.cluster.leave()
 
             // Make sure that `second` and `third` see `first` as down and become leader-less
             try self.testKit(second).eventually(within: .seconds(10)) {
-                try self.assertMemberStatus(on: second, node: first.cluster.node, is: .down)
+                try self.assertMemberStatus(on: second, node: firstNode, is: .down)
                 try self.assertLeaderNode(on: second, is: nil)
             }
             try self.testKit(third).eventually(within: .seconds(10)) {
-                try self.assertMemberStatus(on: third, node: first.cluster.node, is: .down)
+                try self.assertMemberStatus(on: third, node: firstNode, is: .down)
                 try self.assertLeaderNode(on: third, is: nil)
             }
 
@@ -211,7 +212,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             // `fourth` will become the new leader and singleton
             fourth.cluster.join(node: second.cluster.node.node)
 
-            try self.ensureNodes(.up, within: .seconds(10), nodes: fourth.cluster.node, second.cluster.node, third.cluster.node)
+            try self.ensureNodes(.up, on: second, within: .seconds(10), nodes: fourth.cluster.node, second.cluster.node, third.cluster.node)
 
             // The stashed messages get routed to new singleton running on `fourth`
             try replyProbe2.expectMessage("Hello-4 Charlie-2!")
