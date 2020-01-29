@@ -42,6 +42,12 @@ struct OwnerOfThings: Actorable {
         let reply = self.context.receptionist.lookup(.init(OwnerOfThings.self, id: "all/owners"), timeout: .effectivelyInfinite)
         return reply._nioFuture
     }
+
+    func performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) {
+        self.context.receptionist.subscribe(.init(OwnerOfThings.self, id: "all/owners")) {
+            p.tell($0)
+        }
+    }
 }
 
 extension OwnerOfThings {

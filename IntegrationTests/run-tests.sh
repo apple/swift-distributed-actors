@@ -88,9 +88,7 @@ while getopts "f:vid" opt; do
 done
 
 function run_test() {
-    if $no_io_redirect; then
-        "$@"
-    elif $verbose; then
+    if $verbose; then
         "$@" 2>&1 | tee -a "$out"
         # we need to return the return value of the first command
         return ${PIPESTATUS[0]}

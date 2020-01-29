@@ -28,6 +28,7 @@ extension OwnerOfThings.Message: Codable {
     public enum DiscriminatorKeys: String, Decodable {
         case readLastObservedValue
         case performLookup
+        case performSubscribe
 
     }
 
@@ -35,6 +36,7 @@ extension OwnerOfThings.Message: Codable {
         case _case
         case readLastObservedValue__replyTo
         case performLookup__replyTo
+        case performSubscribe_p
 
     }
 
@@ -47,6 +49,9 @@ extension OwnerOfThings.Message: Codable {
         case .performLookup:
             let _replyTo = try container.decode(ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>.self, forKey: CodingKeys.performLookup__replyTo)
             self = .performLookup(_replyTo: _replyTo)
+        case .performSubscribe:
+            let p = try container.decode(ActorRef<Reception.Listing<OwnerOfThings>>.self, forKey: CodingKeys.performSubscribe_p)
+            self = .performSubscribe(p: p)
 
         }
     }
@@ -60,6 +65,9 @@ extension OwnerOfThings.Message: Codable {
         case .performLookup(let _replyTo):
             try container.encode(DiscriminatorKeys.performLookup.rawValue, forKey: CodingKeys._case)
             try container.encode(_replyTo, forKey: CodingKeys.performLookup__replyTo)
+        case .performSubscribe(let p):
+            try container.encode(DiscriminatorKeys.performSubscribe.rawValue, forKey: CodingKeys._case)
+            try container.encode(p, forKey: CodingKeys.performSubscribe_p)
 
         }
     }
