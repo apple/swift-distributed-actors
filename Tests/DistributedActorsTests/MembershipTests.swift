@@ -430,8 +430,21 @@ final class MembershipTests: XCTestCase {
         member.moveForward(to: .down).shouldEqual(Cluster.MembershipChange(member: joiningMember, toStatus: .down))
         member.status.shouldEqual(.down)
 
+        // moving to removed is only allowed from .down
+        member.status = .joining
+        member.moveForward(to: .removed).shouldBeNil()
+        member.status.shouldEqual(.joining)
+
         member.status = .up
-        member.moveForward(to: .removed).shouldEqual(Cluster.MembershipChange(member: upMember, toStatus: .removed))
+        member.moveForward(to: .removed).shouldBeNil()
+        member.status.shouldEqual(.up)
+
+        member.status = .leaving
+        member.moveForward(to: .removed).shouldBeNil()
+        member.status.shouldEqual(.leaving)
+
+        member.status = .down
+        member.moveForward(to: .removed).shouldEqual(Cluster.MembershipChange(member: downMember, toStatus: .removed))
         member.status.shouldEqual(.removed)
     }
 
@@ -550,7 +563,7 @@ final class MembershipTests: XCTestCase {
         membership.shouldEqual(expected)
     }
 
-    func test_mergeForward_fromAhead_membership_ignoreRemovedWithoutPreceedingDown() {
+    func test_mergeForward_fromAhead_membership_ignoreRemovedWithoutPrecedingDown() {
         var membership = Cluster.Membership.parse(
             "A.up B.up C.up [leader:C]", nodes: self.allNodes
         )

@@ -96,6 +96,7 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
                     pnote("ReachabilityChange on \(otherNotDownPairSystem.cluster.node.node) = \(change)")
                     return .ignore
                 default:
+                    // pnote("Event on \(otherNotDownPairSystem.cluster.node.node) = \(event)")
                     return .ignore
                 }
             }
