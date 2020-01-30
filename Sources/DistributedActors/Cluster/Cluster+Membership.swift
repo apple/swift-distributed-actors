@@ -189,7 +189,7 @@ extension Cluster {
     }
 }
 
-// Implementation nodes: Membership/Member equality
+// Implementation notes: Membership/Member equality
 // Membership equality is special, as it manually DOES take into account the Member's states (status, reachability),
 // whilst the Member equality by itself does not. This is somewhat ugly, however it allows us to perform automatic
 // seen table owner version updates whenever "the membership has changed." We may want to move away from this and make
@@ -462,7 +462,6 @@ extension Cluster.Membership {
     ///  [.down]      -->  <none> (if some node removed)     --> <none>
     ///  [.down]      -->  <none> (iff myself node removed)  --> .removed
     ///  <any status> -->  [.removed]**                      --> <none>
-    ///  <any status> -->  [.removed]**                      --> <none>
     ///
     /// * `.removed` is never stored EXCEPT if the `myself` member has been seen removed by other members of the cluster.
     /// ** `.removed` should never be gossiped/incoming within the cluster, but if it were to happen it is treated like a removal.
@@ -488,7 +487,7 @@ extension Cluster.Membership {
             guard var knownMember = self._members[incomingMember.node] else {
                 // member NOT known locally ----------------------------------------------------------------------------
 
-                // only proceed if the member isn't already on it's way out
+                // only proceed if the member isn't already on its way out
                 guard incomingMember.status < Cluster.MemberStatus.down else {
                     // no need to do anything if it is a removal coming in, yet we already do not know this node
                     continue

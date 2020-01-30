@@ -135,7 +135,7 @@ extension ClusterShell {
     func interpretRemoveMemberLeaderAction(_ system: ActorSystem, _ state: inout ClusterShellState, memberToRemove: Cluster.Member) {
         let previousGossip = state.latestGossip
         // !!! IMPORTANT !!!
-        // We MUST perform the prune on the _latestGossip, not the wrapper,
+        // We MUST perform the prune on the _latestGossip_, not the wrapper,
         // as otherwise the wrapper enforces "vector time moves forward"
         guard let removalChange = state._latestGossip.pruneMember(memberToRemove) else {
             return

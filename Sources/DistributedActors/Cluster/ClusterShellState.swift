@@ -69,100 +69,15 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         get {
             self._latestGossip
         }
-        // ---------------------
-        /*
-         Captured log [third][2020-01-23 1:59:18.8820] [ConvergentGossip.swift:88][/system/cluster/gossip] [trace] Received gossip: GossipEnvelope(payload: DistributedActors.Cluster.Gossip(owner: sact://first:671878924@localhost:9001, seen: Cluster.Gossip.SeenTable(
-         sact://first@localhost:9001 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 8
-             uniqueNode:sact://third@localhost:9003 @ 6
-         sact://third@localhost:9003 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 7
-             uniqueNode:sact://third@localhost:9003 @ 6
-         ), membership: Membership(count: 2, leader: [Member(sact://first@localhost:9001, status: up, reachability: reachable)], members: [Member(sact://third:2926310932@localhost:9003, status: up, reachability: reachable, upNumber: 1), Member(sact://first:671878924@localhost:9001, status: up, reachability: reachable, upNumber: 1)])))
-         // metadata:
-         // "actor/message": GossipEnvelope(payload: DistributedActors.Cluster.Gossip(owner: sact://first:671878924@localhost:9001, seen: Cluster.Gossip.SeenTable(
-         //     sact://first@localhost:9001 observed versions:
-         //         uniqueNode:sact://first@localhost:9001 @ 8
-         //         uniqueNode:sact://third@localhost:9003 @ 6
-         //     sact://third@localhost:9003 observed versions:
-         //         uniqueNode:sact://first@localhost:9001 @ 7
-         //         uniqueNode:sact://third@localhost:9003 @ 6
-         // ), membership: Membership(count: 2, leader: [Member(sact://first@localhost:9001, status: up, reachability: reachable)], members: [Member(sact://third:2926310932@localhost:9003, status: up, reachability: reachable, upNumber: 1), Member(sact://first:671878924@localhost:9001, status: up, reachability: reachable, upNumber: 1)])))
-         // "gossip/localPayload": Optional(DistributedActors.Cluster.Gossip(owner: sact://third:2926310932@localhost:9003, seen: Cluster.Gossip.SeenTable(
-         //     sact://first@localhost:9001 observed versions:
-         //         uniqueNode:sact://first@localhost:9001 @ 7
-         //         uniqueNode:sact://second@localhost:9002 @ 5
-         //         uniqueNode:sact://third@localhost:9003 @ 6
-         //     sact://second@localhost:9002 observed versions:
-         //         uniqueNode:sact://first@localhost:9001 @ 5
-         //         uniqueNode:sact://second@localhost:9002 @ 5
-         //         uniqueNode:sact://third@localhost:9003 @ 6
-         //     sact://third@localhost:9003 observed versions:
-         //         uniqueNode:sact://first@localhost:9001 @ 7
-         //         uniqueNode:sact://second@localhost:9002 @ 5
-         //         uniqueNode:sact://third@localhost:9003 @ 6
-         // ), membership: Membership(count: 3, leader: [Member(sact://first@localhost:9001, status: up, reachability: reachable)], members: [Member(sact://third:2926310932@localhost:9003, status: up, reachability: reachable), Member(sact://first:671878924@localhost:9001, status: up, reachability: reachable), Member(sact://second:1339064558@localhost:9002, status: down, reachability: reachable)])))
-         Captured log [third][2020-01-23 1:59:18.8820] [ClusterShellState.swift:74][/system/cluster] [info] KEEP VERSION >>> Optional([uniqueNode:sact://first@localhost:9001: 8, uniqueNode:sact://third@localhost:9003: 6, uniqueNode:sact://second@localhost:9002: 5])
-         NOW: Gossip(owner: sact://third:2926310932@localhost:9003, seen: Cluster.Gossip.SeenTable(
-         sact://first@localhost:9001 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 7
-             uniqueNode:sact://second@localhost:9002 @ 5
-             uniqueNode:sact://third@localhost:9003 @ 6
-         sact://second@localhost:9002 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 5
-             uniqueNode:sact://second@localhost:9002 @ 5
-             uniqueNode:sact://third@localhost:9003 @ 6
-         sact://third@localhost:9003 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 7
-             uniqueNode:sact://second@localhost:9002 @ 5
-             uniqueNode:sact://third@localhost:9003 @ 6
-         ), membership: Membership(count: 3, leader: [Member(sact://first@localhost:9001, status: up, reachability: reachable)], members: [Member(sact://third:2926310932@localhost:9003, status: up, reachability: reachable), Member(sact://first:671878924@localhost:9001, status: up, reachability: reachable), Member(sact://second:1339064558@localhost:9002, status: down, reachability: reachable)]))
-         NEW: Gossip(owner: sact://third:2926310932@localhost:9003, seen: Cluster.Gossip.SeenTable(
-         sact://first@localhost:9001 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 8
-             uniqueNode:sact://second@localhost:9002 @ 5
-             uniqueNode:sact://third@localhost:9003 @ 6
-         sact://second@localhost:9002 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 5
-             uniqueNode:sact://second@localhost:9002 @ 5
-             uniqueNode:sact://third@localhost:9003 @ 6
-         sact://third@localhost:9003 observed versions:
-             uniqueNode:sact://first@localhost:9001 @ 8
-             uniqueNode:sact://second@localhost:9002 @ 5
-             uniqueNode:sact://third@localhost:9003 @ 6
-         ), membership: Membership(count: 3, leader: [Member(sact://first@localhost:9001, status: up, reachability: reachable)], members: [Member(sact://third:2926310932@localhost:9003, status: up, reachability: reachable), Member(sact://first:671878924@localhost:9001, status: up, reachability: reachable), Member(sact://second:1339064558@localhost:9002, status: down, reachability: reachable)]))
-
-         UPON a removed gossip we must remove as well, and not bring it back on third magically
-         */
-        // ---------------------
-
         set {
             if self._latestGossip.membership == newValue.membership {
-//                self.log.info("""
-//                KEEP VERSION >>> \(newValue.seen.version(at: self.myselfNode))
-//                NOW: \(self._latestGossip)
-//                NEW: \(newValue)
-//                """)
                 self._latestGossip = newValue
             } else {
-                precondition("\(self._latestGossip.membership)" != "\(newValue.membership)", "WHY! ARE THOSE EQUAL: \(reflecting: self._latestGossip.membership) ||||| \(reflecting: newValue.membership)")
                 let next: Cluster.Gossip
                 if self._latestGossip.version == newValue.version {
                     next = newValue.incrementingOwnerVersion()
-//                    self.log.info("""
-//                    BUMP VERSION >>> \(self._latestGossip.version) >>>> \(next.version)
-//                    NOW: \(self._latestGossip)
-//                    NEW: \(newValue)
-//                    RES: \(next)
-//                    """)
                 } else {
                     next = newValue
-//                    self.log.info("""
-//                    ACK  VERSION >>> \(self._latestGossip.version) >>>> \(next.version)
-//                    NOW: \(self._latestGossip)
-//                    NEW: \(newValue)
-//                    RES: \(next)
-//                    """)
                 }
 
                 self._latestGossip = next

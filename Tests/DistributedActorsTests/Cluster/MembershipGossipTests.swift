@@ -379,8 +379,6 @@ final class MembershipGossipTests: XCTestCase {
         gossip.seen.version(at: self.nodeA).shouldEqual(expected.seen.version(at: self.nodeA))
         gossip.seen.version(at: self.nodeB).shouldEqual(expected.seen.version(at: self.nodeB))
         gossip.seen.version(at: self.nodeC).shouldEqual(expected.seen.version(at: self.nodeC))
-//        gossip.seen.shouldEqual(expected.seen)
-//        gossip.membership.shouldEqual(expected.membership)
         gossip.shouldEqual(expected)
     }
 

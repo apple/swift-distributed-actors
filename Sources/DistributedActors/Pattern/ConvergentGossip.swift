@@ -123,7 +123,7 @@ final class ConvergentGossip<Payload: Codable> {
         let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
 
         // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
-        context.log.info("Sending gossip to \(target)", metadata: [
+        context.log.trace("Sending gossip to \(target)", metadata: [
             "gossip/target": "\(target.address)",
             "gossip/peerCount": "\(self.peers.count)",
             "gossip/peers": "\(self.peers.map { $0.address })",
