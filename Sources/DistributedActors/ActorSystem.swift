@@ -270,8 +270,8 @@ public final class ActorSystem {
 
         self.log.info("Actor System [\(self.name)] initialized.")
         if settings.cluster.enabled {
-            self.log.info("Configured with: Cluster.autoLeaderElection: \(self.settings.cluster.autoLeaderElection)")
-            self.log.info("Configured with: Cluster.downingStrategy: \(self.settings.cluster.downingStrategy)")
+            self.log.info("Actor System Settings in effect: Cluster.autoLeaderElection: \(self.settings.cluster.autoLeaderElection)")
+            self.log.info("Actor System Settings in effect: Cluster.downingStrategy: \(self.settings.cluster.downingStrategy)")
         }
     }
 

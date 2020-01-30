@@ -27,7 +27,7 @@ guard args.count >= 1 else {
 let system = ActorSystem("System") { settings in
     settings.cluster.enabled = true
     settings.cluster.bindPort = Int(args[0])!
-    settings.cluster.downingStrategy = .none
+    settings.cluster.downingStrategy = .timeout(.default)
     settings.defaultLogLevel = .debug
 }
 
