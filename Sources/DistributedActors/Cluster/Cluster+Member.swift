@@ -90,15 +90,15 @@ extension Cluster {
             if status == .removed {
                 // special handle removals
                 if self.status == .down {
+                    defer { self.status = .removed }
                     return .init(member: self, toStatus: .removed)
                 } else {
                     return nil
                 }
             }
 
-            let previousSelf = self
-            self.status = status
-            return Cluster.MembershipChange(member: previousSelf, toStatus: status)
+            defer { self.status = status }
+            return Cluster.MembershipChange(member: self, toStatus: status)
         }
 
         public func movingForward(to status: MemberStatus) -> Self {

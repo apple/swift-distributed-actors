@@ -25,7 +25,6 @@ extension MembershipGossipClusteredTests {
         return [
             ("test_down_beGossipedToOtherNodes", test_down_beGossipedToOtherNodes),
             ("test_join_swimDiscovered_thirdNode", test_join_swimDiscovered_thirdNode),
-            ("test_downingNode_eventuallyResultsInRemovalFromGossip", test_downingNode_eventuallyResultsInRemovalFromGossip),
         ]
     }
 }

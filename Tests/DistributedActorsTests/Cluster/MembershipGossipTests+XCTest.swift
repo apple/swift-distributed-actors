@@ -36,7 +36,6 @@ extension MembershipGossipTests {
             ("test_converged_shouldBeTrue_forNoMembers", test_converged_shouldBeTrue_forNoMembers),
             ("test_converged_amongUpMembers", test_converged_amongUpMembers),
             ("test_converged_othersAreOnlyDown", test_converged_othersAreOnlyDown),
-            ("test_converged_joiningOrDownMembersDoNotCount", test_converged_joiningOrDownMembersDoNotCount),
             ("test_gossip_eventuallyConverges", test_gossip_eventuallyConverges),
         ]
     }

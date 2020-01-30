@@ -54,7 +54,7 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
                 return .none
             }
 
-            if change.isAtLeastDown || change.isRemoval {
+            if change.isAtLeastDown {
                 // it was marked as down by someone, we don't need to track it anymore
                 _ = self._markAsDown.remove(change.member)
                 _ = self._unreachable.remove(change.member)
@@ -127,7 +127,6 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
         }
     }
 
-    // TODO: remove this
     func onMemberRemoved(_ member: Cluster.Member) -> DowningStrategyDirective {
         self._markAsDown.remove(member)
 
@@ -140,6 +139,10 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
 }
 
 public struct TimeoutBasedDowningStrategySettings {
+    /// Provides a slight delay after noticing an `.unreachable` before declaring down.
+    ///
+    /// Generally with a distributed failure detector such delay may not be necessary, however it is available in case
+    /// you want to allow noticing "tings are bad, but don't act on it" environments.
     public var downUnreachableMembersAfter: TimeAmount = .seconds(1)
 
     public static var `default`: TimeoutBasedDowningStrategySettings {

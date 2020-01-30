@@ -143,19 +143,10 @@ extension Cluster {
         /// Only `.up` and `.leaving` members are considered, since joining members are "too early"
         /// to matter in decisions, and down members shall never participate in decision making.
         func converged() -> Bool {
-            let members = self.membership.members(withStatus: [.joining, .up, .leaving])
+            let members = self.membership.members(withStatus: [.joining, .up, .leaving]) // FIXME: we should not require joining nodes in convergence, can losen up a bit here I hope
             let requiredVersion = self.version
 
-//            pprint("requiredVersion = \(requiredVersion)")
-
-//            pprint("considering members")
-//            for member in members {
-//                pprint("considering member: \(member)")
-//                pprint("                  : \(self.seen.version(at: member.node), orElse: "nil")")
-//            }
-
             if members.isEmpty {
-//                pprint("converged")
                 return true // no-one is around disagree with me! }:-)
             }
 
@@ -163,11 +154,8 @@ extension Cluster {
                 if let memberSeenVersion = self.seen.version(at: member.node) {
                     switch memberSeenVersion.compareTo(requiredVersion) {
                     case .happenedBefore, .concurrent:
-//                        pprint("memberSeenVersion.compareTo(requiredVersion) = \(memberSeenVersion.compareTo(requiredVersion)) WITH \(requiredVersion)")
-//                        pprint("laggingBehindMemberFound = \(member)")
                         return true // found an offending member, it is lagging behind, thus no convergence
                     case .happenedAfter, .same:
-//                        pprint("memberSeenVersion.compareTo(requiredVersion) = \(memberSeenVersion.compareTo(requiredVersion)) WITH \(requiredVersion)")
                         return false
                     }
                 } else {
@@ -175,7 +163,6 @@ extension Cluster {
                 }
             }
 
-//            pprint("laggingBehindMemberFound = \(laggingBehindMemberFound)")
             return !laggingBehindMemberFound
         }
     }
