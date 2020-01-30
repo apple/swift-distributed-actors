@@ -92,7 +92,6 @@ public struct VersionVector {
     }
 
     /// Prune any trace of the passed in replica id.
-    ///
     public func pruneReplica(_ replicaId: ReplicaId) -> Self {
         var s = self
         s.state.removeValue(forKey: replicaId)
