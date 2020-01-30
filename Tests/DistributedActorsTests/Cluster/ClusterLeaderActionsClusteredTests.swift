@@ -303,8 +303,6 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
                 case let other: throw testKit.error("Expected `second` [     up] -> [  .down], on first node, was: \(other, orElse: "nil")")
                 }
             }
-
-            sleep(100)
         }
     }
 }
