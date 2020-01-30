@@ -1,121 +1,152 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 import DistributedActors
 
-class Philosopher: Actorable {
-    private let context: Myself.Context
-    private let leftFork: Actor<Fork>
-    private let rightFork: Actor<Fork>
-    private var state: State = .thinking
+public class Philosopher {
+    public typealias Ref = ActorRef<Message>
 
-    init(context: Myself.Context, leftFork: Actor<Fork>, rightFork: Actor<Fork>) {
-        self.context = context
-        self.leftFork = leftFork
-        self.rightFork = rightFork
+    public enum Message: Codable { // Codable only necessary for running distributed
+        case think
+        case eat
+        /* --- internal protocol --- */
+        case forkReply(_ reply: Fork.Reply)
     }
 
-    func preStart(context: Actor<Philosopher>.Context) {
-        context.watch(leftFork)
-        context.watch(rightFork)
-        context.timers.startSingle(key: TimerKey("think"), message: .attemptToTakeForks, delay: .seconds(1))
-        context.log.info("\(context.address.name) joined the table!")
+    private let left: Fork.Ref
+    private let right: Fork.Ref
+
+    init(left: Fork.Ref, right: Fork.Ref) {
+        self.left = left
+        self.right = right
     }
 
-    func think() {
-        state = .thinking
-        context.timers.startSingle(key: TimerKey("think"), message: .attemptToTakeForks, delay: .seconds(1))
-        context.log.info("\(context.address.name) is thinking...")
+    public var behavior: Behavior<Philosopher.Message> {
+        return self.thinking
     }
 
-    func attemptToTakeForks() {
-        guard state == .thinking else {
-            // Ignore eat messages if not thinking
-            return
-        }
+    /// Initial and public state from which a Philosopher starts its life
+    private var thinking: Behavior<Philosopher.Message> {
+        return .setup { context in
+            context.watch(self.left)
+            context.watch(self.right)
 
-        func forkTaken(_ fork: Actor<Fork>) {
-            guard case .takingForks(let alreadyTakenLeft, let alreadyTakenRight) = self.state else {
-                context.log.warning("Received fork \(fork) yet not in .takingForks state, was in: \(self.state)! Ignoring...")
-                // TODO: we could also immediately try to put it back before ignoring it, if we want to?
-                return
-            }
+            let myselfForFork = context.messageAdapter(from: Fork.Reply.self) { .forkReply($0) }
+            context.log.info("I'm thinking...")
+            // remember to eat after some time!
+            context.timers.startSingle(key: TimerKey("eat"), message: .eat, delay: .seconds(1))
 
-            switch fork {
-            case self.leftFork:
-                self.state = .takingForks(alreadyTakenLeft || true, alreadyTakenRight)
-            case self.rightFork:
-                self.state = .takingForks(alreadyTakenLeft || true, alreadyTakenRight)
-            default:
-                context.log.warning("Received unknown fork! Got: \(fork), known forks: \(self.leftFork), \(self.rightFork)")
-                return // TODO: I'd throw and crash in this situation :-) "let it crash!"
-            }
+            return .receiveMessage { msg in
+                switch msg {
+                case .eat:
+                    context.log.info("I'm becoming hungry, trying to grab forks...")
+                    self.left.tell(Fork.Message.take(by: myselfForFork))
+                    self.right.tell(Fork.Message.take(by: myselfForFork))
+                    return self.hungry(myselfForFork: myselfForFork)
 
-            if case .takingForks(true, true) = state {
-                self.eat()
-            } // else, we're still waiting for the other fork
-        }
+                case .think:
+                    fatalError("Already thinking")
 
-        self.state = .takingForks(nil, nil)
-
-        // so we can model this in a number of ways...
-        // perhaps the nicest for async work is to reply with an
-        // struct ForkTakeReply { let taken: Bool; let fork: Actor<Fork> }
-        // that's super easy to correlate then when the replies come back, and we only have to write the code for
-        // "a fork replied" once, but handling which one it was...
-        //
-        // one may prefer:
-        // - to write 2 callbacks for each fork which "know which one we're receiving", OR
-        // - have them reply `Bool` AND do (leftReply: Reply<Bool>).map { ($0, leftFork) }
-        //                                 (rightReply: Reply<Bool>).map { ($0, rightFork) }
-        //    // ^^^ about the Reply.map() this on purpose does not exist today... as we are in the process of building
-        // a Future library as well which would make things safer to use etc. So Reply would then be that future,
-        // TODAY this is doable by dropping to ._nioFuture.map and wrapping back again... so yeah a bit meh
-        //
-        // I think I'd suggest the proper reply type, rather than boolean which will make things easier in such concurrently
-        // asking many forks use cases. Sending references to Actor<> is safe, cheap, and well expected after all :-)
-        let leftTakeReply: Reply<ForkTakeReply> = self.leftFork.take()
-        let rightTakeReply: Reply<ForkTakeReply> = self.rightFork.take()
-
-        let onForkResultCompleted: (Result<ForkReply>) -> () = {
-            switch $0 {
-            case .success(let reply) where reply.taken:
-                forkTaken(reply.fork)
-            case .success(let reply):
-                context.log.warning("Did not obtain fork \(reply.fork)")
-            case .failure(let error):
-                throw error // crash the actor on a timeout?
+                case .forkReply:
+                    return .same
+                }
             }
         }
-        context.onResultAsync(of: leftTakeReply, timeout: .seconds(1), onForkResultCompleted)
-        context.onResultAsync(of: rightTakeReply, timeout: .seconds(1), onForkResultCompleted)
     }
 
-    func eat() {
-        context.log.info("\(context.address.name) began eating!")
-        context.timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
-    }
+    /// A hungry philosopher is waiting to obtain both forks before it can start eating
+    private func hungry(myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
+        return .receive { _, msg in
+            switch msg {
+            case .forkReply(.pickedUp(let fork)):
+                let other: Fork.Ref = (fork == self.left) ? self.right : self.left
+                return self.hungryAwaitingFinalFork(inHand: fork, pending: other, myselfForFork: myselfForFork)
 
-    func stopEating() {
-        // Probably need to check that this actually succeeds before going back to thinking
-        guard case .eating = self.state else {
-            context.log.warning("Cannot stop eating, am in \(self.state)!")
-            return
+            case .forkReply(.busy):
+                // we know that we were refused one fork, so regardless of the 2nd one being available or not
+                // we will not be able to become eating. In order to not accidentally keep holding the 2nd fork,
+                // in case it would reply with `pickedUp` we want to put it down (sadly), as we will try again some time later.
+                return .receiveMessage {
+                    switch $0 {
+                    case .forkReply(.pickedUp(let fork)):
+                        // sadly we have to put it back, we know we won't succeed this time
+                        fork.tell(.putBack(by: myselfForFork))
+                        return self.thinking
+                    case .forkReply(.busy(_)):
+                        // we failed picking up either of the forks, time to become thinking about obtaining forks again
+                        return self.thinking
+                    default:
+                        return .ignore
+                    }
+                }
+
+            case .think:
+                return .ignore // only based on fork replies we may decide to become thinking again
+            case .eat:
+                return .ignore // we are in process of trying to eat already
+            }
         }
-
-        leftFork.putBack()
-        rightFork.putBack()
-        context.log.info("\(context.address.name) is done eating and replaced both forks!")
-        think()
     }
-}
 
-extension Philosopher {
-    private enum State: Equatable {
-        case thinking
-        case takingForks(leftObtained: Bool, rightObtained: Bool)
-//        case takingLeftFork
-//        case takingRightFork
-        case eating
+    private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref, myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
+        return .receive { _, msg in
+            switch msg {
+            case .forkReply(.pickedUp(pending)):
+                return self.eating(myselfForFork: myselfForFork)
+            case .forkReply(.pickedUp(let fork)):
+                fatalError("Received fork which I already hold in hand: \(fork), this is wrong!")
+
+            case .forkReply(.busy(pending)):
+                // context.log.info("The pending \(pending) busy, I'll think about obtaining it...")
+                // the Fork we attempted to pick up is already in use (busy), we'll back off and try again
+                inHand.tell(.putBack(by: myselfForFork))
+                return self.thinking
+            case .forkReply(.busy(let fork)):
+                fatalError("Received fork busy response from an unexpected fork: \(fork)! Already in hand: \(inHand), and pending: \(pending)")
+
+                // Ignore others...
+            case .think: return .ignore // since we'll decide to become thinking ourselves
+            case .eat: return .ignore // since we'll decide to become eating ourselves
+            }
+        }
     }
-}
 
-struct Fork: Actorable {
+    /// A state reached by successfully obtaining two forks and becoming "eating".
+    /// Once the Philosopher is done eating, it will putBack both forks and become thinking again.
+    private func eating(myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
+        return .setup { context in
+            // here we act as if we "think and then eat"
+            context.log.info("Setup eating, I have: \(uniquePath: self.left) and \(uniquePath: self.right)")
+
+            // simulate that eating takes time; once done, notify myself to become thinking again
+            context.timers.startSingle(key: TimerKey("think"), message: .think, delay: .milliseconds(200))
+
+            return .receiveMessage { // TODO: `receiveExactly` would be nice here
+                switch $0 {
+                case .think:
+                    context.log.info("I've had a good meal, returning forks, and become thinking!")
+                    self.left.tell(.putBack(by: myselfForFork))
+                    self.right.tell(.putBack(by: myselfForFork))
+                    return self.thinking
+
+                default:
+                    return .ignore // ignore eat and others, since I'm eating already!
+                }
+            }
+        }
+    }
+
+    private func forkSideName(_ fork: Fork.Ref) -> String {
+        return fork == self.left ? "left" : "right"
+    }
 }
