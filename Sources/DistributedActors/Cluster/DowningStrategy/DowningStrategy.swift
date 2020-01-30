@@ -61,7 +61,6 @@ internal struct DowningStrategyShell {
             return .receiveMessage { message in
                 switch message {
                 case .timeout(let member):
-                    context.log.info("GOT: \(message)")
                     let directive = self.strategy.onTimeout(member)
                     context.log.debug("Received timeout for [\(member)], resulting in: \(directive)")
                     self.interpret(context, directive)
