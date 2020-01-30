@@ -72,10 +72,10 @@ extension Cluster {
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
             }
             switch incomingGossipOwnerKnownLocally {
-            case .some(let locallyKnownTo) where locallyKnownTo.status.isDown:
+            case .some(let locallyKnownMember) where locallyKnownMember.status.isDown:
                 // we have NOT removed it yet, but it is down, so we ignore it
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
-            case .none where Cluster.MemberStatus.down <= incomingOwnerMember.status:
+            case .none where incomingOwnerMember.status.isAtLeastDown:
                 // we have likely removed it, and it is down anyway, so we ignore it completely
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
             default:
@@ -97,19 +97,12 @@ extension Cluster {
                 // our local view happened strictly _after_ the incoming one, thus it is guaranteed
                 // it will not provide us with new information; This is only an optimization, and would work correctly without it.
                 changes = []
-                // self.seen.merge(selfOwner: self.owner, incoming: incoming)
             } else {
                 // incoming is concurrent, ahead, or same
                 changes = self.membership.mergeFrom(incoming: incoming.membership, myself: self.owner)
             }
 
-//            pprint("self.seen = \(self.seen)")
-//            pprint("incoming = \(incoming.seen)")
             self.seen.merge(selfOwner: self.owner, incoming: incoming.seen)
-//            pprint("self.owner = \(self.owner)")
-//            pprint("self.seen = \(self.seen)")
-//
-//            pprint("self = \(self)")
 
             // 3) if any removals happened, we need to prune the removed nodes from the seen table
             for change in changes
