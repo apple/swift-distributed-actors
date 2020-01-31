@@ -37,6 +37,13 @@ var targets: [PackageDescription.Target] = [
         ],
         path: "Sources/SampleGenActors"
     ),
+    .target(
+        name: "SampleGenActorsDiningPhilosophers",
+        dependencies: [
+            "DistributedActors"
+        ],
+        path: "Sources/SampleGenActorsDiningPhilosophers"
+    ),
 
     /* --- tests --- */
     
