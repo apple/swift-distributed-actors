@@ -517,9 +517,11 @@ extension ClusterShell {
                 // a change COULD have also been a replacement, in which case we need to publish it as well
                 // the removal od the
                 if let replacementChange = effectiveChange.replacementDownPreviousNodeChange {
+                    context.system.cluster.updateMembershipSnapshot(state.membership)
                     self.clusterEvents.publish(.membershipChange(replacementChange))
                 }
                 let event: Cluster.Event = .membershipChange(effectiveChange)
+                context.system.cluster.updateMembershipSnapshot(state.membership)
                 self.clusterEvents.publish(event)
             }
 
@@ -953,6 +955,7 @@ extension ClusterShell {
 
         // TODO: make sure we don't end up infinitely spamming reachability events
         if state.membership.applyReachabilityChange(change) != nil {
+            context.system.cluster.updateMembershipSnapshot(state.membership)
             self.clusterEvents.publish(.reachabilityChange(change))
             self.recordMetrics(context.system.metrics, membership: state.membership)
             return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot
@@ -967,6 +970,7 @@ extension ClusterShell {
         var state = state
 
         if let change = state.membership.applyMembershipChange(.init(member: memberToDown, toStatus: .down)) {
+            context.system.cluster.updateMembershipSnapshot(state.membership)
             self.clusterEvents.publish(.membershipChange(change))
 
             if let logChangeLevel = state.settings.logMembershipChanges {

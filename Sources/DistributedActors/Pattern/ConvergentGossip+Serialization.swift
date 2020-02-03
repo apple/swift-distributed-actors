@@ -19,7 +19,6 @@ extension ConvergentGossip.Message: Codable {
 
     public enum CodingKeys: CodingKey {
         case _case
-
         case gossip_envelope
     }
 

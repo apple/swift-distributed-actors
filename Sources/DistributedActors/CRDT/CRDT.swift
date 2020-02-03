@@ -388,6 +388,10 @@ extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpol
     }
 }
 
+extension CRDT.Identity: Codable {
+    // Codable: synthesized conformance
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: OperationConsistency
 

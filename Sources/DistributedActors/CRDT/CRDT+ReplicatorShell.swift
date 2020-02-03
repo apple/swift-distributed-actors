@@ -38,7 +38,9 @@ extension CRDT.Replicator {
             self.replicator.settings
         }
 
-        internal var remoteReplicators: Set<ActorRef<Message>> = []
+        private var remoteReplicators: Set<ActorRef<Message>> = []
+
+        private var gossipControl: ConvergentGossipControl<CRDT.Gossip>? = nil
 
         init(_ replicator: Instance) {
             self.replicator = replicator
@@ -80,6 +82,11 @@ extension CRDT.Replicator {
             }
 
             switch event {
+            case .snapshot(let snapshot):
+                Cluster.Membership._diff(from: .empty, to: snapshot).changes.forEach { change in
+                    self.receiveClusterEvent(context, event: .membershipChange(change))
+                }
+
             case .membershipChange(let change) where change.toStatus == .up:
                 let member = change.member
                 if member.node != context.system.cluster.node { // exclude this (local) node
@@ -96,15 +103,10 @@ extension CRDT.Replicator {
                 let remoteReplicatorRef = makeReplicatorRef(member.node)
                 self.remoteReplicators.remove(remoteReplicatorRef)
 
-            case .snapshot(let snapshot):
-                Cluster.Membership._diff(from: .empty, to: snapshot).changes.forEach { change in
-                    self.receiveClusterEvent(context, event: .membershipChange(change))
-                }
-
             case .membershipChange:
                 context.log.trace("Ignoring cluster event \(event), only interested in >= .up events", metadata: self.metadata(context))
-            default:
-                () // ignore other events
+            case .leadershipChange, .reachabilityChange:
+                () // ignore
             }
         }
 
@@ -143,21 +145,29 @@ extension CRDT.Replicator {
             // owners or propagate change to the cluster (i.e., local only).
         }
 
-        private func handleLocalWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalWriteResult>) {
-            switch self.replicator.write(id, data, deltaMerge: true) {
-            // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
-            case .applied(let updatedData, let isNew):
+        private func handleLocalWriteCommand(
+            _ context: ActorContext<Message>,
+            _ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency,
+            timeout: TimeAmount, replyTo: ActorRef<LocalWriteResult>
+        ) {
+
+            /// Perform "direct" replication, i.e. directly send the change to all known replicators.
+            func directReplicate(updatedData: AnyStateBasedCRDT, isNew: Bool) {
+                assert(!isNew, "`isNew` should always be false. See details in `makeRemoteWriteCommand`, data: \(data), updatedData: \(updatedData), isNew: \(isNew)")
+                        
                 switch consistency {
-                case .local: // we are done; no need to replicate
+                case .local:
+                    // no need to direct-replicate, however we must add the updated crdt to gossip
                     replyTo.tell(.success)
-                    self.notifyOwnersOnUpdate(context, id, updatedData)
+                    // TODO: need to add to gossip
+                    self.notifyLocalOwnersOnUpdate(context, id, updatedData)
                 case .atLeast, .quorum, .all:
                     do {
                         let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteWriteResult.success }) {
                             // Use `data`, NOT `updatedData`, to make `RemoteCommand`!!!
                             // We are replicating a specific change (e.g., `GCounter.increment`) made to a specific
                             // actor-owned CRDT (represented either by `data` as a whole or `data.delta`), not the
-                            // collected changes made to the CRDT with the given `id` (represented by `updatedData`)--
+                            // collected changes made to the CRDT with the given `id` (represented by `updatedData`) --
                             // that would be done with gossip.
                             .remoteCommand(self.makeRemoteWriteCommand(context, id, data, isNewIdLocally: isNew, replyTo: $0))
                         }
@@ -186,7 +196,7 @@ extension CRDT.Replicator {
                             switch result {
                             case .success:
                                 replyTo.tell(.success)
-                                self.notifyOwnersOnUpdate(context, id, updatedData)
+                                self.notifyLocalOwnersOnUpdate(context, id, updatedData)
                             case .failure(let error):
                                 context.log.warning("Failed to write \(id) with consistency \(consistency): \(error)")
                                 throw error
@@ -199,6 +209,21 @@ extension CRDT.Replicator {
                         fatalError("Unexpected error while writing \(updatedData) to remote nodes. Replicator: \(self.debugDescription)")
                     }
                 }
+            }
+
+            /// Ensure that the updated CRDT is going to be gossiped around and eventually reach all nodes,
+            /// even if they missed the direct-replication (e.g. because we only performed a local write, or they were
+            /// joining _while_ we were performing a write, and thus we did not know about it, so could not have informed it
+            /// about the change).
+            func gossipReplicate(updatedData: AnyStateBasedCRDT, isNew: Bool) {
+                self.gossip
+            }
+
+
+                switch self.replicator.write(id, data, deltaMerge: true) {
+            case .applied(let updatedData, let isNew):
+                directReplicate(updatedData: updatedData, isNew: isNew)
+                gossipReplicate(updatedData: updatedData, isNew: isNew)
             case .inputAndStoredDataTypeMismatch(let stored):
                 replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored: stored)))
             case .unsupportedCRDT:
@@ -305,7 +330,7 @@ extension CRDT.Replicator {
                             replyTo.tell(.success(updatedData.underlying))
                             // Notify owners since the CRDT might have been updated
                             // TODO: this notifies owners even when the CRDT hasn't changed
-                            self.notifyOwnersOnUpdate(context, id, updatedData)
+                            self.notifyLocalOwnersOnUpdate(context, id, updatedData)
                         case .failure(let error):
                             context.log.warning("Failed to read \(id) with consistency \(consistency): \(error)")
                             throw error
@@ -326,7 +351,7 @@ extension CRDT.Replicator {
                 switch consistency {
                 case .local: // we are done; no need to replicate
                     replyTo.tell(.success)
-                    self.notifyOwnersOnDelete(context, id)
+                    self.notifyLocalOwnersOnDelete(context, id)
                 case .atLeast, .quorum, .all:
                     do {
                         let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteDeleteResult.success }) {
@@ -337,7 +362,7 @@ extension CRDT.Replicator {
                             switch result {
                             case .success:
                                 replyTo.tell(.success)
-                                self.notifyOwnersOnDelete(context, id)
+                                self.notifyLocalOwnersOnDelete(context, id)
                             case .failure(let error):
                                 context.log.warning("Failed to delete \(id) with consistency \(consistency): \(error)")
                                 throw error
@@ -353,12 +378,14 @@ extension CRDT.Replicator {
             }
         }
 
-        private func performOnRemoteMembers<RemoteCommandResult>(_ context: ActorContext<Message>,
-                                                                 for id: CRDT.Identity,
-                                                                 with consistency: OperationConsistency,
-                                                                 localConfirmed: Bool,
-                                                                 isSuccessful: @escaping (RemoteCommandResult) -> Bool,
-                                                                 _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
+        private func performOnRemoteMembers<RemoteCommandResult>(
+            _ context: ActorContext<Message>,
+            for id: CRDT.Identity,
+            with consistency: OperationConsistency,
+            localConfirmed: Bool,
+            isSuccessful: @escaping (RemoteCommandResult) -> Bool,
+            _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message
+        ) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
             let promise = context.system._eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
 
             // Determine the number of successful responses needed to satisfy consistency requirement.
@@ -449,11 +476,15 @@ extension CRDT.Replicator {
             }
         }
 
+        private func handleRemoteGossip(context: ActorContext<Message>, gossip: CRDT.Gossip) {
+            fatalError("\(#function) not implemented: \(gossip)")
+        }
+
         private func handleRemoteWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
             switch self.replicator.write(id, data, deltaMerge: false) {
             case .applied(let updatedData, _):
                 replyTo.tell(.success)
-                self.notifyOwnersOnUpdate(context, id, updatedData)
+                self.notifyLocalOwnersOnUpdate(context, id, updatedData)
             case .inputAndStoredDataTypeMismatch(let stored):
                 replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(hint: "\(stored)")))
             case .unsupportedCRDT:
@@ -465,7 +496,7 @@ extension CRDT.Replicator {
             switch self.replicator.writeDelta(id, delta) {
             case .applied(let updatedData):
                 replyTo.tell(.success)
-                self.notifyOwnersOnUpdate(context, id, updatedData)
+                self.notifyLocalOwnersOnUpdate(context, id, updatedData)
             case .missingCRDTForDelta:
                 replyTo.tell(.failure(.missingCRDTForDelta))
             case .incorrectDeltaType(let expected):
@@ -491,14 +522,14 @@ extension CRDT.Replicator {
             switch self.replicator.delete(id) {
             case .applied:
                 replyTo.tell(.success)
-                self.notifyOwnersOnDelete(context, id)
+                self.notifyLocalOwnersOnDelete(context, id)
             }
         }
 
         // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Notify owners
 
-        private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT) {
+        private func notifyLocalOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT) {
             if let owners = self.replicator.owners(for: id) {
                 let message: OwnerMessage = .updated(data.underlying)
                 for owner in owners {
@@ -507,7 +538,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func notifyOwnersOnDelete(_: ActorContext<Message>, _ id: Identity) {
+        private func notifyLocalOwnersOnDelete(_: ActorContext<Message>, _ id: Identity) {
             if let owners = self.replicator.owners(for: id) {
                 for owner in owners {
                     owner.tell(.deleted)

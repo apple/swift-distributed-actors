@@ -15,13 +15,27 @@
 import class Foundation.ProcessInfo
 import Logging
 
-/// Settings used to configure an `ActorSystem`.
-public struct ActorSystemSettings {
-    public static var `default`: ActorSystemSettings {
-        .init()
-    }
+// TODO: remove soon, use namespaced style
+public typealias ActorSystemSettings = ActorSystem.Settings
 
-    public var actor: ActorSettings = .default
+/// Settings used to configure an `ActorSystem`.
+extension ActorSystem {
+
+    public struct Settings {
+        public static var `default`: ActorSystem.Settings {
+            .init()
+        }
+
+        // TODO: LoggingSettings
+
+        /// Configure default log level for all `Logger` instances created by the library.
+        public var defaultLogLevel: Logger.Level = .info // TODO: maybe remove this? should be up to logging library to configure for us as well
+
+        /// Optionally override Logger that shall be offered to actors and the system.
+        /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
+        public var overrideLoggerFactory: ((String) -> Logger)?
+
+        // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
     public var serialization: SerializationSettings = .default
     public var plugins: PluginsSettings = .default
     public var metrics: MetricsSettings = .default(rootName: nil)
@@ -37,21 +51,20 @@ public struct ActorSystemSettings {
         }
     }
 
-    /// See `logging.defaultLevel`
-    public var defaultLogLevel: Logger.Level {
-        get {
-            logging.defaultLevel
+        public typealias ProtocolName = String
+        public var transports: [ActorTransport] = []
+        public var cluster: ClusterSettings = .default {
+            didSet {
+                self.serialization.localNode = self.cluster.uniqueBindNode
+            }
         }
-        set {
-            logging.defaultLevel = newValue
-        }
+
+        /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
+        public var installSwiftBacktrace: Bool = true
+
+        // FIXME: should have more proper config section
+        public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
     }
-
-    /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
-    public var installSwiftBacktrace: Bool = true
-
-    // FIXME: should have more proper config section
-    public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }
 
 extension Array where Element == ActorTransport {

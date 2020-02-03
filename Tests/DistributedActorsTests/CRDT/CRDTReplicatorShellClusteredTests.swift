@@ -315,6 +315,58 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         ugg1Remote.value.shouldEqual(gg1Remote.value)
     }
 
+    func test_localCommand_write_localConsistency_remoteShouldEventuallyBeUpdated() throws {
+        self.setUpLocal()
+        self.setUpRemote()
+
+        try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
+        try self.ensureNodes(.up, nodes: self.localSystem.cluster.node, self.remoteSystem.cluster.node)
+
+        let writeP = self.localTestKit.spawnTestProbe(expecting: LocalWriteResult.self)
+        let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
+
+        let id = CRDT.Identity("gcounter-1")
+        // Local and remote have different versions of g1
+        var g1Local = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        g1Local.increment(by: 1)
+        var g1Remote = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        g1Remote.increment(by: 3)
+
+        // Register owner so replicator will notify it on g1 updates
+        let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
+
+        // Tell local replicator to write g1. The `increment(by: 1)` change should be replicated to remote.
+        self.localSystem.replicator.tell(.localCommand(.write(id, g1Local.asAnyStateBasedCRDT, consistency: .local, timeout: self.timeout, replyTo: writeP.ref)))
+        guard case .success = try writeP.expectMessage() else { throw writeP.error() }
+
+        // even through the write was .local, it should eventually reach the remote node via gossip
+        let data: StateBasedCRDT = try remoteTestKit.eventually(within: .seconds(5)) {
+            // Remote g1 should have the `increment(by: 1)` change
+            self.remoteSystem.replicator.tell(.localCommand(.read(id, consistency: .local, timeout: self.timeout, replyTo: readP.ref)))
+            guard case .success(let data) = try readP.expectMessage() else { throw readP.error() }
+            return data
+        }
+
+        // `read` returns the underlying CRDT
+        guard let gg1Remote = data as? CRDT.GCounter else {
+            throw self.localTestKit.fail("Should be a GCounter")
+        }
+        "\(gg1Remote.state)".shouldContain("/user/alpha: 1")
+        gg1Remote.state[g1Remote.replicaId]!.shouldEqual(3)
+        gg1Remote.value.shouldEqual(4) // 1 + 3
+
+        // Owner on remote node should have been notified
+        guard case .updated(let updatedData) = try remoteOwnerP.expectMessage() else {
+            throw self.localTestKit.fail("Should be .updated message")
+        }
+        // Should receive the latest g1
+        guard let ugg1Remote = updatedData as? CRDT.GCounter else {
+            throw self.localTestKit.fail(".updated message should include the underlying GCounter")
+        }
+        ugg1Remote.value.shouldEqual(gg1Remote.value)
+    }
+    
+
     func test_localCommand_read_allConsistency_shouldUpdateLocalStoreWithRemoteData_shouldNotifyOwners() throws {
         self.setUpLocal()
         self.setUpRemote()
