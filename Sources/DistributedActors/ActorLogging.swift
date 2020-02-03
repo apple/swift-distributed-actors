@@ -63,9 +63,13 @@ public class LoggingContext {
     }
 }
 
+/// Specialized `Logger` factory, populating the logger with metadata about its "owner" actor (or system),
+/// such as it's path or node on which it resides.
+///
+/// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 public struct ActorLogger {
     public static func make<T>(context: ActorContext<T>) -> Logger {
-        if let overriddenLoggerFactory = context.system.settings.overrideLoggerFactory {
+        if let overriddenLoggerFactory = context.system.settings.logging.overrideLoggerFactory {
             return overriddenLoggerFactory("\(context.path)")
         }
 
@@ -83,7 +87,7 @@ public struct ActorLogger {
     }
 
     public static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
-        if let overriddenLoggerFactory = system.settings.overrideLoggerFactory {
+        if let overriddenLoggerFactory = system.settings.logging.overrideLoggerFactory {
             return overriddenLoggerFactory(identifier ?? system.name)
         }
 
@@ -128,7 +132,7 @@ public struct ActorOriginLogHandler: LogHandler {
     public init<T>(_ context: ActorContext<T>) {
         self.init(LoggingContext(
             identifier: context.path.description,
-            useBuiltInFormatter: context.system.settings.useBuiltInFormatter,
+            useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
             dispatcher: { [weak context = context] in context?.dispatcher.name ?? "unknown" }
         ))
     }
@@ -136,7 +140,7 @@ public struct ActorOriginLogHandler: LogHandler {
     public init(_ system: ActorSystem, identifier: String? = nil) {
         self.init(LoggingContext(
             identifier: identifier ?? system.name,
-            useBuiltInFormatter: system.settings.useBuiltInFormatter,
+            useBuiltInFormatter: system.settings.logging.useBuiltInFormatter,
             dispatcher: { () in _hackyPThreadThreadId() }
         ))
     }

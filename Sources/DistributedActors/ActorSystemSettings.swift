@@ -21,24 +21,12 @@ public struct ActorSystemSettings {
         .init()
     }
 
-    // TODO: LoggingSettings
-
-    /// Configure default log level for all `Logger` instances created by the library.
-    public var defaultLogLevel: Logger.Level = .info // TODO: maybe remove this? should be up to logging library to configure for us as well
-
-    /// Optionally override Logger that shall be offered to actors and the system.
-    /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
-    public var overrideLoggerFactory: ((String) -> Logger)?
-
-    // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
-    // logs are hard to follow with not consistent order of metadata etc (like system address etc).
-    public var useBuiltInFormatter: Bool = true
-
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
     public var plugins: PluginsSettings = .default
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var failure: FailureSettings = .default
+    public var logging: LoggingSettings = .default
     public var instrumentation: InstrumentationSettings = .default
 
     public typealias ProtocolName = String
@@ -46,6 +34,16 @@ public struct ActorSystemSettings {
     public var cluster: ClusterSettings = .default {
         didSet {
             self.serialization.localNode = self.cluster.uniqueBindNode
+        }
+    }
+
+    /// See `logging.defaultLevel`
+    public var defaultLogLevel: Logger.Level {
+        get {
+            logging.defaultLevel
+        }
+        set {
+            logging.defaultLevel = newValue
         }
     }
 
@@ -60,6 +58,36 @@ extension Array where Element == ActorTransport {
     public static func += <T: ActorTransport>(transports: inout Self, transport: T) {
         transports.append(transport)
     }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Logging Settings
+
+/// Note that some of these settings would be obsolete if we had a nice configurable LogHandler which could selectively
+/// log some labelled loggers and some not. Until we land such log handler we have to manually in-project opt-in/-out
+/// of logging some subsystems.
+public struct LoggingSettings {
+    public static let `default` = LoggingSettings()
+
+    /// At what level should the library actually log and print logs // TODO: We'd want to replace this by proper log handlers which allow config by labels
+    public var defaultLevel: Logger.Level = .info // TODO: maybe remove this? should be up to logging library to configure for us as well
+
+    /// Optionally override Logger that shall be offered to actors and the system.
+    /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
+    public var overrideLoggerFactory: ((String) -> Logger)?
+
+    // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
+    // logs are hard to follow with not consistent order of metadata etc (like system address etc).
+    public var useBuiltInFormatter: Bool = true
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Verbose logging of sub-systems (again, would not be needed with configurable appenders)
+
+    /// Log all detailed timer start/cancel events
+    public var verboseTimers = false
+
+    /// Log all actor `spawn` events
+    public var verboseSpawning = false
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
