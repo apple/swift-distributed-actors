@@ -115,7 +115,9 @@ public class Timers<Message> {
     @inlinable
     public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
-            self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
+            if context.system.settings.logging.verboseTimers {
+                self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
+            }
             timer.handle.cancel()
         }
     }
@@ -160,7 +162,9 @@ public class Timers<Message> {
             }
         }
 
-        self.context.log.trace("Started timer [\(key)] with generation [\(generation)]", metadata: self.metadata)
+        if context.system.settings.logging.verboseTimers {
+            self.context.log.trace("Started timer [\(key)] with generation [\(generation)]", metadata: self.metadata)
+        }
         self.installedTimers[key] = Timer(key: key, message: message, repeated: repeated, generation: generation, handle: handle)
     }
 

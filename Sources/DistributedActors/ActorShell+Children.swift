@@ -342,7 +342,9 @@ extension ActorShell: ChildActorRefFactory {
         )
         let mailbox = Mailbox(shell: actor, capacity: props.mailbox.capacity)
 
-        log.debug("Spawning [\(behavior)], on path: [\(address.path)]")
+        if self.system.settings.logging.verboseSpawning {
+            log.trace("Spawning [\(behavior)], on path: [\(address.path)]")
+        }
 
         let cell = ActorCell(
             address: address,
