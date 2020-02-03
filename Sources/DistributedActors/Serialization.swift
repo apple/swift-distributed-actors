@@ -47,11 +47,10 @@ public struct Serialization {
 
         self.allocator = self.settings.allocator
 
-        var log = systemSettings.overrideLoggerFactory.map { $0("/system/serialization") } ??
-            Logger(label: "/system/serialization", factory: { id in
-                let context = LoggingContext(identifier: id, useBuiltInFormatter: systemSettings.useBuiltInFormatter, dispatcher: nil)
-                return ActorOriginLogHandler(context)
-            })
+        var log = Logger(label: "serialization", factory: { id in
+            let context = LoggingContext(identifier: id, useBuiltInFormatter: system.settings.logging.useBuiltInFormatter, dispatcher: nil)
+            return ActorOriginLogHandler(context)
+        })
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
         log.logLevel = systemSettings.defaultLogLevel
