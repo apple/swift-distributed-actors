@@ -278,7 +278,7 @@ final class SWIMInstance {
     }
 
     /// Lists all members known to SWIM right now
-    var allMembers: Dictionary<ActorRef<SWIM.Message>, SWIM.Member>.Values {
+    var allMembers: SWIM.MembersValues {
         self.members.values
     }
 
