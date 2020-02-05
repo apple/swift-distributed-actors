@@ -27,6 +27,9 @@ import Foundation // for Codable
 public struct Serialization {
     internal typealias MetaTypeKey = AnyHashable
 
+    internal let settings: SerializationSettings
+    internal let metrics: ActorSystemMetrics
+
     // TODO: avoid 2 hops, we can do it in one, and enforce a serializer has an Id
     private var serializerIds: [MetaTypeKey: SerializerId] = [:]
     private var serializers: [SerializerId: AnySerializer] = [:]
@@ -39,9 +42,10 @@ public struct Serialization {
     public let allocator: ByteBufferAllocator
 
     internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem) {
-        let settings = systemSettings.serialization
+        self.settings = systemSettings.serialization
+        self.metrics = system.metrics
 
-        self.allocator = settings.allocator
+        self.allocator = self.settings.allocator
 
         var log = Logger(label: "serialization", factory: { id in
             let context = LoggingContext(identifier: id, useBuiltInFormatter: systemSettings.useBuiltInFormatter, dispatcher: nil)
@@ -106,7 +110,7 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer<DistributedActors.ConvergentGossip<DistributedActors.Cluster.Gossip>.Message>(allocator: self.allocator), underId: Serialization.Id.InternalSerializer.ConvergentGossipMembership)
 
         // register user-defined serializers
-        for (metaKey, id) in settings.userSerializerIds {
+        for (metaKey, id) in self.settings.userSerializerIds {
             guard let serializer = settings.userSerializers[id] else {
                 fatalError("No Serializer present in settings.userSerializers for expected id [\(id)]! This should not be possible by construction, possible Swift Distributed Actors bug?")
             }

@@ -62,14 +62,18 @@ internal final class SerializationPool {
     @inlinable
     internal func serialize<M>(message: M, recipientPath: ActorPath, promise: EventLoopPromise<ByteBuffer>) {
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
-            try self.serialization.serialize(message: message)
+            let serialized = try self.serialization.serialize(message: message)
+            self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.readableBytes)
+            return serialized
         }
     }
 
     @inlinable
     internal func serialize(message: Any, metaType: AnyMetaType, recipientPath: ActorPath, promise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)>) {
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
-            try self.serialization.serialize(message: message, metaType: metaType)
+            let result = try self.serialization.serialize(message: message, metaType: metaType)
+            self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, result.1.readableBytes)
+            return result
         }
     }
 
@@ -77,7 +81,8 @@ internal final class SerializationPool {
     internal func deserialize<M>(_ type: M.Type, from bytes: ByteBuffer, recipientPath: ActorPath, promise: EventLoopPromise<M>) {
         // TODO: bytes to become inout?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            try self.serialization.deserialize(type, from: bytes)
+            self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
+            return try self.serialization.deserialize(type, from: bytes)
         }
     }
 
@@ -85,7 +90,8 @@ internal final class SerializationPool {
     internal func deserialize(serializerId: Serialization.SerializerId, from bytes: ByteBuffer, recipientPath: ActorPath, promise: EventLoopPromise<Any>) {
         // TODO: bytes to become inout?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            try self.serialization.deserialize(serializerId: serializerId, from: bytes)
+            self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
+            return try self.serialization.deserialize(serializerId: serializerId, from: bytes)
         }
     }
 
