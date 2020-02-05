@@ -113,6 +113,6 @@ internal final class JSONCodableSerializer<T: Codable>: Serializer<T>, CustomStr
     }
 
     var description: String {
-        "JSONCodableSerializer(allocate: \(self.allocate), encoder: \(self.encoder.userInfo), decoder: \(self.decoder.userInfo))"
+        "JSONCodableSerializer(allocate: \(self.allocate), encoder: \(self.encoder), decoder: \(self.decoder))"
     }
 }

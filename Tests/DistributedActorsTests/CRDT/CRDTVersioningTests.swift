@@ -17,6 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTVersioningTests: XCTestCase {
+    typealias V = UInt64
+
     let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
     let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
     let replicaC: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("c"), incarnation: .wellKnown))
@@ -28,15 +30,15 @@ final class CRDTVersioningTests: XCTestCase {
 
     func test_VersionContext_add_then_compact() throws {
         // Comment on the right indicates outcome of `compact`
-        let dot1 = VersionDot(replicaA, 2) // Should be added to vv
-        let dot2 = VersionDot(replicaA, 3) // Should be added to vv
-        let dot3 = VersionDot(replicaA, 5) // Should not be added to vv because of gap (4)
-        let dot4 = VersionDot(replicaB, 1) // Should be added to vv because it follows version 0
-        let dot5 = VersionDot(replicaC, 2) // Should be dropped because vv already contains version 2
-        let dot6 = VersionDot(replicaC, 3) // Should be dropped because vv already contains version 3
-        let dot7 = VersionDot(replicaB, 3) // To be added later
-        let dot8 = VersionDot(replicaB, 2) // To be added later
-        var versionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, 1), (replicaC, 3)]), gaps: [dot1, dot2, dot3, dot4, dot5, dot6])
+        let dot1 = VersionDot(replicaA, V(2)) // Should be added to vv
+        let dot2 = VersionDot(replicaA, V(3)) // Should be added to vv
+        let dot3 = VersionDot(replicaA, V(5)) // Should not be added to vv because of gap (4)
+        let dot4 = VersionDot(replicaB, V(1)) // Should be added to vv because it follows version 0
+        let dot5 = VersionDot(replicaC, V(2)) // Should be dropped because vv already contains version 2
+        let dot6 = VersionDot(replicaC, V(3)) // Should be dropped because vv already contains version 3
+        let dot7 = VersionDot(replicaB, V(3)) // To be added later
+        let dot8 = VersionDot(replicaB, V(2)) // To be added later
+        var versionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, V(1)), (replicaC, V(3))]), gaps: [dot1, dot2, dot3, dot4, dot5, dot6])
 
         versionContext.contains(dot3).shouldBeTrue() // `dots` contains dot3
         versionContext.contains(dot7).shouldBeFalse() // `dots` does not contain dot7
@@ -61,16 +63,16 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionContext_merge_then_compact() throws {
-        let dot1 = VersionDot(replicaA, 2)
-        let dot2 = VersionDot(replicaA, 3)
-        let dot3 = VersionDot(replicaA, 5)
-        let dot4 = VersionDot(replicaB, 1)
-        let dot5 = VersionDot(replicaC, 2)
-        let dot6 = VersionDot(replicaC, 3)
-        let dot7 = VersionDot(replicaB, 3)
-        let dot8 = VersionDot(replicaB, 2)
-        var versionContext1 = CRDT.VersionContext(vv: VersionVector([(replicaA, 1), (replicaC, 3)]), gaps: [dot1, dot4, dot5, dot6, dot8])
-        let versionContext2 = CRDT.VersionContext(vv: VersionVector([(replicaB, 1), (replicaC, 4)]), gaps: [dot2, dot3, dot7])
+        let dot1 = VersionDot(replicaA, V(2))
+        let dot2 = VersionDot(replicaA, V(3))
+        let dot3 = VersionDot(replicaA, V(5))
+        let dot4 = VersionDot(replicaB, V(1))
+        let dot5 = VersionDot(replicaC, V(2))
+        let dot6 = VersionDot(replicaC, V(3))
+        let dot7 = VersionDot(replicaB, V(3))
+        let dot8 = VersionDot(replicaB, V(2))
+        var versionContext1 = CRDT.VersionContext(vv: VersionVector([(replicaA, V(1)), (replicaC, V(3))]), gaps: [dot1, dot4, dot5, dot6, dot8])
+        let versionContext2 = CRDT.VersionContext(vv: VersionVector([(replicaB, V(1)), (replicaC, V(4))]), gaps: [dot2, dot3, dot7])
 
         // `merge` mutates versionContext1; then call `compact`
         versionContext1.merge(other: versionContext2)
@@ -102,7 +104,7 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaA].shouldEqual(1) // The container's vv should be incremented (0 -> 1)
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // No dot since we manipulate vv directly and not adding to gaps
         aContainer.elementByBirthDot.count.shouldEqual(1)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(3) // Verify birth dot
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(1))]!.shouldEqual(3) // Verify birth dot
         // delta: elementByBirthDot=[(A,1): 3], vv=[(A,1)], gaps=[]
         guard let d1 = aContainer.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
@@ -110,7 +112,7 @@ final class CRDTVersioningTests: XCTestCase {
         d1.versionContext.vv[replicaA].shouldEqual(1) // The delta's vv should be incremented (0 -> 1) because of `compact`
         d1.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 0 -> 1 is contiguous
         d1.elementByBirthDot.count.shouldEqual(1)
-        d1.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(3) // Delta should also have the dot
+        d1.elementByBirthDot[VersionDot(replicaA, V(1))]!.shouldEqual(3) // Delta should also have the dot
         d1.elements.shouldEqual([3])
 
         aContainer.add(5)
@@ -121,7 +123,7 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaA].shouldEqual(2) // The container's vv should be incremented (1 -> 2)
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // No dot since we manipulate vv directly and not adding to gaps
         aContainer.elementByBirthDot.count.shouldEqual(2)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(5) // Verify birth dot
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(2))]!.shouldEqual(5) // Verify birth dot
         // delta: elementByBirthDot=[(A,1): 3, (A,2): 5], vv=[(A,1)], gaps=[]
         guard let d2 = aContainer.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
@@ -129,7 +131,7 @@ final class CRDTVersioningTests: XCTestCase {
         d2.versionContext.vv[replicaA].shouldEqual(2) // The delta's vv should be incremented (1 -> 2) because of `compact`
         d2.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 1 -> 2 is contiguous
         d2.elementByBirthDot.count.shouldEqual(2)
-        d2.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(5) // Delta should also have the dot
+        d2.elementByBirthDot[VersionDot(replicaA, V(2))]!.shouldEqual(5) // Delta should also have the dot
         d2.elements.shouldEqual([3, 5])
 
         // Add 3 again
@@ -141,7 +143,7 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaA].shouldEqual(3) // The container's vv should be incremented (2 -> 3)
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // No dot since we manipulate vv directly and not adding to gaps
         aContainer.elementByBirthDot.count.shouldEqual(3)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 3)]!.shouldEqual(3) // Verify birth dot
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(3))]!.shouldEqual(3) // Verify birth dot
         // delta: elementByBirthDot=[(A,1): 3, (A,2): 5], (A,3): 3], vv=[(A,3)], gaps=[]
         guard let d3 = aContainer.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
@@ -149,7 +151,7 @@ final class CRDTVersioningTests: XCTestCase {
         d3.versionContext.vv[replicaA].shouldEqual(3) // The delta's vv should be incremented (2 -> 3) because of `compact`
         d3.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 2 -> 3 is contiguous
         d3.elementByBirthDot.count.shouldEqual(3)
-        d3.elementByBirthDot[VersionDot(replicaA, 3)]!.shouldEqual(3) // Delta should also have the dot
+        d3.elementByBirthDot[VersionDot(replicaA, V(3))]!.shouldEqual(3) // Delta should also have the dot
         d3.elements.shouldEqual([3, 5])
 
         aContainer.remove(3)
@@ -167,8 +169,8 @@ final class CRDTVersioningTests: XCTestCase {
         d4.versionContext.vv[replicaA].shouldEqual(3) // `remove` doesn't change vv
         d4.versionContext.gaps.isEmpty.shouldBeTrue() // (A,1) and (A,3) added to gaps but dropped since vv already contains them
         d4.elementByBirthDot.count.shouldEqual(1)
-        d4.elementByBirthDot[VersionDot(replicaA, 1)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
-        d4.elementByBirthDot[VersionDot(replicaA, 3)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        d4.elementByBirthDot[VersionDot(replicaA, V(1))].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        d4.elementByBirthDot[VersionDot(replicaA, V(3))].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
         d4.elements.shouldEqual([5])
 
         aContainer.resetDelta()
@@ -183,7 +185,7 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaA].shouldEqual(4) // The container's vv should be incremented (3 -> 4)
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // No dot since we manipulate vv directly and not adding to gaps
         aContainer.elementByBirthDot.count.shouldEqual(2)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Verify birth dot
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(4))]!.shouldEqual(6) // Verify birth dot
         // delta: elementByBirthDot=[(A,4): 6], vv=[], gaps=[(A,4)]
         guard let d5 = aContainer.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
@@ -192,7 +194,7 @@ final class CRDTVersioningTests: XCTestCase {
         d5.versionContext.gaps.count.shouldEqual(1) // Dot was added to gaps and `compact` can't merge it to vv
         d5.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
         d5.elementByBirthDot.count.shouldEqual(1)
-        d5.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
+        d5.elementByBirthDot[VersionDot(replicaA, V(4))]!.shouldEqual(6) // Delta should also have the dot
         d5.elements.shouldEqual([6])
 
         aContainer.remove(5)
@@ -211,13 +213,13 @@ final class CRDTVersioningTests: XCTestCase {
         d6.versionContext.gaps.count.shouldEqual(2) // Dot was added to gaps and `compact` can't merge it to vv
         d6.versionContext.gaps.contains(VersionDot(self.replicaA, 2)).shouldBeTrue()
         d6.elementByBirthDot.count.shouldEqual(1)
-        d6.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        d6.elementByBirthDot[VersionDot(replicaA, V(2))].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
         d6.elements.shouldEqual([6])
     }
 
     func test_VersionedContainer_removeAll_shouldAddAllBirthDotsToDeltaVersionContext() throws {
-        let versionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, 3), (replicaB, 1)]), gaps: [VersionDot(replicaB, 5)])
-        var aContainer = IntContainer(replicaId: replicaA, versionContext: versionContext, elementByBirthDot: [VersionDot(replicaA, 2): 4])
+        let versionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, V(3)), (replicaB, V(1))]), gaps: [VersionDot(replicaB, V(5))])
+        var aContainer = IntContainer(replicaId: replicaA, versionContext: versionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4])
 
         // container: elementByBirthDot=[(A,2): 4], vv=[(A,3), (B,1)], gaps=[(B,5)]
         aContainer.elements.shouldEqual([4])
@@ -227,7 +229,7 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaB].shouldEqual(1)
         aContainer.versionContext.gaps.count.shouldEqual(1) // (B,5)
         aContainer.elementByBirthDot.count.shouldEqual(1)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 2)].shouldEqual(4)
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(2))].shouldEqual(4)
         aContainer.delta.shouldBeNil()
 
         aContainer.add(6)
@@ -239,7 +241,7 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaB].shouldEqual(1) // Another replica's version untouched
         aContainer.versionContext.gaps.count.shouldEqual(1) // (B,5)
         aContainer.elementByBirthDot.count.shouldEqual(2)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Verify birth dot
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(4))]!.shouldEqual(6) // Verify birth dot
         // delta: elementByBirthDot=[(A,4): 6], vv=[], gaps=[(A,4)]
         guard let d1 = aContainer.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
@@ -248,7 +250,7 @@ final class CRDTVersioningTests: XCTestCase {
         d1.versionContext.gaps.count.shouldEqual(1) // Dot was added to gaps and `compact` can't merge it to vv
         d1.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
         d1.elementByBirthDot.count.shouldEqual(1)
-        d1.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
+        d1.elementByBirthDot[VersionDot(replicaA, V(4))]!.shouldEqual(6) // Delta should also have the dot
         d1.elements.shouldEqual([6])
 
         // Remove all elements!
@@ -294,10 +296,10 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaB].shouldEqual(2) // From B vv
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // Both A and B have empty gaps
         aContainer.elementByBirthDot.count.shouldEqual(4)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(1)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(3)
-        aContainer.elementByBirthDot[VersionDot(replicaB, 1)]!.shouldEqual(3) // From B; A didn't have this dot and A's version context doesn't dominate B's
-        aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(1))]!.shouldEqual(1)
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(2))]!.shouldEqual(3)
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(1))]!.shouldEqual(3) // From B; A didn't have this dot and A's version context doesn't dominate B's
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(2))]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
     }
 
     func test_VersionedContainer_merge_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
@@ -328,18 +330,18 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaB].shouldEqual(2) // From B vv
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // Both A and B have empty gaps
         aContainer.elementByBirthDot.count.shouldEqual(2)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(1)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // (A,2): 3 deleted in B and B's version context dominates A's, so A deleted it
-        aContainer.elementByBirthDot[VersionDot(replicaB, 1)].shouldBeNil() // (B,1): 3 deleted in B; A didn't see this
-        aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(1))]!.shouldEqual(1)
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(2))].shouldBeNil() // (A,2): 3 deleted in B and B's version context dominates A's, so A deleted it
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(1))].shouldBeNil() // (B,1): 3 deleted in B; A didn't see this
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(2))]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
     }
 
     func test_VersionedContainer_merge_twoReplicasFormCompleteHistory() throws {
-        let aVersionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, 3), (replicaB, 1), (replicaC, 1)]), gaps: [VersionDot(replicaC, 4), VersionDot(replicaC, 5)])
-        var aContainer = IntContainer(replicaId: replicaA, versionContext: aVersionContext, elementByBirthDot: [VersionDot(replicaA, 2): 4, VersionDot(replicaC, 4): 0, VersionDot(replicaC, 5): 3])
+        let aVersionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, V(3)), (replicaB, V(1)), (replicaC, V(1))]), gaps: [VersionDot(replicaC, V(4)), VersionDot(replicaC, V(5))])
+        var aContainer = IntContainer(replicaId: replicaA, versionContext: aVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(4)): 0, VersionDot(replicaC, V(5)): 3])
 
-        let bVersionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, 3), (replicaB, 1)]), gaps: [VersionDot(replicaC, 2), VersionDot(replicaC, 3)])
-        let bContainer = IntContainer(replicaId: replicaB, versionContext: bVersionContext, elementByBirthDot: [VersionDot(replicaA, 2): 4, VersionDot(replicaC, 3): 7])
+        let bVersionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, V(3)), (replicaB, V(1))]), gaps: [VersionDot(replicaC, V(2)), VersionDot(replicaC, V(3))])
+        let bContainer = IntContainer(replicaId: replicaB, versionContext: bVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(3)): 7])
 
         // `merge` mutates aContainer
         aContainer.merge(other: bContainer)
@@ -350,10 +352,10 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaC].shouldEqual(5) // (C,2) and (C,3) from B filled the gaps and `compact` merged (C,4) and (C,5) to vv
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // ^^
         aContainer.elementByBirthDot.count.shouldEqual(4)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(4)
-        aContainer.elementByBirthDot[VersionDot(replicaC, 3)]!.shouldEqual(7)
-        aContainer.elementByBirthDot[VersionDot(replicaC, 4)]!.shouldEqual(0)
-        aContainer.elementByBirthDot[VersionDot(replicaC, 5)]!.shouldEqual(3)
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(2))]!.shouldEqual(4)
+        aContainer.elementByBirthDot[VersionDot(replicaC, V(3))]!.shouldEqual(7)
+        aContainer.elementByBirthDot[VersionDot(replicaC, V(4))]!.shouldEqual(0)
+        aContainer.elementByBirthDot[VersionDot(replicaC, V(5))]!.shouldEqual(3)
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
@@ -380,10 +382,10 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaB].shouldEqual(2) // From B vv
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // Both A and B have empty gaps
         aContainer.elementByBirthDot.count.shouldEqual(4)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(1)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(3)
-        aContainer.elementByBirthDot[VersionDot(replicaB, 1)]!.shouldEqual(3) // From B; A didn't have this dot and A's version context doesn't dominate B's
-        aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(1))]!.shouldEqual(1)
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(2))]!.shouldEqual(3)
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(1))]!.shouldEqual(3) // From B; A didn't have this dot and A's version context doesn't dominate B's
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(2))]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
@@ -420,9 +422,9 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.vv[replicaB].shouldEqual(2) // From B vv
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // Both A and B have empty gaps
         aContainer.elementByBirthDot.count.shouldEqual(2)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(1)
-        aContainer.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // (A,2): 3 deleted in B and B's version context dominates A's, so A deleted it
-        aContainer.elementByBirthDot[VersionDot(replicaB, 1)].shouldBeNil() // (B,1): 3 deleted in B; A didn't see this
-        aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(1))]!.shouldEqual(1)
+        aContainer.elementByBirthDot[VersionDot(replicaA, V(2))].shouldBeNil() // (A,2): 3 deleted in B and B's version context dominates A's, so A deleted it
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(1))].shouldBeNil() // (B,1): 3 deleted in B; A didn't see this
+        aContainer.elementByBirthDot[VersionDot(replicaB, V(2))]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
     }
 }

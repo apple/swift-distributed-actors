@@ -186,6 +186,10 @@ extension Cluster {
         public func isLeader(_ member: Cluster.Member) -> Bool {
             self.isLeader(member.node)
         }
+
+        func contains(_ uniqueNode: UniqueNode) -> Bool {
+            self._members[uniqueNode] != nil
+        }
     }
 }
 
