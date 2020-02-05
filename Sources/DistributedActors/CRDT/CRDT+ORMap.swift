@@ -80,23 +80,23 @@ extension CRDT {
         }
 
         public var underlying: [Key: Value] {
-            return self._values
+            self._values
         }
 
         public var keys: Dictionary<Key, Value>.Keys {
-            return self._values.keys
+            self._values.keys
         }
 
         public var values: Dictionary<Key, Value>.Values {
-            return self._values.values
+            self._values.values
         }
 
         public var count: Int {
-            return self._values.count
+            self._values.count
         }
 
         public var isEmpty: Bool {
-            return self._values.isEmpty
+            self._values.isEmpty
         }
 
         init(replicaId: ReplicaId, valueInitializer: @escaping () -> Value) {
@@ -145,7 +145,7 @@ extension CRDT {
         /// The subscript is *read-only*--this is to ensure that updates are performed on the values so causal
         /// history is preserved.
         public subscript(key: Key) -> Value? {
-            return self._values[key]
+            self._values[key]
         }
 
         public mutating func merge(other: ORMap<Key, Value>) {
@@ -301,7 +301,7 @@ public protocol ORMapOperations: ORMapWithUnsafeRemove where Value: CvRDT {
 // See comments in CRDT.ORSet
 extension CRDT.ActorOwned where DataType: ORMapOperations {
     public var lastObservedValue: [DataType.Key: DataType.Value] {
-        return self.data.underlying
+        self.data.underlying
     }
 
     public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
@@ -313,7 +313,7 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 
 extension CRDT.ORMap {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String, valueInitializer: @escaping () -> Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
-        return CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaId: .actorAddress(owner.address), valueInitializer: valueInitializer))
+        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaId: .actorAddress(owner.address), valueInitializer: valueInitializer))
     }
 }
 

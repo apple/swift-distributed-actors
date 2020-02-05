@@ -59,6 +59,7 @@ XCTMain([
     testCase(CRDTLWWMapTests.allTests),
     testCase(CRDTLWWRegisterTests.allTests),
     testCase(CRDTORMapTests.allTests),
+    testCase(CRDTORMultiMapTests.allTests),
     testCase(CRDTORSetTests.allTests),
     testCase(CRDTReplicationSerializationTests.allTests),
     testCase(CRDTReplicatorInstanceTests.allTests),
