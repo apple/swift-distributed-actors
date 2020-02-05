@@ -21,7 +21,7 @@ internal protocol AnyStateBasedCRDT {
 
 extension AnyStateBasedCRDT where Self: CvRDT {
     fileprivate static func _merge<DataType: CvRDT>(_: DataType.Type) -> (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT {
-        return { l, r in
+        { l, r in
             let l = l as! DataType // as! safe, since `l` should be `self.underlying`
             let r = r as! DataType // as! safe, since invoking _merge is protected by checking the `metaType`
             return l.merging(other: r)
@@ -79,7 +79,7 @@ internal struct AnyCvRDT: CvRDT, AnyStateBasedCRDT {
 
 extension AnyCvRDT: CustomStringConvertible {
     public var description: String {
-        return "AnyCvRDT(\(self.underlying))"
+        "AnyCvRDT(\(self.underlying))"
     }
 }
 
@@ -102,7 +102,7 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
     let _resetDelta: (StateBasedCRDT) -> StateBasedCRDT
 
     var delta: Delta? {
-        return self._delta(self.underlying)
+        self._delta(self.underlying)
     }
 
     init<T: DeltaCRDT>(_ data: T) {
@@ -162,6 +162,6 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
 
 extension AnyDeltaCRDT: CustomStringConvertible {
     public var description: String {
-        return "AnyDeltaCRDT(\(self.underlying))"
+        "AnyDeltaCRDT(\(self.underlying))"
     }
 }

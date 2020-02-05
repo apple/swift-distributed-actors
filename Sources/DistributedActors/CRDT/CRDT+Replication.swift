@@ -241,7 +241,7 @@ extension CRDT.Replicator {
 
         // TODO: gossip settings
         public static var `default`: Settings {
-            return .init()
+            .init()
         }
     }
 }

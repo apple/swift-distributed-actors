@@ -68,37 +68,28 @@ extension CRDT {
             self.state[key]?.elements
         }
 
-        /// Adds `value` for `key`.
         public mutating func add(forKey key: Key, _ value: Value) {
             self.state.update(key: key) { set in
                 set.add(value)
             }
         }
 
-        /// Removes `value` for `key`.
         public mutating func remove(forKey key: Key, _ value: Value) {
             self.state.update(key: key) { set in
                 set.remove(value)
             }
         }
 
-        /// Removes all values for `key`.
         public mutating func removeAll(forKey key: Key) {
             self.state.update(key: key) { set in
                 set.removeAll()
             }
         }
 
-        /// Removes `key` and the associated value set from the `ORMultiMap`.
-        ///
-        /// - ***Warning**: this erases the value's causal history and may cause anomalies!
         public mutating func unsafeRemoveValue(forKey key: Key) -> Set<Value>? {
             self.state.unsafeRemoveValue(forKey: key)?.elements
         }
 
-        /// Removes all entries from the `ORMultiMap`.
-        ///
-        /// - ***Warning**: this erases all of the values' causal histories and may cause anomalies!
         public mutating func unsafeRemoveAllValues() {
             self.state.unsafeRemoveAllValues()
         }
@@ -126,12 +117,21 @@ public protocol ORMultiMapOperations {
 
     var underlying: [Key: Set<Value>] { get }
 
-    subscript(key: Key) -> Set<Value>? { get }
+    /// Adds `value` for `key`.
     mutating func add(forKey key: Key, _ value: Value)
+    /// Removes `value` for `key`.
     mutating func remove(forKey key: Key, _ value: Value)
+    /// Removes all values for `key`.
     mutating func removeAll(forKey key: Key)
 
+    /// Removes `key` and the associated value set from the `ORMultiMap`.
+    ///
+    /// - ***Warning**: this erases the value's causal history and may cause anomalies!
     mutating func unsafeRemoveValue(forKey key: Key) -> Set<Value>?
+
+    /// Removes all entries from the `ORMultiMap`.
+    ///
+    /// - ***Warning**: this erases all of the values' causal histories and may cause anomalies!
     mutating func unsafeRemoveAllValues()
 }
 

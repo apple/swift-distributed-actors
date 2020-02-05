@@ -90,7 +90,7 @@ extension CRDT {
         /// Dots that are NOT contained in `VersionContext` are important because they are likely changes that have not
         /// been processed yet.
         public func contains(_ dot: VersionDot) -> Bool {
-            return self.vv.contains(dot.replicaId, dot.version) || self.gaps.contains(dot)
+            self.vv.contains(dot.replicaId, dot.version) || self.gaps.contains(dot)
         }
     }
 }
@@ -130,15 +130,15 @@ extension CRDT {
         public var delta: Delta?
 
         public var elements: Set<Element> {
-            return Set(self.elementByBirthDot.values)
+            Set(self.elementByBirthDot.values)
         }
 
         public var count: Int {
-            return self.elements.count
+            self.elements.count
         }
 
         public var isEmpty: Bool {
-            return self.elementByBirthDot.isEmpty
+            self.elementByBirthDot.isEmpty
         }
 
         public init(replicaId: ReplicaId, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
@@ -249,7 +249,7 @@ extension CRDT {
         internal var elementByBirthDot: [VersionDot: Element] = [:]
 
         public var elements: Set<Element> {
-            return Set(self.elementByBirthDot.values)
+            Set(self.elementByBirthDot.values)
         }
 
         init() {}

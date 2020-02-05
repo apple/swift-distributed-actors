@@ -56,11 +56,11 @@ extension CvRDT {
 
 extension CvRDT {
     internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-        return self.asAnyCvRDT
+        self.asAnyCvRDT
     }
 
     internal var asAnyCvRDT: AnyCvRDT {
-        return AnyCvRDT(self)
+        AnyCvRDT(self)
     }
 }
 
@@ -102,11 +102,11 @@ extension DeltaCRDT {
 
 extension DeltaCRDT {
     internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-        return self.asAnyDeltaCRDT
+        self.asAnyDeltaCRDT
     }
 
     internal var asAnyDeltaCRDT: AnyDeltaCRDT {
-        return AnyDeltaCRDT(self)
+        AnyDeltaCRDT(self)
     }
 }
 
@@ -408,7 +408,7 @@ public enum CRDT {
             }
 
             public func withTimeout(after timeout: TimeAmount) -> OperationResult<DataType> {
-                return OperationResult(self.dataFuture.withTimeout(after: timeout), safeOnComplete: self._safeOnComplete)
+                OperationResult(self.dataFuture.withTimeout(after: timeout), safeOnComplete: self._safeOnComplete)
             }
         }
 
