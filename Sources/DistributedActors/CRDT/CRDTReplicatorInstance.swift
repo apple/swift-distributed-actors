@@ -48,7 +48,7 @@ extension CRDT.Replicator {
         }
 
         func owners(for dataId: Identity) -> Set<ActorRef<OwnerMessage>>? {
-            return self.owners[dataId]
+            self.owners[dataId]
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
@@ -191,6 +191,6 @@ extension CRDT.Replicator {
 
 extension CRDT.Replicator.Instance: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "CRDT.Replicator.Instance(dataStore: \(self.dataStore), owners: \(self.owners), tombstones: \(self.tombstones), settings: \(self.settings))"
+        "CRDT.Replicator.Instance(dataStore: \(self.dataStore), owners: \(self.owners), tombstones: \(self.tombstones), settings: \(self.settings))"
     }
 }

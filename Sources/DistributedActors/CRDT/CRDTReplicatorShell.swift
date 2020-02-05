@@ -35,7 +35,7 @@ extension CRDT.Replicator {
         let replicator: Instance
 
         var settings: Settings {
-            return self.replicator.settings
+            self.replicator.settings
         }
 
         internal var remoteReplicators: Set<ActorRef<Message>> = []
@@ -49,7 +49,7 @@ extension CRDT.Replicator {
         }
 
         var behavior: Behavior<Message> {
-            return .setup { context in
+            .setup { context in
 
                 if context.system.settings.cluster.enabled {
                     // Not getting replicators listing through receptionist to prevent potential circular dependency
@@ -535,12 +535,12 @@ extension CRDT.Replicator {
         var remoteFailuresCount: Int = 0
 
         var fulfilled: Bool {
-            return self.remoteConfirmationsReceived.count >= self.remoteConfirmationsNeeded // >= rather than == is deliberate
+            self.remoteConfirmationsReceived.count >= self.remoteConfirmationsNeeded // >= rather than == is deliberate
         }
 
         var failed: Bool {
             // Don't return true unless there is actually a failure
-            return self.remoteFailuresCount > 0 && self.remoteFailuresCount > self.remoteFailuresAllowed
+            self.remoteFailuresCount > 0 && self.remoteFailuresCount > self.remoteFailuresAllowed
         }
 
         init(with consistency: CRDT.OperationConsistency, remoteMembersCount: Int, localConfirmed: Bool) throws {
@@ -618,7 +618,7 @@ extension CRDT.Replicator {
 
 extension CRDT.Replicator.Shell: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "CRDT.Replicator.Shell(remoteReplicators: \(self.remoteReplicators)), \(self.replicator.debugDescription)"
+        "CRDT.Replicator.Shell(remoteReplicators: \(self.remoteReplicators)), \(self.replicator.debugDescription)"
     }
 }
 
@@ -663,7 +663,7 @@ extension CRDT.Replicator.Shell {
 
 extension ActorAddress {
     internal static func _crdtReplicator(on node: UniqueNode) -> ActorAddress {
-        return .init(node: node, path: ._crdtReplicator, incarnation: .wellKnown)
+        .init(node: node, path: ._crdtReplicator, incarnation: .wellKnown)
     }
 }
 
