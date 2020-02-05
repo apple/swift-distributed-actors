@@ -33,7 +33,7 @@ final class SWIMInstance {
     let settings: SWIM.Settings
 
     /// Main members storage, map to values to obtain current members.
-    private var members: [ActorRef<SWIM.Message>: SWIMMember]
+    internal var members: [ActorRef<SWIM.Message>: SWIMMember]
 
     /// List of members maintained in random yet stable order, see `addMember` for details.
     internal var membersToPing: [SWIMMember]
@@ -270,11 +270,16 @@ final class SWIMInstance {
     }
 
     /// Lists all suspect members, including myself if suspect.
-    var suspects: [SWIM.Member] {
-        return self.members
+    var suspects: SWIM.Members {
+        self.members
             .lazy
             .map { $0.value }
             .filter { $0.isSuspect }
+    }
+
+    /// Lists all members known to SWIM right now
+    var allMembers: Dictionary<ActorRef<SWIM.Message>, SWIM.Member>.Values {
+        self.members.values
     }
 
     func isMember(_ ref: ActorRef<SWIM.Message>) -> Bool {
