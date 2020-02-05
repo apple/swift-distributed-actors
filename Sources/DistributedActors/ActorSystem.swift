@@ -211,7 +211,10 @@ public final class ActorSystem {
         // serialization
         self.serialization = Serialization(settings: settings, system: self)
 
-        let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
+        // receptionist
+        let receptionistBehavior = self.settings.cluster.enabled ?
+            self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist) :
+            LocalReceptionist.behavior
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionist = lazyReceptionist.ref
 
@@ -270,6 +273,7 @@ public final class ActorSystem {
         if settings.cluster.enabled {
             self.log.info("Actor System Settings in effect: Cluster.autoLeaderElection: \(self.settings.cluster.autoLeaderElection)")
             self.log.info("Actor System Settings in effect: Cluster.downingStrategy: \(self.settings.cluster.downingStrategy)")
+            self.log.info("Actor System Settings in effect: Cluster.onDownAction: \(self.settings.cluster.onDownAction)")
         }
     }
 

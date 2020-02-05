@@ -47,10 +47,11 @@ public struct Serialization {
 
         self.allocator = self.settings.allocator
 
-        var log = Logger(label: "serialization", factory: { id in
-            let context = LoggingContext(identifier: id, useBuiltInFormatter: systemSettings.useBuiltInFormatter, dispatcher: nil)
-            return ActorOriginLogHandler(context)
-        })
+        var log = systemSettings.overrideLoggerFactory.map { $0("/system/serialization") } ??
+            Logger(label: "/system/serialization", factory: { id in
+                let context = LoggingContext(identifier: id, useBuiltInFormatter: systemSettings.useBuiltInFormatter, dispatcher: nil)
+                return ActorOriginLogHandler(context)
+            })
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
         log.logLevel = systemSettings.defaultLogLevel
@@ -85,9 +86,8 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<Cluster.Event>(allocator: self.allocator), for: Cluster.Event.self, underId: Serialization.Id.InternalSerializer.ClusterEvent)
 
         // Cluster Receptionist
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.Id.InternalSerializer.FullStateRequest)
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.Replicate.self, underId: Serialization.Id.InternalSerializer.Replicate)
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullState.self, underId: Serialization.Id.InternalSerializer.FullState)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OpLogClusterReceptionist.PushOps.self, underId: Serialization.Id.InternalSerializer.PushOps)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OpLogClusterReceptionist.AckOps.self, underId: Serialization.Id.InternalSerializer.AckOps)
 
         // SWIM serializers
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.Id.InternalSerializer.SWIMMessage)
@@ -636,11 +636,6 @@ public enum SerializationError: Error {
 // See: https://stackoverflow.com/questions/42459484/make-a-swift-dictionary-where-the-key-is-type
 @usableFromInline
 struct MetaType<T>: Hashable {
-    @usableFromInline
-    static func == (lhs: MetaType, rhs: MetaType) -> Bool {
-        return lhs.base == rhs.base
-    }
-
     let base: T.Type
 
     init(_ base: T.Type) {
@@ -649,6 +644,11 @@ struct MetaType<T>: Hashable {
 
     init(from value: T) {
         self.base = type(of: value)
+    }
+
+    @usableFromInline
+    static func == (lhs: MetaType, rhs: MetaType) -> Bool {
+        return lhs.base == rhs.base
     }
 
     @usableFromInline

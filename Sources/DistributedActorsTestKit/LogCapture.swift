@@ -78,7 +78,7 @@ extension LogCapture {
         public var minimumLogLevel: Logger.Level = .trace
 
         /// Filter and capture logs only from actors with the following path prefix
-        public var filterActorPaths: Set<String> = ["/"]
+        public var filterActorPaths: Set<String> = [""]
         /// Do not capture log messages which include the following strings.
         public var excludeActorPaths: Set<String> = []
 

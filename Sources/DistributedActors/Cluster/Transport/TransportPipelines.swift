@@ -75,7 +75,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
 
     private func initiateHandshake(context: ChannelHandlerContext) {
         let proto = ProtoHandshakeOffer(self.handshakeOffer)
-        self.log.debug("Offering handshake [\(proto)]")
+        self.log.trace("Offering handshake [\(proto)]")
 
         do {
             // TODO: allow allocating into existing buffer
@@ -271,13 +271,10 @@ private final class SerializationHandler: ChannelDuplexHandler {
                 let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, serializerId: serializerId, payload: bytes)
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
             case .failure(let error):
-                self.log.error(
-                    "Serialization of outgoing message failed: \(error)",
-                    metadata: [
-                        "recipient": "\(transportEnvelope.recipient)",
-                        "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")",
-                    ]
-                )
+                self.log.error("Serialization of outgoing message failed: \(error)", metadata: [
+                    "recipient": "\(transportEnvelope.recipient)",
+                    "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")",
+                ])
                 // TODO: drop message when it fails to be serialized?
                 promise?.fail(error)
             }
@@ -286,7 +283,6 @@ private final class SerializationHandler: ChannelDuplexHandler {
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let wireEnvelope = self.unwrapInboundIn(data)
-
         let deserializationPromise: EventLoopPromise<Any> = context.eventLoop.makePromise()
         serializationPool.deserialize(
             serializerId: wireEnvelope.serializerId,
@@ -665,7 +661,7 @@ extension ClusterShell {
                     }
                 }
 
-                let log = ActorLogger.make(system: system, identifier: "server")
+                let log = ActorLogger.make(system: system, identifier: "/system/transport.server")
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS! // TODO: tests about killing connections the hard way
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
@@ -728,7 +724,7 @@ extension ClusterShell {
                     }
                 }
 
-                let log = ActorLogger.make(system: system, identifier: "client")
+                let log = ActorLogger.make(system: system, identifier: "/system/transport.client")
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
@@ -827,6 +823,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
     // TODO: carry same data as Envelope -- baggage etc
 
     init<UnderlyingMessage>(envelope: Envelope, underlyingMessageType: UnderlyingMessage.Type, recipient: ActorAddress) {
+        assert(recipient.node != nil, "Attempted to send remote message, though recipient is local! Was envelope: \(envelope), recipient: \(recipient)")
         switch envelope.payload {
         case .message(let message):
             self.storage = .message(message)
@@ -893,10 +890,10 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
     }
 
     var description: String {
-        return "TransportEnvelope(\(storage), recipient: \(recipient), messageMetaType: \(underlyingMessageMetaType))"
+        "TransportEnvelope(\(storage), recipient: \(String(reflecting: recipient)), messageMetaType: \(underlyingMessageMetaType))"
     }
 
     var debugDescription: String {
-        return "TransportEnvelope(_storage: \(storage), recipient: \(recipient), messageMetaType: \(underlyingMessageMetaType))"
+        "TransportEnvelope(_storage: \(storage), recipient: \(String(reflecting: recipient)), messageMetaType: \(underlyingMessageMetaType))"
     }
 }

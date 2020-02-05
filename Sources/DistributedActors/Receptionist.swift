@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// A receptionist is a system actor that allows users to register actors under
 /// a key to make them available to other parts of the system, without having to
 /// share a reference with that specific part directly. There are different reasons
@@ -138,29 +140,61 @@ public enum Receptionist {
         internal var _registrations: [AnyRegistrationKey: Set<AddressableActorRef>] = [:]
         private var _subscriptions: [AnyRegistrationKey: Set<AnySubscribe>] = [:]
 
+        /// Allows for reverse lookups, when an actor terminates, we know from which registrations and subscriptions to remove it from.
+        internal var _addressToKeys: [ActorAddress: Set<AnyRegistrationKey>] = [:]
+
+        /// - returns: `true` if the value was a newly inserted value, `false` otherwise
         func addRegistration(key: AnyRegistrationKey, ref: AddressableActorRef) -> Bool {
+            self.addRefKeyMapping(address: ref.address, key: key)
             return self.addTo(dict: &self._registrations, key: key, value: ref)
         }
 
         func removeRegistration(key: AnyRegistrationKey, ref: AddressableActorRef) -> Set<AddressableActorRef>? {
+            _ = self.removeFromKeyMappings(ref)
             return self.removeFrom(dict: &self._registrations, key: key, value: ref)
         }
 
         func registrations(forKey key: AnyRegistrationKey) -> Set<AddressableActorRef>? {
-            return self._registrations[key]
+            self._registrations[key]
         }
 
         func addSubscription(key: AnyRegistrationKey, subscription: AnySubscribe) -> Bool {
+            self.addRefKeyMapping(address: subscription.address, key: key)
             return self.addTo(dict: &self._subscriptions, key: key, value: subscription)
         }
 
         @discardableResult
         func removeSubscription(key: AnyRegistrationKey, subscription: AnySubscribe) -> Set<AnySubscribe>? {
+            _ = self.removeFromKeyMappings(address: subscription.address)
             return self.removeFrom(dict: &self._subscriptions, key: key, value: subscription)
         }
 
         func subscriptions(forKey key: AnyRegistrationKey) -> Set<AnySubscribe>? {
-            return self._subscriptions[key]
+            self._subscriptions[key]
+        }
+
+        // FIXME: improve this to always pass around AddressableActorRef rather than just address (in receptionist Subscribe message), remove this trick then
+        /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
+        func removeFromKeyMappings(address: ActorAddress) -> Set<AnyRegistrationKey> {
+            let equalityHackRef = ActorRef<Never>(.deadLetters(.init(Logger(label: "x"), address: address, system: nil)))
+            return self.removeFromKeyMappings(equalityHackRef.asAddressable())
+        }
+
+        /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
+        func removeFromKeyMappings(_ ref: AddressableActorRef) -> Set<AnyRegistrationKey> {
+            guard let associatedKeys = self._addressToKeys.removeValue(forKey: ref.address) else {
+                return []
+            }
+
+            var registeredKeys: Set<AnyRegistrationKey> = [] // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
+            for key in associatedKeys {
+                if self._registrations[key]?.remove(ref) != nil {
+                    _ = registeredKeys.insert(key)
+                }
+                self._subscriptions[key]?.remove(.init(address: ref.address))
+            }
+
+            return registeredKeys
         }
 
         /// - returns: `true` if the value was a newly inserted value, `false` otherwise
@@ -179,6 +213,10 @@ public enum Receptionist {
             }
 
             return dict[key]
+        }
+
+        private func addRefKeyMapping(address: ActorAddress, key: AnyRegistrationKey) {
+            self._addressToKeys[address, default: []].insert(key)
         }
     }
 }
@@ -327,6 +365,16 @@ internal enum LocalReceptionist {
     }
 }
 
+extension ActorPath {
+    internal static let _receptionist: ActorPath = try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
+}
+
+extension ActorAddress {
+    internal static func _receptionist(on node: UniqueNode) -> ActorAddress {
+        .init(node: node, path: ._receptionist, incarnation: .wellKnown)
+    }
+}
+
 /// Marker protocol for all receptionist messages
 ///
 /// The message implementations are located in `Receptionist.*`
@@ -403,12 +451,17 @@ internal struct AnySubscribe: Hashable {
         self._replyWith = subscribe.replyWith
     }
 
+    init(address: ActorAddress) {
+        self.address = address
+        self._replyWith = { _ in () }
+    }
+
     func replyWith(_ refs: Set<AddressableActorRef>) {
         self._replyWith(refs)
     }
 
     static func == (lhs: AnySubscribe, rhs: AnySubscribe) -> Bool {
-        return lhs.address == rhs.address
+        lhs.address == rhs.address
     }
 
     func hash(into hasher: inout Hasher) {

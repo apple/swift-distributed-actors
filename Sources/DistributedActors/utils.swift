@@ -120,8 +120,8 @@ internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () ->
 /// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
-    #if SACT_TRACE_ACTOR_SHELL
-    pprint("SACT_TRACE_ACTOR_SHELL: \(message())", file: file, line: line)
+    #if SACT_TRACE_ACTOR_CELL
+    pprint("SACT_TRACE_ACTOR_CELL: \(message())", file: file, line: line)
     #endif
 }
 

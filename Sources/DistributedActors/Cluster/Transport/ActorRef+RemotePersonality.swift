@@ -64,11 +64,22 @@ public final class RemotePersonality<Message> {
 
     @usableFromInline
     func sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
-        traceLog_Cell("RemoteActorRef(\(self.address)) sendUserMessage: \(message)")
+        self.sendUserMessage(message, messageTypeForSerialization: Message.self, file: file, line: line)
+    }
+
+    /// TRICK! By forcing the `messageTypeForSerialization` EXPLICITLY we are able to override what would otherwise be the Message type
+    /// which is used to store the identifier of the message type, by which we perform serializer lookups. Using this, we are able to
+    /// send messages with a specific sub-class, rather than the generic `Message` type which e.g. could be some protocol -- and thus would never
+    /// have a serializer associated with it.
+    ///
+    // TODO: all this can likely be simplified when/if we go for string type manifests and simplify serialization.
+    @usableFromInline
+    func sendUserMessage<MessageTypeForSerialization>(_ message: Message, messageTypeForSerialization messageType: MessageTypeForSerialization.Type, file: String = #file, line: UInt = #line) {
+        traceLog_Cell("RemoteActorRef(\(self.address)) sendUserMessage: \(message) (as \(messageType))")
         if let remoteControl = self.remoteControl {
             // TODO: optionally carry file/line?
             self.instrumentation.actorTold(message: message, from: nil)
-            remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .message(message)), recipient: self.address)
+            remoteControl.sendUserMessage(type: messageType, envelope: Envelope(payload: .message(message)), recipient: self.address)
         } else {
             self.system.log.warning("No remote control, while sending to: \(self.address)")
             self.system.personalDeadLetters(recipient: self.address).adapted().tell(message, file: file, line: line)

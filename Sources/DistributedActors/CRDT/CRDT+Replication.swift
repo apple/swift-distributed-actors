@@ -230,6 +230,12 @@ extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
 
 extension CRDT.Replicator {
     public struct Settings {
+        public static var `default`: Settings {
+            .init()
+        }
+
+        public var gossipInterval: TimeAmount = .seconds(2)
+
         /// When enabled traces _all_ replicator messages.
         /// All logs will be prefixed using `[tracelog:replicator]`, for easier grepping and inspecting only logs related to the replicator.
         // TODO: how to make this nicely dynamically changeable during runtime
@@ -238,10 +244,5 @@ extension CRDT.Replicator {
         #else
         var traceLogLevel: Logger.Level?
         #endif
-
-        // TODO: gossip settings
-        public static var `default`: Settings {
-            .init()
-        }
     }
 }
