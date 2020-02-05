@@ -184,13 +184,13 @@ internal class ActorSystemMetrics {
         self._swim_members_dead.record(deads)
     }
 
-    func startTimeNanos() -> Int64 {
+    func uptimeNanoseconds() -> Int64 {
         Deadline.now().uptimeNanoseconds
     }
 
     /// Use `startTimeNanos` to obtain value to pass in as `since`
     func recordSWIMPingPingResponseTime(since start: Int64) {
-        let stop = self.startTimeNanos()
+        let stop = self.uptimeNanoseconds()
         let elapsed = max(0, stop - start)
         guard elapsed > 0 else {
             return
@@ -200,7 +200,7 @@ internal class ActorSystemMetrics {
     }
 
     func recordSWIMPingReqPingResponseTime(since start: Int64) {
-        let stop = self.startTimeNanos()
+        let stop = self.uptimeNanoseconds()
         let elapsed = max(0, stop - start)
         guard elapsed > 0 else {
             return
@@ -208,6 +208,11 @@ internal class ActorSystemMetrics {
 
         self._swim_pingReq_pingResponse_time.recordNanoseconds(elapsed)
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: System Messages
+
+    let _system_msg_redelivery_buffer: Gauge
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialization Metrics
@@ -283,6 +288,9 @@ internal class ActorSystemMetrics {
 
         // ==== Mailbox ---------------------------------------------
         self._mailbox_message_count = .init(label: settings.makeLabel("mailbox", "message", "count"))
+
+        // ==== Serialization -----------------------------------------------
+        self._system_msg_redelivery_buffer = .init(label: settings.makeLabel("system", "redelivery_buffer", "count"))
 
         // ==== Serialization -----------------------------------------------
         let serializationLabel = settings.makeLabel("serialization")

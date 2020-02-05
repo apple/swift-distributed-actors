@@ -121,7 +121,7 @@ internal final class OutboundSystemMessageRedelivery {
     // guaranteed to contain SystemMessageEnvelope but we also need the recipients which are in MessageEnvelope
     var messagesPendingAcknowledgement: NIO.CircularBuffer<TransportEnvelope> = .init(initialCapacity: 8)
 
-    // TODO: metrics
+    let metrics: ActorSystemMetrics?
 
     // highest ACK we got back from the receiving end
     var highestAcknowledgedSeqNr: SequenceNr = 0 // 0 == no ACKs at all so far.
@@ -135,8 +135,9 @@ internal final class OutboundSystemMessageRedelivery {
 
     var redeliveryIntervalBackoff: ConstantBackoffStrategy
 
-    init(settings: OutboundSystemMessageRedeliverySettings) {
+    init(settings: OutboundSystemMessageRedeliverySettings, metrics: ActorSystemMetrics? = nil) {
         self.settings = settings
+        self.metrics = metrics
         self.redeliveryIntervalBackoff = settings.makeRedeliveryBackoff
     }
 
@@ -152,6 +153,8 @@ internal final class OutboundSystemMessageRedelivery {
         let messageEnvelope = TransportEnvelope(systemMessageEnvelope: systemEnvelope, recipient: recipient)
 
         self.messagesPendingAcknowledgement.append(messageEnvelope)
+        self.metrics?._system_msg_redelivery_buffer.record(self.messagesPendingAcknowledgement.count)
+
         self.outgoingSequenceNr = systemEnvelope.sequenceNr
         return .send(systemEnvelope)
     }
@@ -176,6 +179,7 @@ internal final class OutboundSystemMessageRedelivery {
         let nrOfMessagesAckedByThisAck = Int(self.highestAcknowledgedSeqNr - previouslyACKedToSeqNr)
 
         self.messagesPendingAcknowledgement.removeFirst(nrOfMessagesAckedByThisAck)
+        self.metrics?._system_msg_redelivery_buffer.record(self.messagesPendingAcknowledgement.count)
 
         return .acknowledged
     }
@@ -269,9 +273,6 @@ internal final class OutboundSystemMessageRedelivery {
         case deadLetter([SystemMessageEnvelope])
     }
 }
-
-// TODO: should expose metrics on redeliveries, times and gauges
-final class OutboundSystemMessageRedeliveryMetrics {}
 
 struct GiveUpRedeliveringSystemMessagesError: Error {}
 

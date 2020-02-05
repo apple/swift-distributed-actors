@@ -150,7 +150,7 @@ internal struct SWIMShell {
         let payload = self.swim.makeGossipPayload()
         context.log.trace("Sending ping to [\(target)] with payload [\(payload)]")
 
-        let startPing = context.system.metrics.startTimeNanos()
+        let startPing = context.system.metrics.uptimeNanoseconds()
         let response = target.ask(for: SWIM.Ack.self, timeout: self.swim.settings.failureDetector.pingTimeout) {
             let ping = SWIM.RemoteMessage.ping(lastKnownStatus: lastKnownStatus, replyTo: $0, payload: payload)
             self.tracelog(context, .ask(target), message: ping)
@@ -203,7 +203,7 @@ internal struct SWIMShell {
 
             context.log.trace("Sending ping request for [\(toPing)] to [\(member)] with payload: \(payload)")
 
-            let startPingReq = context.system.metrics.startTimeNanos()
+            let startPingReq = context.system.metrics.uptimeNanoseconds()
             let answer = member.ref.ask(for: SWIM.Ack.self, timeout: pingTimeout) {
                 let pingReq = SWIM.RemoteMessage.pingReq(target: toPing, lastKnownStatus: lastKnownStatus, replyTo: $0, payload: payload)
                 self.tracelog(context, .ask(member.ref), message: pingReq)
