@@ -68,41 +68,28 @@ extension CRDT {
             }
         }
 
-        /// Gets the value, if any, associated with `key`.
-        ///
-        /// The subscript is *read-only*--this is to ensure that values cannot be set to `nil` by mistake which would
-        /// erase causal histories.
         public subscript(key: Key) -> Value? {
             self.state[key]?.value
         }
 
-        /// Sets the `value` for `key`.
         public mutating func set(forKey key: Key, value: Value) {
             self.state.update(key: key) { register in
                 register.assign(value)
             }
         }
 
-        /// Removes `key` and the associated value from the `LWWMap`.
-        ///
-        /// - ***Warning**: this erases the value's causal history and may cause anomalies!
         public mutating func unsafeRemoveValue(forKey key: Key) -> Value? {
             self.state.unsafeRemoveValue(forKey: key)?.value
         }
 
-        /// Removes all entries from the `LWWMap`.
-        ///
-        /// - ***Warning**: this erases all of the values' causal histories and may cause anomalies!
         public mutating func unsafeRemoveAllValues() {
             self.state.unsafeRemoveAllValues()
         }
 
-        /// Resets value for `key` to `defaultValue` provided in `init`.
         public mutating func resetValue(forKey key: Key) {
             self.state.resetValue(forKey: key)
         }
 
-        /// Resets all values in the `LWWMap` to `defaultValue` provided in `init`.
         public mutating func resetAllValues() {
             self.state.resetAllValues()
         }
@@ -125,7 +112,13 @@ extension CRDT {
 // MARK: ActorOwned LWWMap
 
 public protocol LWWMapOperations: ORMapWithResettableValue {
+    /// Gets the value, if any, associated with `key`.
+    ///
+    /// The subscript is *read-only*--this is to ensure that values cannot be set to `nil` by mistake which would
+    /// erase causal histories.
     subscript(key: Key) -> Value? { get }
+
+    /// Sets the `value` for `key`.
     mutating func set(forKey key: Key, value: Value)
 }
 

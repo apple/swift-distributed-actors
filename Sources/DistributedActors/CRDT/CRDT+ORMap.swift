@@ -69,7 +69,7 @@ extension CRDT {
         /// A dictionary containing key-value pairs that have been updated since last `delta` reset.
         var updatedValues: [Key: Value] = [:]
 
-        /// `delta` is computed based on `_keys`, which should be mutated for all updates.
+        // `delta` is computed based on `_keys`, which should be mutated for all updates.
         public var delta: Delta? {
             // `_keys` should always be mutated whenever `self` is modified in any way.
             if let keysDelta = self._keys.delta {
@@ -106,8 +106,6 @@ extension CRDT {
             self._values = [:]
         }
 
-        /// Creates a new "zero" value using `valueInitializer` if the given `key` has no value, and passes this
-        /// zero value to the `mutator`. Otherwise the value present for the `key` is passed in.
         public mutating func update(key: Key, mutator: (inout Value) -> Void) {
             // Always add `key` to `_keys` set to track its causal history
             self._keys.add(key)
@@ -121,9 +119,6 @@ extension CRDT {
             self.updatedValues[key] = value
         }
 
-        /// Removes `key` and the associated value from the `ORMap`.
-        ///
-        /// - ***Warning**: this erases the value's causal history and may cause anomalies!
         public mutating func unsafeRemoveValue(forKey key: Key) -> Value? {
             self._keys.remove(key)
             let result = self._values.removeValue(forKey: key)
@@ -131,9 +126,6 @@ extension CRDT {
             return result
         }
 
-        /// Removes all entries from the `ORMap`.
-        ///
-        /// - ***Warning**: this erases all of the values' causal histories and may cause anomalies!
         public mutating func unsafeRemoveAllValues() {
             self._keys.removeAll()
             self._values.removeAll()
@@ -250,8 +242,10 @@ public protocol ORMapWithUnsafeRemove {
 }
 
 public protocol ORMapWithResettableValue: ORMapWithUnsafeRemove {
+    /// Resets value for `key` to `defaultValue` provided in `init`.
     mutating func resetValue(forKey key: Key)
 
+    /// Resets all values in the `LWWMap` to `defaultValue` provided in `init`.
     mutating func resetAllValues()
 }
 
@@ -295,6 +289,8 @@ extension CRDT.ActorOwned where DataType: ORMapWithResettableValue {
 // MARK: ActorOwned ORMap
 
 public protocol ORMapOperations: ORMapWithUnsafeRemove where Value: CvRDT {
+    /// Creates a new "zero" value using `valueInitializer` if the given `key` has no value, and passes this
+    /// zero value to the `mutator`. Otherwise the value present for the `key` is passed in.
     mutating func update(key: Key, mutator: (inout Value) -> Void)
 }
 

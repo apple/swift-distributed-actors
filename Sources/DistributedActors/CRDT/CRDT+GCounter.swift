@@ -34,7 +34,7 @@ extension CRDT {
         public var delta: Delta?
 
         var value: Int {
-            return self.state.values.reduce(0, +)
+            self.state.values.reduce(0, +)
         }
 
         init(replicaId: ReplicaId) {
@@ -107,7 +107,7 @@ extension CRDT.GCounter: ResettableCRDT {
 
 extension CRDT.ActorOwned where DataType == CRDT.GCounter {
     public var lastObservedValue: Int {
-        return self.data.value
+        self.data.value
     }
 
     public func increment(by amount: Int, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
@@ -119,7 +119,7 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
 
 extension CRDT.GCounter {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
-        return CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaId: .actorAddress(owner.address)))
+        CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaId: .actorAddress(owner.address)))
     }
 }
 

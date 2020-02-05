@@ -93,7 +93,7 @@ public protocol LWWRegisterOperations {
 // See comments in CRDT.ORSet
 extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
     public var lastObservedValue: DataType.Value {
-        return self.data.value
+        self.data.value
     }
 
     public func assign(_ value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
@@ -105,7 +105,7 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
 
 extension CRDT.LWWRegister {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
-        return CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaId: .actorAddress(owner.address), initialValue: initialValue))
+        CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaId: .actorAddress(owner.address), initialValue: initialValue))
     }
 }
 
