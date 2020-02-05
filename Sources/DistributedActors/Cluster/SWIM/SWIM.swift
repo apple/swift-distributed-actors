@@ -35,6 +35,7 @@ public enum SWIM {
     typealias Instance = SWIMInstance
     typealias Member = SWIMMember
     typealias Members = [SWIMMember]
+    internal typealias MembersValues = Dictionary<ActorRef<SWIM.Message>, SWIM.Member>.Values
 
     internal enum Message {
         case remote(RemoteMessage)

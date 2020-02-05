@@ -22,7 +22,7 @@ internal struct SWIMShell {
     let clusterRef: ClusterShell.Ref
 
     var settings: SWIM.Settings {
-        return self.swim.settings
+        self.swim.settings
     }
 
     internal init(_ swim: SWIM.Instance, clusterRef: ClusterShell.Ref) {
@@ -81,40 +81,47 @@ internal struct SWIMShell {
         switch message {
         case .ping(let lastKnownStatus, let replyTo, let payload):
             self.tracelog(context, .receive, message: message)
-
-            switch self.swim.onPing(lastKnownStatus: lastKnownStatus) {
-            case .reply(let ack, let warning):
-                self.tracelog(context, .reply(to: replyTo), message: ack)
-                replyTo.tell(ack)
-
-                if let warning = warning {
-                    context.log.warning("\(warning)")
-                }
-
-                // TODO: push the process gossip into SWIM as well?
-                // TODO: the payloadToProcess is the same as `payload` here... but showcasing
-                self.processGossipPayload(context: context, payload: payload)
-            }
+            self.handlePing(context: context, lastKnownStatus: lastKnownStatus, replyTo: replyTo, payload: payload)
 
         case .pingReq(let target, let lastKnownStatus, let replyTo, let payload):
             self.tracelog(context, .receive, message: message)
-            context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
+            self.handlePingReq(context: context, target: target, replyTo: replyTo, payload: payload, lastKnownStatus: lastKnownStatus)
+        }
+    }
 
-            if !self.swim.isMember(target) {
-                self.ensureAssociated(context, remoteNode: target.address.node) { result in
-                    switch result {
-                    case .success:
-                        self.swim.addMember(target, status: lastKnownStatus) // TODO: push into SWIM?
-                        self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
-                    case .failure(let error):
-                        context.log.warning("Unable to obtain association for remote \(target.address)... Maybe it was tombstoned? Error: \(error)")
-                    }
-                }
-            } else {
-                self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
+    private func handlePing(context: ActorContext<SWIM.Message>, lastKnownStatus: SWIM.Status, replyTo: ActorRef<SWIM.Ack>, payload: SWIM.Payload) {
+        switch self.swim.onPing(lastKnownStatus: lastKnownStatus) {
+        case .reply(let ack, let warning):
+            self.tracelog(context, .reply(to: replyTo), message: ack)
+            replyTo.tell(ack)
+
+            if let warning = warning {
+                context.log.warning("\(warning)")
             }
+
+            // TODO: push the process gossip into SWIM as well?
+            // TODO: the payloadToProcess is the same as `payload` here... but showcasing
             self.processGossipPayload(context: context, payload: payload)
         }
+    }
+
+    private func handlePingReq(context: ActorContext<SWIM.Message>, target: ActorRef<SWIM.Message>, replyTo: ActorRef<SWIM.Ack>, payload: SWIM.Payload, lastKnownStatus: SWIM.Status) {
+        context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
+
+        if !self.swim.isMember(target) {
+            self.ensureAssociated(context, remoteNode: target.address.node) { result in
+                switch result {
+                case .success:
+                    self.swim.addMember(target, status: lastKnownStatus) // TODO: push into SWIM?
+                    self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
+                case .failure(let error):
+                    context.log.warning("Unable to obtain association for remote \(target.address)... Maybe it was tombstoned? Error: \(error)")
+                }
+            }
+        } else {
+            self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
+        }
+        self.processGossipPayload(context: context, payload: payload)
     }
 
     func receiveLocalMessage(context: ActorContext<SWIM.Message>, message: SWIM.LocalMessage) {
@@ -143,11 +150,13 @@ internal struct SWIMShell {
         let payload = self.swim.makeGossipPayload()
         context.log.trace("Sending ping to [\(target)] with payload [\(payload)]")
 
+        let startPing = context.system.metrics.startTimeNanos()
         let response = target.ask(for: SWIM.Ack.self, timeout: self.swim.settings.failureDetector.pingTimeout) {
             let ping = SWIM.RemoteMessage.ping(lastKnownStatus: lastKnownStatus, replyTo: $0, payload: payload)
             self.tracelog(context, .ask(target), message: ping)
             return SWIM.Message.remote(ping)
         }
+        response._onComplete { _ in context.system.metrics.recordSWIMPingPingResponseTime(since: startPing) }
 
         // timeout is already handled by the ask, so we can set it to infinite here to not have two timeouts
         context.onResultAsync(of: response, timeout: .effectivelyInfinite) { res in
@@ -194,11 +203,13 @@ internal struct SWIMShell {
 
             context.log.trace("Sending ping request for [\(toPing)] to [\(member)] with payload: \(payload)")
 
+            let startPingReq = context.system.metrics.startTimeNanos()
             let answer = member.ref.ask(for: SWIM.Ack.self, timeout: pingTimeout) {
                 let pingReq = SWIM.RemoteMessage.pingReq(target: toPing, lastKnownStatus: lastKnownStatus, replyTo: $0, payload: payload)
                 self.tracelog(context, .ask(member.ref), message: pingReq)
                 return SWIM.Message.remote(pingReq)
             }
+            answer._onComplete { _ in context.system.metrics.recordSWIMPingPingResponseTime(since: startPingReq) }
 
             // We choose to cascade only successes;
             // While this has a slight timing implication on time timeout of the pings -- the node that is last
@@ -359,6 +370,8 @@ internal struct SWIMShell {
             unreachableSuspect.status = .unreachable(incarnation: incarnation)
             _ = self.markMember(context, latest: unreachableSuspect)
         }
+
+        context.system.metrics.recordSWIMMembers(self.swim.allMembers)
     }
 
     private func markMember(_ context: ActorContext<SWIM.Message>, latest: SWIM.Member) {
