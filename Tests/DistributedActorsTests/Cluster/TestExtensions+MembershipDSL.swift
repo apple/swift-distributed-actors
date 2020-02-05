@@ -58,7 +58,7 @@ extension Cluster.Gossip.SeenTable {
                 let atNode = nodeById(id: atId)
 
                 let versionString = parts.dropFirst().first!
-                let atVersion = Int(versionString)!
+                let atVersion = UInt64(versionString)!
 
                 vv.state[.uniqueNode(atNode)] = atVersion
             }
@@ -82,7 +82,7 @@ extension VersionVector {
 
         let replicaVersions: [VersionVector.ReplicaVersion] = dslString.split(separator: " ").map { segment in
             let v = segment.split { c in ":@".contains(c) }
-            return (.uniqueNode(nodeById(id: v.first!)), Int(v.dropFirst().first!)!)
+            return (.uniqueNode(nodeById(id: v.first!)), VersionVector.Version(v.dropFirst().first!)!)
         }
         return VersionVector(replicaVersions)
     }

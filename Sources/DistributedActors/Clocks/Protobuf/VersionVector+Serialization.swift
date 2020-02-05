@@ -74,7 +74,7 @@ extension VersionVector: ProtobufRepresentable {
                 throw SerializationError.missingField("replicaID", type: String(describing: ReplicaVersion.self))
             }
             let replicaId = try ReplicaId(fromProto: replicaVersion.replicaID, context: context)
-            state[replicaId] = Int(replicaVersion.version) // TODO: safety?
+            state[replicaId] = replicaVersion.version
         }
     }
 }
@@ -97,6 +97,6 @@ extension VersionDot: ProtobufRepresentable {
             throw SerializationError.missingField("replicaID", type: String(describing: VersionDot.self))
         }
         self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
-        self.version = Int(proto.version) // TODO: safety?
+        self.version = proto.version
     }
 }

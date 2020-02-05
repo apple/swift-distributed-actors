@@ -51,12 +51,9 @@ extension CRDT.Replicator {
         var behavior: Behavior<Message> {
             .setup { context in
 
-                if context.system.settings.cluster.enabled {
-                    // Not getting replicators listing through receptionist to prevent potential circular dependency
-                    context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
-                        self.receiveClusterEvent(context, event: event)
-                    })
-                }
+                context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
+                    self.receiveClusterEvent(context, event: event)
+                })
 
                 return .receive { context, message in
                     switch message {

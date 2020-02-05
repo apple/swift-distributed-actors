@@ -34,10 +34,11 @@
 public struct VersionVector {
     // TODO: should we disallow mixing ReplicaId types somehow?
 
-    public typealias ReplicaVersion = (replicaId: ReplicaId, version: Int) // TODO: struct? // TODO: UInt?
+    public typealias Version = UInt64
+    public typealias ReplicaVersion = (replicaId: ReplicaId, version: Version) // TODO: struct?
 
     // Internal state is a dictionary of replicas and their corresponding version
-    internal var state: [ReplicaId: Int] = [:]
+    internal var state: [ReplicaId: Version] = [:]
 
     public static let empty: VersionVector = .init()
 
@@ -53,6 +54,10 @@ public struct VersionVector {
 
     public init(_ replicaVersion: ReplicaVersion) {
         self.init([replicaVersion])
+    }
+
+    public init(_ version: Version, at replicaId: ReplicaId) {
+        self.init([(replicaId, version)])
     }
 
     public init(_ replicaVersions: [ReplicaVersion]) {
@@ -75,7 +80,7 @@ public struct VersionVector {
     /// - Parameter replicaId: The replica whose version is to be incremented.
     /// - Returns: The replica's version after the increment.
     @discardableResult
-    public mutating func increment(at replicaId: ReplicaId) -> Int {
+    public mutating func increment(at replicaId: ReplicaId) -> Version {
         if let current = self.state[replicaId] {
             let nextVersion = current + 1
             self.state[replicaId] = nextVersion
@@ -102,8 +107,13 @@ public struct VersionVector {
     ///
     /// - Parameter replicaId: The replica whose version is being queried.
     /// - Returns: The replica's version or 0 if replica is unknown.
-    public subscript(replicaId: ReplicaId) -> Int {
-        return self.state[replicaId] ?? 0
+    public subscript(replicaId: ReplicaId) -> Version {
+        self.state[replicaId] ?? 0
+    }
+
+    /// Lists all replica ids that this version vector contains.
+    public var replicaIds: Dictionary<ReplicaId, Version>.Keys {
+        self.state.keys
     }
 
     /// Determine if this `VersionVector` contains a specific version at the given replica.
@@ -111,7 +121,7 @@ public struct VersionVector {
     /// - Parameter replicaId: The replica of interest
     /// - Parameter version: The version of interest
     /// - Returns: True if the replica's version in the `VersionVector` is greater than or equal to `version`. False otherwise.
-    public func contains(_ replicaId: ReplicaId, _ version: Int) -> Bool {
+    public func contains(_ replicaId: ReplicaId, _ version: Version) -> Bool {
         self[replicaId] >= version
     }
 
@@ -192,9 +202,10 @@ extension VersionVector: Codable {
 /// to be `Hashable` we have to define a type.
 public struct VersionDot {
     public let replicaId: ReplicaId
-    public let version: Int // TODO: UInt?
+    public let version: Version
+    public typealias Version = UInt64
 
-    init(_ replicaId: ReplicaId, _ version: Int) {
+    init(_ replicaId: ReplicaId, _ version: Version) {
         self.replicaId = replicaId
         self.version = version
     }

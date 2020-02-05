@@ -17,6 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTSerializationTests: ActorSystemTestBase {
+    typealias V = UInt64
+
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.registerProtobufRepresentable(for: CRDT.Identity.self, underId: 1001)
@@ -53,8 +55,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let replicaAlpha = ReplicaId.actorAddress(self.ownerAlpha)
             let replicaBeta = ReplicaId.actorAddress(self.ownerBeta)
 
-            let vv = VersionVector([(replicaAlpha, 1), (replicaBeta, 3)])
-            let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaAlpha, 4)])
+            let vv = VersionVector([(replicaAlpha, V(1)), (replicaBeta, V(3))])
+            let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaAlpha, V(4))])
 
             let bytes = try system.serialization.serialize(message: versionContext)
             let deserialized = try system.serialization.deserialize(CRDT.VersionContext.self, from: bytes)
@@ -88,11 +90,11 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let replicaAlpha = ReplicaId.actorAddress(self.ownerAlpha)
             let replicaBeta = ReplicaId.actorAddress(self.ownerBeta)
 
-            let vv = VersionVector([(replicaAlpha, 2), (replicaBeta, 1)])
-            let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaBeta, 3)])
+            let vv = VersionVector([(replicaAlpha, V(2)), (replicaBeta, V(1))])
+            let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaBeta, V(3))])
             let elementByBirthDot = [
-                VersionDot(replicaAlpha, 1): "hello",
-                VersionDot(replicaBeta, 3): "world",
+                VersionDot(replicaAlpha, V(1)): "hello",
+                VersionDot(replicaBeta, V(3)): "world",
             ]
             var versionedContainer = CRDT.VersionedContainer(replicaId: replicaAlpha, versionContext: versionContext, elementByBirthDot: elementByBirthDot)
             // Adding an element should set delta

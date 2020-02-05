@@ -12,34 +12,41 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension ConvergentGossip.Message: Codable {
+extension OpLogClusterReceptionist.ReceptionistOp {
     public enum DiscriminatorKeys: String, Codable {
-        case gossip
+        case register
+        case remove
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-
-        case gossip_envelope
+        case key
+        case address
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        let key = try container.decode(AnyRegistrationKey.self, forKey: .key)
+        let address = try container.decode(ActorAddress.self, forKey: .address)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
-        case .gossip:
-            self = .gossip(try container.decode(ConvergentGossip<Payload>.GossipEnvelope.self, forKey: .gossip_envelope))
+        case .register:
+            self = .register(key: key, address: address)
+        case .remove:
+            self = .remove(key: key, address: address)
         }
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-
         switch self {
-        case .gossip(let envelope):
-            try container.encode(DiscriminatorKeys.gossip, forKey: ._case)
-            try container.encode(envelope, forKey: .gossip_envelope)
-        default:
-            throw SerializationError.mayNeverBeSerialized(type: "\(self)")
+        case .register(let key, let address):
+            try container.encode(DiscriminatorKeys.register, forKey: ._case)
+            try container.encode(key, forKey: .key)
+            try container.encode(address, forKey: .address)
+        case .remove(let key, let address):
+            try container.encode(DiscriminatorKeys.remove, forKey: ._case)
+            try container.encode(key, forKey: .key)
+            try container.encode(address, forKey: .address)
         }
     }
 }

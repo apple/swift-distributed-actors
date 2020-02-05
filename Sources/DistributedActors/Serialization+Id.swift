@@ -53,6 +53,10 @@ extension Serialization {
             internal static let CRDTGCounterDelta: SerializerId = 17
 
             internal static let ConvergentGossipMembership: SerializerId = 18
+
+            // op log receptionist
+            internal static let PushOps: SerializerId = 19
+            internal static let AckOps: SerializerId = 20
         }
     }
 }

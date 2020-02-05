@@ -511,7 +511,7 @@ final class MembershipGossipTests: XCTestCase {
             _ = gossip.membership.join(node)
             _ = gossip.membership.mark(node, as: .joining)
             var vv = VersionVector()
-            vv.state[.uniqueNode(node)] = node.port
+            vv.state[.uniqueNode(node)] = VersionVector.Version(node.port)
             gossip.seen.underlying[node] = .init(vv)
 
             // know just enough that we're not alone and thus need to communicate:

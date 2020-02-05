@@ -88,7 +88,7 @@ public extension ActorRef {
     ///
     /// - SeeAlso: `AddressableActorRef` for a detailed discussion of its typical use-cases.
     func asAddressable() -> AddressableActorRef {
-        return AddressableActorRef(self)
+        AddressableActorRef(self)
     }
 }
 
@@ -167,7 +167,7 @@ public protocol _ReceivesSystemMessages: Codable {
 
 extension _ReceivesSystemMessages {
     public var path: ActorPath {
-        return self.address.path
+        self.address.path
     }
 }
 

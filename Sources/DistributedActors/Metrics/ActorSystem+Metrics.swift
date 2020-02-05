@@ -215,6 +215,16 @@ internal class ActorSystemMetrics {
     let _system_msg_redelivery_buffer: Gauge
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Receptionist
+    /// Total number of actors registered with receptionist
+    let _receptionist_keys: Gauge
+    /// Total number of actors registered with receptionist
+    let _receptionist_registrations: MetricsPNCounter
+
+    /// Size of the op-log in the `OpLogClusterReceptionist`
+    let _receptionist_oplog_size: Gauge
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialization Metrics
 
     let _serialization_system_outbound_msg_size: Recorder
@@ -301,6 +311,11 @@ internal class ActorSystemMetrics {
         self._serialization_user_outbound_msg_size = .init(label: serializationLabel, dimensions: [rootUser, dimOutbound])
         self._serialization_user_inbound_msg_size = .init(label: serializationLabel, dimensions: [rootUser, dimInbound])
         // TODO: record message types by type
+
+        // ==== Receptionist ----------------------------------------
+        self._receptionist_keys = .init(label: settings.makeLabel("receptionist", "keys"))
+        self._receptionist_registrations = .init(label: settings.makeLabel("receptionist", "actors"), positive: [("type", "registered")], negative: [("type", "removed")])
+        self._receptionist_oplog_size = .init(label: settings.makeLabel("receptionist", "oplog", "size"))
 
         // ==== CRDTs -----------------------------------------------
 
