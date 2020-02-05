@@ -31,27 +31,27 @@ extension CRDT {
         var state: ORMap<Key, LWWRegister<Value>>
 
         public var delta: Delta? {
-            return self.state.delta
+            self.state.delta
         }
 
         public var underlying: [Key: Value] {
-            return self.state._values.mapValues { $0.value }
+            self.state._values.mapValues { $0.value }
         }
 
         public var keys: Dictionary<Key, Value>.Keys {
-            return self.underlying.keys
+            self.underlying.keys
         }
 
         public var values: Dictionary<Key, Value>.Values {
-            return self.underlying.values
+            self.underlying.values
         }
 
         public var count: Int {
-            return self.state.count
+            self.state.count
         }
 
         public var isEmpty: Bool {
-            return self.state.isEmpty
+            self.state.isEmpty
         }
 
         init(replicaId: ReplicaId, defaultValue: Value) {
@@ -73,7 +73,7 @@ extension CRDT {
         /// The subscript is *read-only*--this is to ensure that values cannot be set to `nil` by mistake which would
         /// erase causal histories.
         public subscript(key: Key) -> Value? {
-            return self.state[key]?.value
+            self.state[key]?.value
         }
 
         /// Sets the `value` for `key`.
@@ -87,7 +87,7 @@ extension CRDT {
         ///
         /// - ***Warning**: this erases the value's causal history and may cause anomalies!
         public mutating func unsafeRemoveValue(forKey key: Key) -> Value? {
-            return self.state.unsafeRemoveValue(forKey: key)?.value
+            self.state.unsafeRemoveValue(forKey: key)?.value
         }
 
         /// Removes all entries from the `LWWMap`.
@@ -132,7 +132,7 @@ public protocol LWWMapOperations: ORMapWithResettableValue {
 // See comments in CRDT.ORSet
 extension CRDT.ActorOwned where DataType: LWWMapOperations {
     public var lastObservedValue: [DataType.Key: DataType.Value] {
-        return self.data.underlying
+        self.data.underlying
     }
 
     public func set(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
@@ -144,7 +144,7 @@ extension CRDT.ActorOwned where DataType: LWWMapOperations {
 
 extension CRDT.LWWMap {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
-        return CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaId: .actorAddress(owner.address), defaultValue: defaultValue))
+        CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaId: .actorAddress(owner.address), defaultValue: defaultValue))
     }
 }
 
