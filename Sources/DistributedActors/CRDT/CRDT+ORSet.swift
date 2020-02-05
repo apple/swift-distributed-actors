@@ -38,19 +38,19 @@ extension CRDT {
         var state: VersionedContainer<Element>
 
         public var delta: Delta? {
-            return self.state.delta
+            self.state.delta
         }
 
         public var elements: Set<Element> {
-            return self.state.elements
+            self.state.elements
         }
 
         public var count: Int {
-            return self.state.count
+            self.state.count
         }
 
         public var isEmpty: Bool {
-            return self.state.isEmpty
+            self.state.isEmpty
         }
 
         init(replicaId: ReplicaId) {
@@ -129,7 +129,7 @@ extension CRDT {
         }
 
         public func contains(_ element: Element) -> Bool {
-            return self.state.elementByBirthDot.first { _, e in e == element } != nil
+            self.state.elementByBirthDot.first { _, e in e == element } != nil
         }
     }
 }
@@ -165,7 +165,7 @@ public protocol ORSetOperations {
 // But this does not work for `lastObservedValue`, which is a computed property.
 extension CRDT.ActorOwned where DataType: ORSetOperations {
     public var lastObservedValue: Set<DataType.Element> {
-        return self.data.elements
+        self.data.elements
     }
 
     public func add(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
@@ -189,7 +189,7 @@ extension CRDT.ActorOwned where DataType: ORSetOperations {
 
 extension CRDT.ORSet {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORSet<Element>> {
-        return CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaId: .actorAddress(owner.address)))
+        CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaId: .actorAddress(owner.address)))
     }
 }
 
