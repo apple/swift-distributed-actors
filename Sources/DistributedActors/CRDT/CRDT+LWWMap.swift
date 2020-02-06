@@ -68,6 +68,10 @@ extension CRDT {
             }
         }
 
+        /// Gets the value, if any, associated with `key`.
+        ///
+        /// The subscript is *read-only*--this is to ensure that values cannot be set to `nil` by mistake which would
+        /// erase causal histories.
         public subscript(key: Key) -> Value? {
             self.state[key]?.value
         }
@@ -112,12 +116,6 @@ extension CRDT {
 // MARK: ActorOwned LWWMap
 
 public protocol LWWMapOperations: ORMapWithResettableValue {
-    /// Gets the value, if any, associated with `key`.
-    ///
-    /// The subscript is *read-only*--this is to ensure that values cannot be set to `nil` by mistake which would
-    /// erase causal histories.
-    subscript(key: Key) -> Value? { get }
-
     /// Sets the `value` for `key`.
     mutating func set(forKey key: Key, value: Value)
 }
