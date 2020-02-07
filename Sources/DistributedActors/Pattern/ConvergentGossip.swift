@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-final class ConvergentGossip<Payload: Codable> {
+internal final class ConvergentGossip<Payload: Codable> {
     typealias GossipPeerRef = ActorRef<Message>
 
     let settings: Settings

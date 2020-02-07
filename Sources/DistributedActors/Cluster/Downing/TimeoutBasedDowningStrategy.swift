@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// The `TimeoutBasedDowningStrategy` marks nodes that have been unreachable as `Down` after a configurable timeout.
+/// The `TimeoutBasedDowningStrategy` marks nodes that have been unreachable as `.down` after a configurable timeout.
 ///
 /// Only the node that is currently the currently assigned leader can make the decision to mark another node as down.
 /// Non-leading nodes will keep track of the nodes they would have marked down and do so in case they become leader.
 /// If a node becomes reachable again before the timeout expires, it will not be considered for downing anymore.
-internal final class TimeoutBasedDowningStrategy {
+public final class TimeoutBasedDowningStrategy: DowningStrategy {
     let settings: TimeoutBasedDowningStrategySettings
     let selfNode: UniqueNode
 
@@ -40,17 +40,15 @@ internal final class TimeoutBasedDowningStrategy {
         self._markAsDown = []
         self.membership = .empty
     }
-}
 
-extension TimeoutBasedDowningStrategy: DowningStrategy {
-    func onClusterEvent(event: Cluster.Event) throws -> DowningStrategyDirective {
+    public func onClusterEvent(event: Cluster.Event) throws -> DowningStrategyDirective {
         switch event {
         case .snapshot(let snapshot):
             self.membership = snapshot
             return .none
 
         case .membershipChange(let change):
-            guard let change = self.membership.apply(change) else {
+            guard let change = self.membership.applyMembershipChange(change) else {
                 return .none
             }
 
@@ -76,6 +74,18 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
             } else {
                 return self.onMemberReachable(change)
             }
+        }
+    }
+
+    public func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective {
+        guard let nodeToDown = self._unreachable.remove(member) else {
+            return .none // perhaps we removed it already for other reasons (e.g. node replacement)
+        }
+        if self.isLeader {
+            return .markAsDown([nodeToDown])
+        } else {
+            self._markAsDown.insert(nodeToDown)
+            return .none
         }
     }
 
@@ -111,18 +121,6 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
             defer { self._markAsDown = [] }
             return .markAsDown(self._markAsDown)
         } else {
-            return .none
-        }
-    }
-
-    func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective {
-        guard let nodeToDown = self._unreachable.remove(member) else {
-            return .none // perhaps we removed it already for other reasons (e.g. node replacement)
-        }
-        if self.isLeader {
-            return .markAsDown([nodeToDown])
-        } else {
-            self._markAsDown.insert(nodeToDown)
             return .none
         }
     }

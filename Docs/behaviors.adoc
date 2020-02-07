@@ -556,6 +556,7 @@ This will lead to growth of the mailbox and can cause significant delays in mess
 used with caution and only when absolutely necessary and with reasonably small timeouts to avoid problems caused by unresponsive
 services.
 
+[[event_stream]]
 === EventStream
 
 An `EventStream` allows actors to subscribe to events published by one or more other actors.
@@ -571,3 +572,8 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=eventStream]
 <2> Subscribe `ref` to receive events from the stream
 <3> Publish on event to all subscribers
 <4> Unsubscribe `ref` from the event stream
+
+[[subreceive]]
+=== SubReceive
+
+#TODO: Document context.subReceive, a powerful function that allows receiving other types of messages, regardless of the owning Behavior type.#

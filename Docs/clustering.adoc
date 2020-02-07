@@ -27,7 +27,7 @@ With that, we are ready to start a few instances of the application (using plain
 - `swift run MySampleCluster 8228 7337` (which makes the second node join the first).
 
 The system won't be doing much though -- the nodes have joined, and you could observe their metrics and gossip (on verbose logging settings).
-However let's spice it up a little bit by spawning an actor to listen to api:Cluster.Event[struct]s:
+However let's spice it up a little bit by spawning an actor to listen to api:Cluster.Event[enum]s:
 
 ==== Optional Step: Listen for Cluster Events
 
@@ -224,6 +224,45 @@ Cluster events are the way application actors are able to stay informed about th
 act on those events, for example my not sending more work to an `.unreachable` node, or migrating workloads away from
 a member which has declared api:Cluster.MemberStatus[struct]
 
+There are four kinds of api:Cluster.Event[enum]:
+
+- `snapshot(` api:Cluster.Membership[enum] `)`
+- `membershipChange(` api:Cluster.MembershipChange[enum] `)`
+- `reachabilityChange(` api:Cluster.ReachabilityChange[enum] `)`
+- `leadershipChange(` api:Cluster.LeadershipChange[enum] `)`
+
+The way to subscribe to receive those events is to subscribe an actor to `system.cluster.events` which is a specialized
+<<event_stream, EventStream>>, which always first publishes a `snapshot` of the current state of the membership, and from there
+onwards publishes every change that is being applied to the membership.
+
+The way to own an always up to date api:Cluster.Membership[enum,alias='Membership'] is to subscribe to the events,
+keep a local `var membership: Membership` and every time a new event is received `Membership.apply` it do the stored value, like this:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=subscribe-events-apply-general]
+----
+<1> Store an initial, empty membership
+<2> Prepare a <<subreceive>> that will handle incoming `Cluster.Event` messages, regardless of the type of the owning `Behavior<Message>`
+<3> `apply` the incoming event to the stored membership, resulting in the membership being updated
+<4> Actually subscribe the subReceive (or actor itself if you prefer) to cluster events
+
+Note that while the `apply` method is very convenient, it does not return "effective" changes which sometimes may be useful,
+when wanting to ensure an event triggers a specific action _exactly only once_ e.g. only if a node was specifically "replaced."
+You can use the more specialized `applyMembershipChange` functions which take specific `...Change` types and return some additional information.
+
+Generally, the pattern around using membership information is quite often based around performing some action on specific
+changes to the membership, e.g. starting timers when a member became unreachable, contacting an actor on a new member that
+had just joined the cluster etc. In these scenarios it is most useful to work with subscriptions and react to them accordingly.
+
+Sometimes however, one just wants to perform a sanity check or printout without having to subscribe to the membership events
+actively. Such API #will soon exist# exists and may be used as `system.cluster.membershipSnapshot`. Note however that no strong
+guarantees are made about "how up to date" that value is, and even the moment after one has checked it, it may have already changed
+and e.g. now another member has become leader. Take this into consideration when opting to use this style of `Cluster.Membership` interaction.
+
+#TODO: We are considering offering an API like `system.cluster.membershipSnapshot` which would be simple one-off access to snapshots,
+see https://github.com/apple/swift-distributed-actors/issues/299 #
+
 [[downing_strategies]]
 === Downing Strategies
 
@@ -337,7 +376,7 @@ Watching remote actors works the same way as it does for local actors -- if the 
 the watching actor gets a api:Signals.Terminated[enum] signal and may react to it.
 
 Additionally, not only individual actor failures are reported back, but also node failures.
-When a node hosting actors fails, all of the hosted actors are assumed to have terminated (upon the node's move to `Down`
+When a node hosting actors fails, all of the hosted actors are assumed to have terminated (upon the node's move to `.down`
 lifecycle state), upon this change local watchers receive a api:Signals.Terminated[enum] signal about actors that they have watched on
 given remote node. The following simplified diagram explains this mechanism:
 
@@ -348,7 +387,7 @@ image::remote_watch_terminated.png[Remote Watch, when remote node crashes]
 - ❶ The `A` actor watches a remote actor `R` on another node,
 - ❷ The node `B` crashes abruptly, without performing a graceful leave,
 - ❸ The failure detector on node `A` eventually realizes what happened,
-- ❹ And triggers a `Terminated()` signal for all actors on the remote (now `Down`) node, notifying our local actor `A` which had watched `R` before.
+- ❹ And triggers a `Terminated()` signal for all actors on the remote (now `.down`) node, notifying our local actor `A` which had watched `R` before.
 
 
 // ==== SWIM -----------------------------------------------------------------------------------------------------------

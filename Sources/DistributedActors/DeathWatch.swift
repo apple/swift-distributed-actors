@@ -20,7 +20,7 @@ import NIO
 
 /// DeathWatch implements the user facing `watch` and `unwatch` functions.
 /// It allows actors to watch other actors for termination, and also takes into account clustering lifecycle information,
-/// e.g. if a node is declared `down` all actors on given node are assumed to have terminated, causing the appropriate `Terminated` signals.
+/// e.g. if a node is declared `.down` all actors on given node are assumed to have terminated, causing the appropriate `Terminated` signals.
 ///
 /// An `ActorShell` owns a death watch instance and is responsible of managing all calls to it.
 //

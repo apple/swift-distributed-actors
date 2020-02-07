@@ -261,7 +261,7 @@ extension Cluster.Membership {
     ///
     /// - Returns: the resulting change that was applied to the membership; note that this may be `nil`,
     ///   if the change did not cause any actual change to the membership state (e.g. signaling a join of the same node twice).
-    public mutating func apply(_ change: Cluster.MembershipChange) -> Cluster.MembershipChange? {
+    public mutating func applyMembershipChange(_ change: Cluster.MembershipChange) -> Cluster.MembershipChange? {
         if case .removed = change.toStatus {
             return self.removeCompletely(change.node)
         }
@@ -339,7 +339,7 @@ extension Cluster.Membership {
     public mutating func join(_ node: UniqueNode) -> Cluster.MembershipChange? {
         var change = Cluster.MembershipChange(member: Cluster.Member(node: node, status: .joining))
         change.fromStatus = nil
-        return self.apply(change)
+        return self.applyMembershipChange(change)
     }
 
     public func joining(_ node: UniqueNode) -> Cluster.Membership {
@@ -419,7 +419,7 @@ extension Cluster.Membership {
         }
     }
 
-    /// REMOVES (as in, completely, without leaving even a tombstone or `down` marker) a `Member` from the `Membership`.
+    /// REMOVES (as in, completely, without leaving even a tombstone or `.down` marker) a `Member` from the `Membership`.
     /// If the membership is not aware of this member this is treated as no-op.
     ///
     /// - Warning: When removing nodes from cluster one MUST also prune the seen tables (!) of the gossip.
@@ -551,7 +551,7 @@ extension Cluster.Membership {
             self = snapshot
 
         case .membershipChange(let change):
-            _ = self.apply(change)
+            _ = self.applyMembershipChange(change)
 
         case .leadershipChange(let change):
             _ = try self.applyLeadershipChange(to: change.newLeader)

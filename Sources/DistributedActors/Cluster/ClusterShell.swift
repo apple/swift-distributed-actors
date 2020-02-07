@@ -963,7 +963,7 @@ extension ClusterShell {
     func onDownCommand(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Cluster.Member) -> ClusterShellState {
         var state = state
 
-        if let change = state.membership.apply(.init(member: memberToDown, toStatus: .down)) {
+        if let change = state.membership.applyMembershipChange(.init(member: memberToDown, toStatus: .down)) {
             self.clusterEvents.publish(.membershipChange(change))
 
             if let logChangeLevel = state.settings.logMembershipChanges {
