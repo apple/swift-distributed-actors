@@ -49,10 +49,15 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
       attrs['tpe']
     end
 
-    link = if (api_module = attrs['module'])
-      %(api/#{$lib_version}/#{api_module}/#{tpe}/#{type_name}.html)
+    type_path = if (attrs['tpe'] == "enum")
+        type_name.gsub(/\./, "/")
     else
-      %(api/#{$lib_version}/DistributedActors/#{tpe}/#{type_name}.html)
+
+
+    link = if (api_module = attrs['module'])
+      %(api/#{$lib_version}/#{api_module}/#{tpe}/#{type_path}.html)
+    else
+      %(api/#{$lib_version}/DistributedActors/#{tpe}/#{type_path}.html)
     end
 
     text = if (nil != attrs['alias'])

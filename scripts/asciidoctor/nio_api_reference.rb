@@ -44,6 +44,10 @@ class NIOApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
       attrs['tpe']
     end
 
+    type_path = if (attrs['tpe'] == "enum")
+        type_name.gsub(/\./, "/")
+    else
+
     link = %(https://apple.github.io/swift-nio/docs/current/NIO/#{tpe}/#{type_name}.html)
 
     # expected_at = File.join(File.dirname(__FILE__), '../../', link)
