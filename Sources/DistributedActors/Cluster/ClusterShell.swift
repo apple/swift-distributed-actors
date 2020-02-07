@@ -17,7 +17,7 @@ import Logging
 import NIO
 
 /// Cluster namespace.
-public struct Cluster {}
+public enum Cluster {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal Shell responsible for all clustering (i.e. connection management) state.

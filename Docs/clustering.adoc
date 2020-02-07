@@ -1,36 +1,150 @@
 
-== Clustering ✗
+== Clustering
 
 > One actor is no actor, they come in systems.
 
 By connecting several nodes into a cluster you gain the ability to _transparently_ send and receive messages from actors
 located on other nodes. Along with this, advanced failure detection and mitigation mechanisms are also enabled by default.
-#TODO: well, not yet since we didn't implement them yet#
 
-=== Joining a Cluster
+=== Cluster QuickStart
 
-In order to allow actors to message each other and make use of failure detection mechanisms, nodes on which they reside
-have to form a cluster. Clustering is relatively lightweight and provides cluster membership, and a gossip based failure
-detection and information dissemination protocol. #TODO: both of which are configurable and can be 'participated in',
-or plugged into external systems.#
+==== Step 1: Start nodes and join them
 
-TIP: All capabilities that one has learned about actors "locally" automatically translate and work without any code-changes
-     in a clustered environment.
+In this section we'll provide a quick guide on setting up your first cluster. It is recommended to continue reading this
+documentation page in order to understand in more depth the various steps and configurable pieces involved.
 
-==== Node Lifecycle
+[source]
+----
+include::{dir_sact_samples}/SampleCluster/main.swift[tag=cluster-sample]
+----
+<1> To send custom types across the wire, we have to register them with <<serialization>> #TODO: This will be simplified soon#
+<2> When a host:port was passed in as well, we join that node -- forming a cluster, alternatively we could use automatic <<node_discovery, Service Discovery>>
+<3> We're ready, we can <<spawning_actors, spawn actors>> (and <<actorable, actorables>>) and look up other node's actors using the <<receptionist, Receptionist>>
 
-Nodes progress through a well-defined lifecycle when joining a cluster.
+With that, we are ready to start a few instances of the application (using plain old `swift run ...`), like so:
 
-#TODO: the exact details are to be defined more soon, for now we do not really implement these, and only allow for "join/leave"#
+- `swift run MySampleCluster 7337`,
+- `swift run MySampleCluster 8228 7337` (which makes the second node join the first).
 
-image::cluster_lifecycle.svg[Cluster Node Lifecycle]
+The system won't be doing much though -- the nodes have joined, and you could observe their metrics and gossip (on verbose logging settings).
+However let's spice it up a little bit by spawning an actor to listen to api:Cluster.Event[struct]s:
+
+==== Optional Step: Listen for Cluster Events
+
+Cluster events are published whenever the membership of the cluster changes, e.g. when new nodes join or leave the cluster.
+Many of built-in actors operate by listening for these events and acting upon them, for example by moving workloads off leaving
+members of the cluster etc.
+
+For the purposes of the quick start example, we are only interested in learning to subscribe to these events, which we can do like this:
+
+[source]
+----
+include::{dir_sact_samples}/SampleCluster/main.swift[tag=cluster-sample-event-listener]
+----
+<1> <<spawning_behaviors, Spawn>> an actor that will receive and log cluster events
+<2> Subscribe the actor to the `cluster.events` stream
+
+To learn more about working effectively with cluster events, refer to <<cluster_events>>.
+
+==== Step 2: Start and Discover Actors Across Nodes
+
+Finally, we should actually start some actors, and also have them discover their counterparts on the other members of the cluster.
+In order to do this, we'll use the built-in <<receptionist, Receptionist>> actor, which handles in a type-safe and efficient way,
+discovery of actors across clustered members.
+
+The receptionist only knows about actors which explicitly register with it. We can do this in a number of ways.
+A good pattern to apply here, is to let the actor _itself_ register with the receptionist when it starts, this can be done
+in a `.setup{}` api:Behavior[struct], or `preStart` callback of an <<actorable, Actorable>>. However, for our example to keep things short
+we'll use the method of the-one-spawning performing the registration. We'll register it in a specific `"chat-room"`, and later
+spawn another "greeter" actor (though only on one of the nodes), which will act as the "master" of the chat room, being able to
+send everyone announcements and more complex things in following steps of this quickstart.
+
+[source]
+----
+include::{dir_sact_samples}/SampleCluster/main.swift[tag=cluster-sample-actors-discover-and-chat]
+----
+<1> Once the `chatter` is spawned, we register it with our receptionist, making it available for discovery by other cluster members
+<2> For brevity in the quickstart, we pick a simple way to spawn the `greeter` only once: only on the node which has the default port.
+    In reality, we would use the <<actor_singleton>> mechanism, or check membership for being the leader. We will cover these patterns shortly.
+<3> We spawn the `greeter` and `receptionist.subscribe` to the key under which our `chatters` are being registered, it will receive their api:Receptionist.Listing[enum] whenever it changes
+<4> Whenever we receive a new listing, we tell all actors about the current number of chatters in this room.
+
+To continue learning in depth about using the api:Receptionist[enum], continue to <<receptionist_cluster>> in the context of clustering,
+and to to: <<receptionist>> for a detailed discussion of it's API and use-cases.
+
+==== Extra Step: "Let them chat!", using Serialized ChatMessages
+
+#TODO: the last step to make this example fun would be to introduce `ChatMessage` rather than the string, register it with serialization and this way learn about that,
+the server can connect random chatters and they can talk to each other, completing our fun little example.#
+
+#TODO: here we'd cover <<serialization>>#
+
+[[cluster_member_lifecycle]]
+=== Cluster Member Lifecycle
+
+Multiple nodes can join each other to form a cluster. Nodes within a cluster are referred to as members,
+and follow a specific lifecycle along their api:Cluster.MemberStatus[struct] as outlined on the diagram below:
+
+image::cluster_lifecycle.svg[Cluster Member Lifecycle]
+
+Each api:Cluster.Member[struct] initially starts in `.joining` state and may proceed through next phases of its lifecycle
+it it is able to. Note that a member's status can never "go back," i.e. the it may only move forward across the `.joining
+[ -> .leaving] -> .up -> .down -> .removed` lifecycle. Refer to api:Cluster.MemberStatus[struct] for detailed discussion of the statuses.
+
+In addition to the specific statuses carrying meaning with them, there are a few additional things to dive into in the above diagram:
+
+*Leader actions*: Some changes may only be decided upon by the cluster's <<leadership, leader>>, such as moving a node from `.joining` to
+`.up`, or completely _removing_  a node from the observable membership list; as those status changes are important to
+be made consistently (i.e. when the cluster membership views are "converged", meaning that all cluster members have the same
+"view" of the membership).
+
+*Reachability*: While outside of the progress along the lifecycle timeline of a member, another important part of membership information
+is _reachability_. A built-in distributed failure detection mechanism allows the cluster to determine if a node is unresponsive,
+and potentially should become down. These suspicions are surfaced from the failure detector as api:Cluster.ReachabilityChange[struct]s,
+and may be used by end users or an automatic api:DowningStrategy[protocol] to decide when to mark a node as `.down`.
+
+*Failure Detector*: The cluster provides a built-in distributed failure detector implementation, based on the SWIM membership protocol.
+It is responsible for issuing reachability events, which then may be acted upon in order to down and terminate nodes of a cluster.
+Refer to <<swim>> for an in-depth discussion of this failure detection mechanism.
+
+*Downing Strategy*: The final piece of the automatic lifecycle management chain are implementations of api:DowningStrategy[protocol].
+Refer to <<downing_strategies>> for a detailed discussion.
+
+*Leaders*: Some of the member status moves, may only be performed by the cluster's leader. A <<leadership, leader>> member
+is a node which is elected among a sub-set of the membership, it then is tasked to perform leader duties until another leader is elected.
+See <<leadership>> to learn more about how leaders are elected and what guarantees are associated with them. Note that there
+are multiple ways of electing leaders, and you may adjust it depending on your system's requirements. Or run more instances
+of elections independently, to decide leaders for various tasks independently.
+
+*Cluster.MemberStatus*: Each cluster member is associated with a specific status at any given time. This information is
+spread throughout the cluster via a gossip protocol. Refer to api:Cluster.MemberStatus[struct] for a detailed description of each state.
+Generally, a node should be considered "ready" to perform tasks when it is marked as `.up`, and not ready, or incapable of doing so
+in any other status.
+
+=== Bootstrapping Clusters
+
+Bootstrapping new clusters involves notifying each node about _at least one_ other node that it either should _form a cluster with_
+or _join an existing cluster_. Note that it is _not_ necessary to provide all nodes of a cluster to the join process.
+As long as a node is able to join at least _one_ member of an existing cluster, it becomes part of that cluster, and will
+receive information about all other members of it via gossip, that all member nodes exchange periodically.
+
+WARNING: Caution should be taken for initiating new clusters -- when starting new clusters, always ensure that
+all nodes of a cluster eventually will communicate. E.g. by using a majority (or all) of the nodes, or a "stable node"
+as the initial contact point. +
+ +
+Otherwise the following troublesome situation may happen: Given 4 nodes: A, B, C, D, and by only telling: A about [A,B],
+B about [A,B], C about [C,D], D about [C,D]. Given such bootstrapping, there would be two clusters formed (!). While this
+seems trivial to spot on paper, it happens sometimes if no caution is taken during configuring of the initial contacts / discovery. +
+ +
+*Solution*: Always ensure that when deploying many nodes, attempts are made to join at least `N/2+1` nodes by any joining node,
+this way it is ensured that there is at least one node "overlap" and the two clusters situation would not happen. Alternatively (and simpler),
+it is also possible to simply issue `join()` towards all nodes discovered via service discovery.
 
 ==== Joining nodes (manually)
 
-In order for actors to be able to communicate across nodes, the nodes they reside one have to form a cluster (with exceptions,
-#TODO: ServiceRefs are the exception#).
+In order for actors to be able to communicate across nodes, the nodes have to form a cluster (except alternative transports, which we do not discuss in this chapter).
 
-Forming a cluster is fairly simple, and consists of a few lines of configuration and joining nodes to appropriate addresses:
+Joining nodes is fairly simple and can be performed at any time by by issuing a `system.cluster.join` command:
 
 [source]
 ----
@@ -40,75 +154,118 @@ include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=joining]
 <2> Join the other node, forming a 2 node cluster. The address could be discovered using some mechanism, or known up front and configured into the app. #TODO to be replaced with discovery mechanism / seed nodes#
 
 Once the nodes have established connections, you are ready to transparently send messages across the network.
+Joining nodes also means that they will participate in health checking using the configured failure detector.
 
-#TODO serialization first though...? or we first show that we have some built in types and THEN show serialization.#
+Some additional things to consider about joining nodes:
 
-#TODO proper intro and diagram of how nodes join#
+- *Node replacements*: it is possible for a node to be crash, be restarted (and thus share the _same exact_ host and port as its previous incarnation),
+and attempt connecting to the cluster in which its previous "incarnation" was already known. This results in the previous incarnation being forcefully
+and immediately marked `.down` and being _replaced_ by the new node. The assumption here is that since the node shares the exact same address, however
+it has a different internal unique identifier, the old one must have crashed, but we have not detected that crash yet. By allowing this node to join
+as a _replacement_ we speed up recovery of the cluster, by not having to wait for the previous node to be detected as failed and removed slowly first.
 
-NOTE: In some situations it may happen that a node crashes and comes up again using the same address (system name, host and port)
-      and attempts to re-connect to an existing cluster. While the cluster would eventually detect the "previous incarnation"
-      of this node as crashed, the restarted one _may_ be faster to attempt a join than the failure detector triggering the downing
-      of the old node.
+[[node_discovery]]
+[[service_discovery]]
+==== Seed node discovery using Service Discovery
 
-      In these situations, the "new incarnation" causes the immediate downing and removal of the previous incarnation
-      and "takes its place", however from the clusters perspective, it is not any special node -- it is treated the same way as
-      any other freshly joined node (and has to go through the joining steps as any other node would).
+By using Swift Service Discovery we are able to utilize a multitude of existing service discovery implementations to
+discover nodes which we should join. Popular techniques include using DNS SRV records to list all nodes of a service,
+or using external cluster management APIs such as Kubernetes or AWS APIs to discover "neighbors" that this a new node
+should form a cluster with.
 
-==== Node discovery (automatic)
+#TODO: Service Discovery is something we're working on right now, but will shortly offer: k8s, dns and file based ones.#
 
-#TODO: discovery is not implemented yet;#
+==== Moving nodes from .joining to .up
 
-It will be a pluggable mechanism that is queried by the system and should return a list of nodes that should be attempted
-to join to by the current node. This allows to automatically join existing clusters etc. Assisted rollouts are also a feature
-that we are planning here - e.g. for green/blue deployments and similar, and allowing coordination of these with a node
-orchestrator such as k8s or similar.
+It is worth highlighting _when_ nodes get moved from their `.joining` states to `.up`.
 
-=== Receptionist
+As discussed in <<cluster_member_lifecycle>>, moving members from joining to up status is a _leader action_, and thus
+the cluster will only be able to perform those moves when a leader is selected. Thankfully, <<leadership, leader election>>
+is automated and able to take care of this easily.
 
-Since in order to communicate with actors, one has to obtain well-typed `ActorRef<Message>` instances, it is not possible
-to do so safely without consulting some form of "registry." Such registry is implemented in form of the `Receptionist`.
-In cluster mode, the receptionists periodically sync their state. The interval of this sync can be configured though
-the `receptionistSyncInterval` setting on api:ClusterSettings[struct]. See <<actors.adoc#receptionist,Receptionist>>
-for more information.
+By default automatic leader election will select a leader once the cluster has _at least 2 nodes_, and thus only then
+will nodes be moved to `.up` state. In other words, when running a node with clustering enabled, it will assume there
+will be at least one other node joining, and thus not become "fully ready" (`.up`) until that node has joined.
 
-#TODO: maybe after all we would call it 'registry', needs consideration; Receptionist is a rather known pattern for actors,
-and wording is useful in the way that it keeps us in thinking about interactions with entities (as-if people).#
+NOTE: When deploying larger clusters, consider if wetting the leader election's `minNumberOfMembers` to a number
+      closer (or equal) to the expected deployment member count. This allows for _less churn_ if the leader had to _move_
+      once new members are discovered. Refer to the <<leadership>> section for detailed discussion of defaults and trade-offs
+      of the leadership election schemes provided by the cluster. Note that automatic election is configured during system setup
+      using the `settings.cluster.autoLeaderElection` setting.
 
-=== Replicated State Machines ✗
+[[receptionist_cluster]]
+=== Discovering Distributed Actors (Receptionist)
 
-#TODO#
+In order to locate and communicate with actors distributed in a cluster, we need a service discovery mechanism that
+fine tuned for the use cases of type-safe actors. Thankfully, such abstraction exists and is always available in the system,
+it is the api:Receptionist[enum].
 
-=== Failure detection in Clusters
+While we discussed the <<receptionist, Receptionist>> APIs in depth in a <<receptionist, previous section>> already,
+it is worth discussing again in the context of clustered systems.
 
-Failure detection in clusters enables receiving api:Signals/Terminated[enum] signals with regards to watched actors residing on nodes,
-which have entirely crashed.
+The good news is, that there is nothing new to be learnt about the _distributed_ receptionist -- it works and offers
+the exact same capabilities as it does in a local setting. Actors can register with it, and lookup or subscribe
+for specific keys they are interested in. The receptionist takes care of watching and removing any actors that
+have terminated (including on remote nodes) from its listing, and offers updated listings to any of its subscribers.
 
-Sadly, failure detection in distributed systems is always a trade-off between the time to signal a node failure,
-and potential false positives (where a node is detected as failed, however it was only "very slow to respond").
+NOTE: Each node in a system has its own receptionist, take care to always use "your node's" receptionist, and not pass
+references to the receptionist across to other nodes. While it would all still work, thanks to location transparency,
+it is a very bad idea from a performance and simplicity point of view. Always use your local receptionist, by reaching
+for it via: `system.receptionist` or `context.receptionist`.
 
-==== Watching Remote Actors
+==== Some Internals about how it replicates information
 
-Watching remote actors works the same way as it does for local actors -- if the remote actor terminates and was watched,
-the watching actor gets a api:Signals/Terminated[enum] signal and may react to it.
+#TODO maybe?#
 
-Additionally, not only individual actor failures are reported back, but also node failures.
-When a node hosting actors fails, all of the hosted actors are assumed to have terminated (upon the node's move to `Down`
-lifecycle state), upon this change local watchers receive a api:Signals/Terminated[enum] signal about actors that they have watched on
-given remote node. The following simplified diagram explains this mechanism:
+[[cluster_events]]
+=== Working with Cluster Events
 
-[.center]
-image::remote_watch_terminated.png[Remote Watch, when remote node crashes]
+Cluster events are the way application actors are able to stay informed about the state of the cluster, and potentially
+act on those events, for example my not sending more work to an `.unreachable` node, or migrating workloads away from
+a member which has declared api:Cluster.MemberStatus[struct]
 
-[unstyled]
-- ❶ The `A` actor watches a remote actor `R` on another node,
-- ❷ The node `B` crashes abruptly, without performing a graceful leave,
-- ❸ The failure detector on node `A` eventually realizes what happened,
-- ❹ And triggers a `Terminated()` signal for all actors on the remote (now `Down`) node, notifying our local actor `A` which had watched `R` before.
+[[downing_strategies]]
+=== Downing Strategies
 
-==== Custom Failure Detectors
+Downing strategies are an automatic way to determine if a node should be marked as `.down` and thus eventually removed from the cluster.
+Marking nodes down is important, as only under this state certain types of workloads that those members were handling will be moved to other
+members.
 
-#TODO: we will likely allow plugging your own failure detector, while we'll implement a gossip based one by default,
-some users may have different needs for this or want to rely on other systems to check the health of nodes.#
+Currently only two trivial (automatic) downing strategies are provided:
+
+- `.none` - which does absolutely nothing,
+- `.timeout` - which listens for `.unreachable` cluster events, and after an additional grace period, escalates those to `.down` status of such member.
+
+==== Not Marking Members `.down` automatically
+
+The `.none` strategy is useful when one wants to take manual control over deploying/removing nodes in a cluster.
+
+It is also useful when one wants to implement their own decision making about when a member shall be removed from the cluster.
+For example, one might implement down decisions based on some external service discovery service -- if _and only if_ a
+node is not present in that service's listing, it should be assumed down, regardless if it _appears_ to be unreachable
+based on our failure detector's measurements. This technique is useful if one has a reliable source of truth regarding node
+health, however we still recommend making use of failure detectors in this case, as overall "health" of a node may not necessarily
+indicate if the connection between two given nodes remains valid.
+
+#TODO: also document if one wanted to disable failure detectors, would one do that#
+
+==== Marking Members `.down` upon `.unreachable`
+
+The `.timeout` / api:TimeoutBasedDowningStrategy[class] strategy is a good default for simple systems, which are run in
+a managed environment (e.g. Kubernetes), where nodes may get killed and replaced by a cluster orchestrator.
+
+The timeout strategy serves only as an additional timeout between a node being seen as `.unreachable` detected as such by
+a <<swim, Failure Detector>>. In simple deployments or "playing around" scenarios, this is the recommended strategy, as
+it works well enough for simple systems, especially since it _only_ acts on reachability events, which are generated by
+the fairly confident <<swim>> failure detector.
+
+WARNING: Beware of so called "split brain" (cluster partition) scenarios when using this method,
+         as it may potentially lead to declaring a a healthy member as `.down`, however due to the
+         cluster network partition, this decision never reaches the that node, and as such it may continue to keep running
+         (and potentially even thinking that it is the "only survivor"). #TODO: we will provide strategies to deal with
+         these situations in the future, but you should also look at external methods of killing nodes in such split brain scenarios#.
+
+#TODO: we will continue to invest in more advanced, e.g. quorum observations based downing methods etc#
 
 === Secure Communication using TLS
 
@@ -134,15 +291,168 @@ which has to be called with the passphrase encoded as `[UInt8]`.
 include::{dir_sact_doc_tests}/ClusteringDocExamples.swift[tag=config_tls_passphrase]
 ----
 
-=== Gossip
+[[leadership]]
+=== Leadership and Leader Elections
 
-Gossip is a simple and _resilient_ technique for spreading information across a cluster.
+Leadership and leader nodes are a concept within Actor Clusters in which a specific node is taking on the role of a leader,
+for a certain period of time.
 
-Distributed Actors use gossip to inform each other's nodes about the `Membership` as well as for failure detection.
+NOTE: The term leader DOES NOT imply that it is globally guaranteed to be unique in a cluster. In normal operations it
+      will be, however under cluster partitions each partition MAY have its own leader.
 
-#RANDOM NOTES# Actors offer two kinds of gossip:
+WARNING: If you require strong leadership, i.e. that a leader must be chosen only with the consensus of all (or quorum)
+         of all other nodes -- please reach out as this is a feature waiting to be implemented.
 
-- Convergence gossip -- implying that there is a moment in time where "all nodes know about the state being gossiped"
-- Perpetual -- a gossip which keeps going indefinitely, which is useful for failure detection or similar.
+==== `LowestReachableMember`
+
+The default api:Leadership.LowestReachableMember[struct] leader election strategy is fairly simple, however it has the
+benefit is being entirely predictable and coordination free (!). In other words, without coordinating yet given the same
+membership view, all members will arrive at the same decision about which member is to be the leader.
+
+NOTE: This leader election strategy for the cluster leader due to the properties of the leader tasks, and membership.
+It likely is not the kind of leader election one would want to use to perform strongly consistent actions within a cluster,
+we suggest using the <<actor_singleton>> or get in touch so we can implement a different election strategy for the use case.
+
+The coordination free part is very useful, as there is no need for additional consensus rounds when a n existing leader dies,
+and all members need to decide on its replacement. Without coordination, yet thanks to being able to act on a resiliently
+eventually consistent replicated api:Cluster.Membership[struct].
+
+For details regarding the implementation, see the API docs for this type: api:Leadership.LowestReachableMember[struct].
+
+==== Consensus based leadership elections
+
+#TODO: Likely useful as end-user tool, we'd like to offer it if someone has an use case for strong leadership in their system.#
+
+=== Failure detection in Clusters
+
+Failure detection in clusters enables receiving api:Signals.Terminated[enum] signals with regards to watched actors residing on nodes,
+which have entirely crashed.
+
+Sadly, failure detection in distributed systems is always a trade-off between the time to signal a node failure,
+and potential false positives (where a node is detected as failed, however it was only "very slow to respond").
+
+==== Watching Remote Actors
+
+Watching remote actors works the same way as it does for local actors -- if the remote actor terminates and was watched,
+the watching actor gets a api:Signals.Terminated[enum] signal and may react to it.
+
+Additionally, not only individual actor failures are reported back, but also node failures.
+When a node hosting actors fails, all of the hosted actors are assumed to have terminated (upon the node's move to `Down`
+lifecycle state), upon this change local watchers receive a api:Signals.Terminated[enum] signal about actors that they have watched on
+given remote node. The following simplified diagram explains this mechanism:
+
+[.center]
+image::remote_watch_terminated.png[Remote Watch, when remote node crashes]
+
+[unstyled]
+- ❶ The `A` actor watches a remote actor `R` on another node,
+- ❷ The node `B` crashes abruptly, without performing a graceful leave,
+- ❸ The failure detector on node `A` eventually realizes what happened,
+- ❹ And triggers a `Terminated()` signal for all actors on the remote (now `Down`) node, notifying our local actor `A` which had watched `R` before.
 
 
+// ==== SWIM -----------------------------------------------------------------------------------------------------------
+
+[[swim]]
+=== Distributed Failure Detector (SWIM-ish)
+
+Swift Distributed Actors implements a variant of the https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM Membership Protocol]
+with https://arxiv.org/abs/1707.00788[Lifeguard extensions] for its low-level membership and failure detection.
+
+==== SWIM Terminology
+
+While the SWIM paper uses words consistently within its own context, we find that some of the terminology used
+can be confusing in the context of actors and presence of other higher level membership (such as the cluster provides).
+
+We therefore apply the following name mappings:
+
+- the paper's `confirm` message is represented by `SWIM.MemberStatus.dead`
+
+==== SWIM Modifications
+
+- Introduction of an `.unreachable` status, that is ordered after `.suspect` and before `.dead`
+- this is because the decision to move an unreachable node to `.dead` status is a large and important decision,
+in which user code may want to participate, e.g. by attempting "shoot the other node in the head" or other patterns,
+before triggering the `.dead` status, after which no further communication with given node will ever be possible anymore.
+
+- Preservation of `.unreachable` information
+- the original paper does not keep in memory information about dead nodes, it only gossips the information that a member
+is now dead, but does not keep tombstones for later reference
+
+- Layered membership mechanisms
+- Distributed Actors use SWIM as their primary distributed failure detector, however by itself, SWIM does not provide some
+stronger guarantees about "do all other nodes know that I'm alive" which can be useful to build more predictable systems.
+- Such higher level membership is provided by the Cluster, and built on top of the SWIM provided member liveness.
+- Decoupling the `Membership` from SWIM itself, also allows Distributed Actors to obtain their membership information by other means,
+such as static configuration, or external service discovery services, completely relying on those systems to provide the liveness checks.
+
+==== SWIM Membership
+
+SWIM provides a weakly consistent view on the process group membership. Membership in this context
+means that we have some knowledge about the node, that was acquired by either communicating with
+the node directly, for example when initially connecting to the cluster, or because some other
+node shared information about it with us. A node can be either `alive`, `suspect`, or `dead`.
+To avoid moving a node back into `alive` or `suspect` state because of older statuses that
+get replicated, we need to be able put them into temporal order. For this reason each node
+has an incarnation number assigned to it. This number is monotonically increasing and can only
+be incremented by the respective node itself and only if it is suspected by another node in its
+current incarnation. The ordering of statuses is as follows:
+
+[[status_ordering]]
+`alive(N) < suspect(N) < alive(N+1) < suspect(N+1) < dead`
+
+A node that has been declared dead can never return from that status and has to be restarted
+to join the cluster as a new node. The information about dead nodes will be kept for a configurable
+amount of time, after which it will be removed to prevent the state on each node from growing
+too big. The timeout value should be chosen to be big enough to prevent faulty nodes from re-joining
+the cluster and is usually in the order of a few days.
+
+image::swim_lifecycle.svg[SWIM MemberStatus Lifecycle]
+
+
+==== SWIM Failure detection
+
+Each node will periodically try to ping a random peerfootnote to determine whether that node
+is still reachable. If the pinged node is alive and well, it will respond with an
+acknowledgement message and everything stays the same. If the pinged node does not
+respond within the configured timeout, the initiating node will request a configured
+number of other nodes to try and ping that node, to see if it is simply a point-to-point
+communication issue, or if the node is actually unreachable. If any of the requested nodes
+is able to reach the pinged node, it will forward the acknowledgement to the requesting
+node and the node will remain in the alive status. If none of the nodes can reach the pinged node,
+the initiating node will mark the pinged node as `suspect`. The diagram below visualizes
+this process.
+
+##TODO: Make requested nodes reply with NAck as proposed in Lifeguard ##
+
+image::SWIM/ping_pingreq_cycle.png[SWIM Ping Cycle]
+
+A node that is suspected to be unreachable will not immediately be marked as `dead` to reduce the
+number of false positives that can be caused by temporary high load on that node, which can
+cause delays in message processing, or partial network outages, where a number of nodes have
+no direct connection to the pinged node. A node will be marked dead, if it can't be reached
+within a configurable number of ping-cycles, which we call protocol periods. If a node can
+be reached before the maximum number of protocol periods are reached, it will be marked as
+`alive` again. Nodes will send the latest known status of a node together with a ping message,
+to inform the node about a possible suspicion, so that it can react and increment its incarnation
+number if necessary.
+
+==== SWIM Gossip
+
+SWIM uses an infection style gossip mechanism to replicate state across the cluster.
+The gossip payload contains information about other node's observed status, and will be
+disseminated throughout the cluster by piggybacking onto periodic health check messages,
+i.e. whenever a node is sending a ping, a ping request, or is responding with an
+acknowledgement, it will include the latest gossip with that message as well. When a
+node receives gossip, it has to apply the statuses to its local state according to the
+<<status_ordering,ordering stated above>>. If a node receives gossip about itself, it
+has to react accordingly. If it is suspected by another node in its current incarnation,
+it has to increment its incarnation in response. If it has been marked as dead, it has
+to shut itself down.
+
+==== SWIM Optimizations
+
+#TODO: Document the optimizations we use and why#
+
+See also https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3At%3Acluster%3Aswim for
+open tickets regarding improvements and adding other known extensions to the SWIM implementation. Help very welcome!

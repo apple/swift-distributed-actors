@@ -90,28 +90,6 @@ public struct LeaderElectionResult: AsyncResult {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Cluster.LeadershipChange
-
-extension Cluster {
-    /// Emitted when a change in leader is decided.
-    public struct LeadershipChange: Equatable {
-        // let role: Role if this leader was of a specific role, carry the info here? same for DC?
-        public let oldLeader: Cluster.Member?
-        public let newLeader: Cluster.Member?
-
-        /// A change is only returned when `oldLeader` and `newLeader` are different.
-        /// In order to avoid issuing changes which would be no-ops, the initializer fails if they are equal.
-        public init?(oldLeader: Cluster.Member?, newLeader: Cluster.Member?) {
-            guard oldLeader != newLeader else {
-                return nil
-            }
-            self.oldLeader = oldLeader
-            self.newLeader = newLeader
-        }
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Leadership
 
 /// Leadership encapsulates various `LeaderElection` strategies.

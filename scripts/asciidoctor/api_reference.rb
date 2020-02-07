@@ -34,6 +34,7 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
     # we trim <T> from links, since they don't feature in the URLs
     type_name.gsub!(/<.*>/, "")
     type_name.gsub!(/&lt;.*&gt;/, "")
+    type_path = type_name.gsub(/\./, "/")
 
     tpe = if (tpe = attrs['tpe']) == "enum"
       "Enums"
@@ -48,10 +49,6 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
     else
       attrs['tpe']
     end
-
-    type_path = if (attrs['tpe'] == "enum")
-        type_name.gsub(/\./, "/")
-    else
 
 
     link = if (api_module = attrs['module'])

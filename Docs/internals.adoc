@@ -13,6 +13,17 @@ image::internals/faultHandling_mailbox_poc.png[]
 
 ==== Suspension / future plans
 
+=== Cluster
+
+==== Gossip
+
+Membership gossip is implemented using "seen tables" and api:ConvergentGossip[class].
+
+Membership is known to be "converged" if all members have at least seen the same - or later - version of a local membership.
+This is tremendously important e.g. for removing nodes, which may ONLY happen when a member was previously seen down.
+Thanks to issuing the `.down -> .removed` only under convergence, we can guarantee that all members have definitely
+seen the now removed node as `.down` before, thus the removal will be interpreted correctly as such, and not as a new node
+that the other side knows about, but we did not.
 
 === Wire Protocol
 
@@ -171,7 +182,7 @@ also registers to be notified about termination of given address.
 Upon determining a remote node is terminated, the local `FailureDetector` signals all local actors that have been watching
 at least one actor on given (now terminated) address, by sending an `.addressTerminated` system message to them.
 
-From there on, each actor automatically handles this system message, by triggering a api:Signals/Terminated[enum] signal,
+From there on, each actor automatically handles this system message, by triggering a api:Signals.Terminated[enum] signal,
 for each of the actors it has been watching on this address. This way the sending of terminated signal is as parallel as many there have been watchers.
 And each actor utilizes as much time to process its _own_ watched actors as it has watched, so actors which did not watch any remote actors
 are not awoken to perform any checks.

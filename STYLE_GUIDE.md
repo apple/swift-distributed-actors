@@ -92,13 +92,12 @@ This is not fleshed out, we should chat about it.
     since when looking at the type we immediately then know that it can be used as "data"
 - for other conformances, try to make them in separate `extensions`
 
-## Recommended reads
+## Diagrams
 
-The Swift Distributed Actors team recommends the following reads to "get it",
-and understand where Swift Distributed Actors takes its core concepts from.
-
-- *Actor Model of Computation: Scalable Robust Information Systems* – Carl Hewitt
- https://arxiv.org/abs/1008.1459
-- TODO add links
-
-
+- Use [omnigraffle](https://www.omnigroup.com/omnigraffle) for all diagrams in the reference documentation 
+  - it is a commercial product so we understand not everyone may have access to it, if that is the case for you, but you'd like to help with diagrams, please get in touch and we'll collaborate to make the required diagram edits you'd suggest.
+- embed images in docs using the `.svg` format, to achieve best quality and scaling of the diagrams
+- do export `.svg` and `.png` versions of diagrams when editing them, png are easier for offline ad hoc viewing which may sometimes prove useful.  
+- we occasionally use ad-hoc ASCII diagrams or `plantuml`
+  - try to pick the right tool for the right diagram
+  - diagrams and tables in API documentation are _encouraged_

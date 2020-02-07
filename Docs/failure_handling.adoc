@@ -1,10 +1,12 @@
 
 == Failure Handling
 
-> Failures in distributed systems are common place, and one has to design such systems to be resilient to failures.
-> Thankfully actors make this task much simpler, as all kinds of failures are unified into termination events, to which one can react to.
+> Let it Crash!
 
-=== Let it crash!
+Failures in distributed systems are common place, and one has to design such systems to be resilient to failures.
+Thankfully actors make this task much simpler, as all kinds of failures are unified into termination events, to which one can react to.
+
+=== Letting it Crash!
 
 The simplest way to explain failure handling with Actors is the _"Let it Crash!"_ motto. It means that rather than trying to
 continue running in a (potentially) faulty state, the actor that ended up in some "wrong" state is meant to crash,
@@ -304,7 +306,7 @@ and any actor may `context.watch()` any other actor it has a reference to. Death
 to take any part in the watched actors lifecycle, other than being notified when the watched actor has terminated (either
 by stopping gracefully, or crashing).
 
-Once an actor is watched, its termination will result in the watching actor receiving a api:Signals/Terminated[enum]
+Once an actor is watched, its termination will result in the watching actor receiving a api:Signals.Terminated[enum]
 signal, which may be handled using `Behavior.receiveSignal` or `Behavior.receiveSpecificSignal` behaviors.
 
 TIP: Any actor can `watch` any other actor, if it has obtained its api:ActorRef<Message>[struct].
@@ -312,7 +314,7 @@ TIP: Any actor can `watch` any other actor, if it has obtained its api:ActorRef<
 ==== Death Pact
 
 Upon _watching_ another actor, the watcher enters a so-called "death pact" with the watchee. In other words, if the watchee
-terminates, the watcher will receive a api:Signals/Terminated[enum] signal, and if that signal is _not handled_ the watcher
+terminates, the watcher will receive a api:Signals.Terminated[enum] signal, and if that signal is _not handled_ the watcher
 will fail itself with a api:DeathPactError[enum].
 
 This pattern is tremendously useful to bind lifecycles of multiple actors to one another. For example, if a `player` actor
@@ -345,7 +347,7 @@ include::{dir_sact_doc_tests}/DeathWatchDocExamples.swift[tag=handling_terminati
 ----
 
 TIP: Use death pacts to bind lifecycles of various actors to one another. +
-     A death pact error is thrown whenever an api:Signals/Terminated[enum] is received but left `.unhandled`.
+     A death pact error is thrown whenever an api:Signals.Terminated[enum] is received but left `.unhandled`.
 
 ==== Death Watch Guarantees
 
@@ -498,7 +500,7 @@ Whenever a _fault_ (such as `fatalError`, a division by zero, or a more serious 
 happens in a servant process, it shall be immediately terminated (with printing a backtrace if configured to do so which it is by default).
 
 All actors hosted in this servant process are terminated, and if any other actor _watched_ any of them on another process/node,
-they will immediately be notified with an api:Signals/Terminated[enum] signal. You can read more about terminated messages
+they will immediately be notified with an api:Signals.Terminated[enum] signal. You can read more about terminated messages
 and watch semantics in <<death_watch>>.
 
 ===== Failure scenario c) Fault or .escalation in .master process

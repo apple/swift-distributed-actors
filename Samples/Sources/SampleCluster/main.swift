@@ -12,35 +12,86 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch
+// tag::cluster-sample[]
 import DistributedActors
+// end::cluster-sample[]
 
-var args = CommandLine.arguments
-args.removeFirst()
+func parseHostPort(_ s: String) -> (String, Int) {
+    let parts = s.split(separator: ":")
+    let host: String
+    let port: Int
+    if parts.count == 1 {
+        host = "127.0.0.1"
+        port = Int(parts.first!)!
+    } else {
+        host = String(parts.first!)
+        port = Int(parts.dropFirst().first!)!
+    }
 
-print("\(args)")
-
-guard args.count >= 1 else {
-    fatalError("no port given")
+    return (host, port)
 }
 
-let system = ActorSystem("System") { settings in
+// tag::cluster-sample[]
+
+let args = CommandLine.arguments
+guard let port = (args.dropFirst().first.flatMap { n in Int(n) }) else {
+    fatalError("no port provided; Example: swift run SampleCluster 8228 [[127.0.0.1:]7337]")
+}
+let joinAddress = args.dropFirst(2).first
+
+let system = ActorSystem("SampleCluster") { settings in
     settings.cluster.enabled = true
-    settings.cluster.bindPort = Int(args[0])!
+    settings.cluster.bindPort = port
+
     settings.cluster.downingStrategy = .timeout(.default)
-    settings.defaultLogLevel = .debug
+
+    // settings.serialization.register... <1>
 }
 
-let ref = try system.spawn("hello", of: Cluster.Event.self, .receive { context, event in 
-    context.log.info("event = \(event)")
+if let joinAddress = joinAddress {
+    let (host, port) = parseHostPort(joinAddress)
+    system.cluster.join(host: host, port: port) // <2>
+}
+
+// system.spawn <3>
+
+// end::cluster-sample[]
+
+// tag::cluster-sample-event-listener[]
+let eventsListener = try system.spawn("eventsListener", of: Cluster.Event.self, .receive { context, event in
+    context.log.info("Cluster Event: \(event)")
+    return .same
+}) // <1>
+
+system.cluster.events.subscribe(eventsListener) // <2>
+// end::cluster-sample-event-listener[]
+
+// TODO: making this codable and making Chat Routlette example?
+//enum ChatMessage {
+//    case announcement(String)
+//    case text(String, from: ActorRef<ChatMessage>)
+//}
+// tag::cluster-sample-actors-discover-and-chat[]
+let chatter: ActorRef<String> = try system.spawn("chatter", .receive { context, text in
+    context.log.info("Received: \(text)")
     return .same
 })
-system.cluster.events.subscribe(ref)
+let chatRoomId = "chat-room"
+system.receptionist.register(chatter, key: chatRoomId) // <1>
 
-if args.count >= 3 {
-    let host = args[1]
-    let port = Int(args[2])!
-    system.cluster.join(node: Node(systemName: "System", host: host, port: port))
+if system.cluster.node.port == 7337 { // <2>
+    let greeter = try system.spawn("greeter", of: Receptionist.Listing<String>.self, .setup { context in // <3>
+        context.system.receptionist.subscribe(key: Receptionist.RegistrationKey(String.self, id: chatRoomId), subscriber: context.myself)
+
+        return .receiveMessage { chattersListing in // <4>
+            for chatter in chattersListing.refs {
+                chatter.tell("Welcome to [chat-room]! chatters online: \(chattersListing.refs.count)")
+            }
+            return .same
+        }
+    })
 }
+// end::cluster-sample-actors-discover-and-chat[]
 
-Thread.sleep(.minutes(10))
+system.park()
+Thread.sleep(.seconds(60)) // TODO: make park halt execution here
