@@ -401,7 +401,7 @@ the following situation:
 [[receptionist]]
 === Locating Actors using the Receptionist
 
-The receptionist is a system actor that allows users to register actors under an api:Receptionist[enum,alias='Receptionist.RegistrationKey'] so that
+The receptionist is a system actor that allows users to register actors under a api:Receptionist[enum,alias='Receptionist.RegistrationKey'] so that
 it can be looked up in other parts of the system. Usually actor references should be passed around to allow actors to communicate,
 but there are cases where this is not convenient or possible. One such example is communication in a cluster. To share a reference
 with another node in the cluster, we have to send that reference to it, but that is only possible, if we already have a reference

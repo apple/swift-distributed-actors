@@ -3,7 +3,7 @@
 
 > Let it Crash!
 
-Failures in distributed systems are common place, and one has to design such systems to be resilient to failures.
+Failures in distributed systems are common, and one has to design such systems to be resilient to failures.
 Thankfully actors make this task much simpler, as all kinds of failures are unified into termination events, to which one can react to.
 
 === Letting it Crash!
