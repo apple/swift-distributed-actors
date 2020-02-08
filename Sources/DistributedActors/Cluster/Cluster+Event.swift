@@ -18,7 +18,7 @@
 extension Cluster {
     /// Represents cluster events, most notably regarding membership and reachability of other members of the cluster.
     ///
-    /// Inspect them directly, or apply to a `Membership` copy in order to be able to react to membership state of the cluster.
+    /// Inspect them directly, or `apply` to a `Membership` copy in order to be able to react to membership state of the cluster.
     public enum Event: Equatable {
         case snapshot(Membership)
         case membershipChange(MembershipChange)

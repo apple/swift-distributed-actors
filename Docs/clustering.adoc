@@ -49,10 +49,10 @@ To learn more about working effectively with cluster events, refer to <<cluster_
 ==== Step 2: Start and Discover Actors Across Nodes
 
 Finally, we should actually start some actors, and also have them discover their counterparts running on other members of the cluster.
-To do this, we'll use the built-in <<receptionist, Receptionist>> actor, which handles in a type-safe and efficient way,
-discovery of actors across clustered members.
+To do this, we'll use the built-in <<receptionist, Receptionist>> actor, which handles the discovery of actors across clustered
+members in a type-safe and efficient way.
 
-The receptionist only knows about actors explicitly registered with it. We can do this in a number of ways.
+The receptionist only knows about actors explicitly register with it. We can do this in a number of ways.
 A good pattern to apply here is to let the actor _itself_ register with the receptionist when it starts, which can be done
 in a `.setup{}` api:Behavior[struct], or `preStart` callback of an <<actorable, Actorable>>. However, for our example to keep things short
 we'll use the method of the spawner performing the registration. We'll register it in a specific `"chat-room"`, and later
@@ -315,7 +315,7 @@ Communication between nodes can be secured with TLS by adding the necessary conf
 include::{dir_sact_doc_tests}/ClusteringDocExamples.swift[tag=config_tls]
 ----
 <1> TLSConfiguration is contained in the NIOSSL module
-<2> We need to provide a path the a certificate chain
+<2> We need to provide path to the certificate chain
 <3> And private key
 <4> Certificate verification is optional and can be set to `.none` for no verification
 <5> When using self signed certificates, set the trust to a certificate chain containing the certificates of all nodes that this node will be communicating with

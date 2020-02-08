@@ -49,6 +49,7 @@ class ClusterDocExamples: XCTestCase {
 
             context.system.cluster.events.subscribe(subRef) // <4>
             // end::subscribe-events-apply-general[]
+            return .same
         })
     }
 }
