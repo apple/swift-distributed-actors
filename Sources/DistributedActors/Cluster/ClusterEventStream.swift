@@ -19,7 +19,7 @@ import Logging
 ///
 /// This ensures that every subscriber to cluster events never misses any of the membership events, meaning
 /// it is possible for anyone to maintain a local up-to-date copy of `Membership` by applying all these events to that copy.
-enum ClusterEventStream {
+internal enum ClusterEventStream {
     enum Shell {
         static var behavior: Behavior<EventStreamShell.Message<Cluster.Event>> {
             .setup { context in

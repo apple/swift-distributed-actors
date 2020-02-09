@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
 
@@ -26,12 +27,42 @@ public struct ClusterControl {
     /// Read only view of the settings in use by the cluster.
     public let events: EventStream<Cluster.Event>
 
+    /// Offers a snapshot of membership, which may be used to perform ad-hoc tests against the membership.
+    /// Note that this view may be immediately outdated after checking if, if e.g. a membership change is just being processed.
+    ///
+    /// Consider subscribing to `cluster.events` in order to react to membership changes dynamically, and never miss a change.
+    public var membershipSnapshot: Cluster.Membership {
+        self.membershipSnapshotLock.lock()
+        defer { self.membershipSnapshotLock.unlock() }
+        return self._membershipSnapshotHolder.membership
+    }
+
+    internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership) {
+        self.membershipSnapshotLock.lock()
+        defer { self.membershipSnapshotLock.unlock() }
+        self._membershipSnapshotHolder.membership = snapshot
+    }
+
+    private let membershipSnapshotLock: Lock
+    private let _membershipSnapshotHolder: MembershipHolder
+    private class MembershipHolder {
+        var membership: Cluster.Membership
+        init(membership: Cluster.Membership) {
+            self.membership = membership
+        }
+    }
+
     internal let ref: ClusterShell.Ref
 
     init(_ settings: ClusterSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<Cluster.Event>) {
         self.settings = settings
         self.ref = clusterRef
         self.events = eventStream
+
+        let membershipSnapshotLock = Lock()
+        self.membershipSnapshotLock = membershipSnapshotLock
+        self._membershipSnapshotHolder = MembershipHolder(membership: .empty)
+        _ = self._membershipSnapshotHolder.membership.join(settings.uniqueBindNode)
     }
 
     /// The node value representing _this_ node in the cluster.
