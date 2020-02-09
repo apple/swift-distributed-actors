@@ -484,6 +484,8 @@ extension ClusterShell {
 
             if changeDirective.applied {
                 state.latestGossip.incrementOwnerVersion()
+                // update the membership snapshot before publishing change events
+                context.system.cluster.updateMembershipSnapshot(state.membership)
                 // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
                 self.clusterEvents.publish(event)
             } // else no "effective change", thus we do not publish events
