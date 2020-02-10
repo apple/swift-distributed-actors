@@ -52,10 +52,10 @@ Finally, we should actually start some actors, and also have them discover their
 To do this, we'll use the built-in <<receptionist, Receptionist>> actor, which handles in a type-safe and efficient way,
 discovery of actors across clustered members.
 
-The receptionist only knows about actors explicitly register with it. We can do this in a number of ways.
+The receptionist only knows about actors explicitly registered with it. We can do this in a number of ways.
 A good pattern to apply here is to let the actor _itself_ register with the receptionist when it starts, which can be done
 in a `.setup{}` api:Behavior[struct], or `preStart` callback of an <<actorable, Actorable>>. However, for our example to keep things short
-we'll use the method of the-one-spawning performing the registration. We'll register it in a specific `"chat-room"`, and later
+we'll use the method of the spawner performing the registration. We'll register it in a specific `"chat-room"`, and later
 spawn another "greeter" actor (though only on one of the nodes), which will act as the "owner" of the chat room, being able to
 send everyone announcements and more complex things in later steps of this guide.
 
@@ -82,7 +82,7 @@ the server can connect random chatters and they can talk to each other, completi
 [[cluster_member_lifecycle]]
 === Cluster Member Lifecycle
 
-Multiple nodes can join each other to form a cluster. Nodes within a cluster are referred to as members,
+Multiple nodes can join each other to form a cluster. Nodes within a cluster are referred to as members
 and follow a specific lifecycle along their api:Cluster.MemberStatus[struct] as outlined on the diagram below:
 
 image::cluster_lifecycle.svg[Cluster Member Lifecycle]
@@ -111,9 +111,9 @@ Refer to <<swim>> for an in-depth discussion of this failure detection mechanism
 Refer to <<downing_strategies>> for a detailed discussion.
 
 *Leaders*: Some of the member status changes may only be performed by the cluster's leader. A <<leadership, leader>> member
-is a node which is elected among a sub-set of the membership, it then is tasked to perform leader duties until another leader is elected.
+is a node which is elected among a sub-set of the membership. It then is tasked to perform leader duties until another leader is elected.
 See <<leadership>> to learn more about how leaders are elected and what guarantees are associated with them. Note that there
-are multiple ways of electing leaders, and you may adjust it depending on your system's requirements. Or run more instances
+are multiple ways of electing leaders and you may adjust it depending on your system's requirements or run more instances
 of elections independently, to decide leaders for various tasks independently.
 
 *Cluster.MemberStatus*: Each cluster member is associated with a specific status at any given time. This information is
@@ -197,8 +197,8 @@ NOTE: When deploying larger clusters, consider if wetting the leader election's 
 === Discovering Distributed Actors (Receptionist)
 
 In order to locate and communicate with actors distributed in a cluster, we need a service discovery mechanism that
-fine tuned for the use cases of type-safe actors. Thankfully, such abstraction exists and is always available in the system,
-it is the api:Receptionist[enum].
+fine tuned for the use cases of type-safe actors. Thankfully, such abstraction exists and is always available in the system.
+It is the api:Receptionist[enum].
 
 While we discussed the <<receptionist, Receptionist>> APIs in depth in a <<receptionist, previous section>> already,
 it is worth discussing again in the context of clustered systems.
@@ -221,7 +221,7 @@ for it via: `system.receptionist` or `context.receptionist`.
 === Working with Cluster Events
 
 Cluster events are the way application actors are able to stay informed about the state of the cluster, and potentially
-act on those events, for example my not sending more work to an `.unreachable` node, or migrating workloads away from
+act on those events. For example by not sending more work to an `.unreachable` node, or migrating workloads away from
 a member which has declared api:Cluster.MemberStatus[struct]
 
 There are four kinds of api:Cluster.Event[enum]:
@@ -248,7 +248,7 @@ include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=subscribe-events-appl
 <4> Actually subscribe the subReceive (or actor itself if you prefer) to cluster events
 
 Note that while the `apply` method is very convenient, it does not return "effective" changes which sometimes may be useful,
-when wanting to ensure an event triggers a specific action _exactly only once_ e.g. only if a node was specifically "replaced."
+when wanting to ensure an event triggers a specific action _exactly once_ e.g. only if a node was specifically "replaced."
 You can use the more specialized `applyMembershipChange` functions which take specific `...Change` types and return some additional information.
 
 Generally, the pattern around using membership information is based around performing some action on specific
@@ -333,7 +333,7 @@ include::{dir_sact_doc_tests}/ClusteringDocExamples.swift[tag=config_tls_passphr
 [[leadership]]
 === Leadership and Leader Elections
 
-Leadership and leader nodes are a concept within Actor Clusters in which a specific node is taking on the role of a leader,
+Leadership and leader nodes are a concept within actor clusters in which a specific node is taking on the role of a leader,
 for a certain period of time.
 
 NOTE: The term leader DOES NOT imply that it is globally guaranteed to be unique in a cluster. In normal operations it
