@@ -186,7 +186,7 @@ class ActorDocExamples: XCTestCase {
         let key = Receptionist.RegistrationKey(String.self, id: "my-actor") // <1>
 
         let behavior: Behavior<String> = .setup { context in
-            context.system.receptionist.tell(Receptionist.Register(context.myself, key: key)) // <2>
+            context.system.receptionist.register(context.myself, key: key) // <2>
 
             return .receiveMessage { _ in
                 // ...

@@ -34,7 +34,7 @@
 /// If system messages are not able to be delivered over a long period of time and the redelivery buffer is about to
 /// overflow; the system will forcefully and *undeniably* kill the association (connection) with the offending node.
 /// This is because system correctness with regards to deathwatches will no longer be able to be guaranteed with missing
-/// system messages, thus the only safe option is to kill the entire connection and mark the offending node as `down`
+/// system messages, thus the only safe option is to kill the entire connection and mark the offending node as `.down`
 /// in the cluster membership.
 ///
 /// - SeeAlso: `OutboundSystemMessageRedeliverySettings` to configure the `redeliveryBufferLimit`

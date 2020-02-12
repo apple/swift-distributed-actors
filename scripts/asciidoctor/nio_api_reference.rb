@@ -29,6 +29,7 @@ class NIOApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
     # we trim <T> from links, since they don't feature in the URLs
     type_name.gsub!(/<.*>/, "")
     type_name.gsub!(/&lt;.*&gt;/, "")
+    type_path = type_name.gsub(/\./, "/")
 
     tpe = if (tpe = attrs['tpe']) == "enum"
       "Enums"
@@ -44,7 +45,7 @@ class NIOApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
       attrs['tpe']
     end
 
-    link = %(https://apple.github.io/swift-nio/docs/current/NIO/#{tpe}/#{type_name}.html)
+    link = %(https://apple.github.io/swift-nio/docs/current/NIO/#{tpe}/#{type_path}.html)
 
     # expected_at = File.join(File.dirname(__FILE__), '../../', link)
     # puts "NOT FOUND: `api:#{target}[#{attrs}]` links to::  #{expected_at} which does not exist. Parent: #{parent}" unless File.file?(expected_at)

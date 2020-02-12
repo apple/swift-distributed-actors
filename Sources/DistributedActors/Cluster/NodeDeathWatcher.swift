@@ -70,7 +70,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     }
 
     func onMembershipChanged(_ change: Cluster.MembershipChange) {
-        guard let change = self.membership.apply(change) else {
+        guard let change = self.membership.applyMembershipChange(change) else {
             return // no change, nothing to act on
         }
 

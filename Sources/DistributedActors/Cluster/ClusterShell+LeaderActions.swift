@@ -113,7 +113,7 @@ extension ClusterShell {
     }
 
     func interpretMoveMemberLeaderAction(_ state: inout ClusterShellState, movingUp: Cluster.MembershipChange) {
-        guard let change = state.membership.apply(movingUp) else {
+        guard let change = state.membership.applyMembershipChange(movingUp) else {
             return
         }
 

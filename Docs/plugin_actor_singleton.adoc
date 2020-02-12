@@ -1,0 +1,32 @@
+
+[[actor_singleton]]
+== Plugin: Actor Singletons
+
+#TODO: document it in depth!#
+
+TL;DR; We offer api:ActorSingleton[] APIs which automatically ensure there is _one_ instance of an actor in the cluster.
+
+=== Dependency
+
+Distributed Actors ship with a `ActorSingletonPlugin`, which you can depend on and use in your applications:
+
+[source]
+----
+var package = Package(
+    dependencies: [
+    // ...
+        .package(url: "https://github.com/apple/swift-distributed-actors.git", from: "0.3.0"),
+    ],
+    // ...
+    targets: [
+        .target(
+             name: "MyApp",
+             dependencies: ["ActorSingletonPlugin", ...]
+         ),
+    // ...
+----
+
+[[actor_singleton_quickstart]]
+=== Quickstart
+
+#TODO mini example for the singleton#

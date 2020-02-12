@@ -16,9 +16,10 @@
 // MARK: Cluster Member
 
 extension Cluster {
-    /// A `Member` is a node that is participating in the cluster which carries `Cluster.MemberStatus` and reachability information.
+    /// A `Member` is a node that is participating in a clustered system.
     ///
-    /// Its identity is the underlying `UniqueNode`.
+    /// It carries `Cluster.MemberStatus` and reachability information.
+    /// Its identity is the underlying `UniqueNode`, other fields are not taken into account when comparing members.
     public struct Member: Hashable {
         /// Unique node of this cluster member.
         public let node: UniqueNode
@@ -119,6 +120,9 @@ extension Cluster.Member: Equatable {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Cluster.Member Ordering
+
 extension Cluster.Member {
     /// Orders nodes by their `.upNumber` which is assigned by the leader when moving a node from joining to up.
     /// This ordering is useful to find the youngest or "oldest" node.
@@ -153,7 +157,7 @@ extension Cluster.Member: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Member Status
+// MARK: Cluster.MemberStatus
 
 extension Cluster {
     /// Describes the status of a member within the clusters lifecycle.
@@ -162,10 +166,12 @@ extension Cluster {
         /// it may want to serve some traffic, however should await the leader moving it to .up
         /// before it takes on serious work.
         case joining
+
         /// Describes a node which at some point was known to the leader and moved to `.up`
         /// by whichever strategy it implements for this. Generally, up members are fully ready
         /// members of the cluster and are most likely known to many if not all other nodes in the cluster.
         case up
+
         /// A self-announced, optional, state which a member may advertise when it knowingly and gracefully initiates
         /// a shutdown and intends to leave the cluster with nicely handing over its responsibilities to another member.
         /// A leaving node will eventually become .down, either by lack of response to failure detectors or by ".downing itself"
@@ -174,6 +180,7 @@ extension Cluster {
         /// Noticing a leaving node is a good opportunity to initiate hand-over processes from the node to others,
         /// how these are implemented is application and sub-system specific. Some plugins may handle these automatically.
         case leaving
+
         /// Describes a member believed to be "down", either by announcement by the member itself, another member,
         /// a human operator, or an automatic failure detector. It is important to note that it is not a 100% guarantee
         /// that the member/node process really is not running anymore, as detecting this with full confidence is not possible
@@ -202,26 +209,7 @@ extension Cluster {
         /// of such node re-connecting will be automatically rejected, disallowing the node to "come back" (which we'd call a "zombie" node).
         case removed
 
-        public static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding
-
-        public static let lifecycleOrdering: (Cluster.Member, Cluster.Member) -> Bool = { $0.status < $1.status }
-    }
-}
-
-extension Cluster.MemberStatus {
-    public static func < (lhs: Cluster.MemberStatus, rhs: Cluster.MemberStatus) -> Bool {
-        switch lhs {
-        case .joining:
-            return rhs != .joining
-        case .up:
-            return rhs == .leaving || rhs == .down || rhs == .removed
-        case .leaving:
-            return rhs == .down || rhs == .removed
-        case .down:
-            return rhs == .removed
-        case .removed:
-            return false
-        }
+        internal static let maxStrLen = 7 // hardcoded strlen of the words used for joining...removed; used for padding
     }
 }
 
@@ -262,21 +250,25 @@ extension Cluster.MemberStatus: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Member Reachability
+// MARK: Cluster.MemberStatus Ordering
 
-extension Cluster {
-    /// Emitted when the reachability of a member changes, as determined by a failure detector (e.g. `SWIM`).
-    public struct ReachabilityChange: Equatable {
-        public let member: Cluster.Member
+extension Cluster.MemberStatus {
+    public static let lifecycleOrdering: (Cluster.Member, Cluster.Member) -> Bool = { $0.status < $1.status }
+}
 
-        /// This change is to a `.reachable` state of the `Member`
-        public var toReachable: Bool {
-            self.member.reachability == .reachable
-        }
-
-        /// This change is to a `.unreachable` state of the `Member`
-        public var toUnreachable: Bool {
-            self.member.reachability == .unreachable
+extension Cluster.MemberStatus {
+    public static func < (lhs: Cluster.MemberStatus, rhs: Cluster.MemberStatus) -> Bool {
+        switch lhs {
+        case .joining:
+            return rhs != .joining
+        case .up:
+            return rhs == .leaving || rhs == .down || rhs == .removed
+        case .leaving:
+            return rhs == .down || rhs == .removed
+        case .down:
+            return rhs == .removed
+        case .removed:
+            return false
         }
     }
 }
