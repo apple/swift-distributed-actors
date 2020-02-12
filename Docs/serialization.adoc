@@ -1,9 +1,8 @@
 [[serialization]]
 == Serialization
 
-> Swift Distributed Actors offers a serialization layer which allows you to decouple where messages are sent and received,
-> from how they are serialized. Built-in support for swift:Codable[], https://developers.google.com/protocol-buffers/[Protocol Buffers],
-> as well as custom serializers is provided.
+> Simple serialization layer which decouples business logic from low level serialization concerns.
+> Built-in support for swift:Codable[], https://developers.google.com/protocol-buffers/[Protocol Buffers], as well as custom serializers.
 
 In order to go distributed with actors you will have to give at least a little bit of thought (and for clustered
 production systems, actually quite a lot of thought!) on how the messages sent between actors should be serialized.

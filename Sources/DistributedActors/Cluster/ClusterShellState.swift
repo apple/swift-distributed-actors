@@ -344,7 +344,7 @@ extension ClusterShellState {
         // In that case, the join will return a change; Though if the node is already known, e.g. we were told about it
         // via gossip from other nodes, though didn't yet complete associating until just now, so we can make a `change`
         // based on the stored member
-        let changeOption: Cluster.MembershipChange? = self.membership.apply(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
+        let changeOption: Cluster.MembershipChange? = self.membership.applyMembershipChange(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
             self.membership.uniqueMember(handshake.remoteNode).map { Cluster.MembershipChange(member: $0) }
         guard let change = changeOption else {
             fatalError("""
@@ -434,7 +434,7 @@ extension ClusterShellState {
                 changeWasApplied = false
             }
         case .membershipChange(let change):
-            if let appliedChange = self.membership.apply(change) {
+            if let appliedChange = self.membership.applyMembershipChange(change) {
                 self.log.trace("Applied change via cluster event: \(appliedChange)", metadata: self.metadata)
                 changeWasApplied = true
             } else {

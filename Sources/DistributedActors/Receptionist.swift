@@ -129,7 +129,7 @@ public enum Receptionist {
     public struct Listing<Message>: Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
         public var description: String {
-            return "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
+            "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
         }
     }
 
@@ -187,6 +187,12 @@ public enum Receptionist {
 // MARK: Receptionist ActorRef Extensions
 
 public extension ActorRef where Message == ReceptionistMessage {
+    /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
+    func register<M>(_ ref: ActorRef<M>, key keyId: String, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
+        let key = Receptionist.RegistrationKey(M.self, id: keyId)
+        self.register(ref, key: key, replyTo: replyTo)
+    }
+
     /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
     func register<M>(_ ref: ActorRef<M>, key: Receptionist.RegistrationKey<M>, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
         self.tell(Receptionist.Register(ref, key: key, replyTo: replyTo))

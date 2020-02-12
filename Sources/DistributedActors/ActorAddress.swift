@@ -619,7 +619,7 @@ public struct UniqueNode: Hashable {
         self.init(protocol: "sact", systemName: systemName, host: host, port: port, nid: nid)
     }
 
-    var host: String {
+    public var host: String {
         set {
             self.node.host = newValue
         }
@@ -628,7 +628,7 @@ public struct UniqueNode: Hashable {
         }
     }
 
-    var port: Int {
+    public var port: Int {
         set {
             self.node.port = newValue
         }

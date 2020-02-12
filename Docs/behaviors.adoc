@@ -103,6 +103,8 @@ You might be curious how the message type looks like, now that we've seen a beha
 In our example we do not yet worry about the serialization of the messages, so it can be in fact any type,
 however we strongly recommend
 
+[[spawning_actors]]
+[[spawning_behaviors]]
 === Spawning Actors
 
 TIP: Starting actors is referred to as "spawning" them. In the same way one refers to spawning new threads by a thread pool or operating system.
@@ -397,17 +399,15 @@ the following situation:
 - messages sent to the "old" api:ActorRef[struct] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
 
 [[receptionist]]
-=== Locating actors using the Receptionist
+=== Locating Actors using the Receptionist
 
-The receptionist is a system actor that allows users to register actors under a :api:Receptionist[enum,alias='Receptionist.RegistrationKey'] so that
+The receptionist is a system actor that allows users to register actors under a api:Receptionist[enum,alias='Receptionist.RegistrationKey'] so that
 it can be looked up in other parts of the system. Usually actor references should be passed around to allow actors to communicate,
 but there are cases where this is not convenient or possible. One such example is communication in a cluster. To share a reference
 with another node in the cluster, we have to send that reference to it, but that is only possible, if we already have a reference
 to an actor on that node. So by registering the actors we want to make accessible from other nodes in the cluster, we have a way
 of sharing them by communicating with a local ref only. The registered actors will then automatically be made available on all
 nodes in the cluster and can be looked up by sending a message to the local receptionist.
-
-*Example*
 
 First we need to register the actor on the node it lives on. This is usually done in the `.setup` behavior.
 
@@ -416,7 +416,7 @@ First we need to register the actor on the node it lives on. This is usually don
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_register]
 ----
 <1> Create the key under which the actor will be registered (can be re-used between calls)
-<2> Send `api:Receptionist[enum,alias='Receptionist.Register']` message to receptionist to register the actor
+<2> Send a api:Receptionist[enum,alias='register'] message to receptionist to register the actor under given `key`
 
 Now we can lookup all actors that are registered under that key.
 
@@ -556,6 +556,7 @@ This will lead to growth of the mailbox and can cause significant delays in mess
 used with caution and only when absolutely necessary and with reasonably small timeouts to avoid problems caused by unresponsive
 services.
 
+[[event_stream]]
 === EventStream
 
 An `EventStream` allows actors to subscribe to events published by one or more other actors.
@@ -571,3 +572,8 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=eventStream]
 <2> Subscribe `ref` to receive events from the stream
 <3> Publish on event to all subscribers
 <4> Unsubscribe `ref` from the event stream
+
+[[subreceive]]
+=== SubReceive
+
+#TODO: Document context.subReceive, a powerful function that allows receiving other types of messages, regardless of the owning Behavior type.#

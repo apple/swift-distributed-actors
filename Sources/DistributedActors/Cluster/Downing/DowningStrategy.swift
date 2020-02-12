@@ -14,15 +14,18 @@
 
 import Logging
 
+/// EXPERIMENTAL: NOT YET STABLE API
+///
 /// Allows implementing downing strategies, without having to re-implement and reinvent logging and subscription logic.
 /// Downing strategies can focus on inspecting the membership and issuing timers if needed.
-internal protocol DowningStrategy {
+public protocol DowningStrategy {
     func onClusterEvent(event: Cluster.Event) throws -> DowningStrategyDirective
 
     func onTimeout(_ member: Cluster.Member) -> DowningStrategyDirective
 }
 
-internal enum DowningStrategyDirective {
+/// EXPERIMENTAL: NOT STABLE API
+public enum DowningStrategyDirective {
     case none
     case markAsDown(Set<Cluster.Member>)
     case startTimer(key: TimerKey, message: DowningStrategyMessage, delay: TimeAmount)
@@ -33,9 +36,13 @@ internal enum DowningStrategyDirective {
     }
 }
 
-internal enum DowningStrategyMessage {
+/// EXPERIMENTAL: NOT STABLE API
+public enum DowningStrategyMessage {
     case timeout(Cluster.Member)
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Downing Shell
 
 internal struct DowningStrategyShell {
     typealias Message = DowningStrategyMessage

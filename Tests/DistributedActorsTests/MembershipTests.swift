@@ -126,7 +126,7 @@ final class MembershipTests: XCTestCase {
             node: UniqueNode(node: Node(systemName: self.nodeB.node.systemName, host: self.nodeB.node.host, port: self.nodeB.node.port), nid: .random()), status: .up
         )
 
-        let change = membership.apply(Cluster.MembershipChange(member: secondReplacement))!
+        let change = membership.applyMembershipChange(Cluster.MembershipChange(member: secondReplacement))!
         change.isReplacement.shouldBeTrue()
         change.member.shouldEqual(secondReplacement)
         change.replacementDownPreviousNodeChange.shouldEqual(
@@ -186,7 +186,7 @@ final class MembershipTests: XCTestCase {
         let firstReplacement = Cluster.Member(node: UniqueNode(node: self.nodeA.node, nid: .init(111_111)), status: .up)
 
         try shouldNotThrow {
-            guard let change = membership.apply(Cluster.MembershipChange(member: firstReplacement)) else {
+            guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: firstReplacement)) else {
                 throw TestError("Expected a change, but didn't get one")
             }
 
@@ -204,7 +204,7 @@ final class MembershipTests: XCTestCase {
         let removal = Cluster.Member(node: self.memberA.node, status: .removed)
 
         try shouldNotThrow {
-            guard let change = membership.apply(Cluster.MembershipChange(member: removal)) else {
+            guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: removal)) else {
                 throw TestError("Expected a change, but didn't get one")
             }
 
