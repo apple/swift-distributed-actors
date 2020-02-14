@@ -87,37 +87,43 @@ public struct SWIMFailureDetectorSettings {
         }
     }
 
-    // FIXME: those timeouts are not the actual timeout, the actual timeout is recalculated each time when we get more `suspect` information
-
     /// Suspicion timeouts are specified as number of probe intervals.
-    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutMin = 3` means that a suspicious node
-    /// will be escalated as `.unreachable`  at least after approximately 900ms. Suspicion timeout will decay logarithmically to `suspicionTimeoutPeriodsMin`
-    /// with additional suspicions arriving. When no additional suspicions present, suspicion timeout will equal `suspicionTimeoutPeriodsMax`
+    /// E.g. a `suspicionTimeoutMax = .seconds(10)` means that a suspicious node
+    /// will be escalated as `.unreachable`  at most after approximately 10 seconds. Suspicion timeout will decay logarithmically to `suspicionTimeoutMin`
+    /// with additional suspicions arriving. When no additional suspicions present, suspicion timeout will equal `suspicionTimeoutMax`
     ///
     /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
     /// and `.down` in the high-level membership.
-    public var suspicionTimeoutPeriodsMax: Int = 30 {
+    public var suspicionTimeoutMax: TimeAmount = .seconds(10) {
         willSet {
-            precondition(newValue >= self.suspicionTimeoutPeriodsMin, "`suspicionTimeoutPeriodsMax` MUST BE >= `suspicionTimeoutPeriodsMin`")
+            precondition(newValue >= self.suspicionTimeoutMin, "`suspicionTimeoutMax` MUST BE >= `suspicionTimeoutMin`")
         }
     }
 
     /// Suspicion timeouts are specified as number of probe intervals.
-    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutPeriodsMax = 3` means that a suspicious node
-    /// will be escalated as `.unreachable` at most after approximately 900ms. Suspicion timeout will decay logarithmically from `suspicionTimeoutPeriodsMax`
-    /// with additional suspicions arriving. When number of suspicions reach `maxIndependentSuspicions`, suspicion timeout will equal `suspicionTimeoutPeriodsMin`
+    /// E.g. a `suspicionTimeoutMin = .seconds(3)` means that a suspicious node
+    /// will be escalated as `.unreachable` at least after approximately 3 seconds. Suspicion timeout will decay logarithmically from `suspicionTimeoutMax`
+    /// with additional suspicions arriving. When number of suspicions reach `maxIndependentSuspicions`, suspicion timeout will equal `suspicionTimeoutMin`
     ///
     /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
     /// and `.down` in the high-level membership.
-    public var suspicionTimeoutPeriodsMin: Int = 10 {
+    public var suspicionTimeoutMin: TimeAmount = .seconds(3) {
         willSet {
-            precondition(newValue <= self.suspicionTimeoutPeriodsMax, "`suspicionTimeoutPeriodsMin` MUST BE <= `suspicionTimeoutPeriodsMax`")
+            precondition(newValue <= self.suspicionTimeoutMax, "`suspicionTimeoutMin` MUST BE <= `suspicionTimeoutMax`")
         }
     }
 
     /// Interval at which gossip messages should be issued.
     /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
     public var probeInterval: TimeAmount = .seconds(1)
+
+    /// Local health multiplier is a part of Lifeguard extensions to swift. It will increase local probe interval and probe timeout if the instance is not processing messages in timely manner.
+    /// This property will define the upper limit to local health multiplier. The lower bound is always 0.
+    public var maxLocalHealthMultiplier: Int = 8 {
+        willSet {
+            precondition(newValue >= 0, "Local health multiplier CAN NOT be negative")
+        }
+    }
 
     /// Time amount after which a sent ping without ack response is considered timed-out.
     /// This drives how a node becomes a suspect, by missing such ping/ack rounds.

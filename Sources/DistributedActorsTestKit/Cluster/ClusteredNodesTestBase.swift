@@ -70,8 +70,10 @@ open class ClusteredNodesTestBase: XCTestCase {
 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMin = 3
-            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 6
+            // Make suspicion propagation faster
+            settings.cluster.swim.failureDetector.maxLocalHealthMultiplier = 2
+            settings.cluster.swim.failureDetector.suspicionTimeoutMin = .milliseconds(500)
+            settings.cluster.swim.failureDetector.suspicionTimeoutMax = .seconds(1)
 
             self.configureActorSystem(settings: &settings)
             modifySettings?(&settings)
@@ -249,7 +251,7 @@ extension ClusteredNodesTestBase {
         let probe = testKit.spawnTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<UniqueNode>.self, file: file, line: line)
         defer { probe.stop() }
 
-        try testKit.eventually(within: timeout ?? .seconds(5), file: file, line: line, column: column) {
+        try testKit.eventually(within: timeout ?? .seconds(8), file: file, line: line, column: column) {
             system.cluster.ref.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
             let associatedNodes = try probe.expectMessage(file: file, line: line)
 

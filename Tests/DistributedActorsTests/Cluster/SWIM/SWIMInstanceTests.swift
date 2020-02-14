@@ -177,7 +177,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // p3 pings p2, gets an ack back -- and there p2 had to bump its incarnation number // TODO test for that, using Swim.instance?
 
         // and now we get an `ack` back, p2 claims that p3 is indeed alive!
-        _ = swim.onPingRequestResponse(.success(SWIM.Ack(pinged: p3, incarnation: 2, payload: .none)), pingedMember: p3)
+        _ = swim.onPingRequestResponse(.success(.ack(pinged: p3, incarnation: 2, payload: .none)), pingedMember: p3)
         // may print the result for debugging purposes if one wanted to
 
         // p3 should be alive; after all, p2 told us so!
@@ -199,7 +199,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // p3 pings p2, yet p2 somehow didn't bump its incarnation... so we should NOT accept its refutation
 
         // and now we get an `ack` back, p2 claims that p3 is indeed alive!
-        _ = swim.onPingRequestResponse(.success(SWIM.Ack(pinged: p3, incarnation: 1, payload: .none)), pingedMember: p3)
+        _ = swim.onPingRequestResponse(.success(.ack(pinged: p3, incarnation: 1, payload: .none)), pingedMember: p3)
         // may print the result for debugging purposes if one wanted to
 
         // p3 should be alive; after all, p2 told us so!
@@ -231,7 +231,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: receive a ping and reply to it
 
-    func test_onPing_shouldOfferAckMessageWithMyselfReference() {
+    func test_onPing_shouldOfferAckMessageWithMyselfReference() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -242,12 +242,14 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onPing(lastKnownStatus: .alive(incarnation: 0))
 
         switch res {
-        case .reply(let ack, _):
-            ack.pinged.shouldEqual(p1) // which was added as myself to this swim instance
+        case .reply(.ack(let pinged, _, _), _):
+            pinged.shouldEqual(p1) // which was added as myself to this swim instance
+        case let reply:
+            throw self.testKit.error("Expected .ack, but got \(reply)")
         }
     }
 
-    func test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation() {
+    func test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -262,13 +264,15 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onPing(lastKnownStatus: .alive(incarnation: 0))
 
         switch res {
-        case .reply(let ack, _):
+        case .reply(.ack(_, let incarnation, _), _):
             // did not have to increment its incarnation number:
-            ack.incarnation.shouldEqual(0)
+            incarnation.shouldEqual(0)
+        case let reply:
+            throw self.testKit.error("Expected .ack ping response, but got \(reply)")
         }
     }
 
-    func test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation() {
+    func test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -283,8 +287,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
 
         switch res {
-        case .reply(let ack, _):
-            ack.incarnation.shouldEqual(1) // it incremented its incarnation number in order to refute the suspicion
+        case .reply(.ack(_, let incarnation, _), _):
+            incarnation.shouldEqual(1) // it incremented its incarnation number in order to refute the suspicion
+        case let reply:
+            throw self.testKit.error("expected ack repsonse, but got \(reply)")
         }
     }
 

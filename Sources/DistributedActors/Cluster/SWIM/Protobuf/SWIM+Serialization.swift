@@ -53,13 +53,13 @@ extension SWIM.Message: InternalProtobufRepresentable {
         switch request {
         case .ping(let ping):
             let status = try SWIM.Status(fromProto: ping.lastKnownStatus, context: context)
-            let replyTo = try ActorRef<SWIM.Ack>(fromProto: ping.replyTo, context: context)
+            let replyTo = try ActorRef<SWIM.PingResponse>(fromProto: ping.replyTo, context: context)
             let payload = try SWIM.Payload(fromProto: ping.payload, context: context)
             self = .remote(.ping(lastKnownStatus: status, replyTo: replyTo, payload: payload))
         case .pingRequest(let pingRequest):
             let target = try ActorRef<SWIM.Message>(fromProto: pingRequest.target, context: context)
             let status = try SWIM.Status(fromProto: pingRequest.lastKnownStatus, context: context)
-            let replyTo = try ActorRef<SWIM.Ack>(fromProto: pingRequest.replyTo, context: context)
+            let replyTo = try ActorRef<SWIM.PingResponse>(fromProto: pingRequest.replyTo, context: context)
             let payload = try SWIM.Payload(fromProto: pingRequest.payload, context: context)
             self = .remote(.pingReq(target: target, lastKnownStatus: status, replyTo: replyTo, payload: payload))
         }
@@ -149,20 +149,35 @@ extension SWIM.Member: InternalProtobufRepresentable {
     }
 }
 
-extension SWIM.Ack: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoSWIMAck
+extension SWIM.PingResponse: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSWIMPingResponse
 
-    func toProto(context: ActorSerializationContext) throws -> ProtoSWIMAck {
-        var proto = ProtoSWIMAck()
-        proto.pinged = try self.pinged.toProto(context: context)
-        proto.incarnation = self.incarnation
-        proto.payload = try self.payload.toProto(context: context)
+    func toProto(context: ActorSerializationContext) throws -> ProtoSWIMPingResponse {
+        var proto = ProtoSWIMPingResponse()
+        switch self {
+        case .ack(let pinged, let incarnation, let payload):
+            var ack = ProtoSWIMPingResponse.Ack()
+            ack.pinged = try pinged.toProto(context: context)
+            ack.incarnation = incarnation
+            ack.payload = try payload.toProto(context: context)
+            proto.ack = ack
+        case .nack:
+            proto.nack = ProtoSWIMPingResponse.Nack()
+        }
         return proto
     }
 
-    init(fromProto proto: ProtoSWIMAck, context: ActorSerializationContext) throws {
-        let pinged = context.resolveActorRef(SWIM.Message.self, identifiedBy: try ActorAddress(fromProto: proto.pinged, context: context))
-        let payload = try SWIM.Payload(fromProto: proto.payload, context: context)
-        self.init(pinged: pinged, incarnation: proto.incarnation, payload: payload)
+    init(fromProto proto: ProtoSWIMPingResponse, context: ActorSerializationContext) throws {
+        guard let pingResponse = proto.pingResponse else {
+            throw SerializationError.missingField("pingResponse", type: String(describing: SWIM.PingResponse.self))
+        }
+        switch pingResponse {
+        case .ack(let ack):
+            let pinged = context.resolveActorRef(SWIM.Message.self, identifiedBy: try ActorAddress(fromProto: ack.pinged, context: context))
+            let payload = try SWIM.Payload(fromProto: ack.payload, context: context)
+            self = .ack(pinged: pinged, incarnation: ack.incarnation, payload: payload)
+        case .nack:
+            self = .nack
+        }
     }
 }

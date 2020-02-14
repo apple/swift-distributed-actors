@@ -31,8 +31,8 @@ let system = ActorSystem("System") { settings in
     settings.cluster.enabled = true
     settings.cluster.bindPort = Int(args[0])!
 
-    settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMin = 3
-    settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 3
+    settings.cluster.swim.failureDetector.suspicionTimeoutMin = .seconds(1)
+    settings.cluster.swim.failureDetector.suspicionTimeoutMax = .seconds(1)
     settings.cluster.swim.failureDetector.pingTimeout = .milliseconds(100)
     settings.cluster.swim.failureDetector.probeInterval = .milliseconds(300)
 

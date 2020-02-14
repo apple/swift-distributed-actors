@@ -44,17 +44,16 @@ public enum SWIM {
     }
 
     internal enum RemoteMessage {
-        case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
+        case ping(lastKnownStatus: Status, replyTo: ActorRef<PingResponse>, payload: Payload)
 
         /// "Ping Request" requests a SWIM probe.
-        case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
+        case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<PingResponse>, payload: Payload)
 
         // TODO: Implement Extension: Lifeguard, Local Health Aware Probe
         /// LHAProbe adds a `nack` message to the fault detector protocol,
         /// which is sent in the case of failed indirect probes. This gives the member that
         ///  initiates the indirect probe a way to check if it is receiving timely responses
         /// from the `k` members it enlists, even if the target of their indirect pings is not responsive.
-        // case nack(Payload)
     }
 
     /// A `SWIM.Ack` is sent always in reply to a `SWIM.RemoteMessage.ping`.
@@ -63,15 +62,10 @@ public enum SWIM {
     /// or indirectly, as a result of a `pingReq` message.
     ///
     /// - parameter pinged: always contains the ref of the member that was the target of the `ping`.
-    internal struct Ack {
-        let pinged: ActorRef<Message>
-        let incarnation: Incarnation
-        let payload: Payload
 
-        /// Represents the pinged member in alive status, since it clearly has replied to our ping, so it must be alive.
-        func pingedAliveMember(protocolPeriod: Int) -> SWIM.Member {
-            .init(ref: self.pinged, status: .alive(incarnation: self.incarnation), protocolPeriod: protocolPeriod)
-        }
+    internal enum PingResponse {
+        case ack(pinged: ActorRef<Message>, incarnation: Incarnation, payload: Payload)
+        case nack
     }
 
     internal struct MembershipState {
@@ -252,7 +246,7 @@ extension SWIM.Status {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SWIM Member
 
-internal struct SWIMMember: Hashable {
+internal struct SWIMMember {
     var node: UniqueNode {
         return self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
     }
@@ -263,12 +257,15 @@ internal struct SWIMMember: Hashable {
     var status: SWIM.Status
 
     // Period in which protocol period was this state set
-    var protocolPeriod: Int
+    let protocolPeriod: Int
 
-    init(ref: ActorRef<SWIM.Message>, status: SWIM.Status, protocolPeriod: Int) {
+    let startTime: Int64?
+
+    init(ref: ActorRef<SWIM.Message>, status: SWIM.Status, protocolPeriod: Int, startTime: Int64? = nil) {
         self.ref = ref
         self.status = status
         self.protocolPeriod = protocolPeriod
+        self.startTime = startTime
     }
 
     var isAlive: Bool {
@@ -285,6 +282,18 @@ internal struct SWIMMember: Hashable {
 
     var isDead: Bool {
         self.status.isDead
+    }
+}
+
+extension SWIMMember: Hashable, Equatable {
+    static func == (lhs: SWIMMember, rhs: SWIMMember) -> Bool {
+        return lhs.ref == rhs.ref && lhs.protocolPeriod == rhs.protocolPeriod && lhs.status == rhs.status
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(self.ref)
+        hasher.combine(self.protocolPeriod)
+        hasher.combine(self.status)
     }
 }
 

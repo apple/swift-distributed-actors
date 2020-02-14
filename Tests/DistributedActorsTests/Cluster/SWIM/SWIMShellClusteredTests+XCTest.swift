@@ -24,6 +24,7 @@ extension SWIMShellClusteredTests {
     static var allTests: [(String, (SWIMShellClusteredTests) -> () throws -> Void)] {
         return [
             ("test_swim_shouldRespondWithAckToPing", test_swim_shouldRespondWithAckToPing),
+            ("test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget", test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget),
             ("test_swim_shouldPingRandomMember", test_swim_shouldPingRandomMember),
             ("test_swim_shouldPingSpecificMemberWhenRequested", test_swim_shouldPingSpecificMemberWhenRequested),
             ("test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested", test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested),

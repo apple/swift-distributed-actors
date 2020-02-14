@@ -30,6 +30,8 @@ import Logging
 /// ### Related Papers
 /// - SeeAlso: [SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol](https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf)
 /// - SeeAlso: [Lifeguard: Local Health Awareness for More Accurate Failure Detection](https://arxiv.org/abs/1707.00788)
+import struct Dispatch.DispatchTime
+
 final class SWIMInstance {
     let settings: SWIM.Settings
 
@@ -42,6 +44,18 @@ final class SWIMInstance {
     private var _membersToPingIndex: Int = 0
     private var membersToPingIndex: Int {
         self._membersToPingIndex
+    }
+
+    private let timeSourceNanos: () -> Int64
+
+    var localHealthMultiplier = 0
+
+    var dynamicProtocolInterval: TimeAmount {
+        TimeAmount.nanoseconds(settings.failureDetector.probeInterval.nanoseconds * Int64(1 + localHealthMultiplier))
+    }
+
+    var dynamicPingTimeout: TimeAmount {
+        TimeAmount.nanoseconds(settings.failureDetector.pingTimeout.nanoseconds * Int64(1 + localHealthMultiplier))
     }
 
     /// The incarnation number is used to get a sense of ordering of events, so if an `.alive` or `.suspect`
@@ -57,12 +71,24 @@ final class SWIMInstance {
         return .suspect(incarnation: incarnation, suspectedBy: [self.myNode])
     }
 
-    func updateSuspicion(incarnation: SWIM.Incarnation, suspectedBy: Set<UniqueNode>, previouslySuspectedBy: Set<UniqueNode>) -> SWIM.Status {
+    func mergeSuspicions(suspectedBy: Set<UniqueNode>, previouslySuspectedBy: Set<UniqueNode>) -> Set<UniqueNode> {
         var newSuspectedBy = previouslySuspectedBy
         for suspectedBy in suspectedBy.sorted() where newSuspectedBy.count < self.settings.failureDetector.maxIndependentSuspicions {
             newSuspectedBy.update(with: suspectedBy)
         }
-        return .suspect(incarnation: incarnation, suspectedBy: newSuspectedBy)
+        return newSuspectedBy
+    }
+
+    func registerSuccessfulProbe() {
+        if localHealthMultiplier > 0 {
+            localHealthMultiplier -= 1
+        }
+    }
+
+    func registerFailedProbe() {
+        if localHealthMultiplier < settings.failureDetector.maxLocalHealthMultiplier {
+            localHealthMultiplier += 1
+        }
     }
 
     private var _incarnation: SWIM.Incarnation = 0
@@ -85,12 +111,13 @@ final class SWIMInstance {
         $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
     })
 
-    init(_ settings: SWIM.Settings, myShellMyself: ActorRef<SWIM.Message>, myNode: UniqueNode) {
+    init(_ settings: SWIM.Settings, myShellMyself: ActorRef<SWIM.Message>, myNode: UniqueNode, timeSourceNanos: @escaping () -> Int64 = { () -> Int64 in Int64(DispatchTime.now().uptimeNanoseconds) }) {
         self.settings = settings
         self.myNode = myNode
         self.myShellMyself = myShellMyself
         self.members = [:]
         self.membersToPing = []
+        self.timeSourceNanos = timeSourceNanos
         self.addMember(myShellMyself, status: .alive(incarnation: 0))
     }
 
@@ -102,7 +129,7 @@ final class SWIMInstance {
             return .newerMemberAlreadyPresent(existingMember)
         }
 
-        let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod)
+        let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod, startTime: self.timeSourceNanos())
         self.members[ref] = member
 
         if maybeExistingMember == nil, self.notMyself(member) {
@@ -195,13 +222,18 @@ final class SWIMInstance {
 
         var status = status
         var protocolPeriod = self.protocolPeriod
+        var startTime: Int64?
         if case .suspect(let incomingIncarnation, let incomingSuspectedBy) = status,
             case .suspect(let previousIncarnation, let previousSuspectedBy)? = previousStatusOption,
             let previousMembership = self.member(for: ref),
             incomingIncarnation == previousIncarnation {
-            status = self.updateSuspicion(incarnation: incomingIncarnation, suspectedBy: incomingSuspectedBy, previouslySuspectedBy: previousSuspectedBy)
+            let suspicions = self.mergeSuspicions(suspectedBy: incomingSuspectedBy, previouslySuspectedBy: previousSuspectedBy)
+            status = .suspect(incarnation: incomingIncarnation, suspectedBy: suspicions)
             // we should keep old protocol period when member is already a suspect
             protocolPeriod = previousMembership.protocolPeriod
+            startTime = previousMembership.startTime
+        } else if case .suspect = status {
+            startTime = self.timeSourceNanos()
         }
 
         if let previousStatus = previousStatusOption, previousStatus.supersedes(status) {
@@ -209,7 +241,7 @@ final class SWIMInstance {
             return .ignoredDueToOlderStatus(currentStatus: previousStatus)
         }
 
-        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: protocolPeriod)
+        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: protocolPeriod, startTime: startTime)
         self.members[ref] = member
         self.addToGossip(member: member)
 
@@ -251,13 +283,15 @@ final class SWIMInstance {
     }
 
     /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
-    var timeoutSuspectsBeforePeriodMax: Int {
-        self.protocolPeriod - self.settings.failureDetector.suspicionTimeoutPeriodsMax
+    /// This will only show current estimate of how many intervals should pass before suspicion is reached. May change when more data is coming
+    var timeoutSuspectsBeforePeriodMax: Int64 {
+        self.settings.failureDetector.suspicionTimeoutMax.nanoseconds / self.dynamicProtocolInterval.nanoseconds + 1
     }
 
     /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
-    var timeoutSuspectsBeforePeriodMin: Int {
-        self.protocolPeriod - self.settings.failureDetector.suspicionTimeoutPeriodsMin
+    /// This will only show current estimate of how many intervals should pass before suspicion is reached. May change when more data is coming
+    var timeoutSuspectsBeforePeriodMin: Int64 {
+        self.settings.failureDetector.suspicionTimeoutMin.nanoseconds / self.dynamicProtocolInterval.nanoseconds + 1
     }
 
     /// The forumla is taken from Lifeguard whitepaper https://arxiv.org/abs/1707.00788
@@ -282,10 +316,14 @@ final class SWIMInstance {
     /// - `K` is the number of independent suspicions required to be received before setting the suspicion timeout to `Min`.
     ///   We default `K` to `3`.
     /// - `C` is the number of independent suspicions about that member received since the local suspicion was raised.
-    func suspicionTimeout(suspectedByCount: Int) -> Int {
-        let minTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMin
-        let maxTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMax
-        return max(minTimeout, maxTimeout - Int(round(Double(maxTimeout - minTimeout) * (log2(Double(suspectedByCount + 1)) / log2(Double(self.settings.failureDetector.maxIndependentSuspicions + 1))))))
+    func suspicionTimeout(suspectedByCount: Int) -> TimeAmount {
+        let minTimeout = self.settings.failureDetector.suspicionTimeoutMin
+        let maxTimeout = self.settings.failureDetector.suspicionTimeoutMax
+        return max(minTimeout, .nanoseconds(maxTimeout.nanoseconds - Int64(round(Double(maxTimeout.nanoseconds - minTimeout.nanoseconds) * (log2(Double(suspectedByCount + 1)) / log2(Double(self.settings.failureDetector.maxIndependentSuspicions + 1)))))))
+    }
+
+    func isExpired(deadline: Int64) -> Bool {
+        deadline < self.timeSourceNanos()
     }
 
     func status(of ref: ActorRef<SWIM.Message>) -> SWIM.Status? {
@@ -388,6 +426,7 @@ extension SWIM.Instance {
         // our incarnation number, so the new `alive` status can properly propagate through
         // the cluster (and "win" over the old `.suspect` status).
         if case .suspect(let suspectedInIncarnation, _) = lastKnownStatus {
+            self.registerFailedProbe()
             if suspectedInIncarnation == self._incarnation {
                 self._incarnation += 1
                 warning = nil
@@ -401,23 +440,25 @@ extension SWIM.Instance {
             }
         }
 
-        let ack = SWIM.Ack(pinged: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload())
+        let ack: SWIM.PingResponse = .ack(pinged: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload())
 
-        return .reply(ack, warning: warning)
+        return .reply(response: ack, warning: warning)
     }
 
     enum OnPingDirective {
-        case reply(SWIM.Ack, warning: String?)
+        case reply(response: SWIM.PingResponse, warning: String?)
     }
 
     /// React to an `Ack` (or lack thereof within timeout)
-    func onPingRequestResponse(_ result: Result<SWIM.Ack, Error>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResponseDirective {
+    func onPingRequestResponse(_ result: Result<SWIM.PingResponse, Error>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResponseDirective {
         guard let lastKnownStatus = self.status(of: member) else {
             return .unknownMember
         }
 
         switch result {
         case .failure:
+            // missed pingReq's nack may indicate a problem with local health
+            self.registerFailedProbe()
             switch lastKnownStatus {
             case .alive(let incarnation), .suspect(let incarnation, _):
                 switch self.mark(member, as: self.makeSuspicion(incarnation: incarnation)) {
@@ -432,20 +473,24 @@ extension SWIM.Instance {
                 return .alreadyDead
             }
 
-        case .success(let ack):
-            assert(ack.pinged.address == member.address, "The ack.from member [\(ack.pinged)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
-            switch self.mark(member, as: .alive(incarnation: ack.incarnation)) {
+        case .success(.ack(let pinged, let incarnation, let payload)):
+            assert(pinged.address == member.address, "The ack.from member [\(pinged)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
+            self.registerSuccessfulProbe()
+            switch self.mark(member, as: .alive(incarnation: incarnation)) {
             case .applied:
                 // TODO: we can be more interesting here, was it a move suspect -> alive or a reassurance?
-                return .alive(previous: lastKnownStatus, payloadToProcess: ack.payload)
+                return .alive(previous: lastKnownStatus, payloadToProcess: payload)
             case .ignoredDueToOlderStatus(let currentStatus):
                 return .ignoredDueToOlderStatus(currentStatus: currentStatus)
             }
+        case .success(.nack):
+            return .targetNotReached
         }
     }
 
     enum OnPingRequestResponseDirective {
         case alive(previous: SWIM.Status, payloadToProcess: SWIM.Payload)
+        case targetNotReached
         case unknownMember
         case newlySuspect
         case alreadySuspect
