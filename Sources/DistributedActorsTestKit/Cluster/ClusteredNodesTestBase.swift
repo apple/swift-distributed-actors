@@ -70,7 +70,8 @@ open class ClusteredNodesTestBase: XCTestCase {
 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
-            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 3
+            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMin = 3
+            settings.cluster.swim.failureDetector.suspicionTimeoutPeriodsMax = 6
 
             self.configureActorSystem(settings: &settings)
             modifySettings?(&settings)

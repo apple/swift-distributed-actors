@@ -202,7 +202,9 @@ final class SWIMInstanceTests: ActorSystemTestBase {
     }
 
     func test_onPingRequestResponse_storeIndividualSuspicions() throws {
-        let swim = SWIM.Instance(.default)
+        var settings: SWIM.Settings = .default
+        settings.failureDetector.maxIndependentSuspicions = 10
+        let swim = SWIM.Instance(settings)
 
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
@@ -682,8 +684,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         self.validateSuspects(swim, expected: [p2, p3])
     }
 
-    func test_suspects_shouldMarkBiggerSuspicionList() {
-        let swim = SWIM.Instance(.default)
+    func test_suspects_shouldMark_whenBiggerSuspicionList() {
+        var settings: SWIM.Settings = .default
+        settings.failureDetector.maxIndependentSuspicions = 10
+        let swim = SWIM.Instance(settings)
 
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
@@ -700,7 +704,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         self.validateSuspects(swim, expected: [p1])
     }
 
-    func test_suspects_shouldNotMarkSmallerSuspicionList() {
+    func test_suspects_shouldNotMark_whenSmallerSuspicionList() {
         let swim = SWIM.Instance(.default)
 
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref

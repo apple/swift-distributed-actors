@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import Logging
 
 /// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).
@@ -199,10 +200,14 @@ final class SWIMInstance {
         let previousStatusOption = self.status(of: ref)
 
         var status = status
-        if case .suspect(let incarnation, let confirmations) = status,
+        var protocolPeriod = self.protocolPeriod
+        if case .suspect(let incomingIncarnation, let incomingConfirmations) = status,
             case .suspect(let previousIncarnation, let previousConfirmations)? = previousStatusOption,
-            incarnation == previousIncarnation {
-            status = self.updateSuspicion(incarnation: incarnation, confirmations: confirmations, previousConfirmations: previousConfirmations)
+            let previousMembership = self.member(for: ref),
+            incomingIncarnation == previousIncarnation {
+            status = self.updateSuspicion(incarnation: incomingIncarnation, confirmations: incomingConfirmations, previousConfirmations: previousConfirmations)
+            // we should keep old protocol period when member is already a suspect
+            protocolPeriod = previousMembership.protocolPeriod
         }
 
         if let previousStatus = previousStatusOption, previousStatus.supersedes(status) {
@@ -210,7 +215,7 @@ final class SWIMInstance {
             return .ignoredDueToOlderStatus(currentStatus: previousStatus)
         }
 
-        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: self.protocolPeriod)
+        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: protocolPeriod)
         self.members[ref] = member
         self.addToGossip(member: member)
 
@@ -257,6 +262,15 @@ final class SWIMInstance {
     /// suspects could have been old enough to be marked unreachable yet."
     var timeoutSuspectsBeforePeriod: Int {
         self.protocolPeriod - self.settings.failureDetector.suspicionTimeoutPeriodsMax
+    }
+
+    /// The forumla is taken from Lifeguard whitepaper https://arxiv.org/abs/1707.00788
+    /// According to it, suspicion timeout is logarithmically decaying from `suspicionTimeoutPeriodsMax` to `suspicionTimeoutPeriodsMin`
+    /// depending on a number of suspicion confirmations.
+    func suspicionTimeout(confirmations: Int) -> Int {
+        let minTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMin
+        let maxTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMax
+        return max(minTimeout, maxTimeout - Int(round(Double(maxTimeout - minTimeout) * (log2(Double(confirmations + 1)) / log2(Double(self.settings.failureDetector.maxIndependentSuspicions + 1))))))
     }
 
     func status(of ref: ActorRef<SWIM.Message>) -> SWIM.Status? {

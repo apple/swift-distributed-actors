@@ -90,12 +90,30 @@ public struct SWIMFailureDetectorSettings {
     // FIXME: those timeouts are not the actual timeout, the actual timeout is recalculated each time when we get more `suspect` information
 
     /// Suspicion timeouts are specified as number of probe intervals.
-    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutMax = 3` means that a suspicious node
-    /// will be escalated as `.unreachable` after approximately 900ms. Once it is confirmed dead by the high-level
-    /// membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
+    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutMin = 3` means that a suspicious node
+    /// will be escalated as `.unreachable`  at least after approximately 900ms. Suspicion timeout will decay logarithmically to `suspicionTimeoutPeriodsMin`
+    /// with additional confirmations of suspicion arriving. When no additional confrmation present, suspicion timeout will equal `suspicionTimeoutPeriodsMax`
+    ///
+    /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
     /// and `.down` in the high-level membership.
-    public var suspicionTimeoutPeriodsMax: Int = 10
-    // public var suspicionTimeoutPeriodsMin: Int = 10 // FIXME: this is once we have LHA, Local Health Aware Suspicion
+    public var suspicionTimeoutPeriodsMax: Int = 30 {
+        willSet {
+            precondition(newValue >= self.suspicionTimeoutPeriodsMin, "`suspicionTimeoutPeriodsMax` MUST BE >= `suspicionTimeoutPeriodsMin`")
+        }
+    }
+
+    /// Suspicion timeouts are specified as number of probe intervals.
+    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutPeriodsMax = 3` means that a suspicious node
+    /// will be escalated as `.unreachable` at most after approximately 900ms. Suspicion timeout will decay logarithmically from `suspicionTimeoutPeriodsMax`
+    /// with additional confirmations of suspicion arriving. When number of confirmations reach `maxIndependentSuspicions`, suspicion timeout will equal `suspicionTimeoutPeriodsMin`
+    ///
+    /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
+    /// and `.down` in the high-level membership.
+    public var suspicionTimeoutPeriodsMin: Int = 10 {
+        willSet {
+            precondition(newValue <= self.suspicionTimeoutPeriodsMax, "`suspicionTimeoutPeriodsMin` MUST BE <= `suspicionTimeoutPeriodsMax`")
+        }
+    }
 
     /// Interval at which gossip messages should be issued.
     /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
@@ -111,5 +129,10 @@ public struct SWIMFailureDetectorSettings {
 
     /// A Lifegurad suspicion extension to SWIM protocol.
     /// A number of independent suspicions required for a suspicion timeout to fully decay to a minimal value.
-    public var maxIndependentSuspicions = 3
+    /// When set to 1 will effectively disable LHA-suspicion
+    public var maxIndependentSuspicions = 4 {
+        willSet {
+            precondition(newValue >= 0, "`maxIndependentSuspicions` MUST BE > 0")
+        }
+    }
 }
