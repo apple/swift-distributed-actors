@@ -541,52 +541,52 @@ internal final class Mailbox<Message> {
         }
 
         var messageCount: UInt64 {
-            return self.activations >> 2
+            self.activations >> 2
         }
 
         var hasSystemMessages: Bool {
-            return (self._status & MailboxBitMasks.hasSystemMessages) != 0
+            (self._status & MailboxBitMasks.hasSystemMessages) != 0
         }
 
         var isProcessingSystemMessages: Bool {
-            return (self._status & MailboxBitMasks.processingSystemMessages) != 0
+            (self._status & MailboxBitMasks.processingSystemMessages) != 0
         }
 
         var activations: UInt64 {
-            return (self._status & MailboxBitMasks.activations)
+            (self._status & MailboxBitMasks.activations)
         }
 
         var isSuspended: Bool {
-            return (self._status & MailboxBitMasks.suspended) != 0
+            (self._status & MailboxBitMasks.suspended) != 0
         }
 
         var isTerminating: Bool {
-            return (self._status & MailboxBitMasks.terminating) != 0
+            (self._status & MailboxBitMasks.terminating) != 0
         }
 
         var isClosed: Bool {
-            return (self._status & MailboxBitMasks.closed) != 0
+            (self._status & MailboxBitMasks.closed) != 0
         }
     }
 
     func incrementMessageCount() -> Status {
-        return Status(self._status.add(MailboxBitMasks.singleUserMessage))
+        Status(self._status.add(MailboxBitMasks.singleUserMessage, order: .release))
     }
 
     func decrementMessageCount() -> Status {
-        return Status(self._status.sub(MailboxBitMasks.singleUserMessage))
+        Status(self._status.sub(MailboxBitMasks.singleUserMessage, order: .release))
     }
 
     func decrementActivations(by count: UInt64) -> Status {
-        return Status(self._status.sub(count))
+        Status(self._status.sub(count, order: .release))
     }
 
     var status: Status {
-        return Status(self._status.load())
+        Status(self._status.load(order: .acquire))
     }
 
     func setHasSystemMessages() -> Status {
-        return Status(self._status.or(MailboxBitMasks.hasSystemMessages))
+        Status(self._status.or(MailboxBitMasks.hasSystemMessages, order: .release))
     }
 
     // Checks if the 'has system messages' bit is set and if it is, unsets it and
@@ -604,29 +604,32 @@ internal final class Mailbox<Message> {
 
     @discardableResult
     func setTerminating() -> Status {
-        return Status(self._status.or(MailboxBitMasks.terminating))
+        return Status(self._status.or(MailboxBitMasks.terminating, order: .release))
     }
 
     @discardableResult
     func setFailed() -> Status {
-        return self.setTerminating()
+        self.setTerminating()
     }
 
     @discardableResult
     func setClosed() -> Status {
-        return Status(self._status.or(MailboxBitMasks.closed))
+        Status(self._status.or(MailboxBitMasks.closed, order: .release))
     }
 
     @discardableResult
     func setStatusSuspended() -> Status {
-        return Status(self._status.or(MailboxBitMasks.suspended))
+        Status(self._status.or(MailboxBitMasks.suspended, order: .release))
     }
 
     @discardableResult
     func resetStatusSuspended() -> Status {
-        return Status(self._status.and(MailboxBitMasks.unsuspend))
+        Status(self._status.and(MailboxBitMasks.unsuspend, order: .release))
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Message Wrappers and Carriers
 
 // This used to be typed according to the actor message type, but we found
 // that it added some runtime overhead when retrieving the messages from the
