@@ -57,6 +57,7 @@ message SWIMStatus {
 
     Type type = 1;
     uint64 incarnation = 2;
+    repeated uint32 confirmation = 3;
 }
 
 message SWIMMember {
