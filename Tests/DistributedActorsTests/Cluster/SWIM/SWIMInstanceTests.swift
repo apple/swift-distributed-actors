@@ -76,10 +76,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
-        swim.addMember(probe.ref, status: .suspect(incarnation: 1))
+        swim.addMember(probe.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))))
         swim.incrementProtocolPeriod()
 
-        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 1), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), shouldSucceed: false)
 
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(0)
     }
@@ -90,9 +90,9 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
 
-        for i in 0 ... 5 {
+        for i: SWIM.Incarnation in 0 ... 5 {
             swim.incrementProtocolPeriod()
-            try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: SWIM.Incarnation(i)), shouldSucceed: true)
+            try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: SWIM.Incarnation(i), confirmations: Set(arrayLiteral: NodeID(0))), shouldSucceed: true)
             try self.validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: SWIM.Incarnation(i + 1)), shouldSucceed: true)
         }
 
@@ -104,10 +104,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         // ==== Suspect member -----------------------------------------------------------------------------------------
         let suspectMember = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        swim.addMember(suspectMember.ref, status: .suspect(incarnation: 1))
+        swim.addMember(suspectMember.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))))
         swim.incrementProtocolPeriod()
 
-        try self.validateMark(swim: swim, member: suspectMember.ref, status: .suspect(incarnation: 0), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: suspectMember.ref, status: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), shouldSucceed: false)
         try self.validateMark(swim: swim, member: suspectMember.ref, status: .alive(incarnation: 1), shouldSucceed: false)
 
         swim.member(for: suspectMember.ref)!.protocolPeriod.shouldEqual(0)
@@ -120,7 +120,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.addMember(unreachableMember.ref, status: .unreachable(incarnation: 1))
         swim.incrementProtocolPeriod()
 
-        try self.validateMark(swim: swim, member: unreachableMember.ref, status: .suspect(incarnation: 0), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: unreachableMember.ref, status: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), shouldSucceed: false)
         try self.validateMark(swim: swim, member: unreachableMember.ref, status: .alive(incarnation: 1), shouldSucceed: false)
 
         swim.member(for: unreachableMember.ref)!.protocolPeriod.shouldEqual(0)
@@ -130,7 +130,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
-        swim.addMember(probe.ref, status: .suspect(incarnation: 1))
+        swim.addMember(probe.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))))
         swim.incrementProtocolPeriod()
 
         try self.validateMark(swim: swim, member: probe.ref, status: .dead, shouldSucceed: true)
@@ -146,7 +146,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.incrementProtocolPeriod()
 
         try self.validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: 99), shouldSucceed: false)
-        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 99), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 99, confirmations: Set(arrayLiteral: NodeID(0))), shouldSucceed: false)
         try self.validateMark(swim: swim, member: probe.ref, status: .dead, shouldSucceed: false)
 
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(0)
@@ -165,7 +165,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // p3 is suspect already...
         swim.addMyself(p1)
         swim.addMember(p2, status: .alive(incarnation: 0))
-        swim.addMember(p3, status: .suspect(incarnation: 1))
+        swim.addMember(p3, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))))
 
         // Imagine: we asked p2 to ping p3
         // p3 pings p2, gets an ack back -- and there p2 had to bump its incarnation number // TODO test for that, using Swim.instance?
@@ -188,7 +188,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // p3 is suspect already...
         swim.addMyself(p1)
         swim.addMember(p2, status: .alive(incarnation: 0))
-        swim.addMember(p3, status: .suspect(incarnation: 1))
+        swim.addMember(p3, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))))
 
         // Imagine: we asked p2 to ping p3
         // p3 pings p2, yet p2 somehow didn't bump its incarnation... so we should NOT accept its refutation
@@ -199,6 +199,27 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         // p3 should be alive; after all, p2 told us so!
         swim.member(for: p3)!.isSuspect.shouldBeTrue()
+    }
+
+    func test_onPingRequestResponse_storeIndividualSuspicions() throws {
+        let swim = SWIM.Instance(.default)
+
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+
+        // p3 is suspect already...
+        swim.addMyself(p1)
+        swim.addMember(p2, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(1))))
+
+        struct TestError: Error {}
+
+        _ = swim.onPingRequestResponse(.failure(TestError()), pingedMember: p2)
+        let resultStatus = swim.member(for: p2)!.status
+        if case .suspect(_, let confimrations) = resultStatus {
+            confimrations.shouldEqual(Set(arrayLiteral: NodeID(1), NodeID(0)))
+        } else {
+            throw self.testKit.fail("Expected `.suspected(_, Set(0,1))`, got \(resultStatus)")
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -256,7 +277,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // Imagine: p2 pings us, it suspects us (!)
         // we (p1) receive the ping and want to refute the suspicion, we are Still Alive:
         // (p2 has heard from someone that we are suspect in incarnation 10 (for some silly reason))
-        let res = swim.onPing(lastKnownStatus: .suspect(incarnation: 0))
+        let res = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))))
 
         switch res {
         case .reply(let ack, _):
@@ -272,7 +293,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 1), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1), protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
         SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
@@ -281,25 +302,25 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1), protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
         SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
         SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
 
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2), protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
 
         SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2), protocolPeriod: 1))
+        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
         SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
@@ -345,7 +366,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
-        myselfMember.status = .suspect(incarnation: currentIncarnation)
+        myselfMember.status = .suspect(incarnation: currentIncarnation, confirmations: Set(arrayLiteral: NodeID(0)))
 
         let res = swim.onGossipPayload(about: myselfMember)
 
@@ -369,12 +390,12 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         var myselfMember = swim.member(for: myself)!
 
         // necessary to increment incarnation
-        myselfMember.status = .suspect(incarnation: currentIncarnation)
+        myselfMember.status = .suspect(incarnation: currentIncarnation, confirmations: Set(arrayLiteral: NodeID(0)))
         _ = swim.onGossipPayload(about: myselfMember)
 
         currentIncarnation = swim.incarnation
 
-        myselfMember.status = .suspect(incarnation: currentIncarnation - 1) // purposefully "previous"
+        myselfMember.status = .suspect(incarnation: currentIncarnation - 1, confirmations: Set(arrayLiteral: NodeID(0))) // purposefully "previous"
         let res = swim.onGossipPayload(about: myselfMember)
 
         swim.incarnation.shouldEqual(currentIncarnation)
@@ -395,7 +416,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
 
-        myselfMember.status = .suspect(incarnation: currentIncarnation + 6)
+        myselfMember.status = .suspect(incarnation: currentIncarnation + 6, confirmations: Set(arrayLiteral: NodeID(0)))
         let res = swim.onGossipPayload(about: myselfMember)
 
         swim.incarnation.shouldEqual(currentIncarnation)
@@ -447,6 +468,68 @@ final class SWIMInstanceTests: ActorSystemTestBase {
             change.member.shouldEqual(otherMember)
         default:
             throw self.testKit.fail("Expected `.applied(.some(change to dead))`, got \(res)")
+        }
+    }
+
+    func test_onGossipPayload_other_withNewSuspicion_shouldStoreIndividulalSuspicions() throws {
+        let swim = SWIM.Instance(.default)
+
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
+        let other = try system.spawn("SWIM-B", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
+
+        swim.addMyself(myself)
+        swim.addMember(other, status: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(1))))
+
+        var otherMember = swim.member(for: other)!
+        otherMember.status = .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0)))
+        let res = swim.onGossipPayload(about: otherMember)
+        if case .applied(.some(let change), _, _) = res,
+            case .suspect(_, let confirmation) = change.toStatus {
+            confirmation.shouldEqual(Set(arrayLiteral: NodeID(0), NodeID(1)))
+        } else {
+            throw self.testKit.fail("Expected `.applied(.some(suspect with multiple confirmations))`, got \(res)")
+        }
+    }
+
+    func test_onGossipPayload_other_shouldNotApplyGossip_whenHaveEnoughConfirmations() throws {
+        let swim = SWIM.Instance(.default)
+
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
+        let other = try system.spawn("SWIM-B", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
+
+        swim.addMyself(myself)
+        let saturatedConfirmationsList = (1 ... swim.settings.failureDetector.maxIndependentSuspicions).map { NodeID(UInt32($0)) }
+
+        swim.addMember(other, status: .suspect(incarnation: 0, confirmations: Set(saturatedConfirmationsList)))
+
+        var otherMember = swim.member(for: other)!
+        otherMember.status = .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0)))
+        let res = swim.onGossipPayload(about: otherMember)
+        guard case .ignored = res else {
+            throw self.testKit.fail("Expected `.ignored(_, _)`, got \(res)")
+        }
+    }
+
+    func test_onGossipPayload_other_shouldNotExceedMaximumConfirmations() throws {
+        var settings: SWIMSettings = .default
+        settings.failureDetector.maxIndependentSuspicions = 3
+        let swim = SWIM.Instance(settings)
+
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
+        let other = try system.spawn("SWIM-B", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
+
+        swim.addMyself(myself)
+
+        swim.addMember(other, status: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0), NodeID(1))))
+
+        var otherMember = swim.member(for: other)!
+        otherMember.status = .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(2), NodeID(3)))
+        let res = swim.onGossipPayload(about: otherMember)
+        if case .applied(.some(let change), _, _) = res,
+            case .suspect(_, let confirmation) = change.toStatus {
+            settings.failureDetector.maxIndependentSuspicions.shouldEqual(confirmation.count)
+        } else {
+            throw self.testKit.fail("Expected `.applied(.some(confirmations)) where confirmations.count = maxIndependentSuspicions`, got \(res)")
         }
     }
 
@@ -552,8 +635,8 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
         swim.member(for: probe.ref)!.status.shouldEqual(.alive(incarnation: 0))
 
-        _ = swim.mark(probe.ref, as: .suspect(incarnation: 99))
-        swim.member(for: probe.ref)!.status.shouldEqual(.suspect(incarnation: 99))
+        _ = swim.mark(probe.ref, as: .suspect(incarnation: 99, confirmations: Set(arrayLiteral: NodeID(0))))
+        swim.member(for: probe.ref)!.status.shouldEqual(.suspect(incarnation: 99, confirmations: Set(arrayLiteral: NodeID(0))))
     }
 
     func test_member_shouldWorkForMyself() {
@@ -588,15 +671,51 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         self.validateSuspects(swim, expected: [])
 
-        swim.mark(p1, as: .suspect(incarnation: 0)).shouldEqual(.applied(previousStatus: aliveAtZero, currentStatus: .suspect(incarnation: 0)))
+        swim.mark(p1, as: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0)))).shouldEqual(.applied(previousStatus: aliveAtZero, currentStatus: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0)))))
         self.validateSuspects(swim, expected: [p1])
 
-        _ = swim.mark(p3, as: .suspect(incarnation: 0))
+        _ = swim.mark(p3, as: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))))
         self.validateSuspects(swim, expected: [p1, p3])
 
-        _ = swim.mark(p2, as: .suspect(incarnation: 0))
+        _ = swim.mark(p2, as: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))))
         _ = swim.mark(p1, as: .alive(incarnation: 1))
         self.validateSuspects(swim, expected: [p2, p3])
+    }
+
+    func test_suspects_shouldMarkBiggerSuspicionList() {
+        let swim = SWIM.Instance(.default)
+
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+
+        let aliveAtZero = SWIM.Status.alive(incarnation: 0)
+        swim.addMember(p1, status: aliveAtZero)
+        swim.memberCount.shouldEqual(1)
+
+        self.validateSuspects(swim, expected: [])
+        let oldStatus: SWIM.Status = .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0)))
+        swim.mark(p1, as: oldStatus).shouldEqual(.applied(previousStatus: aliveAtZero, currentStatus: oldStatus))
+        self.validateSuspects(swim, expected: [p1])
+        let newStatus: SWIM.Status = .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0), NodeID(1)))
+        swim.mark(p1, as: newStatus).shouldEqual(.applied(previousStatus: oldStatus, currentStatus: newStatus))
+        self.validateSuspects(swim, expected: [p1])
+    }
+
+    func test_suspects_shouldNotMarkSmallerSuspicionList() {
+        let swim = SWIM.Instance(.default)
+
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+
+        let aliveAtZero = SWIM.Status.alive(incarnation: 0)
+        swim.addMember(p1, status: aliveAtZero)
+        swim.memberCount.shouldEqual(1)
+
+        self.validateSuspects(swim, expected: [])
+        let oldStatus: SWIM.Status = .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0), NodeID(1)))
+        swim.mark(p1, as: oldStatus).shouldEqual(.applied(previousStatus: aliveAtZero, currentStatus: oldStatus))
+        self.validateSuspects(swim, expected: [p1])
+        let newStatus: SWIM.Status = .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0)))
+        swim.mark(p1, as: newStatus).shouldEqual(.ignoredDueToOlderStatus(currentStatus: oldStatus))
+        self.validateSuspects(swim, expected: [p1])
     }
 
     func test_memberCount_shouldNotCountDeadMembers() {
@@ -642,11 +761,11 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.addMember(p1.ref, status: .alive(incarnation: 0))
         try self.validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
 
-        swim.addMember(p2.ref, status: .suspect(incarnation: 1))
-        try self.validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: p2.ref, status: .suspect(incarnation: 1), protocolPeriod: 0)])
+        swim.addMember(p2.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))))
+        try self.validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: p2.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 0)])
 
         swim.addMember(p3.ref, status: .dead)
-        try self.validateGossip(swim: swim, expected: [.init(ref: p2.ref, status: .suspect(incarnation: 1), protocolPeriod: 0), .init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: p2.ref, status: .suspect(incarnation: 1, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 0), .init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
         try self.validateGossip(swim: swim, expected: [.init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
         try self.validateGossip(swim: swim, expected: [])
     }
@@ -661,9 +780,9 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
         try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
 
-        _ = swim.mark(probe.ref, as: .suspect(incarnation: 0))
-        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0), protocolPeriod: 0)])
-        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0), protocolPeriod: 0)])
+        _ = swim.mark(probe.ref, as: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))))
+        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), protocolPeriod: 0)])
         try self.validateGossip(swim: swim, expected: [])
     }
 

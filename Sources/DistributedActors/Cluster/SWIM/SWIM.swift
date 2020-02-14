@@ -156,7 +156,7 @@ extension SWIM {
     /// - SeeAlso: `SWIM.Incarnation`
     internal enum Status: Hashable {
         case alive(incarnation: Incarnation)
-        case suspect(incarnation: Incarnation)
+        case suspect(incarnation: Incarnation, confirmations: Set<NodeID>)
         case unreachable(incarnation: Incarnation)
         case dead
     }
@@ -167,19 +167,19 @@ extension SWIM.Status: Comparable {
         switch (lhs, rhs) {
         case (.alive(let selfIncarnation), .alive(let rhsIncarnation)):
             return selfIncarnation < rhsIncarnation
-        case (.alive(let selfIncarnation), .suspect(let rhsIncarnation)):
+        case (.alive(let selfIncarnation), .suspect(let rhsIncarnation, _)):
             return selfIncarnation <= rhsIncarnation
         case (.alive(let selfIncarnation), .unreachable(let rhsIncarnation)):
             return selfIncarnation <= rhsIncarnation
-        case (.suspect(let selfIncarnation), .suspect(let rhsIncarnation)):
+        case (.suspect(let selfIncarnation, let selfConfirmations), .suspect(let rhsIncarnation, let rhsConfirmations)):
+            return selfIncarnation < rhsIncarnation || (selfIncarnation == rhsIncarnation && selfConfirmations.isStrictSubset(of: rhsConfirmations))
+        case (.suspect(let selfIncarnation, _), .alive(let rhsIncarnation)):
             return selfIncarnation < rhsIncarnation
-        case (.suspect(let selfIncarnation), .alive(let rhsIncarnation)):
-            return selfIncarnation < rhsIncarnation
-        case (.suspect(let selfIncarnation), .unreachable(let rhsIncarnation)):
+        case (.suspect(let selfIncarnation, _), .unreachable(let rhsIncarnation)):
             return selfIncarnation <= rhsIncarnation
         case (.unreachable(let selfIncarnation), .alive(let rhsIncarnation)):
             return selfIncarnation < rhsIncarnation
-        case (.unreachable(let selfIncarnation), .suspect(let rhsIncarnation)):
+        case (.unreachable(let selfIncarnation), .suspect(let rhsIncarnation, _)):
             return selfIncarnation < rhsIncarnation
         case (.unreachable(let selfIncarnation), .unreachable(let rhsIncarnation)):
             return selfIncarnation < rhsIncarnation
@@ -197,7 +197,7 @@ extension SWIM.Status {
         switch self {
         case .alive(let incarnation):
             return incarnation
-        case .suspect(let incarnation):
+        case .suspect(let incarnation, _):
             return incarnation
         case .unreachable(let incarnation):
             return incarnation

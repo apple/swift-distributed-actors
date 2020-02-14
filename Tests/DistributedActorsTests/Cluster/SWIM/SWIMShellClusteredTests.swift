@@ -127,7 +127,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
 
         try self.expectPing(on: p, reply: false)
 
-        try self.awaitStatus(.suspect(incarnation: 0), for: remoteProbeRef, on: ref, within: .seconds(1))
+        try self.awaitStatus(.suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), for: remoteProbeRef, on: ref, within: .seconds(1))
     }
 
     func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() throws {
@@ -157,7 +157,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
             throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
         }
 
-        try self.awaitStatus(.suspect(incarnation: 0), for: suspiciousRef, on: ref, within: .seconds(1))
+        try self.awaitStatus(.suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), for: suspiciousRef, on: ref, within: .seconds(1))
     }
 
     func test_swim_shouldNotMarkSuspects_whenPingFailsButRequestedNodesSucceedToPing() throws {
@@ -206,7 +206,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
 
         try self.expectPing(on: p, reply: false)
 
-        try self.awaitStatus(.suspect(incarnation: 0), for: remoteProbeRef, on: ref, within: .seconds(1))
+        try self.awaitStatus(.suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), for: remoteProbeRef, on: ref, within: .seconds(1))
 
         ref.tell(.local(.pingRandomMember))
 
@@ -275,7 +275,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         ref.tell(.local(.pingRandomMember))
         try self.expectPing(on: p, reply: false)
 
-        try self.awaitStatus(.suspect(incarnation: 0), for: remoteMemberRef, on: ref, within: .seconds(1))
+        try self.awaitStatus(.suspect(incarnation: 0, confirmations: Set(arrayLiteral: NodeID(0))), for: remoteMemberRef, on: ref, within: .seconds(1))
 
         for _ in 0 ..< SWIMSettings.default.failureDetector.suspicionTimeoutPeriodsMax {
             ref.tell(.local(.pingRandomMember))

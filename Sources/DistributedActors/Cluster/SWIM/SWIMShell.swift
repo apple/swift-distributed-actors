@@ -179,7 +179,7 @@ internal struct SWIMShell {
         guard !membersToPingRequest.isEmpty else {
             // no nodes available to ping, so we have to assume the node suspect right away
             if let lastIncarnation = lastKnownStatus.incarnation {
-                switch self.swim.mark(toPing, as: .suspect(incarnation: lastIncarnation)) {
+                switch self.swim.mark(toPing, as: self.swim.makeSuspicion(incarnation: lastIncarnation)) {
                 case .applied(_, let currentStatus):
                     context.log.info("No members to ping-req through, marked [\(toPing)] immediately as [\(currentStatus)].")
                     return

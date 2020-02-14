@@ -108,4 +108,8 @@ public struct SWIMFailureDetectorSettings {
     /// and only after exceeding `suspicionTimeoutPeriodsMax` shall the node be declared as `.unreachable`,
     /// which results in an `Cluster.MemberReachabilityChange` `Cluster.Event` which downing strategies may act upon.
     public var pingTimeout: TimeAmount = .milliseconds(300)
+
+    /// A Lifegurad suspicion extension to SWIM protocol.
+    /// A number of independent suspicions required for a suspicion timeout to fully decay to a minimal value.
+    public var maxIndependentSuspicions = 3
 }
