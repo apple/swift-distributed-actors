@@ -55,15 +55,15 @@ final class SWIMInstance {
 
     func makeSuspicion(incarnation: SWIM.Incarnation) -> SWIM.Status {
         let originator = self.myNode?.nid ?? NodeID(0)
-        return .suspect(incarnation: incarnation, confirmations: Set(arrayLiteral: originator))
+        return .suspect(incarnation: incarnation, suspectedBy: [originator])
     }
 
-    func updateSuspicion(incarnation: SWIM.Incarnation, confirmations: Set<NodeID>, previousConfirmations: Set<NodeID>) -> SWIM.Status {
-        var newConfirmations = previousConfirmations
-        for confirmation in confirmations.sorted() where newConfirmations.count < self.settings.failureDetector.maxIndependentSuspicions {
-            newConfirmations.update(with: confirmation)
+    func updateSuspicion(incarnation: SWIM.Incarnation, suspectedBy: Set<NodeID>, previouslySuspectedBy: Set<NodeID>) -> SWIM.Status {
+        var newSuspectedBy = previouslySuspectedBy
+        for suspectedBy in suspectedBy.sorted() where newSuspectedBy.count < self.settings.failureDetector.maxIndependentSuspicions {
+            newSuspectedBy.update(with: suspectedBy)
         }
-        return .suspect(incarnation: incarnation, confirmations: newConfirmations)
+        return .suspect(incarnation: incarnation, suspectedBy: newSuspectedBy)
     }
 
     private var _incarnation: SWIM.Incarnation = 0
@@ -201,11 +201,11 @@ final class SWIMInstance {
 
         var status = status
         var protocolPeriod = self.protocolPeriod
-        if case .suspect(let incomingIncarnation, let incomingConfirmations) = status,
-            case .suspect(let previousIncarnation, let previousConfirmations)? = previousStatusOption,
+        if case .suspect(let incomingIncarnation, let incomingSuspectedBy) = status,
+            case .suspect(let previousIncarnation, let previousSuspectedBy)? = previousStatusOption,
             let previousMembership = self.member(for: ref),
             incomingIncarnation == previousIncarnation {
-            status = self.updateSuspicion(incarnation: incomingIncarnation, confirmations: incomingConfirmations, previousConfirmations: previousConfirmations)
+            status = self.updateSuspicion(incarnation: incomingIncarnation, suspectedBy: incomingSuspectedBy, previouslySuspectedBy: previousSuspectedBy)
             // we should keep old protocol period when member is already a suspect
             protocolPeriod = previousMembership.protocolPeriod
         }
@@ -267,10 +267,10 @@ final class SWIMInstance {
     /// The forumla is taken from Lifeguard whitepaper https://arxiv.org/abs/1707.00788
     /// According to it, suspicion timeout is logarithmically decaying from `suspicionTimeoutPeriodsMax` to `suspicionTimeoutPeriodsMin`
     /// depending on a number of suspicion confirmations.
-    func suspicionTimeout(confirmations: Int) -> Int {
+    func suspicionTimeout(suspectedByCount: Int) -> Int {
         let minTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMin
         let maxTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMax
-        return max(minTimeout, maxTimeout - Int(round(Double(maxTimeout - minTimeout) * (log2(Double(confirmations + 1)) / log2(Double(self.settings.failureDetector.maxIndependentSuspicions + 1))))))
+        return max(minTimeout, maxTimeout - Int(round(Double(maxTimeout - minTimeout) * (log2(Double(suspectedByCount + 1)) / log2(Double(self.settings.failureDetector.maxIndependentSuspicions + 1))))))
     }
 
     func status(of ref: ActorRef<SWIM.Message>) -> SWIM.Status? {

@@ -92,7 +92,7 @@ public struct SWIMFailureDetectorSettings {
     /// Suspicion timeouts are specified as number of probe intervals.
     /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutMin = 3` means that a suspicious node
     /// will be escalated as `.unreachable`  at least after approximately 900ms. Suspicion timeout will decay logarithmically to `suspicionTimeoutPeriodsMin`
-    /// with additional confirmations of suspicion arriving. When no additional confrmation present, suspicion timeout will equal `suspicionTimeoutPeriodsMax`
+    /// with additional suspicions arriving. When no additional suspicions present, suspicion timeout will equal `suspicionTimeoutPeriodsMax`
     ///
     /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
     /// and `.down` in the high-level membership.
@@ -105,7 +105,7 @@ public struct SWIMFailureDetectorSettings {
     /// Suspicion timeouts are specified as number of probe intervals.
     /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutPeriodsMax = 3` means that a suspicious node
     /// will be escalated as `.unreachable` at most after approximately 900ms. Suspicion timeout will decay logarithmically from `suspicionTimeoutPeriodsMax`
-    /// with additional confirmations of suspicion arriving. When number of confirmations reach `maxIndependentSuspicions`, suspicion timeout will equal `suspicionTimeoutPeriodsMin`
+    /// with additional suspicions arriving. When number of suspicions reach `maxIndependentSuspicions`, suspicion timeout will equal `suspicionTimeoutPeriodsMin`
     ///
     /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
     /// and `.down` in the high-level membership.

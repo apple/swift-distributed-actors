@@ -75,10 +75,10 @@ extension SWIM.Status: InternalProtobufRepresentable {
         case .alive(let incarnation):
             proto.type = .alive
             proto.incarnation = incarnation
-        case .suspect(let incarnation, let confirmations):
+        case .suspect(let incarnation, let suspectedBy):
             proto.type = .suspect
             proto.incarnation = incarnation
-            proto.confirmation = confirmations.map { $0.value }.sorted()
+            proto.suspectedBy = suspectedBy.map { $0.value }.sorted()
         case .unreachable(let incarnation):
             proto.type = .unreachable
             proto.incarnation = incarnation
@@ -95,8 +95,8 @@ extension SWIM.Status: InternalProtobufRepresentable {
         case .alive:
             self = .alive(incarnation: proto.incarnation)
         case .suspect:
-            let confirmations = Set<NodeID>(proto.confirmation.map { NodeID($0) })
-            self = .suspect(incarnation: proto.incarnation, confirmations: confirmations)
+            let suspectedBy = Set<NodeID>(proto.suspectedBy.map { NodeID($0) })
+            self = .suspect(incarnation: proto.incarnation, suspectedBy: suspectedBy)
         case .unreachable:
             self = .unreachable(incarnation: proto.incarnation)
         case .dead:

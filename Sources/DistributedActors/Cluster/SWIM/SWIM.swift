@@ -156,7 +156,7 @@ extension SWIM {
     /// - SeeAlso: `SWIM.Incarnation`
     internal enum Status: Hashable {
         case alive(incarnation: Incarnation)
-        case suspect(incarnation: Incarnation, confirmations: Set<NodeID>)
+        case suspect(incarnation: Incarnation, suspectedBy: Set<NodeID>)
         case unreachable(incarnation: Incarnation)
         case dead
     }
@@ -171,8 +171,8 @@ extension SWIM.Status: Comparable {
             return selfIncarnation <= rhsIncarnation
         case (.alive(let selfIncarnation), .unreachable(let rhsIncarnation)):
             return selfIncarnation <= rhsIncarnation
-        case (.suspect(let selfIncarnation, let selfConfirmations), .suspect(let rhsIncarnation, let rhsConfirmations)):
-            return selfIncarnation < rhsIncarnation || (selfIncarnation == rhsIncarnation && selfConfirmations.isStrictSubset(of: rhsConfirmations))
+        case (.suspect(let selfIncarnation, let selfSuspectedBy), .suspect(let rhsIncarnation, let rhsSuspectedBy)):
+            return selfIncarnation < rhsIncarnation || (selfIncarnation == rhsIncarnation && selfSuspectedBy.isStrictSubset(of: rhsSuspectedBy))
         case (.suspect(let selfIncarnation, _), .alive(let rhsIncarnation)):
             return selfIncarnation < rhsIncarnation
         case (.suspect(let selfIncarnation, _), .unreachable(let rhsIncarnation)):

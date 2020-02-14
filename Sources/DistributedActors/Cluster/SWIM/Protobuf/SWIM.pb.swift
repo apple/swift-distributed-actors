@@ -212,7 +212,7 @@ public struct ProtoSWIMStatus {
 
   public var incarnation: UInt64 = 0
 
-  public var confirmation: [UInt32] = []
+  public var suspectedBy: [UInt32] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -640,7 +640,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "type"),
     2: .same(proto: "incarnation"),
-    3: .same(proto: "confirmation"),
+    3: .same(proto: "suspectedBy"),
   ]
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -648,7 +648,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       switch fieldNumber {
       case 1: try decoder.decodeSingularEnumField(value: &self.type)
       case 2: try decoder.decodeSingularUInt64Field(value: &self.incarnation)
-      case 3: try decoder.decodeRepeatedUInt32Field(value: &self.confirmation)
+      case 3: try decoder.decodeRepeatedUInt32Field(value: &self.suspectedBy)
       default: break
       }
     }
@@ -661,8 +661,8 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     if self.incarnation != 0 {
       try visitor.visitSingularUInt64Field(value: self.incarnation, fieldNumber: 2)
     }
-    if !self.confirmation.isEmpty {
-      try visitor.visitPackedUInt32Field(value: self.confirmation, fieldNumber: 3)
+    if !self.suspectedBy.isEmpty {
+      try visitor.visitPackedUInt32Field(value: self.suspectedBy, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -670,7 +670,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   public static func ==(lhs: ProtoSWIMStatus, rhs: ProtoSWIMStatus) -> Bool {
     if lhs.type != rhs.type {return false}
     if lhs.incarnation != rhs.incarnation {return false}
-    if lhs.confirmation != rhs.confirmation {return false}
+    if lhs.suspectedBy != rhs.suspectedBy {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -350,12 +350,12 @@ internal struct SWIMShell {
         ])
 
         for suspect in self.swim.suspects {
-            if case .suspect(_, let confirmations) = suspect.status {
+            if case .suspect(_, let suspectedBy) = suspect.status {
                 // TODO: push more of logic into SWIM instance, the calculating
-                let timeoutSuspectsBeforePeriod = self.swim.suspicionTimeout(confirmations: confirmations.count)
+                let timeoutSuspectsBeforePeriod = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
                 context.log.trace("Checking suspicion timeout for: \(suspect)...", metadata: [
                     "swim/suspect": "\(suspect)",
-                    "swim/confirmations": "\(confirmations.count)",
+                    "swim/suspectedBy": "\(suspectedBy.count)",
                     "swim/timeoutSuspectsBeforePeriod": "\(timeoutSuspectsBeforePeriod)",
                 ])
 
