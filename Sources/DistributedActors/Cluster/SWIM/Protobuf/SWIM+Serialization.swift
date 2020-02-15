@@ -29,14 +29,14 @@ extension SWIM.Message: InternalProtobufRepresentable {
         switch message {
         case .ping(let lastKnownStatus, let replyTo, let payload):
             var ping = ProtoSWIMPing()
-            ping.lastKnownStatus = lastKnownStatus.toProto(context: context)
+            ping.lastKnownStatus = try lastKnownStatus.toProto(context: context)
             ping.replyTo = try replyTo.toProto(context: context)
             ping.payload = try payload.toProto(context: context)
             proto.ping = ping
         case .pingReq(let target, let lastKnownStatus, let replyTo, let payload):
             var pingRequest = ProtoSWIMPingRequest()
             pingRequest.target = try target.toProto(context: context)
-            pingRequest.lastKnownStatus = lastKnownStatus.toProto(context: context)
+            pingRequest.lastKnownStatus = try lastKnownStatus.toProto(context: context)
             pingRequest.replyTo = try replyTo.toProto(context: context)
             pingRequest.payload = try payload.toProto(context: context)
             proto.pingRequest = pingRequest
@@ -69,15 +69,16 @@ extension SWIM.Message: InternalProtobufRepresentable {
 extension SWIM.Status: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSWIMStatus
 
-    func toProto(context: ActorSerializationContext) -> ProtoSWIMStatus {
+    func toProto(context: ActorSerializationContext) throws -> ProtoSWIMStatus {
         var proto = ProtoSWIMStatus()
         switch self {
         case .alive(let incarnation):
             proto.type = .alive
             proto.incarnation = incarnation
-        case .suspect(let incarnation):
+        case .suspect(let incarnation, let suspectedBy):
             proto.type = .suspect
             proto.incarnation = incarnation
+            proto.suspectedBy = try suspectedBy.map { try $0.toProto(context: context) }
         case .unreachable(let incarnation):
             proto.type = .unreachable
             proto.incarnation = incarnation
@@ -94,7 +95,8 @@ extension SWIM.Status: InternalProtobufRepresentable {
         case .alive:
             self = .alive(incarnation: proto.incarnation)
         case .suspect:
-            self = .suspect(incarnation: proto.incarnation)
+            let suspectedBy = try Set(proto.suspectedBy.map { try UniqueNode(fromProto: $0, context: context) })
+            self = .suspect(incarnation: proto.incarnation, suspectedBy: suspectedBy)
         case .unreachable:
             self = .unreachable(incarnation: proto.incarnation)
         case .dead:
@@ -135,7 +137,7 @@ extension SWIM.Member: InternalProtobufRepresentable {
     func toProto(context: ActorSerializationContext) throws -> ProtoSWIMMember {
         var proto = ProtoSWIMMember()
         proto.address = try self.ref.toProto(context: context)
-        proto.status = self.status.toProto(context: context)
+        proto.status = try self.status.toProto(context: context)
         return proto
     }
 
