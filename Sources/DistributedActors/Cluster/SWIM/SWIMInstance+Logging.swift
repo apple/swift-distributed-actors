@@ -23,7 +23,8 @@ extension SWIM.Instance {
         [
             "swim/membersToPing": "\(self.membersToPing)",
             "swim/protocolPeriod": "\(self.protocolPeriod)",
-            "swim/timeoutSuspectsBeforePeriod": "\(self.timeoutSuspectsBeforePeriod)",
+            "swim/timeoutSuspectsBeforePeriodMax": "\(self.timeoutSuspectsBeforePeriodMax)",
+            "swim/timeoutSuspectsBeforePeriodMin": "\(self.timeoutSuspectsBeforePeriodMin)",
             "swim/incarnation": "\(self.incarnation)",
             "swim/memberCount": "\(self.memberCount)",
             "swim/suspectCount": "\(self.suspects.count)",

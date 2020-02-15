@@ -179,7 +179,7 @@ internal struct SWIMShell {
         guard !membersToPingRequest.isEmpty else {
             // no nodes available to ping, so we have to assume the node suspect right away
             if let lastIncarnation = lastKnownStatus.incarnation {
-                switch self.swim.mark(toPing, as: .suspect(incarnation: lastIncarnation)) {
+                switch self.swim.mark(toPing, as: self.swim.makeSuspicion(incarnation: lastIncarnation)) {
                 case .applied(_, let currentStatus):
                     context.log.info("No members to ping-req through, marked [\(toPing)] immediately as [\(currentStatus)].")
                     return
@@ -343,32 +343,36 @@ internal struct SWIMShell {
     }
 
     func checkSuspicionTimeouts(context: ActorContext<SWIM.Message>) {
-        // TODO: push more of logic into SWIM instance, the calculating
-        // FIXME: use decaying timeout as proposed in lifeguard paper
-        let timeoutSuspectsBeforePeriod = self.swim.timeoutSuspectsBeforePeriod
         context.log.trace("Checking suspicion timeouts...", metadata: [
             "swim/suspects": "\(self.swim.suspects)",
             "swim/all": "\(self.swim._allMembersDict)",
             "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-            "swim/timeoutSuspectsBeforePeriod": "\(timeoutSuspectsBeforePeriod)",
         ])
 
         for suspect in self.swim.suspects {
-            context.log.trace("Checking suspicion timeout for: \(suspect)...")
+            if case .suspect(_, let suspectedBy) = suspect.status {
+                // TODO: push more of logic into SWIM instance, the calculating
+                let suspicionTimeoutPeriods = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
+                context.log.trace("Checking suspicion timeout for: \(suspect)...", metadata: [
+                    "swim/suspect": "\(suspect)",
+                    "swim/suspectedBy": "\(suspectedBy.count)",
+                    "swim/suspicionTimeoutPeriods": "\(suspicionTimeoutPeriods)",
+                ])
 
-            // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
-            guard suspect.protocolPeriod <= timeoutSuspectsBeforePeriod else {
-                continue // skip, this suspect is not timed-out yet
+                // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
+                guard suspect.protocolPeriod <= self.swim.protocolPeriod - suspicionTimeoutPeriods else {
+                    continue // skip, this suspect is not timed-out yet
+                }
+
+                guard let incarnation = suspect.status.incarnation else {
+                    // suspect had no incarnation number? that means it is .dead already and should be recycled soon
+                    return
+                }
+
+                var unreachableSuspect = suspect
+                unreachableSuspect.status = .unreachable(incarnation: incarnation)
+                _ = self.markMember(context, latest: unreachableSuspect)
             }
-
-            guard let incarnation = suspect.status.incarnation else {
-                // suspect had no incarnation number? that means it is .dead already and should be recycled soon
-                return
-            }
-
-            var unreachableSuspect = suspect
-            unreachableSuspect.status = .unreachable(incarnation: incarnation)
-            _ = self.markMember(context, latest: unreachableSuspect)
         }
 
         context.system.metrics.recordSWIMMembers(self.swim.allMembers)

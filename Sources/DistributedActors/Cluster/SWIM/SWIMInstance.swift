@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation // for natural logarithm
 import Logging
 
 /// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).
@@ -32,6 +33,8 @@ import Logging
 final class SWIMInstance {
     let settings: SWIM.Settings
 
+    static let testNode = UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(0))
+
     /// Main members storage, map to values to obtain current members.
     internal var members: [ActorRef<SWIM.Message>: SWIMMember]
 
@@ -50,6 +53,19 @@ final class SWIMInstance {
     /// itself, to which it will respond with an `.alive` with the incremented incarnation.
     var incarnation: SWIM.Incarnation {
         self._incarnation
+    }
+
+    func makeSuspicion(incarnation: SWIM.Incarnation) -> SWIM.Status {
+        let originator = self.myNode ?? SWIMInstance.testNode
+        return .suspect(incarnation: incarnation, suspectedBy: [originator])
+    }
+
+    func updateSuspicion(incarnation: SWIM.Incarnation, suspectedBy: Set<UniqueNode>, previouslySuspectedBy: Set<UniqueNode>) -> SWIM.Status {
+        var newSuspectedBy = previouslySuspectedBy
+        for suspectedBy in suspectedBy.sorted() where newSuspectedBy.count < self.settings.failureDetector.maxIndependentSuspicions {
+            newSuspectedBy.update(with: suspectedBy)
+        }
+        return .suspect(incarnation: incarnation, suspectedBy: newSuspectedBy)
     }
 
     private var _incarnation: SWIM.Incarnation = 0
@@ -185,12 +201,23 @@ final class SWIMInstance {
     func mark(_ ref: ActorRef<SWIM.Message>, as status: SWIM.Status) -> MarkedDirective {
         let previousStatusOption = self.status(of: ref)
 
+        var status = status
+        var protocolPeriod = self.protocolPeriod
+        if case .suspect(let incomingIncarnation, let incomingSuspectedBy) = status,
+            case .suspect(let previousIncarnation, let previousSuspectedBy)? = previousStatusOption,
+            let previousMembership = self.member(for: ref),
+            incomingIncarnation == previousIncarnation {
+            status = self.updateSuspicion(incarnation: incomingIncarnation, suspectedBy: incomingSuspectedBy, previouslySuspectedBy: previousSuspectedBy)
+            // we should keep old protocol period when member is already a suspect
+            protocolPeriod = previousMembership.protocolPeriod
+        }
+
         if let previousStatus = previousStatusOption, previousStatus.supersedes(status) {
             // we already have a newer status for this member
             return .ignoredDueToOlderStatus(currentStatus: previousStatus)
         }
 
-        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: self.protocolPeriod)
+        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: protocolPeriod)
         self.members[ref] = member
         self.addToGossip(member: member)
 
@@ -231,12 +258,42 @@ final class SWIMInstance {
         self._protocolPeriod
     }
 
-    /// When checking suspicion timeouts, any member suspect observation older or equal to this protocol period shall considered unreachable
-    ///
-    /// Note that this value may be negative, which simply implies "we are not at a protocol period old enough that any of the
-    /// suspects could have been old enough to be marked unreachable yet."
-    var timeoutSuspectsBeforePeriod: Int {
+    /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
+    var timeoutSuspectsBeforePeriodMax: Int {
         self.protocolPeriod - self.settings.failureDetector.suspicionTimeoutPeriodsMax
+    }
+
+    /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
+    var timeoutSuspectsBeforePeriodMin: Int {
+        self.protocolPeriod - self.settings.failureDetector.suspicionTimeoutPeriodsMin
+    }
+
+    /// The forumla is taken from Lifeguard whitepaper https://arxiv.org/abs/1707.00788
+    /// According to it, suspicion timeout is logarithmically decaying from `suspicionTimeoutPeriodsMax` to `suspicionTimeoutPeriodsMin`
+    /// depending on a number of suspicion confirmations.
+    ///
+    /// Suspicion timeout adjusted according to number of known independent suspicions of given member.
+    ///
+    /// See: Lifeguard IV-B: Local Health Aware Suspicion
+    ///
+    /// The timeout for a given suspicion is calculated as follows:
+    ///
+    /// ```
+    ///                                             log(C + 1) 􏰁
+    /// SuspicionTimeout =􏰀 max(Min, Max − (Max−Min) ----------)
+    ///                                             log(K + 1)
+    /// ```
+    ///
+    /// where:
+    /// - `Min` and `Max` are the minimum and maximum Suspicion timeout.
+    ///   See Section `V-C` for discussion of their configuration.
+    /// - `K` is the number of independent suspicions required to be received before setting the suspicion timeout to `Min`.
+    ///   We default `K` to `3`.
+    /// - `C` is the number of independent suspicions about that member received since the local suspicion was raised.
+    func suspicionTimeout(suspectedByCount: Int) -> Int {
+        let minTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMin
+        let maxTimeout = self.settings.failureDetector.suspicionTimeoutPeriodsMax
+        return max(minTimeout, maxTimeout - Int(round(Double(maxTimeout - minTimeout) * (log2(Double(suspectedByCount + 1)) / log2(Double(self.settings.failureDetector.maxIndependentSuspicions + 1))))))
     }
 
     func status(of ref: ActorRef<SWIM.Message>) -> SWIM.Status? {
@@ -342,7 +399,7 @@ extension SWIM.Instance {
         // if a node suspects us in the current incarnation, we need to increment
         // our incarnation number, so the new `alive` status can properly propagate through
         // the cluster (and "win" over the old `.suspect` status).
-        if case .suspect(let suspectedInIncarnation) = lastKnownStatus {
+        if case .suspect(let suspectedInIncarnation, _) = lastKnownStatus {
             if suspectedInIncarnation == self._incarnation {
                 self._incarnation += 1
                 warning = nil
@@ -374,15 +431,13 @@ extension SWIM.Instance {
         switch result {
         case .failure:
             switch lastKnownStatus {
-            case .alive(let incarnation):
-                switch self.mark(member, as: .suspect(incarnation: incarnation)) {
+            case .alive(let incarnation), .suspect(let incarnation, _):
+                switch self.mark(member, as: self.makeSuspicion(incarnation: incarnation)) {
                 case .applied:
                     return .newlySuspect
                 case .ignoredDueToOlderStatus(let status):
                     return .ignoredDueToOlderStatus(currentStatus: status)
                 }
-            case .suspect:
-                return .alreadySuspect
             case .unreachable:
                 return .alreadyUnreachable
             case .dead:
@@ -430,7 +485,7 @@ extension SWIM.Instance {
         case .alive:
             // as long as other nodes see us as alive, we're happy
             return .applied(change: nil)
-        case .suspect(let suspectedInIncarnation):
+        case .suspect(let suspectedInIncarnation, _):
             // someone suspected us, so we need to increment our incarnation number to spread our alive status with
             // the incremented incarnation
             if suspectedInIncarnation == self.incarnation {
@@ -490,7 +545,9 @@ extension SWIM.Instance {
 
         if self.isMember(member.ref) {
             switch self.mark(member.ref, as: member.status) {
-            case .applied(let previousStatus, _):
+            case .applied(let previousStatus, let currentStatus):
+                var member = member
+                member.status = currentStatus
                 return .applied(change: .init(fromStatus: previousStatus, member: member))
             case .ignoredDueToOlderStatus(let currentStatus):
                 return .ignored(
@@ -504,7 +561,7 @@ extension SWIM.Instance {
                 case .success:
                     self.addMember(member.ref, status: member.status)
                 case .failure:
-                    self.addMember(member.ref, status: .suspect(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)
+                    self.addMember(member.ref, status: self.makeSuspicion(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)
                 }
             })
         } else {
