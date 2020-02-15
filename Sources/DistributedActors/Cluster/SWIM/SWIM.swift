@@ -156,7 +156,7 @@ extension SWIM {
     /// - SeeAlso: `SWIM.Incarnation`
     internal enum Status: Hashable {
         case alive(incarnation: Incarnation)
-        case suspect(incarnation: Incarnation, suspectedBy: Set<NodeID>)
+        case suspect(incarnation: Incarnation, suspectedBy: Set<UniqueNode>)
         case unreachable(incarnation: Incarnation)
         case dead
     }

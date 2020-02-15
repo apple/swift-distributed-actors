@@ -352,15 +352,15 @@ internal struct SWIMShell {
         for suspect in self.swim.suspects {
             if case .suspect(_, let suspectedBy) = suspect.status {
                 // TODO: push more of logic into SWIM instance, the calculating
-                let timeoutSuspectsBeforePeriod = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
+                let suspicionTimeoutPeriods = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
                 context.log.trace("Checking suspicion timeout for: \(suspect)...", metadata: [
                     "swim/suspect": "\(suspect)",
                     "swim/suspectedBy": "\(suspectedBy.count)",
-                    "swim/timeoutSuspectsBeforePeriod": "\(timeoutSuspectsBeforePeriod)",
+                    "swim/suspicionTimeoutPeriods": "\(suspicionTimeoutPeriods)",
                 ])
 
                 // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
-                guard suspect.protocolPeriod <= self.swim.protocolPeriod - timeoutSuspectsBeforePeriod else {
+                guard suspect.protocolPeriod <= self.swim.protocolPeriod - suspicionTimeoutPeriods else {
                     continue // skip, this suspect is not timed-out yet
                 }
 

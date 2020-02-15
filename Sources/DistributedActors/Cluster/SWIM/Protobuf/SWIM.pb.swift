@@ -212,7 +212,7 @@ public struct ProtoSWIMStatus {
 
   public var incarnation: UInt64 = 0
 
-  public var suspectedBy: [UInt32] = []
+  public var suspectedBy: [ProtoUniqueNode] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -648,7 +648,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       switch fieldNumber {
       case 1: try decoder.decodeSingularEnumField(value: &self.type)
       case 2: try decoder.decodeSingularUInt64Field(value: &self.incarnation)
-      case 3: try decoder.decodeRepeatedUInt32Field(value: &self.suspectedBy)
+      case 3: try decoder.decodeRepeatedMessageField(value: &self.suspectedBy)
       default: break
       }
     }
@@ -662,7 +662,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       try visitor.visitSingularUInt64Field(value: self.incarnation, fieldNumber: 2)
     }
     if !self.suspectedBy.isEmpty {
-      try visitor.visitPackedUInt32Field(value: self.suspectedBy, fieldNumber: 3)
+      try visitor.visitRepeatedMessageField(value: self.suspectedBy, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
