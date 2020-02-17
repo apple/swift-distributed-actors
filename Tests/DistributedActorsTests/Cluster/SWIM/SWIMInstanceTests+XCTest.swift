@@ -59,7 +59,7 @@ extension SWIMInstanceTests {
             ("test_suspects_shouldMark_whenBiggerSuspicionList", test_suspects_shouldMark_whenBiggerSuspicionList),
             ("test_suspects_shouldNotMark_whenSmallerSuspicionList", test_suspects_shouldNotMark_whenSmallerSuspicionList),
             ("test_memberCount_shouldNotCountDeadMembers", test_memberCount_shouldNotCountDeadMembers),
-            ("test_makeGossipPayload_shouldReturnNoneIfNothingToGossip", test_makeGossipPayload_shouldReturnNoneIfNothingToGossip),
+            ("test_makeGossipPayload_shouldGossipAboutSelf_whenNoMembers", test_makeGossipPayload_shouldGossipAboutSelf_whenNoMembers),
             ("test_makeGossipPayload_shouldReturnEachEntryOnlyTheConfiguredNumberOfTimes", test_makeGossipPayload_shouldReturnEachEntryOnlyTheConfiguredNumberOfTimes),
             ("test_makeGossipPayload_shouldResetCounterWhenStatusChanged", test_makeGossipPayload_shouldResetCounterWhenStatusChanged),
         ]

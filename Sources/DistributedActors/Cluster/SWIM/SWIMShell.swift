@@ -30,44 +30,39 @@ internal struct SWIMShell {
         self.clusterRef = clusterRef
     }
 
-    internal init(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) {
-        self.init(SWIM.Instance(settings), clusterRef: clusterRef)
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Behaviors
 
     /// Initial behavior, kicks off timers and becomes `ready`.
-    var behavior: Behavior<SWIM.Message> {
+    static func behavior(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) -> Behavior<SWIM.Message> {
         .setup { context in
 
             // TODO: install an .cluster.down(my node) with context.defer in case we crash? Or crash system when this crashes: issue #926
 
-            let probeInterval = self.swim.settings.failureDetector.probeInterval
+            let probeInterval = settings.failureDetector.probeInterval
             context.timers.startPeriodic(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), interval: probeInterval)
+            let shell = SWIMShell(SWIMInstance(settings, myShellMyself: context.myself, myNode: context.system.cluster.node), clusterRef: clusterRef)
 
-            self.swim.addMyself(context.myself, node: context.system.cluster.node)
-
-            return self.ready
+            return SWIMShell.ready(shell: shell)
         }
     }
 
-    var ready: Behavior<SWIM.Message> {
+    static func ready(shell: SWIMShell) -> Behavior<SWIM.Message> {
         .receive { context, wrappedMessage in
             switch wrappedMessage {
             case .remote(let message):
-                self.receiveRemoteMessage(context: context, message: message)
+                shell.receiveRemoteMessage(context: context, message: message)
                 return .same
 
             case .local(let message):
-                self.receiveLocalMessage(context: context, message: message)
+                shell.receiveLocalMessage(context: context, message: message)
                 return .same
 
             case ._testing(let message):
                 switch message {
                 case .getMembershipState(let replyTo):
-                    context.log.trace("getMembershipState from \(replyTo), state: \(self.swim._allMembersDict)")
-                    replyTo.tell(SWIM.MembershipState(membershipState: self.swim._allMembersDict))
+                    context.log.trace("getMembershipState from \(replyTo), state: \(shell.swim._allMembersDict)")
+                    replyTo.tell(SWIM.MembershipState(membershipState: shell.swim._allMembersDict))
                     return .same
                 }
             }
