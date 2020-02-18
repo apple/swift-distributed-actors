@@ -236,6 +236,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
 
             let pingTimeout: TimeAmount = .milliseconds(100)
             let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref, configuredWith: { settings in
+                settings.failureDetector.suspicionTimeoutPeriodsMin = 3
                 settings.failureDetector.suspicionTimeoutPeriodsMax = 3
                 settings.failureDetector.pingTimeout = pingTimeout
             }))
