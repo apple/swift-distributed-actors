@@ -33,8 +33,6 @@ import Logging
 final class SWIMInstance {
     let settings: SWIM.Settings
 
-    static let testNode = UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(0))
-
     /// Main members storage, map to values to obtain current members.
     internal var members: [ActorRef<SWIM.Message>: SWIMMember]
 
@@ -56,8 +54,7 @@ final class SWIMInstance {
     }
 
     func makeSuspicion(incarnation: SWIM.Incarnation) -> SWIM.Status {
-        let originator = self.myNode ?? SWIMInstance.testNode
-        return .suspect(incarnation: incarnation, suspectedBy: [originator])
+        return .suspect(incarnation: incarnation, suspectedBy: [self.myNode])
     }
 
     func updateSuspicion(incarnation: SWIM.Incarnation, suspectedBy: Set<UniqueNode>, previouslySuspectedBy: Set<UniqueNode>) -> SWIM.Status {
@@ -77,29 +74,24 @@ final class SWIMInstance {
     private var _protocolPeriod: Int = 0
 
     // We store the owning SWIMShell ref in order avoid adding it to the `membersToPing` list
-    private var myShellMyself: ActorRef<SWIM.Message>?
-    private var myShellAddress: ActorAddress? {
-        self.myShellMyself?.address
+    private let myShellMyself: ActorRef<SWIM.Message>
+    private var myShellAddress: ActorAddress {
+        self.myShellMyself.address
     }
 
-    private var myNode: UniqueNode?
+    private let myNode: UniqueNode
 
     private var _messagesToGossip = Heap(of: SWIM.Gossip.self, comparator: {
         $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
     })
 
-    init(_ settings: SWIM.Settings) {
+    init(_ settings: SWIM.Settings, myShellMyself: ActorRef<SWIM.Message>, myNode: UniqueNode) {
         self.settings = settings
-
+        self.myNode = myNode
+        self.myShellMyself = myShellMyself
         self.members = [:]
         self.membersToPing = []
-    }
-
-    // FIXME: only reason myNode is optional is tests where we test from actors all on the same node
-    func addMyself(_ ref: ActorRef<SWIM.Message>, node myNode: UniqueNode? = nil) {
-        self.myShellMyself = ref
-        self.myNode = myNode
-        self.addMember(ref, status: .alive(incarnation: 0))
+        self.addMember(myShellMyself, status: .alive(incarnation: 0))
     }
 
     @discardableResult
@@ -310,7 +302,7 @@ final class SWIMInstance {
 
     func member(for node: UniqueNode) -> SWIM.Member? {
         if self.myNode == node {
-            return self.member(for: self.myShellMyself!)
+            return self.member(for: self.myShellMyself)
         }
 
         return self.members.first(where: { key, _ in key.address.node == node })?.value
@@ -391,10 +383,6 @@ final class SWIMInstance {
 
 extension SWIM.Instance {
     func onPing(lastKnownStatus: SWIM.Status) -> OnPingDirective {
-        guard let myself = self.myShellMyself else {
-            preconditionFailure("Myself (ref to SWIM.Shell) must be set before reacting to ping messages.")
-        }
-
         var warning: String?
         // if a node suspects us in the current incarnation, we need to increment
         // our incarnation number, so the new `alive` status can properly propagate through
@@ -413,7 +401,7 @@ extension SWIM.Instance {
             }
         }
 
-        let ack = SWIM.Ack(pinged: myself, incarnation: self._incarnation, payload: self.makeGossipPayload())
+        let ack = SWIM.Ack(pinged: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload())
 
         return .reply(ack, warning: warning)
     }
@@ -525,13 +513,12 @@ extension SWIM.Instance {
             return .applied(change: nil)
 
         case .dead:
-            guard let myselfRef = self.myShellMyself,
-                var myselfMember = self.member(for: myselfRef) else {
+            guard var myselfMember = self.member(for: self.myShellMyself) else {
                 return .applied(change: nil)
             }
 
             myselfMember.status = .dead
-            switch self.mark(myselfRef, as: .dead) {
+            switch self.mark(self.myShellMyself, as: .dead) {
             case .applied(.some(let previousStatus), _):
                 return .applied(change: .init(fromStatus: previousStatus, member: myselfMember))
             default:

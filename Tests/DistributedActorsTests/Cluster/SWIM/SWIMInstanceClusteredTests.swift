@@ -18,6 +18,8 @@ import XCTest
 
 /// Tests of the SWIM.Instance which require the existence of actor systems, even if the instance tests are driven manually.
 final class SWIMInstanceClusteredTests: ClusteredNodesTestBase {
+    let testNode = UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(0))
+
     var localClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var remoteClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
@@ -41,13 +43,12 @@ final class SWIMInstanceClusteredTests: ClusteredNodesTestBase {
         let local = self.setUpLocal()
         let remote = self.setUpRemote()
 
-        let swim = SWIM.Instance(.default)
+        let myself = self.testKit(local).spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: myself, myNode: self.testNode)
+        let other = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self).ref
 
-        let myself = try local.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.localClusterProbe.ref).ready)
-        swim.addMyself(myself)
         swim.memberCount.shouldEqual(1)
 
-        let other = try remote.spawn("SWIM", SWIM.Shell(SWIM.Instance(.default), clusterRef: self.remoteClusterProbe.ref).ready)
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
         let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
@@ -73,14 +74,11 @@ final class SWIMInstanceClusteredTests: ClusteredNodesTestBase {
         let local = self.setUpLocal()
         let remote = self.setUpRemote()
 
-        let swim = SWIM.Instance(.default)
-
-        let myself = try local.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.localClusterProbe.ref).ready)
-        swim.addMyself(myself)
-        _ = swim.member(for: myself)!
+        let myself = self.testKit(local).spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: myself, myNode: self.testNode)
+        let other = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self).ref
         swim.memberCount.shouldEqual(1)
 
-        let other = try remote.spawn("SWIM", SWIM.Shell(SWIM.Instance(.default), clusterRef: self.remoteClusterProbe.ref).ready)
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
         let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
