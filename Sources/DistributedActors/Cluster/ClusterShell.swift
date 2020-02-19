@@ -329,7 +329,7 @@ extension ClusterShell {
 
             // SWIM failure detector and gossiping
             if !clusterSettings.swim.disabled {
-                let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
+                let swimBehavior = SWIMShell.behavior(settings: clusterSettings.swim, clusterRef: context.myself)
                 self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: ._wellKnown, swimBehavior)
             } else {
                 context.log.warning("""
