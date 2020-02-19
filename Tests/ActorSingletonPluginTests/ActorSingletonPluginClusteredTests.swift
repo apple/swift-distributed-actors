@@ -24,27 +24,24 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             singletonSettings.allocationStrategy = .byLeadership
 
             let first = self.setUpNode("first") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 7111
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let second = self.setUpNode("second") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 8222
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let third = self.setUpNode("third") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 9333
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
 
@@ -55,15 +52,15 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
-            let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref1 = try first.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
             ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
 
             let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-            let ref2 = try second.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref2 = try second.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
             ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
 
             let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
-            let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref3 = try third.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
             ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
 
             try replyProbe1.expectMessage("Hello-1 Charlie!")
@@ -78,41 +75,38 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             singletonSettings.allocationStrategy = .byLeadership
 
             let first = self.setUpNode("first") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 7111
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let second = self.setUpNode("second") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 8222
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let third = self.setUpNode("third") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 9333
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
 
             // No leader so singleton is not available, messages sent should be stashed
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
-            let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref1 = try first.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
             ref1.tell(.greet(name: "Charlie-1", _replyTo: replyProbe1.ref))
 
             let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-            let ref2 = try second.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref2 = try second.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
             ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
 
             let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
-            let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref3 = try third.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
             ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
 
             try replyProbe1.expectNoMessage(for: .milliseconds(200))
@@ -137,35 +131,31 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             singletonSettings.allocationStrategy = .byLeadership
 
             let first = self.setUpNode("first") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 7111
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let second = self.setUpNode("second") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 8222
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let third = self.setUpNode("third") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 9333
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
             let fourth = self.setUpNode("fourth") { settings in
+                settings += ActorSingletonPlugin()
+
                 settings.cluster.node.port = 7444
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-
-                settings += ActorSingleton(settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-4")))
-
                 settings.serialization.registerCodable(for: GreeterSingleton.Message.self, underId: 10001)
             }
 
@@ -175,16 +165,19 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
-            let ref1 = try first.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref1 = try first.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
             ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
 
             let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-            let ref2 = try second.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref2 = try second.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
             ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
 
             let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
-            let ref3 = try third.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
+            let ref3 = try third.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
             ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
+
+            // Spawn the singleton on `fourth`
+            _ = try fourth.singleton.ref(of: GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-4")))
 
             // `first` has the lowest address so it should be the leader and singleton
             try replyProbe1.expectMessage("Hello-1 Charlie!")

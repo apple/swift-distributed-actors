@@ -28,8 +28,9 @@ import Logging
 /// would be disposed to allow insertion of the latest message.
 ///
 /// The proxy subscribes to events and feeds them into `AllocationStrategy` to determine the node that the
-/// singleton runs on. It spawns a `ActorSingletonManager`, which manages the actual singleton actor, as needed and
-/// obtains the ref from it. It instructs the `ActorSingletonManager` to hand over the singleton when the node changes.
+/// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
+/// which manages the actual singleton actor, and obtain the ref from it. The proxy instructs the
+/// `ActorSingletonManager` to hand over the singleton whenever the node changes.
 internal class ActorSingletonProxy<Message> {
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
@@ -38,9 +39,11 @@ internal class ActorSingletonProxy<Message> {
     private let allocationStrategy: ActorSingletonAllocationStrategy
 
     /// Props of the singleton behavior
-    private let singletonProps: Props
-    /// The singleton behavior
-    private let singletonBehavior: Behavior<Message>
+    private let singletonProps: Props?
+    /// The singleton behavior.
+    /// If `nil`, then this node is not a candidate for hosting the singleton. It would result
+    /// in a failure if `allocationStrategy` selects this node by mistake.
+    private let singletonBehavior: Behavior<Message>?
 
     /// The node that the singleton runs on
     private var targetNode: UniqueNode?
@@ -54,7 +57,7 @@ internal class ActorSingletonProxy<Message> {
     /// Message buffer in case singleton `ref` is `nil`
     private let buffer: StashBuffer<Message>
 
-    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: Props, _ behavior: Behavior<Message>) {
+    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: Props? = nil, _ behavior: Behavior<Message>? = nil) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props
@@ -120,10 +123,14 @@ internal class ActorSingletonProxy<Message> {
     }
 
     private func takeOver(_ context: ActorContext<Message>, from: UniqueNode?) throws {
+        guard let singletonBehavior = self.singletonBehavior else {
+            preconditionFailure("The actor singleton \(self.settings.name) cannot run on this node. Please review AllocationStrategySettings and/or actor singleton usage.")
+        }
+
         // Spawn the manager then tell it to spawn the singleton actor
         self.managerRef = try context.system._spawnSystemActor(
             "singletonManager-\(self.settings.name)",
-            ActorSingletonManager(settings: self.settings, props: self.singletonProps, self.singletonBehavior).behavior,
+            ActorSingletonManager(settings: self.settings, props: self.singletonProps ?? Props(), singletonBehavior).behavior,
             props: ._wellKnown
         )
         // Need the manager to tell us the ref because we can't resolve it due to random incarnation

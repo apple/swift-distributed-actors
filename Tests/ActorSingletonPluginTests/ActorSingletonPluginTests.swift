@@ -18,31 +18,53 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorSingletonPluginTests: ActorSystemTestBase {
-    func test_ClusterSingleton_shouldWorkWithoutCluster() throws {
+    func test_noCluster_ref() throws {
         // Singleton should work just fine without clustering
         let system = ActorSystem("test") { settings in
             settings.cluster.enabled = false
-            settings += ActorSingleton(GreeterSingleton.name, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello")))
-            settings += ActorSingleton("\(GreeterSingleton.name)-other", GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hi")))
+            settings += ActorSingletonPlugin()
         }
 
         defer {
             system.shutdown().wait()
         }
 
-        // singleton.ref
         let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
-        let ref = try system.singleton.ref(name: GreeterSingleton.name, of: GreeterSingleton.Message.self)
 
+        // singleton.ref
+        let ref = try system.singleton.ref(of: GreeterSingleton.Message.self, name: GreeterSingleton.name, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello")))
         ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
         try replyProbe.expectMessage("Hello Charlie!")
 
+        // singleton.ref (proxy-only)
+        let proxyRef = try system.singleton.ref(of: GreeterSingleton.Message.self, name: GreeterSingleton.name)
+        proxyRef.tell(.greet(name: "Charlene", _replyTo: replyProbe.ref))
+        try replyProbe.expectMessage("Hello Charlene!")
+    }
+
+    func test_noCluster_actor() throws {
+        // Singleton should work just fine without clustering
+        let system = ActorSystem("test") { settings in
+            settings.cluster.enabled = false
+            settings += ActorSingletonPlugin()
+        }
+
+        defer {
+            system.shutdown().wait()
+        }
+
+        let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
+
         // singleton.actor
-        let actor = try system.singleton.actor(name: "\(GreeterSingleton.name)-other", GreeterSingleton.self)
+        let actor = try system.singleton.actor(of: GreeterSingleton.self, name: GreeterSingleton.name, GreeterSingleton("Hi"))
         // TODO: https://github.com/apple/swift-distributed-actors/issues/344
         // let string = try probe.expectReply(actor.greet(name: "Charlie", _replyTo: replyProbe.ref))
         actor.ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
-
         try replyProbe.expectMessage("Hi Charlie!")
+
+        // singleton.actor (proxy-only)
+        let actorProxy = try system.singleton.actor(of: GreeterSingleton.self, name: GreeterSingleton.name)
+        actorProxy.ref.tell(.greet(name: "Charlene", _replyTo: replyProbe.ref))
+        try replyProbe.expectMessage("Hi Charlene!")
     }
 }
