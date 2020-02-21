@@ -37,7 +37,7 @@ public final class ActorSingletonPlugin {
     func ref<Message>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
         if let existing = self.singletons[settings.name] {
             guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {
-                fatalError("Singleton[\(settings.name)] not yet initialized")
+                fatalError("Singleton [\(settings.name)] not yet initialized")
             }
             return proxy
         }
@@ -99,13 +99,13 @@ extension ActorSingletonPlugin: Plugin {
 // MARK: Singleton refs and actors
 
 extension ActorSystem {
-    public var singleton: ActorSingletonLookup {
+    public var singleton: ActorSingletonControl {
         .init(self)
     }
 }
 
-/// Allows for simplified lookups of actor singleton refs.
-public struct ActorSingletonLookup {
+/// Provides actor singleton controls such as obtaining a singleton ref and defining the singleton.
+public struct ActorSingletonControl {
     private let system: ActorSystem
 
     internal init(_ system: ActorSystem) {

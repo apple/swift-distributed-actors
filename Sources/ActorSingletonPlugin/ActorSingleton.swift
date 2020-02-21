@@ -51,7 +51,9 @@ internal final class ActorSingleton<Message> {
 // MARK: Type-erased actor singleton
 
 internal protocol AnyActorSingleton {
-    /// Stops the actor singleton.
+    /// Stops the `ActorSingletonProxy` running in the `system`.
+    /// If `ActorSingletonManager` is also running, which means the actual singleton is hosted
+    /// on this node, it will attempt to hand-over the singleton gracefully before stopping.
     func stop(_ system: ActorSystem)
 }
 
