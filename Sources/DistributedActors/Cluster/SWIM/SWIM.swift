@@ -252,7 +252,7 @@ extension SWIM.Status {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SWIM Member
 
-internal struct SWIMMember: Hashable {
+internal struct SWIMMember {
     var node: UniqueNode {
         return self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
     }
@@ -285,6 +285,17 @@ internal struct SWIMMember: Hashable {
 
     var isDead: Bool {
         self.status.isDead
+    }
+}
+
+extension SWIMMember: Hashable, Equatable {
+    static func == (lhs: SWIMMember, rhs: SWIMMember) -> Bool {
+        return lhs.ref == rhs.ref && lhs.protocolPeriod == rhs.protocolPeriod
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(ref)
+        hasher.combine(protocolPeriod)
     }
 }
 
