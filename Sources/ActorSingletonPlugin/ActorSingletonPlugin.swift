@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor singleton plugin
@@ -31,26 +32,29 @@ import DistributedActors
 ///            and <a href="https://doc.akka.io/docs/akka/current/cluster-singleton.html">`ClusterSingleton` in Akka</a>.
 public final class ActorSingletonPlugin {
     private var singletons: [String: BoxedActorSingleton] = [:]
+    private let singletonsLock = Lock()
 
     public init() {}
 
     func ref<Message>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
-        if let existing = self.singletons[settings.name] {
-            guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {
-                fatalError("Singleton [\(settings.name)] not yet initialized")
+        try self.singletonsLock.withLock {
+            if let existing = self.singletons[settings.name] {
+                guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {
+                    fatalError("Singleton [\(settings.name)] not yet initialized")
+                }
+                return proxy
             }
+
+            let singleton = ActorSingleton<Message>(settings: settings, props: props, behavior)
+            try singleton.spawnAll(system)
+            self.singletons[settings.name] = BoxedActorSingleton(singleton)
+
+            guard let proxy = singleton.proxy else {
+                fatalError("Singleton[\(settings.name)] not yet initialized")
+            }
+
             return proxy
         }
-
-        let singleton = ActorSingleton<Message>(settings: settings, props: props, behavior)
-        try singleton.spawnAll(system)
-        self.singletons[settings.name] = BoxedActorSingleton(singleton)
-
-        guard let proxy = singleton.proxy else {
-            fatalError("Singleton[\(settings.name)] not yet initialized")
-        }
-
-        return proxy // FIXME: Worried that we never synchronize access to proxy...
     }
 
     func actor<Act: Actorable>(of type: Act.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ makeInstance: ((Actor<Act>.Context) -> Act)? = nil) throws -> Actor<Act> {
@@ -92,8 +96,10 @@ extension ActorSingletonPlugin: Plugin {
 
     // TODO: Future
     public func stop(_ system: ActorSystem) -> Result<Void, Error> {
-        for (_, singleton) in self.singletons {
-            singleton.stop(system)
+        self.singletonsLock.withLock {
+            for (_, singleton) in self.singletons {
+                singleton.stop(system)
+            }
         }
         return .success(())
     }

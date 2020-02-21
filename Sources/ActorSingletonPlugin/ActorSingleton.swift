@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor singleton
@@ -28,7 +29,14 @@ internal final class ActorSingleton<Message> {
     let behavior: Behavior<Message>?
 
     /// The `ActorSingletonProxy` ref
-    internal private(set) var proxy: ActorRef<Message>?
+    private var _proxy: ActorRef<Message>?
+    private let proxyLock = Lock()
+
+    internal var proxy: ActorRef<Message>? {
+        self.proxyLock.withLock {
+            self._proxy
+        }
+    }
 
     init(settings: ActorSingletonSettings, props: Props?, _ behavior: Behavior<Message>?) {
         self.settings = settings
@@ -39,11 +47,13 @@ internal final class ActorSingleton<Message> {
     /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingletonManager`).
     func spawnAll(_ system: ActorSystem) throws {
         let allocationStrategy = self.settings.allocationStrategy.make(system.settings.cluster, self.settings)
-        self.proxy = try system._spawnSystemActor(
-            "singletonProxy-\(self.settings.name)",
-            ActorSingletonProxy(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
-            props: ._wellKnown
-        )
+        try self.proxyLock.withLock {
+            self._proxy = try system._spawnSystemActor(
+                "singletonProxy-\(self.settings.name)",
+                ActorSingletonProxy(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
+                props: ._wellKnown
+            )
+        }
     }
 }
 
