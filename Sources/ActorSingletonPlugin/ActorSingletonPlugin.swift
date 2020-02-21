@@ -125,22 +125,22 @@ public struct ActorSingletonControl {
     }
 
     /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(of type: Message.Type, name: String, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+    public func host<Message>(_ type: Message.Type, name: String, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, name: name, system: self.system, props: props, behavior)
     }
 
     /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(of type: Message.Type, settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+    public func host<Message>(_ type: Message.Type, settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, settings: settings, system: self.system, props: props, behavior)
     }
 
     /// Defines a singleton `Actorable` and indicates that it can be hosted on this node.
-    public func host<Act: Actorable>(of type: Act.Type, name: String, props: Props = Props(), _ makeInstance: @escaping (Actor<Act>.Context) -> Act) throws -> Actor<Act> {
+    public func host<Act: Actorable>(_ type: Act.Type, name: String, props: Props = Props(), _ makeInstance: @escaping (Actor<Act>.Context) -> Act) throws -> Actor<Act> {
         try self.singletonPlugin.actor(of: type, name: name, system: self.system, props: props, makeInstance)
     }
 
     /// Defines a singleton `Actorable` and indicates that it can be hosted on this node.
-    public func host<Act: Actorable>(of type: Act.Type, settings: ActorSingletonSettings, props: Props = Props(), _ makeInstance: @escaping (Actor<Act>.Context) -> Act) throws -> Actor<Act> {
+    public func host<Act: Actorable>(_ type: Act.Type, settings: ActorSingletonSettings, props: Props = Props(), _ makeInstance: @escaping (Actor<Act>.Context) -> Act) throws -> Actor<Act> {
         try self.singletonPlugin.actor(of: type, settings: settings, system: self.system, props: props, makeInstance)
     }
 
