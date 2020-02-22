@@ -51,5 +51,9 @@ class ClusterDocExamples: XCTestCase {
             // end::subscribe-events-apply-general[]
             return .same
         })
+
+        // tag::membership-snapshot[]
+        let snapshot: Cluster.Membership = system.cluster.membershipSnapshot
+        // end::membership-snapshot[]
     }
 }
