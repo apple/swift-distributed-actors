@@ -50,8 +50,6 @@ public final class ActorSystem {
 
     internal let _root: _ReceivesSystemMessages
 
-    private let terminationLock = Lock()
-
     /// Allows inspecting settings that were used to configure this actor system.
     /// Settings are immutable and may not be changed once the system is running.
     public let settings: ActorSystemSettings

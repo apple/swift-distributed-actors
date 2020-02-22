@@ -99,10 +99,6 @@ extension ActorSingletonManager {
 // MARK: ActorSingletonManager path / address
 
 extension ActorAddress {
-    internal static func _singletonManager(name: String, on node: UniqueNode) -> ActorAddress {
-        .init(node: node, path: ._singletonManager(name: name), incarnation: .wellKnown)
-    }
-
     internal static func _singletonManager(name: String) -> ActorAddress {
         .init(path: ._singletonManager(name: name), incarnation: .wellKnown)
     }

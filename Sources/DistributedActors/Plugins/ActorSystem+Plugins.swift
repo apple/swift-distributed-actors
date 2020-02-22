@@ -36,25 +36,25 @@ public protocol Plugin: AnyPlugin {
 internal struct BoxedPlugin: AnyPlugin {
     private let underlying: AnyPlugin
 
-    internal let key: AnyPluginKey
+    let key: AnyPluginKey
 
-    internal init<P: Plugin>(_ plugin: P) {
+    init<P: Plugin>(_ plugin: P) {
         self.underlying = plugin
         self.key = AnyPluginKey(plugin.key)
     }
 
-    internal func unsafeUnwrapAs<P: Plugin>(_: P.Type) -> P {
+    func unsafeUnwrapAs<P: Plugin>(_: P.Type) -> P {
         guard let unwrapped = self.underlying as? P else {
             fatalError("Type mismatch, expected: [\(String(reflecting: P.self))] got [\(self.underlying)]")
         }
         return unwrapped
     }
 
-    internal func start(_ system: ActorSystem) -> Result<Void, Error> {
+    func start(_ system: ActorSystem) -> Result<Void, Error> {
         self.underlying.start(system)
     }
 
-    internal func stop(_ system: ActorSystem) -> Result<Void, Error> {
+    func stop(_ system: ActorSystem) -> Result<Void, Error> {
         self.underlying.stop(system)
     }
 }
@@ -94,17 +94,17 @@ public struct PluginKey<P: Plugin>: CustomStringConvertible {
 }
 
 internal struct AnyPluginKey: Hashable, CustomStringConvertible {
-    internal let pluginTypeId: ObjectIdentifier
-    internal let plugin: String
-    internal let sub: String?
+    let pluginTypeId: ObjectIdentifier
+    let plugin: String
+    let sub: String?
 
-    internal init<P: Plugin>(_ key: PluginKey<P>) {
+    init<P: Plugin>(_ key: PluginKey<P>) {
         self.pluginTypeId = ObjectIdentifier(P.self)
         self.plugin = key.plugin
         self.sub = key.sub
     }
 
-    public var description: String {
+    var description: String {
         if let sub = self.sub {
             return "AnyPluginKey(\(self.plugin), sub: \(sub))"
         } else {
