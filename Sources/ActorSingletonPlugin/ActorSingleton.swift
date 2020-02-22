@@ -13,94 +13,93 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor singleton
 
-/// An `ActorSingleton` ensures that there is no more than one instance of an actor running in the cluster.
-///
-/// Actors that are singleton must be registered during system setup, as part of `ActorSystemSettings`.
-/// The `ActorRef` of the singleton can later be obtained through `ActorSystem.singleton.ref(name:)`.
-///
-/// A singleton may run on any node in the cluster. Use `ActorSingletonSettings.allocationStrategy` to control node
-/// allocation. The `ActorRef` returned by `ref(name:)` is actually a proxy in order to handle situations where the
-/// singleton is shifted to different nodes.
-///
-/// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
-///   the singleton allocation.
-/// - SeeAlso: The `ActorSingleton` mechanism conceptually similar to Erlang/OTP's <a href="http://erlang.org/doc/design_principles/distributed_applications.html">`DistributedApplication`</a>,
-//             and <a href="https://doc.akka.io/docs/akka/current/cluster-singleton.html">`ClusterSingleton` in Akka</a>.
-public final class ActorSingleton<Message> {
+internal final class ActorSingleton<Message> {
     /// Settings for the `ActorSingleton`
-    public let settings: ActorSingletonSettings
+    let settings: ActorSingletonSettings
 
     /// Props of singleton behavior
-    public let props: Props
-    /// The singleton behavior
-    public let behavior: Behavior<Message>
+    let props: Props?
+    /// The singleton behavior.
+    /// If `nil`, then this instance will be proxy-only and it will never run the actual actor.
+    let behavior: Behavior<Message>?
 
     /// The `ActorSingletonProxy` ref
-    internal private(set) var proxy: ActorRef<Message>?
+    private var _proxy: ActorRef<Message>?
+    private let proxyLock = Lock()
 
-    /// Defines a `behavior` as singleton with `settings`.
-    public init(settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) {
+    internal var proxy: ActorRef<Message>? {
+        self.proxyLock.withLock {
+            self._proxy
+        }
+    }
+
+    init(settings: ActorSingletonSettings, props: Props?, _ behavior: Behavior<Message>?) {
         self.settings = settings
         self.props = props
         self.behavior = behavior
     }
 
-    /// Defines a `behavior` as singleton identified by `name`.
-    public convenience init(_ name: String, props: Props = Props(), _ behavior: Behavior<Message>) {
-        let settings = ActorSingletonSettings(name: name)
-        self.init(settings: settings, props: props, behavior)
-    }
-
-    /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingleManager`).
-    internal func spawnAll(_ system: ActorSystem) throws {
+    /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingletonManager`).
+    func spawnAll(_ system: ActorSystem) throws {
         let allocationStrategy = self.settings.allocationStrategy.make(system.settings.cluster, self.settings)
-        self.proxy = try system._spawnSystemActor(
-            "singletonProxy-\(self.settings.name)",
-            ActorSingletonProxy(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
-            props: ._wellKnown
-        )
+        try self.proxyLock.withLock {
+            self._proxy = try system._spawnSystemActor(
+                "singletonProxy-\(self.settings.name)",
+                ActorSingletonProxy(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior,
+                props: ._wellKnown
+            )
+        }
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Plugin protocol conformance
+// MARK: Type-erased actor singleton
 
-extension ActorSingleton: Plugin {
-    public static func pluginKey(name: String) -> PluginKey<ActorSingleton<Message>> {
-        PluginKey<ActorSingleton<Message>>(plugin: "$actorSingleton").makeSub(name)
+internal protocol AnyActorSingleton {
+    /// Stops the `ActorSingletonProxy` running in the `system`.
+    /// If `ActorSingletonManager` is also running, which means the actual singleton is hosted
+    /// on this node, it will attempt to hand-over the singleton gracefully before stopping.
+    func stop(_ system: ActorSystem)
+}
+
+internal struct BoxedActorSingleton: AnyActorSingleton {
+    private let underlying: AnyActorSingleton
+
+    init<Message>(_ actorSingleton: ActorSingleton<Message>) {
+        self.underlying = actorSingleton
     }
 
-    public var key: PluginKey<ActorSingleton<Message>> {
-        Self.pluginKey(name: self.settings.name)
-    }
-
-    public func start(_ system: ActorSystem) -> Result<Void, Error> {
-        do {
-            try self.spawnAll(system)
-            return .success(())
-        } catch {
-            return .failure(error)
+    func unsafeUnwrapAs<Message>(_ type: Message.Type) -> ActorSingleton<Message> {
+        guard let unwrapped = self.underlying as? ActorSingleton<Message> else {
+            fatalError("Type mismatch, expected: [\(String(reflecting: ActorSingleton<Message>.self))] got [\(self.underlying)]")
         }
+        return unwrapped
     }
 
-    // TODO: Future
-    public func stop(_ system: ActorSystem) -> Result<Void, Error> {
+    func stop(_ system: ActorSystem) {
+        self.underlying.stop(system)
+    }
+}
+
+extension ActorSingleton: AnyActorSingleton {
+    func stop(_ system: ActorSystem) {
         // Hand over the singleton gracefully
         let resolveContext = ResolveContext<ActorSingletonManager<Message>.Directive>(address: ._singletonManager(name: self.settings.name), system: system)
         let managerRef = system._resolve(context: resolveContext)
+        // If the manager is not running this will end up in dead-letters but that's fine
         managerRef.tell(.stop)
 
         // We don't control the proxy's directives so we can't tell it to stop
-        return .success(())
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSingleton settings
+// MARK: Actor singleton settings
 
 /// Settings for a `ActorSingleton`.
 public struct ActorSingletonSettings {
@@ -125,7 +124,7 @@ public struct ActorSingletonSettings {
 
 /// Singleton node allocation strategies.
 public enum AllocationStrategySettings {
-    /// Singletons will run on the cluster leader
+    /// Singletons will run on the cluster leader. *All* nodes are potential candidates.
     case byLeadership
 
     func make(_: ClusterSettings, _: ActorSingletonSettings) -> ActorSingletonAllocationStrategy {
