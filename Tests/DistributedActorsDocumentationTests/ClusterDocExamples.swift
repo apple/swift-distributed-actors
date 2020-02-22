@@ -55,5 +55,6 @@ class ClusterDocExamples: XCTestCase {
         // tag::membership-snapshot[]
         let snapshot: Cluster.Membership = system.cluster.membershipSnapshot
         // end::membership-snapshot[]
+        _ = snapshot // silence not-used warning
     }
 }
