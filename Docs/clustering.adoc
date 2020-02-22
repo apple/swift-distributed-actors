@@ -255,13 +255,19 @@ Generally, the pattern around using membership information is based around perfo
 changes to the membership, e.g. starting timers when a member became unreachable, contacting an actor on a new member that
 had just joined the cluster etc. In these scenarios it is most useful to work with subscriptions and react to them accordingly.
 
+==== Membership Snapshot
+
 Sometimes however, one just wants to perform a sanity check or printout without having to subscribe to the membership events
-actively. Such API #will soon exist# exists and may be used as `system.cluster.membershipSnapshot`. Note however that no strong
-guarantees are made about "how up to date" that value is, and even the moment after one has checked it, it may have already changed
+actively. Note however that no strong guarantees are made about "how up to date" that value is, and even the moment after one has checked it, it may have already changed
 and e.g. now another member has become leader. Take this into consideration when opting to use this style of `Cluster.Membership` interaction.
 
-#TODO: We are considering offering an API like `system.cluster.membershipSnapshot` which would be simple one-off access to snapshots,
-see https://github.com/apple/swift-distributed-actors/issues/299 #
+In order to obtain such "snapshot" of a membership, you can call the following:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=membership-snapshot]
+----
+
 
 [[downing_strategies]]
 === Downing Strategies
