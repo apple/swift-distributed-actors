@@ -239,10 +239,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
         swim.addMember(p2, status: .alive(incarnation: 0))
 
-        let res = swim.onPing(lastKnownStatus: .alive(incarnation: 0))
+        let res = swim.onPing()
 
         switch res {
-        case .reply(.ack(let pinged, _, _), _):
+        case .reply(.ack(let pinged, _, _)):
             pinged.shouldEqual(p1) // which was added as myself to this swim instance
         case let reply:
             throw self.testKit.error("Expected .ack, but got \(reply)")
@@ -261,36 +261,14 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // Imagine: p3 pings us, it suspects us (!)
         // we (p1) receive the ping and want to refute the suspicion, we are Still Alive:
         // (p3 has heard from someone that we are suspect in incarnation 10 (for some silly reason))
-        let res = swim.onPing(lastKnownStatus: .alive(incarnation: 0))
+        let res = swim.onPing()
 
         switch res {
-        case .reply(.ack(_, let incarnation, _), _):
+        case .reply(.ack(_, let incarnation, _)):
             // did not have to increment its incarnation number:
             incarnation.shouldEqual(0)
         case let reply:
             throw self.testKit.error("Expected .ack ping response, but got \(reply)")
-        }
-    }
-
-    func test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
-
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-
-        // from our perspective, all nodes are alive...
-        swim.addMember(p2, status: .alive(incarnation: 0))
-
-        // Imagine: p2 pings us, it suspects us (!)
-        // we (p1) receive the ping and want to refute the suspicion, we are Still Alive:
-        // (p2 has heard from someone that we are suspect in incarnation 10 (for some silly reason))
-        let res = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
-
-        switch res {
-        case .reply(.ack(_, let incarnation, _), _):
-            incarnation.shouldEqual(1) // it incremented its incarnation number in order to refute the suspicion
-        case let reply:
-            throw self.testKit.error("expected ack repsonse, but got \(reply)")
         }
     }
 
@@ -585,25 +563,6 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.localHealthMultiplier = 1
         _ = swim.onPingRequestResponse(.success(.ack(target: p2, incarnation: 0, payload: .none)), pingedMember: p2)
         swim.localHealthMultiplier.shouldEqual(0)
-    }
-
-    func test_onPingRequestResponse_incrementLHAMultiplier_whenRefuteSuspicion_onPing() {
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
-
-        _ = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
-        swim.localHealthMultiplier.shouldEqual(1)
-    }
-
-    func test_onPingRequestResponse_notIncrementLHAMultiplier_whenSeeOldSuspicion_onPing() {
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
-        // first suspicion is for current incarnation, should increase LHA counter
-        _ = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
-        swim.localHealthMultiplier.shouldEqual(1)
-        // second suspicion is for a stale incarnation, should ignore
-        _ = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
-        swim.localHealthMultiplier.shouldEqual(1)
     }
 
     func test_onPingRequestResponse_notIncrementLHAMultiplier_whenSeeOldSuspicion_onGossip() {
@@ -901,7 +860,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
     }
 
     func validateGossip(swim: SWIM.Instance, expected: Set<SWIM.Member>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        let payload = swim.makeGossipPayload()
+        let payload = swim.makeGossipPayload(to: nil)
         if expected.isEmpty {
             guard case SWIM.Payload.none = payload else {
                 throw self.testKit.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)
