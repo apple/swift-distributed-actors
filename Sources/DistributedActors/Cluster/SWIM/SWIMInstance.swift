@@ -391,7 +391,15 @@ final class SWIMInstance {
         return ref.address == self.myShellAddress || self.members[ref] != nil
     }
 
-    func makeGossipPayload() -> SWIM.Payload {
+    func makeGossipPayload(for target: ActorRef<SWIM.Message>?) -> SWIM.Payload {
+        var members: [SWIM.Member] = []
+        // buddy system will always send to a suspect its suspicion.
+        // the reason for that to make sure the suspect will know about its suspicion even if it was already disseminated `numberOfTimesGossiped` times.
+        var hasTargetSuspicion = false
+        if let target = target, let member = self.member(for: target), member.isSuspect {
+            members.append(member)
+            hasTargetSuspicion = true
+        }
         // In order to avoid duplicates within a single gossip payload, we
         // first collect all messages we need to gossip out and only then
         // re-insert them into `messagesToGossip`. Otherwise, we may end up
@@ -400,7 +408,11 @@ final class SWIMInstance {
         // messages that have a lower `numberOfTimesGossiped` counter than
         // the other messages.
         guard self._messagesToGossip.count > 0 else {
-            return .none
+            if members.isEmpty {
+                return .none
+            } else {
+                return .membership(members)
+            }
         }
 
         var gossipMessages: [SWIM.Gossip] = []
@@ -410,13 +422,14 @@ final class SWIMInstance {
             gossipMessages.append(gossip)
         }
 
-        var members: [SWIM.Member] = []
         members.reserveCapacity(gossipMessages.count)
 
         for var gossip in gossipMessages {
             members.append(gossip.member)
             gossip.numberOfTimesGossiped += 1
-            if gossip.numberOfTimesGossiped < self.settings.gossip.maxGossipCountPerMessage {
+            // gossip about target's suspicion is already in payload, no need to add it twice
+            if gossip.numberOfTimesGossiped < self.settings.gossip.maxGossipCountPerMessage,
+                !(target == gossip.member.ref && hasTargetSuspicion) {
                 self._messagesToGossip.append(gossip)
             }
         }
@@ -435,33 +448,12 @@ final class SWIMInstance {
 // MARK: Handling SWIM protocol interactions
 
 extension SWIM.Instance {
-    func onPing(lastKnownStatus: SWIM.Status) -> OnPingDirective {
-        var warning: String?
-        // if a node suspects us in the current incarnation, we need to increment
-        // our incarnation number, so the new `alive` status can properly propagate through
-        // the cluster (and "win" over the old `.suspect` status).
-        if case .suspect(let suspectedInIncarnation, _) = lastKnownStatus {
-            if suspectedInIncarnation == self._incarnation {
-                self.adjustLHMultiplier(.refutingSuspectMessageAboutSelf)
-                self._incarnation += 1
-                warning = nil
-            } else if suspectedInIncarnation > self._incarnation {
-                // this should never happen, because the only member allowed to increment our incarnation nr is _us_,
-                // so it is not possible (unless malicious intents) to observe an incarnation larger than we are at.
-                warning = """
-                Received ping with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
-                which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
-                """
-            }
-        }
-
-        let ack: SWIM.PingResponse = .ack(target: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload())
-
-        return .reply(response: ack, warning: warning)
+    func onPing() -> OnPingDirective {
+        return .reply(.ack(target: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload(for: nil)))
     }
 
     enum OnPingDirective {
-        case reply(response: SWIM.PingResponse, warning: String?)
+        case reply(SWIM.PingResponse)
     }
 
     /// React to an `Ack` (or lack thereof within timeout)
@@ -539,6 +531,7 @@ extension SWIM.Instance {
             if suspectedInIncarnation == self.incarnation {
                 self.adjustLHMultiplier(.refutingSuspectMessageAboutSelf)
                 self._incarnation += 1
+                self.addToGossip(member: SWIMMember(ref: myShellMyself, status: .alive(incarnation: self._incarnation), protocolPeriod: self.protocolPeriod))
                 return .applied(change: nil)
             } else if suspectedInIncarnation > self.incarnation {
                 return .applied(

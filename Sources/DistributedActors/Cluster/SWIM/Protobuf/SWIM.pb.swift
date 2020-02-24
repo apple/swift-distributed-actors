@@ -86,15 +86,6 @@ public struct ProtoSWIMPing {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var lastKnownStatus: ProtoSWIMStatus {
-    get {return _storage._lastKnownStatus ?? ProtoSWIMStatus()}
-    set {_uniqueStorage()._lastKnownStatus = newValue}
-  }
-  /// Returns true if `lastKnownStatus` has been explicitly set.
-  public var hasLastKnownStatus: Bool {return _storage._lastKnownStatus != nil}
-  /// Clears the value of `lastKnownStatus`. Subsequent reads from it will return its default value.
-  public mutating func clearLastKnownStatus() {_uniqueStorage()._lastKnownStatus = nil}
-
   public var replyTo: ProtoActorAddress {
     get {return _storage._replyTo ?? ProtoActorAddress()}
     set {_uniqueStorage()._replyTo = newValue}
@@ -133,15 +124,6 @@ public struct ProtoSWIMPingRequest {
   public var hasTarget: Bool {return _storage._target != nil}
   /// Clears the value of `target`. Subsequent reads from it will return its default value.
   public mutating func clearTarget() {_uniqueStorage()._target = nil}
-
-  public var lastKnownStatus: ProtoSWIMStatus {
-    get {return _storage._lastKnownStatus ?? ProtoSWIMStatus()}
-    set {_uniqueStorage()._lastKnownStatus = newValue}
-  }
-  /// Returns true if `lastKnownStatus` has been explicitly set.
-  public var hasLastKnownStatus: Bool {return _storage._lastKnownStatus != nil}
-  /// Clears the value of `lastKnownStatus`. Subsequent reads from it will return its default value.
-  public mutating func clearLastKnownStatus() {_uniqueStorage()._lastKnownStatus = nil}
 
   public var replyTo: ProtoActorAddress {
     get {return _storage._replyTo ?? ProtoActorAddress()}
@@ -468,13 +450,11 @@ extension ProtoSWIMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SWIMPing"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "lastKnownStatus"),
     2: .same(proto: "replyTo"),
     3: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
-    var _lastKnownStatus: ProtoSWIMStatus? = nil
     var _replyTo: ProtoActorAddress? = nil
     var _payload: ProtoSWIMPayload? = nil
 
@@ -483,7 +463,6 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     private init() {}
 
     init(copying source: _StorageClass) {
-      _lastKnownStatus = source._lastKnownStatus
       _replyTo = source._replyTo
       _payload = source._payload
     }
@@ -501,7 +480,6 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._lastKnownStatus)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._payload)
         default: break
@@ -512,9 +490,6 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._lastKnownStatus {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
       if let v = _storage._replyTo {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
@@ -530,7 +505,6 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._lastKnownStatus != rhs_storage._lastKnownStatus {return false}
         if _storage._replyTo != rhs_storage._replyTo {return false}
         if _storage._payload != rhs_storage._payload {return false}
         return true
@@ -546,14 +520,12 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   public static let protoMessageName: String = "SWIMPingRequest"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "target"),
-    2: .same(proto: "lastKnownStatus"),
     3: .same(proto: "replyTo"),
     4: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
     var _target: ProtoActorAddress? = nil
-    var _lastKnownStatus: ProtoSWIMStatus? = nil
     var _replyTo: ProtoActorAddress? = nil
     var _payload: ProtoSWIMPayload? = nil
 
@@ -563,7 +535,6 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _target = source._target
-      _lastKnownStatus = source._lastKnownStatus
       _replyTo = source._replyTo
       _payload = source._payload
     }
@@ -582,7 +553,6 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._target)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._lastKnownStatus)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
         case 4: try decoder.decodeSingularMessageField(value: &_storage._payload)
         default: break
@@ -595,9 +565,6 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._target {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if let v = _storage._lastKnownStatus {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if let v = _storage._replyTo {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
@@ -615,7 +582,6 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._target != rhs_storage._target {return false}
-        if _storage._lastKnownStatus != rhs_storage._lastKnownStatus {return false}
         if _storage._replyTo != rhs_storage._replyTo {return false}
         if _storage._payload != rhs_storage._payload {return false}
         return true

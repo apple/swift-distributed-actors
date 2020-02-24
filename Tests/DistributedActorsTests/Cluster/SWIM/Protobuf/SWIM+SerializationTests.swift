@@ -21,7 +21,7 @@ final class SWIMSerializationTests: ActorSystemTestBase {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.PingResponse.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let ping: SWIM.Message = .remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: payload))
+        let ping: SWIM.Message = .remote(.ping(replyTo: ackProbe.ref, payload: payload))
         try self.shared_serializationRoundtrip(ping)
     }
 
@@ -29,7 +29,7 @@ final class SWIMSerializationTests: ActorSystemTestBase {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.PingResponse.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let pingReq: SWIM.Message = .remote(.pingReq(target: memberProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: payload))
+        let pingReq: SWIM.Message = .remote(.pingReq(target: memberProbe.ref, replyTo: ackProbe.ref, payload: payload))
         try self.shared_serializationRoundtrip(pingReq)
     }
 

@@ -44,10 +44,10 @@ public enum SWIM {
     }
 
     internal enum RemoteMessage {
-        case ping(lastKnownStatus: Status, replyTo: ActorRef<PingResponse>, payload: Payload)
+        case ping(replyTo: ActorRef<PingResponse>, payload: Payload)
 
         /// "Ping Request" requests a SWIM probe.
-        case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<PingResponse>, payload: Payload)
+        case pingReq(target: ActorRef<Message>, replyTo: ActorRef<PingResponse>, payload: Payload)
     }
 
     /// A `SWIM.Ack` is sent always in reply to a `SWIM.RemoteMessage.ping`.

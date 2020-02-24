@@ -27,16 +27,14 @@ extension SWIM.Message: InternalProtobufRepresentable {
         }
 
         switch message {
-        case .ping(let lastKnownStatus, let replyTo, let payload):
+        case .ping(let replyTo, let payload):
             var ping = ProtoSWIMPing()
-            ping.lastKnownStatus = try lastKnownStatus.toProto(context: context)
             ping.replyTo = try replyTo.toProto(context: context)
             ping.payload = try payload.toProto(context: context)
             proto.ping = ping
-        case .pingReq(let target, let lastKnownStatus, let replyTo, let payload):
+        case .pingReq(let target, let replyTo, let payload):
             var pingRequest = ProtoSWIMPingRequest()
             pingRequest.target = try target.toProto(context: context)
-            pingRequest.lastKnownStatus = try lastKnownStatus.toProto(context: context)
             pingRequest.replyTo = try replyTo.toProto(context: context)
             pingRequest.payload = try payload.toProto(context: context)
             proto.pingRequest = pingRequest
@@ -52,16 +50,14 @@ extension SWIM.Message: InternalProtobufRepresentable {
 
         switch request {
         case .ping(let ping):
-            let status = try SWIM.Status(fromProto: ping.lastKnownStatus, context: context)
             let replyTo = try ActorRef<SWIM.PingResponse>(fromProto: ping.replyTo, context: context)
             let payload = try SWIM.Payload(fromProto: ping.payload, context: context)
-            self = .remote(.ping(lastKnownStatus: status, replyTo: replyTo, payload: payload))
+            self = .remote(.ping(replyTo: replyTo, payload: payload))
         case .pingRequest(let pingRequest):
             let target = try ActorRef<SWIM.Message>(fromProto: pingRequest.target, context: context)
-            let status = try SWIM.Status(fromProto: pingRequest.lastKnownStatus, context: context)
             let replyTo = try ActorRef<SWIM.PingResponse>(fromProto: pingRequest.replyTo, context: context)
             let payload = try SWIM.Payload(fromProto: pingRequest.payload, context: context)
-            self = .remote(.pingReq(target: target, lastKnownStatus: status, replyTo: replyTo, payload: payload))
+            self = .remote(.pingReq(target: target, replyTo: replyTo, payload: payload))
         }
     }
 }

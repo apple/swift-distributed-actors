@@ -28,14 +28,14 @@ message SWIMMessage {
 }
 
 message SWIMPing {
-    SWIMStatus lastKnownStatus = 1;
+    reserved 1;
     ActorAddress replyTo = 2;
     SWIMPayload payload = 3;
 }
 
 message SWIMPingRequest {
     ActorAddress target = 1;
-    SWIMStatus lastKnownStatus = 2;
+    reserved 2;
     ActorAddress replyTo = 3;
     SWIMPayload payload = 4;
 }
