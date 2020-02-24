@@ -39,16 +39,14 @@ extension SWIM.RemoteMessage: InternalProtobufRepresentable {
     func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
         switch self {
-        case .ping(let lastKnownStatus, let replyTo, let payload):
+        case .ping(let replyTo, let payload):
             var ping = ProtoSWIMPing()
-            ping.lastKnownStatus = try lastKnownStatus.toProto(context: context)
             ping.replyTo = try replyTo.toProto(context: context)
             ping.payload = try payload.toProto(context: context)
             proto.ping = ping
-        case .pingReq(let target, let lastKnownStatus, let replyTo, let payload):
+        case .pingReq(let target, let replyTo, let payload):
             var pingRequest = ProtoSWIMPingRequest()
             pingRequest.target = try target.toProto(context: context)
-            pingRequest.lastKnownStatus = try lastKnownStatus.toProto(context: context)
             pingRequest.replyTo = try replyTo.toProto(context: context)
             pingRequest.payload = try payload.toProto(context: context)
             proto.pingRequest = pingRequest
@@ -60,16 +58,14 @@ extension SWIM.RemoteMessage: InternalProtobufRepresentable {
     init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         switch proto.request {
         case .ping(let ping):
-            let status = try SWIM.Status(fromProto: ping.lastKnownStatus, context: context)
             let replyTo = try ActorRef<SWIM.PingResponse>(fromProto: ping.replyTo, context: context)
             let payload = try SWIM.Payload(fromProto: ping.payload, context: context)
-            self = .ping(lastKnownStatus: status, replyTo: replyTo, payload: payload)
+            self = .ping(replyTo: replyTo, payload: payload)
         case .pingRequest(let pingRequest):
             let target = try ActorRef<SWIM.Message>(fromProto: pingRequest.target, context: context)
-            let status = try SWIM.Status(fromProto: pingRequest.lastKnownStatus, context: context)
             let replyTo = try ActorRef<SWIM.PingResponse>(fromProto: pingRequest.replyTo, context: context)
             let payload = try SWIM.Payload(fromProto: pingRequest.payload, context: context)
-            self = .pingReq(target: target, lastKnownStatus: status, replyTo: replyTo, payload: payload)
+            self = .pingReq(target: target, replyTo: replyTo, payload: payload)
         case .none:
             throw SerializationError.missingField("request", type: String(describing: SWIM.Message.self))
         }
