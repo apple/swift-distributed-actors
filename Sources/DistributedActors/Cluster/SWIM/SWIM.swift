@@ -58,7 +58,7 @@ public enum SWIM {
     /// - parameter target: always contains the ref of the member that was the target of the `ping`.
 
     internal enum PingResponse: ActorMessage {
-        case ack(target: ActorRef<Message>, incarnation: Incarnation, payload: Payload)
+        case ack(target: ActorRef<Message>, payload: Payload)
         case nack(target: ActorRef<Message>)
     }
 
@@ -300,27 +300,6 @@ extension SWIMMember: Hashable, Equatable {
 
 extension SWIM {
     internal enum Payload {
-        case none
         case membership(SWIM.Members)
-    }
-}
-
-extension SWIM.Payload {
-    var isNone: Bool {
-        switch self {
-        case .none:
-            return true
-        case .membership:
-            return false
-        }
-    }
-
-    var isMembership: Bool {
-        switch self {
-        case .none:
-            return false
-        case .membership:
-            return true
-        }
     }
 }

@@ -128,12 +128,8 @@ extension SWIM.Payload: InternalProtobufRepresentable {
     }
 
     init(fromProto proto: ProtoSWIMPayload, context: Serialization.Context) throws {
-        if proto.member.isEmpty {
-            self = .none
-        } else {
-            let members = try proto.member.map { proto in try SWIM.Member(fromProto: proto, context: context) }
-            self = .membership(members)
-        }
+        let members = try proto.member.map { proto in try SWIM.Member(fromProto: proto, context: context) }
+        self = .membership(members)
     }
 }
 
@@ -161,10 +157,9 @@ extension SWIM.PingResponse: InternalProtobufRepresentable {
     func toProto(context: Serialization.Context) throws -> ProtoSWIMPingResponse {
         var proto = ProtoSWIMPingResponse()
         switch self {
-        case .ack(let target, let incarnation, let payload):
+        case .ack(let target, let payload):
             var ack = ProtoSWIMPingResponse.Ack()
             ack.target = try target.toProto(context: context)
-            ack.incarnation = incarnation
             ack.payload = try payload.toProto(context: context)
             proto.ack = ack
         case .nack(let target):
@@ -183,7 +178,7 @@ extension SWIM.PingResponse: InternalProtobufRepresentable {
         case .ack(let ack):
             let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: try ActorAddress(fromProto: ack.target, context: context))
             let payload = try SWIM.Payload(fromProto: ack.payload, context: context)
-            self = .ack(target: target, incarnation: ack.incarnation, payload: payload)
+            self = .ack(target: target, payload: payload)
         case .nack(let nack):
             let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: try ActorAddress(fromProto: nack.target, context: context))
             self = .nack(target: target)

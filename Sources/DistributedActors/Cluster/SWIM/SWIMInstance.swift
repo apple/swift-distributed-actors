@@ -166,9 +166,8 @@ final class SWIMInstance {
                 // on a rolling restart.
                 self.advanceMembersToPingIndex()
             }
+            self.addToGossip(member: member)
         }
-
-        self.addToGossip(member: member)
 
         return .added(member)
     }
@@ -396,7 +395,13 @@ final class SWIMInstance {
     }
 
     func makeGossipPayload(to target: ActorRef<SWIM.Message>?) -> SWIM.Payload {
-        var members: [SWIM.Member] = []
+        // Always add gossip about self. Gossip about self is required to successfully process initial ping,
+        // when pinging instance received indirect ping request, but doesn't have us in its swim membership.
+        // ProtocolPeriod only makes sense locally, no need to pass it in payload. This is a hack to make
+        // tests easier - SWIMMember sent over wire never has protocol period set, but when called locally,
+        // protocol period is passed but ignored.
+        var members: [SWIM.Member] = [SWIMMember(ref: self.myShellMyself, status: .alive(incarnation: self._incarnation), protocolPeriod: 0)]
+
         // buddy system will always send to a suspect its suspicion.
         // The reason for that to ensure the suspect will be notified it is being suspected,
         // even if the suspicion has already been disseminated more than `numberOfTimesGossiped` times.
@@ -417,11 +422,7 @@ final class SWIMInstance {
         // messages that have a lower `numberOfTimesGossiped` counter than
         // the other messages.
         guard self._messagesToGossip.count > 0 else {
-            if members.isEmpty {
-                return .none
-            } else {
-                return .membership(members)
-            }
+            return .membership(members)
         }
 
         var gossipMessages: [SWIM.Gossip] = []
@@ -459,14 +460,6 @@ final class SWIMInstance {
 // MARK: Handling SWIM protocol interactions
 
 extension SWIM.Instance {
-    func onPing() -> OnPingDirective {
-        .reply(.ack(target: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload(to: nil)))
-    }
-
-    enum OnPingDirective {
-        case reply(SWIM.PingResponse)
-    }
-
     /// React to an `Ack` (or lack thereof within timeout)
     func onPingRequestResponse(_ result: Result<SWIM.PingResponse, Error>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResponseDirective {
         guard let lastKnownStatus = self.status(of: member) else {
@@ -492,23 +485,17 @@ extension SWIM.Instance {
                 return .alreadyDead
             }
 
-        case .success(.ack(let target, let incarnation, let payload)):
+        case .success(.ack(let target, let payload)):
             assert(target.address == member.address, "The ack.from member [\(target)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
             self.adjustLHMultiplier(.successfulProbe)
-            switch self.mark(member, as: .alive(incarnation: incarnation)) {
-            case .applied:
-                // TODO: we can be more interesting here, was it a move suspect -> alive or a reassurance?
-                return .alive(previous: lastKnownStatus, payloadToProcess: payload)
-            case .ignoredDueToOlderStatus(let currentStatus):
-                return .ignoredDueToOlderStatus(currentStatus: currentStatus)
-            }
+            return .ackReceived(payloadToProcess: payload)
         case .success(.nack):
             return .nackReceived
         }
     }
 
     enum OnPingRequestResponseDirective {
-        case alive(previous: SWIM.Status, payloadToProcess: SWIM.Payload)
+        case ackReceived(payloadToProcess: SWIM.Payload)
         case nackReceived
         case unknownMember
         case newlySuspect
@@ -543,8 +530,6 @@ extension SWIM.Instance {
             if suspectedInIncarnation == self.incarnation {
                 self.adjustLHMultiplier(.refutingSuspectMessageAboutSelf)
                 self._incarnation += 1
-                // refute the suspicion, we clearly are still alive
-                self.addToGossip(member: SWIMMember(ref: myShellMyself, status: .alive(incarnation: self._incarnation), protocolPeriod: self.protocolPeriod))
                 return .applied(change: nil)
             } else if suspectedInIncarnation > self.incarnation {
                 return .applied(

@@ -41,8 +41,7 @@ message SWIMPingRequest {
 message SWIMPingResponse {
     message Ack {
         ActorAddress target = 1;
-        uint64 incarnation = 2;
-        SWIMPayload payload = 3;
+        SWIMPayload payload = 2;
     }
     message Nack {
         ActorAddress target = 1;

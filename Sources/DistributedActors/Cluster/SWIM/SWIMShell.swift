@@ -85,16 +85,11 @@ internal struct SWIMShell {
     }
 
     private func handlePing(context: ActorContext<SWIM.Message>, replyTo: ActorRef<SWIM.PingResponse>, payload: SWIM.Payload) {
+        // TODO: push the process gossip into SWIM as well?
         self.processGossipPayload(context: context, payload: payload)
-        switch self.swim.onPing() {
-        case .reply(let ack):
-            self.tracelog(context, .reply(to: replyTo), message: ack)
-            replyTo.tell(ack)
-
-            // TODO: push the process gossip into SWIM as well?
-            // TODO: the payloadToProcess is the same as `payload` here... but showcasing
-            self.processGossipPayload(context: context, payload: payload)
-        }
+        let ack: SWIM.PingResponse = .ack(target: context.myself, payload: self.swim.makeGossipPayload(to: nil))
+        self.tracelog(context, .reply(to: replyTo), message: ack)
+        replyTo.tell(ack)
     }
 
     private func handlePingReq(context: ActorContext<SWIM.Message>, target: ActorRef<SWIM.Message>, replyTo: ActorRef<SWIM.PingResponse>, payload: SWIM.Payload) {
@@ -259,16 +254,11 @@ internal struct SWIMShell {
                 self.sendPingRequests(context: context, toPing: pingedMember)
             }
 
-        case .success(.ack(let pinged, let incarnation, let payload)):
-            // We're proxying an ack payload from ping target back to ping source.
-            // If ping target was a suspect, there'll be a refutation in a payload
-            // and we probably want to process it asap. And since the data is already here,
-            // processing this payload will just make gossip convergence faster.
+        case .success(.ack(let pinged, let payload)):
             self.processGossipPayload(context: context, payload: payload)
-            context.log.debug("Received ack from [\(pinged)] with incarnation [\(incarnation)] and payload [\(payload)]", metadata: self.swim.metadata)
-            self.markMember(context, latest: SWIMMember(ref: pinged, status: .alive(incarnation: incarnation), protocolPeriod: self.swim.protocolPeriod))
+            context.log.debug("Received ack from [\(pinged)] with payload [\(payload)]", metadata: self.swim.metadata)
             if let pingReqOrigin = pingReqOrigin {
-                pingReqOrigin.tell(.ack(target: pinged, incarnation: incarnation, payload: payload))
+                pingReqOrigin.tell(.ack(target: pinged, payload: payload))
             } else {
                 // LHA-probe multiplier for pingReq responses is hanled separately `handlePingRequestResult`
                 self.swim.adjustLHMultiplier(.successfulProbe)
@@ -283,7 +273,7 @@ internal struct SWIMShell {
         // TODO: do we know here WHO replied to us actually? We know who they told us about (with the ping-req), could be useful to know
 
         switch self.swim.onPingRequestResponse(result, pingedMember: pingedMember) {
-        case .alive(_, let payloadToProcess):
+        case .ackReceived(let payloadToProcess):
             self.processGossipPayload(context: context, payload: payloadToProcess)
         case .newlySuspect:
             context.log.debug("Member [\(pingedMember)] marked as suspect")
@@ -440,9 +430,6 @@ internal struct SWIMShell {
         switch payload {
         case .membership(let members):
             self.processGossipedMembership(members: members, context: context)
-
-        case .none:
-            return // ok
         }
     }
 

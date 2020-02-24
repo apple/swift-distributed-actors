@@ -66,7 +66,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         // bump LHA multiplier to upper limit
         for _ in 1 ... maxLocalHealthMultiplier {
-            ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none)))
+            ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .membership([]))))
             try self.expectPing(on: dummyProbe, reply: false)
             try _ = ackProbe.expectMessage()
         }
@@ -112,27 +112,24 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
         let maxLocalHealthMultiplier = 5
-        let ref = try first.spawn(
-            "SWIM",
-            SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
-                settings.lifeguard.maxLocalHealthMultiplier = maxLocalHealthMultiplier
-                settings.pingTimeout = .milliseconds(500)
-                // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
-                settings.probeInterval = .milliseconds(100)
-            }
-        )
+        let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
+            settings.lifeguard.maxLocalHealthMultiplier = maxLocalHealthMultiplier
+            settings.pingTimeout = .milliseconds(500)
+            // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
+            settings.probeInterval = .milliseconds(100)
+        })
 
         let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
 
         // bump LHA multiplier to upper limit
         for _ in 1 ... maxLocalHealthMultiplier {
-            ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none)))
+            ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .membership([]))))
             try self.expectPing(on: dummyProbe, reply: false)
             try _ = ackProbe.expectMessage(within: .seconds(6))
         }
 
-        ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none)))
+        ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .membership([]))))
         try self.expectPing(on: dummyProbe, reply: false)
         try ackProbe.expectNoMessage(for: .seconds(1))
     }
@@ -146,13 +143,12 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [], clusterRef: self.firstClusterProbe.ref))
 
-        ref.tell(.remote(.ping(replyTo: p.ref, payload: .none)))
+        ref.tell(.remote(.ping(replyTo: p.ref, payload: .membership([]))))
 
         let response = try p.expectMessage()
         switch response {
-        case .ack(let pinged, let incarnation, _):
+        case .ack(let pinged, _):
             pinged.shouldEqual(ref)
-            incarnation.shouldEqual(0)
         case let resp:
             throw p.error("Expected ack, but got \(resp)")
         }
@@ -170,7 +166,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [memberProbe.ref], clusterRef: self.firstClusterProbe.ref))
 
-        ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none)))
+        ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .membership([]))))
 
         try self.expectPing(on: dummyProbe, reply: false)
         let response = try ackProbe.expectMessage()
@@ -192,7 +188,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             .receive { context, message in
                 switch message {
                 case .remote(.ping(let replyTo, _)):
-                    replyTo.tell(.ack(target: context.myself, incarnation: 0, payload: .none))
+                    replyTo.tell(.ack(target: context.myself, payload: .membership([])))
                     p.tell("pinged:\(postFix)")
                 default:
                     ()
@@ -223,15 +219,14 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let ref = try local.spawn("SWIM", SWIMShell.swimBehavior(members: [memberProbe.ref], clusterRef: self.firstClusterProbe.ref))
 
-        ref.tell(.remote(.pingReq(target: memberProbe.ref, replyTo: ackProbe.ref, payload: .none)))
+        ref.tell(.remote(.pingReq(target: memberProbe.ref, replyTo: ackProbe.ref, payload: .membership([]))))
 
         try self.expectPing(on: memberProbe, reply: true)
         let response = try ackProbe.expectMessage()
 
         switch response {
-        case .ack(let pinged, let incarnation, _):
+        case .ack(let pinged, _):
             pinged.shouldEqual(memberProbe.ref)
-            incarnation.shouldEqual(0)
         case let resp:
             throw self.testKit(local).error("Expected gossip, but got \(resp)")
         }
@@ -317,7 +312,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         guard case SWIM.Message.remote(.pingReq(target: suspiciousRef, let replyTo, _)) = forwardedPingReq.message else {
             throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
         }
-        replyTo.tell(.ack(target: suspiciousRef, incarnation: 0, payload: .none))
+        replyTo.tell(.ack(target: suspiciousRef, payload: .membership([SWIMMember(ref: suspiciousRef, status: .alive(incarnation: 0), protocolPeriod: 0)])))
 
         try self.holdStatus(.alive(incarnation: 0), for: suspiciousRef, on: ref, within: .seconds(1))
     }
@@ -712,11 +707,12 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let remoteMemberRef = first._resolveKnownRemote(memberProbe.ref, onRemoteSystem: second)
 
         let swimRef = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref))
-        swimRef.tell(.remote(.ping(replyTo: remoteProbeRef, payload: .none)))
+
+        swimRef.tell(.remote(.ping(replyTo: remoteProbeRef, payload: .membership([]))))
 
         let response: SWIM.PingResponse = try p.expectMessage()
         switch response {
-        case .ack(_, _, .membership(let members)):
+        case .ack(_, .membership(let members)):
             members.count.shouldEqual(2)
             members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
             // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full address
@@ -752,8 +748,6 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
                 members.shouldContain(SWIM.Member(ref: p.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
                 members.shouldContain(SWIM.Member(ref: remoteSwimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
                 members.count.shouldEqual(2)
-            case .none:
-                throw p.error("Expected gossip, but got `.none`")
             }
         }
     }
@@ -790,8 +784,6 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             members.shouldContain(SWIM.Member(ref: refB, status: .alive(incarnation: 0), protocolPeriod: 0))
             members.shouldContain(SWIM.Member(ref: swimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
             members.count.shouldEqual(3)
-        case .none:
-            throw probe.error("Expected gossip, but got `.none`")
         }
     }
 
@@ -803,24 +795,24 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [memberProbe.ref], clusterRef: self.firstClusterProbe.ref))
 
         for _ in 0 ..< SWIM.Settings.default.gossip.maxGossipCountPerMessage {
-            ref.tell(.remote(.ping(replyTo: p.ref, payload: .none)))
+            ref.tell(.remote(.ping(replyTo: p.ref, payload: .membership([]))))
 
             let response = try p.expectMessage()
             switch response {
-            case .ack(_, _, .membership(let members)):
+            case .ack(_, .membership(let members)):
                 members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
             case let resp:
                 throw p.error("Expected gossip, but got \(resp)")
             }
         }
 
-        ref.tell(.remote(.ping(replyTo: p.ref, payload: .none)))
+        ref.tell(.remote(.ping(replyTo: p.ref, payload: .membership([]))))
 
         let response = try p.expectMessage()
         switch response {
-        case .ack(let pinged, let incarnation, .none):
+        case .ack(let pinged, .membership(let members)):
+            members.shouldNotContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
             pinged.shouldEqual(ref)
-            incarnation.shouldEqual(0)
         case let resp:
             throw self.testKit(first).error("Expected no gossip, but got \(resp)")
         }
@@ -858,9 +850,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let response = try p.expectMessage()
 
         switch response {
-        case .ack(_, let incarnation, .membership(let members)):
+        case .ack(_, .membership(let members)):
             members.shouldContain(SWIM.Member(ref: ref, status: .alive(incarnation: 1), protocolPeriod: 0))
-            incarnation.shouldEqual(1)
         case let reply:
             throw p.error("Expected ack with gossip, but got \(reply)")
         }
@@ -881,11 +872,12 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
 
-        secondSwim.tell(.remote(.pingReq(target: localRefRemote, replyTo: pingProbe.ref, payload: .none)))
+        secondSwim.tell(.remote(.pingReq(target: localRefRemote, replyTo: pingProbe.ref, payload: .membership([]))))
 
         try self.testKit(first).eventually(within: .seconds(10)) {
             firstSwim.tell(._testing(.getMembershipState(replyTo: membershipProbe.ref)))
             let statusA = try membershipProbe.expectMessage(within: .seconds(1))
+            secondSwim.tell(.remote(.pingReq(target: localRefRemote, replyTo: pingProbe.ref, payload: .membership([]))))
 
             secondSwim.tell(._testing(.getMembershipState(replyTo: membershipProbe.ref)))
             let statusB = try membershipProbe.expectMessage(within: .seconds(1))
@@ -947,7 +939,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         case .remote(.ping(let replyTo, let payload)):
             try assertPayload(payload)
             if reply {
-                replyTo.tell(.ack(target: probe.ref, incarnation: incarnation, payload: .none))
+                replyTo.tell(.ack(target: probe.ref, payload: .membership([SWIMMember(ref: probe.ref, status: .alive(incarnation: incarnation), protocolPeriod: 0)])))
             }
         case let message:
             throw probe.error("Expected to receive `.ping`, received \(message) instead")

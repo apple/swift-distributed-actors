@@ -162,7 +162,7 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: handling ping-req responses
 
-    func test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion() {
+    func test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -177,9 +177,15 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
         // p3 pings p2, gets an ack back -- and there p2 had to bump its incarnation number // TODO test for that, using Swim.instance?
 
         // and now we get an `ack` back, p2 claims that p3 is indeed alive!
-        _ = swim.onPingRequestResponse(.success(.ack(target: p3, incarnation: 2, payload: .none)), pingedMember: p3)
-        // may print the result for debugging purposes if one wanted to
-
+        let ack: SWIM.PingResponse = .ack(target: p3, payload: .membership([SWIMMember(ref: p3, status: .alive(incarnation: 2), protocolPeriod: 0)]))
+        switch swim.onPingRequestResponse(.success(ack), pingedMember: p3) {
+        case .ackReceived(payloadToProcess: .membership(let members)):
+            // Hack caused by the fact that gossip processing requires shell interaction,
+            // therefore can't be triggered in 'onPingRequestResponse'
+            members.forEach { _ = swim.onGossipPayload(about: $0) }
+        case let response:
+            throw self.testKit.fail("expected ackReceived, got \(response)")
+        }
         // p3 should be alive; after all, p2 told us so!
         swim.member(for: p3)!.isAlive.shouldBeTrue()
     }
@@ -199,7 +205,7 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
         // p3 pings p2, yet p2 somehow didn't bump its incarnation... so we should NOT accept its refutation
 
         // and now we get an `ack` back, p2 claims that p3 is indeed alive!
-        _ = swim.onPingRequestResponse(.success(.ack(target: p3, incarnation: 1, payload: .none)), pingedMember: p3)
+        _ = swim.onPingRequestResponse(.success(.ack(target: p3, payload: .membership([SWIMMember(ref: p3, status: .alive(incarnation: 1), protocolPeriod: 0)]))), pingedMember: p3)
         // may print the result for debugging purposes if one wanted to
 
         // p3 should be alive; after all, p2 told us so!
@@ -225,50 +231,6 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
             confimrations.shouldEqual([secondTestNode, testNode])
         } else {
             throw self.testKit.fail("Expected `.suspected(_, Set(0,1))`, got \(resultStatus)")
-        }
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: receive a ping and reply to it
-
-    func test_onPing_shouldOfferAckMessageWithMyselfReference() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
-
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-
-        swim.addMember(p2, status: .alive(incarnation: 0))
-
-        let res = swim.onPing()
-
-        switch res {
-        case .reply(.ack(let pinged, _, _)):
-            pinged.shouldEqual(p1) // which was added as myself to this swim instance
-        case let reply:
-            throw self.testKit.error("Expected .ack, but got \(reply)")
-        }
-    }
-
-    func test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
-
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-
-        // from our perspective, all nodes are alive...
-        swim.addMember(p2, status: .alive(incarnation: 0))
-
-        // Imagine: p3 pings us, it suspects us (!)
-        // we (p1) receive the ping and want to refute the suspicion, we are Still Alive:
-        // (p3 has heard from someone that we are suspect in incarnation 10 (for some silly reason))
-        let res = swim.onPing()
-
-        switch res {
-        case .reply(.ack(_, let incarnation, _)):
-            // did not have to increment its incarnation number:
-            incarnation.shouldEqual(0)
-        case let reply:
-            throw self.testKit.error("Expected .ack ping response, but got \(reply)")
         }
     }
 
@@ -561,7 +523,7 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
 
         swim.addMember(p2, status: .alive(incarnation: 0))
         swim.localHealthMultiplier = 1
-        _ = swim.onPingRequestResponse(.success(.ack(target: p2, incarnation: 0, payload: .none)), pingedMember: p2)
+        _ = swim.onPingRequestResponse(.success(.ack(target: p2, payload: .membership([]))), pingedMember: p2)
         swim.localHealthMultiplier.shouldEqual(0)
     }
 
@@ -789,6 +751,20 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: makeGossipPayload
 
+    func test_gossip_shouldAlwaysContainGossipAboutSelf() throws {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+
+        let res = swim.makeGossipPayload(to: nil)
+        for _ in 1 ... 1000 {
+            switch res {
+            case .membership(let members):
+                // did not have to increment its incarnation number:
+                members.shouldContain(SWIMMember(ref: p1, status: .alive(incarnation: 0), protocolPeriod: 0))
+            }
+        }
+    }
+
     func test_makeGossipPayload_shouldGossipAboutSelf_whenNoMembers() throws {
         let myself = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: myself, myNode: self.testNode)
@@ -814,9 +790,9 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
         try self.validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: p2.ref, status: .suspect(incarnation: 1, suspectedBy: [self.testNode]), protocolPeriod: 0), myself])
 
         swim.addMember(p3.ref, status: .dead)
-        try self.validateGossip(swim: swim, expected: [.init(ref: p2.ref, status: .suspect(incarnation: 1, suspectedBy: [self.testNode]), protocolPeriod: 0), .init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
-        try self.validateGossip(swim: swim, expected: [.init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
-        try self.validateGossip(swim: swim, expected: [])
+        try self.validateGossip(swim: swim, expected: [.init(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: p2.ref, status: .suspect(incarnation: 1, suspectedBy: [self.testNode]), protocolPeriod: 0), .init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0)])
     }
 
     func test_makeGossipPayload_shouldResetCounterWhenStatusChanged() throws {
@@ -830,12 +806,12 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
         let myself = SWIMMember(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
-        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .alive(incarnation: 0), protocolPeriod: 0), myself])
+        try self.validateGossip(swim: swim, expected: [.init(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: probe.ref, status: .alive(incarnation: 0), protocolPeriod: 0), myself])
 
         _ = swim.mark(probe.ref, as: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
-        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]), protocolPeriod: 0), myself])
-        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]), protocolPeriod: 0)])
-        try self.validateGossip(swim: swim, expected: [])
+        try self.validateGossip(swim: swim, expected: [.init(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: probe.ref, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]), protocolPeriod: 0), myself])
+        try self.validateGossip(swim: swim, expected: [.init(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: probe.ref, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]), protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: shell, status: .alive(incarnation: 0), protocolPeriod: 0)])
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -862,9 +838,7 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
     func validateGossip(swim: SWIM.Instance, expected: Set<SWIM.Member>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let payload = swim.makeGossipPayload(to: nil)
         if expected.isEmpty {
-            guard case SWIM.Payload.none = payload else {
-                throw self.testKit.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)
-            }
+            throw self.testKit.fail("SWIM can never return empty payload `\(payload)`", file: file, line: line, column: column)
         } else {
             guard case SWIM.Payload.membership(let members) = payload else {
                 throw self.testKit.fail("Expected `.membership`, but got `\(payload)`", file: file, line: line, column: column)

@@ -36,7 +36,7 @@ final class SWIMSerializationTests: ActorSystemXCTestCase {
     func test_serializationOf_Ack() throws {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let pingReq: SWIM.PingResponse = .ack(target: memberProbe.ref, incarnation: 1, payload: payload)
+        let pingReq: SWIM.PingResponse = .ack(target: memberProbe.ref, payload: payload)
         try self.shared_serializationRoundtrip(pingReq)
     }
 
