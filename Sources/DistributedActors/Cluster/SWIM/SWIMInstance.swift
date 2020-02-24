@@ -79,13 +79,13 @@ final class SWIMInstance {
         return newSuspectedBy
     }
 
-    func registerSuccessfulProbe() {
+    func decLHAMultiplier() {
         if localHealthMultiplier > 0 {
             localHealthMultiplier -= 1
         }
     }
 
-    func registerFailedProbe() {
+    func incLHAMultiplier() {
         if localHealthMultiplier < settings.failureDetector.maxLocalHealthMultiplier {
             localHealthMultiplier += 1
         }
@@ -426,8 +426,8 @@ extension SWIM.Instance {
         // our incarnation number, so the new `alive` status can properly propagate through
         // the cluster (and "win" over the old `.suspect` status).
         if case .suspect(let suspectedInIncarnation, _) = lastKnownStatus {
-            self.registerFailedProbe()
             if suspectedInIncarnation == self._incarnation {
+                self.incLHAMultiplier()
                 self._incarnation += 1
                 warning = nil
             } else if suspectedInIncarnation > self._incarnation {
@@ -458,7 +458,7 @@ extension SWIM.Instance {
         switch result {
         case .failure:
             // missed pingReq's nack may indicate a problem with local health
-            self.registerFailedProbe()
+            self.incLHAMultiplier()
             switch lastKnownStatus {
             case .alive(let incarnation), .suspect(let incarnation, _):
                 switch self.mark(member, as: self.makeSuspicion(incarnation: incarnation)) {
@@ -475,7 +475,7 @@ extension SWIM.Instance {
 
         case .success(.ack(let pinged, let incarnation, let payload)):
             assert(pinged.address == member.address, "The ack.from member [\(pinged)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
-            self.registerSuccessfulProbe()
+            self.decLHAMultiplier()
             switch self.mark(member, as: .alive(incarnation: incarnation)) {
             case .applied:
                 // TODO: we can be more interesting here, was it a move suspect -> alive or a reassurance?
@@ -522,6 +522,7 @@ extension SWIM.Instance {
             // someone suspected us, so we need to increment our incarnation number to spread our alive status with
             // the incremented incarnation
             if suspectedInIncarnation == self.incarnation {
+                self.incLHAMultiplier()
                 self._incarnation += 1
                 return .applied(change: nil)
             } else if suspectedInIncarnation > self.incarnation {

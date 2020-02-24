@@ -40,6 +40,95 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: LHA probe modifications
+    func test_swim_shouldIncreaseProbeInterval_whenHighMultiplier() throws {
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
+
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+        let maxLocalHealthMultiplier = 100
+        let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
+            settings.failureDetector.maxLocalHealthMultiplier = maxLocalHealthMultiplier
+            settings.failureDetector.pingTimeout = .microseconds(1)
+            // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
+            settings.failureDetector.probeInterval = .milliseconds(100)
+        })
+
+        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
+
+        // bump LHA multiplier to upper limit
+        for _ in 1 ... maxLocalHealthMultiplier {
+            ref.tell(.remote(.pingReq(target: dummyProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: .none)))
+            try self.expectPing(on: dummyProbe, reply: false)
+            try _ = ackProbe.expectMessage()
+        }
+
+        ref.tell(.local(.pingRandomMember))
+
+        try _ = p.expectMessage()
+        try p.expectNoMessage(for: .seconds(2))
+    }
+
+    func test_swim_shouldNotIncreaseProbeInterval_whenLowMultiplier() throws {
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
+
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+        let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
+            settings.failureDetector.maxLocalHealthMultiplier = 1
+            settings.failureDetector.pingTimeout = .microseconds(1)
+            // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
+            settings.failureDetector.probeInterval = .milliseconds(100)
+        })
+
+        ref.tell(.local(.pingRandomMember))
+
+        try _ = p.expectMessage()
+        try _ = p.expectMessage()
+    }
+
+    func test_swim_shouldIncreasePingTimeout_whenHighMultiplier() throws {
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
+
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+        let maxLocalHealthMultiplier = 5
+        let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
+            settings.failureDetector.maxLocalHealthMultiplier = maxLocalHealthMultiplier
+            settings.failureDetector.pingTimeout = .seconds(1)
+            // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
+            settings.failureDetector.probeInterval = .milliseconds(100)
+        })
+
+        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
+
+        // bump LHA multiplier to upper limit
+        for _ in 1 ... maxLocalHealthMultiplier {
+            ref.tell(.remote(.pingReq(target: dummyProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: .none)))
+            try self.expectPing(on: dummyProbe, reply: false)
+            try _ = ackProbe.expectMessage(within: .seconds(6))
+        }
+
+        ref.tell(.remote(.pingReq(target: dummyProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: .none)))
+        try self.expectPing(on: dummyProbe, reply: false)
+        try _ = ackProbe.expectNoMessage(for: .seconds(2))
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Pinging nodes
 
     func test_swim_shouldRespondWithAckToPing() throws {
