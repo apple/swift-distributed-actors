@@ -2,13 +2,28 @@
 [[actor_singleton]]
 == Plugin: Actor Singletons
 
-#TODO: document it in depth!#
+Sometimes it is necessary to require that there is only _one_ instance of an actor in the cluster. For examples:
 
-TL;DR; We offer api:ActorSingleton[] APIs which automatically ensure there is _one_ instance of an actor in the cluster.
+- A single manager that oversees specific tasks and makes decisions.
+- A single coordinator of actions across the cluster.
+- A centralized service.
+
+The singleton of an actor type may run on _any_ one of the candidate nodes based on api:AllocationStrategySettings[enum].
+Keep in mind that this node may change due to cluster membership updates, and moving the actor singleton to the new designated node is done automatically.
+
+WARNING: Do not assume the actor singleton to be available at all times. When the node on which the actor singleton has
+been running dies, it may take a few seconds for the system to detect that and spawn a new instance elsewhere. Messages
+could be lost during the migration.
+
+Regardless of where an actor singleton is running, an actor on _any_ cluster node can send messages to it. This is
+because there is a _proxy_ on each node keeping track of the exact location of the singleton. The node selected to host
+the singleton also has a _manager_ responsible for spawning and stopping the actual singleton instance according to
+api:AllocationStrategySettings[enum]. Currently the only supported allocation strategy is by cluster leadership--i.e.,
+the leader of the cluster hosts all actor singletons.
 
 === Dependency
 
-Distributed Actors ship with a `ActorSingletonPlugin`, which you can depend on and use in your applications:
+To use actor singletons, add the Distributed Actors' `ActorSingletonPlugin` as a dependency:
 
 [source]
 ----
@@ -29,4 +44,49 @@ var package = Package(
 [[actor_singleton_quickstart]]
 === Quickstart
 
-#TODO mini example for the singleton#
+Firstly, configure the system to use the plugin:
+
+[source]
+----
+import ActorSingletonPlugin
+import DistributedActors
+...
+
+let system = ActorSystem("MySystem") { settings in
+    settings += ActorSingletonPlugin()
+    ...
+}
+----
+
+Next, if a node can host the actor singleton:
+
+[source]
+----
+// To host a singleton its actor behavior must be defined
+let singletonBehavior: Behavior<Message> = ...
+let singletonRef = try system.singleton.host(Message.self, name: "MySingleton", singletonBehavior)
+// Use singletonRef to send messages
+
+// Similarly for Actorable
+let singletonActor = try system.singleton.host(MySingletonActor.self, name: "MySingleton") { context in
+    // Initialize an instance of MySingletonActor
+}
+// Use singletonActor to send messages
+----
+
+Or, if all we want to do is sending messages to the actor singleton:
+
+[source]
+----
+let singletonProxyRef = try system.singleton.ref(of: Message.self, name: "MySingleton")
+// Use singletonProxyRef to send messages
+
+// Similarly for Actorable
+let singletonActorProxy = try system.singleton.actor(of: MySingletonActor.self, name: "MySingleton")
+// Use singletonActorProxy to send messages
+----
+
+NOTE: For now since `byLeadership` is the only supported allocation strategy, _all_ nodes are candidates for hosting
+actor singletons and therefore `host` is the only valid option. `ref`/`actor` cannot be used yet.
+
+NOTE: The same code snippets are applicable to systems that do not have cluster enabled. No adjustments required.
