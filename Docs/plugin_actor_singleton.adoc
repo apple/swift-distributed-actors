@@ -48,43 +48,39 @@ Firstly, configure the system to use the plugin:
 
 [source]
 ----
-import ActorSingletonPlugin
-import DistributedActors
-...
-
-let system = ActorSystem("MySystem") { settings in
-    settings += ActorSingletonPlugin()
-    ...
-}
+include::{dir_sact_doc_tests}/ActorSingletonDocExamples.swift[tag=configure-system]
 ----
+<1> Enables the singleton plugin in this system
 
-Next, if a node can host the actor singleton:
+Next, if a node can host the singleton:
 
 [source]
 ----
-// To host a singleton its actor behavior must be defined
-let singletonBehavior: Behavior<Message> = ...
-let singletonRef = try system.singleton.host(Message.self, name: "MySingleton", singletonBehavior)
-// Use singletonRef to send messages
-
-// Similarly for Actorable
-let singletonActor = try system.singleton.host(MySingletonActor.self, name: "MySingleton") { context in
-    // Initialize an instance of MySingletonActor
-}
-// Use singletonActor to send messages
+include::{dir_sact_doc_tests}/ActorSingletonDocExamples.swift[tag=host-ref]
 ----
+<1> To host a singleton its actor behavior must be defined
+<2> Use the singleton ref to send messages to it, regardless of _where_ it is located.
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorSingletonDocExamples.swift[tag=host-actorable]
+----
+<1> To host a singleton provide a closure for creating an instance of the `Actorable`
+<2> Use the singleton actor to send messages to it, regardless of _where_ it is located.
 
 Or, if we only want to send messages to the singleton, but never want to also _host_ it on this node:
 
 [source]
 ----
-let singletonProxyRef = try system.singleton.ref(of: Message.self, name: "MySingleton")
-// Use singletonProxyRef to send messages
-
-// Similarly for Actorable
-let singletonActorProxy = try system.singleton.actor(of: MySingletonActor.self, name: "MySingleton")
-// Use singletonActorProxy to send messages
+include::{dir_sact_doc_tests}/ActorSingletonDocExamples.swift[tag=proxy-ref]
 ----
+<1> Use the proxy ref to send messages to the singleton, regardless of _where_ it is located.
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorSingletonDocExamples.swift[tag=proxy-actorable]
+----
+<1> Use the singleton actor to send messages to it, regardless of _where_ it is located.
 
 NOTE: For now since `byLeadership` is the only supported allocation strategy, _all_ nodes are candidates for hosting
 actor singletons and therefore `host` is the only valid option. `ref`/`actor` cannot be used yet.

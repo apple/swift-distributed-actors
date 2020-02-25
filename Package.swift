@@ -97,6 +97,7 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActors", 
             "DistributedActorsXPC", 
+            "ActorSingletonPlugin",
             "DistributedActorsTestKit"
         ]
     ),
