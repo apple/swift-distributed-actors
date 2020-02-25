@@ -74,7 +74,7 @@ let singletonActor = try system.singleton.host(MySingletonActor.self, name: "MyS
 // Use singletonActor to send messages
 ----
 
-Or, if all we want to do is sending messages to the actor singleton:
+Or, if we only want to send messages to the singleton, but never want to also _host_ it on this node:
 
 [source]
 ----
@@ -89,4 +89,4 @@ let singletonActorProxy = try system.singleton.actor(of: MySingletonActor.self, 
 NOTE: For now since `byLeadership` is the only supported allocation strategy, _all_ nodes are candidates for hosting
 actor singletons and therefore `host` is the only valid option. `ref`/`actor` cannot be used yet.
 
-NOTE: The same code snippets are applicable to systems that do not have cluster enabled. No adjustments required.
+TIP: The same code snippets are applicable to systems that do not have cluster enabled. No adjustments required.
