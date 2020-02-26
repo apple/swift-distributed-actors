@@ -71,9 +71,9 @@ open class ClusteredNodesTestBase: XCTestCase {
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
 
             // Make suspicion propagation faster
-            settings.cluster.swim.failureDetector.maxLocalHealthMultiplier = 2
-            settings.cluster.swim.failureDetector.suspicionTimeoutMin = .milliseconds(500)
-            settings.cluster.swim.failureDetector.suspicionTimeoutMax = .seconds(1)
+            settings.cluster.swim.lifeguard.maxLocalHealthMultiplier = 2
+            settings.cluster.swim.lifeguard.suspicionTimeoutMin = .milliseconds(500)
+            settings.cluster.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
 
             self.configureActorSystem(settings: &settings)
             modifySettings?(&settings)

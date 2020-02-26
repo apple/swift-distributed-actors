@@ -122,8 +122,7 @@ internal struct SWIMShell {
     func receiveLocalMessage(context: ActorContext<SWIM.Message>, message: SWIM.LocalMessage) {
         switch message {
         case .pingRandomMember:
-            context.timers.startSingle(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), delay: self.swim.dynamicProtocolInterval)
-            self.handlePingRandomMember(context)
+            self.handleNewProtocolPeriod(context)
 
         case .monitor(let node):
             self.handleMonitor(context, node: node)
@@ -147,7 +146,7 @@ internal struct SWIMShell {
         context.log.trace("Sending ping to [\(target)] with payload [\(payload)]")
 
         let startPing = context.system.metrics.uptimeNanoseconds()
-        let response = target.ask(for: SWIM.PingResponse.self, timeout: self.swim.dynamicPingTimeout) {
+        let response = target.ask(for: SWIM.PingResponse.self, timeout: self.swim.dynamicLHMPingTimeout) {
             let ping = SWIM.RemoteMessage.ping(lastKnownStatus: lastKnownStatus, replyTo: $0, payload: payload)
             self.tracelog(context, .ask(target), message: ping)
             return SWIM.Message.remote(ping)
@@ -193,7 +192,7 @@ internal struct SWIMShell {
         // still alive. Therefore we propagate only the first success, but no failures.
         // The failure case is handled through the timeout of the whole operation.
         let firstSuccess = context.system._eventLoopGroup.next().makePromise(of: SWIM.PingResponse.self)
-        let pingTimeout = self.swim.dynamicPingTimeout
+        let pingTimeout = self.swim.dynamicLHMPingTimeout
         for member in membersToPingRequest {
             let payload = self.swim.makeGossipPayload()
 
@@ -241,11 +240,11 @@ internal struct SWIMShell {
             } else {
                 context.log.warning("\(err) Did not receive ack from \(reflecting: pingedMember.address) within configured timeout. Sending ping requests to other members.")
             }
-            // Called for both ping and pingReq
-            self.swim.incLHAMultiplier()
             if let pingReqOrigin = pingReqOrigin {
-                pingReqOrigin.tell(.nack)
+                self.swim.adjustLHMultiplier(.probeWithMissedNack)
+                pingReqOrigin.tell(.nack(target: pingedMember))
             } else {
+                self.swim.adjustLHMultiplier(.failedProbe)
                 self.sendPingRequests(context: context, toPing: pingedMember)
             }
         case .success(.ack(let pinged, let incarnation, let payload)):
@@ -253,9 +252,9 @@ internal struct SWIMShell {
             self.markMember(context, latest: SWIMMember(ref: pinged, status: .alive(incarnation: incarnation), protocolPeriod: self.swim.protocolPeriod))
             // LHA-probe multiplier for pingReq responses is hanled separately `handlePingRequestResult`
             if let pingReqOrigin = pingReqOrigin {
-                pingReqOrigin.tell(.ack(pinged: pinged, incarnation: incarnation, payload: payload))
+                pingReqOrigin.tell(.ack(target: pinged, incarnation: incarnation, payload: payload))
             } else {
-                self.swim.decLHAMultiplier()
+                self.swim.adjustLHMultiplier(.successfulProbe)
             }
         case .success(.nack):
             break
@@ -271,8 +270,8 @@ internal struct SWIMShell {
             self.processGossipPayload(context: context, payload: payloadToProcess)
         case .newlySuspect:
             context.log.debug("Member [\(pingedMember)] marked as suspect")
-        case .targetNotReached:
-            context.log.debug("Member [\(pingedMember)] didn't respond to pingReq")
+        case .nackReceived:
+            context.log.debug("Received `nack` from indirect probing of [\(pingedMember)]")
         default:
             () // TODO: revisit logging more details here
         }
@@ -281,7 +280,13 @@ internal struct SWIMShell {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handling local messages
 
-    func handlePingRandomMember(_ context: ActorContext<SWIM.Message>) {
+    /// Scheduling a new protocol period and performing the actions for the current protocol period
+    func handleNewProtocolPeriod(_ context: ActorContext<SWIM.Message>) {
+        context.timers.startSingle(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), delay: self.swim.dynamicLHMProtocolInterval)
+        self.pingRandomMember(context)
+    }
+
+    func pingRandomMember(_ context: ActorContext<SWIM.Message>) {
         context.log.trace("Periodic ping random member, among: \(self.swim._allMembersDict.count)", metadata: self.swim.metadata)
 
         // needs to be done first, so we can gossip out the most up to date state
@@ -367,8 +372,8 @@ internal struct SWIMShell {
                 ])
 
                 // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
-                // NB! We don't use Deadline because tests can override TimeSource
-                guard let startTime = suspect.startTime, self.swim.isExpired(deadline: startTime + suspicionTimeout.nanoseconds) else {
+                // We don't use Deadline because tests can override TimeSource
+                guard let startTime = suspect.suspicionStartedAt, self.swim.isExpired(deadline: startTime + suspicionTimeout.nanoseconds) else {
                     continue // skip, this suspect is not timed-out yet
                 }
 

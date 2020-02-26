@@ -30,7 +30,6 @@ import Logging
 /// ### Related Papers
 /// - SeeAlso: [SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol](https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf)
 /// - SeeAlso: [Lifeguard: Local Health Awareness for More Accurate Failure Detection](https://arxiv.org/abs/1707.00788)
-import struct Dispatch.DispatchTime
 
 final class SWIMInstance {
     let settings: SWIM.Settings
@@ -46,16 +45,32 @@ final class SWIMInstance {
         self._membersToPingIndex
     }
 
-    private let timeSourceNanos: () -> Int64
-
-    var localHealthMultiplier = 0
-
-    var dynamicProtocolInterval: TimeAmount {
-        TimeAmount.nanoseconds(settings.failureDetector.probeInterval.nanoseconds * Int64(1 + localHealthMultiplier))
+    private var timeSourceNanos: () -> Int64 {
+        self.settings.lifeguard.timeSourceNanos
     }
 
-    var dynamicPingTimeout: TimeAmount {
-        TimeAmount.nanoseconds(settings.failureDetector.pingTimeout.nanoseconds * Int64(1 + localHealthMultiplier))
+    /// Lifeguard IV.A. Local Health Multiplier (LHM)
+    /// > These different sources of feedback are combined in a Local Health Multiplier (LHM).
+    /// > LHM is a saturating counter, with a max value S and min value zero, meaning it will not
+    /// > increase above S or decrease below zero.
+    ///
+    /// Local health multiplier is designed to relax the probeInterval and pingTimeout.
+    /// The multiplier will be increased in a following cases:
+    /// - When local node needs to refute a suspicion about itself
+    /// - When ping-req is missing nack
+    /// - When probe is failed
+    ///  Each of the above may indicate that local instance is not processing incoming messages in timely order.
+    /// The multiplier will be decreased when:
+    /// - Ping succeeded with an ack.
+    /// Events which cause the specified changes to the LHM counter are defined as `SWIM.LHModifierEvent`
+    var localHealthMultiplier = 0
+
+    var dynamicLHMProtocolInterval: TimeAmount {
+        TimeAmount.nanoseconds(self.settings.failureDetector.probeInterval.nanoseconds * Int64(1 + self.localHealthMultiplier))
+    }
+
+    var dynamicLHMPingTimeout: TimeAmount {
+        TimeAmount.nanoseconds(self.settings.failureDetector.pingTimeout.nanoseconds * Int64(1 + self.localHealthMultiplier))
     }
 
     /// The incarnation number is used to get a sense of ordering of events, so if an `.alive` or `.suspect`
@@ -73,21 +88,22 @@ final class SWIMInstance {
 
     func mergeSuspicions(suspectedBy: Set<UniqueNode>, previouslySuspectedBy: Set<UniqueNode>) -> Set<UniqueNode> {
         var newSuspectedBy = previouslySuspectedBy
-        for suspectedBy in suspectedBy.sorted() where newSuspectedBy.count < self.settings.failureDetector.maxIndependentSuspicions {
+        for suspectedBy in suspectedBy.sorted() where newSuspectedBy.count < self.settings.lifeguard.maxIndependentSuspicions {
             newSuspectedBy.update(with: suspectedBy)
         }
         return newSuspectedBy
     }
 
-    func decLHAMultiplier() {
-        if localHealthMultiplier > 0 {
-            localHealthMultiplier -= 1
-        }
-    }
-
-    func incLHAMultiplier() {
-        if localHealthMultiplier < settings.failureDetector.maxLocalHealthMultiplier {
-            localHealthMultiplier += 1
+    func adjustLHMultiplier(_ event: LHModifierEvent) {
+        switch event {
+        case .successfulProbe:
+            if self.localHealthMultiplier > 0 {
+                self.localHealthMultiplier -= 1
+            }
+        case .failedProbe, .refutingSuspectMessageAboutSelf, .probeWithMissedNack:
+            if self.localHealthMultiplier < self.settings.lifeguard.maxLocalHealthMultiplier {
+                self.localHealthMultiplier += 1
+            }
         }
     }
 
@@ -111,13 +127,12 @@ final class SWIMInstance {
         $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
     })
 
-    init(_ settings: SWIM.Settings, myShellMyself: ActorRef<SWIM.Message>, myNode: UniqueNode, timeSourceNanos: @escaping () -> Int64 = { () -> Int64 in Int64(DispatchTime.now().uptimeNanoseconds) }) {
+    init(_ settings: SWIM.Settings, myShellMyself: ActorRef<SWIM.Message>, myNode: UniqueNode) {
         self.settings = settings
         self.myNode = myNode
         self.myShellMyself = myShellMyself
         self.members = [:]
         self.membersToPing = []
-        self.timeSourceNanos = timeSourceNanos
         self.addMember(myShellMyself, status: .alive(incarnation: 0))
     }
 
@@ -129,7 +144,7 @@ final class SWIMInstance {
             return .newerMemberAlreadyPresent(existingMember)
         }
 
-        let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod, startTime: self.timeSourceNanos())
+        let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod, suspicionStartedAt: self.timeSourceNanos())
         self.members[ref] = member
 
         if maybeExistingMember == nil, self.notMyself(member) {
@@ -222,18 +237,18 @@ final class SWIMInstance {
 
         var status = status
         var protocolPeriod = self.protocolPeriod
-        var startTime: Int64?
+        var suspicionStartedAt: Int64?
         if case .suspect(let incomingIncarnation, let incomingSuspectedBy) = status,
             case .suspect(let previousIncarnation, let previousSuspectedBy)? = previousStatusOption,
-            let previousMembership = self.member(for: ref),
+            let member = self.member(for: ref),
             incomingIncarnation == previousIncarnation {
             let suspicions = self.mergeSuspicions(suspectedBy: incomingSuspectedBy, previouslySuspectedBy: previousSuspectedBy)
             status = .suspect(incarnation: incomingIncarnation, suspectedBy: suspicions)
             // we should keep old protocol period when member is already a suspect
-            protocolPeriod = previousMembership.protocolPeriod
-            startTime = previousMembership.startTime
+            protocolPeriod = member.protocolPeriod
+            suspicionStartedAt = member.suspicionStartedAt
         } else if case .suspect = status {
-            startTime = self.timeSourceNanos()
+            suspicionStartedAt = self.timeSourceNanos()
         }
 
         if let previousStatus = previousStatusOption, previousStatus.supersedes(status) {
@@ -241,7 +256,7 @@ final class SWIMInstance {
             return .ignoredDueToOlderStatus(currentStatus: previousStatus)
         }
 
-        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: protocolPeriod, startTime: startTime)
+        let member = SWIM.Member(ref: ref, status: status, protocolPeriod: protocolPeriod, suspicionStartedAt: suspicionStartedAt)
         self.members[ref] = member
         self.addToGossip(member: member)
 
@@ -285,13 +300,13 @@ final class SWIMInstance {
     /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
     /// This will only show current estimate of how many intervals should pass before suspicion is reached. May change when more data is coming
     var timeoutSuspectsBeforePeriodMax: Int64 {
-        self.settings.failureDetector.suspicionTimeoutMax.nanoseconds / self.dynamicProtocolInterval.nanoseconds + 1
+        self.settings.lifeguard.suspicionTimeoutMax.nanoseconds / self.dynamicLHMProtocolInterval.nanoseconds + 1
     }
 
     /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
     /// This will only show current estimate of how many intervals should pass before suspicion is reached. May change when more data is coming
     var timeoutSuspectsBeforePeriodMin: Int64 {
-        self.settings.failureDetector.suspicionTimeoutMin.nanoseconds / self.dynamicProtocolInterval.nanoseconds + 1
+        self.settings.lifeguard.suspicionTimeoutMin.nanoseconds / self.dynamicLHMProtocolInterval.nanoseconds + 1
     }
 
     /// The forumla is taken from Lifeguard whitepaper https://arxiv.org/abs/1707.00788
@@ -317,9 +332,9 @@ final class SWIMInstance {
     ///   We default `K` to `3`.
     /// - `C` is the number of independent suspicions about that member received since the local suspicion was raised.
     func suspicionTimeout(suspectedByCount: Int) -> TimeAmount {
-        let minTimeout = self.settings.failureDetector.suspicionTimeoutMin
-        let maxTimeout = self.settings.failureDetector.suspicionTimeoutMax
-        return max(minTimeout, .nanoseconds(maxTimeout.nanoseconds - Int64(round(Double(maxTimeout.nanoseconds - minTimeout.nanoseconds) * (log2(Double(suspectedByCount + 1)) / log2(Double(self.settings.failureDetector.maxIndependentSuspicions + 1)))))))
+        let minTimeout = self.settings.lifeguard.suspicionTimeoutMin
+        let maxTimeout = self.settings.lifeguard.suspicionTimeoutMax
+        return max(minTimeout, .nanoseconds(maxTimeout.nanoseconds - Int64(round(Double(maxTimeout.nanoseconds - minTimeout.nanoseconds) * (log2(Double(suspectedByCount + 1)) / log2(Double(self.settings.lifeguard.maxIndependentSuspicions + 1)))))))
     }
 
     func isExpired(deadline: Int64) -> Bool {
@@ -427,7 +442,7 @@ extension SWIM.Instance {
         // the cluster (and "win" over the old `.suspect` status).
         if case .suspect(let suspectedInIncarnation, _) = lastKnownStatus {
             if suspectedInIncarnation == self._incarnation {
-                self.incLHAMultiplier()
+                self.adjustLHMultiplier(.refutingSuspectMessageAboutSelf)
                 self._incarnation += 1
                 warning = nil
             } else if suspectedInIncarnation > self._incarnation {
@@ -440,7 +455,7 @@ extension SWIM.Instance {
             }
         }
 
-        let ack: SWIM.PingResponse = .ack(pinged: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload())
+        let ack: SWIM.PingResponse = .ack(target: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload())
 
         return .reply(response: ack, warning: warning)
     }
@@ -458,7 +473,7 @@ extension SWIM.Instance {
         switch result {
         case .failure:
             // missed pingReq's nack may indicate a problem with local health
-            self.incLHAMultiplier()
+            self.adjustLHMultiplier(.probeWithMissedNack)
             switch lastKnownStatus {
             case .alive(let incarnation), .suspect(let incarnation, _):
                 switch self.mark(member, as: self.makeSuspicion(incarnation: incarnation)) {
@@ -473,9 +488,9 @@ extension SWIM.Instance {
                 return .alreadyDead
             }
 
-        case .success(.ack(let pinged, let incarnation, let payload)):
-            assert(pinged.address == member.address, "The ack.from member [\(pinged)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
-            self.decLHAMultiplier()
+        case .success(.ack(let target, let incarnation, let payload)):
+            assert(target.address == member.address, "The ack.from member [\(target)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
+            self.adjustLHMultiplier(.successfulProbe)
             switch self.mark(member, as: .alive(incarnation: incarnation)) {
             case .applied:
                 // TODO: we can be more interesting here, was it a move suspect -> alive or a reassurance?
@@ -484,13 +499,13 @@ extension SWIM.Instance {
                 return .ignoredDueToOlderStatus(currentStatus: currentStatus)
             }
         case .success(.nack):
-            return .targetNotReached
+            return .nackReceived
         }
     }
 
     enum OnPingRequestResponseDirective {
         case alive(previous: SWIM.Status, payloadToProcess: SWIM.Payload)
-        case targetNotReached
+        case nackReceived
         case unknownMember
         case newlySuspect
         case alreadySuspect
@@ -522,7 +537,7 @@ extension SWIM.Instance {
             // someone suspected us, so we need to increment our incarnation number to spread our alive status with
             // the incremented incarnation
             if suspectedInIncarnation == self.incarnation {
-                self.incLHAMultiplier()
+                self.adjustLHMultiplier(.refutingSuspectMessageAboutSelf)
                 self._incarnation += 1
                 return .applied(change: nil)
             } else if suspectedInIncarnation > self.incarnation {
@@ -708,5 +723,17 @@ extension SWIM.Instance: CustomDebugStringConvertible {
             _messagesToGossip: \(_messagesToGossip)
         )
         """
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: SWIM Lifeguard Local Health Modifier event
+
+extension SWIMInstance {
+    internal enum LHModifierEvent {
+        case successfulProbe
+        case failedProbe
+        case refutingSuspectMessageAboutSelf
+        case probeWithMissedNack
     }
 }

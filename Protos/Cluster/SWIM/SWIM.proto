@@ -42,22 +42,17 @@ message SWIMPingRequest {
 
 message SWIMPingResponse {
     message Ack {
-        ActorAddress pinged = 1;
+        ActorAddress target = 1;
         uint64 incarnation = 2;
         SWIMPayload payload = 3;
     }
     message Nack {
+        ActorAddress target = 1;
     }
     oneof pingResponse {
         Ack ack = 1;
         Nack nack = 2;
     }
-}
-
-message SWIMAck {
-    ActorAddress pinged = 1;
-    uint64 incarnation = 2;
-    SWIMPayload payload = 3;
 }
 
 message SWIMStatus {

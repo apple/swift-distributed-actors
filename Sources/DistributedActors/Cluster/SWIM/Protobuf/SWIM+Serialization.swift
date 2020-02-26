@@ -155,14 +155,16 @@ extension SWIM.PingResponse: InternalProtobufRepresentable {
     func toProto(context: ActorSerializationContext) throws -> ProtoSWIMPingResponse {
         var proto = ProtoSWIMPingResponse()
         switch self {
-        case .ack(let pinged, let incarnation, let payload):
+        case .ack(let target, let incarnation, let payload):
             var ack = ProtoSWIMPingResponse.Ack()
-            ack.pinged = try pinged.toProto(context: context)
+            ack.target = try target.toProto(context: context)
             ack.incarnation = incarnation
             ack.payload = try payload.toProto(context: context)
             proto.ack = ack
-        case .nack:
-            proto.nack = ProtoSWIMPingResponse.Nack()
+        case .nack(let target):
+            var nack = ProtoSWIMPingResponse.Nack()
+            nack.target = try target.toProto(context: context)
+            proto.nack = nack
         }
         return proto
     }
@@ -173,11 +175,12 @@ extension SWIM.PingResponse: InternalProtobufRepresentable {
         }
         switch pingResponse {
         case .ack(let ack):
-            let pinged = context.resolveActorRef(SWIM.Message.self, identifiedBy: try ActorAddress(fromProto: ack.pinged, context: context))
+            let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: try ActorAddress(fromProto: ack.target, context: context))
             let payload = try SWIM.Payload(fromProto: ack.payload, context: context)
-            self = .ack(pinged: pinged, incarnation: ack.incarnation, payload: payload)
-        case .nack:
-            self = .nack
+            self = .ack(target: target, incarnation: ack.incarnation, payload: payload)
+        case .nack(let nack):
+            let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: try ActorAddress(fromProto: nack.target, context: context))
+            self = .nack(target: target)
         }
     }
 }

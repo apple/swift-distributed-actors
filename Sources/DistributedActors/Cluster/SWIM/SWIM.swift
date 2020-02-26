@@ -48,12 +48,6 @@ public enum SWIM {
 
         /// "Ping Request" requests a SWIM probe.
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<PingResponse>, payload: Payload)
-
-        // TODO: Implement Extension: Lifeguard, Local Health Aware Probe
-        /// LHAProbe adds a `nack` message to the fault detector protocol,
-        /// which is sent in the case of failed indirect probes. This gives the member that
-        ///  initiates the indirect probe a way to check if it is receiving timely responses
-        /// from the `k` members it enlists, even if the target of their indirect pings is not responsive.
     }
 
     /// A `SWIM.Ack` is sent always in reply to a `SWIM.RemoteMessage.ping`.
@@ -61,11 +55,11 @@ public enum SWIM {
     /// The ack may be delivered directly in a request-response fashion between the probing and pinged members,
     /// or indirectly, as a result of a `pingReq` message.
     ///
-    /// - parameter pinged: always contains the ref of the member that was the target of the `ping`.
+    /// - parameter target: always contains the ref of the member that was the target of the `ping`.
 
     internal enum PingResponse {
-        case ack(pinged: ActorRef<Message>, incarnation: Incarnation, payload: Payload)
-        case nack
+        case ack(target: ActorRef<Message>, incarnation: Incarnation, payload: Payload)
+        case nack(target: ActorRef<Message>)
     }
 
     internal struct MembershipState {
@@ -259,13 +253,16 @@ internal struct SWIMMember {
     // Period in which protocol period was this state set
     let protocolPeriod: Int
 
-    let startTime: Int64?
+    /// Indicates a time when suspicion was started. Only suspicion needs to have it, but having the actual field in SWIMMember feels more natural.
+    /// Putting it inside `SWIM.Status` makes time management a huge mess: status can either be created internally in SWIMMember or deserialised from protobuf.
+    /// Having this in SWIMMember ensures we never pass it on the wire and we can't make a mistake when merging suspicions.
+    let suspicionStartedAt: Int64?
 
-    init(ref: ActorRef<SWIM.Message>, status: SWIM.Status, protocolPeriod: Int, startTime: Int64? = nil) {
+    init(ref: ActorRef<SWIM.Message>, status: SWIM.Status, protocolPeriod: Int, suspicionStartedAt: Int64? = nil) {
         self.ref = ref
         self.status = status
         self.protocolPeriod = protocolPeriod
-        self.startTime = startTime
+        self.suspicionStartedAt = suspicionStartedAt
     }
 
     var isAlive: Bool {
@@ -285,6 +282,7 @@ internal struct SWIMMember {
     }
 }
 
+/// Manual Hashable conformance since we ommit suspicionStartedAt from identity
 extension SWIMMember: Hashable, Equatable {
     static func == (lhs: SWIMMember, rhs: SWIMMember) -> Bool {
         return lhs.ref == rhs.ref && lhs.protocolPeriod == rhs.protocolPeriod && lhs.status == rhs.status

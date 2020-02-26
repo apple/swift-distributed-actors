@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import struct Dispatch.DispatchTime // for time source overriding
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -31,6 +32,8 @@ public struct SWIMSettings {
     public var disabled: Bool = false
 
     public var gossip: SWIMGossipSettings = .default
+
+    public var lifeguard: SWIMLifeGuardSettings = .default
 
     public var failureDetector: SWIMFailureDetectorSettings = .default
 
@@ -87,6 +90,48 @@ public struct SWIMFailureDetectorSettings {
         }
     }
 
+    /// Interval at which gossip messages should be issued.
+    /// This property sets only a base value of probe interval, which will later be multiplied by `localHealthMultiplier`.
+    /// - SeeAlso: `maxLocalHealthMultiplier`
+    /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
+    public var probeInterval: TimeAmount = .seconds(1)
+
+    /// Time amount after which a sent ping without ack response is considered timed-out.
+    /// This drives how a node becomes a suspect, by missing such ping/ack rounds.
+    ///
+    /// This property sets only a base timeout value, which is later multiplied by `localHealthMultiplier`
+    /// - SeeAlso: `maxLocalHealthMultiplier`
+    /// Note that after an initial ping/ack timeout, secondary indirect probes are issued,
+    /// and only after exceeding `suspicionTimeoutPeriodsMax` shall the node be declared as `.unreachable`,
+    /// which results in an `Cluster.MemberReachabilityChange` `Cluster.Event` which downing strategies may act upon.
+    public var pingTimeout: TimeAmount = .milliseconds(300)
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: SWIM LifeGuard extensions Settings
+
+/// Lifeguard is a set of extensions to SWIM that helps reducing false positive failure detections
+/// Extensions description: https://arxiv.org/pdf/1707.00788.pdf
+public struct SWIMLifeGuardSettings {
+    public static var `default`: SWIMLifeGuardSettings {
+        .init()
+    }
+
+    /// This is not a part of public API. SWIM is using time to schedule pings/calculate timeouts.
+    /// When designing tests one may want to simulate scenarious when events are coming in particular order.
+    /// Doing this will require some control over SWIM's notion of time.
+    /// This propery allows to override the `.now` function.
+    var timeSourceNanos: () -> Int64 = { () -> Int64 in Int64(DispatchTime.now().uptimeNanoseconds) }
+
+    /// Local health multiplier is a part of Lifeguard extensions to SWIM.
+    /// It will increase local probe interval and probe timeout if the instance is not processing messages in timely manner.
+    /// This property will define the upper limit to local health multiplier. The lower bound is always 0.
+    public var maxLocalHealthMultiplier: Int = 8 {
+        willSet {
+            precondition(newValue >= 0, "Local health multiplier CAN NOT be negative")
+        }
+    }
+
     /// Suspicion timeouts are specified as number of probe intervals.
     /// E.g. a `suspicionTimeoutMax = .seconds(10)` means that a suspicious node
     /// will be escalated as `.unreachable`  at most after approximately 10 seconds. Suspicion timeout will decay logarithmically to `suspicionTimeoutMin`
@@ -112,38 +157,6 @@ public struct SWIMFailureDetectorSettings {
             precondition(newValue <= self.suspicionTimeoutMax, "`suspicionTimeoutMin` MUST BE <= `suspicionTimeoutMax`")
         }
     }
-
-    /// Interval at which gossip messages should be issued.
-    /// This property sets only a base value of probe interval, which will later be multiplied by `localHealthMultiplier`.
-    /// - SeeAlso: `maxLocalHealthMultiplier`
-    /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
-    public var probeInterval: TimeAmount = .seconds(1)
-
-    /// Local health multiplier is a part of Lifeguard extensions to swift. It will increase local probe interval and probe timeout if the instance is not processing messages in timely manner. Full extension description: https://arxiv.org/pdf/1707.00788.pdf
-    /// Local health multiplier is designed to relax the probeInterval and pingTimeout.
-    /// The multiplier will be increased in a following cases:
-    /// - When local node needs to refute a suspicion about itself
-    /// - When ping-req is missing nack
-    /// - When probe is failed
-    ///  Each of the above may indicate that local instance is not processing incoming messages in timely order.
-    /// The multiplier will be decreased when:
-    /// - Ping succeeded with an ack.
-    /// This property will define the upper limit to local health multiplier. The lower bound is always 0.
-    public var maxLocalHealthMultiplier: Int = 8 {
-        willSet {
-            precondition(newValue >= 0, "Local health multiplier CAN NOT be negative")
-        }
-    }
-
-    /// Time amount after which a sent ping without ack response is considered timed-out.
-    /// This drives how a node becomes a suspect, by missing such ping/ack rounds.
-    ///
-    /// This property sets only a base timeout value, which is later multiplied by `localHealthMultiplier`
-    /// - SeeAlso: `maxLocalHealthMultiplier`
-    /// Note that after an initial ping/ack timeout, secondary indirect probes are issued,
-    /// and only after exceeding `suspicionTimeoutPeriodsMax` shall the node be declared as `.unreachable`,
-    /// which results in an `Cluster.MemberReachabilityChange` `Cluster.Event` which downing strategies may act upon.
-    public var pingTimeout: TimeAmount = .milliseconds(300)
 
     /// A Lifegurad suspicion extension to SWIM protocol.
     /// A number of independent suspicions required for a suspicion timeout to fully decay to a minimal value.
