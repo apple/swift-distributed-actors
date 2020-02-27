@@ -52,6 +52,82 @@ final class DeathWatchTests: ActorSystemTestBase {
         try p.expectTerminated(stoppableRef)
     }
 
+    func test_watchWith_shouldTriggerCustomMessageWhenWatchedActorStops() throws {
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
+
+        _ = try system.spawn("watcher", of: String.self, .setup { context in
+            context.watch(stoppableRef, with: "terminated:\(stoppableRef.address.path)")
+            stoppableRef.tell(.stop)
+            return (Behavior<String>.receiveMessage { message in
+                p.tell(message)
+                return .same
+            }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                p.tell("signal:\(terminated)") // should not be signalled (!)
+                return .same
+            }
+        })
+
+        // the order of these messages is also guaranteed:
+        // 1) first the dying actor has last chance to signal a message,
+        try p.expectMessage("I (stopMePlz0) will now stop")
+        // 2) and then terminated messages are sent:
+        try p.expectMessage("terminated:/user/stopMePlz0")
+        // most notably, NOT the `signal:...` message
+    }
+
+    func test_watchWith_calledMultipleTimesShouldCarryTheLatestMessage() throws {
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
+
+        _ = try system.spawn("watcher", of: String.self, .setup { context in
+            context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
+            context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
+            context.watch(stoppableRef, with: "terminated-3:\(stoppableRef.address.path)")
+            stoppableRef.tell(.stop)
+            return (Behavior<String>.receiveMessage { message in
+                p.tell(message)
+                return .same
+            }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                p.tell("signal:\(terminated)") // should not be signalled (!)
+                return .same
+            }
+        })
+
+        // the order of these messages is also guaranteed:
+        // 1) first the dying actor has last chance to signal a message,
+        try p.expectMessage("I (stopMePlz0) will now stop")
+        // 2) and then terminated messages are sent:
+        try p.expectMessage("terminated-3:/user/stopMePlz0")
+        // most notably, NOT the `signal:...` message
+    }
+
+    func test_watchWith_calledMultipleTimesShouldAllowGettingBackToSignalDelivery() throws {
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
+
+        _ = try system.spawn("watcher", of: String.self, .setup { context in
+            context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
+            context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
+            context.watch(stoppableRef, with: nil)
+            stoppableRef.tell(.stop)
+            return (Behavior<String>.receiveMessage { message in
+                p.tell(message) // should NOT be signalled, we're back to Signals
+                return .same
+            }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                p.tell("signal:\(terminated.address.path)") // should be signalled (!)
+                return .same
+            }
+        })
+
+        // the order of these messages is also guaranteed:
+        // 1) first the dying actor has last chance to signal a message,
+        try p.expectMessage("I (stopMePlz0) will now stop")
+        // 2) and then terminated messages are sent:
+        try p.expectMessage("signal:/user/stopMePlz0")
+        // most notably, NOT the `signal:...` message
+    }
+
     func test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops() throws {
         let p = self.testKit.spawnTestProbe("p", expecting: String.self)
         let p1 = self.testKit.spawnTestProbe("p1", expecting: String.self)

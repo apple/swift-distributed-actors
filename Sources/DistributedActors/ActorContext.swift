@@ -153,6 +153,18 @@ public class ActorContext<Message>: ActorRefFactory {
     /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
     /// and the Death Pact will trigger as usual.
     ///
+    /// ### The watch(:with:) variant
+    /// Watch offers another variant of the API, which allows you to customize what message shall be received
+    /// when the watchee is terminated. The message may be optionally passed as `context.watch(ref, with: MyMessage(ref, ...))`,
+    /// allowing you to carry additional context "along with" the information about _which_ actor has terminated.
+    /// Note that the delivery semantics of when this message is delivered is the same as `Signals.Terminated` (i.e.
+    /// it's delivery is guaranteed, even in face of message loss across nodes), and the actual message is _local_ (meaning
+    /// that internally all signalling is still performed using `Terminated` and system messages, but when the time comes
+    /// to deliver it to this actor, instead the customized message is delivered).
+    ///
+    /// Invoking `watch()` multiple times with differing `with` arguments results in only the _latest_ invocation to take effect.
+    /// In other words, when an actor terminates, the customized termination message that was last provided "wins,"
+    /// and is delivered to the watcher (this actor).
     ///
     /// # Examples:
     ///
@@ -162,14 +174,17 @@ public class ActorContext<Message>: ActorRefFactory {
     ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
     ///     let child = try context.watch(context.spawn("child", (behavior)))
     ///
+    ///     // watch(:with:)
+    ///     context.watch(ref, with: .customMessageOnTermination(ref, otherInformation))
+    ///
     /// #### Concurrency:
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
-    public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+    public func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
         return undefined()
     }
 
-    internal func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+    internal func watch(_ watchee: AddressableActorRef, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) {
         return undefined()
     }
 
