@@ -24,6 +24,9 @@ extension DeathWatchTests {
     static var allTests: [(String, (DeathWatchTests) -> () throws -> Void)] {
         return [
             ("test_watch_shouldTriggerTerminatedWhenWatchedActorStops", test_watch_shouldTriggerTerminatedWhenWatchedActorStops),
+            ("test_watchWith_shouldTriggerCustomMessageWhenWatchedActorStops", test_watchWith_shouldTriggerCustomMessageWhenWatchedActorStops),
+            ("test_watchWith_calledMultipleTimesShouldCarryTheLatestMessage", test_watchWith_calledMultipleTimesShouldCarryTheLatestMessage),
+            ("test_watchWith_calledMultipleTimesShouldAllowGettingBackToSignalDelivery", test_watchWith_calledMultipleTimesShouldAllowGettingBackToSignalDelivery),
             ("test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops", test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops),
             ("test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers", test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers),
             ("test_minimized_deathPact_shouldTriggerForWatchedActor", test_minimized_deathPact_shouldTriggerForWatchedActor),

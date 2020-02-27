@@ -353,8 +353,8 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        return super.watch(watchee, file: file, line: line)
+    override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+        return super.watch(watchee, with: terminationMessage, file: file, line: line)
     }
 
     override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
