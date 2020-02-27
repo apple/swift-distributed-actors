@@ -93,5 +93,4 @@ if system.cluster.node.port == 7337 { // <2>
 }
 // end::cluster-sample-actors-discover-and-chat[]
 
-system.park()
-Thread.sleep(.seconds(60)) // TODO: make park halt execution here
+system.park(atMost: .seconds(60))

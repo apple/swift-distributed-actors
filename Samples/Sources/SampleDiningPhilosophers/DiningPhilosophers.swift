@@ -32,6 +32,6 @@ struct DiningPhilosophers {
         let _: Philosopher.Ref = try system.spawn("Cory", Philosopher(left: fork3, right: fork4).behavior)
         let _: Philosopher.Ref = try system.spawn("Norman", Philosopher(left: fork4, right: fork5).behavior)
 
-        Thread.sleep(time)
+        system.park(atMost: time)
     }
 }
