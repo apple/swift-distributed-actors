@@ -650,13 +650,13 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Death Watch API
 
-    public override func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        self.deathWatch.watch(watchee: watchee.asAddressable(), myself: self.myself, parent: self._parent, file: file, line: line)
+    public override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+        self.deathWatch.watch(watchee: watchee.asAddressable(), with: terminationMessage, myself: self.myself, parent: self._parent, file: file, line: line)
         return watchee
     }
 
-    internal override func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
-        self.deathWatch.watch(watchee: watchee, myself: self.myself, parent: self._parent, file: file, line: line)
+    internal override func watch(_ watchee: AddressableActorRef, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) {
+        self.deathWatch.watch(watchee: watchee, with: nil, myself: self.myself, parent: self._parent, file: file, line: line)
     }
 
     public override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
@@ -788,16 +788,24 @@ extension ActorShell {
         self.log.info("Received terminated: \(dead)")
         #endif
 
-        guard self.deathWatch.receiveTerminated(terminated) else {
+        let terminatedDirective = self.deathWatch.receiveTerminated(terminated)
+
+        let next: Behavior<Message>
+        switch terminatedDirective {
+        case .wasNotWatched:
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
             self.log.trace("""
             Actor not known to [\(self.path)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
             and already have removed the actor from our death watch. 
             """)
             return
-        }
 
-        let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
+        case .signal:
+            next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
+
+        case .customMessage(let customTerminatedMessage):
+            next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: customTerminatedMessage)
+        }
 
         switch next.underlying {
         case .unhandled:

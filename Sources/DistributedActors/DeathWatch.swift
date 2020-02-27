@@ -28,10 +28,23 @@ import NIO
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline
 internal struct DeathWatch<Message> {
-    private var watching = Set<AddressableActorRef>()
-    private var watchedBy = Set<AddressableActorRef>()
+    private var watching: [AddressableActorRef: OnTerminationMessage] = [:]
+    private var watchedBy: Set<AddressableActorRef> = []
 
     private var nodeDeathWatcher: NodeDeathWatcherShell.Ref
+
+    private enum OnTerminationMessage {
+        case defaultTerminatedSignal
+        case custom(Message)
+
+        init(customize custom: Message?) {
+            if let custom = custom {
+                self = .custom(custom)
+            } else {
+                self = .defaultTerminatedSignal
+            }
+        }
+    }
 
     init(nodeDeathWatcher: NodeDeathWatcherShell.Ref) {
         self.nodeDeathWatcher = nodeDeathWatcher
@@ -40,7 +53,7 @@ internal struct DeathWatch<Message> {
     // MARK: perform watch/unwatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    public mutating func watch(watchee: AddressableActorRef, myself watcher: ActorRef<Message>, parent: AddressableActorRef, file: String, line: UInt) {
+    public mutating func watch(watchee: AddressableActorRef, with terminationMessage: Message?, myself watcher: ActorRef<Message>, parent: AddressableActorRef, file: String, line: UInt) {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard watchee.address != watcher.address else {
@@ -57,11 +70,16 @@ internal struct DeathWatch<Message> {
         }
 
         if self.isWatching(watchee.address) {
+            // While we bail out early here, we DO override whichever value was set as the customized termination message.
+            // This is to enable being able to keep updating the context associated with a watched actor, e.g. if how
+            // we should react to its termination has changed since the last time watch() was invoked.
+            self.watching[watchee] = OnTerminationMessage(customize: terminationMessage)
+
             return
         }
 
         watchee._sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
-        self.watching.insert(watchee)
+        self.watching[watchee] = OnTerminationMessage(customize: terminationMessage)
 
         // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
         if watchee.address.node?.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
@@ -73,17 +91,16 @@ internal struct DeathWatch<Message> {
     public mutating func unwatch(watchee: AddressableActorRef, myself watcher: ActorRef<Message>, file: String = #file, line: UInt = #line) {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
-        if let removed = watching.remove(watchee) {
-            removed._sendSystemMessage(.unwatch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+        if self.watching.removeValue(forKey: watchee) != nil {
+            watchee._sendSystemMessage(.unwatch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         }
     }
 
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
     internal func isWatching(_ address: ActorAddress) -> Bool {
-        // TODO: not efficient, however this is only for when termination of a child happens
-        // TODO: we could make system messages send AddressableActorRef here...
-        return self.watching.contains(where: { $0.address == address })
+        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: address, system: nil))).asAddressable()
+        return self.watching[mockRefForEquality] != nil
     }
 
     // MARK: react to watch or unwatch signals
@@ -107,28 +124,35 @@ internal struct DeathWatch<Message> {
     /// Performs cleanup of references to the dead actor.
     ///
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
-    public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> Bool {
-        let deadPath = terminated.address
-        let pathsEqual: (AddressableActorRef) -> Bool = { watched in
-            watched.address == deadPath
-        }
-
-        // FIXME: make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
-        func removeDeadRef(from set: inout Set<AddressableActorRef>, where check: (AddressableActorRef) -> Bool) -> Bool {
-            if let deadIndex = set.firstIndex(where: check) {
-                set.remove(at: deadIndex)
-                return true
-            }
-            return false
-        }
+    public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> TerminatedMessageDirective {
+        // refs are compared ONLY by address, thus we can make such mock reference, and it will be properly remove the right "real" refs from the collections below
+        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable()
 
         // we remove the actor from both sets;
         // 1) we don't need to watch it anymore, since it has just terminated,
-        let wasWatchedByMyself = removeDeadRef(from: &self.watching, where: pathsEqual)
+        let removedOnTerminationMessage = self.watching.removeValue(forKey: mockRefForEquality)
         // 2) we don't need to refer to it, since sending it .terminated notifications would be pointless.
-        _ = removeDeadRef(from: &self.watchedBy, where: pathsEqual)
+        _ = self.watchedBy.remove(mockRefForEquality)
 
-        return wasWatchedByMyself
+        guard let onTerminationMessage = removedOnTerminationMessage else {
+            // if we had no stored/removed termination message, it means this actor was NOT watched actually.
+            // Meaning: don't deliver Signal/message to user actor.
+            return .wasNotWatched
+        }
+
+        switch onTerminationMessage {
+        case .defaultTerminatedSignal:
+            return .signal
+        case .custom(let message):
+            return .customMessage(message)
+        }
+    }
+
+    /// instructs the ActorShell to either deliver a Terminated signal or the customized message (from watch(:with:))
+    enum TerminatedMessageDirective {
+        case wasNotWatched
+        case signal
+        case customMessage(Message)
     }
 
     /// Performs cleanup of any actor references that were located on the now terminated node.
@@ -138,7 +162,7 @@ internal struct DeathWatch<Message> {
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
     public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: _ReceivesSystemMessages) {
-        for watched: AddressableActorRef in self.watching where watched.address.node == terminatedNode {
+        for watched: AddressableActorRef in self.watching.keys where watched.address.node == terminatedNode {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
             let existenceConfirmed = watched.refType.isLocal && !watched.address.path.starts(with: ._dead)

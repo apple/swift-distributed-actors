@@ -113,7 +113,7 @@ public class ActorTestProbe<Message> {
 
             // probe commands:
             case .watchCommand(let who, let file, let line):
-                cell.deathWatch.watch(watchee: who, myself: context.myself, parent: cell._parent, file: file, line: line)
+                cell.deathWatch.watch(watchee: who, with: nil, myself: context.myself, parent: cell._parent, file: file, line: line)
                 return .same
 
             case .unwatchCommand(let who):
