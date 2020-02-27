@@ -103,8 +103,8 @@ public final class ActorSystem {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Shutdown
-    private var shutdownReceptacle: BlockingReceptacle<Void>?
-    private let shutdownLock: Lock = Lock()
+    private var shutdownReceptacle = BlockingReceptacle<Void>()
+    private let shutdownLock = Lock()
 
     /// Greater than 0 shutdown has been initiated / is in progress.
     private let shutdownFlag = Atomic(value: 0)
@@ -277,13 +277,25 @@ public final class ActorSystem {
         self.init("ActorSystem")
     }
 
-    /// Some transports require being able to take over the applications thread.
-    /// E.g. this may mean invoking `dispatchMain()` or TODO: `ProcessIsolated.park()`
-    public func park() {
-        self.log.info("Parking actor system...")
+    /// Parks the current thread (usually "main thread") until the system is terminated,
+    /// of the optional timeout is exceeded.
+    ///
+    /// This call is also offered to underlying transports which may have to perform the blocking wait themselves
+    /// (most notably, `ProcessIsolated` does so). Please refer to your configured transports documentation,
+    /// to learn about exact semantics of parking a system while using them.
+    public func park(atMost parkTimeout: TimeAmount? = nil) {
+        let howLongParkingMsg = parkTimeout == nil ? "indefinitely" : "for \(parkTimeout!.prettyDescription)"
+        self.log.info("Parking actor system \(howLongParkingMsg)...")
+
         for transport in self.settings.transports {
             self.log.info("Offering transport [\(transport.protocolName)] chance to park the thread...")
             transport.onActorSystemPark()
+        }
+
+        if let maxParkingTime = parkTimeout {
+            self.shutdownReceptacle.wait(atMost: maxParkingTime)
+        } else {
+            self.shutdownReceptacle.wait()
         }
     }
 
@@ -317,23 +329,10 @@ public final class ActorSystem {
     /// - Returns: A `Shutdown` value that can be waited upon until the system has completed the shutdown.
     @discardableResult
     public func shutdown() -> Shutdown {
-        let (shutdownAlreadyRunning, receptacle) = self.shutdownLock.withLock { () -> (Bool, BlockingReceptacle<Void>) in
-            if let receptacle = self.shutdownReceptacle {
-                return (true, receptacle)
-            } else {
-                let receptacle = BlockingReceptacle<Void>()
-                self.shutdownReceptacle = receptacle
-                return (false, receptacle)
-            }
+        guard self.shutdownFlag.add(1) == 0 else {
+            // shutdown already kicked off by someone else
+            return Shutdown(receptacle: self.shutdownReceptacle)
         }
-
-        // if the shutdown has previously been initiated, we just return the
-        // existing receptacle
-        if shutdownAlreadyRunning {
-            return Shutdown(receptacle: receptacle)
-        }
-
-        _ = self.shutdownFlag.add(1)
 
         self.serialization = nil
         self._cluster = nil
@@ -352,10 +351,10 @@ public final class ActorSystem {
             self.dispatcher.shutdown()
             try! self._eventLoopGroup.syncShutdownGracefully()
             self._receptionist = self.deadLetters.adapted()
-            receptacle.offerOnce(())
+            self.shutdownReceptacle.offerOnce(())
         }
 
-        return Shutdown(receptacle: receptacle)
+        return Shutdown(receptacle: self.shutdownReceptacle)
     }
 
     public var cluster: ClusterControl {
