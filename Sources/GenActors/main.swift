@@ -12,9 +12,4 @@
 //
 //===----------------------------------------------------------------------===//
 
-do {
-    let gen = GenerateActors(args: CommandLine.arguments)
-    _ = try gen.run()
-} catch {
-    print("error: \(error)")
-}
+GenerateActorsCommand.main()

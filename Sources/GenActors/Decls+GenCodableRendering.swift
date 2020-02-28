@@ -56,7 +56,7 @@ extension Rendering {
             """
         )
 
-        func render(_: GenerateActors.Settings) throws -> String {
+        func render(_: GenerateActorsCommand) throws -> String {
             let printer = CodePrinter()
 
             let baseName = "\(self.actorable.messageFullyQualifiedName)"
