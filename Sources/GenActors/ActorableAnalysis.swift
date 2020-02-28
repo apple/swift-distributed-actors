@@ -22,7 +22,7 @@ import SwiftSyntax
 
 struct GatherActorables: SyntaxVisitor {
     let path: File
-    let settings: GenerateActors.Settings
+    let settings: GenerateActorsCommand
 
     var imports: [String] = []
 
@@ -32,7 +32,7 @@ struct GatherActorables: SyntaxVisitor {
     // Stack of types a declaration is nested in. E.g. an actorable struct declared in an enum for namespacing.
     var nestingStack: [String] = []
 
-    init(_ path: File, _ settings: GenerateActors.Settings) {
+    init(_ path: File, _ settings: GenerateActorsCommand) {
         self.path = path
         self.settings = settings
     }
