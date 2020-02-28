@@ -12,16 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+import ArgumentParser
 import DistributedActors
 import Files
 import Foundation
 import SwiftSyntax
 
-public final class GenerateActors {
+final class GenerateActors {
     var filesToScan: [File] = []
     var foldersToScan: [Folder] = []
 
-    var settings: Settings
+    let command: GenerateActorsCommand
 
     let fileScanNameSuffix: String = ""
     let fileScanNameSuffixWithExtension: String = ".swift"
@@ -29,32 +30,18 @@ public final class GenerateActors {
     let fileGenXPCProtocolStubSuffixWithExtension: String = "+XPCProtocolStub.swift"
     let fileGenCodableNameSuffixWithExtension: String = "+GenCodable.swift"
 
-    public init(args: [String]) {
-        let remaining = args.dropFirst()
-
-        self.settings = remaining.filter {
-            $0.starts(with: "-")
-        }.reduce(into: Settings()) { settings, option in
-            switch option {
-            case "--clean":
-                settings.clean = true
-            case "-v", "--verbose":
-                settings.verbose = true
-            default:
-                ()
-            }
-        }
+    public init(command: GenerateActorsCommand) {
+        self.command = command
 
         do {
-            let passedInToScan: [String] = remaining.filter {
-                !$0.starts(with: "--")
-            }.map { path in
-                if path.starts(with: "/") {
-                    return path
-                } else {
-                    return Folder.current.path + path
+            let passedInToScan: [String] = command.scanTargets
+                .map { path in
+                    if path.starts(with: "/") {
+                        return path
+                    } else {
+                        return Folder.current.path + path
+                    }
                 }
-            }
 
             self.filesToScan = try passedInToScan.filter {
                 $0.hasSuffix(self.fileScanNameSuffixWithExtension)
@@ -79,7 +66,7 @@ public final class GenerateActors {
     }
 
     public func run() throws {
-        if self.settings.clean {
+        if self.command.clean {
             cleanAll()
         }
 
@@ -97,7 +84,7 @@ public final class GenerateActors {
     }
 
     func debug(_ message: String) {
-        if self.settings.verbose {
+        if self.command.verbose {
             print("[gen-actors][DEBUG] \(message)")
         }
     }
@@ -167,7 +154,7 @@ extension GenerateActors {
         let sourceFile = try SyntaxParser.parse(url)
 
         let path = try File(path: url.path)
-        var gather = GatherActorables(path, self.settings)
+        var gather = GatherActorables(path, self.command)
         sourceFile.walk(&gather)
 
         // perform a resolve within the file
@@ -206,7 +193,7 @@ extension GenerateActors {
         }
 
         try targetFile.append("\n")
-        let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable, stubGenBehavior: skipGenBehavior).render(self.settings)
+        let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable, stubGenBehavior: skipGenBehavior).render(self.command)
         try targetFile.append(renderedShell)
 
         self.debug("Generated: \(targetFile.path)")
@@ -233,7 +220,7 @@ extension GenerateActors {
         }
 
         try targetFile.append("\n")
-        let renderedShell = try Rendering.XPCProtocolStubTemplate(actorable: actorable).render(self.settings)
+        let renderedShell = try Rendering.XPCProtocolStubTemplate(actorable: actorable).render(self.command)
         try targetFile.append(renderedShell)
 
         self.info("Generated XPCActorableProtocol stub: \(targetFile.path)...")
@@ -279,24 +266,10 @@ extension GenerateActors {
         }
 
         try targetFile.append("\n")
-        let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render(self.settings)
+        let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render(self.command)
         try targetFile.append(codableConformance)
 
         self.debug("Generated: \(targetFile.path)")
         return targetFile
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Settings
-
-extension GenerateActors {
-    struct Settings {
-        /// Removes any `GenActors` directories before generating sources
-        var clean: Bool = false
-
-        /// If true, prints verbose information during analysis and source code generation.
-        /// Can be enabled using `--verbose`
-        var verbose: Bool = false
     }
 }

@@ -35,8 +35,6 @@ var targets: [PackageDescription.Target] = [
             "Logging", "Metrics",
             "Backtrace",
 
-            "Files", // TODO: remove, currently the codegen needs it 
-
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
         ]
@@ -52,6 +50,7 @@ var targets: [PackageDescription.Target] = [
             "SwiftSyntax",
             "Stencil",
             "Files",
+            "ArgumentParser",
         ]
     ),
     
@@ -263,6 +262,7 @@ var dependencies: [Package.Dependency] = [
     // swift-syntax is Swift version dependent, and added  as such below
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.1"), // BSD license
     .package(url: "https://github.com/JohnSundell/Files", from: "4.1.0"), // MIT license
+    .package(url: "https://github.com/apple/swift-argument-parser", .exact("0.0.1")), // not API stable, Apache v2
 ]
 
 #if swift(>=5.1)

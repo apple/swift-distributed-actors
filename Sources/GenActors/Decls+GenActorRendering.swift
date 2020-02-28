@@ -17,7 +17,7 @@ import Stencil
 import SwiftSyntax
 
 protocol Renderable {
-    func render(_ settings: GenerateActors.Settings) throws -> String
+    func render(_ settings: GenerateActorsCommand) throws -> String
 }
 
 enum Rendering {
@@ -166,7 +166,7 @@ extension Rendering {
             """
         )
 
-        func render(_ settings: GenerateActors.Settings) throws -> String {
+        func render(_ settings: GenerateActorsCommand) throws -> String {
             let context: [String: Any] = [
                 "baseName": self.actorable.fullName,
                 "actorableProtocol": self.actorable.type == .protocol ? self.actorable.name : "",
@@ -259,7 +259,7 @@ extension Rendering {
             """
         )
 
-        func render(_ settings: GenerateActors.Settings) throws -> String {
+        func render(_ settings: GenerateActorsCommand) throws -> String {
             let context: [String: Any] = [
                 "baseName": self.actorable.fullName,
                 "funcTells": try self.actorable.funcs.map { funcDecl in
