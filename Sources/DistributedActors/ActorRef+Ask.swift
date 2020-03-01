@@ -74,9 +74,12 @@ extension ActorRef: ReceivesQuestions {
         }
         let promise = system._eventLoopGroup.next().makePromise(of: type)
 
-        // TODO: implement special actor ref instead of using real actor
+        // TODO: maybe a specialized one... for ask?
+        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address)
+
         do {
-            let ref = try system.spawn(.ask, AskActor.behavior(
+            // TODO: implement special actor ref instead of using real actor
+            let askRef = try system.spawn(.ask, AskActor.behavior(
                 promise,
                 ref: self,
                 timeout: timeout,
@@ -85,9 +88,20 @@ extension ActorRef: ReceivesQuestions {
                 line: line
             ))
 
-            let message = makeQuestion(ref)
+            let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)
+
+            instrumentation.actorAsked(message: message, from: askRef.address)
+            promise.futureResult.whenComplete {
+                switch $0 {
+                case .success(let answer):
+                    instrumentation.actorAskReplied(reply: answer, error: nil)
+                case .failure(let error):
+                    instrumentation.actorAskReplied(reply: nil, error: error)
+                }
+            }
         } catch {
+            instrumentation.actorAskReplied(reply: nil, error: error)
             promise.fail(error)
         }
 
