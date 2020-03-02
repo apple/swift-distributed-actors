@@ -229,7 +229,7 @@ extension ActorTestProbe {
         }
 
         if caughtMessages.isEmpty {
-            throw self.error("No messages (\(String(reflecting: type)) caught within \(timeout)!", file: file, line: line, column: column)
+            throw self.error("No messages \(String(reflecting: type)) caught within \(timeout.prettyDescription)!", file: file, line: line, column: column)
         }
 
         return caughtMessages

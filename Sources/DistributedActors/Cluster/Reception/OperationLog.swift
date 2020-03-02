@@ -86,8 +86,6 @@ internal class OpLog<Op: OpLogStreamOp> {
             }
         }
 
-        /// If empty
-        // TODO: test for advancing beyond the last
         func nextOpsChunk() -> ArraySlice<SequencedOp> {
             guard self.atIndex < self.opStream.ops.endIndex else {
                 return .init() // no more chunks

@@ -207,6 +207,10 @@ public class ActorContext<Message>: ActorRefFactory {
         return undefined()
     }
 
+    internal func unwatch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+        return undefined()
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 

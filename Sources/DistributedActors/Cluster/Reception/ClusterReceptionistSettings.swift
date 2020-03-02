@@ -39,7 +39,7 @@ extension ClusterReceptionist {
             func behavior(settings: Settings) -> Behavior<Receptionist.Message> {
                 switch self {
                 case .opLogSync:
-                    return OpLogClusterReceptionist(settings: settings).behavior
+                    return OperationLogClusterReceptionist(settings: settings).behavior
                 }
             }
         }
