@@ -219,7 +219,8 @@ internal class ClusterShell {
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func start(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
-        self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
+        let instrumentation = system.settings.instrumentation.makeActorTransportInstrumentation()
+        self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
 
         // TODO: concurrency... lock the ref as others may read it?

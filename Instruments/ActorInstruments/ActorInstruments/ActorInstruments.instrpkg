@@ -1,0 +1,676 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<package>
+    <id>com.apple.actors.ActorInstruments</id>
+    <version>0.4.0</version>
+    <title>Actors</title>
+    <owner>
+        <name>Konrad 'ktoso' Malawski</name>
+        <email>ktoso@apple.com</email>
+    </owner>
+
+    <!-- Instruments Developer Help:
+         https://help.apple.com/instruments/developer/mac/current/
+    -->
+
+    <!--=============================================================================================================-->
+    <!-- MARK: Schema Definitions -->
+    <!---->
+    <!---->
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Schema: Actor Lifecycle -->
+    <os-signpost-interval-schema>
+        <id>actor-lifecycle-interval</id>
+        <title>Actor Lifecycle</title>
+
+        <subsystem>"com.apple.actors"</subsystem>
+        <category>"Lifecycle"</category>
+        <name>"Actor Lifecycle"</name>
+
+        <start-pattern>
+            <message>"spawned,address:" ?address</message>
+        </start-pattern>
+        <end-pattern>
+            <message>"stopped,reason:" ?reason</message>
+        </end-pattern>
+
+        <column>
+            <mnemonic>actor-address</mnemonic>
+            <title>Actor Address</title>
+            <type>string</type>
+            <expression>?address</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-stop-reason</mnemonic>
+            <title>Stop Reason</title>
+            <type>string</type>
+            <expression>?reason</expression>
+        </column>
+        <column>
+            <mnemonic>actor-stop-reason-impact</mnemonic>
+            <title>Stop Reason Impact</title>
+            <type>string</type>
+            <!-- If the reason we stopped is `stop` it was graceful, otherwise it was a crash -->
+            <expression>(if (eq ?reason "stop") then "Low" else "High")</expression>
+        </column>
+    </os-signpost-interval-schema>
+    <os-signpost-point-schema>
+        <id>actor-lifecycle-spawn</id>
+        <title>Actor Spawns</title>
+
+        <subsystem>"com.apple.actors"</subsystem>
+        <category>"Lifecycle"</category>
+        <name>"Actor Lifecycle"</name>
+
+        <pattern>
+            <message>"spawned,address:" ?address</message>
+        </pattern>
+
+        <column>
+            <mnemonic>actor-address</mnemonic>
+            <title>Actor Address</title>
+            <type>string</type>
+            <expression>?address</expression>
+        </column>
+    </os-signpost-point-schema>
+
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Schema: Actor Message -->
+    <os-signpost-point-schema>
+        <id>actor-message-received</id>
+        <title>Actor Messages</title>
+
+        <subsystem>"com.apple.actors"</subsystem>
+        <category>"Messages"</category>
+        <name>"Actor Message (Received)"</name>
+
+        <pattern>
+            <message>"actor-message-received,recipient:" ?recipient ",sender:" ?sender ",message:" ?message ",type:" ?type </message>
+        </pattern>
+
+        <column>
+            <mnemonic>actor-recipient</mnemonic>
+            <title>Recipient</title>
+            <type>string</type>
+            <expression>?recipient</expression>
+        </column>
+        <column>
+            <mnemonic>actor-sender</mnemonic>
+            <title>Sender</title>
+            <type>string</type>
+            <expression>?sender</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message-type</mnemonic>
+            <title>Message Type</title>
+            <type>string</type>
+            <expression>?type</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message</mnemonic>
+            <title>Message</title>
+            <type>string</type>
+            <expression>?message</expression>
+        </column>
+    </os-signpost-point-schema>
+
+    <os-signpost-point-schema>
+        <id>actor-message-told</id>
+        <title>Actor Messages</title>
+
+        <subsystem>"com.apple.actors"</subsystem>
+        <category>"Messages"</category>
+        <name>"Actor Message (Tell)"</name>
+
+        <pattern>
+            <message>"actor-message-told,recipient:" ?recipient ",sender:" ?sender ",type:" ?type ",message:" ?message
+            </message>
+        </pattern>
+
+        <column>
+            <mnemonic>actor-recipient</mnemonic>
+            <title>Recipient</title>
+            <type>string</type>
+            <expression>?recipient</expression>
+        </column>
+<!--        <column>-->
+<!--            <mnemonic>actor-recipient-path0</mnemonic>-->
+<!--            <title>Recipient Path[0]</title>-->
+<!--            <type>string</type>-->
+<!--        TODO: harder since the thing is the entire address -->
+<!--            <expression>(if (eq (str-index "/system" ?recipient) 1) then "/system" else "/user")</expression>-->
+<!--        </column>-->
+        <column>
+            <mnemonic>actor-sender</mnemonic>
+            <title>Sender</title>
+            <type>string</type>
+            <expression>?sender</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message-type</mnemonic>
+            <title>Message Type</title>
+            <type>string</type>
+            <expression>?type</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message</mnemonic>
+            <title>Message</title>
+            <type>string</type>
+            <expression>?message</expression>
+        </column>
+    </os-signpost-point-schema>
+
+    <os-signpost-interval-schema>
+        <id>actor-message-asked-interval</id>
+        <title>Actor Asks</title>
+
+        <subsystem>"com.apple.actors"</subsystem>
+        <category>"Messages"</category>
+        <name>"Actor Message (Ask)"</name>
+
+        <start-pattern>
+            <message>"actor-message-asked,recipient:" ?recipient ",sender:" ?sender ",question:" ?question ",type:" ?question-type</message>
+        </start-pattern>
+        <end-pattern>
+            <message>"actor-message-ask-answered,answer:" ?answer ",type:" ?answer-type ",error:" ?error ",type:" ?error-type</message>
+        </end-pattern>
+
+        <column>
+             <mnemonic>actor-recipient</mnemonic>
+             <title>Recipient</title>
+             <type>string</type>
+             <expression>?recipient</expression>
+         </column>
+         <column>
+             <mnemonic>actor-sender</mnemonic>
+             <title>Sender</title>
+             <type>string</type>
+             <expression>?sender</expression>
+         </column>
+
+         <column>
+             <mnemonic>actor-ask-question</mnemonic>
+             <title>Question</title>
+             <type>string</type>
+             <expression>?question</expression>
+         </column>
+        <column>
+            <mnemonic>actor-ask-question-type</mnemonic>
+            <title>Question Type</title>
+            <type>string</type>
+            <expression>?question-type</expression>
+        </column>
+
+         <column>
+             <mnemonic>actor-ask-answer</mnemonic>
+             <title>Answer</title>
+             <type>string</type>
+             <expression>?answer</expression>
+         </column>
+        <column>
+             <mnemonic>actor-ask-answer-type</mnemonic>
+             <title>Answer Type</title>
+             <type>string</type>
+             <expression>?answer-type</expression>
+         </column>
+
+         <column>
+             <mnemonic>actor-ask-error</mnemonic>
+             <title>Answer Error</title>
+             <type>string</type>
+             <expression>?error</expression>
+         </column>
+         <column>
+             <mnemonic>actor-ask-error-type</mnemonic>
+             <title>Answer Error Type</title>
+             <type>string</type>
+             <expression>?error-type</expression>
+         </column>
+
+    </os-signpost-interval-schema>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Schema: Transport, Serialization -->
+    <os-signpost-interval-schema>
+        <id>actor-transport-serialization-interval</id>
+        <title>Serialization</title>
+
+        <subsystem>"com.apple.actors"</subsystem>
+        <category>"Transport Serialization"</category>
+        <name>"Actor Transport (Serialization)"</name>
+
+        <start-pattern>
+            <message>"serialize,recipient:" ?recipient ",type:" ?type ",message:" ?message</message>
+        </start-pattern>
+        <end-pattern>
+            <message>"serialized,bytes:" ?bytes</message>
+        </end-pattern>
+
+        <column>
+            <mnemonic>actor-recipient</mnemonic>
+            <title>Actor Recipient</title>
+            <type>string</type>
+            <expression>?recipient</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message-type</mnemonic>
+            <title>Message Type</title>
+            <type>string</type>
+            <expression>?type</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message</mnemonic>
+            <title>Message</title>
+            <type>string</type>
+            <expression>?message</expression>
+        </column>
+
+        <column>
+            <mnemonic>transport-message-serialized-bytes</mnemonic>
+            <title>Serialized Size (bytes)</title>
+            <type>size-in-bytes</type>
+            <expression>?bytes</expression>
+        </column>
+        <column>
+            <mnemonic>transport-message-serialized-bytes-impact</mnemonic>
+            <title>Serialized Size (impact)</title>
+            <type>event-concept</type>
+            <expression>(if (&gt; ?bytes 100000) then "High" else "Low")</expression>
+        </column>
+    </os-signpost-interval-schema>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Schema: Transport, Deserialization -->
+    <os-signpost-interval-schema>
+        <id>actor-transport-deserialization-interval</id>
+        <title>Deserialization</title>
+
+        <subsystem>"com.apple.actors"</subsystem>
+        <category>"Transport Serialization"</category>
+        <name>"Actor Transport (Deserialization)"</name>
+
+        <start-pattern>
+            <message>"deserialize,recipient:" ?recipient ",bytes:" ?bytes</message>
+        </start-pattern>
+        <end-pattern>
+            <message>"deserialized,message:" ?message ",type:" ?type</message>
+        </end-pattern>
+
+        <column>
+            <mnemonic>actor-recipient</mnemonic>
+            <title>Actor Recipient</title>
+            <type>string</type>
+            <expression>?recipient</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message-type</mnemonic>
+            <title>Message Type</title>
+            <type>string</type>
+            <expression>?type</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message</mnemonic>
+            <title>Message</title>
+            <type>string</type>
+            <expression>?message</expression>
+        </column>
+
+        <column>
+            <mnemonic>transport-message-serialized-bytes</mnemonic>
+            <title>Serialized Message (bytes)</title>
+            <type>size-in-bytes</type>
+            <expression>?bytes</expression>
+        </column>
+        <column>
+            <mnemonic>transport-message-serialized-bytes-impact</mnemonic>
+            <title>Serialized Message (impact)</title>
+            <type>event-concept</type>
+            <expression>(if (&gt; ?bytes 100000) then "High" else "Low")</expression>
+        </column>
+    </os-signpost-interval-schema>
+
+    <!--=============================================================================================================-->
+    <!-- MARK: Modeler Declarations -->
+    <!-- If there are schemas defined that require a custom modeler, each can be declared with a 'modeler' element -->
+    <!-- Modelers are based on CLIPS rules and may define 1..n output schemas, each requiring 1..n input schemas -->
+
+    <!-- We use generated ones -->
+
+    <!--=============================================================================================================-->
+    <!-- MARK: Instrument Definitions -->
+    <!-- Instruments record and display data, creating concrete table requirements that instance modelers and data streams. -->
+    <!-- Any number of 'instrument' elements can be defined; each instrument should provide a cohesive graph and detail experience. -->
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Instrument: Messages -->
+    <instrument>
+        <id>com.apple.actors.instrument.messages.received</id>
+        <title>Actor Messages Received</title>
+        <category>Behavior</category>
+        <purpose>Marks points in time where messages are received</purpose>
+        <icon>Network</icon>
+
+        <create-table>
+            <id>messages-received</id>
+            <schema-ref>actor-message-received</schema-ref>
+        </create-table>
+
+        <graph>
+            <title>Received</title>
+            <lane>
+                <title>Received</title>
+                <table-ref>messages-received</table-ref>
+
+                <plot-template>
+                    <instance-by>actor-recipient</instance-by>
+                    <value-from>actor-message-type</value-from>
+                </plot-template>
+            </lane>
+        </graph>
+
+
+        <list>
+            <title>List: Messages (Received)</title>
+            <table-ref>messages-received</table-ref>
+
+            <column>actor-sender</column>
+            <column>actor-recipient</column>
+            <column>actor-message</column>
+            <column>actor-message-type</column>
+        </list>
+    </instrument>
+
+    <instrument>
+        <id>com.apple.actors.instrument.messages.told</id>
+        <title>Actor Messages Told</title>
+        <category>Behavior</category>
+        <purpose>Points in time where actor messages are told (sent)</purpose>
+        <icon>Network</icon>
+
+
+        <create-table>
+            <id>messages-told</id>
+            <schema-ref>actor-message-told</schema-ref>
+        </create-table>
+
+        <graph>
+             <title>Messages: Told</title>
+             <lane>
+                 <title>Told</title>
+                 <table-ref>messages-told</table-ref>
+
+                 <plot-template>
+                     <instance-by>actor-recipient</instance-by>
+                     <value-from>actor-message-type</value-from>
+                 </plot-template>
+             </lane>
+         </graph>
+
+
+        <list>
+            <title>List: Messages (Told)</title>
+            <table-ref>messages-told</table-ref>
+
+            <column>actor-sender</column>
+            <column>actor-recipient</column>
+            <column>actor-message</column>
+            <column>actor-message-type</column>
+        </list>
+    </instrument>
+
+    <instrument>
+        <id>com.apple.actors.instrument.messages.asked</id>
+        <title>Actor Messages Asked</title>
+        <category>Behavior</category>
+        <purpose>Analyze ask (request/response) interactions</purpose>
+        <icon>Network</icon>
+
+        <create-table>
+            <id>messages-asked</id>
+            <schema-ref>actor-message-asked-interval</schema-ref>
+        </create-table>
+
+        <graph>
+           <title>Messages Asked</title>
+           <lane>
+               <title>Asked</title>
+               <table-ref>messages-asked</table-ref>
+
+               <plot>
+                   <value-from>duration</value-from>
+
+                   <label-from>actor-ask-question</label-from>
+                   <!-- TODO: severity from if it was a timeout or not -->
+               </plot>
+           </lane>
+       </graph>
+
+
+        <list>
+            <title>List: Messages (Asked)</title>
+            <table-ref>messages-asked</table-ref>
+
+            <column>duration</column>
+            <column>actor-sender</column>
+            <column>actor-recipient</column>
+            <column>actor-ask-question-type</column>
+            <column>actor-ask-question</column>
+            <column>actor-ask-answer</column>
+            <column>actor-ask-error</column>
+        </list>
+    </instrument>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Instrument: Lifecycles -->
+    <instrument>
+        <id>com.apple.actors.instrument.lifecycles</id>
+        <title>Actor Lifecycle</title>
+        <category>Behavior</category>
+        <purpose>Monitor lifecycle of actors (start, stop, fail, restart etc.)</purpose>
+        <icon>Activity Monitor</icon>
+
+        <create-table>
+            <id>actor-lifecycle-intervals</id>
+            <schema-ref>actor-lifecycle-interval</schema-ref>
+        </create-table>
+        <create-table>
+            <id>actor-lifecycle-spawns</id>
+            <schema-ref>actor-lifecycle-spawn</schema-ref>
+        </create-table>
+
+        <graph>
+            <title>Lifecycles</title>
+
+            <lane>
+                <title>Spawns</title>
+                <table-ref>actor-lifecycle-spawns</table-ref>
+
+                <plot-template>
+                    <instance-by>actor-address</instance-by>
+                    <label-format>Spawned: %s</label-format>
+                    <value-from>actor-address</value-from>
+                    <label-from>actor-address</label-from>
+                </plot-template>
+            </lane>
+
+            <lane>
+                <title>Lifetimes</title>
+                <table-ref>actor-lifecycle-intervals</table-ref>
+
+                <plot-template>
+                    <instance-by>actor-address</instance-by>
+                    <label-format>Actor: %s</label-format>
+                    <value-from>actor-address</value-from>
+                    <color-from>actor-stop-reason-impact</color-from>
+                    <label-from>actor-address</label-from>
+                </plot-template>
+            </lane>
+        </graph>
+
+
+        <list>
+            <title>Spawns</title>
+            <table-ref>actor-lifecycle-spawns</table-ref>
+            <column>timestamp</column>
+            <column>actor-address</column>
+        </list>
+
+        <list>
+            <title>Lifetimes</title>
+            <table-ref>actor-lifecycle-intervals</table-ref>
+            <column>actor-address</column>
+            <column>duration</column>
+        </list>
+    </instrument>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Instrument: Serialization -->
+    <instrument>
+        <id>com.apple.actors.instrument.transport.serialization</id>
+        <title>Actors Transport Serialization</title>
+        <category>Behavior</category>
+        <purpose>Observe sizes and time spent in serialization of remote messsages</purpose>
+        <icon>Virtual Memory</icon>
+
+        <create-table>
+            <id>actor-transport-serialization-intervals</id>
+            <schema-ref>actor-transport-serialization-interval</schema-ref>
+        </create-table>
+        <create-table>
+            <id>actor-transport-deserialization-intervals</id>
+            <schema-ref>actor-transport-deserialization-interval</schema-ref>
+        </create-table>
+
+        <!-- Define graph to draw for your Instrument (optional) -->
+        <graph>
+            <title>Remote Message Serialization</title>
+            <lane>
+                <title>Serialization</title>
+                <table-ref>actor-transport-serialization-intervals</table-ref>
+
+                <!-- TODO: plot-template for each of the threads in the serialization pool? -->
+                <plot>
+                    <value-from>transport-message-serialized-bytes</value-from>
+                    <color-from>transport-message-serialized-bytes-impact</color-from>
+
+                    <label-from>transport-message-serialized-bytes</label-from>
+                </plot>
+            </lane>
+        </graph>
+
+        <list>
+            <title>Remote Message Serialization (size)</title>
+            <table-ref>actor-transport-serialization-intervals</table-ref>
+            <column>start</column>
+            <column>duration</column>
+            <column>actor-recipient</column>
+            <column>actor-message-type</column>
+            <column>transport-message-serialized-bytes</column>
+        </list>
+
+        <aggregation>
+            <title>Total messages per Actor (by Recipient)</title>
+            <table-ref>actor-transport-serialization-intervals</table-ref>
+
+            <hierarchy>
+                <level>
+                    <column>actor-recipient</column>
+                    <!-- TODO: could group on path elements (!!!!!) -->
+                </level>
+            </hierarchy>
+
+            <column>
+                <title>Messages received (total)</title>
+                <count/>
+            </column>
+
+            <column>
+                <title>Serialized Messages Total (bytes)</title>
+                <sum>transport-message-serialized-bytes</sum>
+            </column>
+        </aggregation>
+    </instrument>
+    
+    <instrument>
+        <id>com.apple.actors.instrument.transport.deserialization</id>
+        <title>Actors Transport Deserialization</title>
+        <category>Behavior</category>
+        <purpose>Observe sizes and time spent in deserialization of remote messsages</purpose>
+        <icon>Virtual Memory</icon>
+
+        <create-table>
+            <id>actor-transport-deserialization-intervals</id>
+            <schema-ref>actor-transport-deserialization-interval</schema-ref>
+        </create-table>
+
+        <!-- Define graph to draw for your Instrument (optional) -->
+        <graph>
+            <title>Remote Message Deserialization</title>
+            <lane>
+                <title>Deserialization</title>
+                <table-ref>actor-transport-deserialization-intervals</table-ref>
+
+                <!-- TODO: plot-template for each of the threads in the serialization pool? -->
+                <plot>
+                    <value-from>transport-message-serialized-bytes</value-from>
+                    <color-from>transport-message-serialized-bytes-impact</color-from>
+
+                    <label-from>transport-message-serialized-bytes</label-from>
+                </plot>
+            </lane>
+        </graph>
+
+        <list>
+            <title>Remote Message Deserialization (size)</title>
+            <table-ref>actor-transport-deserialization-intervals</table-ref>
+            <column>start</column>
+            <column>duration</column>
+            <column>actor-recipient</column>
+            <column>actor-message-type</column>
+            <column>transport-message-serialized-bytes</column>
+        </list>
+
+        <aggregation>
+            <title>Total messages per Actor (by Recipient)</title>
+            <table-ref>actor-transport-deserialization-intervals</table-ref>
+
+            <hierarchy>
+                <level>
+                    <column>actor-recipient</column>
+                    <!-- TODO: could group on path elements (!!!!!) -->
+                </level>
+            </hierarchy>
+
+            <column>
+                <title>Messages received (total)</title>
+                <count/>
+            </column>
+
+            <column>
+                <title>Serialized Messages Total (bytes)</title>
+                <sum>transport-message-serialized-bytes</sum>
+            </column>
+        </aggregation>
+    </instrument>
+
+
+    <!--=============================================================================================================-->
+    <!-- MARK: Embed Templates -->
+    <!-- Templates may be included and represent a collection of tools configured for a specific tracing workflow -->
+    <!-- Each 'template' element specifies the relative path to a .tracetemplate file in the project -->
+    <!-- To create a template: start with a blank document, configure with instruments desired, and choose "File -> Save as Template" -->
+    <template>
+        <import-from-file>ActorInstruments.tracetemplate</import-from-file>
+    </template>
+    
+</package>

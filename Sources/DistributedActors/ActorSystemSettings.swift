@@ -39,6 +39,7 @@ public struct ActorSystemSettings {
     public var plugins: PluginsSettings = .default
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var failure: FailureSettings = .default
+    public var instrumentation: InstrumentationSettings = .default
 
     public typealias ProtocolName = String
     public var transports: [ActorTransport] = []
@@ -98,4 +99,54 @@ extension ActorSystemSettings {
         // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
         public var maxBehaviorNestingDepth: Int = 128
     }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Instrumentation Settings
+
+extension ActorSystemSettings {
+    public struct InstrumentationSettings {
+        /// Default set of enabled instrumentations, based on current operating system.
+        ///
+        /// On Apple platforms, this includes the `OSSignpostInstrumentationProvider` provided instrumentations,
+        /// as they carry only minimal overhead in release builds when the signposts are not active.
+        ///
+        /// You may easily installing any kind of instrumentations, regardless of platform, by using `.none` instead of `.default`.
+        public static var `default`: InstrumentationSettings {
+            var settings = InstrumentationSettings()
+            #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+            settings.configure(with: OSSignpostInstrumentationProvider())
+            #endif
+            return settings
+        }
+
+        public static var none: InstrumentationSettings {
+            InstrumentationSettings()
+        }
+
+        /// - SeeAlso: `ActorInstrumentation`
+        var makeActorInstrumentation: (AnyObject, ActorAddress) -> ActorInstrumentation = { id, address in
+            NoopActorInstrumentation(id: id, address: address)
+        }
+
+        /// - SeeAlso: `ActorTransportInstrumentation`
+        var makeActorTransportInstrumentation: () -> ActorTransportInstrumentation = { () in
+            NoopActorTransportInstrumentation()
+        }
+
+        mutating func configure(with provider: ActorInstrumentationProvider) {
+            if let instrumentFactory = provider.actorInstrumentation {
+                self.makeActorInstrumentation = instrumentFactory
+            }
+
+            if let instrumentFactory = provider.actorTransportInstrumentation {
+                self.makeActorTransportInstrumentation = instrumentFactory
+            }
+        }
+    }
+}
+
+public protocol ActorInstrumentationProvider {
+    var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
+    var actorTransportInstrumentation: (() -> ActorTransportInstrumentation)? { get }
 }

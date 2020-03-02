@@ -41,6 +41,12 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     var namingContext: ActorNamingContext
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Instrumentation
+
+    @usableFromInline
+    var instrumentation: ActorInstrumentation!
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Basic ActorContext capabilities
 
@@ -163,6 +169,9 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         #endif
 
         super.init()
+
+        self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, address)
+        self.instrumentation.actorSpawned()
         system.metrics.recordActorStart(self)
     }
 
@@ -173,6 +182,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             _ = system.userCellInitCounter.sub(1)
         }
         #endif
+        self.instrumentation.actorStopped()
         system.metrics.recordActorStop(self)
     }
 
@@ -269,17 +279,22 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stop`
     @inlinable
     func interpretMessage(message: Message) throws -> ActorRunResult {
-        #if SACT_TRACE_ACTOR_SHELL
-        pprint("Interpret: [\(message)]:\(type(of: message)) with: \(self.behavior)")
-        #endif
+        self.instrumentation.actorReceivedStart(message: message, from: nil)
 
-        let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
+        do {
+            let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
 
-        #if SACT_TRACE_ACTOR_SHELL
-        self.log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
-        #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
+            #if SACT_TRACE_ACTOR_SHELL
+            self.log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
+            #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
-        return try self.finishInterpretAnyMessage(next)
+            let runResult = try self.finishInterpretAnyMessage(next)
+            self.instrumentation.actorReceivedEnd(error: nil)
+            return runResult
+        } catch {
+            self.instrumentation.actorReceivedEnd(error: error)
+            throw error
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
