@@ -39,7 +39,7 @@ extension ClusterReceptionist {
             func behavior(settings: Settings) -> Behavior<Receptionist.Message> {
                 switch self {
                 case .opLogSync:
-                    OpLogClusterReceptionist(settings: settings).behavior
+                    return OpLogClusterReceptionist(settings: settings).behavior
                 }
             }
         }
@@ -52,9 +52,11 @@ extension ClusterReceptionist {
         /// another receptionist, and therefore issue a pull/ack from it.
         public var ackPullReplicationIntervalSlow: TimeAmount = .milliseconds(1200)
 
-//        /// Whenever a reception key observes a change (a new actor registering or being removed),
-//        /// listing updates are performed to all subscribers of given key locally.
-//        /// In order to avoid a churn of one-by-one changes
-//        public var localPublishDelay: TimeAmount = .seconds(1)
+        /// Number of operations (register, remove) to be streamed in a single batch when syncing receptionists.
+        /// A smaller number means updates being made more incrementally, and a larger number means them being more batched up.
+        ///
+        /// Too large values should be avoided here, as they increase the total message size of a single PushOps message,
+        /// which could result in "too large" messages causing head-of-line blocking of other messages (including health checks).
+        public var syncBatchSize: Int = 50
     }
 }

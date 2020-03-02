@@ -228,6 +228,10 @@ extension ActorTestProbe {
             }
         }
 
+        if caughtMessages.isEmpty {
+            throw self.error("No messages (\(String(reflecting: type)) caught within \(timeout)!", file: file, line: line, column: column)
+        }
+
         return caughtMessages
     }
 
@@ -236,6 +240,10 @@ extension ActorTestProbe {
         case catchComplete(CaughtMessage)
         case ignore
         case complete
+    }
+
+    public enum MessageFishingError: Error {
+        case noMessagesCaught
     }
 
     /// Allows for "fishing out" certain messages from the stream of incoming messages to this probe.

@@ -101,6 +101,16 @@ public struct ActorAddress: Equatable, Hashable {
         self.path = path
         self.incarnation = incarnation
     }
+
+    internal func ensureAddress(_ node: UniqueNode) -> ActorAddress {
+        guard self.node == nil else {
+            return self
+        }
+
+        var withAddress = self
+        withAddress.node = node
+        return withAddress
+    }
 }
 
 extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {

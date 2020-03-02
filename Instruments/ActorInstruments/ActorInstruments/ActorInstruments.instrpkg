@@ -383,6 +383,7 @@
             <title>List: Messages (Received)</title>
             <table-ref>messages-received</table-ref>
 
+            <column>timestamp</column>
             <column>actor-sender</column>
             <column>actor-recipient</column>
             <column>actor-message</column>
@@ -396,7 +397,6 @@
         <category>Behavior</category>
         <purpose>Points in time where actor messages are told (sent)</purpose>
         <icon>Network</icon>
-
 
         <create-table>
             <id>messages-told</id>
@@ -421,6 +421,7 @@
             <title>List: Messages (Told)</title>
             <table-ref>messages-told</table-ref>
 
+            <column>timestamp</column>
             <column>actor-sender</column>
             <column>actor-recipient</column>
             <column>actor-message</column>
@@ -460,6 +461,7 @@
             <title>List: Messages (Asked)</title>
             <table-ref>messages-asked</table-ref>
 
+            <column>start</column>
             <column>duration</column>
             <column>actor-sender</column>
             <column>actor-recipient</column>
@@ -528,6 +530,7 @@
         <list>
             <title>Lifetimes</title>
             <table-ref>actor-lifecycle-intervals</table-ref>
+            <column>start</column>
             <column>actor-address</column>
             <column>duration</column>
         </list>

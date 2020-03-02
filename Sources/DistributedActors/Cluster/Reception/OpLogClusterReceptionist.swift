@@ -207,7 +207,7 @@ public class OpLogClusterReceptionist {
     var appliedSequenceNrs: VersionVector
 
     internal init(settings: ClusterReceptionist.Settings) {
-        self.ops = .init()
+        self.ops = .init(batchSize: settings.syncBatchSize)
         self.membership = .empty
         self.peerReceptionistReplayers = [:]
 
@@ -396,11 +396,7 @@ extension OpLogClusterReceptionist {
         context.log.trace("Received \(push.sequencedOps.count) ops", metadata: [
             "receptionist/peer": "\(push.peer.address)",
             "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
-            "receptionist/opsToApply": Logger.Metadata.Value.array(
-                opsToApply.map {
-                    Logger.Metadata.Value.string("\($0)")
-                }
-            ),
+            "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
         ])
 
         /// Collect which keys have been updated during this push, so we can publish updated listings for them.
@@ -413,7 +409,7 @@ extension OpLogClusterReceptionist {
 
         // 1.1) update our observed version of `pushed.peer` to the incoming
         self.observedSequenceNrs.merge(other: push.observedSeqNrs)
-        self.appliedSequenceNrs.merge(other: .init(push.untilSequenceNr, at: peerReplicaId))
+        self.appliedSequenceNrs.merge(other: .init(push.findMaxSequenceNr(), at: peerReplicaId))
 
         // 2) check for all peers if we are "behind", and should pull information from them
         //    if this message indicated "end" of the push, then we assume we are up to date with it
@@ -733,8 +729,8 @@ extension OpLogClusterReceptionist {
         let sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]
 
         // the passed ops cover the range until the following sequenceNr
-        var untilSequenceNr: UInt64 {
-            self.observedSeqNrs[.actorAddress(self.peer.address)]
+        func findMaxSequenceNr() -> UInt64 {
+            self.sequencedOps.lazy.map { $0.sequenceRange.max }.max() ?? 0
         }
     }
 
@@ -759,18 +755,6 @@ extension OpLogClusterReceptionist {
             self.peer = peer
         }
     }
-
-//    struct SubscriberTerminated: Receptionist.Message {
-//        let ref: AddressableActorRef
-//        let registeredKeys: [AnyRegistrationKey]
-//        let subscribedKeys: [AnyRegistrationKey]
-//    }
-//
-//    struct RegisteredActorTerminated: Receptionist.Message {
-//        let ref: AddressableActorRef
-//        let registeredKeys: [AnyRegistrationKey]
-//        let subscribedKeys: [AnyRegistrationKey]
-//    }
 
     internal struct PeriodicAckTick: Receptionist.Message {}
 

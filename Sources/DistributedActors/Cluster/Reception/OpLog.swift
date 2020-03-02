@@ -19,15 +19,17 @@ internal protocol OpLogStreamOp {
 internal class OpLog<Op: OpLogStreamOp> {
     typealias SequenceNr = UInt64
 
-    // TODO: a sorted dict would be best presumably?
+    // TODO: optimize the "op / delta buffer" which this really is, kins of like in Op based CRDTs
     var ops: [SequencedOp]
     var minSeqNr: SequenceNr
     var maxSeqNr: SequenceNr
 
-    let maxOpsPerChunk: Int = 50
+    /// Size of a single batch update (element of operations)
+    let batchSize: Int
 
-    internal init(of: Op.Type = Op.self) {
+    internal init(of: Op.Type = Op.self, batchSize: Int) {
         self.ops = []
+        self.batchSize = batchSize
         self.minSeqNr = 0
         self.maxSeqNr = 0
     }
@@ -90,7 +92,7 @@ internal class OpLog<Op: OpLogStreamOp> {
             guard self.atIndex < self.opStream.ops.endIndex else {
                 return .init() // no more chunks
             }
-            return self.opStream.ops[self.atIndex...].prefix(self.opStream.maxOpsPerChunk)
+            return self.opStream.ops[self.atIndex...].prefix(self.opStream.batchSize)
         }
     }
 }
