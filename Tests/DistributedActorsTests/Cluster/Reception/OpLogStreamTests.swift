@@ -23,7 +23,7 @@ final class OpLogStreamTests: XCTestCase {
     }
 
     func test_ops_replay() {
-        let stream = OpLog(of: TestOp.self)
+        let stream = OpLog(of: TestOp.self, batchSize: 50)
         stream.add(.add(id: "one"))
         stream.add(.add(id: "two"))
         stream.add(.rm(id: "one"))
@@ -39,7 +39,7 @@ final class OpLogStreamTests: XCTestCase {
     }
 
     func test_ops_replay_confirm_replay() {
-        let stream = OpLog(of: TestOp.self)
+        let stream = OpLog(of: TestOp.self, batchSize: 50)
         stream.add(.add(id: "one"))
         stream.add(.add(id: "two"))
         stream.add(.rm(id: "one"))
