@@ -287,15 +287,17 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             second.receptionist.subscribe(key: key, subscriber: p2.ref)
 
             func expectListingOnAllProbes(expected: Set<ActorRef<String>>) throws {
-                _ = try p1.fishForMessages(within: .seconds(3)) {
-                    if $0.refs == expected { return .catchComplete }
+                let listing1 = try p1.fishForMessages(within: .seconds(3)) {
+                    if $0.refs.count == expected.count { return .catchComplete }
                     else { return .ignore }
-                }
+                }.first!
+                listing1.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
 
-                _ = try p2.fishForMessages(within: .seconds(3)) {
-                    if $0.refs == expected { return .catchComplete }
+                let listing2 = try p2.fishForMessages(within: .seconds(3)) {
+                    if $0.refs.count == expected.count { return .catchComplete }
                     else { return .ignore }
-                }
+                }.first!
+                listing2.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
             }
 
             try expectListingOnAllProbes(expected: [ref])
@@ -308,6 +310,51 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
                 if $0.refs == [] { return .catchComplete }
                 else { return .ignore }
             }
+        }
+    }
+
+    func test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks() throws {
+        try shouldNotThrow {
+            let (first, second) = setUpPair {
+                $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
+            }
+            first.cluster.join(node: second.cluster.node.node)
+            try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
+
+            let key: Receptionist.RegistrationKey<String> = .init(String.self, id: "first")
+
+            var allRefs: Set<ActorRef<String>> = []
+            for i in 1 ... (first.settings.cluster.receptionist.syncBatchSize * 10) {
+                let ref = try first.spawn(.prefixed(with: "example"), self.stopOnMessage)
+                first.receptionist.register(ref, key: key)
+                _ = allRefs.insert(ref)
+            }
+
+            let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Receptionist.Listing<String>.self)
+            let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Receptionist.Listing<String>.self)
+
+            // ensure the ref is registered and known under both keys to both nodes
+            first.receptionist.subscribe(key: key, subscriber: p1.ref)
+            second.receptionist.subscribe(key: key, subscriber: p2.ref)
+
+            func expectListingOnAllProbes(expected: Set<ActorRef<String>>) throws {
+                let listing1: Receptionist.Listing<String> = try p1.fishForMessages(within: .seconds(10)) {
+                    if $0.refs.count == expected.count { return .catchComplete }
+                    else { return .ignore }
+                }.first!
+                listing1.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
+
+                let listing2: Receptionist.Listing<String> = try p2.fishForMessages(within: .seconds(10)) {
+                    if $0.refs.count == expected.count { return .catchComplete }
+                    else {
+                        pinfo("Receptionist listing @ \($0.refs.count) / \(expected.count) actors...")
+                        return .ignore
+                    }
+                }.first!
+                listing2.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
+            }
+
+            try expectListingOnAllProbes(expected: allRefs)
         }
     }
 

@@ -29,6 +29,7 @@ extension OpLogClusterReceptionistClusteredTests {
             ("test_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies", test_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies),
             ("test_clusterReceptionist_shouldRemoveRefFromAllListingsItWasRegisteredWith_ifTerminates", test_clusterReceptionist_shouldRemoveRefFromAllListingsItWasRegisteredWith_ifTerminates),
             ("test_clusterReceptionist_shouldRemoveActorsOfTerminatedNodeFromListings_onNodeCrash", test_clusterReceptionist_shouldRemoveActorsOfTerminatedNodeFromListings_onNodeCrash),
+            ("test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks", test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks),
             ("test_clusterReceptionist_shouldSpreadInformationAmongManyNodes", test_clusterReceptionist_shouldSpreadInformationAmongManyNodes),
         ]
     }
