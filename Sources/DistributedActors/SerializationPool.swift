@@ -36,8 +36,12 @@ internal final class SerializationPool {
     @usableFromInline
     internal let deserializationWorkerPool: AffinityThreadPool
 
-    internal init(settings: SerializationPoolSettings, serialization: Serialization) throws {
+    @usableFromInline
+    internal let instrumentation: ActorTransportInstrumentation
+
+    internal init(settings: SerializationPoolSettings, serialization: Serialization, instrumentation: ActorTransportInstrumentation? = nil) throws {
         self.serialization = serialization
+        self.instrumentation = instrumentation ?? NoopActorTransportInstrumentation()
         var workerMapping: [ActorPath: Int] = [:]
         for (index, group) in settings.serializationGroups.enumerated() {
             for path in group {
@@ -61,37 +65,82 @@ internal final class SerializationPool {
 
     @inlinable
     internal func serialize<M>(message: M, recipientPath: ActorPath, promise: EventLoopPromise<ByteBuffer>) {
+        // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
-            let serialized = try self.serialization.serialize(message: message)
-            self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.readableBytes)
-            return serialized
+            do {
+                self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipientPath, message: message)
+                let serialized = try self.serialization.serialize(message: message)
+
+                // TODO: collapse those two and only use the instrumentation points, also for metrics
+                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: serialized.readableBytes)
+                self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.readableBytes)
+
+                return serialized
+
+            } catch {
+                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: 0)
+                throw error
+            }
         }
     }
 
     @inlinable
     internal func serialize(message: Any, metaType: AnyMetaType, recipientPath: ActorPath, promise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)>) {
+        // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
-            let result = try self.serialization.serialize(message: message, metaType: metaType)
-            self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, result.1.readableBytes)
-            return result
+            do {
+                self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipientPath, message: message)
+                let result = try self.serialization.serialize(message: message, metaType: metaType)
+
+                // TODO: collapse those two and only use the instrumentation points, also for metrics
+                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: result.1.readableBytes)
+                self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, result.1.readableBytes)
+
+                return result
+            } catch {
+                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: 0)
+                throw error
+            }
         }
     }
 
     @inlinable
     internal func deserialize<M>(_ type: M.Type, from bytes: ByteBuffer, recipientPath: ActorPath, promise: EventLoopPromise<M>) {
         // TODO: bytes to become inout?
+        // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
-            return try self.serialization.deserialize(type, from: bytes)
+            do {
+                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
+                self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: bytes.readableBytes)
+
+                let deserialized = try self.serialization.deserialize(type, from: bytes)
+
+                self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: deserialized)
+                return deserialized
+            } catch {
+                self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: nil)
+                throw error
+            }
         }
     }
 
     @inlinable
     internal func deserialize(serializerId: Serialization.SerializerId, from bytes: ByteBuffer, recipientPath: ActorPath, promise: EventLoopPromise<Any>) {
         // TODO: bytes to become inout?
+        // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
-            return try self.serialization.deserialize(serializerId: serializerId, from: bytes)
+            do {
+                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
+                self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: bytes.readableBytes)
+
+                let deserialized = try self.serialization.deserialize(serializerId: serializerId, from: bytes)
+
+                self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: deserialized)
+                return deserialized
+            } catch {
+                self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: nil)
+                throw error
+            }
         }
     }
 

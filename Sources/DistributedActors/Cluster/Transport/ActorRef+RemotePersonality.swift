@@ -50,12 +50,16 @@ public final class RemotePersonality<Message> {
     private let clusterShell: ClusterShell
     let system: ActorSystem // TODO: maybe don't need to store it and access via clusterShell?
 
+    @usableFromInline
+    internal var instrumentation: ActorInstrumentation!
+
     init(shell: ClusterShell, address: ActorAddress, system: ActorSystem) {
         assert(address.isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
         self.address = address
         self.clusterShell = shell
         self.deadLetters = system.deadLetters.adapted()
         self.system = system
+        self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, address)
     }
 
     @usableFromInline
@@ -63,9 +67,10 @@ public final class RemotePersonality<Message> {
         traceLog_Cell("RemoteActorRef(\(self.address)) sendUserMessage: \(message)")
         if let remoteControl = self.remoteControl {
             // TODO: optionally carry file/line?
+            self.instrumentation.actorTold(message: message, from: nil)
             remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .message(message)), recipient: self.address)
         } else {
-            self.system.log.warning("[SWIM] No remote control, while sending to: \(self.address)")
+            self.system.log.warning("No remote control, while sending to: \(self.address)")
             self.system.personalDeadLetters(recipient: self.address).adapted().tell(message, file: file, line: line)
         }
     }
@@ -76,6 +81,7 @@ public final class RemotePersonality<Message> {
         // TODO: in case we'd get a new connection the redeliveries must remain... so we always need to poll for the remotecontrol from association?
         // the association would keep the buffers?
         if let remoteControl = self.remoteControl {
+            self.instrumentation.actorTold(message: message, from: nil)
             remoteControl.sendSystemMessage(message, recipient: self.address)
         } else {
             self.deadLetters.adapted().tell(message, file: file, line: line)
