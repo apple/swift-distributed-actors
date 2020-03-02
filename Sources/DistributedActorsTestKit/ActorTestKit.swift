@@ -361,6 +361,10 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
+    override func unwatch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+
     override func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }

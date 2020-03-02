@@ -170,7 +170,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         super.init()
 
-        let addr = address.ensureAddress(system.settings.cluster.uniqueBindNode)
+        let addr = address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode)
         self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, addr)
         self.instrumentation.actorSpawned()
         system.metrics.recordActorStart(self)
@@ -667,17 +667,21 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // MARK: Death Watch API
 
     public override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        self.deathWatch.watch(watchee: watchee.asAddressable(), with: terminationMessage, myself: self.myself, parent: self._parent, file: file, line: line)
+        self.watch(watchee.asAddressable(), with: terminationMessage, file: file, line: line)
         return watchee
     }
 
     internal override func watch(_ watchee: AddressableActorRef, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) {
-        self.deathWatch.watch(watchee: watchee, with: nil, myself: self.myself, parent: self._parent, file: file, line: line)
+        self.deathWatch.watch(watchee: watchee, with: terminationMessage, myself: self.myself, parent: self._parent, file: file, line: line)
     }
 
     public override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        self.deathWatch.unwatch(watchee: watchee.asAddressable(), myself: self.myself, file: file, line: line)
+        self.unwatch(watchee.asAddressable(), file: file, line: line)
         return watchee
+    }
+
+    internal override func unwatch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+        self.deathWatch.unwatch(watchee: watchee, myself: self.myself, file: file, line: line)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

@@ -148,7 +148,7 @@ public enum ClusterReceptionist {}
 ///   (Note that we simply always `ack(latest)` and if in the meantime the pusher got more updates, it'll push those to us as well.
 ///
 /// - SeeAlso: [Wikipedia: Atomic broadcast](https://en.wikipedia.org/wiki/Atomic_broadcast)
-public class OpLogClusterReceptionist {
+public class OperationLogClusterReceptionist {
     typealias Message = Receptionist.Message
     typealias ReceptionistRef = ActorRef<Message>
 
@@ -296,7 +296,7 @@ public class OpLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receptionist API impl
 
-extension OpLogClusterReceptionist {
+extension OperationLogClusterReceptionist {
     private func onSubscribe(context: ActorContext<Message>, message: _Subscribe) throws {
         let boxedMessage = message._boxed
         let key = AnyRegistrationKey(from: message._key)
@@ -373,7 +373,7 @@ extension OpLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Op replication
 
-extension OpLogClusterReceptionist {
+extension OperationLogClusterReceptionist {
     /// Received a push of ops; apply them to the local view of the key space (storage).
     ///
     /// The incoming ops will be until some max SeqNr, once we have applied them all,
@@ -407,7 +407,7 @@ extension OpLogClusterReceptionist {
 
         context.log.trace("Keys to publish: \(keysToPublish)")
 
-        // 1.1) update our observed version of `pushed.peer` to the incoming
+        // 1.2) update our observed version of `pushed.peer` to the incoming
         self.observedSequenceNrs.merge(other: push.observedSeqNrs)
         self.appliedSequenceNrs.merge(other: .init(push.findMaxSequenceNr(), at: peerReplicaId))
 
@@ -457,10 +457,12 @@ extension OpLogClusterReceptionist {
         switch op {
         case .register(let key, let address):
             let resolved = context.system._resolveUntyped(context: .init(address: address, system: context.system))
+            context.watch(resolved)
             _ = self.storage.addRegistration(key: key, ref: resolved)
 
         case .remove(let key, let address):
             let resolved = context.system._resolveUntyped(context: .init(address: address, system: context.system))
+            context.unwatch(resolved)
             _ = self.storage.removeRegistration(key: key, ref: resolved)
         }
 
@@ -556,7 +558,7 @@ extension OpLogClusterReceptionist {
     }
 
     /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
-    private func receiveAckOps(_ context: ActorContext<Message>, until: UInt64, by peer: ActorRef<OpLogClusterReceptionist.Message>) {
+    private func receiveAckOps(_ context: ActorContext<Message>, until: UInt64, by peer: ActorRef<OperationLogClusterReceptionist.Message>) {
         guard var replayer = self.peerReceptionistReplayers[peer] else {
             context.log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring")
             return
@@ -609,7 +611,7 @@ extension OpLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Termination handling
 
-extension OpLogClusterReceptionist {
+extension OperationLogClusterReceptionist {
     private func onReceptionistTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
         /// This is a sneaky trick to allow calling removeValue(ActorRef<Message>) directly rather than doing a full scan of the collection.
         /// ActorRef equality is performed ONLY by `ActorAddress`, which means that we can "make up" this reference and it'd compare
@@ -634,7 +636,7 @@ extension OpLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Handle Cluster Events
 
-extension OpLogClusterReceptionist {
+extension OperationLogClusterReceptionist {
     private func onClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) throws {
         switch event {
         case .snapshot(let snapshot):
@@ -667,7 +669,7 @@ extension OpLogClusterReceptionist {
         }
     }
 
-    private func onNewClusterMember(_ context: ActorContext<OpLogClusterReceptionist.Message>, change: Cluster.MembershipChange) {
+    private func onNewClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, change: Cluster.MembershipChange) {
         guard change.fromStatus == nil else {
             return // not a new member
         }
@@ -692,7 +694,7 @@ extension OpLogClusterReceptionist {
         self.replicateOpsBatch(context, to: remoteReceptionist)
     }
 
-    private func pruneClusterMember(_ context: ActorContext<OpLogClusterReceptionist.Message>, removalChange: Cluster.MembershipChange) {
+    private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removalChange: Cluster.MembershipChange) {
         // TODO: we could do this on the peer Receptionist dying, this way no need to invent the ref but get it from Terminated
         let terminatedReceptionistAddress = ActorAddress._receptionist(on: removalChange.node)
         let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
@@ -711,7 +713,7 @@ extension OpLogClusterReceptionist {
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: Extra Messages
 
-extension OpLogClusterReceptionist {
+extension OperationLogClusterReceptionist {
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
     struct PushOps: Receptionist.Message, Codable {
@@ -764,7 +766,7 @@ extension OpLogClusterReceptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tracelog
 
-extension OpLogClusterReceptionist {
+extension OperationLogClusterReceptionist {
     /// Optional "dump all messages" logging.
     ///
     /// Enabled by `Settings.traceLogLevel` or `-DSACT_TRACELOG_RECEPTIONIST`
