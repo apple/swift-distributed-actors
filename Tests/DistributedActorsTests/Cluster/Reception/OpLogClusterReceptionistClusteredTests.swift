@@ -14,7 +14,6 @@
 
 @testable import DistributedActors
 import DistributedActorsTestKit
-import Foundation
 import XCTest
 
 final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
@@ -204,8 +203,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             refA.tell("stop")
             refB.tell("stop")
 
-            let refs = try remoteLookupProbe.expectMessage().refs
-            refs.shouldBeEmpty()
+            try remoteLookupProbe.eventuallyExpectListing(expected: [], within: .seconds(3))
         }
     }
 
@@ -237,23 +235,11 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             second.receptionist.subscribe(key: extraKey, subscriber: p2e.ref)
 
             func expectListingOnAllProbes(expected: Set<ActorRef<String>>) throws {
-                _ = try p1f.fishForMessages(within: .seconds(3)) {
-                    if $0.refs == expected { return .catchComplete }
-                    else { return .ignore }
-                }
-                _ = try p1e.fishForMessages(within: .seconds(3)) {
-                    if $0.refs == expected { return .catchComplete }
-                    else { return .ignore }
-                }
+                try p1f.eventuallyExpectListing(expected: expected, within: .seconds(3))
+                try p1e.eventuallyExpectListing(expected: expected, within: .seconds(3))
 
-                _ = try p2f.fishForMessages(within: .seconds(3)) {
-                    if $0.refs == expected { return .catchComplete }
-                    else { return .ignore }
-                }
-                _ = try p2e.fishForMessages(within: .seconds(3)) {
-                    if $0.refs == expected { return .catchComplete }
-                    else { return .ignore }
-                }
+                try p2f.eventuallyExpectListing(expected: expected, within: .seconds(3))
+                try p2e.eventuallyExpectListing(expected: expected, within: .seconds(3))
             }
 
             try expectListingOnAllProbes(expected: [ref])
@@ -274,10 +260,13 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-            let key: Receptionist.RegistrationKey<String> = .init(String.self, id: "first")
+            let key: Receptionist.RegistrationKey<String> = .init(String.self, id: "key")
 
-            let ref = try first.spawn("hi", self.stopOnMessage)
-            first.receptionist.register(ref, key: key)
+            let firstRef = try first.spawn("onFirst", self.stopOnMessage)
+            first.receptionist.register(firstRef, key: key)
+
+            let secondRef = try second.spawn("onSecond", self.stopOnMessage)
+            second.receptionist.register(secondRef, key: key)
 
             let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Receptionist.Listing<String>.self)
             let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Receptionist.Listing<String>.self)
@@ -286,30 +275,14 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             first.receptionist.subscribe(key: key, subscriber: p1.ref)
             second.receptionist.subscribe(key: key, subscriber: p2.ref)
 
-            func expectListingOnAllProbes(expected: Set<ActorRef<String>>) throws {
-                let listing1 = try p1.fishForMessages(within: .seconds(3)) {
-                    if $0.refs.count == expected.count { return .catchComplete }
-                    else { return .ignore }
-                }.first!
-                listing1.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
-
-                let listing2 = try p2.fishForMessages(within: .seconds(3)) {
-                    if $0.refs.count == expected.count { return .catchComplete }
-                    else { return .ignore }
-                }.first!
-                listing2.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
-            }
-
-            try expectListingOnAllProbes(expected: [ref])
+            try p1.eventuallyExpectListing(expected: [firstRef, secondRef], within: .seconds(3))
+            try p2.eventuallyExpectListing(expected: [firstRef, secondRef], within: .seconds(3))
 
             // crash the second node
             second.shutdown()
 
             // it should be removed from all listings; on both nodes, for all keys
-            _ = try p1.fishForMessages(within: .seconds(3)) {
-                if $0.refs == [] { return .catchComplete }
-                else { return .ignore }
-            }
+            try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(3))
         }
     }
 
@@ -325,7 +298,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
 
             var allRefs: Set<ActorRef<String>> = []
             for i in 1 ... (first.settings.cluster.receptionist.syncBatchSize * 10) {
-                let ref = try first.spawn(.prefixed(with: "example"), self.stopOnMessage)
+                let ref = try first.spawn("example-\(i)", self.stopOnMessage)
                 first.receptionist.register(ref, key: key)
                 _ = allRefs.insert(ref)
             }
@@ -337,24 +310,8 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             first.receptionist.subscribe(key: key, subscriber: p1.ref)
             second.receptionist.subscribe(key: key, subscriber: p2.ref)
 
-            func expectListingOnAllProbes(expected: Set<ActorRef<String>>) throws {
-                let listing1: Receptionist.Listing<String> = try p1.fishForMessages(within: .seconds(10)) {
-                    if $0.refs.count == expected.count { return .catchComplete }
-                    else { return .ignore }
-                }.first!
-                listing1.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
-
-                let listing2: Receptionist.Listing<String> = try p2.fishForMessages(within: .seconds(10)) {
-                    if $0.refs.count == expected.count { return .catchComplete }
-                    else {
-                        pinfo("Receptionist listing @ \($0.refs.count) / \(expected.count) actors...")
-                        return .ignore
-                    }
-                }.first!
-                listing2.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted())
-            }
-
-            try expectListingOnAllProbes(expected: allRefs)
+            try p1.eventuallyExpectListing(expected: allRefs, within: .seconds(10))
+            try p2.eventuallyExpectListing(expected: allRefs, within: .seconds(10))
         }
     }
 
@@ -379,10 +336,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
                 let p = self.testKit(system).spawnTestProbe("p", expecting: Receptionist.Listing<String>.self)
                 system.receptionist.subscribe(key: key, subscriber: p.ref)
 
-                _ = try p.fishForMessages(within: .seconds(3)) {
-                    if $0.refs == [ref] { return .catchComplete }
-                    else { return .ignore }
-                }
+                try p.eventuallyExpectListing(expected: [ref], within: .seconds(3))
             }
 
             try expectListingContainsRef(on: first)

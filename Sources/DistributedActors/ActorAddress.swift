@@ -102,7 +102,7 @@ public struct ActorAddress: Equatable, Hashable {
         self.incarnation = incarnation
     }
 
-    internal func ensureAddress(_ node: UniqueNode) -> ActorAddress {
+    internal func fillNodeWhenEmpty(_ node: UniqueNode) -> ActorAddress {
         guard self.node == nil else {
             return self
         }

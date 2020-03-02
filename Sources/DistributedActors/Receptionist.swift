@@ -176,7 +176,7 @@ public enum Receptionist {
         // FIXME: improve this to always pass around AddressableActorRef rather than just address (in receptionist Subscribe message), remove this trick then
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
         func removeFromKeyMappings(address: ActorAddress) -> Set<AnyRegistrationKey> {
-            let equalityHackRef = ActorRef<Never>(.deadLetters(.init(Logger(label: "x"), address: address, system: nil)))
+            let equalityHackRef = ActorRef<Never>(.deadLetters(.init(Logger(label: ""), address: address, system: nil)))
             return self.removeFromKeyMappings(equalityHackRef.asAddressable())
         }
 

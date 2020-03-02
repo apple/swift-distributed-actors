@@ -86,8 +86,8 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<Cluster.Event>(allocator: self.allocator), for: Cluster.Event.self, underId: Serialization.Id.InternalSerializer.ClusterEvent)
 
         // Cluster Receptionist
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OpLogClusterReceptionist.PushOps.self, underId: Serialization.Id.InternalSerializer.PushOps)
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OpLogClusterReceptionist.AckOps.self, underId: Serialization.Id.InternalSerializer.AckOps)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OperationLogClusterReceptionist.PushOps.self, underId: Serialization.Id.InternalSerializer.PushOps)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OperationLogClusterReceptionist.AckOps.self, underId: Serialization.Id.InternalSerializer.AckOps)
 
         // SWIM serializers
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.Id.InternalSerializer.SWIMMessage)

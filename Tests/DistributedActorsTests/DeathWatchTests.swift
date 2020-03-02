@@ -63,7 +63,7 @@ final class DeathWatchTests: ActorSystemTestBase {
                 p.tell(message)
                 return .same
             }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                p.tell("signal:\(terminated)") // should not be signalled (!)
+                p.tell("signal:\(terminated.address.path)") // should not be signalled (!)
                 return .same
             }
         })
