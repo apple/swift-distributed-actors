@@ -54,8 +54,8 @@ extension OSSignpostActorTransportInstrumentation {
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
             name: "Actor Transport (Serialization)",
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
-            "serialize,recipient:%{public}s,type:%{public}s,message:%{public}s",
-            "\(recipient)", String(reflecting: type(of: message)), "\(message)"
+            "serialize,recipient-node:%{public}s,recipient-path:%{public}s,type:%{public}s,message:%{public}s",
+            "<node: todo>", "\(recipient)", String(reflecting: type(of: message)), "\(message)"
         )
     }
 
@@ -84,8 +84,8 @@ extension OSSignpostActorTransportInstrumentation {
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
             name: "Actor Transport (Deserialization)",
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
-            "deserialize,recipient:%{public}s,bytes:%ld", // TODO: could carry type from manifest
-            "\(recipient)", bytes
+            "deserialize,recipient-node:%{public}s,recipient-path:%{public}s,bytes:%ld", // TODO: could carry type from manifest
+            "<node: todo>", "\(recipient)", bytes
         )
     }
 

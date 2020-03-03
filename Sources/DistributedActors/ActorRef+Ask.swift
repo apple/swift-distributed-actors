@@ -75,7 +75,7 @@ extension ActorRef: ReceivesQuestions {
         let promise = system._eventLoopGroup.next().makePromise(of: type)
 
         // TODO: maybe a specialized one... for ask?
-        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address)
+        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
 
         do {
             // TODO: implement special actor ref instead of using real actor
@@ -91,7 +91,7 @@ extension ActorRef: ReceivesQuestions {
             let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)
 
-            instrumentation.actorAsked(message: message, from: askRef.address)
+            instrumentation.actorAsked(message: message, from: askRef.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
             promise.futureResult.whenComplete {
                 switch $0 {
                 case .success(let answer):
