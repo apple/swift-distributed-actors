@@ -91,7 +91,7 @@ public struct Serialization {
 
         // SWIM serializers
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.Id.InternalSerializer.SWIMMessage)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Ack>(allocator: self.allocator), for: SWIM.Ack.self, underId: Serialization.Id.InternalSerializer.SWIMAck)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.PingResponse>(allocator: self.allocator), for: SWIM.PingResponse.self, underId: Serialization.Id.InternalSerializer.SWIMAck)
 
         // CRDT replication
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.Message>(allocator: self.allocator), for: CRDT.Replicator.Message.self, underId: Serialization.Id.InternalSerializer.CRDTReplicatorMessage)

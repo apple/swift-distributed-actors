@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import struct Dispatch.DispatchTime // for time source overriding
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -31,6 +32,8 @@ public struct SWIMSettings {
     public var disabled: Bool = false
 
     public var gossip: SWIMGossipSettings = .default
+
+    public var lifeguard: SWIMLifeGuardSettings = .default
 
     public var failureDetector: SWIMFailureDetectorSettings = .default
 
@@ -87,45 +90,73 @@ public struct SWIMFailureDetectorSettings {
         }
     }
 
-    // FIXME: those timeouts are not the actual timeout, the actual timeout is recalculated each time when we get more `suspect` information
-
-    /// Suspicion timeouts are specified as number of probe intervals.
-    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutMin = 3` means that a suspicious node
-    /// will be escalated as `.unreachable`  at least after approximately 900ms. Suspicion timeout will decay logarithmically to `suspicionTimeoutPeriodsMin`
-    /// with additional suspicions arriving. When no additional suspicions present, suspicion timeout will equal `suspicionTimeoutPeriodsMax`
-    ///
-    /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
-    /// and `.down` in the high-level membership.
-    public var suspicionTimeoutPeriodsMax: Int = 30 {
-        willSet {
-            precondition(newValue >= self.suspicionTimeoutPeriodsMin, "`suspicionTimeoutPeriodsMax` MUST BE >= `suspicionTimeoutPeriodsMin`")
-        }
-    }
-
-    /// Suspicion timeouts are specified as number of probe intervals.
-    /// E.g. a `probeInterval = .milliseconds(300)` and `suspicionTimeoutPeriodsMax = 3` means that a suspicious node
-    /// will be escalated as `.unreachable` at most after approximately 900ms. Suspicion timeout will decay logarithmically from `suspicionTimeoutPeriodsMax`
-    /// with additional suspicions arriving. When number of suspicions reach `maxIndependentSuspicions`, suspicion timeout will equal `suspicionTimeoutPeriodsMin`
-    ///
-    /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
-    /// and `.down` in the high-level membership.
-    public var suspicionTimeoutPeriodsMin: Int = 10 {
-        willSet {
-            precondition(newValue <= self.suspicionTimeoutPeriodsMax, "`suspicionTimeoutPeriodsMin` MUST BE <= `suspicionTimeoutPeriodsMax`")
-        }
-    }
-
     /// Interval at which gossip messages should be issued.
+    /// This property sets only a base value of probe interval, which will later be multiplied by `localHealthMultiplier`.
+    /// - SeeAlso: `maxLocalHealthMultiplier`
     /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
     public var probeInterval: TimeAmount = .seconds(1)
 
     /// Time amount after which a sent ping without ack response is considered timed-out.
     /// This drives how a node becomes a suspect, by missing such ping/ack rounds.
     ///
+    /// This property sets only a base timeout value, which is later multiplied by `localHealthMultiplier`
+    /// - SeeAlso: `maxLocalHealthMultiplier`
     /// Note that after an initial ping/ack timeout, secondary indirect probes are issued,
     /// and only after exceeding `suspicionTimeoutPeriodsMax` shall the node be declared as `.unreachable`,
     /// which results in an `Cluster.MemberReachabilityChange` `Cluster.Event` which downing strategies may act upon.
     public var pingTimeout: TimeAmount = .milliseconds(300)
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: SWIM LifeGuard extensions Settings
+
+/// Lifeguard is a set of extensions to SWIM that helps reducing false positive failure detections
+/// Extensions description: https://arxiv.org/pdf/1707.00788.pdf
+public struct SWIMLifeGuardSettings {
+    public static var `default`: SWIMLifeGuardSettings {
+        .init()
+    }
+
+    /// This is not a part of public API. SWIM is using time to schedule pings/calculate timeouts.
+    /// When designing tests one may want to simulate scenarious when events are coming in particular order.
+    /// Doing this will require some control over SWIM's notion of time.
+    /// This propery allows to override the `.now` function.
+    var timeSourceNanos: () -> Int64 = { () -> Int64 in Int64(DispatchTime.now().uptimeNanoseconds) }
+
+    /// Local health multiplier is a part of Lifeguard extensions to SWIM.
+    /// It will increase local probe interval and probe timeout if the instance is not processing messages in timely manner.
+    /// This property will define the upper limit to local health multiplier. The lower bound is always 0.
+    public var maxLocalHealthMultiplier: Int = 8 {
+        willSet {
+            precondition(newValue >= 0, "Local health multiplier CAN NOT be negative")
+        }
+    }
+
+    /// Suspicion timeouts are specified as number of probe intervals.
+    /// E.g. a `suspicionTimeoutMax = .seconds(10)` means that a suspicious node
+    /// will be escalated as `.unreachable`  at most after approximately 10 seconds. Suspicion timeout will decay logarithmically to `suspicionTimeoutMin`
+    /// with additional suspicions arriving. When no additional suspicions present, suspicion timeout will equal `suspicionTimeoutMax`
+    ///
+    /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
+    /// and `.down` in the high-level membership.
+    public var suspicionTimeoutMax: TimeAmount = .seconds(10) {
+        willSet {
+            precondition(newValue >= self.suspicionTimeoutMin, "`suspicionTimeoutMax` MUST BE >= `suspicionTimeoutMin`")
+        }
+    }
+
+    /// Suspicion timeouts are specified as number of probe intervals.
+    /// E.g. a `suspicionTimeoutMin = .seconds(3)` means that a suspicious node
+    /// will be escalated as `.unreachable` at least after approximately 3 seconds. Suspicion timeout will decay logarithmically from `suspicionTimeoutMax`
+    /// with additional suspicions arriving. When number of suspicions reach `maxIndependentSuspicions`, suspicion timeout will equal `suspicionTimeoutMin`
+    ///
+    /// Once it is confirmed dead by the high-level membership (e.g. immediately, or after an additional grace period, or vote), it will be marked `.dead` in swim,
+    /// and `.down` in the high-level membership.
+    public var suspicionTimeoutMin: TimeAmount = .seconds(3) {
+        willSet {
+            precondition(newValue <= self.suspicionTimeoutMax, "`suspicionTimeoutMin` MUST BE <= `suspicionTimeoutMax`")
+        }
+    }
 
     /// A Lifegurad suspicion extension to SWIM protocol.
     /// A number of independent suspicions required for a suspicion timeout to fully decay to a minimal value.

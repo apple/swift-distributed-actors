@@ -54,7 +54,7 @@ extension SWIMShell {
     }
 
     internal enum TraceLogType: CustomStringConvertible {
-        case reply(to: ActorRef<SWIM.Ack>)
+        case reply(to: ActorRef<SWIM.PingResponse>)
         case receive(pinged: ActorRef<SWIM.Message>?)
         case ask(ActorRef<SWIM.Message>)
 

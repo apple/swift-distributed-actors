@@ -103,8 +103,8 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
         }
 
         // collect all events regarding the expectedDownNode's membership lifecycle
-        let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(10), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
-        let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(10), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
+        let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(20), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
+        let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(20), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
 
         eventsOnOther.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
         eventsOnOther.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
