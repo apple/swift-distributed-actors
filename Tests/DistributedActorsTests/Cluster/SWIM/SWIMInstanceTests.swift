@@ -177,7 +177,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // p3 pings p2, gets an ack back -- and there p2 had to bump its incarnation number // TODO test for that, using Swim.instance?
 
         // and now we get an `ack` back, p2 claims that p3 is indeed alive!
-        _ = swim.onPingRequestResponse(.success(SWIM.Ack(pinged: p3, incarnation: 2, payload: .none)), pingedMember: p3)
+        _ = swim.onPingRequestResponse(.success(.ack(target: p3, incarnation: 2, payload: .none)), pingedMember: p3)
         // may print the result for debugging purposes if one wanted to
 
         // p3 should be alive; after all, p2 told us so!
@@ -199,7 +199,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         // p3 pings p2, yet p2 somehow didn't bump its incarnation... so we should NOT accept its refutation
 
         // and now we get an `ack` back, p2 claims that p3 is indeed alive!
-        _ = swim.onPingRequestResponse(.success(SWIM.Ack(pinged: p3, incarnation: 1, payload: .none)), pingedMember: p3)
+        _ = swim.onPingRequestResponse(.success(.ack(target: p3, incarnation: 1, payload: .none)), pingedMember: p3)
         // may print the result for debugging purposes if one wanted to
 
         // p3 should be alive; after all, p2 told us so!
@@ -208,7 +208,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
     func test_onPingRequestResponse_storeIndividualSuspicions() throws {
         var settings: SWIM.Settings = .default
-        settings.failureDetector.maxIndependentSuspicions = 10
+        settings.lifeguard.maxIndependentSuspicions = 10
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -231,7 +231,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: receive a ping and reply to it
 
-    func test_onPing_shouldOfferAckMessageWithMyselfReference() {
+    func test_onPing_shouldOfferAckMessageWithMyselfReference() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -242,12 +242,14 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onPing(lastKnownStatus: .alive(incarnation: 0))
 
         switch res {
-        case .reply(let ack, _):
-            ack.pinged.shouldEqual(p1) // which was added as myself to this swim instance
+        case .reply(.ack(let pinged, _, _), _):
+            pinged.shouldEqual(p1) // which was added as myself to this swim instance
+        case let reply:
+            throw self.testKit.error("Expected .ack, but got \(reply)")
         }
     }
 
-    func test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation() {
+    func test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -262,13 +264,15 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onPing(lastKnownStatus: .alive(incarnation: 0))
 
         switch res {
-        case .reply(let ack, _):
+        case .reply(.ack(_, let incarnation, _), _):
             // did not have to increment its incarnation number:
-            ack.incarnation.shouldEqual(0)
+            incarnation.shouldEqual(0)
+        case let reply:
+            throw self.testKit.error("Expected .ack ping response, but got \(reply)")
         }
     }
 
-    func test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation() {
+    func test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
@@ -283,8 +287,10 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
 
         switch res {
-        case .reply(let ack, _):
-            ack.incarnation.shouldEqual(1) // it incremented its incarnation number in order to refute the suspicion
+        case .reply(.ack(_, let incarnation, _), _):
+            incarnation.shouldEqual(1) // it incremented its incarnation number in order to refute the suspicion
+        case let reply:
+            throw self.testKit.error("expected ack repsonse, but got \(reply)")
         }
     }
 
@@ -488,7 +494,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let swim = SWIM.Instance(.default, myShellMyself: myself, myNode: self.testNode)
         let other = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
-        let saturatedSuspectedByList = (1 ... swim.settings.failureDetector.maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(UInt32($0))) }
+        let saturatedSuspectedByList = (1 ... swim.settings.lifeguard.maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(UInt32($0))) }
 
         swim.addMember(other, status: .suspect(incarnation: 0, suspectedBy: Set(saturatedSuspectedByList)))
 
@@ -502,7 +508,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
     func test_onGossipPayload_other_shouldNotExceedMaximumSuspectedBy() throws {
         var settings: SWIMSettings = .default
-        settings.failureDetector.maxIndependentSuspicions = 3
+        settings.lifeguard.maxIndependentSuspicions = 3
         let myself = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(settings, myShellMyself: myself, myNode: self.testNode)
         let other = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
@@ -518,7 +524,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let res = swim.onGossipPayload(about: otherMember)
         if case .applied(.some(let change), _, _) = res,
             case .suspect(_, let confirmation) = change.toStatus {
-            confirmation.count.shouldEqual(swim.settings.failureDetector.maxIndependentSuspicions)
+            confirmation.count.shouldEqual(swim.settings.lifeguard.maxIndependentSuspicions)
         } else {
             throw self.testKit.fail("Expected `.applied(.some(suspectedBy)) where suspectedBy.count = maxIndependentSuspicions`, got \(res)")
         }
@@ -552,6 +558,84 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         swim.isMember(p1.ref).shouldBeTrue()
         swim.isMember(p2.ref).shouldBeTrue()
         swim.isMember(p3.ref).shouldBeTrue()
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Modifying LHA-probe multiplier
+
+    func test_onPingRequestResponse_incrementLHAMultiplier_whenMissedNack() {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+
+        swim.addMember(p2, status: .alive(incarnation: 0))
+        struct TestError: Error {}
+        _ = swim.onPingRequestResponse(.failure(TestError()), pingedMember: p2)
+        swim.localHealthMultiplier.shouldEqual(1)
+    }
+
+    func test_onPingRequestResponse_decrementLHAMultiplier_whenGotAck() {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+
+        swim.addMember(p2, status: .alive(incarnation: 0))
+        swim.localHealthMultiplier = 1
+        _ = swim.onPingRequestResponse(.success(.ack(target: p2, incarnation: 0, payload: .none)), pingedMember: p2)
+        swim.localHealthMultiplier.shouldEqual(0)
+    }
+
+    func test_onPingRequestResponse_incrementLHAMultiplier_whenRefuteSuspicion_onPing() {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+
+        _ = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
+        swim.localHealthMultiplier.shouldEqual(1)
+    }
+
+    func test_onPingRequestResponse_notIncrementLHAMultiplier_whenSeeOldSuspicion_onPing() {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+        // first suspicion is for current incarnation, should increase LHA counter
+        _ = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
+        swim.localHealthMultiplier.shouldEqual(1)
+        // second suspicion is for a stale incarnation, should ignore
+        _ = swim.onPing(lastKnownStatus: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
+        swim.localHealthMultiplier.shouldEqual(1)
+    }
+
+    func test_onPingRequestResponse_notIncrementLHAMultiplier_whenSeeOldSuspicion_onGossip() {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+        // first suspicion is for current incarnation, should increase LHA counter
+        _ = swim.onGossipPayload(about: SWIMMember(ref: p1, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]), protocolPeriod: 0))
+        swim.localHealthMultiplier.shouldEqual(1)
+        // second suspicion is for a stale incarnation, should ignore
+        _ = swim.onGossipPayload(about: SWIMMember(ref: p1, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]), protocolPeriod: 0))
+        swim.localHealthMultiplier.shouldEqual(1)
+    }
+
+    func test_onPingRequestResponse_incrementLHAMultiplier_whenRefuteSuspicion_onGossip() {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+
+        _ = swim.onGossipPayload(about: SWIMMember(ref: p1, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]), protocolPeriod: 0))
+        swim.localHealthMultiplier.shouldEqual(1)
+    }
+
+    func test_onPingRequestResponse_dontChangeLHAMultiplier_whenGotNack() {
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
+
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+
+        swim.addMember(p2, status: .alive(incarnation: 0))
+        swim.localHealthMultiplier = 1
+
+        _ = swim.onPingRequestResponse(.success(.nack(target: p2)), pingedMember: p2)
+        swim.localHealthMultiplier.shouldEqual(1)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -680,7 +764,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 
     func test_suspects_shouldMark_whenBiggerSuspicionList() {
         var settings: SWIM.Settings = .default
-        settings.failureDetector.maxIndependentSuspicions = 10
+        settings.lifeguard.maxIndependentSuspicions = 10
         let myself = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default, myShellMyself: myself, myNode: self.testNode)
 
