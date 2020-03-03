@@ -56,7 +56,7 @@ extension OSSignpostActorInstrumentation {
             return
         }
 
-        let format: StaticString = "spawned,address:%{public}s"
+        let format: StaticString = "spawned,node:%{public}s,path:%{public}s"
 
         os_signpost(
             .event,
@@ -64,7 +64,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             format,
-            "\(self.address)"
+            "\(self.address.node?.description ?? "")", "\(self.address.path)"
         )
 
         os_signpost(
@@ -73,7 +73,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             format,
-            "\(self.address)"
+            "\(self.address.node?.description ?? "")", "\(self.address.path)"
         )
     }
 
@@ -146,8 +146,10 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logMessages,
             name: "Actor Message (Tell)",
             signpostID: self.signpostID,
-            "actor-message-told,recipient:%{public}s,sender:%{public}s,type:%{public}s,message:%{public}s",
-            "\(self.address)", "\(from.map { "\($0)" } ?? "<no-sender>")", String(reflecting: type(of: message)), "\(message)"
+            "actor-message-told,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,type:%{public}s",
+            "\(self.address.node?.description ?? "")", "\(self.address.path)",
+            "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
+            "\(message)", String(reflecting: type(of: message))
         )
     }
 
@@ -164,8 +166,10 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logMessages,
             name: "Actor Message (Ask)",
             signpostID: self.signpostID,
-            "actor-message-asked,recipient:%{public}s,sender:%{public}s,question:%{public}s,type:%{public}s",
-            "\(self.address)", "\(from.map { "\($0)" } ?? "<no-sender>")", "\(message)", String(reflecting: type(of: message))
+            "actor-message-asked,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,question:%{public}s,type:%{public}s",
+            "\(self.address.node?.description ?? "")", "\(self.address.path)",
+            "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
+            "\(message)", String(reflecting: type(of: message))
         )
     }
 
@@ -223,8 +227,10 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logMessages,
             name: "Actor Message (Received)",
             signpostID: self.signpostID,
-            "actor-message-received,recipient:%{public}s,sender:%{public}s,message:%{public}s,type:%{public}s",
-            "\(self.address)", "\(from.map { "\($0)" } ?? "<no-sender>")", "\(message)", String(reflecting: type(of: message))
+            "actor-message-received,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,type:%{public}s",
+            "\(self.address.node?.description ?? "")", "\(self.address.path)",
+            "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
+            "\(message)", String(reflecting: type(of: message))
         )
     }
 

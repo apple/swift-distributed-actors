@@ -373,16 +373,21 @@ extension CRDT.Replicator {
                 return promise.futureResult
             }
 
+//            let instrumentation = ActorCRDTReplicatorInstrumentation()
+//            instrumentation.dataReplicateDirectStop(id: promise.futureResult, execution: execution)
+
             // It's possible for operation to be fulfilled without actually calling remote members.
             // e.g., when consistency = .atLeast(1) and localConfirmed = true
             if execution.fulfilled {
                 promise.succeed(execution.remoteConfirmationsReceived) // empty dictionary
+//                instrumentation.dataReplicateDirectStop(id: promise.futureResult, execution: execution)
                 return promise.futureResult
             }
             // If execution is not fulfilled at this point based on the given parameters and there are no remote members
             // (i.e., we are not entering the for-loop below), then it's impossible to fulfill it.
             guard !self.remoteReplicators.isEmpty else {
                 promise.fail(CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: execution.confirmationsRequired, remaining: execution.remoteConfirmationsNeeded, obtainable: 0))
+//                instrumentation.dataReplicateDirectStop(id: promise.futureResult, execution: execution)
                 return promise.futureResult
             }
 
@@ -407,8 +412,10 @@ extension CRDT.Replicator {
                     // Check if we can mark promise succeed/fail
                     if execution.fulfilled {
                         promise.succeed(execution.remoteConfirmationsReceived)
+//                        instrumentation.dataReplicateDirectStop(id: promise.futureResult, execution: execution)
                     } else if execution.failed {
                         promise.fail(CRDT.OperationConsistency.Error.tooManyFailures(allowed: execution.remoteFailuresAllowed, actual: execution.remoteFailuresCount))
+//                        instrumentation.dataReplicateDirectStop(id: promise.futureResult, execution: execution)
                     } else {
                         // Indeterminate: we have not received enough results to mark execution success/failure.
                         // Eventually, either this operation will fail with timeout, or execution will be fulfilled or failed.
