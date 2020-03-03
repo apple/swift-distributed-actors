@@ -4,6 +4,8 @@
 *.orig
 *.app
 
+Instruments/ActorInstruments/ActorInstruments.xcodeproj/xcuserdata
+
 /.build
 /Samples/.build
 /.SourceKitten
