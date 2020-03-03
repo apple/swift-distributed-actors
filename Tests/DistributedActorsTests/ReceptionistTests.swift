@@ -41,7 +41,7 @@ final class ReceptionistTests: ActorSystemTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
         receptionist.tell(Receptionist.Register(refA, key: key))
         receptionist.tell(Receptionist.Register(refB, key: key))
@@ -68,11 +68,11 @@ final class ReceptionistTests: ActorSystemTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
         receptionist.tell(Receptionist.Register(ref, key: key))
 
-        let unknownKey = Receptionist.RegistrationKey(String.self, id: "unknown")
+        let unknownKey = Receptionist.RegistrationKey(messageType: String.self, id: "unknown")
         receptionist.tell(Receptionist.Lookup(key: unknownKey, replyTo: lookupProbe.ref))
 
         let listing = try lookupProbe.expectMessage()
@@ -91,7 +91,7 @@ final class ReceptionistTests: ActorSystemTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
         receptionist.tell(Receptionist.Register(ref, key: key))
         receptionist.tell(Receptionist.Register(ref, key: key))
@@ -121,7 +121,7 @@ final class ReceptionistTests: ActorSystemTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "shouldBeOne")
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "shouldBeOne")
 
         receptionist.tell(Receptionist.Register(old, key: key))
         old.tell("stop")
@@ -148,7 +148,7 @@ final class ReceptionistTests: ActorSystemTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
         receptionist.tell(Receptionist.Register(ref, key: key, replyTo: probe.ref))
 
@@ -169,7 +169,7 @@ final class ReceptionistTests: ActorSystemTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
         receptionist.tell(Receptionist.Register(ref, key: key))
 
@@ -204,7 +204,7 @@ final class ReceptionistTests: ActorSystemTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
         receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
         try lookupProbe.expectMessage(Receptionist.Listing(refs: []))
