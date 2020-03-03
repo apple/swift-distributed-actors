@@ -326,8 +326,8 @@ extension ClusterShellState {
                 fatalError("An in-flight marker state should never be stored, yet was encountered in \(#function)")
             }
         } else {
-            fatalError("Accept incoming for handshake which was not in progress!") // TODO: model differently
-        }
+            // TODO what if node that sent handshake, has already terminated -- would we have removed the in progress handshake already causing this?
+            fatalError("Accept incoming [\(accept)] for handshake which was not in progress! On node: \(self.myselfNode), cluster shell state: \(self), membership: \(self.membership)") // TODO: model differently        }
     }
 
     /// "Upgrades" a connection with a remote node from handshaking state to associated.
