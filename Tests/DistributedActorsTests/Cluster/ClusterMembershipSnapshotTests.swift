@@ -30,7 +30,7 @@ final class ClusterMembershipSnapshotTests: ClusteredNodesTestBase {
         try self.joinNodes(node: first, with: second)
 
         let third = self.setUpNode("third")
-        third.cluster.join(node: first.cluster.node)
+        try self.joinNodes(node: first, with: third)
 
         let testKit: ActorTestKit = self.testKit(first)
         try testKit.eventually(within: .seconds(5)) {
@@ -44,6 +44,7 @@ final class ClusterMembershipSnapshotTests: ClusteredNodesTestBase {
             let nodes: [UniqueNode] = snapshot.members(atMost: .up).map { $0.node }
             nodes.shouldContain(first.cluster.node)
             nodes.shouldContain(second.cluster.node)
+            nodes.shouldContain(third.cluster.node)
         }
     }
 }

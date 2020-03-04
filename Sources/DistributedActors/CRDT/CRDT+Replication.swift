@@ -57,7 +57,6 @@ extension CRDT.Replicator {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Replicator: LocalCommand
 
@@ -121,7 +120,6 @@ extension CRDT.Replicator {
 // MARK: Replicator: RemoteCommand
 
 extension CRDT.Replicator {
-
     enum RemoteCommand {
         // Sent from one replicator to another to write the given CRDT instance as part of `OwnerCommand.write` to meet consistency requirement
         case write(_ id: CRDT.Identity, _ data: AnyStateBasedCRDT, replyTo: ActorRef<WriteResult>)
@@ -257,8 +255,6 @@ extension CRDT {
     }
 }
 
-
 extension CRDT.Gossip: Codable {
     // Codable: synthesized conformance
 }
-

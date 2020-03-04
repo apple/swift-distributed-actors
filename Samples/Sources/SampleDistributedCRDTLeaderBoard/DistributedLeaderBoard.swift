@@ -81,7 +81,7 @@ extension DistributedLeaderBoard {
                 switch $0 {
                 case .scorePoints(let points):
                     myScore += points
-                    _ = totalScore.increment(by: points, writeConsistency: .local, timeout: .effectivelyInfinite)
+                    _ = totalScore.increment(by: points, writeConsistency: .quorum, timeout: .seconds(1))
                     context.log.info("Scored +\(points), sum: \(myScore), global points sum: \(totalScore.lastObservedValue)")
                 }
 

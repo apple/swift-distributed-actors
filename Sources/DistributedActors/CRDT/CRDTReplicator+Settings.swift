@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
 import func Foundation.log2
+import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Replicator settings
@@ -38,8 +38,12 @@ extension CRDT.Replicator {
         ///
         /// - Default: `log2(n) + 1`, as that is the expected number of gossip rounds needed to disseminate to enough members.
         public var maxNrOfDeltaGossipRounds: (PeerCount) -> Int = { n in
-            Int(log2(Double(n))) + 1
+            guard n > 0 else {
+                return 0
+            }
+            return Int(log2(Double(n))) + 1
         }
+
         public typealias PeerCount = Int
 
         /// When enabled traces _all_ replicator messages.
@@ -50,6 +54,5 @@ extension CRDT.Replicator {
         #else
         var traceLogLevel: Logger.Level?
         #endif
-
     }
 }

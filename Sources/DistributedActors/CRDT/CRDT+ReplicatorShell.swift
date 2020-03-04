@@ -44,7 +44,7 @@ extension CRDT.Replicator {
 
         private var remoteReplicators: Set<ActorRef<Message>> = []
 
-        private var gossipControl: ConvergentGossipControl<CRDT.Gossip>? = nil
+        private var gossipControl: ConvergentGossipControl<CRDT.Gossip>?
 
         init(_ replicator: Instance) {
             self.replicator = replicator
@@ -122,7 +122,6 @@ extension CRDT.Replicator {
 // MARK: Local command
 
 extension CRDT.Replicator.Shell {
-
     private func receiveLocalCommand(_ context: ActorContext<Message>, command: LocalCommand) {
         switch command {
         case .register(let ownerRef, let id, let data, let replyTo):
@@ -160,7 +159,6 @@ extension CRDT.Replicator.Shell {
         _ id: CRDT.Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency,
         timeout: TimeAmount, replyTo: ActorRef<LocalWriteResult>
     ) {
-
         /// Perform "direct" replication, i.e. directly send the change to all known replicators.
         func directReplicate(updatedData: AnyStateBasedCRDT, isNew: Bool) {
             assert(!isNew, "`isNew` should always be false. See details in `makeRemoteWriteCommand`, data: \(data), updatedData: \(updatedData), isNew: \(isNew)")
@@ -283,7 +281,7 @@ extension CRDT.Replicator.Shell {
             switch self.replicator.read(id) {
             case .data(let stored):
                 replyTo.tell(.success(stored.underlying))
-                // No need to notify owners since it's a read-only operation
+            // No need to notify owners since it's a read-only operation
             case .notFound:
                 replyTo.tell(.failure(.notFound))
             }
@@ -396,7 +394,7 @@ extension CRDT.Replicator.Shell {
         isSuccessful: @escaping (RemoteCommandResult) -> Bool,
         _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message
     ) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
-        let promise = context.system._eventLoopGroup.next().makePromise(of: [ActorRef < Message>: RemoteCommandResult].self)
+        let promise = context.system._eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
 
         // Determine the number of successful responses needed to satisfy consistency requirement.
         // The `RemoteCommand` is sent to *all* known remote replicators, but the consistency
@@ -470,7 +468,6 @@ extension CRDT.Replicator.Shell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Remote command
 extension CRDT.Replicator.Shell {
-
     private func receiveRemoteCommand(_ context: ActorContext<Message>, command: RemoteCommand) {
         switch command {
         case .write(let id, let data, let replyTo):
@@ -575,7 +572,7 @@ extension CRDT.Replicator {
         let confirmationsRequired: Int
 
         let remoteConfirmationsNeeded: Int
-        var remoteConfirmationsReceived = [ActorRef < Message>: Result]()
+        var remoteConfirmationsReceived = [ActorRef<Message>: Result]()
 
         let remoteFailuresAllowed: Int
         var remoteFailuresCount: Int = 0

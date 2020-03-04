@@ -133,7 +133,6 @@ internal final class ConvergentGossip<Payload: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension ConvergentGossip {
-
     private func initPeerDiscovery(_ context: ActorContext<Message>, settings: ConvergentGossip.Settings) {
         switch self.settings.peerDiscovery {
         case .manuallyIntroduced:

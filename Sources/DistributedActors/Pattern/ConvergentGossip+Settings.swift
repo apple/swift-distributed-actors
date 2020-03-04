@@ -17,7 +17,6 @@
 
 extension ConvergentGossip {
     struct Settings {
-
         /// Interval at which gossip rounds should proceed.
         var gossipInterval: TimeAmount = .seconds(1)
 
@@ -40,7 +39,7 @@ extension ConvergentGossip {
         /// By default, the gossiper does not know how to locate its peers, and a key can be passed in to make it
         /// use the `Receptionist` to (register itself and) locate its peers.
         ///
-        /// Peers may be added manually by sending the `introduce` message at any time, the gossiper will NOT reject such 
+        /// Peers may be added manually by sending the `introduce` message at any time, the gossiper will NOT reject such
         /// introduced peer, even if operating in an auto-discovery mode (may be useful to inject a test listener probe into the gossip group).
         var peerDiscovery: PeerDiscovery = .manuallyIntroduced
         enum PeerDiscovery {
@@ -57,7 +56,7 @@ extension ConvergentGossip {
             case manuallyIntroduced
         }
 
-        /// TODO: configurable who to gossip to
+        // TODO: configurable who to gossip to
         /// var gossipTargetSelection: PeerSelection = .random
     }
 }

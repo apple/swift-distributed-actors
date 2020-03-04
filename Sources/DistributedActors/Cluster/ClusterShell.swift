@@ -384,6 +384,7 @@ extension ClusterShell {
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
                 var firstGossip = Cluster.Gossip(ownerNode: state.myselfNode)
                 _ = firstGossip.membership.join(state.myselfNode) // change will be put into effect by receiving the "self gossip"
+                context.system.cluster.updateMembershipSnapshot(state.membership)
                 firstGossip.incrementOwnerVersion()
                 context.myself.tell(.gossipFromGossiper(firstGossip))
                 // TODO: are we ok if we received another gossip first, not our own initial? should be just fine IMHO
@@ -531,7 +532,9 @@ extension ClusterShell {
                     "tag": "membership",
                 ])
             }
+
             state = self.interpretLeaderActions(context.system, state, leaderActions)
+            context.system.cluster.updateMembershipSnapshot(state.membership)
 
             return self.ready(state: state)
         }

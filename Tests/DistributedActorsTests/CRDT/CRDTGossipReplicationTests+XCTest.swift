@@ -23,6 +23,7 @@ import XCTest
 extension CRDTGossipReplicationTests {
     static var allTests: [(String, (CRDTGossipReplicationTests) -> () throws -> Void)] {
         return [
+            ("test_gossipReplicate_gCounter", test_gossipReplicate_gCounter),
         ]
     }
 }

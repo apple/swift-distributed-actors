@@ -12,7 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation // for natural logarithm
+import func Foundation.log2
+import func Foundation.round
 import Logging
 
 /// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).

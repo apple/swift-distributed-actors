@@ -365,7 +365,6 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         }
         ugg1Remote.value.shouldEqual(gg1Remote.value)
     }
-    
 
     func test_localCommand_read_allConsistency_shouldUpdateLocalStoreWithRemoteData_shouldNotifyOwners() throws {
         self.setUpLocal()

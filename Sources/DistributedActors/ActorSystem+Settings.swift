@@ -20,7 +20,6 @@ public typealias ActorSystemSettings = ActorSystem.Settings
 
 /// Settings used to configure an `ActorSystem`.
 extension ActorSystem {
-
     public struct Settings {
         public static var `default`: ActorSystem.Settings {
             .init()

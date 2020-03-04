@@ -37,7 +37,7 @@ public struct ClusterControl {
         return self._membershipSnapshotHolder.membership
     }
 
-    internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership) {
+    internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership, file: String = #file, line: UInt = #line) {
         self.membershipSnapshotLock.lock()
         defer { self.membershipSnapshotLock.unlock() }
         self._membershipSnapshotHolder.membership = snapshot
@@ -78,7 +78,13 @@ public struct ClusterControl {
         self.ref.tell(.command(.initJoin(node)))
     }
 
-    /// Only useful in local testing, otherwise there is no real way to know the Unique identifier of a node up front.
+    /// Usually NOT to be used, as having an instance of an `UniqueNode` in hand
+    /// is normally only possible after a handshake with the remote node has completed.
+    ///
+    /// However, in local testing scenarios, where the two nodes are executing in the same process (e.g. in a test),
+    /// this call saves the unwrapping of `cluster.node` into the generic node when joining them.
+    ///
+    /// - Parameter node: The node to be joined by this system.
     public func join(node: UniqueNode) {
         self.join(node: node.node)
     }

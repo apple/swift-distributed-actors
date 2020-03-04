@@ -30,6 +30,7 @@ extension CRDTReplicatorShellClusteredTests {
             ("test_receive_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_receive_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
             ("test_receive_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_receive_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
             ("test_localCommand_write_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners", test_localCommand_write_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners),
+            ("test_localCommand_write_localConsistency_remoteShouldEventuallyBeUpdated", test_localCommand_write_localConsistency_remoteShouldEventuallyBeUpdated),
             ("test_localCommand_read_allConsistency_shouldUpdateLocalStoreWithRemoteData_shouldNotifyOwners", test_localCommand_read_allConsistency_shouldUpdateLocalStoreWithRemoteData_shouldNotifyOwners),
             ("test_localCommand_read_doesNotExistLocally_shouldBeOK_shouldUpdateLocalStoreWithRemoteData", test_localCommand_read_doesNotExistLocally_shouldBeOK_shouldUpdateLocalStoreWithRemoteData),
             ("test_localCommand_delete_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners", test_localCommand_delete_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners),

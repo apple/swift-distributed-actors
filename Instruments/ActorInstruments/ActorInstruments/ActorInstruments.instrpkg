@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<package xmlns="instrument_package.xsd">
+<package>
     <id>com.apple.actors.ActorInstruments</id>
     <version>0.4.1</version>
     <title>Actors</title>
@@ -354,6 +354,9 @@
             <expression>?error-type</expression>
         </column>
 
+    </os-signpost-interval-schema>
+    
+    
     </os-signpost-interval-schema>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->

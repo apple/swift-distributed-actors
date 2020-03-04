@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
-
     var firstSystem: ActorSystem!
     var secondSystem: ActorSystem!
     var thirdSystem: ActorSystem!
@@ -34,7 +33,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             "/system/transport.server",
             "/system/transport.client",
         ]
-
     }
 
     override func setUp() {
@@ -80,7 +78,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     typealias RemoteDeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
     typealias OperationExecution = CRDT.Replicator.OperationExecution
 
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Replication Tests
 
@@ -98,12 +95,12 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
         // ==== ---------------------------------------------------------
         // Expectations
 
-        let p2 = try self.makeCRDTOwnerTestProbe(system: self.secondSystem, testKit: self.testKit(self.secondSystem),
+        let p2 = try self.makeCRDTOwnerTestProbe(
+            system: self.secondSystem, testKit: self.testKit(self.secondSystem),
             id: id, data: CRDT.GCounter(replicaId: .actorAddress(self.ownerSecondOne)).asAnyStateBasedCRDT
         )
         let m1 = try p2.expectMessage()
         pprint("m1 = \(m1)")
-
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
