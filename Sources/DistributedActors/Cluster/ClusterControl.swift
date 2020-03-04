@@ -37,7 +37,7 @@ public struct ClusterControl {
         return self._membershipSnapshotHolder.membership
     }
 
-    internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership, file: String = #file, line: UInt = #line) {
+    internal func updateMembershipSnapshot(_ snapshot: Cluster.Membership) {
         self.membershipSnapshotLock.lock()
         defer { self.membershipSnapshotLock.unlock() }
         self._membershipSnapshotHolder.membership = snapshot
