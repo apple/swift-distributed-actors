@@ -26,30 +26,13 @@ extension ActorSystem {
             .init()
         }
 
-        // TODO: LoggingSettings
-
-        /// Configure default log level for all `Logger` instances created by the library.
-        public var defaultLogLevel: Logger.Level = .info // TODO: maybe remove this? should be up to logging library to configure for us as well
-
-        /// Optionally override Logger that shall be offered to actors and the system.
-        /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
-        public var overrideLoggerFactory: ((String) -> Logger)?
-
-        // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
-    public var serialization: SerializationSettings = .default
-    public var plugins: PluginsSettings = .default
-    public var metrics: MetricsSettings = .default(rootName: nil)
-    public var failure: FailureSettings = .default
-    public var logging: LoggingSettings = .default
-    public var instrumentation: InstrumentationSettings = .default
-
-    public typealias ProtocolName = String
-    public var transports: [ActorTransport] = []
-    public var cluster: ClusterSettings = .default {
-        didSet {
-            self.serialization.localNode = self.cluster.uniqueBindNode
-        }
-    }
+        public var actor: ActorSettings = .default
+        public var serialization: SerializationSettings = .default
+        public var plugins: PluginsSettings = .default
+        public var metrics: MetricsSettings = .default(rootName: nil)
+        public var failure: FailureSettings = .default
+        public var logging: LoggingSettings = .default
+        public var instrumentation: InstrumentationSettings = .default
 
         public typealias ProtocolName = String
         public var transports: [ActorTransport] = []

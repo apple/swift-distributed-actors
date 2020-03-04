@@ -58,11 +58,11 @@ public enum Receptionist {
         }
 
         internal var typeString: FullyQualifiedTypeName {
-            return String(reflecting: Message.self)
+            String(reflecting: Message.self)
         }
 
-        internal var boxed: AnyRegistrationKey {
-            return AnyRegistrationKey(from: self)
+        internal var asAnyRegistrationKey: AnyRegistrationKey {
+            AnyRegistrationKey(from: self)
         }
     }
 
@@ -118,12 +118,12 @@ public enum Receptionist {
             self.replyTo = subscriber
         }
 
-        internal var _boxed: AnySubscribe {
-            return AnySubscribe(subscribe: self)
+        internal var _asAnySubscribe: AnySubscribe {
+            AnySubscribe(subscribe: self)
         }
 
-        var _addressableActorRef: AddressableActorRef {
-            return self.replyTo.asAddressable()
+        var _asAddressableActorRef: AddressableActorRef {
+            self.replyTo.asAddressable()
         }
     }
 
@@ -288,7 +288,7 @@ internal enum LocalReceptionist {
     }
 
     private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
-        let key = message._key.boxed
+        let key = message._key.asAnyRegistrationKey
         let addressable = message._addressableActorRef
 
         context.log.debug("Registering \(addressable) under key: \(key)")
@@ -309,21 +309,21 @@ internal enum LocalReceptionist {
     }
 
     private static func onSubscribe(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) throws {
-        let boxedMessage = message._boxed
+        let anySubscribe = message._asAnySubscribe
         let key = AnyRegistrationKey(from: message._key)
 
-        context.log.debug("Subscribing \(message._addressableActorRef) to: \(key)")
+        context.log.debug("Subscribing \(message._asAddressableActorRef) to: \(key)")
 
-        if storage.addSubscription(key: key, subscription: boxedMessage) {
+        if storage.addSubscription(key: key, subscription: anySubscribe) {
             let terminatedCallback = LocalReceptionist.makeRemoveSubscriptionCallback(context: context, message: message, storage: storage)
-            try LocalReceptionist.startWatcher(ref: message._addressableActorRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
+            try LocalReceptionist.startWatcher(ref: message._asAddressableActorRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
 
-            boxedMessage.replyWith(storage.registrations(forKey: key) ?? [])
+            anySubscribe.replyWith(storage.registrations(forKey: key) ?? [])
         }
     }
 
     private static func onLookup(context: ActorContext<Receptionist.Message>, message: _Lookup, storage: Receptionist.Storage) throws {
-        if let registered = storage.registrations(forKey: message._key.boxed) {
+        if let registered = storage.registrations(forKey: message._key.asAnyRegistrationKey) {
             message.replyWith(registered)
         } else {
             message.replyWith([])
@@ -348,9 +348,9 @@ internal enum LocalReceptionist {
 
     private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         context.makeAsynchronousCallback {
-            let remainingRegistrations = storage.removeRegistration(key: message._key.boxed, ref: message._addressableActorRef) ?? []
+            let remainingRegistrations = storage.removeRegistration(key: message._key.asAnyRegistrationKey, ref: message._addressableActorRef) ?? []
 
-            if let subscribed = storage.subscriptions(forKey: message._key.boxed) {
+            if let subscribed = storage.subscriptions(forKey: message._key.asAnyRegistrationKey) {
                 for subscription in subscribed {
                     subscription._replyWith(remainingRegistrations)
                 }
@@ -360,7 +360,7 @@ internal enum LocalReceptionist {
 
     private static func makeRemoveSubscriptionCallback(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         context.makeAsynchronousCallback {
-            storage.removeSubscription(key: message._key.boxed, subscription: message._boxed)
+            storage.removeSubscription(key: message._key.asAnyRegistrationKey, subscription: message._asAnySubscribe)
         }
     }
 }
@@ -404,7 +404,7 @@ internal protocol _Lookup: ReceptionistMessage {
 }
 
 internal protocol _RegistrationKey {
-    var boxed: AnyRegistrationKey { get }
+    var asAnyRegistrationKey: AnyRegistrationKey { get }
     var id: String { get }
     var typeString: FullyQualifiedTypeName { get }
     // `resolve` has to be here, because the key is the only thing that knows which
@@ -417,7 +417,7 @@ internal enum ReceptionistError: Error {
 }
 
 internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
-    var boxed: AnyRegistrationKey {
+    var asAnyRegistrationKey: AnyRegistrationKey {
         return self
     }
 
@@ -438,8 +438,8 @@ internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
 
 internal protocol _Subscribe: ReceptionistMessage {
     var _key: _RegistrationKey { get }
-    var _boxed: AnySubscribe { get }
-    var _addressableActorRef: AddressableActorRef { get }
+    var _asAnySubscribe: AnySubscribe { get }
+    var _asAddressableActorRef: AddressableActorRef { get }
 }
 
 internal struct AnySubscribe: Hashable {

@@ -37,6 +37,10 @@ extension CRDT {
             self.state.values.reduce(0, +)
         }
 
+        public init(owner address: ActorAddress) {
+            self.init(replicaId: .actorAddress(address))
+        }
+
         init(replicaId: ReplicaId) {
             self.replicaId = replicaId
             self.state = [:]

@@ -108,7 +108,6 @@ extension CRDT.Replicator.Shell {
     func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
         [
             "crdt/replicator": "\(context.path)",
-            "crdt/replicator/remoteReplicators": "\(self.remoteReplicators)",
         ]
     }
 }

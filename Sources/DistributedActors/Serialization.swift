@@ -53,7 +53,7 @@ public struct Serialization {
         })
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
-        log.logLevel = systemSettings.defaultLogLevel
+        log.logLevel = systemSettings.logging.defaultLevel
         self.log = log
 
         let context = ActorSerializationContext(

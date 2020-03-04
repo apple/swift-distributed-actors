@@ -298,21 +298,21 @@ public class OperationLogClusterReceptionist {
 
 extension OperationLogClusterReceptionist {
     private func onSubscribe(context: ActorContext<Message>, message: _Subscribe) throws {
-        let boxedMessage = message._boxed
+        let boxedMessage = message._asAnySubscribe
         let key = AnyRegistrationKey(from: message._key)
         if self.storage.addSubscription(key: key, subscription: boxedMessage) {
-            context.watch(message._addressableActorRef)
-            context.log.info("Subscribed \(message._addressableActorRef.address) to \(key)")
+            context.watch(message._asAddressableActorRef)
+            context.log.info("Subscribed \(message._asAddressableActorRef.address) to \(key)")
             boxedMessage.replyWith(self.storage.registrations(forKey: key) ?? [])
         }
     }
 
     private func onLookup(context: ActorContext<Message>, message: _Lookup) throws {
-        message.replyWith(self.storage.registrations(forKey: message._key.boxed) ?? [])
+        message.replyWith(self.storage.registrations(forKey: message._key.asAnyRegistrationKey) ?? [])
     }
 
     private func onRegister(context: ActorContext<Message>, message: _Register) throws {
-        let key = message._key.boxed
+        let key = message._key.asAnyRegistrationKey
         let ref = message._addressableActorRef
 
         guard ref.address.isLocal || (ref.address.node == context.system.cluster.node) else {

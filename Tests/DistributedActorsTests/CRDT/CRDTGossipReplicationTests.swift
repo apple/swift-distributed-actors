@@ -17,24 +17,55 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
-    var localSystem: ActorSystem!
-    var localTestKit: ActorTestKit!
 
-    var remoteSystem: ActorSystem!
-    var remoteTestKit: ActorTestKit!
+    var firstSystem: ActorSystem!
+    var secondSystem: ActorSystem!
+    var thirdSystem: ActorSystem!
+    var fourthSystem: ActorSystem!
+    var fifthSystem: ActorSystem!
 
-    func setUpLocal() {
-        self.localSystem = super.setUpNode("local")
-        self.localTestKit = super.testKit(self.localSystem)
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
+            "/system/cluster",
+            "/system/cluster/swim",
+            "/system/clusterEvents",
+            "/system/cluster/gossip",
+            "/system/cluster/leadership",
+            "/system/transport.server",
+            "/system/transport.client",
+        ]
+
     }
 
-    func setUpRemote() {
-        self.remoteSystem = super.setUpNode("remote")
-        self.remoteTestKit = super.testKit(self.remoteSystem)
+    override func setUp() {
+        self.firstSystem = super.setUpNode("first")
+        self.secondSystem = super.setUpNode("second")
+//        self.thirdSystem = super.setUpNode("third")
+//        self.fourthSystem = super.setUpNode("fourth")
+//        self.fifthSystem = super.setUpNode("fifth")
+
+        self.firstSystem.cluster.join(node: self.secondSystem.cluster.node)
+//        self.firstSystem.cluster.join(node: self.thirdSystem.cluster.node)
+//        self.firstSystem.cluster.join(node: self.fourthSystem.cluster.node)
+//        self.firstSystem.cluster.join(node: self.fifthSystem.cluster.node)
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
+    lazy var ownerFirstOne = try! ActorAddress(path: ActorPath._user.appending("first-1"), incarnation: .wellKnown)
+        .fillNodeWhenEmpty(self.firstSystem.cluster.node)
+    lazy var ownerFirstTwo = try! ActorAddress(path: ActorPath._user.appending("first-2"), incarnation: .wellKnown)
+        .fillNodeWhenEmpty(self.firstSystem.cluster.node)
+
+    lazy var ownerSecondOne = try! ActorAddress(path: ActorPath._user.appending("second-1"), incarnation: .wellKnown)
+        .fillNodeWhenEmpty(self.secondSystem.cluster.node)
+
+    lazy var ownerThirdOne = try! ActorAddress(path: ActorPath._user.appending("third-1"), incarnation: .wellKnown)
+        .fillNodeWhenEmpty(self.thirdSystem.cluster.node)
+
+    lazy var ownerFourthOne = try! ActorAddress(path: ActorPath._user.appending("fourth-1"), incarnation: .wellKnown)
+        .fillNodeWhenEmpty(self.fourthSystem.cluster.node)
+
+    lazy var ownerFifthOne = try! ActorAddress(path: ActorPath._user.appending("fifth-1"), incarnation: .wellKnown)
+        .fillNodeWhenEmpty(self.fifthSystem.cluster.node)
 
     let timeout = TimeAmount.seconds(1)
 
@@ -49,6 +80,32 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     typealias RemoteDeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
     typealias OperationExecution = CRDT.Replicator.OperationExecution
 
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Replication Tests
+
+    func test_gossipReplicate_gCounter() throws {
+        let id = CRDT.Identity("gcounter-1")
+
+        _ = try self.firstSystem.spawn("owner", of: Never.self, .setup { context in
+            // TODO: context.makeCRDT("my-counter", CRDT.GCounter.self) ???
+            let owned = CRDT.ActorOwned(ownerContext: context, id: id, data: CRDT.GCounter(replicaId: .actorAddress(self.ownerFirstOne)))
+            _ = owned.increment(by: 1, writeConsistency: .local, timeout: .seconds(1))
+
+            return .receiveMessage { _ in .same }
+        })
+
+        // ==== ---------------------------------------------------------
+        // Expectations
+
+        let p2 = try self.makeCRDTOwnerTestProbe(system: self.secondSystem, testKit: self.testKit(self.secondSystem),
+            id: id, data: CRDT.GCounter(replicaId: .actorAddress(self.ownerSecondOne)).asAnyStateBasedCRDT
+        )
+        let m1 = try p2.expectMessage()
+        pprint("m1 = \(m1)")
+
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Test utilities
 
@@ -58,7 +115,9 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
         // Register owner so replicator will notify it on CRDT updates
         system.replicator.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: data, replyTo: registerP.ref)))
-        guard case .success = try registerP.expectMessage() else { throw registerP.error() }
+        guard case .success = try registerP.expectMessage() else {
+            throw registerP.error()
+        }
 
         return ownerP
     }

@@ -78,6 +78,11 @@ public struct ClusterControl {
         self.ref.tell(.command(.initJoin(node)))
     }
 
+    /// Only useful in local testing, otherwise there is no real way to know the Unique identifier of a node up front.
+    public func join(node: UniqueNode) {
+        self.join(node: node.node)
+    }
+
     public func leave() {
         self.ref.tell(.command(.downCommand(self.node.node)))
     }

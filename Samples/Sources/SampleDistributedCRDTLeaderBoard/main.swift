@@ -12,17 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
+import DistributedActors
 import NIO
 
-extension CRDT {
-    struct Gossip {
-        // TODO: would we want a simplified seen table -- perhaps a "seen set" with members whom we know have seen this...?
-
-        let deltas: [CRDT.Identity: Delta]
-    }
-}
-
-extension CRDT.Gossip: Codable {
-    // Codable: synthesized conformance
-}
+try DistributedLeaderBoard().run(for: .seconds(60))

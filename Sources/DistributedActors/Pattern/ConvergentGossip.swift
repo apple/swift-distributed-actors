@@ -21,15 +21,16 @@ internal final class ConvergentGossip<Payload: Codable> {
     // TODO: store Envelope and inside it the payload
     private var payload: Payload?
 
+    /// The "user" of this gossip instance, we notify it whenever we receive a new gossip message.
     private let notifyOnGossipRef: ActorRef<Payload>
 
-    // TODO: allow finding them via Receptionist, for Membership gossip we manage it directly in ClusterShell tho
-    private var peers: Set<ActorRef<ConvergentGossip<Payload>.Message>>
+    private var peers: Set<GossipPeerRef>
 
     fileprivate init(notifyOnGossipRef: ActorRef<Payload>, settings: Settings) {
         self.settings = settings
         self.payload = nil
-        self.peers = [] // TODO: passed in configuration to configure how we find peers
+        self.peers = []
+
         // TODO: or the entire envelope?
         self.notifyOnGossipRef = notifyOnGossipRef
     }
@@ -37,10 +38,7 @@ internal final class ConvergentGossip<Payload: Codable> {
     var behavior: Behavior<Message> {
         .setup { context in
             self.scheduleNextGossipRound(context: context)
-
-            // TODO: those timers depend on what the peer lookup strategy is
-            // context.system.cluster.autoUpdatedMembership(context) // but we don't offer it for Behaviors, just Actor<>...
-            // context.system.cluster.events.subscribe(context.messageAdapter { event in Message._clusterEvent(event) }) // TODO: implement this
+            self.initPeerDiscovery(context, settings: self.settings)
 
             return Behavior<Message>.receiveMessage {
                 switch $0 {
@@ -70,20 +68,6 @@ internal final class ConvergentGossip<Payload: Codable> {
         }
     }
 
-    private func onIntroducePeer(_ context: ActorContext<Message>, peer: GossipPeerRef) {
-        if self.peers.insert(context.watch(peer)).inserted {
-            context.log.trace("Got introduced to peer [\(peer)], pushing initial gossip immediately", metadata: [
-                "gossip/peerCount": "\(self.peers.count)",
-                "gossip/peers": "\(self.peers.map { $0.address })",
-            ])
-
-            // TODO: implement this rather as "high priority peer to gossip to"
-            self.sendGossip(context, to: peer)
-            // TODO: consider if we should do a quick gossip to any new peers etc
-            // TODO: peers are removed when they die, no manual way to do it
-        }
-    }
-
     private func receiveGossip(_ context: ActorContext<ConvergentGossip.Message>, envelope: ConvergentGossip.GossipEnvelope) {
         context.log.trace("Received gossip: \(envelope)", metadata: [
             "gossip/current": "\(String(reflecting: self.payload))",
@@ -106,9 +90,13 @@ internal final class ConvergentGossip<Payload: Codable> {
     private func onPeriodicGossipTick(_ context: ActorContext<Message>) {
         self.scheduleNextGossipRound(context: context)
 
-        if let target = self.peers.shuffled().first {
+        if let target = selectPeersToGossipWith() {
             self.sendGossip(context, to: target)
         }
+    }
+
+    private func selectPeersToGossipWith() -> ActorRef<Message>? {
+        self.peers.shuffled().first
     }
 
     private func sendGossip(_ context: ActorContext<Message>, to target: GossipPeerRef) {
@@ -141,6 +129,44 @@ internal final class ConvergentGossip<Payload: Codable> {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ConvergentGossip: Peer Discovery
+
+extension ConvergentGossip {
+
+    private func initPeerDiscovery(_ context: ActorContext<Message>, settings: ConvergentGossip.Settings) {
+        switch self.settings.peerDiscovery {
+        case .manuallyIntroduced:
+            return // nothing to do, peers will be introduced manually
+
+        case .fromReceptionistListing(let key):
+            context.system.receptionist.register(context.myself, key: key)
+            context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
+                listing.refs.forEach { self.onIntroducePeer(context, peer: $0) }
+            })
+        }
+    }
+
+    ///
+    ///
+    /// - Parameters:
+    ///   - context:
+    ///   - peer:
+    private func onIntroducePeer(_ context: ActorContext<Message>, peer: GossipPeerRef) {
+        if self.peers.insert(context.watch(peer)).inserted {
+            context.log.trace("Got introduced to peer [\(peer)], pushing initial gossip immediately", metadata: [
+                "gossip/peerCount": "\(self.peers.count)",
+                "gossip/peers": "\(self.peers.map { $0.address })",
+            ])
+
+            // TODO: implement this rather as "high priority peer to gossip to"
+            self.sendGossip(context, to: peer)
+            // TODO: consider if we should do a quick gossip to any new peers etc
+            // TODO: peers are removed when they die, no manual way to do it
+        }
+    }
+}
+
 extension ConvergentGossip {
     enum Message {
         // gossip
@@ -162,6 +188,9 @@ extension ConvergentGossip {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: GossipControl
+
 extension ConvergentGossip {
     typealias Ref = ActorRef<ConvergentGossip<Payload>.Message>
 
@@ -177,11 +206,14 @@ extension ConvergentGossip {
 }
 
 internal struct ConvergentGossipControl<Payload: Codable> {
-    // TODO: rather let's hide it trough methods
     private let ref: ConvergentGossip<Payload>.Ref
 
     init(_ ref: ConvergentGossip<Payload>.Ref) {
         self.ref = ref
+    }
+
+    func add(payload: Payload) {
+        fatalError("Adding payloads not implemented yet, was: \(payload) to \(self.ref)")
     }
 
     func update(payload: Payload) {
@@ -191,14 +223,5 @@ internal struct ConvergentGossipControl<Payload: Codable> {
     /// Introduce a peer to the gossip group
     func introduce(peer: ConvergentGossip<Payload>.Ref) {
         self.ref.tell(.introducePeer(peer))
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ConvergentGossip Settings
-
-extension ConvergentGossip {
-    struct Settings {
-        var gossipInterval: TimeAmount = .seconds(1)
     }
 }

@@ -97,7 +97,7 @@ public final class ActorSystem {
 
     public var log: Logger {
         var l = ActorLogger.make(system: self)
-        l.logLevel = self.settings.defaultLogLevel
+        l.logLevel = self.settings.logging.defaultLevel
         return l
     }
 
@@ -182,7 +182,7 @@ public final class ActorSystem {
             context[metadataKey: "nodeName"] = .stringConvertible(name)
             return ActorOriginLogHandler(context)
         })
-        deadLogger.logLevel = settings.defaultLogLevel
+        deadLogger.logLevel = settings.logging.defaultLevel
 
         self._deadLetters = ActorRef(.deadLetters(.init(deadLogger, address: ActorAddress._deadLetters, system: self)))
 

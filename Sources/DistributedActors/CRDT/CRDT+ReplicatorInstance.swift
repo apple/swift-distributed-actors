@@ -78,7 +78,7 @@ extension CRDT.Replicator {
         /// - Parameter data: The full CRDT to write.
         /// - Parameter deltaMerge: True if merge can be done with the delta only; false if full state merge is required.
         /// - Returns: `WriteDirective` indicating if the write has succeeded or failed.
-        func write(_ id: Identity, _ data: AnyStateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective {
+        func write(_ id: CRDT.Identity, _ data: AnyStateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective {
             switch self.dataStore[id] {
             case .none: // New CRDT; just add to store
                 var data = data
@@ -134,7 +134,7 @@ extension CRDT.Replicator {
         /// - Parameter id: Identity of the CRDT.
         /// - Parameter delta: The delta of the CRDT.
         /// - Returns: `WriteDeltaDirective` indicating if the write has succeeded or failed.
-        func writeDelta(_ id: Identity, _ delta: AnyStateBasedCRDT) -> WriteDeltaDirective {
+        func writeDelta(_ id: CRDT.Identity, _ delta: AnyStateBasedCRDT) -> WriteDeltaDirective {
             switch self.dataStore[id] {
             case .none:
                 // Cannot do anything if delta (i.e., partial state) is sent and full CRDT is unknown.
@@ -167,7 +167,7 @@ extension CRDT.Replicator {
             case notFound
         }
 
-        func read(_ id: Identity) -> ReadDirective {
+        func read(_ id: CRDT.Identity) -> ReadDirective {
             guard let stored = self.dataStore[id] else {
                 return .notFound
             }
@@ -181,7 +181,7 @@ extension CRDT.Replicator {
             case applied
         }
 
-        func delete(_ id: Identity) -> DeleteDirective {
+        func delete(_ id: CRDT.Identity) -> DeleteDirective {
             self.dataStore.removeValue(forKey: id)
             self.tombstones.insert(id)
             return .applied

@@ -12,6 +12,12 @@ var targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActors"],
         path: "Sources/SampleDiningPhilosophers"
     ),
+    // Example app showcasing the use of CRDTs to build a distributed "leader board" and "high score" system
+    .target(
+        name: "SampleDistributedCRDTLeaderBoard",
+        dependencies: ["DistributedActors"],
+        path: "Sources/SampleDistributedCRDTLeaderBoard"
+    ),
     .target(
         name: "SampleLetItCrash",
         dependencies: ["DistributedActors"],
