@@ -121,4 +121,3 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
 public protocol ResettableCRDT {
     mutating func reset()
 }
-

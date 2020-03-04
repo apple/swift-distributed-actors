@@ -5,6 +5,7 @@
 *.app
 
 Instruments/ActorInstruments/ActorInstruments.xcodeproj/xcuserdata
+Instruments/ActorInstruments/ActorInstruments.xcodeproj/project.xcworkspace/xcuserdata
 
 /.build
 /Samples/.build
