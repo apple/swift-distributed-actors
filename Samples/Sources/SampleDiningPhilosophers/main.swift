@@ -32,4 +32,9 @@ print("|                                                         |")
 print("| USAGE: swift run SampleDiningPhilosophers [dist]        |")
 print("===-----------------------------------------------------===")
 
+switch CommandLine.arguments.dropFirst().first {
+case "dist":
     try DistributedDiningPhilosophers().run(for: .seconds(10))
+default:
+    try DiningPhilosophers().run(for: .seconds(10))
+}
