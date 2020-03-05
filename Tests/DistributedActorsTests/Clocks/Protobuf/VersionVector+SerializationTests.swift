@@ -19,7 +19,7 @@ import XCTest
 final class VersionVectorSerializationTests: ActorSystemTestBase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
-            settings.serialization.registerProtobufRepresentable(for: ReplicaId.self, underId: 1001)
+            settings.serialization.registerProtobufRepresentable(for: ReplicaID.self, underId: 1001)
             settings.serialization.registerProtobufRepresentable(for: VersionVector.self, underId: 1002)
             settings.serialization.registerProtobufRepresentable(for: VersionDot.self, underId: 1003)
         }
@@ -29,14 +29,14 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
     let actorB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: ReplicaId
+    // MARK: ReplicaID
 
-    func test_serializationOf_ReplicaId_actorAddress() throws {
+    func test_serializationOf_ReplicaID_actorAddress() throws {
         try shouldNotThrow {
-            let r = ReplicaId.actorAddress(self.actorA)
+            let r = ReplicaID.actorAddress(self.actorA)
 
             let bytes = try system.serialization.serialize(message: r)
-            let deserialized = try system.serialization.deserialize(ReplicaId.self, from: bytes)
+            let deserialized = try system.serialization.deserialize(ReplicaID.self, from: bytes)
 
             "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A")
         }

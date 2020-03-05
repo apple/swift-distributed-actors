@@ -37,10 +37,19 @@ public enum CRDT {
 //    pure CRDT automatically ("active" owned-CRDT).
 
 extension CRDT {
+
     /// Wrap around a `CvRDT` instance to associate it with an owning actor.
+    ///
+    /// - Concurrency: Only the actor which _owns_ this value may access its `lastObservedValue`.
+    /// Thread-safety is guaranteed thanks to the actor synchronizing and performing all updates to the
+    /// actor owned
     public class ActorOwned<DataType: CvRDT> {
-        let id: CRDT.Identity
-        var data: DataType
+        public let id: CRDT.Identity
+
+        /// Underlying `CvRDT` data type.
+        ///
+        /// May be accessed (safely) only by the owning actor.
+        public var data: DataType
 
         var _owner: ActorOwnedContext<DataType>?
         var owner: ActorOwnedContext<DataType> {

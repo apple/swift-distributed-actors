@@ -20,9 +20,9 @@ final class VersionVectorTests: XCTestCase {
     private typealias VV = VersionVector
     private typealias V = VersionVector.Version
 
-    private let replicaA = ReplicaId.actorAddress(try! ActorPath._user.appending("A").makeLocalAddress(incarnation: .random()))
-    private let replicaB = ReplicaId.actorAddress(try! ActorPath._user.appending("B").makeLocalAddress(incarnation: .random()))
-    private let replicaC = ReplicaId.actorAddress(try! ActorPath._user.appending("C").makeLocalAddress(incarnation: .random()))
+    private let replicaA = ReplicaID.actorAddress(try! ActorPath._user.appending("A").makeLocalAddress(incarnation: .random()))
+    private let replicaB = ReplicaID.actorAddress(try! ActorPath._user.appending("B").makeLocalAddress(incarnation: .random()))
+    private let replicaC = ReplicaID.actorAddress(try! ActorPath._user.appending("C").makeLocalAddress(incarnation: .random()))
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector tests

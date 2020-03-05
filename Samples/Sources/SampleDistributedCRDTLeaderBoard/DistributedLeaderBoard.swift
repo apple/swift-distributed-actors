@@ -44,14 +44,13 @@ struct DistributedLeaderboard {
         third.cluster.join(node: second.settings.cluster.node)
 
         while first.cluster.membershipSnapshot.members(atLeast: .up).count < 3 {
-            pprint("first.cluster.membershipSnapshot = \(String(reflecting: first.cluster.membershipSnapshot))")
             Thread.sleep(.seconds(1))
         }
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         let player1 = try first.spawn("player-one", self.player())
-        let player2 = try second.spawn("player-2", self.player())
-        let player3 = try third.spawn("player-3", self.player())
+        let player2 = try second.spawn("player-two", self.player())
+        let player3 = try third.spawn("player-three", self.player())
 
         // The "game" is a form of waiting game -- sit back and relax, as the players (randomly) score points
         // and race to the top position. While they do so, they independently update a GCounter of the "total score"
@@ -65,16 +64,19 @@ struct DistributedLeaderboard {
 
 extension DistributedLeaderboard {
 
-
     enum GameEvent {
         case scorePoints(Int)
     }
 
     func player() -> Behavior<GameEvent> {
         .setup { context in
+            context.log.info("Ready: \(context.name)")
+
+            /// Local score, of how much this player has contributed to the total score
             var myScore: Int = 0
 
-            let totalScore: CRDT.ActorOwned<CRDT.GCounter> = CRDT.ActorOwned(ownerContext: context, id: DataID.totalScore, data: CRDT.GCounter(owner: context.address))
+            /// A cluster-wise distributed counter; each time we perform updates to it, the update will be replicated.
+            let totalScore: CRDT.ActorOwned<CRDT.GCounter> = CRDT.GCounter.makeOwned(by: context, id: DataID.totalScore)
             _ = totalScore.increment(by: 1, writeConsistency: .local, timeout: .seconds(1))
 
             return .receiveMessage {
@@ -82,7 +84,9 @@ extension DistributedLeaderboard {
                 case .scorePoints(let points):
                     myScore += points
                     _ = totalScore.increment(by: points, writeConsistency: .quorum, timeout: .seconds(1))
-                    context.log.info("Scored +\(points), sum: \(myScore), global points sum: \(totalScore.lastObservedValue)")
+                    context.log.info("Scored +\(points), my score: \(myScore), global total score: \(totalScore.lastObservedValue)"
+                        //     , metadata: ["total/score": "\(totalScore.data)"]
+                    )
                 }
 
                 return .same
@@ -110,11 +114,9 @@ extension DistributedLeaderboard {
             }
         }
     }
-
-
 }
 
-
 struct DataID {
-    static let totalScore = CRDT.Identity("total-score-counter")
+    static let totalScore = "total-score-counter"
+    static let totalScoreIdentity = CRDT.Identity(DataID.totalScore)
 }

@@ -17,11 +17,11 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTLWWMapTests: XCTestCase {
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
     func test_LWWMap_basicOperations() throws {
-        var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
+        var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
 
         m1.underlying.shouldEqual([:])
         m1.keys.isEmpty.shouldBeTrue()
@@ -92,7 +92,7 @@ final class CRDTLWWMapTests: XCTestCase {
     }
 
     func test_LWWMap_update_remove_shouldUpdateDelta() throws {
-        var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
+        var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
 
         m1.set(forKey: "foo", value: 5)
         m1.count.shouldEqual(1)
@@ -176,9 +176,9 @@ final class CRDTLWWMapTests: XCTestCase {
     }
 
     func test_LWWMap_merge_shouldMutate() throws {
-        var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
+        var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
 
-        var m2 = CRDT.LWWMap<String, Int>(replicaId: self.replicaB, defaultValue: 0)
+        var m2 = CRDT.LWWMap<String, Int>(replicaID: self.replicaB, defaultValue: 0)
         // ORSet `keys`: [(B,1): "foo"]
         // `values`: ["foo": 5]
         m2.set(forKey: "foo", value: 5) // (B,1)
@@ -234,7 +234,7 @@ final class CRDTLWWMapTests: XCTestCase {
     }
 
     func test_LWWMap_mergeDelta_shouldMutate() throws {
-        var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
+        var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
         // ORSet `keys`: [(A,1): "foo", (A,2): "bar"]
         // `values`: ["foo": 8, "bar": 6]
         m1.set(forKey: "foo", value: 8) // (A,1)
@@ -243,7 +243,7 @@ final class CRDTLWWMapTests: XCTestCase {
         // Ensure the following changes are "newer"
         Thread.sleep(until: Date().addingTimeInterval(0.005))
 
-        var m2 = CRDT.LWWMap<String, Int>(replicaId: self.replicaB, defaultValue: 0)
+        var m2 = CRDT.LWWMap<String, Int>(replicaID: self.replicaB, defaultValue: 0)
         // ORSet `keys`: [(B,1): "bar", (B,2): "baz"]
         // `values`: ["bar": 3, "baz": 5]
         m2.set(forKey: "bar", value: 3) // (B,1)
@@ -282,7 +282,7 @@ final class CRDTLWWMapTests: XCTestCase {
     }
 
     func test_LWWMap_resetValue_resetAllValues() throws {
-        var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
+        var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
         m1.set(forKey: "foo", value: 2)
         m1.set(forKey: "bar", value: 6) // (A,2)
 

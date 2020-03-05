@@ -37,7 +37,7 @@ message CRDTVersionContext {
 // ***** CRDT.VersionedContainer *****
 
 message CRDTVersionedContainer {
-    VersionReplicaId replicaId = 1;
+    VersionReplicaID replicaID = 1;
     CRDTVersionContext versionContext = 2;
     repeated VersionDottedElementEnvelope elementByBirthDot = 3;
     CRDTVersionedContainerDelta delta = 4;
@@ -54,7 +54,7 @@ message CRDTVersionedContainerDelta {
 
 message CRDTGCounter {
     message ReplicaState {
-        VersionReplicaId replicaId = 1;
+        VersionReplicaID replicaID = 1;
         uint64 count = 2;
     }
 
@@ -62,8 +62,8 @@ message CRDTGCounter {
         repeated ReplicaState state = 1;
     }
 
-    VersionReplicaId replicaId = 1;
-    // Not a map since we cannot use `replicaId` as key
+    VersionReplicaID replicaID = 1;
+    // Not a map since we cannot use `replicaID` as key
     repeated ReplicaState state = 2;
     Delta delta = 3;
 }
@@ -71,7 +71,7 @@ message CRDTGCounter {
 // ***** CRDT.ORSet *****
 
 message CRDTORSet {
-    VersionReplicaId replicaId = 1;
+    VersionReplicaID replicaID = 1;
     // Includes delta
     CRDTVersionedContainer state = 2;
 }

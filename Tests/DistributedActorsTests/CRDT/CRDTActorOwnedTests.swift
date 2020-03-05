@@ -36,7 +36,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
     private func actorOwnedGCounterBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<GCounterCommand> {
         return .setup { context in
-            let g = CRDT.GCounter.owned(by: context, id: id)
+            let g = CRDT.GCounter.makeOwned(by: context, id: id)
             g.onUpdate { id, gg in
                 context.log.trace("GCounter \(id) updated with new value: \(gg.value)", metadata: gg.metadata(context))
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
@@ -90,7 +90,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
         let ownerEventPB = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
 
         let behavior: Behavior<String> = .setup { context in
-            let g = CRDT.GCounter.owned(by: context, id: "test-gcounter")
+            let g = CRDT.GCounter.makeOwned(by: context, id: "test-gcounter")
             g.onUpdate { _, _ in
                 ownerEventPA.tell(.ownerDefinedOnUpdate)
             }
@@ -336,7 +336,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
     private func actorOwnedORMapBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORMapCommand> {
         return .setup { context in
-            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, valueInitializer: { CRDT.GCounter(replicaId: .actorAddress(context.address)) })
+            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, valueInitializer: { CRDT.GCounter(replicaID: .actorAddress(context.address)) })
             m.onUpdate { id, mm in
                 context.log.trace("ORMap \(id) updated with new value: \(mm.underlying)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)

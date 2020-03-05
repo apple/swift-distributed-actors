@@ -23,7 +23,7 @@ import XCTest
 extension VersionVectorSerializationTests {
     static var allTests: [(String, (VersionVectorSerializationTests) -> () throws -> Void)] {
         return [
-            ("test_serializationOf_ReplicaId_actorAddress", test_serializationOf_ReplicaId_actorAddress),
+            ("test_serializationOf_ReplicaID_actorAddress", test_serializationOf_ReplicaID_actorAddress),
             ("test_serializationOf_VersionVector", test_serializationOf_VersionVector),
             ("test_serializationOf_VersionVector_empty", test_serializationOf_VersionVector_empty),
             ("test_serializationOf_VersionDot", test_serializationOf_VersionDot),

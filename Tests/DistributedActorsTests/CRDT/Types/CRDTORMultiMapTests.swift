@@ -17,11 +17,11 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTORMultiMapTests: XCTestCase {
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
     func test_ORMultiMap_basicOperations() throws {
-        var m1 = CRDT.ORMultiMap<String, Int>(replicaId: self.replicaA)
+        var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
 
         m1.keys.isEmpty.shouldBeTrue()
         m1.values.isEmpty.shouldBeTrue()
@@ -84,7 +84,7 @@ final class CRDTORMultiMapTests: XCTestCase {
     }
 
     func test_ORMultiMap_GCounter_add_remove_shouldUpdateDelta() throws {
-        var m1 = CRDT.ORMultiMap<String, Int>(replicaId: self.replicaA)
+        var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
 
         m1.add(forKey: "s1", 9)
         m1.count.shouldEqual(1)
@@ -168,8 +168,8 @@ final class CRDTORMultiMapTests: XCTestCase {
     }
 
     func test_ORMultiMap_merge_shouldMutate() throws {
-        var m1 = CRDT.ORMultiMap<String, Int>(replicaId: self.replicaA)
-        var m2 = CRDT.ORMultiMap<String, Int>(replicaId: self.replicaB)
+        var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
+        var m2 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaB)
 
         // ORSet `keys`: [(B,1): "s1"]
         // `values`: ["s1": [5]]
@@ -223,13 +223,13 @@ final class CRDTORMultiMapTests: XCTestCase {
     }
 
     func test_ORMultiMap_mergeDelta_shouldMutate() throws {
-        var m1 = CRDT.ORMultiMap<String, Int>(replicaId: self.replicaA)
+        var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [8], "s2": [6]]
         m1.add(forKey: "s1", 8) // (A,1)
         m1.add(forKey: "s2", 6) // (A,2)
 
-        var m2 = CRDT.ORMultiMap<String, Int>(replicaId: self.replicaB)
+        var m2 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaB)
         // ORSet `keys`: [(B,1): "s2", (B,2): "s3", (B,3): "s1"]
         // `values`: ["s1": [2], "s2": [3], "s3": [5]]
         m2.add(forKey: "s2", 3) // (B,1)
@@ -270,7 +270,7 @@ final class CRDTORMultiMapTests: XCTestCase {
     }
 
     func test_ORMultiMap_removeAll() throws {
-        var m1 = CRDT.ORMultiMap<String, Int>(replicaId: self.replicaA)
+        var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
         m1.add(forKey: "s1", 2)
         m1.add(forKey: "s2", 6)
 

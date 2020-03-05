@@ -52,8 +52,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_VersionContext() throws {
         try shouldNotThrow {
-            let replicaAlpha = ReplicaId.actorAddress(self.ownerAlpha)
-            let replicaBeta = ReplicaId.actorAddress(self.ownerBeta)
+            let replicaAlpha = ReplicaID.actorAddress(self.ownerAlpha)
+            let replicaBeta = ReplicaID.actorAddress(self.ownerBeta)
 
             let vv = VersionVector([(replicaAlpha, V(1)), (replicaBeta, V(3))])
             let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaAlpha, V(4))])
@@ -87,8 +87,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_VersionedContainer_VersionedContainerDelta() throws {
         try shouldNotThrow {
-            let replicaAlpha = ReplicaId.actorAddress(self.ownerAlpha)
-            let replicaBeta = ReplicaId.actorAddress(self.ownerBeta)
+            let replicaAlpha = ReplicaID.actorAddress(self.ownerAlpha)
+            let replicaBeta = ReplicaID.actorAddress(self.ownerBeta)
 
             let vv = VersionVector([(replicaAlpha, V(2)), (replicaBeta, V(1))])
             let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaBeta, V(3))])
@@ -96,14 +96,14 @@ final class CRDTSerializationTests: ActorSystemTestBase {
                 VersionDot(replicaAlpha, V(1)): "hello",
                 VersionDot(replicaBeta, V(3)): "world",
             ]
-            var versionedContainer = CRDT.VersionedContainer(replicaId: replicaAlpha, versionContext: versionContext, elementByBirthDot: elementByBirthDot)
+            var versionedContainer = CRDT.VersionedContainer(replicaID: replicaAlpha, versionContext: versionContext, elementByBirthDot: elementByBirthDot)
             // Adding an element should set delta
             versionedContainer.add("bye")
 
             let bytes = try system.serialization.serialize(message: versionedContainer)
             let deserialized = try system.serialization.deserialize(CRDT.VersionedContainer<String>.self, from: bytes)
 
-            "\(deserialized.replicaId)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             "\(deserialized.versionContext.vv)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 3") // adding "bye" bumps version to 3
             "\(deserialized.versionContext.vv)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/beta: 1")
             "\(deserialized.versionContext.gaps)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/beta,3)")
@@ -124,12 +124,12 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_VersionedContainer_empty() throws {
         try shouldNotThrow {
-            let versionedContainer = CRDT.VersionedContainer<String>(replicaId: .actorAddress(ownerAlpha))
+            let versionedContainer = CRDT.VersionedContainer<String>(replicaID: .actorAddress(ownerAlpha))
 
             let bytes = try system.serialization.serialize(message: versionedContainer)
             let deserialized = try system.serialization.deserialize(CRDT.VersionedContainer<String>.self, from: bytes)
 
-            "\(deserialized.replicaId)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             deserialized.versionContext.vv.isEmpty.shouldBeTrue()
             deserialized.versionContext.gaps.isEmpty.shouldBeTrue()
             deserialized.elementByBirthDot.isEmpty.shouldBeTrue()
@@ -142,21 +142,21 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_GCounter() throws {
         try shouldNotThrow {
-            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
             g1.increment(by: 2)
 
             let bytes = try system.serialization.serialize(message: g1)
             let deserialized = try system.serialization.deserialize(CRDT.GCounter.self, from: bytes)
 
             g1.value.shouldEqual(deserialized.value)
-            "\(deserialized.replicaId)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             "\(deserialized.state)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 2]")
         }
     }
 
     func test_serializationOf_GCounter_delta() throws {
         try shouldNotThrow {
-            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
             g1.increment(by: 13)
 
             let bytes = try system.serialization.serialize(message: g1.delta!) // !-safe, must have a delta, we just changed it
@@ -171,7 +171,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_ORSet() throws {
         try shouldNotThrow {
-            var set: CRDT.ORSet<String> = CRDT.ORSet(replicaId: .actorAddress(self.ownerAlpha))
+            var set: CRDT.ORSet<String> = CRDT.ORSet(replicaID: .actorAddress(self.ownerAlpha))
             set.add("hello") // (alpha, 1)
             set.add("world") // (alpha, 2)
             set.remove("nein")
@@ -180,7 +180,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let bytes = try system.serialization.serialize(message: set)
             let deserialized = try system.serialization.deserialize(CRDT.ORSet<String>.self, from: bytes)
 
-            "\(deserialized.replicaId)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             deserialized.elements.shouldEqual(set.elements)
             "\(deserialized.state.versionContext.vv)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 2]")
             deserialized.state.versionContext.gaps.isEmpty.shouldBeTrue() // changes are contiguous so no gaps
@@ -195,7 +195,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_ORSet_delta() throws {
         try shouldNotThrow {
-            var set: CRDT.ORSet<String> = CRDT.ORSet(replicaId: .actorAddress(self.ownerAlpha))
+            var set: CRDT.ORSet<String> = CRDT.ORSet(replicaID: .actorAddress(self.ownerAlpha))
             set.add("hello") // (alpha, 1)
             set.add("world") // (alpha, 2)
             set.remove("nein")

@@ -66,6 +66,7 @@ XCTMain([
     testCase(CRDTReplicationSerializationTests.allTests),
     testCase(CRDTReplicatorInstanceTests.allTests),
     testCase(CRDTReplicatorShellClusteredTests.allTests),
+    testCase(CRDTReplicatorShellClusteredTests.allTests),
     testCase(CRDTSerializationTests.allTests),
     testCase(CRDTVersioningTests.allTests),
     testCase(ClusterAssociationTests.allTests),

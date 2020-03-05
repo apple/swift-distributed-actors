@@ -3,7 +3,6 @@
     <id>com.apple.actors.ActorInstruments</id>
     <version>0.4.1</version>
     <title>Actors</title>
-
     <owner>
         <name>Konrad 'ktoso' Malawski</name>
         <email>ktoso@apple.com</email>
@@ -23,25 +22,25 @@
     <os-signpost-interval-schema>
         <id>actor-lifecycle-interval</id>
         <title>Actor Lifecycle</title>
-
+        
         <attribute>
             <name>include-system-actors</name>
-            <required>false</required>
-            <note>Specifies if the table should limit the data to ALL or a specific pid</note>
-            <value-pattern>true|false</value-pattern>
-        </attribute>
-
+             <required>false</required>
+             <note>Specifies if the table should limit the data to ALL or a specific pid</note>
+             <value-pattern>true|false</value-pattern>
+         </attribute>
+        
         <subsystem>"com.apple.actors"</subsystem>
         <category>"Lifecycle"</category>
         <name>"Actor Lifecycle"</name>
-
+        
         <start-pattern>
             <message>"spawned,node:" ?node ",path:" ?path</message>
         </start-pattern>
         <end-pattern>
             <message>"stopped,reason:" ?reason</message>
         </end-pattern>
-
+        
         <column>
             <mnemonic>actor-node</mnemonic>
             <title>Actor Node</title>
@@ -60,21 +59,21 @@
             <type>string</type>
             <expression>(str-cat ?node ?path)</expression>
         </column>
-
-        <!--
-          <column>
-              <mnemonic>actor-is-system</mnemonic>
-              <title>Is System Actor</title>
-              <type>boolean</type>
-              <expression>(if (eq (str-index "/system/" ?actor-path) 1) then true else false)</expression>
-          </column>
-          <column>
-              <mnemonic>actor-is-user</mnemonic>
-              <title>Is User Actor</title>
-              <type>boolean</type>
-              <expression>(if (eq (str-index "/user/" ?actor-path) 1) then true else false)</expression>
-          </column>
-        -->
+      
+      <!--
+        <column>
+            <mnemonic>actor-is-system</mnemonic>
+            <title>Is System Actor</title>
+            <type>boolean</type>
+            <expression>(if (eq (str-index "/system/" ?actor-path) 1) then true else false)</expression>
+        </column>
+        <column>
+            <mnemonic>actor-is-user</mnemonic>
+            <title>Is User Actor</title>
+            <type>boolean</type>
+            <expression>(if (eq (str-index "/user/" ?actor-path) 1) then true else false)</expression>
+        </column>
+      -->
 
         <column>
             <mnemonic>actor-stop-reason</mnemonic>
@@ -315,12 +314,12 @@
             <expression>(str-cat ?sender-node ?sender-path)</expression>
         </column>
 
-        <column>
-            <mnemonic>actor-ask-question</mnemonic>
-            <title>Question</title>
-            <type>string</type>
-            <expression>?question</expression>
-        </column>
+         <column>
+             <mnemonic>actor-ask-question</mnemonic>
+             <title>Question</title>
+             <type>string</type>
+             <expression>?question</expression>
+         </column>
         <column>
             <mnemonic>actor-ask-question-type</mnemonic>
             <title>Question Type</title>
@@ -328,34 +327,34 @@
             <expression>?question-type</expression>
         </column>
 
+         <column>
+             <mnemonic>actor-ask-answer</mnemonic>
+             <title>Answer</title>
+             <type>string</type>
+             <expression>?answer</expression>
+         </column>
         <column>
-            <mnemonic>actor-ask-answer</mnemonic>
-            <title>Answer</title>
-            <type>string</type>
-            <expression>?answer</expression>
-        </column>
-        <column>
-            <mnemonic>actor-ask-answer-type</mnemonic>
-            <title>Answer Type</title>
-            <type>string</type>
-            <expression>?answer-type</expression>
-        </column>
+             <mnemonic>actor-ask-answer-type</mnemonic>
+             <title>Answer Type</title>
+             <type>string</type>
+             <expression>?answer-type</expression>
+         </column>
 
-        <column>
-            <mnemonic>actor-ask-error</mnemonic>
-            <title>Answer Error</title>
-            <type>string</type>
-            <expression>?error</expression>
-        </column>
-        <column>
-            <mnemonic>actor-ask-error-type</mnemonic>
-            <title>Answer Error Type</title>
-            <type>string</type>
-            <expression>?error-type</expression>
-        </column>
+         <column>
+             <mnemonic>actor-ask-error</mnemonic>
+             <title>Answer Error</title>
+             <type>string</type>
+             <expression>?error</expression>
+         </column>
+         <column>
+             <mnemonic>actor-ask-error-type</mnemonic>
+             <title>Answer Error Type</title>
+             <type>string</type>
+             <expression>?error-type</expression>
+         </column>
 
     </os-signpost-interval-schema>
-    
+
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- MARK: Schema: Transport, Serialization -->
     <os-signpost-interval-schema>
@@ -513,7 +512,7 @@
             </boolean-value>
         </create-parameter>
         -->
-
+        
         <create-table>
             <id>actor-lifecycle-intervals</id>
             <schema-ref>actor-lifecycle-interval</schema-ref>
@@ -574,7 +573,7 @@
             <column>actor-node</column>
             <column>actor-path</column>
         </list>
-
+        
         <!--
         <engineering-type-track>
             <table-ref>actor-lifecycle-spawns</table-ref>
@@ -591,7 +590,7 @@
 
     </instrument>
 
-
+    
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- MARK: Instrument: Messages -->
     <instrument>
@@ -608,12 +607,12 @@
             </level>
         </slice-type-hierarchy>
         -->
-
+        
         <import-parameter>
             <from-scope>trace</from-scope>
             <name>?target-pid</name>
         </import-parameter>
-
+        
         <create-table>
             <id>messages-received</id>
             <schema-ref>actor-message-received</schema-ref>
@@ -628,7 +627,7 @@
             <lane>
                 <title>Received</title>
                 <table-ref>messages-received</table-ref>
-
+                
                 <plot-template>
                     <instance-by>actor-recipient-path</instance-by>
                     <label-format>%s</label-format>
@@ -637,7 +636,7 @@
                 </plot-template>
             </lane>
         </graph>
-
+        
         <list>
             <title>List: Messages (Received)</title>
             <table-ref>messages-received</table-ref>
@@ -650,7 +649,7 @@
             <column>actor-message</column>
             <column>actor-message-type</column>
         </list>
-
+    
     </instrument>
 
     <instrument>
@@ -666,28 +665,28 @@
         </create-table>
 
         <graph>
-            <title>Messages: Told</title>
-            <lane>
-                <title>Told</title>
-                <table-ref>messages-told</table-ref>
+             <title>Messages: Told</title>
+             <lane>
+                 <title>Told</title>
+                 <table-ref>messages-told</table-ref>
 
-                <plot-template>
-                    <instance-by>actor-recipient-path</instance-by>
-                    <label-format>%s</label-format>
-                    <value-from>actor-message-type</value-from>
-                    <label-from>actor-recipient-path</label-from>
-                </plot-template>
-
-                <!-- TODO: we dont have sender paths yet, needs context propagtion
-                <plot-template>
-                    <instance-by>actor-sender-path</instance-by>
-                    <label-format>%s</label-format>
-                    <value-from>actor-message-type</value-from>
-                    <label-from>actor-sender-path</label-from>
-                </plot-template>
-                -->
-            </lane>
-        </graph>
+                 <plot-template>
+                     <instance-by>actor-recipient-path</instance-by>
+                     <label-format>%s</label-format>
+                     <value-from>actor-message-type</value-from>
+                     <label-from>actor-recipient-path</label-from>
+                 </plot-template>
+                 
+                 <!-- TODO: we dont have sender paths yet, needs context propagtion
+                 <plot-template>
+                     <instance-by>actor-sender-path</instance-by>
+                     <label-format>%s</label-format>
+                     <value-from>actor-message-type</value-from>
+                     <label-from>actor-sender-path</label-from>
+                 </plot-template>
+                 -->
+             </lane>
+         </graph>
 
 
         <list>
@@ -717,19 +716,19 @@
         </create-table>
 
         <graph>
-            <title>Messages Asked</title>
-            <lane>
-                <title>Asked</title>
-                <table-ref>messages-asked</table-ref>
+           <title>Messages Asked</title>
+           <lane>
+               <title>Asked</title>
+               <table-ref>messages-asked</table-ref>
 
-                <plot>
-                    <value-from>duration</value-from>
+               <plot>
+                   <value-from>duration</value-from>
 
-                    <label-from>actor-ask-question</label-from>
-                    <!-- TODO: severity from if it was a timeout or not -->
-                </plot>
-            </lane>
-        </graph>
+                   <label-from>actor-ask-question</label-from>
+                   <!-- TODO: severity from if it was a timeout or not -->
+               </plot>
+           </lane>
+       </graph>
 
 
         <list>
@@ -747,7 +746,7 @@
             <column>actor-ask-answer</column>
             <column>actor-ask-error</column>
         </list>
-
+        
         <aggregation>
             <title>Summary: By Type</title>
             <table-ref>messages-asked</table-ref>
@@ -756,14 +755,14 @@
                     <column>actor-ask-question-type</column>
                 </level>
             </hierarchy>
-
+            
             <visit-on-focus>List: Messages (Asked)</visit-on-focus>
-
+            
             <column>
                 <count>actor-sender-node</count>
             </column>
         </aggregation>
-
+        
         <engineering-type-track>
             <table-ref>messages-asked</table-ref>
             <hierarchy>
@@ -848,7 +847,7 @@
             </column>
         </aggregation>
     </instrument>
-
+    
     <instrument>
         <id>com.apple.actors.instrument.transport.deserialization</id>
         <title>Actors Transport Deserialization</title>
@@ -921,5 +920,5 @@
     <template>
         <import-from-file>ActorInstruments.tracetemplate</import-from-file>
     </template>
-
+    
 </package>

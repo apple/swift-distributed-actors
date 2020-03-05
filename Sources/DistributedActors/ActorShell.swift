@@ -170,7 +170,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         super.init()
 
-        let addr = address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode)
+        let addr = address.withUniqueNode(system.settings.cluster.uniqueBindNode)
         self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, addr)
         self.instrumentation.actorSpawned()
         system.metrics.recordActorStart(self)

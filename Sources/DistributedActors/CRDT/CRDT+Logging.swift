@@ -34,7 +34,7 @@ extension CRDT.GCounter {
         [
             "crdt/type": "gcounter",
             "crdt/owner": "\(context.address)",
-            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/replicaID": "\(self.replicaID)",
             "crdt/gcounter/value": "\(self.value)",
             "crdt/gcounter/delta": "\(String(describing: self.delta))",
         ]
@@ -49,7 +49,7 @@ extension CRDT.LWWMap {
         [
             "crdt/type": "lwwmap",
             "crdt/owner": "\(context.address)",
-            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/replicaID": "\(self.replicaID)",
             "crdt/lwwmap/count": "\(self.count)",
             "crdt/lwwmap/delta": "\(String(describing: self.delta))",
         ]
@@ -64,7 +64,7 @@ extension CRDT.LWWRegister {
         [
             "crdt/type": "lwwregister",
             "crdt/owner": "\(context.address)",
-            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/replicaID": "\(self.replicaID)",
             "crdt/lwwreg/value": "\(self.value)",
             "crdt/lwwreg/clock": "\(self.clock)",
         ]
@@ -79,7 +79,7 @@ extension CRDT.ORSet {
         [
             "crdt/type": "orset",
             "crdt/owner": "\(context.address)",
-            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/replicaID": "\(self.replicaID)",
             "crdt/orset/count": "\(self.count)",
             "crdt/orset/delta": "\(String(describing: self.delta))",
         ]
@@ -94,7 +94,7 @@ extension CRDT.ORMap {
         [
             "crdt/type": "ormap",
             "crdt/owner": "\(context.address)",
-            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/replicaID": "\(self.replicaID)",
             "crdt/ormap/count": "\(self.count)",
             "crdt/ormap/delta": "\(String(describing: self.delta))",
         ]

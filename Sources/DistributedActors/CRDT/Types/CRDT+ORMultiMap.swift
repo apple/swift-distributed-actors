@@ -24,7 +24,7 @@ extension CRDT {
     public struct ORMultiMap<Key: Hashable, Value: Hashable>: NamedDeltaCRDT, ORMultiMapOperations {
         public typealias Delta = ORMapDelta<Key, ORSet<Value>>
 
-        public let replicaId: ReplicaId
+        public let replicaID: ReplicaID
 
         /// Underlying ORMap for storing pairs of key and its set of values and managing causal history and delta
         var state: ORMap<Key, ORSet<Value>>
@@ -53,10 +53,10 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId) {
-            self.replicaId = replicaId
-            self.state = .init(replicaId: replicaId) {
-                ORSet<Value>(replicaId: replicaId)
+        init(replicaID: ReplicaID) {
+            self.replicaID = replicaID
+            self.state = .init(replicaID: replicaID) {
+                ORSet<Value>(replicaID: replicaID)
             }
         }
 
@@ -158,8 +158,9 @@ extension CRDT.ActorOwned where DataType: ORMultiMapOperations {
 }
 
 extension CRDT.ORMultiMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMultiMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaId: .actorAddress(owner.address)))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
+        let replicaID: ReplicaID = .actorAddress(owner.address.withUniqueNode(owner.system.cluster.node))
+        return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: replicaID))
     }
 }
 

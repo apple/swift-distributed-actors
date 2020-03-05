@@ -17,8 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
     func test_registerOwner_shouldAddActorRefToOwnersSetForCRDT() throws {
         let replicator = CRDT.Replicator.Instance(.default)
@@ -44,7 +44,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 10)
 
         // Ensure g1 is not in data store
@@ -81,7 +81,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -119,7 +119,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -156,7 +156,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -193,9 +193,9 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1Alpha = CRDT.GCounter(replicaId: self.replicaA)
+        var g1Alpha = CRDT.GCounter(replicaID: self.replicaA)
         g1Alpha.increment(by: 1)
-        var g1Beta = CRDT.GCounter(replicaId: self.replicaB)
+        var g1Beta = CRDT.GCounter(replicaID: self.replicaB)
         g1Beta.increment(by: 10)
 
         // Write g1Alpha (as new so `deltaMerge` ignored)
@@ -227,7 +227,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -235,7 +235,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
-        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
+        var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
         s1.add(3)
 
         // Cannot write data of different data under `id`
@@ -250,7 +250,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("lwwreg-1")
-        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1 = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3)
 
         // Ensure r1 is not in data store
         guard case .notFound = replicator.read(id) else {
@@ -284,7 +284,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
 
         let id = CRDT.Identity("lwwreg-1")
         let r1aClock = WallTimeClock()
-        let r1a = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1aClock))
+        let r1a = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3, clock: .wallTime(r1aClock))
 
         // Write r1
         guard case .applied = replicator.write(id, r1a.asAnyStateBasedCRDT) else {
@@ -292,7 +292,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         }
 
         // Make sure the new value has a more recent timestamp for it to "win" the merge
-        let r1b = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1aClock.timestamp.addingTimeInterval(1))))
+        let r1b = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1aClock.timestamp.addingTimeInterval(1))))
 
         // Write the updated r1
         guard case .applied(let writeResult, let isNew) = replicator.write(id, r1b.asAnyStateBasedCRDT) else {
@@ -320,7 +320,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
 
         guard case .missingCRDTForDelta = replicator.writeDelta(id, g1.delta!.asAnyStateBasedCRDT) else { // ! safe because `increment` should set `delta`
@@ -332,7 +332,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
 
         // Write g1 to data store
@@ -367,7 +367,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("lwwreg-1")
-        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1 = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3)
 
         // Write r1 to data store
         guard case .applied = replicator.write(id, r1.asAnyStateBasedCRDT) else {
@@ -392,7 +392,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
 
         // Write g1 to data store

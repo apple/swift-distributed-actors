@@ -17,14 +17,14 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTORMapTests: XCTestCase {
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ORMap + GCounter tests
 
     func test_ORMap_GCounter_basicOperations() throws {
-        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaA, valueInitializer: { CRDT.GCounter(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaA, valueInitializer: { CRDT.GCounter(replicaID: self.replicaA) })
 
         m1.keys.isEmpty.shouldBeTrue()
         m1.values.isEmpty.shouldBeTrue()
@@ -79,7 +79,7 @@ final class CRDTORMapTests: XCTestCase {
     }
 
     func test_ORMap_GCounter_update_remove_shouldUpdateDelta() throws {
-        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaA, valueInitializer: { CRDT.GCounter(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaA, valueInitializer: { CRDT.GCounter(replicaID: self.replicaA) })
 
         m1.update(key: "g1") { $0.increment(by: 5) }
         m1.count.shouldEqual(1)
@@ -163,9 +163,9 @@ final class CRDTORMapTests: XCTestCase {
     }
 
     func test_ORMap_GCounter_merge_shouldMutate() throws {
-        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaA, valueInitializer: { CRDT.GCounter(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaA, valueInitializer: { CRDT.GCounter(replicaID: self.replicaA) })
 
-        var m2 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaB, valueInitializer: { CRDT.GCounter(replicaId: self.replicaB) })
+        var m2 = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaB, valueInitializer: { CRDT.GCounter(replicaID: self.replicaB) })
         // ORSet `keys`: [(B,1): "g1"]
         // `values`: ["g1": GCounter(value = 5)]
         m2.update(key: "g1") { // (B,1)
@@ -228,7 +228,7 @@ final class CRDTORMapTests: XCTestCase {
     }
 
     func test_ORMap_GCounter_mergeDelta_shouldMutate() throws {
-        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaA, valueInitializer: { CRDT.GCounter(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaA, valueInitializer: { CRDT.GCounter(replicaID: self.replicaA) })
         // ORSet `keys`: [(A,1): "g1", (A,2): "g2"]
         // `values`: ["g1": GCounter(value = 8), "g2": GCounter(value = 6)]
         m1.update(key: "g1") { // (A,1)
@@ -238,7 +238,7 @@ final class CRDTORMapTests: XCTestCase {
             $0.increment(by: 6)
         }
 
-        var m2 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaB, valueInitializer: { CRDT.GCounter(replicaId: self.replicaB) })
+        var m2 = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaB, valueInitializer: { CRDT.GCounter(replicaID: self.replicaB) })
         // ORSet `keys`: [(B,1): "g2", (B,2): "g3", (B,3): "g1"]
         // `values`: ["g1": GCounter(value = 2), "g2": GCounter(value = 3), "g3": GCounter(value = 5)]
         m2.update(key: "g2") { // (B,1)
@@ -285,7 +285,7 @@ final class CRDTORMapTests: XCTestCase {
     }
 
     func test_ORMap_GCounter_resetValue_resetAllValues() throws {
-        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaA, valueInitializer: { CRDT.GCounter(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaA, valueInitializer: { CRDT.GCounter(replicaID: self.replicaA) })
         m1.update(key: "g1") {
             $0.increment(by: 2)
         }
@@ -327,7 +327,7 @@ final class CRDTORMapTests: XCTestCase {
     // MARK: ORMap + ORSet tests
 
     func test_ORMap_ORSet_basicOperations() throws {
-        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaA) })
 
         m1.keys.isEmpty.shouldBeTrue()
         m1.values.isEmpty.shouldBeTrue()
@@ -382,7 +382,7 @@ final class CRDTORMapTests: XCTestCase {
     }
 
     func test_ORMap_ORSet_removeValue_shouldRemoveInOtherReplicas() throws {
-        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaA) })
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
@@ -393,7 +393,7 @@ final class CRDTORMapTests: XCTestCase {
             $0.add(3)
         }
 
-        var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaB) })
+        var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaB) })
 
         guard let delta1 = m1.delta else {
             throw shouldNotHappen("m1.delta should not be nil after updates")
@@ -446,7 +446,7 @@ final class CRDTORMapTests: XCTestCase {
     /// ORSet) when replication has not been propagated yet and there are concurrent updates, because of the loss of
     /// causal history associated with `unsafeRemoveValue`.
     func test_ORMap_ORSet_removeValue_revivesDeletedElementsOnMerge() throws {
-        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaA) })
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
@@ -457,7 +457,7 @@ final class CRDTORMapTests: XCTestCase {
             $0.add(3)
         }
 
-        var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaB) })
+        var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaB) })
 
         guard let delta = m1.delta else {
             throw shouldNotHappen("m1.delta should not be nil after updates")
@@ -521,7 +521,7 @@ final class CRDTORMapTests: XCTestCase {
     /// causal history is retained and deleted elements will not come back even though changes might not have been
     /// replicated yet.
     func test_ORMap_ORSet_update_deletedElementsShouldNotReviveOnMerge() throws {
-        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaA) })
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
@@ -532,7 +532,7 @@ final class CRDTORMapTests: XCTestCase {
             $0.add(3)
         }
 
-        var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaB) })
+        var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaB) })
 
         guard let delta = m1.delta else {
             throw shouldNotHappen("m1.delta should not be nil after updates")
@@ -597,7 +597,7 @@ final class CRDTORMapTests: XCTestCase {
     }
 
     func test_ORMap_ORSet_resetValue_resetAllValues() throws {
-        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaA) })
+        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaID: self.replicaA) })
         m1.update(key: "s1") { $0.add(1) }
         m1.update(key: "s2") { $0.add(3) }
         m1.update(key: "s1") { $0.add(5) }

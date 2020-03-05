@@ -25,7 +25,7 @@ extension CRDT {
     public struct LWWMap<Key: Hashable, Value>: NamedDeltaCRDT, LWWMapOperations {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
-        public let replicaId: ReplicaId
+        public let replicaID: ReplicaID
 
         /// Underlying ORMap for storing key-value entries and managing causal history and delta
         var state: ORMap<Key, LWWRegister<Value>>
@@ -54,9 +54,9 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId, defaultValue: Value) {
-            self.replicaId = replicaId
-            self.state = .init(replicaId: replicaId) {
+        init(replicaID: ReplicaID, defaultValue: Value) {
+            self.replicaID = replicaID
+            self.state = .init(replicaID: replicaID) {
                 // This is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self` and therefore we
                 // must create a "zero" value before merging `other` into it.
                 // The "zero" value's timestamp must happen-before `other`'s to allow `other` to win. If we just
@@ -64,7 +64,7 @@ extension CRDT {
                 // We don't need to worry about the usage of this and timestamp being too new in `ORMap.update` because
                 // a call to `LWWRegister.assign` immediately follows and the value is updated without comparing
                 // timestamps.
-                LWWRegister<Value>(replicaId: replicaId, initialValue: defaultValue, clock: .wallTime(WallTimeClock.zero))
+                LWWRegister<Value>(replicaID: replicaID, initialValue: defaultValue, clock: .wallTime(WallTimeClock.zero))
             }
         }
 
@@ -134,8 +134,9 @@ extension CRDT.ActorOwned where DataType: LWWMapOperations {
 }
 
 extension CRDT.LWWMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaId: .actorAddress(owner.address), defaultValue: defaultValue))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
+        let replicaID: ReplicaID = .actorAddress(owner.address.withUniqueNode(owner.system.cluster.node))
+        return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaID: replicaID, defaultValue: defaultValue))
     }
 }
 

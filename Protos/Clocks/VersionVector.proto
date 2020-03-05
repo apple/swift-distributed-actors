@@ -22,7 +22,7 @@ import "ActorAddress.proto";
 
 // ==== Replica ID -----------------------------------------------------------------------------------------------------
 
-message VersionReplicaId {
+message VersionReplicaID {
     oneof value {
         ActorAddress actorAddress = 1;
         UniqueNode uniqueNode = 2;
@@ -32,19 +32,19 @@ message VersionReplicaId {
 // ==== Version vector -------------------------------------------------------------------------------------------------
 
 message ReplicaVersion {
-    VersionReplicaId replicaId = 1;
+    VersionReplicaID replicaID = 1;
     uint64 version = 2;
 }
 
 message VersionVector {
-    // Not a map since we cannot use `replicaId` as key
+    // Not a map since we cannot use `replicaID` as key
     repeated ReplicaVersion state = 1;
 }
 
 // ==== VersionDot -----------------------------------------------------------------------------------------------------
 
 message VersionDot {
-    VersionReplicaId replicaId = 1;
+    VersionReplicaID replicaID = 1;
     uint64 version = 2;
 }
 

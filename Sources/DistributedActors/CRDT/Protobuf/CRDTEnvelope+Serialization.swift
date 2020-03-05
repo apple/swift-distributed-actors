@@ -92,15 +92,13 @@ extension CRDTEnvelope: InternalProtobufRepresentable {
             if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
                 self._boxed = .CvRDT(anyCvRDT)
             } else {
-                let x: String = fatalErrorBacktrace("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
-                fatalError()
+                fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
             }
         case .anyDeltaCrdt:
             if let anyDeltaCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
                 self._boxed = .DeltaCRDT(anyDeltaCRDT)
             } else {
-                let x: String = fatalErrorBacktrace("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
-                fatalError()
+                fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
             }
         case .unspecified:
             throw SerializationError.missingField("type", type: String(describing: CRDTEnvelope.self))

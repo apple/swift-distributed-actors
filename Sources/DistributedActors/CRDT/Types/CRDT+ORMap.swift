@@ -54,7 +54,7 @@ extension CRDT {
     public struct ORMap<Key: Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
-        public let replicaId: ReplicaId
+        public let replicaID: ReplicaID
 
         /// Creates a new `Value` instance. e.g., zero counter, empty set, etc.
         /// The initializer should not close over mutable state as no strong guarantees are provided about
@@ -99,10 +99,10 @@ extension CRDT {
             self._values.isEmpty
         }
 
-        init(replicaId: ReplicaId, valueInitializer: @escaping () -> Value) {
-            self.replicaId = replicaId
+        init(replicaID: ReplicaID, valueInitializer: @escaping () -> Value) {
+            self.replicaID = replicaID
             self.valueInitializer = valueInitializer
-            self._keys = ORSet(replicaId: replicaId)
+            self._keys = ORSet(replicaID: replicaID)
             self._values = [:]
         }
 
@@ -308,8 +308,9 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 }
 
 extension CRDT.ORMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, valueInitializer: @escaping () -> Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaId: .actorAddress(owner.address), valueInitializer: valueInitializer))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, valueInitializer: @escaping () -> Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
+        let replicaID: ReplicaID = .actorAddress(owner.address.withUniqueNode(owner.system.cluster.node))
+        return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: replicaID, valueInitializer: valueInitializer))
     }
 }
 

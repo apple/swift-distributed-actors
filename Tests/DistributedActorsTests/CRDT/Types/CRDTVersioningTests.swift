@@ -19,9 +19,9 @@ import XCTest
 final class CRDTVersioningTests: XCTestCase {
     typealias V = UInt64
 
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
-    let replicaC: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("c"), incarnation: .wellKnown))
+    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaC: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("c"), incarnation: .wellKnown))
 
     private typealias IntContainer = CRDT.VersionedContainer<Int>
 
@@ -93,7 +93,7 @@ final class CRDTVersioningTests: XCTestCase {
     // MARK: VersionedContainer tests
 
     func test_VersionedContainer_add_remove_shouldModifyDelta() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
+        var aContainer = IntContainer(replicaID: replicaA)
         aContainer.isEmpty.shouldBeTrue()
 
         aContainer.add(3)
@@ -219,7 +219,7 @@ final class CRDTVersioningTests: XCTestCase {
 
     func test_VersionedContainer_removeAll_shouldAddAllBirthDotsToDeltaVersionContext() throws {
         let versionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, V(3)), (replicaB, V(1))]), gaps: [VersionDot(replicaB, V(5))])
-        var aContainer = IntContainer(replicaId: replicaA, versionContext: versionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4])
+        var aContainer = IntContainer(replicaID: replicaA, versionContext: versionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4])
 
         // container: elementByBirthDot=[(A,2): 4], vv=[(A,3), (B,1)], gaps=[(B,5)]
         aContainer.elements.shouldEqual([4])
@@ -277,8 +277,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_merge_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)
@@ -303,8 +303,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_merge_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)
@@ -338,10 +338,10 @@ final class CRDTVersioningTests: XCTestCase {
 
     func test_VersionedContainer_merge_twoReplicasFormCompleteHistory() throws {
         let aVersionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, V(3)), (replicaB, V(1)), (replicaC, V(1))]), gaps: [VersionDot(replicaC, V(4)), VersionDot(replicaC, V(5))])
-        var aContainer = IntContainer(replicaId: replicaA, versionContext: aVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(4)): 0, VersionDot(replicaC, V(5)): 3])
+        var aContainer = IntContainer(replicaID: replicaA, versionContext: aVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(4)): 0, VersionDot(replicaC, V(5)): 3])
 
         let bVersionContext = CRDT.VersionContext(vv: VersionVector([(replicaA, V(3)), (replicaB, V(1))]), gaps: [VersionDot(replicaC, V(2)), VersionDot(replicaC, V(3))])
-        let bContainer = IntContainer(replicaId: replicaB, versionContext: bVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(3)): 7])
+        let bContainer = IntContainer(replicaID: replicaB, versionContext: bVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(3)): 7])
 
         // `merge` mutates aContainer
         aContainer.merge(other: bContainer)
@@ -359,8 +359,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)
@@ -389,8 +389,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)

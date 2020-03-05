@@ -102,7 +102,9 @@ public struct ActorAddress: Equatable, Hashable {
         self.incarnation = incarnation
     }
 
-    internal func fillNodeWhenEmpty(_ node: UniqueNode) -> ActorAddress {
+    /// Unless the `ActorAddress` already contains the unique node to which it is pointing,
+    /// fills in the `node` field with the passed in system's cluster's `UniqueNode`.
+    public func withUniqueNode(_ node: UniqueNode) -> ActorAddress {
         guard self.node == nil else {
             return self
         }

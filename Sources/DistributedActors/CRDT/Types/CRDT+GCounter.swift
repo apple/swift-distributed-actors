@@ -26,10 +26,10 @@ extension CRDT {
     public struct GCounter: NamedDeltaCRDT {
         public typealias Delta = GCounterDelta
 
-        public let replicaId: ReplicaId
+        public let replicaID: ReplicaID
 
         // State is a dictionary of replicas and the counter values they've observed.
-        var state: [ReplicaId: Int]
+        var state: [ReplicaID: Int]
 
         public var delta: Delta?
 
@@ -38,11 +38,11 @@ extension CRDT {
         }
 
         public init(owner address: ActorAddress) {
-            self.init(replicaId: .actorAddress(address))
+            self.init(replicaID: .actorAddress(address))
         }
 
-        init(replicaId: ReplicaId) {
-            self.replicaId = replicaId
+        init(replicaID: ReplicaID) {
+            self.replicaID = replicaID
             self.state = [:]
         }
 
@@ -50,9 +50,9 @@ extension CRDT {
             precondition(amount > 0, "Amount must be greater than 0")
 
             let newCount: Int
-            if let currentCount = state[replicaId] {
+            if let currentCount = state[replicaID] {
                 guard case (let sum, let overflow) = currentCount.addingReportingOverflow(amount), !overflow else {
-                    fatalError("Incrementing GCounter(\(self.replicaId)) by [\(amount)] resulted in overflow")
+                    fatalError("Incrementing GCounter(\(self.replicaID)) by [\(amount)] resulted in overflow")
                 }
                 newCount = sum
             } else {
@@ -60,15 +60,15 @@ extension CRDT {
             }
 
             // Update state
-            self.state[replicaId] = newCount
+            self.state[replicaID] = newCount
 
             // Update/create delta
             switch self.delta {
             case .some(var delta):
-                delta.state[replicaId] = newCount
+                delta.state[replicaID] = newCount
                 self.delta = delta
             case .none:
-                self.delta = Delta(state: [replicaId: newCount])
+                self.delta = Delta(state: [replicaID: newCount])
             }
         }
 
@@ -88,9 +88,9 @@ extension CRDT {
 
     public struct GCounterDelta: CvRDT {
         // State is a dictionary of replicas and their counter values.
-        var state: [ReplicaId: Int]
+        var state: [ReplicaID: Int]
 
-        init(state: [ReplicaId: Int] = [:]) {
+        init(state: [ReplicaID: Int] = [:]) {
             self.state = state
         }
 
@@ -102,7 +102,7 @@ extension CRDT {
 
 extension CRDT.GCounter: ResettableCRDT {
     public mutating func reset() {
-        self = .init(replicaId: self.replicaId)
+        self = .init(replicaID: self.replicaID)
     }
 }
 
@@ -122,8 +122,10 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
 }
 
 extension CRDT.GCounter {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
-        CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaId: .actorAddress(owner.address)))
+
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
+        let replicaID: ReplicaID = .actorAddress(owner.address.withUniqueNode(owner.system.cluster.node))
+        return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: replicaID))
     }
 }
 

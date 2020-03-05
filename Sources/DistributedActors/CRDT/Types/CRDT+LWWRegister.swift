@@ -27,33 +27,33 @@ extension CRDT {
     ///
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
     public struct LWWRegister<Value>: CvRDT, LWWRegisterOperations {
-        public let replicaId: ReplicaId
+        public let replicaID: ReplicaID
 
         let defaultClock: () -> Clock
         let initialValue: Value
 
         public private(set) var value: Value
         private(set) var clock: Clock
-        private(set) var updatedBy: ReplicaId
+        private(set) var updatedBy: ReplicaID
 
-        init(replicaId: ReplicaId, initialValue: Value, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
-            self.init(replicaId: replicaId, initialValue: initialValue, clock: defaultClock(), defaultClock: defaultClock)
+        init(replicaID: ReplicaID, initialValue: Value, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
+            self.init(replicaID: replicaID, initialValue: initialValue, clock: defaultClock(), defaultClock: defaultClock)
         }
 
-        init(replicaId: ReplicaId, initialValue: Value, clock: Clock, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
-            self.replicaId = replicaId
+        init(replicaID: ReplicaID, initialValue: Value, clock: Clock, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
+            self.replicaID = replicaID
             self.defaultClock = defaultClock
             self.initialValue = initialValue
             self.value = initialValue
             self.clock = clock
-            self.updatedBy = self.replicaId
+            self.updatedBy = self.replicaID
         }
 
         /// Assigns `value` to the register.
         public mutating func assign(_ value: Value) {
             self.value = value
             self.clock = self.defaultClock()
-            self.updatedBy = self.replicaId
+            self.updatedBy = self.replicaID
         }
 
         public mutating func merge(other: LWWRegister<Value>) {
@@ -68,14 +68,14 @@ extension CRDT {
 }
 
 extension CRDT.LWWRegister where Value: ExpressibleByNilLiteral {
-    init(replicaId: ReplicaId) {
-        self.init(replicaId: replicaId, initialValue: nil)
+    init(replicaID: ReplicaID) {
+        self.init(replicaID: replicaID, initialValue: nil)
     }
 }
 
 extension CRDT.LWWRegister: ResettableCRDT {
     public mutating func reset() {
-        self = .init(replicaId: self.replicaId, initialValue: self.initialValue)
+        self = .init(replicaID: self.replicaID, initialValue: self.initialValue)
     }
 }
 
@@ -104,8 +104,9 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
 }
 
 extension CRDT.LWWRegister {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
-        CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaId: .actorAddress(owner.address), initialValue: initialValue))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
+        let replicaID: ReplicaID = .actorAddress(owner.address.withUniqueNode(owner.system.cluster.node))
+        return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaID: replicaID, initialValue: initialValue))
     }
 }
 

@@ -49,21 +49,21 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     }
 
     lazy var ownerFirstOne = try! ActorAddress(path: ActorPath._user.appending("first-1"), incarnation: .wellKnown)
-        .fillNodeWhenEmpty(self.firstSystem.cluster.node)
+        .withUniqueNode(self.firstSystem.cluster.node)
     lazy var ownerFirstTwo = try! ActorAddress(path: ActorPath._user.appending("first-2"), incarnation: .wellKnown)
-        .fillNodeWhenEmpty(self.firstSystem.cluster.node)
+        .withUniqueNode(self.firstSystem.cluster.node)
 
     lazy var ownerSecondOne = try! ActorAddress(path: ActorPath._user.appending("second-1"), incarnation: .wellKnown)
-        .fillNodeWhenEmpty(self.secondSystem.cluster.node)
+        .withUniqueNode(self.secondSystem.cluster.node)
 
     lazy var ownerThirdOne = try! ActorAddress(path: ActorPath._user.appending("third-1"), incarnation: .wellKnown)
-        .fillNodeWhenEmpty(self.thirdSystem.cluster.node)
+        .withUniqueNode(self.thirdSystem.cluster.node)
 
     lazy var ownerFourthOne = try! ActorAddress(path: ActorPath._user.appending("fourth-1"), incarnation: .wellKnown)
-        .fillNodeWhenEmpty(self.fourthSystem.cluster.node)
+        .withUniqueNode(self.fourthSystem.cluster.node)
 
     lazy var ownerFifthOne = try! ActorAddress(path: ActorPath._user.appending("fifth-1"), incarnation: .wellKnown)
-        .fillNodeWhenEmpty(self.fifthSystem.cluster.node)
+        .withUniqueNode(self.fifthSystem.cluster.node)
 
     let timeout = TimeAmount.seconds(1)
 
@@ -86,7 +86,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
         _ = try self.firstSystem.spawn("owner", of: Never.self, .setup { context in
             // TODO: context.makeCRDT("my-counter", CRDT.GCounter.self) ???
-            let owned = CRDT.ActorOwned(ownerContext: context, id: id, data: CRDT.GCounter(replicaId: .actorAddress(self.ownerFirstOne)))
+            let owned = CRDT.ActorOwned(ownerContext: context, id: id, data: CRDT.GCounter(replicaID: .actorAddress(self.ownerFirstOne)))
             _ = owned.increment(by: 1, writeConsistency: .local, timeout: .seconds(1))
 
             return .receiveMessage { _ in .same }
@@ -97,7 +97,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
         let p2 = try self.makeCRDTOwnerTestProbe(
             system: self.secondSystem, testKit: self.testKit(self.secondSystem),
-            id: id, data: CRDT.GCounter(replicaId: .actorAddress(self.ownerSecondOne)).asAnyStateBasedCRDT
+            id: id, data: CRDT.GCounter(replicaID: .actorAddress(self.ownerSecondOne)).asAnyStateBasedCRDT
         )
         let m1 = try p2.expectMessage()
         pprint("m1 = \(m1)")

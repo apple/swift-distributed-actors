@@ -63,7 +63,7 @@ extension CRDT.VersionedContainer: ProtobufRepresentable {
 
     public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTVersionedContainer {
         var proto = ProtoCRDTVersionedContainer()
-        proto.replicaID = try self.replicaId.toProto(context: context)
+        proto.replicaID = try self.replicaID.toProto(context: context)
         proto.versionContext = try self.versionContext.toProto(context: context)
         proto.elementByBirthDot = try self.elementByBirthDot.toProto(context: context)
         if let delta = self.delta {
@@ -76,7 +76,7 @@ extension CRDT.VersionedContainer: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: CRDT.VersionedContainer<Element>.self))
         }
-        self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
+        self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
 
         guard proto.hasVersionContext else {
             throw SerializationError.missingField("versionContext", type: String(describing: CRDT.VersionedContainer<Element>.self))
@@ -161,27 +161,27 @@ private extension Dictionary where Key == VersionDot, Value: Hashable {
 // MARK: CRDT.GCounter
 
 extension CRDT.GCounter {
-    fileprivate typealias State = [ReplicaId: Int]
+    fileprivate typealias State = [ReplicaID: Int]
     fileprivate typealias ProtoState = [ProtoCRDTGCounter.ReplicaState]
 }
 
 extension CRDT.GCounter.State {
     fileprivate init(fromProto proto: CRDT.GCounter.ProtoState, context: ActorSerializationContext) throws {
-        self = try proto.reduce(into: [ReplicaId: Int]()) { result, protoReplicaState in
+        self = try proto.reduce(into: [ReplicaID: Int]()) { result, protoReplicaState in
             guard protoReplicaState.hasReplicaID else {
                 throw SerializationError.missingField("state.replicaID", type: String(describing: CRDT.GCounter.self))
             }
-            let replicaId = try ReplicaId(fromProto: protoReplicaState.replicaID, context: context)
-            result[replicaId] = Int(protoReplicaState.count)
+            let replicaID = try ReplicaID(fromProto: protoReplicaState.replicaID, context: context)
+            result[replicaID] = Int(protoReplicaState.count)
         }
     }
 }
 
 extension CRDT.GCounter.ProtoState {
     fileprivate init(fromValue value: CRDT.GCounter.State, context: ActorSerializationContext) throws {
-        self = try value.map { replicaId, count in
+        self = try value.map { replicaID, count in
             var protoReplicaState = ProtoCRDTGCounter.ReplicaState()
-            protoReplicaState.replicaID = try replicaId.toProto(context: context)
+            protoReplicaState.replicaID = try replicaID.toProto(context: context)
             protoReplicaState.count = UInt64(count)
             return protoReplicaState
         }
@@ -193,7 +193,7 @@ extension CRDT.GCounter: ProtobufRepresentable {
 
     public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTGCounter {
         var proto = ProtoCRDTGCounter()
-        proto.replicaID = try self.replicaId.toProto(context: context)
+        proto.replicaID = try self.replicaID.toProto(context: context)
         proto.state = try CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
         if let delta = self.delta {
             proto.delta = try delta.toProto(context: context)
@@ -205,7 +205,7 @@ extension CRDT.GCounter: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: CRDT.GCounter.self))
         }
-        self.init(replicaId: try ReplicaId(fromProto: proto.replicaID, context: context))
+        self.init(replicaID: try ReplicaID(fromProto: proto.replicaID, context: context))
 
         self.state = try CRDT.GCounter.State(fromProto: proto.state, context: context)
 
@@ -237,7 +237,7 @@ extension CRDT.ORSet: ProtobufRepresentable {
 
     public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTORSet {
         var proto = ProtoCRDTORSet()
-        proto.replicaID = try self.replicaId.toProto(context: context)
+        proto.replicaID = try self.replicaID.toProto(context: context)
         proto.state = try self.state.toProto(context: context)
         return proto
     }
@@ -246,7 +246,7 @@ extension CRDT.ORSet: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: CRDT.ORSet<Element>.self))
         }
-        self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
+        self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
         self.state = try CRDT.VersionedContainer<Element>(fromProto: proto.state, context: context)
     }
 }

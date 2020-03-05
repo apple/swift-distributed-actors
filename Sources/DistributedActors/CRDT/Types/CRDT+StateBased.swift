@@ -114,7 +114,7 @@ extension DeltaCRDT {
 ///
 /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
 public protocol NamedDeltaCRDT: DeltaCRDT {
-    var replicaId: ReplicaId { get }
+    var replicaID: ReplicaID { get }
 }
 
 /// CRDT that can be reset to "zero" value. e.g., zero counter, empty set, etc.

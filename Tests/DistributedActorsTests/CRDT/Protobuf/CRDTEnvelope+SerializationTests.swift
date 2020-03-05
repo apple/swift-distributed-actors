@@ -21,7 +21,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_CRDTEnvelope_AnyDeltaCRDT_GCounter() throws {
         try shouldNotThrow {
-            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
             g1.increment(by: 2)
             g1.delta.shouldNotBeNil()
 
@@ -46,7 +46,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_CRDTEnvelope_AnyCvRDT_GCounter() throws {
         try shouldNotThrow {
-            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
             g1.increment(by: 2)
             g1.delta.shouldNotBeNil()
 
@@ -70,7 +70,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_CRDTEnvelope_AnyCvRDT_GCounter_delta() throws {
         try shouldNotThrow {
-            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
             g1.increment(by: 2)
             g1.delta.shouldNotBeNil()
 
