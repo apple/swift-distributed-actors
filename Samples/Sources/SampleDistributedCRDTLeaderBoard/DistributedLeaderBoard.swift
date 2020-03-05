@@ -14,7 +14,7 @@
 
 import DistributedActors
 
-struct DistributedLeaderBoard {
+struct DistributedLeaderboard {
     private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
     }
 
@@ -63,7 +63,7 @@ struct DistributedLeaderBoard {
     }
 }
 
-extension DistributedLeaderBoard {
+extension DistributedLeaderboard {
 
 
     enum GameEvent {

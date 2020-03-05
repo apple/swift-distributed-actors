@@ -14,9 +14,9 @@ var targets: [PackageDescription.Target] = [
     ),
     // Example app showcasing the use of CRDTs to build a distributed "leader board" and "high score" system
     .target(
-        name: "SampleDistributedCRDTLeaderBoard",
+        name: "SampleDistributedCRDTLeaderboard",
         dependencies: ["DistributedActors"],
-        path: "Sources/SampleDistributedCRDTLeaderBoard"
+        path: "Sources/SampleDistributedCRDTLeaderboard"
     ),
     .target(
         name: "SampleLetItCrash",

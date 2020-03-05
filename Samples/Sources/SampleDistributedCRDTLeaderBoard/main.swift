@@ -15,4 +15,4 @@
 import DistributedActors
 import NIO
 
-try DistributedLeaderBoard().run(for: .seconds(60))
+try DistributedLeaderboard().run(for: .seconds(60))
