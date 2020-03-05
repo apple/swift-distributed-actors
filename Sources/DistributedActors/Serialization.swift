@@ -101,8 +101,11 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter>(allocator: self.allocator), for: CRDT.GCounter.self, underId: Serialization.Id.InternalSerializer.CRDTGCounter)
         self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter.Delta>(allocator: self.allocator), for: CRDT.GCounter.Delta.self, underId: Serialization.Id.InternalSerializer.CRDTGCounterDelta)
         // CRDTs and their deltas are boxed with AnyDeltaCRDT or AnyCvRDT
+        self.registerBoxing(from: CRDT.GCounter.self, into: AnyCvRDT.self) { counter in counter.asAnyCvRDT }
         self.registerBoxing(from: CRDT.GCounter.self, into: AnyDeltaCRDT.self) { counter in AnyDeltaCRDT(counter) }
         self.registerBoxing(from: CRDT.GCounter.Delta.self, into: AnyCvRDT.self) { delta in AnyCvRDT(delta) }
+
+        self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyCvRDT.self) { set in set.asAnyCvRDT }
         self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyDeltaCRDT.self) { set in AnyDeltaCRDT(set) }
         self.registerBoxing(from: CRDT.ORSet<String>.Delta.self, into: AnyCvRDT.self) { set in AnyCvRDT(set) }
 

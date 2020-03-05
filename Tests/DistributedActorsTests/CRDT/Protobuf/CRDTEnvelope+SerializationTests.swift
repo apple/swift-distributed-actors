@@ -44,7 +44,30 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
         }
     }
 
-    // TODO: use a "real" CvRDT rather than GCounter.Delta
+    func test_serializationOf_CRDTEnvelope_AnyCvRDT_GCounter() throws {
+        try shouldNotThrow {
+            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            g1.increment(by: 2)
+            g1.delta.shouldNotBeNil()
+
+            let g1AsAny = g1.asAnyCvRDT
+            let envelope = CRDTEnvelope(serializerId: Serialization.Id.InternalSerializer.CRDTGCounterDelta, g1AsAny)
+
+            let bytes = try system.serialization.serialize(message: envelope)
+            let deserialized = try system.serialization.deserialize(CRDTEnvelope.self, from: bytes)
+
+            guard case .CvRDT(let data) = deserialized._boxed else {
+                throw self.testKit.fail("CRDTEnvelope._boxed should be .CvRDT for AnyCvRDT")
+            }
+            guard let dg1 = data.underlying as? CRDT.GCounter else {
+                throw self.testKit.fail("AnyCvRDT.underlying should be GCounter")
+            }
+
+            dg1.state.count.shouldEqual(1)
+            "\(dg1.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@localhost:9001/user/alpha: 2]")
+        }
+    }
+
     func test_serializationOf_CRDTEnvelope_AnyCvRDT_GCounter_delta() throws {
         try shouldNotThrow {
             var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
