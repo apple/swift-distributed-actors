@@ -78,7 +78,7 @@ public struct ClusterControl {
         self.ref.tell(.command(.initJoin(node)))
     }
 
-    /// Usually NOT to be used, as having an instance of an `UniqueNode` in hand
+    /// Usually NOT to be used, as having an instance of a `UniqueNode` in hand
     /// is normally only possible after a handshake with the remote node has completed.
     ///
     /// However, in local testing scenarios, where the two nodes are executing in the same process (e.g. in a test),
