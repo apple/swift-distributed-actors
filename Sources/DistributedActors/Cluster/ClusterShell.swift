@@ -384,6 +384,7 @@ extension ClusterShell {
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
                 var firstGossip = Cluster.Gossip(ownerNode: state.myselfNode)
                 _ = firstGossip.membership.join(state.myselfNode) // change will be put into effect by receiving the "self gossip"
+                context.system.cluster.updateMembershipSnapshot(state.membership)
                 firstGossip.incrementOwnerVersion()
                 context.myself.tell(.gossipFromGossiper(firstGossip))
                 // TODO: are we ok if we received another gossip first, not our own initial? should be just fine IMHO
@@ -529,7 +530,9 @@ extension ClusterShell {
                     "tag": "membership",
                 ])
             }
+
             state = self.interpretLeaderActions(context.system, state, leaderActions)
+            context.system.cluster.updateMembershipSnapshot(state.membership)
 
             return self.ready(state: state)
         }
@@ -953,6 +956,7 @@ extension ClusterShell {
 
         // TODO: make sure we don't end up infinitely spamming reachability events
         if state.membership.applyReachabilityChange(change) != nil {
+            context.system.cluster.updateMembershipSnapshot(state.membership)
             self.clusterEvents.publish(.reachabilityChange(change))
             self.recordMetrics(context.system.metrics, membership: state.membership)
             return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot
@@ -967,6 +971,7 @@ extension ClusterShell {
         var state = state
 
         if let change = state.membership.applyMembershipChange(.init(member: memberToDown, toStatus: .down)) {
+            context.system.cluster.updateMembershipSnapshot(state.membership)
             self.clusterEvents.publish(.membershipChange(change))
 
             if let logChangeLevel = state.settings.logMembershipChanges {
