@@ -207,7 +207,6 @@ extension CRDT.Replicator.Shell {
                             self.notifyLocalOwnersOnUpdate(context, id, updatedData)
                         case .failure(let error):
                             context.log.warning("Failed to write \(id) with consistency \(consistency): \(error)")
-                            throw error
                         }
                         return .same
                     }
@@ -341,7 +340,6 @@ extension CRDT.Replicator.Shell {
                         self.notifyLocalOwnersOnUpdate(context, id, updatedData)
                     case .failure(let error):
                         context.log.warning("Failed to read \(id) with consistency \(consistency): \(error)")
-                        throw error
                     }
                     return .same
                 }
@@ -373,7 +371,6 @@ extension CRDT.Replicator.Shell {
                             self.notifyLocalOwnersOnDelete(context, id)
                         case .failure(let error):
                             context.log.warning("Failed to delete \(id) with consistency \(consistency): \(error)")
-                            throw error
                         }
                         return .same
                     }

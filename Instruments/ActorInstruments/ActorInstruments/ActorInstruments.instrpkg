@@ -356,9 +356,6 @@
 
     </os-signpost-interval-schema>
     
-    
-    </os-signpost-interval-schema>
-
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- MARK: Schema: Transport, Serialization -->
     <os-signpost-interval-schema>
