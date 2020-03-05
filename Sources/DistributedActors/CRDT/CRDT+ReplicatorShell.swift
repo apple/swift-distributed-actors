@@ -44,7 +44,7 @@ extension CRDT.Replicator {
 
         private var remoteReplicators: Set<ActorRef<Message>> = []
 
-        private var gossipControl: ConvergentGossipControl<CRDT.Gossip>?
+        private var gossipControl: GossipControl<CRDT.GossipMetadata, CRDT.GossipPayload>?
 
         init(_ replicator: Instance) {
             self.replicator = replicator
@@ -219,12 +219,14 @@ extension CRDT.Replicator.Shell {
         }
 
         func gossipReplicate(updatedData: AnyStateBasedCRDT, isNew: Bool) {
-            let gossipPayload = CRDT.Gossip(
-                // TODO: cleanup?
-                remainingGossipRounds: self.settings.maxNrOfDeltaGossipRounds(context.system.cluster.membershipSnapshot.members(atLeast: .up).count),
-                data: updatedData
-            )
-            self.gossipControl?.add(payload: gossipPayload)
+            self.gossipControl?.update(id,
+                metadata: .init(
+                    remainingGossipRounds: 10
+                ), // TODO: make this dynamic on peer size; if we start at 1 peer, but then grow to 10, we should keep trying a bit more unless we finished while we were at 1 members
+                payload: .init(
+                    id: id,
+                    data: updatedData
+                ))
         }
 
         switch self.replicator.write(id, data, deltaMerge: true) {
@@ -482,7 +484,7 @@ extension CRDT.Replicator.Shell {
         }
     }
 
-    private func handleRemoteGossip(context: ActorContext<Message>, gossip: CRDT.Gossip) {
+    private func handleRemoteGossip(context: ActorContext<Message>, gossip: CRDT.GossipPayload) {
         fatalError("\(#function) not implemented: \(gossip)")
     }
 

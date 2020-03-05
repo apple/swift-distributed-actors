@@ -244,17 +244,37 @@ extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
 // MARK: CRDT: Gossip replication
 
 extension CRDT {
-    struct Gossip {
+
+    struct GossipMetadata {
         var remainingGossipRounds: Int
-//        let data: AnyStateBasedCRDT?
-        // TODO: or delta
-        init(remainingGossipRounds: Int, data: AnyStateBasedCRDT?) {
+
+        init(remainingGossipRounds: Int) {
             self.remainingGossipRounds = remainingGossipRounds
+        }
+
+        public var hasRemainingGossipRounds: Bool {
+            self.remainingGossipRounds > 0
+        }
+
+        mutating func decrementGossipRoundsToParticipateIn() {
+            self.remainingGossipRounds -= 1
+        }
+
+    }
+
+    struct GossipPayload {
+        let id: CRDT.Identity
+
+        // let data: AnyStateBasedCRDT?
+        // TODO: or delta
+
+        init(id: CRDT.Identity, data: AnyStateBasedCRDT?) {
+            self.id = id
 //            self.data = data
         }
     }
 }
 
-extension CRDT.Gossip: Codable {
+extension CRDT.GossipPayload: Codable {
     // Codable: synthesized conformance
 }

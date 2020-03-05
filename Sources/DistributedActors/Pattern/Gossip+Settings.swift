@@ -15,12 +15,58 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ConvergentGossip Settings
 
-extension ConvergentGossip {
+protocol GossipEnvelopeProtocol {
+    associatedtype Metadata
+    associatedtype Payload: Codable
+
+    // Payload MAY contain the metadata, and we just expose it, or metadata is separate and we do NOT gossip it.
+
+    var metadata: Metadata { get }
+    var payload: Payload { get }
+}
+
+protocol GossipClient {
+    associatedtype Metadata
+    associatedtype Payload: Codable
+
+    /// Invoked whenever an incoming gossip is received.
+    func receiveGossip(incoming gossip: Payload, existing: GossipEnvelope<Metadata, Payload>?) -> GossipReceivedDirective<Metadata, Payload>
+
+    /// Return `nil` to instruct the infrastructure to stop gossiping this specific payload.
+    func onGossipRound(identity: GossipIdentifier, prepared: GossipEnvelope<Metadata, Payload>) -> GossipRoundDirective<Metadata, Payload>
+
+//    func afterGossipRound(identity: GossipIdentity, prepared: GossipEnvelope<Metadata, Payload>) ->
+
+//    var peerSelection: PeerSelection { get }
+}
+
+struct GossipClientBox<Metadata, Payload: Codable> {
+
+}
+
+// TODO: would LOVE to nest enums in protocols
+enum GossipReceivedDirective<Metadata, Payload: Codable> {
+    case update(Metadata?, Payload?) // TODO but async
+}
+
+enum GossipRoundDirective<Metadata, Payload: Codable> {
+    case gossip(GossipEnvelope<Metadata, Payload>)
+    case remove
+}
+
+extension GossipShell {
     struct Settings {
         /// Interval at which gossip rounds should proceed.
         var gossipInterval: TimeAmount = .seconds(1)
 
-        // TODO: slight jitter to the gossip rounds?
+        // var delegate: GossipClientBox<Metadata, Payload> // TODO: express as delegate
+
+//        /// The "user" of this gossip instance, we notify it whenever we receive a new gossip message.
+//        private let notifyOnGossipRef: ActorRef<Payload>
+        var onGossipReceived: (GossipIdentifier, Payload, GossipEnvelope<Metadata, Payload>?) -> () = { _, _, _ in
+            ()
+        }
+
 
         /// Invoked during each gossip "round" right before a payload is to be gossiped to peers.
         ///
@@ -30,9 +76,11 @@ extension ConvergentGossip {
         /// Returning `nil` results in the
         /// // TODO rather we should return a directive here? .lastGossip(), .gossip(), .remove() etc?
         /// // TODO we need different Storage and Payload and a Storage -> Payload I guess as we do not want to send the "send 3 more times" information
-        var onGossipRound: (Payload) -> Payload? = { payload in
-            payload
+        var onGossipRound: (GossipIdentifier, GossipEnvelope<Metadata, Payload>) -> GossipEnvelope = { id, envelope in
+            envelope
         }
+
+        // TODO: slight jitter to the gossip rounds?
 
         /// Configure how peers should be discovered and added to the gossip group.
         ///

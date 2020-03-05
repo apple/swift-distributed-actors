@@ -391,6 +391,12 @@ extension CRDT {
     }
 }
 
+extension CRDT.Identity: GossipIdentifier {
+    var gossipIdentifier: String {
+        self.id
+    }
+}
+
 extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: StringLiteralType) {
         self.init(value)

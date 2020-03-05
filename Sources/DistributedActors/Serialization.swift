@@ -109,7 +109,7 @@ public struct Serialization {
         self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyDeltaCRDT.self) { set in AnyDeltaCRDT(set) }
         self.registerBoxing(from: CRDT.ORSet<String>.Delta.self, into: AnyCvRDT.self) { set in AnyCvRDT(set) }
 
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer<DistributedActors.ConvergentGossip<DistributedActors.Cluster.Gossip>.Message>(allocator: self.allocator), underId: Serialization.Id.InternalSerializer.ConvergentGossipMembership)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer<DistributedActors.GossipShell<Cluster.Gossip.SeenTable, DistributedActors.Cluster.Gossip>.Message>(allocator: self.allocator), underId: Serialization.Id.InternalSerializer.ConvergentGossipMembership)
 
         // register user-defined serializers
         for (metaKey, id) in self.settings.userSerializerIds {

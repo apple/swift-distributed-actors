@@ -64,6 +64,9 @@ extension ClusterShellState {
 // MARK: Interpret leader actions in Shell
 
 extension ClusterShell {
+
+    static let gossipID: StringGossipIdentifier = "membership"
+
     func interpretLeaderActions(
         _ system: ActorSystem, _ previousState: ClusterShellState,
         _ leaderActions: [ClusterShellState.LeaderAction],
@@ -141,7 +144,7 @@ extension ClusterShell {
             return
         }
         state._latestGossip.incrementOwnerVersion()
-        state.gossipControl.update(payload: state._latestGossip)
+        state.gossipControl.update(ClusterShell.gossipID, metadata: state._latestGossip.seen, payload: state._latestGossip) // TODO allow somehow to pass only ONE without copying the metadata?
 
         switch state.association(with: memberToRemove.node.node) {
         case .some(.associated(let associated)):

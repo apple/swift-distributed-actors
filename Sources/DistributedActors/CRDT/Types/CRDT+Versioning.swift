@@ -144,7 +144,7 @@ extension CRDT {
         public init(replicaID: ReplicaID, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
             // TODO; remove assertion?
             if case .actorAddress(let address) = replicaID, address.node == nil {
-                let x: String = fatalErrorBacktrace("Attempted to create version container with \(address) without `.node`, this can lead to confusing situations. Don't do this.")
+                let _: String = fatalErrorBacktrace("Attempted to create version container with \(address) without `.node`, this can lead to confusing situations. Don't do this.")
             }
             self.replicaID = replicaID
             self.versionContext = versionContext

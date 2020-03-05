@@ -367,10 +367,24 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                let gossipControl = try ConvergentGossip.start(
-                    context, name: "\(ActorAddress._clusterGossip.name)", of: Cluster.Gossip.self,
-                    notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) },
-                    props: ._wellKnown
+                let adapter = context.messageAdapter(from: Cluster.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) }
+                let gossipControl = try GossipShell.start(
+                    context, name: "\(ActorAddress._clusterGossip.name)",
+                    of: Cluster.Gossip.self, ofMetadata: Cluster.Gossip.SeenTable.self,
+                    props: ._wellKnown,
+                    settings: .init(
+                        gossipInterval: .seconds(1),
+                        onGossipReceived: { identifier, payload, _ in
+                            assert(identifier == ClusterShell.gossipID, "Received gossip with unexpected identifier [\(identifier)], expected: \(ClusterShell.gossipID)")
+                            // note that this is on the gossiper's thread, the only thing we can do here is to forward the message
+                            context.myself.tell(.gossipFromGossiper(payload))
+                        },
+                        onGossipRound: { identity, envelope in
+                            // OMG need futures so badly...!
+                            // we need to check with the actor what to do about this gossip round technically speaking
+                            envelope.payload
+                        }
+                    )
                 )
 
                 let state = ClusterShellState(
@@ -562,12 +576,12 @@ extension ClusterShell {
         // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
 
         // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
-        let gossipPeer: ConvergentGossip<Cluster.Gossip>.Ref = context.system._resolve(
+        let peer: GossipShell<Cluster.Gossip.SeenTable, Cluster.Gossip>.Ref = context.system._resolve(
             context: .init(address: ._clusterGossip(on: change.member.node), system: context.system)
         )
         // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...
         // today it can happen that a node goes down but we dont know yet so we add it again :O
-        state.gossipControl.introduce(peer: gossipPeer)
+        state.gossipControl.introduce(peer: peer)
     }
 }
 
