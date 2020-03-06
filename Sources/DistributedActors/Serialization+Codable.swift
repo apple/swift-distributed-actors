@@ -30,6 +30,22 @@ extension Decoder {
     }
 }
 
+extension KeyedDecodingContainer {
+    public func decode<T>(_ type: T.Type, forKey key: Key, manifestKey: Key) throws -> T where T : Decodable {
+        let payloadManifest = try self.decode(String.self, forKey: manifestKey)
+        guard let anyManifestedType: Any.Type = _typeByName(payloadManifest) else {
+            throw ActorCoding.CodingError.manifestDidNotMaterializeAsExpectedType(manifest: payloadManifest, hint: "Manifest: \(manifestKey) = \(payloadManifest), \(String(reflecting: T.self))")
+        }
+
+        guard let manifestedType = anyManifestedType as? T.Type else {
+            throw ActorCoding.CodingError.manifestDidNotMaterializeAsExpectedType(manifest: payloadManifest, hint: "Manifest \(anyManifestedType) (\(payloadManifest)) did not manifest as \(String(reflecting: T.self))")
+        }
+
+        return try self.decode(manifestedType, forKey: key)
+    }
+
+}
+
 extension Encoder {
     /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
     /// such as accessing additional system information which may be used while serializing actor references etc.
@@ -48,6 +64,16 @@ extension Encoder {
     }
 }
 
+extension KeyedEncodingContainer {
+    public mutating func encodeWithManifest<T>(_ context: ActorSerializationContext, _ value: T, forKey key: Key, manifestKey: Key) throws where T: Encodable {
+        let manifest = context.manifest(value)
+
+        try self.encode(manifest, forKey: manifestKey)
+        try self.encode(value, forKey: key)
+    }
+
+}
+
 public enum ActorCoding {
     public enum CodingKeys: CodingKey {
         case node
@@ -62,6 +88,12 @@ public enum ActorCoding {
         /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
         /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
         case missingActorSerializationContext(Any.Type, details: String)
+
+        ///
+        case manifestDidNotMaterializeAsExpectedType(manifest: String, hint: String)
+
+        /// For some reason it was not possible to create a manifest for a message
+        case unableToCreateManifest(hint: String)
     }
 }
 

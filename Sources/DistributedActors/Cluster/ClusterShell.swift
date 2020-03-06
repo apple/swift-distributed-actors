@@ -367,6 +367,12 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
+<<<<<<< Updated upstream
+                let gossipControl = try ConvergentGossip.start(
+                    context, name: "\(ActorAddress._clusterGossip.name)", of: Cluster.Gossip.self,
+                    notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) },
+                    props: ._wellKnown
+=======
                 let adapter = context.messageAdapter(from: Cluster.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) }
                 let gossipControl = try GossipShell.start(
                     context, name: "\(ActorAddress._clusterGossip.name)",
@@ -375,16 +381,17 @@ extension ClusterShell {
                     settings: .init(
                         gossipInterval: .seconds(1),
                         onGossipReceived: { identifier, payload, _ in
-                            assert(identifier == ClusterShell.gossipID, "Received gossip with unexpected identifier [\(identifier)], expected: \(ClusterShell.gossipID)")
+                            assert(identifier.gossipIdentifier == ClusterShell.gossipID.gossipIdentifier, "Received gossip with unexpected identifier [\(identifier)], expected: \(ClusterShell.gossipID)")
                             // note that this is on the gossiper's thread, the only thing we can do here is to forward the message
                             context.myself.tell(.gossipFromGossiper(payload))
                         },
                         onGossipRound: { identity, envelope in
                             // OMG need futures so badly...!
                             // we need to check with the actor what to do about this gossip round technically speaking
-                            envelope.payload
+                            envelope
                         }
                     )
+>>>>>>> Stashed changes
                 )
 
                 let state = ClusterShellState(

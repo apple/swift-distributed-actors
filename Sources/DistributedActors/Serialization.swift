@@ -398,6 +398,33 @@ public struct ActorSerializationContext {
     internal func box<Box>(_ value: Any, ofKnownType: Any.Type, as boxType: Box.Type) -> Box? {
         self.system.serialization.box(value, ofKnownType: ofKnownType, as: boxType)
     }
+
+    /// Creates a manifest, a _recoverable_ representation of a message.
+    /// Manifests may be serialized and later used to recover (manifest) type information on another
+    /// node which can understand it.
+    ///
+    /// Manifests only represent names of types, and do not carry versioning information,
+    /// as such it may be necessary to carry additional information in order to version APIs more resiliently.
+    ///
+    /// // TODO: What if manifests DID carry some version information -- we'd need to annotate types...
+    /// // TODO: This looks a bit like reinventing java serialization, so rather than reinventing that mistake,
+    /// // TODO: We should take into account the learnings from "Towards Better Serialization" https://cr.openjdk.java.net/~briangoetz/amber/serialization.html
+    /// //       Many of those apply to Codable in general, and we should consider taking it to the next level with a Codable++ at some point
+    /// 
+    /// - Parameter value:
+    /// - Returns:
+    public func manifest(_ value: Any) -> String { // TODO: only for Messageable?
+        switch String(reflecting: type(of: value)) {
+        case "DistributedActors.Cluster.Gossip":
+            return "s17DistributedActors7ClusterO6GossipV9"
+        case let other:
+            ActorCoding.CodingError.unableToCreateManifest(hint: "Cannot create manifest for: \(other)")
+        }
+    }
+}
+
+// TODO: could be like this
+protocol Manifest: Codable {
 }
 
 internal struct BoxingKey: Hashable {

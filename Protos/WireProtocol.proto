@@ -60,8 +60,11 @@ message HandshakeReject {
 message Envelope {
     ActorAddress recipient = 1;
 
-    uint32 serializerId    = 2;
-    bytes payload          = 3;
+    oneof manifest {
+        string typeManifest = 2;
+        uint32 serializerID = 3;
+    }
+    bytes payload          = 4;
 }
 
 // System messages have to be reliable, therefore they need to be acknowledged
