@@ -38,11 +38,24 @@ struct ProtoCRDTEnvelope {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var boxed: ProtoCRDTEnvelope.Boxed = .unspecified
+  var boxed: ProtoCRDTEnvelope.Boxed {
+    get {return _storage._boxed}
+    set {_uniqueStorage()._boxed = newValue}
+  }
 
-  var serializerID: UInt32 = 0
+  var manifest: ProtoManifest {
+    get {return _storage._manifest ?? ProtoManifest()}
+    set {_uniqueStorage()._manifest = newValue}
+  }
+  /// Returns true if `manifest` has been explicitly set.
+  var hasManifest: Bool {return _storage._manifest != nil}
+  /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+  mutating func clearManifest() {_uniqueStorage()._manifest = nil}
 
-  var payload: Data = SwiftProtobuf.Internal.emptyData
+  var payload: Data {
+    get {return _storage._payload}
+    set {_uniqueStorage()._payload = newValue}
+  }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -82,6 +95,8 @@ struct ProtoCRDTEnvelope {
   }
 
   init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 #if swift(>=4.2)
@@ -593,38 +608,74 @@ extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   static let protoMessageName: String = "CRDTEnvelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "boxed"),
-    2: .same(proto: "serializerId"),
+    2: .same(proto: "manifest"),
     3: .same(proto: "payload"),
   ]
 
+  fileprivate class _StorageClass {
+    var _boxed: ProtoCRDTEnvelope.Boxed = .unspecified
+    var _manifest: ProtoManifest? = nil
+    var _payload: Data = SwiftProtobuf.Internal.emptyData
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _boxed = source._boxed
+      _manifest = source._manifest
+      _payload = source._payload
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      switch fieldNumber {
-      case 1: try decoder.decodeSingularEnumField(value: &self.boxed)
-      case 2: try decoder.decodeSingularUInt32Field(value: &self.serializerID)
-      case 3: try decoder.decodeSingularBytesField(value: &self.payload)
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularEnumField(value: &_storage._boxed)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._manifest)
+        case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
+        default: break
+        }
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.boxed != .unspecified {
-      try visitor.visitSingularEnumField(value: self.boxed, fieldNumber: 1)
-    }
-    if self.serializerID != 0 {
-      try visitor.visitSingularUInt32Field(value: self.serializerID, fieldNumber: 2)
-    }
-    if !self.payload.isEmpty {
-      try visitor.visitSingularBytesField(value: self.payload, fieldNumber: 3)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if _storage._boxed != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._boxed, fieldNumber: 1)
+      }
+      if let v = _storage._manifest {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      }
+      if !_storage._payload.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: ProtoCRDTEnvelope, rhs: ProtoCRDTEnvelope) -> Bool {
-    if lhs.boxed != rhs.boxed {return false}
-    if lhs.serializerID != rhs.serializerID {return false}
-    if lhs.payload != rhs.payload {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._boxed != rhs_storage._boxed {return false}
+        if _storage._manifest != rhs_storage._manifest {return false}
+        if _storage._payload != rhs_storage._payload {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

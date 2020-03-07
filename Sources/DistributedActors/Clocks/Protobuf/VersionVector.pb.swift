@@ -162,10 +162,14 @@ public struct ProtoVersionDottedElementEnvelope {
   public mutating func clearDot() {_uniqueStorage()._dot = nil}
 
   /// ~~ element ~~
-  public var serializerID: UInt32 {
-    get {return _storage._serializerID}
-    set {_uniqueStorage()._serializerID = newValue}
+  public var manifest: ProtoManifest {
+    get {return _storage._manifest ?? ProtoManifest()}
+    set {_uniqueStorage()._manifest = newValue}
   }
+  /// Returns true if `manifest` has been explicitly set.
+  public var hasManifest: Bool {return _storage._manifest != nil}
+  /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+  public mutating func clearManifest() {_uniqueStorage()._manifest = nil}
 
   public var payload: Data {
     get {return _storage._payload}
@@ -433,13 +437,13 @@ extension ProtoVersionDottedElementEnvelope: SwiftProtobuf.Message, SwiftProtobu
   public static let protoMessageName: String = "VersionDottedElementEnvelope"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "dot"),
-    2: .same(proto: "serializerId"),
+    2: .same(proto: "manifest"),
     3: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
     var _dot: ProtoVersionDot? = nil
-    var _serializerID: UInt32 = 0
+    var _manifest: ProtoManifest? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
 
     static let defaultInstance = _StorageClass()
@@ -448,7 +452,7 @@ extension ProtoVersionDottedElementEnvelope: SwiftProtobuf.Message, SwiftProtobu
 
     init(copying source: _StorageClass) {
       _dot = source._dot
-      _serializerID = source._serializerID
+      _manifest = source._manifest
       _payload = source._payload
     }
   }
@@ -466,7 +470,7 @@ extension ProtoVersionDottedElementEnvelope: SwiftProtobuf.Message, SwiftProtobu
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._dot)
-        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._serializerID)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._manifest)
         case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
         default: break
         }
@@ -479,8 +483,8 @@ extension ProtoVersionDottedElementEnvelope: SwiftProtobuf.Message, SwiftProtobu
       if let v = _storage._dot {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if _storage._serializerID != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._serializerID, fieldNumber: 2)
+      if let v = _storage._manifest {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if !_storage._payload.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
@@ -495,7 +499,7 @@ extension ProtoVersionDottedElementEnvelope: SwiftProtobuf.Message, SwiftProtobu
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._dot != rhs_storage._dot {return false}
-        if _storage._serializerID != rhs_storage._serializerID {return false}
+        if _storage._manifest != rhs_storage._manifest {return false}
         if _storage._payload != rhs_storage._payload {return false}
         return true
       }

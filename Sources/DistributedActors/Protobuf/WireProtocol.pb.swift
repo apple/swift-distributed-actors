@@ -224,10 +224,14 @@ struct ProtoEnvelope {
   /// Clears the value of `recipient`. Subsequent reads from it will return its default value.
   mutating func clearRecipient() {_uniqueStorage()._recipient = nil}
 
-  var serializerID: UInt32 {
-    get {return _storage._serializerID}
-    set {_uniqueStorage()._serializerID = newValue}
+  var manifest: ProtoManifest {
+    get {return _storage._manifest ?? ProtoManifest()}
+    set {_uniqueStorage()._manifest = newValue}
   }
+  /// Returns true if `manifest` has been explicitly set.
+  var hasManifest: Bool {return _storage._manifest != nil}
+  /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+  mutating func clearManifest() {_uniqueStorage()._manifest = nil}
 
   var payload: Data {
     get {return _storage._payload}
@@ -262,10 +266,14 @@ struct ProtoSystemEnvelope {
   /// Clears the value of `from`. Subsequent reads from it will return its default value.
   mutating func clearFrom() {_uniqueStorage()._from = nil}
 
-  var serializerID: UInt32 {
-    get {return _storage._serializerID}
-    set {_uniqueStorage()._serializerID = newValue}
+  var manifest: ProtoManifest {
+    get {return _storage._manifest ?? ProtoManifest()}
+    set {_uniqueStorage()._manifest = newValue}
   }
+  /// Returns true if `manifest` has been explicitly set.
+  var hasManifest: Bool {return _storage._manifest != nil}
+  /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+  mutating func clearManifest() {_uniqueStorage()._manifest = nil}
 
   var payload: Data {
     get {return _storage._payload}
@@ -658,13 +666,13 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   static let protoMessageName: String = "Envelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "recipient"),
-    2: .same(proto: "serializerId"),
+    2: .same(proto: "manifest"),
     3: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
     var _recipient: ProtoActorAddress? = nil
-    var _serializerID: UInt32 = 0
+    var _manifest: ProtoManifest? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
 
     static let defaultInstance = _StorageClass()
@@ -673,7 +681,7 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
     init(copying source: _StorageClass) {
       _recipient = source._recipient
-      _serializerID = source._serializerID
+      _manifest = source._manifest
       _payload = source._payload
     }
   }
@@ -691,7 +699,7 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._recipient)
-        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._serializerID)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._manifest)
         case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
         default: break
         }
@@ -704,8 +712,8 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       if let v = _storage._recipient {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if _storage._serializerID != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._serializerID, fieldNumber: 2)
+      if let v = _storage._manifest {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if !_storage._payload.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
@@ -720,7 +728,7 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._recipient != rhs_storage._recipient {return false}
-        if _storage._serializerID != rhs_storage._serializerID {return false}
+        if _storage._manifest != rhs_storage._manifest {return false}
         if _storage._payload != rhs_storage._payload {return false}
         return true
       }
@@ -736,14 +744,14 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "sequenceNr"),
     2: .same(proto: "from"),
-    3: .same(proto: "serializerId"),
+    3: .same(proto: "manifest"),
     4: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
     var _sequenceNr: UInt64 = 0
     var _from: ProtoUniqueNode? = nil
-    var _serializerID: UInt32 = 0
+    var _manifest: ProtoManifest? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
 
     static let defaultInstance = _StorageClass()
@@ -753,7 +761,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     init(copying source: _StorageClass) {
       _sequenceNr = source._sequenceNr
       _from = source._from
-      _serializerID = source._serializerID
+      _manifest = source._manifest
       _payload = source._payload
     }
   }
@@ -772,7 +780,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         switch fieldNumber {
         case 1: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
-        case 3: try decoder.decodeSingularUInt32Field(value: &_storage._serializerID)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._manifest)
         case 4: try decoder.decodeSingularBytesField(value: &_storage._payload)
         default: break
         }
@@ -788,8 +796,8 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if let v = _storage._from {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
-      if _storage._serializerID != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._serializerID, fieldNumber: 3)
+      if let v = _storage._manifest {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
       if !_storage._payload.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 4)
@@ -805,7 +813,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         let rhs_storage = _args.1
         if _storage._sequenceNr != rhs_storage._sequenceNr {return false}
         if _storage._from != rhs_storage._from {return false}
-        if _storage._serializerID != rhs_storage._serializerID {return false}
+        if _storage._manifest != rhs_storage._manifest {return false}
         if _storage._payload != rhs_storage._payload {return false}
         return true
       }

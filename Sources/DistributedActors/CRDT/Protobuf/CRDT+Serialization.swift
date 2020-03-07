@@ -121,12 +121,9 @@ private extension Dictionary where Key == VersionDot, Value: Hashable {
             var envelope = ProtoVersionDottedElementEnvelope()
             envelope.dot = try dot.toProto(context: context)
 
-            let serializerId = try context.system.serialization.serializerIdFor(message: element)
-            guard let serializer = context.system.serialization.serializer(for: serializerId) else {
-                throw SerializationError.noSerializerRegisteredFor(hint: String(reflecting: Key.self))
-            }
-            envelope.serializerID = serializerId
-            var bytes = try serializer.trySerialize(element)
+            let serialized = try context.system.serialization.serialize(element)
+            envelope.manifest = serialized.0.toProto()
+            var bytes = serialized.1
             envelope.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
 
             envelopes.append(envelope)
@@ -143,14 +140,20 @@ private extension Dictionary where Key == VersionDot, Value: Hashable {
             guard envelope.hasDot else {
                 throw SerializationError.missingField("envelope.dot", type: "\(String(reflecting: [VersionDot: Value].self))")
             }
+            guard envelope.hasManifest else {
+                throw SerializationError.missingField("envelope.manifest", type: "\(String(reflecting: Serialization.Manifest.self))")
+            }
 
             // TODO: avoid having to alloc, but deser from Data directly
             var bytes = context.allocator.buffer(capacity: envelope.payload.count)
             bytes.writeBytes(envelope.payload)
 
-            let payload = try context.system.serialization.deserialize(serializerId: envelope.serializerID, from: bytes)
             let key = try VersionDot(fromProto: envelope.dot, context: context)
-            dict[key] = payload as? Value
+
+            let manifest = Serialization.Manifest(fromProto: envelope.manifest)
+            if let payload = try context.system.serialization.deserialize(as: Value.self, from: bytes, using: manifest) {
+                dict[key] = payload
+            }
         }
 
         self = dict

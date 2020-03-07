@@ -23,13 +23,13 @@ import XCTest
 class SerializationTests: ActorSystemTestBase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
-            settings.serialization.registerCodable(for: ActorRef<String>.self, underId: 1001)
-            settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
+            settings.serialization.registerManifest(ActorRef<String>.self, hint: nil, serializer: .jsonCodable)
+            settings.serialization.registerManifest(HasStringRef.self, hint: nil, serializer: .jsonCodable)
 
-            settings.serialization.registerCodable(for: InterestingMessage.self, underId: 1003)
-            settings.serialization.registerCodable(for: HasInterestingMessageRef.self, underId: 1004)
+            settings.serialization.registerManifest(InterestingMessage.self, hint: nil, serializer: .jsonCodable)
+            settings.serialization.registerManifest(HasInterestingMessageRef.self, hint: nil, serializer: .jsonCodable)
 
-            settings.serialization.registerCodable(for: HasReceivesSystemMsgs.self, underId: 1005)
+            settings.serialization.registerManifest(HasReceivesSystemMsgs.self, hint: nil, serializer: .jsonCodable)
         }
     }
 
@@ -72,8 +72,8 @@ class SerializationTests: ActorSystemTestBase {
         }
 
         "\(err)".shouldStartWith(prefix: """
-        missingActorSerializationContext(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
-        """)
+                                         missingActorSerializationContext(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
+                                         """)
     }
 
     func test_serialize_actorAddress_usingContext() throws {
@@ -312,7 +312,7 @@ private class Mid: Top, Hashable {
         self._path.hash(into: &hasher)
     }
 
-    static func == (lhs: Mid, rhs: Mid) -> Bool {
+    static func ==(lhs: Mid, rhs: Mid) -> Bool {
         return lhs.path == rhs.path
     }
 }
@@ -325,7 +325,9 @@ private struct HasIntRef: Codable, Equatable {
     let containedRef: ActorRef<Int>
 }
 
-private struct InterestingMessage: Codable, Equatable {}
+private struct InterestingMessage: Codable, Equatable {
+}
+
 private struct HasInterestingMessageRef: Codable, Equatable {
     let containedInterestingRef: ActorRef<InterestingMessage>
 }

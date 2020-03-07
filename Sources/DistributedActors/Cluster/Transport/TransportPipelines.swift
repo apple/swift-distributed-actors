@@ -256,24 +256,28 @@ private final class SerializationHandler: ChannelDuplexHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let transportEnvelope: TransportEnvelope = self.unwrapOutboundIn(data)
-        let serializationPromise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)> = context.eventLoop.makePromise()
+        let serializationPromise: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = context.eventLoop.makePromise()
 
+        let message: Any = transportEnvelope.underlyingMessage
         self.serializationPool.serialize(
-            message: transportEnvelope.underlyingMessage, metaType: transportEnvelope.underlyingMessageMetaType,
+            message: message, metaType: transportEnvelope.underlyingMessageMetaType,
             recipientPath: transportEnvelope.recipient.path,
             promise: serializationPromise
         )
 
         serializationPromise.futureResult.whenComplete {
             switch $0 {
-            case .success((let serializerId, let bytes)):
+            case .success((let manifest, let bytes)):
                 // force unwrapping here is safe because we read exactly the amount of readable bytes
-                let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, serializerId: serializerId, payload: bytes)
+                let wireEnvelope = Wire.Envelope(
+                    recipient: transportEnvelope.recipient,
+                    payload: bytes,
+                    manifest: manifest
+                )
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
             case .failure(let error):
                 self.log.error("Serialization of outgoing message failed: \(error)", metadata: [
                     "recipient": "\(transportEnvelope.recipient)",
-                    "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")",
                 ])
                 // TODO: drop message when it fails to be serialized?
                 promise?.fail(error)
@@ -285,23 +289,24 @@ private final class SerializationHandler: ChannelDuplexHandler {
         let wireEnvelope = self.unwrapInboundIn(data)
         let deserializationPromise: EventLoopPromise<Any> = context.eventLoop.makePromise()
         serializationPool.deserialize(
-            serializerId: wireEnvelope.serializerId,
-            from: wireEnvelope.payload, recipientPath: wireEnvelope.recipient.path,
+            from: wireEnvelope.payload,
+            using: wireEnvelope.manifest,
+            recipientPath: wireEnvelope.recipient.path,
             promise: deserializationPromise
         )
 
         // TODO: ensure message ordering. See comment in `write`.
         deserializationPromise.futureResult.whenComplete { deserializedResult in
             switch deserializedResult {
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageEnvelope:
+                case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessageEnvelope:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessageEnvelope: message as! SystemMessageEnvelope, recipient: wireEnvelope.recipient)))
 
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageACK:
+            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessageACK:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(ack: message as! _SystemMessage.ACK, recipient: wireEnvelope.recipient)))
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageNACK:
+            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessageNACK:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(nack: message as! _SystemMessage.NACK, recipient: wireEnvelope.recipient)))
 
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessage:
+            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessage:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: message as! _SystemMessage, recipient: wireEnvelope.recipient)))
 
             case .success(let message):

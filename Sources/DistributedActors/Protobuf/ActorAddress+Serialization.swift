@@ -16,7 +16,7 @@
 // MARK: ProtoActorAddress
 
 extension ActorAddress {
-    init(_ proto: ProtoActorAddress) throws {
+    init(fromProto proto: ProtoActorAddress) throws {
         let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
         let incarnation = ActorIncarnation(Int(proto.incarnation))
 

@@ -19,6 +19,7 @@ option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
 import "CRDT/CRDT.proto";
+import "Serialization/Serialization.proto";
 
 // ==== Wire envelope for CRDT types -----------------------------------------------------------------------------------
 
@@ -29,10 +30,10 @@ message CRDTEnvelope {
         ANY_CVRDT = 1;
         /// Box as `AnyDeltaCRDT` when deserializing
         ANY_DELTA_CRDT = 2;
-    }
+    } // FIXME: will bocing still be needed
 
     Boxed boxed = 1;
-    uint32 serializerId = 2;
+    Manifest manifest = 2;
     bytes payload = 3;
 }
 

@@ -140,7 +140,7 @@ class SerializationDocExamples {
     func prepare_system_custom() throws {
         // tag::prepare_system_custom[]
         let system = ActorSystem("CustomSerializerExample") { settings in
-            func makeCustomSerializer(allocator: NIO.ByteBufferAllocator) -> Serializer<CustomlyEncodedMessage> {
+            func makeCustomSerializer(allocator: NIO.ByteBufferAllocator) -> TypeSpecificSerializer<CustomlyEncodedMessage> {
                 return CustomlyEncodedSerializer(allocator)
             }
             settings.serialization.register(makeCustomSerializer, for: CustomlyEncodedMessage.self, underId: 1101)
@@ -150,7 +150,7 @@ class SerializationDocExamples {
     }
 
     // tag::custom_serializer[]
-    final class CustomlyEncodedSerializer: Serializer<CustomlyEncodedMessage> {
+    final class CustomlyEncodedSerializer: TypeSpecificSerializer<CustomlyEncodedMessage> {
         private let allocator: NIO.ByteBufferAllocator
 
         private let availableRepr: ByteBuffer
@@ -201,7 +201,7 @@ class SerializationDocExamples {
         let ref: ActorRef<String>
     }
 
-    final class CustomContainingActorRefSerializer: Serializer<ContainsActorRef> {
+    final class CustomContainingActorRefSerializer: TypeSpecificSerializer<ContainsActorRef> {
         private let allocator: NIO.ByteBufferAllocator
         private var context: ActorSerializationContext!
 

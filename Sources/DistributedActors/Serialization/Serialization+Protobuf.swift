@@ -46,7 +46,7 @@ internal protocol InternalProtobufRepresentable {
 // MARK: Protobuf serializers
 
 /// Base protobuf serializer containing common logic, customizable by subclass.
-open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Message>: Serializer<Message> {
+open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Message>: TypeSpecificSerializer<Message> {
     var _serializationContext: ActorSerializationContext?
     var serializationContext: ActorSerializationContext {
         guard let context = self._serializationContext else {

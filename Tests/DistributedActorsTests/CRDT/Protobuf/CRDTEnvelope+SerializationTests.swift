@@ -26,7 +26,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
             g1.delta.shouldNotBeNil()
 
             let g1AsAny = g1.asAnyDeltaCRDT
-            let envelope = CRDTEnvelope(serializerId: Serialization.Id.InternalSerializer.CRDTGCounter, g1AsAny)
+            let envelope = CRDTEnvelope(manifest: Serialization.Id.InternalSerializer.CRDTGCounter, g1AsAny)
 
             let bytes = try system.serialization.serialize(message: envelope)
             let deserialized = try system.serialization.deserialize(CRDTEnvelope.self, from: bytes)
@@ -52,7 +52,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
             g1.delta.shouldNotBeNil()
 
             let g1DeltaAsAny = g1.delta!.asAnyCvRDT
-            let envelope = CRDTEnvelope(serializerId: Serialization.Id.InternalSerializer.CRDTGCounterDelta, g1DeltaAsAny)
+            let envelope = CRDTEnvelope(manifest: Serialization.Id.InternalSerializer.CRDTGCounterDelta, g1DeltaAsAny)
 
             let bytes = try system.serialization.serialize(message: envelope)
             let deserialized = try system.serialization.deserialize(CRDTEnvelope.self, from: bytes)

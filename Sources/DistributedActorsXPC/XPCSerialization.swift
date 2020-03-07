@@ -30,7 +30,7 @@ public enum XPCSerialization {
     // MARK: Serialize
 
     public static func serializeActorMessage<Message>(_ system: ActorSystem, message: Message) throws -> xpc_object_t {
-        let serializerId = try system.serialization.serializerIdFor(message: message)
+        let serializerID = try system.serialization.SerializerIDFor(message: message)
 
         guard let serializer = system.serialization.serializer(for: serializerId) else {
             throw SerializationError.noSerializerRegisteredFor(hint: "\(Message.self))")
@@ -55,7 +55,7 @@ public enum XPCSerialization {
     }
 
     public static func serializeRecipient(_ system: ActorSystem, xdict: xpc_object_t, address: ActorAddress) throws {
-        guard let addressSerializerId = system.serialization.serializerIdFor(type: ActorAddress.self) else {
+        guard let addressSerializerId = system.serialization.SerializerIDFor(type: ActorAddress.self) else {
             fatalError("Can't serialize ActorAddress: [\(address)], no serializer id")
         }
         guard let serializer = system.serialization.serializer(for: addressSerializerId) else {
@@ -83,10 +83,10 @@ public enum XPCSerialization {
     // MARK: Deserialize
 
     public static func deserializeActorMessage(_ system: ActorSystem, peer: xpc_connection_t, xdict: xpc_object_t) throws -> Any {
-        let serializerId = Serialization.SerializerId(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue))
+        let serializerID = Serialization.SerializerID(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue))
 
         guard let serializer = system.serialization.serializer(for: serializerId) else {
-            throw SerializationError.noSerializerRegisteredFor(hint: "SerializerId:\(serializerId))")
+            throw SerializationError.noSerializerRegisteredFor(hint: "serializerID:\(serializerID))")
         }
 
         let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue)
@@ -124,7 +124,7 @@ public enum XPCSerialization {
         buf.writeBytes(rawDataBufferPointer)
 
         do {
-            guard let id = system.serialization.serializerIdFor(type: ActorAddress.self) else {
+            guard let id = system.serialization.SerializerIDFor(type: ActorAddress.self) else {
                 return system.deadLetters.asAddressable()
             }
             guard let serializer = system.serialization.serializer(for: id) else {

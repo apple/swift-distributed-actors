@@ -29,10 +29,10 @@ internal struct CRDTEnvelope {
         case DeltaCRDT(AnyDeltaCRDT)
     }
 
-    let serializerId: Serialization.SerializerId
+    let manifest: Serialization.Manifest
     let _boxed: Boxed
 
-    init(serializerId: Serialization.SerializerId, _ data: AnyStateBasedCRDT) {
+    init(manifest: Serialization.Manifest, _ data: AnyStateBasedCRDT) {
         switch data {
         case let data as AnyCvRDT:
             self._boxed = .CvRDT(data)
@@ -41,7 +41,7 @@ internal struct CRDTEnvelope {
         default:
             fatalError("Unsupported \(data)")
         }
-        self.serializerId = serializerId
+        self.manifest = manifest
 
         traceLog_Serialization("\(self)")
     }
@@ -63,56 +63,62 @@ extension CRDTEnvelope: InternalProtobufRepresentable {
         var proto = ProtoCRDTEnvelope()
         switch self._boxed {
         case .CvRDT(let data):
-            let (serializerId, _bytes) = try context.system.serialization.serialize(message: data.underlying, metaType: data.metaType)
+            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
             var bytes = _bytes
-            proto.boxed = .anyCvrdt
-            proto.serializerID = serializerId
+//            proto.boxed = .anyCvrdt
+            proto.manifest = manifest.toProto()
             proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
             return proto
         case .DeltaCRDT(let data):
-            let (serializerId, _bytes) = try context.system.serialization.serialize(message: data.underlying, metaType: data.metaType)
+            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
             var bytes = _bytes
-            proto.boxed = .anyDeltaCrdt
-            proto.serializerID = serializerId
+            // proto.boxed = .anyDeltaCrdt // FIXME
+            proto.manifest = manifest.toProto()
             proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
             return proto
         }
     }
 
     init(fromProto proto: ProtoCRDTEnvelope, context: ActorSerializationContext) throws {
-        // TODO: avoid having to alloc, but deser from Data directly
+        guard proto.hasManifest else {
+            throw ActorCoding.CodingError.missingManifest(hint: "missing .manifest in: \(proto)")
+        }
+        let manifest = Serialization.Manifest(fromProto: proto.manifest)
+
         var bytes = context.allocator.buffer(capacity: proto.payload.count)
         bytes.writeBytes(proto.payload)
 
-        let payload = try context.system.serialization.deserialize(serializerId: proto.serializerID, from: bytes)
-        self.serializerId = proto.serializerID
+        let payload = try context.system.serialization.deserializeAny(from: bytes, using: manifest)
+        self.manifest = .init(fromProto: proto.manifest)
 
-        switch proto.boxed {
-        case .anyCvrdt:
-            if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
-                self._boxed = .CvRDT(anyCvRDT)
-            } else {
-                fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
-            }
-        case .anyDeltaCrdt:
-            if let anyDeltaCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
-                self._boxed = .DeltaCRDT(anyDeltaCRDT)
-            } else {
-                fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
-            }
-        case .unspecified:
-            throw SerializationError.missingField("type", type: String(describing: CRDTEnvelope.self))
-        case .UNRECOGNIZED:
-            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
-        }
+        fatalError("TODO: the entire boxing dance is gone")
+//        switch proto.boxed {
+//        case .anyCvrdt:
+//            if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
+//                self._boxed = .CvRDT(anyCvRDT)
+//            } else {
+//                fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
+//            }
+//        case .anyDeltaCrdt:
+//            if let anyDeltaCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
+//                self._boxed = .DeltaCRDT(anyDeltaCRDT)
+//            } else {
+//                fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
+//            }
+//        case .unspecified:
+//            throw SerializationError.missingField("type", type: String(describing: CRDTEnvelope.self))
+//        case .UNRECOGNIZED:
+//            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
+//        }
     }
 }
 
 extension AnyStateBasedCRDT {
     internal func asCRDTEnvelope(_ context: ActorSerializationContext) throws -> CRDTEnvelope {
-        guard let serializerId = context.system.serialization.serializerIdFor(metaType: self.metaType) else {
-            throw SerializationError.noSerializerRegisteredFor(hint: "\(self.metaType)")
-        }
-        return CRDTEnvelope(serializerId: serializerId, self)
+//        guard let serializerID = context.system.serialization.SerializerIDFor(metaType: self.metaType) else {
+//            throw SerializationError.noSerializerRegisteredFor(hint: "\(self.metaType)")
+//        }
+//        return CRDTEnvelope(serializerID: serializerId, self)
+    fatalError("TODO") // TODO
     }
 }
