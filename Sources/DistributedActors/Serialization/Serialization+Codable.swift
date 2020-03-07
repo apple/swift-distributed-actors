@@ -20,17 +20,33 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSerializationContext for Encoder & Decoder
 
-extension Decoder {
+public protocol ActorSerializationContextDecoder {
     /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
     /// such as resolving an actor ref from its serialized form.
     ///
     /// This context is only available when the decoder is invoked from the context of `DistributedActors.Serialization`.
+    var actorSerializationContext: ActorSerializationContext?
+}
+
+//extension ActorSerializationContextDecoder {
+//    public var actorSerializationContext: ActorSerializationContext? {
+//        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+//    }
+//}
+
+extension Decoder: ActorSerializationContextDecoder {
     public var actorSerializationContext: ActorSerializationContext? {
         self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
 }
 
-extension Encoder {
+extension JSONDecoder: ActorSerializationContextDecoder {
+    public var actorSerializationContext: ActorSerializationContext? {
+        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+    }
+}
+
+public protocol ActorSerializationContextEncoder {
     /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
     /// such as accessing additional system information which may be used while serializing actor references etc.
     ///
@@ -43,6 +59,22 @@ extension Encoder {
     //         throw ActorCoding.CodingError.missingActorSerializationContext(MyMessage.self, details: "While encoding [\(self)], using [\(encoder)]")
     //     }
     /// ```
+    var actorSerializationContext: ActorSerializationContext? { get }
+}
+
+//extension ActorSerializationContextEncoder {
+//    public var actorSerializationContext: ActorSerializationContext? {
+//        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+//    }
+//}
+
+extension Encoder: ActorSerializationContextEncoder {
+    public var actorSerializationContext: ActorSerializationContext? {
+        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+    }
+}
+
+extension JSONEncoder: ActorSerializationContextEncoder {
     public var actorSerializationContext: ActorSerializationContext? {
         self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
@@ -62,6 +94,11 @@ public enum ActorCoding {
         /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
         /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
         case missingActorSerializationContext(Any.Type, details: String)
+        case missingManifest(hint: String)
+        case unableToCreateManifest(hint: String)
+
+        case unableToSerialize(hint: String)
+        case unableToDeserialize(hint: String)
     }
 }
 

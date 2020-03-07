@@ -108,7 +108,7 @@ class SerializationPoolTests: XCTestCase {
         let test1 = Test1()
         test1.lock.lock()
         defer { test1.lock.unlock() }
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: Serialization.Promise = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }

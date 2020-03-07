@@ -38,7 +38,7 @@ enum ProtoSerializerError: Error {
     case x
 }
 
-final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: Serializer<M> {
+final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: TypeSpecificSerializer<M> {
     let allocator: ByteBufferAllocator
 
     init(allocator: ByteBufferAllocator) {
@@ -65,7 +65,7 @@ final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: Serializer<M> {
     }
 }
 
-private func protoSerializer<M: SwiftProtobuf.Message>(allocator: ByteBufferAllocator) -> Serializer<M> {
+private func protoSerializer<M: SwiftProtobuf.Message>(allocator: ByteBufferAllocator) -> TypeSpecificSerializer<M> {
     return ProtoMessageSerializer(allocator: allocator)
 }
 

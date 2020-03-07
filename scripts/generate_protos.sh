@@ -24,7 +24,8 @@ pushd $proto_path >> /dev/null
 
 declare -a public_protos
 public_protos=(
-    -name 'ActorAddress.proto'
+    -name 'Serialization.proto'
+    -or -name 'ActorAddress.proto'
     -or -name 'CRDT.proto'
     -or -name 'VersionVector.proto'
 )
