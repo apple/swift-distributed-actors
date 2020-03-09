@@ -983,7 +983,7 @@ final class SupervisionTests: ActorSystemTestBase {
                     try failureMode.fail()
                 }
 
-                context.dispatcher.execute {
+                (context as! ActorShell<String>)._dispatcher.execute {
                     cb.invoke(msg)
                 }
 

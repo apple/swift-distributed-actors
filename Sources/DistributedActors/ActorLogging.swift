@@ -133,7 +133,7 @@ public struct ActorOriginLogHandler: LogHandler {
         self.init(LoggingContext(
             identifier: context.path.description,
             useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
-            dispatcher: { [weak context = context] in context?.dispatcher.name ?? "unknown" }
+            dispatcher: { () in context.props.dispatcher.name }
         ))
     }
 

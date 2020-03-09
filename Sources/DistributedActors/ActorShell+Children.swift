@@ -69,8 +69,8 @@ public class Children {
             switch self.container[name] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages as? ActorRef<T>
-            case .some(.adapter(let child)):
-                return child as? ActorRef<T>
+            case .some(.adapter(let adapter)):
+                return ActorRef<T>(.adapter(adapter))
             case .none:
                 return nil
             }
@@ -326,7 +326,7 @@ extension ActorShell: ChildActorRefFactory {
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
-        case .default: dispatcher = self.dispatcher // TODO: this is dispatcher inheritance, not sure about it
+        case .default: dispatcher = self._dispatcher // TODO: this is dispatcher inheritance, not sure about it
         case .callingThread: dispatcher = CallingThreadDispatcher()
         case .nio(let group): dispatcher = NIOEventLoopGroupDispatcher(group)
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
