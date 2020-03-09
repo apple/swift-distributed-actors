@@ -391,15 +391,20 @@ final class SWIMInstance {
         return ref.address == self.myShellAddress || self.members[ref] != nil
     }
 
-    func makeGossipPayload(for target: ActorRef<SWIM.Message>?) -> SWIM.Payload {
+    func makeGossipPayload(to target: ActorRef<SWIM.Message>?) -> SWIM.Payload {
         var members: [SWIM.Member] = []
         // buddy system will always send to a suspect its suspicion.
-        // the reason for that to make sure the suspect will know about its suspicion even if it was already disseminated `numberOfTimesGossiped` times.
-        var hasTargetSuspicion = false
+        // The reason for that to ensure the suspect will be notified it is being suspected,
+        // even if the suspicion has already been disseminated more than `numberOfTimesGossiped` times.
+        let targetIsSuspect: Bool
         if let target = target, let member = self.member(for: target), member.isSuspect {
+            // the member is suspect, and we must inform it about this, thus including in gossip payload:
             members.append(member)
-            hasTargetSuspicion = true
+            targetIsSuspect = true
+        } else {
+            targetIsSuspect = false
         }
+
         // In order to avoid duplicates within a single gossip payload, we
         // first collect all messages we need to gossip out and only then
         // re-insert them into `messagesToGossip`. Otherwise, we may end up
@@ -425,11 +430,13 @@ final class SWIMInstance {
         members.reserveCapacity(gossipMessages.count)
 
         for var gossip in gossipMessages {
-            members.append(gossip.member)
+            // We do NOT add gossip to payload if it's a gossip about self and self is a suspect,
+            // this case was handled earlier and doing it here will lead to duplicate messages
+            if !(target == gossip.member.ref && targetIsSuspect) {
+                members.append(gossip.member)
+            }
             gossip.numberOfTimesGossiped += 1
-            // gossip about target's suspicion is already in payload, no need to add it twice
-            if gossip.numberOfTimesGossiped < self.settings.gossip.maxGossipCountPerMessage,
-                !(target == gossip.member.ref && hasTargetSuspicion) {
+            if gossip.numberOfTimesGossiped < self.settings.gossip.maxGossipCountPerMessage {
                 self._messagesToGossip.append(gossip)
             }
         }
@@ -449,7 +456,7 @@ final class SWIMInstance {
 
 extension SWIM.Instance {
     func onPing() -> OnPingDirective {
-        return .reply(.ack(target: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload(for: nil)))
+        return .reply(.ack(target: self.myShellMyself, incarnation: self._incarnation, payload: self.makeGossipPayload(to: nil)))
     }
 
     enum OnPingDirective {
@@ -531,6 +538,7 @@ extension SWIM.Instance {
             if suspectedInIncarnation == self.incarnation {
                 self.adjustLHMultiplier(.refutingSuspectMessageAboutSelf)
                 self._incarnation += 1
+                // refute the suspicion, we clearly are still alive
                 self.addToGossip(member: SWIMMember(ref: myShellMyself, status: .alive(incarnation: self._incarnation), protocolPeriod: self.protocolPeriod))
                 return .applied(change: nil)
             } else if suspectedInIncarnation > self.incarnation {

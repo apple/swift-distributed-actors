@@ -140,7 +140,7 @@ internal struct SWIMShell {
         to target: ActorRef<SWIM.Message>,
         pingReqOrigin: ActorRef<SWIM.PingResponse>?
     ) {
-        let payload = self.swim.makeGossipPayload(for: target)
+        let payload = self.swim.makeGossipPayload(to: target)
 
         context.log.trace("Sending ping to [\(target)] with payload [\(payload)]")
 
@@ -193,7 +193,7 @@ internal struct SWIMShell {
         let firstSuccess = context.system._eventLoopGroup.next().makePromise(of: SWIM.PingResponse.self)
         let pingTimeout = self.swim.dynamicLHMPingTimeout
         for member in membersToPingRequest {
-            let payload = self.swim.makeGossipPayload(for: toPing)
+            let payload = self.swim.makeGossipPayload(to: toPing)
 
             context.log.trace("Sending ping request for [\(toPing)] to [\(member)] with payload: \(payload)")
 
@@ -248,6 +248,10 @@ internal struct SWIMShell {
             }
 
         case .success(.ack(let pinged, let incarnation, let payload)):
+            // We're proxying an ack payload from ping target back to ping source.
+            // If ping target was a suspect, there'll be a refutation in a payload
+            // and we probably want to process it asap. And since the data is already here,
+            // processing this payload will just make gossip convergence faster.
             self.processGossipPayload(context: context, payload: payload)
             context.log.debug("Received ack from [\(pinged)] with incarnation [\(incarnation)] and payload [\(payload)]", metadata: self.swim.metadata)
             self.markMember(context, latest: SWIMMember(ref: pinged, status: .alive(incarnation: incarnation), protocolPeriod: self.swim.protocolPeriod))

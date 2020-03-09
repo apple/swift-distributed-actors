@@ -860,7 +860,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
     }
 
     func validateGossip(swim: SWIM.Instance, expected: Set<SWIM.Member>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        let payload = swim.makeGossipPayload(for: nil)
+        let payload = swim.makeGossipPayload(to: nil)
         if expected.isEmpty {
             guard case SWIM.Payload.none = payload else {
                 throw self.testKit.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)

@@ -28,16 +28,14 @@ message SWIMMessage {
 }
 
 message SWIMPing {
-    reserved 1;
-    ActorAddress replyTo = 2;
-    SWIMPayload payload = 3;
+    ActorAddress replyTo = 1;
+    SWIMPayload payload = 2;
 }
 
 message SWIMPingRequest {
     ActorAddress target = 1;
-    reserved 2;
-    ActorAddress replyTo = 3;
-    SWIMPayload payload = 4;
+    ActorAddress replyTo = 2;
+    SWIMPayload payload = 3;
 }
 
 message SWIMPingResponse {

@@ -450,8 +450,8 @@ extension ProtoSWIMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SWIMPing"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    2: .same(proto: "replyTo"),
-    3: .same(proto: "payload"),
+    1: .same(proto: "replyTo"),
+    2: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
@@ -480,8 +480,8 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._payload)
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._payload)
         default: break
         }
       }
@@ -491,10 +491,10 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._replyTo {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if let v = _storage._payload {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -520,8 +520,8 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   public static let protoMessageName: String = "SWIMPingRequest"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "target"),
-    3: .same(proto: "replyTo"),
-    4: .same(proto: "payload"),
+    2: .same(proto: "replyTo"),
+    3: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
@@ -553,8 +553,8 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._target)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
-        case 4: try decoder.decodeSingularMessageField(value: &_storage._payload)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._payload)
         default: break
         }
       }
@@ -567,10 +567,10 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if let v = _storage._replyTo {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if let v = _storage._payload {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
