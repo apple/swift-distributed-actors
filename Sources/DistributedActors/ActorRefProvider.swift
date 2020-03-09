@@ -145,8 +145,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
                 parent: AddressableActorRef(root.ref),
                 behavior: behavior,
                 address: address,
-                props: props,
-                dispatcher: dispatcher
+                props: props
             )
 
             let cell = actor._myCell

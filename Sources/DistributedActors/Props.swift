@@ -88,6 +88,7 @@ public enum DispatcherProps {
     /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
     // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
     case pinnedThread // TODO: implement pinned thread dispatcher
+    // TODO: CPU Affinity when pinning
 
     /// WARNING: Use with Caution!
     ///
@@ -103,6 +104,15 @@ public enum DispatcherProps {
     ///
     /// Dispatcher which hijacks the calling thread to schedule execution.
     case callingThread
+
+    public var name: String {
+        switch self {
+        case .default: return "default"
+        case .pinnedThread: return "pinnedThread"
+        case .nio: return "nioEventLoopGroup"
+        case .callingThread: return "callingThread"
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

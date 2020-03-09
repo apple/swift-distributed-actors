@@ -324,21 +324,12 @@ extension ActorShell: ChildActorRefFactory {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
         let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: incarnation)
 
-        let dispatcher: MessageDispatcher
-        switch props.dispatcher {
-        case .default: dispatcher = self.dispatcher // TODO: this is dispatcher inheritance, not sure about it
-        case .callingThread: dispatcher = CallingThreadDispatcher()
-        case .nio(let group): dispatcher = NIOEventLoopGroupDispatcher(group)
-        default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
-        }
-
         let actor: ActorShell<M> = ActorShell<M>(
             system: self.system,
             parent: self.myself.asAddressable(),
             behavior: behavior,
             address: address,
-            props: props,
-            dispatcher: dispatcher
+            props: props
         )
         let mailbox = Mailbox(shell: actor, capacity: props.mailbox.capacity)
 

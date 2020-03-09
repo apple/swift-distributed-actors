@@ -74,6 +74,11 @@ public class ActorContext<Message>: ActorRefFactory {
         return undefined()
     }
 
+    /// `Props` which were used when spawning this actor.
+    public var props: Props {
+        return undefined()
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 

@@ -50,12 +50,10 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Basic ActorContext capabilities
 
-    private let _dispatcher: MessageDispatcher
-
     @usableFromInline
     var _system: ActorSystem
     public override var system: ActorSystem {
-        return self._system
+        self._system
     }
 
     /// Guaranteed to be set during ActorRef creation
@@ -137,7 +135,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     internal init(
         system: ActorSystem, parent: AddressableActorRef,
         behavior: Behavior<Message>, address: ActorAddress,
-        props: Props, dispatcher: MessageDispatcher
+        props: Props
     ) {
         self._system = system
         self._parent = parent
@@ -145,7 +143,6 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         self.behavior = behavior
         self._address = address
         self._props = props
-        self._dispatcher = dispatcher
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
@@ -226,37 +223,36 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     ///
     /// Warning: Do not use after actor has terminated (!)
     public override var myself: ActorRef<Message> {
-        return .init(.cell(self._myCell))
+        .init(.cell(self._myCell))
     }
 
-    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
+    public override var props: Props {
+        self._props
+    }
+
     public override var address: ActorAddress {
-        return self._address
+        self._address
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
     public override var path: ActorPath {
-        return self._address.path
+        self._address.path
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
     public override var name: String {
-        return self._address.name
+        self._address.name
     }
 
     // access only from within actor
     private lazy var _log = ActorLogger.make(context: self)
     public override var log: Logger {
         get {
-            return self._log
+            self._log
         }
         set {
             self._log = newValue
         }
-    }
-
-    public override var dispatcher: MessageDispatcher {
-        return self._dispatcher
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
