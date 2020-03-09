@@ -349,8 +349,8 @@ final class MockActorContext<Message>: ActorContext<Message> {
         }
     }
 
-    override var dispatcher: MessageDispatcher {
-        fatalError("Failed: \(MockActorContextError())")
+    public override var props: Props {
+        return .init() // mock impl
     }
 
     override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {

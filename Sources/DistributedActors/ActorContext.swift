@@ -69,8 +69,8 @@ public class ActorContext<Message>: ActorRefFactory {
         }
     }
 
-    /// Dispatcher on which this actor is executing
-    public var dispatcher: MessageDispatcher {
+    /// `Props` which were used when spawning this actor.
+    public var props: Props {
         return undefined()
     }
 

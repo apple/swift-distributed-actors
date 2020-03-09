@@ -65,6 +65,9 @@ extension Actor.Context {
     ///
     /// It remains valid across "restarts", however does not remain valid for "stop actor and start another new one under the same path",
     /// as such would not be the "same" actor anymore.
+    ///
+    /// - Concurrency: Must ONLY be accessed by the owning actor.
+    //
     // Implementation note:
     // We use `myself` as the Akka style `self` is taken; We could also do `context.ref` however this sounds inhuman,
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
@@ -73,7 +76,9 @@ extension Actor.Context {
         Actor(ref: self._underlying.myself)
     }
 
-    /// Provides context metadata aware `Logger`
+    /// Provides context metadata aware `Logger`.
+    ///
+    /// - Concurrency: Must ONLY be accessed by the owning actor.
     public var log: Logger {
         get {
             self._underlying.log
@@ -83,9 +88,8 @@ extension Actor.Context {
         }
     }
 
-    /// Dispatcher on which this actor is executing
-    public var dispatcher: MessageDispatcher {
-        self._underlying.dispatcher
+    public var props: Props {
+        self._underlying.props
     }
 }
 
