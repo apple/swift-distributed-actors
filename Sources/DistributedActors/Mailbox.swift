@@ -134,7 +134,7 @@ internal final class Mailbox<Message> {
                 self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
                 break
             }
-            shell.dispatcher.execute(self.run)
+            shell._dispatcher.execute(self.run)
 
         case .alreadyScheduled:
             traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), someone scheduled already")
@@ -210,7 +210,7 @@ internal final class Mailbox<Message> {
             traceLog_Mailbox(self.address.path, "has already released the actor cell, ignoring scheduling attempt")
             return
         }
-        shell.dispatcher.execute(self.run)
+        shell._dispatcher.execute(self.run)
     }
 
     @inlinable
@@ -228,7 +228,7 @@ internal final class Mailbox<Message> {
                 traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system message \(systemMessage)")
                 break
             }
-            shell.dispatcher.execute(self.run)
+            shell._dispatcher.execute(self.run)
 
         case .alreadyScheduled:
             traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), someone scheduled already")
@@ -299,7 +299,7 @@ internal final class Mailbox<Message> {
     private func sendSystemTombstone() {
         traceLog_Mailbox(self.address.path, "SEND SYSTEM TOMBSTONE")
 
-        guard let cell = self.shell else {
+        guard let shell = self.shell else {
             traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system tombstone")
             return
         }
@@ -313,7 +313,7 @@ internal final class Mailbox<Message> {
         self.systemMessages.enqueue(.tombstone)
 
         // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
-        cell.dispatcher.execute(self.run)
+        shell._dispatcher.execute(self.run)
     }
 
     func run() {
@@ -337,7 +337,7 @@ internal final class Mailbox<Message> {
         switch mailboxRunResult {
         case .reschedule:
             // pending messages, and we are the one who should should reschedule
-            shell.dispatcher.execute(self.run)
+            shell._dispatcher.execute(self.run)
 
         case .done:
             // No more messages to run, we are done here
