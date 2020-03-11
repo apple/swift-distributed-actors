@@ -82,7 +82,7 @@ public struct ActorLogger {
         }
 
         var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
-        log.logLevel = context.system.settings.defaultLogLevel
+        log.logLevel = context.system.settings.logging.defaultLevel
         return log
     }
 
@@ -103,7 +103,7 @@ public struct ActorLogger {
         }
 
         var log = Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
-        log.logLevel = system.settings.defaultLogLevel
+        log.logLevel = system.settings.logging.defaultLevel
         return log
     }
 }

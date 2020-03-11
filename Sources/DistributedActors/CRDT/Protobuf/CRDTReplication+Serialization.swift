@@ -15,97 +15,98 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.Replicator.Message
 
-extension CRDT.Replicator.Message: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoCRDTReplicatorMessage
-
-    private typealias WriteResult = CRDT.Replicator.RemoteCommand.WriteResult
-    private typealias ReadResult = CRDT.Replicator.RemoteCommand.ReadResult
-    private typealias DeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
-
-    func toProto(context: ActorSerializationContext) throws -> ProtoCRDTReplicatorMessage {
-        guard case .remoteCommand(let message) = self else {
-            fatalError("Only CRDT.Replicator.Message.remoteCommand can be sent remotely! Was: \(self)")
-        }
-
-        var proto = ProtoCRDTReplicatorMessage()
-        switch message {
-        case .write(let id, let data, let replyTo):
-            traceLog_Serialization("\(self)")
-
-            var protoWrite = ProtoCRDTWrite()
-            protoWrite.identity = id.toProto(context: context)
-            protoWrite.envelope = try data.asCRDTEnvelope(context).toProto(context: context)
-            protoWrite.replyTo = try replyTo.toProto(context: context)
-            proto.write = protoWrite
-        case .writeDelta(let id, let delta, let replyTo):
-            traceLog_Serialization("\(self)")
-
-            var protoWrite = ProtoCRDTWrite()
-            protoWrite.identity = id.toProto(context: context)
-            protoWrite.envelope = try delta.asCRDTEnvelope(context).toProto(context: context)
-            protoWrite.replyTo = try replyTo.toProto(context: context)
-            proto.writeDelta = protoWrite
-        case .read(let id, let replyTo):
-            traceLog_Serialization("\(self)")
-
-            var protoRead = ProtoCRDTRead()
-            protoRead.identity = id.toProto(context: context)
-            protoRead.replyTo = try replyTo.toProto(context: context)
-            proto.read = protoRead
-        case .delete(let id, let replyTo):
-            traceLog_Serialization("\(self)")
-
-            var protoDelete = ProtoCRDTDelete()
-            protoDelete.identity = id.toProto(context: context)
-            protoDelete.replyTo = try replyTo.toProto(context: context)
-            proto.delete = protoDelete
-        }
-        return proto
-    }
-
-    init(fromProto proto: ProtoCRDTReplicatorMessage, context: ActorSerializationContext) throws {
-        guard let value = proto.value else {
-            throw SerializationError.missingField("value", type: String(describing: CRDT.Replicator.Message.self))
-        }
-
-        switch value {
-        case .write(let protoWrite):
-            let id = try protoWrite.identity(context: context)
-            let envelope = try protoWrite.envelope(context: context)
-            let replyTo: ActorRef<WriteResult> = try protoWrite.replyTo(context: context)
-            self = .remoteCommand(.write(id, envelope.underlying, replyTo: replyTo))
-        case .writeDelta(let protoWrite):
-            let id = try protoWrite.identity(context: context)
-            let envelope = try protoWrite.envelope(context: context)
-            let replyTo: ActorRef<WriteResult> = try protoWrite.replyTo(context: context)
-            self = .remoteCommand(.writeDelta(id, delta: envelope.underlying, replyTo: replyTo))
-        case .read(let protoRead):
-            guard protoRead.hasIdentity else {
-                throw SerializationError.missingField("identity", type: String(describing: CRDT.Replicator.Message.self))
-            }
-            let id = CRDT.Identity(fromProto: protoRead.identity, context: context)
-
-            guard protoRead.hasReplyTo else {
-                throw SerializationError.missingField("replyTo", type: String(describing: CRDT.Replicator.Message.self))
-            }
-            let replyTo = try ActorRef<ReadResult>(fromProto: protoRead.replyTo, context: context)
-
-            self = .remoteCommand(.read(id, replyTo: replyTo))
-        case .delete(let protoDelete):
-            guard protoDelete.hasIdentity else {
-                throw SerializationError.missingField("identity", type: String(describing: CRDT.Replicator.Message.self))
-            }
-            let id = CRDT.Identity(fromProto: protoDelete.identity, context: context)
-
-            guard protoDelete.hasReplyTo else {
-                throw SerializationError.missingField("replyTo", type: String(describing: CRDT.Replicator.Message.self))
-            }
-            let replyTo = try ActorRef<DeleteResult>(fromProto: protoDelete.replyTo, context: context)
-
-            self = .remoteCommand(.delete(id, replyTo: replyTo))
-        }
-    }
-}
+// FIXME: use new infra and Codable
+// extension CRDT.Replicator.Message: InternalProtobufRepresentable {
+//    typealias InternalProtobufRepresentation = ProtoCRDTReplicatorMessage
+//
+//    private typealias WriteResult = CRDT.Replicator.RemoteCommand.WriteResult
+//    private typealias ReadResult = CRDT.Replicator.RemoteCommand.ReadResult
+//    private typealias DeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
+//
+//    func toProto(context: ActorSerializationContext) throws -> ProtoCRDTReplicatorMessage {
+//        guard case .remoteCommand(let message) = self else {
+//            fatalError("Only CRDT.Replicator.Message.remoteCommand can be sent remotely! Was: \(self)")
+//        }
+//
+//        var proto = ProtoCRDTReplicatorMessage()
+//        switch message {
+//        case .write(let id, let data, let replyTo):
+//            traceLog_Serialization("\(self)")
+//
+//            var protoWrite = ProtoCRDTWrite()
+//            protoWrite.identity = id.toProto(context: context)
+//            protoWrite.envelope = try data.asCRDTEnvelope(context).toProto(context: context)
+//            protoWrite.replyTo = try replyTo.toProto(context: context)
+//            proto.write = protoWrite
+//        case .writeDelta(let id, let delta, let replyTo):
+//            traceLog_Serialization("\(self)")
+//
+//            var protoWrite = ProtoCRDTWrite()
+//            protoWrite.identity = id.toProto(context: context)
+//            protoWrite.envelope = try delta.asCRDTEnvelope(context).toProto(context: context)
+//            protoWrite.replyTo = try replyTo.toProto(context: context)
+//            proto.writeDelta = protoWrite
+//        case .read(let id, let replyTo):
+//            traceLog_Serialization("\(self)")
+//
+//            var protoRead = ProtoCRDTRead()
+//            protoRead.identity = id.toProto(context: context)
+//            protoRead.replyTo = try replyTo.toProto(context: context)
+//            proto.read = protoRead
+//        case .delete(let id, let replyTo):
+//            traceLog_Serialization("\(self)")
+//
+//            var protoDelete = ProtoCRDTDelete()
+//            protoDelete.identity = id.toProto(context: context)
+//            protoDelete.replyTo = try replyTo.toProto(context: context)
+//            proto.delete = protoDelete
+//        }
+//        return proto
+//    }
+//
+//    init(fromProto proto: ProtoCRDTReplicatorMessage, context: ActorSerializationContext) throws {
+//        guard let value = proto.value else {
+//            throw SerializationError.missingField("value", type: String(describing: CRDT.Replicator.Message.self))
+//        }
+//
+//        switch value {
+//        case .write(let protoWrite):
+//            let id = try protoWrite.identity(context: context)
+//            let envelope = try protoWrite.envelope(context: context)
+//            let replyTo: ActorRef<WriteResult> = try protoWrite.replyTo(context: context)
+//            self = .remoteCommand(.write(id, envelope.underlying, replyTo: replyTo))
+//        case .writeDelta(let protoWrite):
+//            let id = try protoWrite.identity(context: context)
+//            let envelope = try protoWrite.envelope(context: context)
+//            let replyTo: ActorRef<WriteResult> = try protoWrite.replyTo(context: context)
+//            self = .remoteCommand(.writeDelta(id, delta: envelope.underlying, replyTo: replyTo))
+//        case .read(let protoRead):
+//            guard protoRead.hasIdentity else {
+//                throw SerializationError.missingField("identity", type: String(describing: CRDT.Replicator.Message.self))
+//            }
+//            let id = CRDT.Identity(fromProto: protoRead.identity, context: context)
+//
+//            guard protoRead.hasReplyTo else {
+//                throw SerializationError.missingField("replyTo", type: String(describing: CRDT.Replicator.Message.self))
+//            }
+//            let replyTo = try ActorRef<ReadResult>(fromProto: protoRead.replyTo, context: context)
+//
+//            self = .remoteCommand(.read(id, replyTo: replyTo))
+//        case .delete(let protoDelete):
+//            guard protoDelete.hasIdentity else {
+//                throw SerializationError.missingField("identity", type: String(describing: CRDT.Replicator.Message.self))
+//            }
+//            let id = CRDT.Identity(fromProto: protoDelete.identity, context: context)
+//
+//            guard protoDelete.hasReplyTo else {
+//                throw SerializationError.missingField("replyTo", type: String(describing: CRDT.Replicator.Message.self))
+//            }
+//            let replyTo = try ActorRef<DeleteResult>(fromProto: protoDelete.replyTo, context: context)
+//
+//            self = .remoteCommand(.delete(id, replyTo: replyTo))
+//        }
+//    }
+// }
 
 extension ProtoCRDTWrite {
     internal func identity(context: ActorSerializationContext) throws -> CRDT.Identity {
@@ -123,10 +124,11 @@ extension ProtoCRDTWrite {
     }
 
     internal func envelope(context: ActorSerializationContext) throws -> CRDTEnvelope {
-        guard self.hasEnvelope else {
-            throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
-        }
-        return try CRDTEnvelope(fromProto: self.envelope, context: context)
+        fatalError("NOT DONE \(#function)")
+//        guard self.hasEnvelope else {
+//            throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
+//        }
+//        return try CRDTEnvelope(fromProto: self.envelope, context: context)
     }
 }
 
@@ -212,45 +214,46 @@ extension CRDT.Replicator.RemoteCommand.WriteError: InternalProtobufRepresentabl
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.Replicator.RemoteCommand.ReadResult and ReadError
 
-extension CRDT.Replicator.RemoteCommand.ReadResult: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoCRDTReadResult
-
-    func toProto(context: ActorSerializationContext) throws -> ProtoCRDTReadResult {
-        var proto = ProtoCRDTReadResult()
-        switch self {
-        case .success(let data):
-            proto.type = .success
-            proto.envelope = try data.asCRDTEnvelope(context).toProto(context: context)
-        case .failure(let error):
-            proto.type = .failure
-            proto.error = error.toProto(context: context)
-        }
-        return proto
-    }
-
-    init(fromProto proto: ProtoCRDTReadResult, context: ActorSerializationContext) throws {
-        switch proto.type {
-        case .success:
-            guard proto.hasEnvelope else {
-                throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
-            }
-            let envelope = try CRDTEnvelope(fromProto: proto.envelope, context: context)
-
-            self = .success(envelope.underlying)
-        case .failure:
-            guard proto.hasError else {
-                throw SerializationError.missingField("error", type: String(describing: CRDT.Replicator.RemoteCommand.ReadResult.self))
-            }
-            let error = try CRDT.Replicator.RemoteCommand.ReadError(fromProto: proto.error, context: context)
-
-            self = .failure(error)
-        case .unspecified:
-            throw SerializationError.missingField("type", type: String(describing: CRDT.Replicator.RemoteCommand.ReadResult.self))
-        case .UNRECOGNIZED:
-            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTReadResult.type field.")
-        }
-    }
-}
+// FIXME: reimplement
+// extension CRDT.Replicator.RemoteCommand.ReadResult: InternalProtobufRepresentable {
+//    typealias InternalProtobufRepresentation = ProtoCRDTReadResult
+//
+//    func toProto(context: ActorSerializationContext) throws -> ProtoCRDTReadResult {
+//        var proto = ProtoCRDTReadResult()
+//        switch self {
+//        case .success(let data):
+//            proto.type = .success
+//            proto.envelope = try data.asCRDTEnvelope(context).toProto(context: context)
+//        case .failure(let error):
+//            proto.type = .failure
+//            proto.error = error.toProto(context: context)
+//        }
+//        return proto
+//    }
+//
+//    init(fromProto proto: ProtoCRDTReadResult, context: ActorSerializationContext) throws {
+//        switch proto.type {
+//        case .success:
+//            guard proto.hasEnvelope else {
+//                throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
+//            }
+//            let envelope = try CRDTEnvelope(fromProto: proto.envelope, context: context)
+//
+//            self = .success(envelope.underlying)
+//        case .failure:
+//            guard proto.hasError else {
+//                throw SerializationError.missingField("error", type: String(describing: CRDT.Replicator.RemoteCommand.ReadResult.self))
+//            }
+//            let error = try CRDT.Replicator.RemoteCommand.ReadError(fromProto: proto.error, context: context)
+//
+//            self = .failure(error)
+//        case .unspecified:
+//            throw SerializationError.missingField("type", type: String(describing: CRDT.Replicator.RemoteCommand.ReadResult.self))
+//        case .UNRECOGNIZED:
+//            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTReadResult.type field.")
+//        }
+//    }
+// }
 
 extension CRDT.Replicator.RemoteCommand.ReadError: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoCRDTReadError

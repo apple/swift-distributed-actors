@@ -15,7 +15,51 @@
 import NIO
 import NIOFoundationCompat
 
-import Foundation
+import Foundation // for Codable
+
+//// ==== ----------------------------------------------------------------------------------------------------------------
+//// MARK: "TopLevelDecoder"
+//
+//// TODO: we could use those but it causes an annoying avalanche of:
+////     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *) through the codebase
+//// so not doing that for now. We hope to get those types to stdlib tho soon!
+////
+////#if canImport(Combine)
+////import protocol Combine.TopLevelDecoder
+////import protocol Combine.TopLevelEncoder
+////#else
+//
+//// TODO: Move into standard library -- coordinate with Foundation and form a SE proposal
+//// Same as Combine's `TopLevelDecoder` of the same name
+// public protocol AnyTopLevelDecoder {
+//    associatedtype Input
+//    func decode<T: Decodable>(_ type: T.Type, from: Input) throws -> T
+//
+//    var userInfo: [CodingUserInfoKey : Any] { get set }
+// }
+//
+//// TODO: Move into standard library -- coordinate with Foundation and form a SE proposal
+//// Same as Combine's `TopLevelEncoder` of the same name
+// public protocol AnyTopLevelEncoder {
+//    associatedtype Output: SerializationOutput
+//    func encode<T: Encodable>(_ value: T) throws -> Output
+//
+//    var userInfo: [CodingUserInfoKey : Any] { get set }
+// }
+//
+// public protocol SerializationOutput {
+//    var count: Int { get }
+// }
+//
+// extension Data: SerializationOutput {
+// }
+//
+// extension JSONDecoder: AnyTopLevelDecoder {
+// }
+// extension JSONEncoder: AnyTopLevelEncoder {
+// }
+//
+////#endif
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSerializationContext for Encoder & Decoder
@@ -25,16 +69,12 @@ public protocol ActorSerializationContextDecoder {
     /// such as resolving an actor ref from its serialized form.
     ///
     /// This context is only available when the decoder is invoked from the context of `DistributedActors.Serialization`.
-    var actorSerializationContext: ActorSerializationContext?
+    var actorSerializationContext: ActorSerializationContext? { get }
 }
 
-//extension ActorSerializationContextDecoder {
-//    public var actorSerializationContext: ActorSerializationContext? {
-//        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
-//    }
-//}
-
-extension Decoder: ActorSerializationContextDecoder {
+extension Decoder {
+    // Cannot conform it to ActorSerializationContextDecoder:
+    //     error: extension of protocol 'Decoder' cannot have an inheritance clause
     public var actorSerializationContext: ActorSerializationContext? {
         self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
@@ -62,13 +102,7 @@ public protocol ActorSerializationContextEncoder {
     var actorSerializationContext: ActorSerializationContext? { get }
 }
 
-//extension ActorSerializationContextEncoder {
-//    public var actorSerializationContext: ActorSerializationContext? {
-//        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
-//    }
-//}
-
-extension Encoder: ActorSerializationContextEncoder {
+extension Encoder {
     public var actorSerializationContext: ActorSerializationContext? {
         self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
@@ -89,6 +123,8 @@ public enum ActorCoding {
 
     /// `Codable` support specific errors
     public enum CodingError: Error {
+        // TODO: make SerializationError rather than this
+
         /// Thrown when an operation needs to obtain an `ActorSerializationContext` however none was present in coder.
         ///
         /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
@@ -96,9 +132,17 @@ public enum ActorCoding {
         case missingActorSerializationContext(Any.Type, details: String)
         case missingManifest(hint: String)
         case unableToCreateManifest(hint: String)
+        case unableToSummonTypeFromManifest(hint: String)
+
+        case serializerNotKnown(hint: String)
 
         case unableToSerialize(hint: String)
         case unableToDeserialize(hint: String)
+
+        case reservedSerializerID(hint: String)
+
+        /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
+        case noNeedToEnsureSerializer
     }
 }
 

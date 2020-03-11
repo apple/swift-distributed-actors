@@ -97,7 +97,7 @@ public final class ActorSystem {
 
     public var log: Logger {
         var l = ActorLogger.make(system: self)
-        l.logLevel = self.settings.defaultLogLevel
+        l.logLevel = self.settings.logging.defaultLevel
         return l
     }
 
@@ -182,7 +182,7 @@ public final class ActorSystem {
             context[metadataKey: "nodeName"] = .stringConvertible(name)
             return ActorOriginLogHandler(context)
         })
-        deadLogger.logLevel = settings.defaultLogLevel
+        deadLogger.logLevel = settings.logging.defaultLevel
 
         self._deadLetters = ActorRef(.deadLetters(.init(deadLogger, address: ActorAddress._deadLetters, system: self)))
 
@@ -212,14 +212,16 @@ public final class ActorSystem {
         self.serialization = Serialization(settings: settings, system: self)
 
         // receptionist
-        let receptionistBehavior = self.settings.cluster.enabled ?
+        let receptionistBehavior: Behavior<Receptionist.Message> = self.settings.cluster.enabled ?
             self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist) :
             LocalReceptionist.behavior
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionist = lazyReceptionist.ref
 
-        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, props: ._wellKnown)
-        self._replicator = lazyReplicator.ref
+//        // FIXME: RE ENABLE REPLICATOR !!!!!
+//        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, props: ._wellKnown)
+//        self._replicator = lazyReplicator.ref
+//        // TODO: remember to uncomment the lazyReplicator.wakeUp()
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
@@ -227,30 +229,27 @@ public final class ActorSystem {
 
         var lazyCluster: LazyStart<ClusterShell.Message>?
         var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
-        do {
-            if let cluster = self._cluster {
-                // try!-safe, this will spawn under /system/... which we have full control over,
-                // and there /system namespace and it is known there will be no conflict for this name
-                let clusterEvents = try! EventStream<Cluster.Event>(
-                    self,
-                    name: "clusterEvents",
-                    systemStream: true,
-                    customBehavior: ClusterEventStream.Shell.behavior
-                )
-                lazyCluster = try cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
 
-                self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
+        if let cluster = self._cluster {
+            // try!-safe, this will spawn under /system/... which we have full control over,
+            // and there /system namespace and it is known there will be no conflict for this name
+            let clusterEvents = try! EventStream<Cluster.Event>(
+                self,
+                name: "clusterEvents",
+                systemStream: true,
+                customBehavior: ClusterEventStream.Shell.behavior
+            )
+            lazyCluster = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
 
-                // Node watcher MUST be started AFTER cluster and clusterEvents
-                lazyNodeDeathWatcher = try self._prepareSystemActor(
-                    NodeDeathWatcherShell.naming,
-                    NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-                    props: ._wellKnown
-                )
-                self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
-            }
-        } catch {
-            fatalError("Failed while starting cluster subsystem! Error: \(error)")
+            self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
+
+            // Node watcher MUST be started AFTER cluster and clusterEvents
+            lazyNodeDeathWatcher = try! self._prepareSystemActor(
+                NodeDeathWatcherShell.naming,
+                NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
+                props: ._wellKnown
+            )
+            self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
         }
 
         _ = self.metrics // force init of metrics
@@ -259,7 +258,7 @@ public final class ActorSystem {
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
-        lazyReplicator.wakeUp()
+        // lazyReplicator.wakeUp() // FIXME
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
@@ -404,11 +403,17 @@ public protocol ActorRefFactory {
     ///
     /// - Returns: `ActorRef` for the spawned actor.
     func spawn<Message>(_ naming: ActorNaming, of type: Message.Type, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
+
+    func spawn<Message: Codable>(_ naming: ActorNaming, of type: Message.Type, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
 }
 
 extension ActorRefFactory {
     func spawn<Message>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        return try self.spawn(naming, of: Message.self, props: props, behavior)
+        try self.spawn(naming, of: Message.self, props: props, behavior)
+    }
+
+    func spawn<Message: Codable>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+        try self.spawn(naming, of: Message.self, props: props, behavior)
     }
 }
 
@@ -421,6 +426,12 @@ extension ActorSystem: ActorRefFactory {
     /// - throws: when the passed behavior is not a legal initial behavior
     /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
     public func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+        try self.serialization._ensureSerializer(type) // FIXME: do we need to ensure when it is not Codable?
+        return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
+    }
+
+    public func spawn<Message: Codable>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+        try self.serialization._ensureCodableSerializer(type)
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
 
@@ -432,7 +443,13 @@ extension ActorSystem: ActorRefFactory {
     /// also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     /// should be configured for these types of actors.
     public func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
+//        try self.serialization._ensureSerializer(Message.self)
+        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
+    }
+
+    public func _spawnSystemActor<Message: Codable>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
+        try self.serialization._ensureCodableSerializer(Message.self)
+        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
     }
 
     /// Initializes a system actor and enqueues the `.start` message in the mailbox, but does not schedule
@@ -446,8 +463,14 @@ extension ActorSystem: ActorRefFactory {
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
     internal func _prepareSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> LazyStart<Message> {
+        // try self.serialization._ensureSerializer(Message.self)
         let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
+        return LazyStart(ref: ref)
+    }
 
+    internal func _prepareSystemActor<Message: Codable>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> LazyStart<Message> {
+        try self.serialization._ensureCodableSerializer(Message.self)
+        let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
         return LazyStart(ref: ref)
     }
 

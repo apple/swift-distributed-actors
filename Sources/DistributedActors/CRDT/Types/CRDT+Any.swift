@@ -66,7 +66,7 @@ internal enum AnyStateBasedCRDTError: Error {
 // Protocol `CvRDT` can only be used as a generic constraint because it has `Self` or
 // associated type requirements. Perform type erasure as work-around.
 internal struct AnyCvRDT: CvRDT, AnyStateBasedCRDT {
-    let metaType: AnyMetaType
+    let metaType: AnyMetaType // TODO: use manifests!
     var underlying: StateBasedCRDT
     let _merge: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT
 

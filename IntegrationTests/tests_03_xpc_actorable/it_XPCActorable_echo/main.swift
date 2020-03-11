@@ -21,10 +21,6 @@ let serviceName = "com.apple.sakkana.XPCLibService"
 
 let system = ActorSystem("it_XPCActorable_echo") { settings in
     settings.transports += .xpc
-
-    settings.serialization.registerCodable(for: GeneratedActor.Messages.XPCEchoServiceProtocol.self, underId: 10001)
-    settings.serialization.registerCodable(for: XPCEchoServiceProtocolStub.Message.self, underId: 10002)
-    settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
 }
 
 let xpcGreetingsActor: Actor<XPCEchoServiceProtocolStub> =

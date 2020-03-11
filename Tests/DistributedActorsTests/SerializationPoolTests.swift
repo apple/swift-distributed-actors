@@ -81,8 +81,8 @@ class SerializationPoolTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem("SerializationTests") { settings in
-            settings.serialization.registerCodable(for: Test1.self, underId: 1001)
-            settings.serialization.registerCodable(for: Test2.self, underId: 1002)
+            settings.serialization.registerCodable(Test1.self, underId: 1001)
+            settings.serialization.registerCodable(Test2.self, underId: 1002)
         }
         self.testKit = ActorTestKit(self.system)
         self.elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -108,7 +108,7 @@ class SerializationPoolTests: XCTestCase {
         let test1 = Test1()
         test1.lock.lock()
         defer { test1.lock.unlock() }
-        let promise1: Serialization.Promise = self.el.makePromise()
+        let promise1: NIO.EventLoopPromise<(Manifest, NIO.ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -121,9 +121,9 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.serialize(message: test2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.serialize(test2, recipientPath: self.actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
@@ -151,8 +151,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
+        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(test2, recipientPath: self.actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectNoMessage(for: .milliseconds(20))
@@ -186,8 +186,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
+        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(test2, recipientPath: self.actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectMessage("p2")
@@ -337,7 +337,7 @@ class SerializationPoolTests: XCTestCase {
         }
         promise1.futureResult.whenFailure { print("\($0)") }
 
-        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
         serializationPool.deserialize(Test1.self, from: buffer, recipientPath: self.actorPath1, promise: promise2)
 
         try p.expectNoMessage(for: .milliseconds(20))

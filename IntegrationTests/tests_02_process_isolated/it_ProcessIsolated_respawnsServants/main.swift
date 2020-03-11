@@ -22,7 +22,7 @@ import DistributedActors
 
 let isolated = ProcessIsolated { boot in
     // create a new actor system (for each process this will run a new since this is the beginning of the program)
-    boot.settings.defaultLogLevel = .info
+    boot.settings.logging.defaultLevel = .info
     return ActorSystem(settings: boot.settings)
 }
 

@@ -21,21 +21,17 @@ import NIOFoundationCompat
 import XCTest
 
 final class SerializationEvolutionClusteredTests: ClusteredNodesTestBase {
-
     func test_one() {
-        let first = self.setUpNode("first") { settings in 
-
+        let first = self.setUpNode("first") { _ in
         }
-        let second = self.setUpNode("first") { settings in 
-
+        let second = self.setUpNode("first") { _ in
         }
     }
 
     func test_serialization_evolution() throws {
-        let oldFirst = self.setUpNode("oldFirst") { settings in 
-
+        let oldFirst = self.setUpNode("oldFirst") { _ in
         }
-        let newSecond = self.setUpNode("newSecond") { settings in 
+        let newSecond = self.setUpNode("newSecond") { _ in
 //            settings.serialization.safeList(Top.self)
 //            settings.serialization.safeList(OldMid.self)
 //            settings.serialization.safeList(Mid.self)
@@ -45,12 +41,12 @@ final class SerializationEvolutionClusteredTests: ClusteredNodesTestBase {
 
         let p = self.testKit(oldFirst).spawnTestProbe(expecting: String.self)
 
-        let newTwo = try newSecond.spawn("newTwo", of: Mid.self .receive { context, message in 
+        let newTwo = try newSecond.spawn("newTwo", of: Mid.self.receive { context, message in
             p.ref.tell("\(context.path.name):\(message)")
             return .stop
         })
 
-        _ = oldFirst.spawn("oldOne", of: Mid.self .setup { context in
+        _ = oldFirst.spawn("oldOne", of: Mid.self.setup { _ in
             two.tell(Mid())
             return .stop
         })

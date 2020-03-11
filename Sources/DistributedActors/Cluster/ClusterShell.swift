@@ -296,7 +296,7 @@ internal class ClusterShell {
     }
 
     // TODO: reformulate as Wire.accept / reject?
-    internal enum HandshakeResult: Equatable {
+    internal enum HandshakeResult: Equatable, NoSerializationVerification {
         case success(UniqueNode)
         case failure(HandshakeConnectionError)
     }

@@ -151,9 +151,7 @@ private extension Dictionary where Key == VersionDot, Value: Hashable {
             let key = try VersionDot(fromProto: envelope.dot, context: context)
 
             let manifest = Serialization.Manifest(fromProto: envelope.manifest)
-            if let payload = try context.system.serialization.deserialize(as: Value.self, from: bytes, using: manifest) {
-                dict[key] = payload
-            }
+            dict[key] = try context.system.serialization.deserialize(as: Value.self, from: bytes, using: manifest)
         }
 
         self = dict

@@ -16,16 +16,16 @@ import Logging
 
 import Foundation // for Codable
 
-public protocol Messageable: CustomReflectable {
-}
+public protocol Messageable {}
 
-extension Codable: Messageable {
-    public var customMirror: Mirror {
-        let children: DictionaryLiteral<String, Any> = [
-            "init(from:)": type(of: Self.init(from:))
-        ]
-
-        // Mirror(Self.self, children: children, displayStyle: .class)
-        return Mirror(self.self, children: children, displayStyle: .class)
-    }
-}
+// : CustomReflectable
+// extension Codable: Messageable {
+//    public var customMirror: Mirror {
+//        let children: DictionaryLiteral<String, Any> = [
+//            "init(from:)": type(of: Self.init(from:))
+//        ]
+//
+//        // Mirror(Self.self, children: children, displayStyle: .class)
+//        return Mirror(self.self, children: children, displayStyle: .class)
+//    }
+// }

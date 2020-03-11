@@ -31,7 +31,7 @@ class ProcessIsolatedDocExamples {
         let isolated = ProcessIsolated { boot in // <1>
 
             // optionally configure nodes by changing the provided settings
-            boot.settings.defaultLogLevel = .info
+            boot.settings.logging.defaultLevel = .info
 
             // always create the actor system based on the provided boot settings, customized if needed
             return ActorSystem(settings: boot.settings)

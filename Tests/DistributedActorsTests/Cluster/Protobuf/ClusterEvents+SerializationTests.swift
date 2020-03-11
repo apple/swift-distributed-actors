@@ -19,7 +19,11 @@ import NIO
 import XCTest
 
 final class ClusterEventsSerializationTests: ActorSystemTestBase {
-    lazy var context: ActorSerializationContext! = ActorSerializationContext(log: system.log, localNode: system.cluster.node, system: system, allocator: system.settings.serialization.allocator)
+    lazy var context: ActorSerializationContext! = ActorSerializationContext(
+        log: system.log,
+        system: system,
+        allocator: system.settings.serialization.allocator
+    )
 
     func test_serializationOf_membershipChange() throws {
         let change = Cluster.MembershipChange(node: UniqueNode(node: Node(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), fromStatus: .leaving, toStatus: .removed)

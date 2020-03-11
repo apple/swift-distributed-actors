@@ -87,7 +87,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
 
 private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("ActorPingPongBenchmarks") { settings in
-        settings.defaultLogLevel = .error
+        settings.logging.defaultLevel = .error
     }
     postSetUp()
 }

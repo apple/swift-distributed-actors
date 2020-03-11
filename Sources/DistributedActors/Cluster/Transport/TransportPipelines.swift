@@ -260,12 +260,16 @@ private final class SerializationHandler: ChannelDuplexHandler {
 
         let message: Any = transportEnvelope.underlyingMessage
         self.serializationPool.serialize(
-            message: message, metaType: transportEnvelope.underlyingMessageMetaType,
+            message: message,
+            // metaType: transportEnvelope.underlyingMessageMetaType, // FIXME was this needed?
             recipientPath: transportEnvelope.recipient.path,
             promise: serializationPromise
         )
+        pprint("OUT >>>>> ...")
 
         serializationPromise.futureResult.whenComplete {
+            pprint("OUT >>>>> \($0)")
+
             switch $0 {
             case .success((let manifest, let bytes)):
                 // force unwrapping here is safe because we read exactly the amount of readable bytes
@@ -285,8 +289,10 @@ private final class SerializationHandler: ChannelDuplexHandler {
         }
     }
 
+    /// This ends the processing chain for incoming messages.
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let wireEnvelope = self.unwrapInboundIn(data)
+
         let deserializationPromise: EventLoopPromise<Any> = context.eventLoop.makePromise()
         serializationPool.deserialize(
             from: wireEnvelope.payload,
@@ -294,19 +300,22 @@ private final class SerializationHandler: ChannelDuplexHandler {
             recipientPath: wireEnvelope.recipient.path,
             promise: deserializationPromise
         )
+        pprint("IN >>>>> ...")
 
         // TODO: ensure message ordering. See comment in `write`.
         deserializationPromise.futureResult.whenComplete { deserializedResult in
+            pprint("IN >>>>> \(deserializedResult)")
+
             switch deserializedResult {
-                case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessageEnvelope:
+            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessageEnvelope:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessageEnvelope: message as! SystemMessageEnvelope, recipient: wireEnvelope.recipient)))
 
-            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessageACK:
+            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessageACK:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(ack: message as! _SystemMessage.ACK, recipient: wireEnvelope.recipient)))
-            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessageNACK:
+            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessageNACK:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(nack: message as! _SystemMessage.NACK, recipient: wireEnvelope.recipient)))
 
-            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.Id.InternalSerializer.SystemMessage:
+            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessage:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: message as! _SystemMessage, recipient: wireEnvelope.recipient)))
 
             case .success(let message):
@@ -318,6 +327,9 @@ private final class SerializationHandler: ChannelDuplexHandler {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: System Message Redelivery
 
 /// Handles `SystemMessage` re-delivery, by exchanging sequence numbered envelopes and (N)ACKs.
 ///
@@ -491,9 +503,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         }
     }
 }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: tracelog: System Redelivery [tracelog:sys-msg-redelivery]
 
 extension SystemMessageRedeliveryHandler {
     /// Optional "dump all messages" logging.
