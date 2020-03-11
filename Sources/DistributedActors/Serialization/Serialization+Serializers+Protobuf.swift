@@ -18,10 +18,12 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
 
+public protocol AnyProtobufRepresentable {}
+
 /// A protocol that facilitates conversion between Swift and protobuf messages.
 ///
 /// - SeeAlso: Serialization.registerProtobufRepresentable
-public protocol ProtobufRepresentable {
+public protocol ProtobufRepresentable: AnyProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
     /// Convert this `ProtobufRepresentable` instance to an instance of type `ProtobufRepresentation`.
@@ -31,11 +33,13 @@ public protocol ProtobufRepresentable {
     init(fromProto proto: ProtobufRepresentation, context: ActorSerializationContext) throws
 }
 
+public protocol AnyInternalProtobufRepresentable {}
+
 /// This protocol is for internal protobuf-serializable messages only.
 ///
 /// We need a protocol separate from `ProtobufRepresentable` because otherwise we would be forced to
 /// make internal types public.
-internal protocol InternalProtobufRepresentable {
+internal protocol InternalProtobufRepresentable: AnyInternalProtobufRepresentable {
     associatedtype InternalProtobufRepresentation: SwiftProtobuf.Message
 
     func toProto(context: ActorSerializationContext) throws -> InternalProtobufRepresentation
@@ -46,7 +50,7 @@ internal protocol InternalProtobufRepresentable {
 // MARK: Protobuf serializers
 
 /// Base protobuf serializer containing common logic, customizable by subclass.
-open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Message>: TypeSpecificSerializer<Message> {
+open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Message>: Serializer<Message> {
     var _serializationContext: ActorSerializationContext?
     var serializationContext: ActorSerializationContext {
         guard let context = self._serializationContext else {
@@ -62,12 +66,12 @@ open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Messag
         self.allocator = allocator
     }
 
-    open override func serialize(message: Message) throws -> ByteBuffer {
+    open override func serialize(_ message: Message) throws -> ByteBuffer {
         let proto = try self.toProto(message, context: self.serializationContext)
         return try proto.serializedByteBuffer(allocator: self.allocator)
     }
 
-    open override func deserialize(bytes: ByteBuffer) throws -> Message {
+    open override func deserialize(from bytes: ByteBuffer) throws -> Message {
         var bytes = bytes
         let proto = try ProtobufMessage(bytes: &bytes)
         return try self.fromProto(proto, context: self.serializationContext)

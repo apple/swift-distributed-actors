@@ -30,19 +30,14 @@ public enum XPCSerialization {
     // MARK: Serialize
 
     public static func serializeActorMessage<Message>(_ system: ActorSystem, message: Message) throws -> xpc_object_t {
-        let serializerID = try system.serialization.SerializerIDFor(message: message)
-
-        guard let serializer = system.serialization.serializer(for: serializerId) else {
-            throw SerializationError.noSerializerRegisteredFor(hint: "\(Message.self))")
-        }
+        let (manifest, buf) = try system.serialization.serialize(message)
 
         // TODO: mark that this invocation will be over XPC somehow; serializer.setSerializationContext(<#T##context: ActorSerializationContext##ActorSerializationContext#>)
 
-        let buf = try serializer.trySerialize(message)
-
         // TODO: serialize the Envelope
         let xdict: xpc_object_t = xpc_dictionary_create(nil, nil, 0)
-        xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(serializerId))
+        // xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.manifestHint.rawValue, manifest.hint ?? "") // FIXME: handle manifests
+        xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(manifest.serializerID.value))
 
         buf.withUnsafeReadableBytes { bytes in
             if let baseAddress = bytes.baseAddress {
@@ -55,21 +50,15 @@ public enum XPCSerialization {
     }
 
     public static func serializeRecipient(_ system: ActorSystem, xdict: xpc_object_t, address: ActorAddress) throws {
-        guard let addressSerializerId = system.serialization.SerializerIDFor(type: ActorAddress.self) else {
-            fatalError("Can't serialize ActorAddress: [\(address)], no serializer id")
-        }
-        guard let serializer = system.serialization.serializer(for: addressSerializerId) else {
-            fatalError("Can't serialize ActorAddress: [\(address)], no serializer for \(addressSerializerId)")
-        }
-
         // we mutate the reference such that the recipient knows to reply back over the xpc connection
         var address = address
         address.node?.node.protocol = "xpc"
         try! _file.append("[sending] [TO: \(address)]\n")
 
-        let buf = try serializer.trySerialize(address)
+        let (manifest, buf) = try system.serialization.serialize(address)
         buf.withUnsafeReadableBytes { bytes in
             if let baseAddress = bytes.baseAddress {
+                // FIXME: what about manifest?
                 xpc_dictionary_set_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, baseAddress, buf.readableBytes)
             }
         }
@@ -83,33 +72,37 @@ public enum XPCSerialization {
     // MARK: Deserialize
 
     public static func deserializeActorMessage(_ system: ActorSystem, peer: xpc_connection_t, xdict: xpc_object_t) throws -> Any {
-        let serializerID = Serialization.SerializerID(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue))
+        // let manifestHint = Serialization.SerializerID(xpc_dictionary_get_string(xdict, ActorableXPCMessageField.manifestHint.rawValue)) // FIXME manifest?
+        let serializerID = Serialization.SerializerID(UInt32(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue)))
+        // let manifest = Serialization.Manifest(serializerID: serializerID, hint: manifestHint)
 
-        guard let serializer = system.serialization.serializer(for: serializerId) else {
-            throw SerializationError.noSerializerRegisteredFor(hint: "serializerID:\(serializerID))")
-        }
+        fatalError("NOT IMPLEMENTED OVER MANIFESTS YET")
 
-        let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue)
-        var length = Int(length64)
-
-        let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.message.rawValue, &length)
-        let rawDataBufferPointer = UnsafeRawBufferPointer(start: rawDataPointer, count: length)
-
-        var buf = system.serialization.allocator.buffer(capacity: 0)
-        buf.writeBytes(rawDataBufferPointer)
-
-        do {
-            // FIXME: This means we need to make those value types (!!!!!!!)
-            // by storing the peer connection, we make the Codable infra deserialize a proxy that will reply to this peer
-            serializer.setUserInfo(key: .xpcConnection, value: peer) // FIXME: a `withUserInfo` would be a good way to solve it
-
-            return try serializer.tryDeserialize(buf)
-
-        } catch {
-            // TODO: only nowadays since we know its JSON
-            try! _file.append("FAILED: \(error)")
-            throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no payload>", error: error)
-        }
+//        guard let serializer = system.serialization.serializer(for: serializerId) else {
+//            throw SerializationError.noSerializerRegisteredFor(hint: "serializerID:\(serializerID))")
+//        }
+//
+//        let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue)
+//        var length = Int(length64)
+//
+//        let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.message.rawValue, &length)
+//        let rawDataBufferPointer = UnsafeRawBufferPointer(start: rawDataPointer, count: length)
+//
+//        var buf = system.serialization.allocator.buffer(capacity: 0)
+//        buf.writeBytes(rawDataBufferPointer)
+//
+//        do {
+//            // FIXME: This means we need to make those value types (!!!!!!!)
+//            // by storing the peer connection, we make the Codable infra deserialize a proxy that will reply to this peer
+//            serializer.setUserInfo(key: .xpcConnection, value: peer) // FIXME: a `withUserInfo` would be a good way to solve it
+//
+//            return try serializer.tryDeserialize(buf)
+//
+//        } catch {
+//            // TODO: only nowadays since we know its JSON
+//            try! _file.append("FAILED: \(error)")
+//            throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no payload>", error: error)
+//        }
     }
 
     // TODO: make as envelope
@@ -124,13 +117,7 @@ public enum XPCSerialization {
         buf.writeBytes(rawDataBufferPointer)
 
         do {
-            guard let id = system.serialization.SerializerIDFor(type: ActorAddress.self) else {
-                return system.deadLetters.asAddressable()
-            }
-            guard let serializer = system.serialization.serializer(for: id) else {
-                return system.deadLetters.asAddressable()
-            }
-            let address = try serializer.tryDeserialize(buf) as! ActorAddress
+            let address = try system.serialization.deserialize(as: ActorAddress.self, from: buf, using: .init(serializerID: .jsonCodable, hint: "???"))
             try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))
         } catch {

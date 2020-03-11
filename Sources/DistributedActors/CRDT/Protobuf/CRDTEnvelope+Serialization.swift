@@ -56,62 +56,63 @@ internal struct CRDTEnvelope {
     }
 }
 
-extension CRDTEnvelope: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoCRDTEnvelope
-
-    func toProto(context: ActorSerializationContext) throws -> ProtoCRDTEnvelope {
-        var proto = ProtoCRDTEnvelope()
-        switch self._boxed {
-        case .CvRDT(let data):
-            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
-            var bytes = _bytes
-//            proto.boxed = .anyCvrdt
-            proto.manifest = manifest.toProto()
-            proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
-            return proto
-        case .DeltaCRDT(let data):
-            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
-            var bytes = _bytes
-            // proto.boxed = .anyDeltaCrdt // FIXME
-            proto.manifest = manifest.toProto()
-            proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
-            return proto
-        }
-    }
-
-    init(fromProto proto: ProtoCRDTEnvelope, context: ActorSerializationContext) throws {
-        guard proto.hasManifest else {
-            throw ActorCoding.CodingError.missingManifest(hint: "missing .manifest in: \(proto)")
-        }
-        let manifest = Serialization.Manifest(fromProto: proto.manifest)
-
-        var bytes = context.allocator.buffer(capacity: proto.payload.count)
-        bytes.writeBytes(proto.payload)
-
-        let payload = try context.system.serialization.deserializeAny(from: bytes, using: manifest)
-        self.manifest = .init(fromProto: proto.manifest)
-
-        fatalError("TODO: the entire boxing dance is gone")
-//        switch proto.boxed {
-//        case .anyCvrdt:
-//            if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
-//                self._boxed = .CvRDT(anyCvRDT)
-//            } else {
-//                fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
-//            }
-//        case .anyDeltaCrdt:
-//            if let anyDeltaCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
-//                self._boxed = .DeltaCRDT(anyDeltaCRDT)
-//            } else {
-//                fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
-//            }
-//        case .unspecified:
-//            throw SerializationError.missingField("type", type: String(describing: CRDTEnvelope.self))
-//        case .UNRECOGNIZED:
-//            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
+// FIXME: use new infra and Codable
+// extension CRDTEnvelope: InternalProtobufRepresentable {
+//    typealias InternalProtobufRepresentation = ProtoCRDTEnvelope
+//
+//    func toProto(context: ActorSerializationContext) throws -> ProtoCRDTEnvelope {
+//        var proto = ProtoCRDTEnvelope()
+//        switch self._boxed {
+//        case .CvRDT(let data):
+//            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
+//            var bytes = _bytes
+////            proto.boxed = .anyCvrdt
+//            proto.manifest = manifest.toProto()
+//            proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
+//            return proto
+//        case .DeltaCRDT(let data):
+//            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
+//            var bytes = _bytes
+//            // proto.boxed = .anyDeltaCrdt // FIXME
+//            proto.manifest = manifest.toProto()
+//            proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
+//            return proto
 //        }
-    }
-}
+//    }
+//
+//    init(fromProto proto: ProtoCRDTEnvelope, context: ActorSerializationContext) throws {
+//        guard proto.hasManifest else {
+//            throw ActorCoding.CodingError.missingManifest(hint: "missing .manifest in: \(proto)")
+//        }
+//        let manifest = Serialization.Manifest(fromProto: proto.manifest)
+//
+//        var bytes = context.allocator.buffer(capacity: proto.payload.count)
+//        bytes.writeBytes(proto.payload)
+//
+//        let payload = try context.system.serialization.deserializeAny(from: bytes, using: manifest)
+//        self.manifest = .init(fromProto: proto.manifest)
+//
+//        fatalError("TODO: the entire boxing dance is gone")
+////        switch proto.boxed {
+////        case .anyCvrdt:
+////            if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
+////                self._boxed = .CvRDT(anyCvRDT)
+////            } else {
+////                fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
+////            }
+////        case .anyDeltaCrdt:
+////            if let anyDeltaCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
+////                self._boxed = .DeltaCRDT(anyDeltaCRDT)
+////            } else {
+////                fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
+////            }
+////        case .unspecified:
+////            throw SerializationError.missingField("type", type: String(describing: CRDTEnvelope.self))
+////        case .UNRECOGNIZED:
+////            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
+////        }
+//    }
+// }
 
 extension AnyStateBasedCRDT {
     internal func asCRDTEnvelope(_ context: ActorSerializationContext) throws -> CRDTEnvelope {
@@ -119,6 +120,6 @@ extension AnyStateBasedCRDT {
 //            throw SerializationError.noSerializerRegisteredFor(hint: "\(self.metaType)")
 //        }
 //        return CRDTEnvelope(serializerID: serializerId, self)
-    fatalError("TODO") // TODO
+        fatalError("TODO") // TODO:
     }
 }

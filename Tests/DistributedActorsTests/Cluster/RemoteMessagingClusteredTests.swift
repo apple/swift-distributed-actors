@@ -22,7 +22,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
         let local = setUpNode("local")
 
         let remote = setUpNode("remote") {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(SerializationTestMessage.self, underId: 1001)
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
@@ -53,7 +53,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() throws {
         let local = self.setUpNode("local") {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(SerializationTestMessage.self, underId: 1001)
         }
 
         let remote = setUpNode("remote")
@@ -86,7 +86,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() throws {
         let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(SerializationTestMessage.self, underId: 1001)
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
@@ -110,7 +110,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() throws {
         let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(SerializationTestMessage.self, underId: 1001)
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
@@ -134,7 +134,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() throws {
         let local = self.setUpNode("local") {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(SerializationTestMessage.self, underId: 1001)
         }
 
         let testKit = ActorTestKit(local)
@@ -153,7 +153,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_remoteActors_echo() throws {
         let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(EchoTestMessage.self, underId: 1001)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
@@ -180,7 +180,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_sendingToNonTopLevelRemoteRef_shouldWork() throws {
         let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(EchoTestMessage.self, underId: 1001)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
@@ -212,7 +212,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_sendingToRemoteAdaptedRef_shouldWork() throws {
         let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+            $0.serialization.registerCodable(EchoTestMessage.self, underId: 1001)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
@@ -242,7 +242,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
     func test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages() throws {
         let (local, remote) = setUpPair { settings in
-            settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+            settings.serialization.registerCodable(EchoTestMessage.self, underId: 1001)
         }
         remote.cluster.join(node: local.cluster.node.node)
 
@@ -250,7 +250,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
         let thirdSystem = self.setUpNode("ClusterAssociationTests") { settings in
             settings.cluster.bindPort = 9119
-            settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+            settings.serialization.registerCodable(EchoTestMessage.self, underId: 1001)
         }
         defer { thirdSystem.shutdown().wait() }
 
@@ -285,7 +285,7 @@ struct WrappedString {
     let string: String
 }
 
-private enum SerializationBehavior {
+private enum SerializationBehavior: Codable {
     case succeed
     case failEncoding
     case failDecoding
@@ -294,6 +294,29 @@ private enum SerializationBehavior {
 private struct SerializationTestMessage {
     let serializationBehavior: SerializationBehavior
 }
+//extension SerializationTestMessage: Codable {
+//    enum CodingKeys: String, CodingKey {
+//        case fails
+//    }
+//
+//    init(from decoder: Decoder) throws {
+//        let container = try decoder.container(keyedBy: CodingKeys.self)
+//        guard try !container.decode(Bool.self, forKey: .fails) else {
+//            throw Boom()
+//        }
+//
+//        self.serializationBehavior = .succeed
+//    }
+//
+//    func encode(to encoder: Encoder) throws {
+//        guard self.serializationBehavior != .failEncoding else {
+//            throw Boom()
+//        }
+//        var container = encoder.container(keyedBy: CodingKeys.self)
+//        try container.encode(self.serializationBehavior == .failDecoding, forKey: .fails)
+//    }
+//}
+
 
 private struct EchoTestMessage: Codable {
     let string: String
@@ -305,29 +328,6 @@ struct Boom: Error {
 
     init(_ message: String = "") {
         self.message = message
-    }
-}
-
-extension SerializationTestMessage: Codable {
-    enum CodingKeys: String, CodingKey {
-        case fails
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        guard try !container.decode(Bool.self, forKey: .fails) else {
-            throw Boom()
-        }
-
-        self.serializationBehavior = .succeed
-    }
-
-    func encode(to encoder: Encoder) throws {
-        guard self.serializationBehavior != .failEncoding else {
-            throw Boom()
-        }
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.serializationBehavior == .failDecoding, forKey: .fails)
     }
 }
 

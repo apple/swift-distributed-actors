@@ -72,8 +72,8 @@ class SerializationTests: ActorSystemTestBase {
         }
 
         "\(err)".shouldStartWith(prefix: """
-                                         missingActorSerializationContext(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
-                                         """)
+        missingActorSerializationContext(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
+        """)
     }
 
     func test_serialize_actorAddress_usingContext() throws {
@@ -90,8 +90,8 @@ class SerializationTests: ActorSystemTestBase {
                 allocator: ByteBufferAllocator()
             )
 
-            encoder.userInfo[.actorSerializationContext] = context
-            decoder.userInfo[.actorSerializationContext] = context
+            encoder.userInfo[.serializationContext] = context
+            decoder.userInfo[.serializationContext] = context
 
             let encoded = try encoder.encode(address)
             pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
@@ -118,12 +118,12 @@ class SerializationTests: ActorSystemTestBase {
         pinfo("Before serialize: \(hasRef)")
 
         let bytes = try shouldNotThrow {
-            try system.serialization.serialize(message: hasRef)
+            try system.serialization.serialize(hasRef)
         }
         pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            try system.serialization.deserialize(HasStringRef.self, from: bytes)
+            try system.serialization.deserialize(as: HasStringRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -137,7 +137,7 @@ class SerializationTests: ActorSystemTestBase {
         let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings in
             settings.cluster.enabled = true
 
-            settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
+            settings.serialization.registerCodable(HasStringRef.self, underId: 1002)
         }
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.spawnTestProbe(expecting: String.self)
@@ -152,7 +152,7 @@ class SerializationTests: ActorSystemTestBase {
         pinfo("Before serialize: \(hasRef)")
 
         let bytes = try shouldNotThrow {
-            try remoteCapableSystem.serialization.serialize(message: hasRef)
+            try remoteCapableSystem.serialization.serialize(hasRef)
         }
         let serializedFormat: String = bytes.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
@@ -163,7 +163,7 @@ class SerializationTests: ActorSystemTestBase {
         serializedFormat.contains("\(ClusterSettings.Default.bindPort)").shouldBeTrue()
 
         let back: HasStringRef = try shouldNotThrow {
-            try remoteCapableSystem.serialization.deserialize(HasStringRef.self, from: bytes)
+            try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -180,14 +180,14 @@ class SerializationTests: ActorSystemTestBase {
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
         let bytes = try shouldNotThrow {
-            try system.serialization.serialize(message: hasRef)
+            try system.serialization.serialize(hasRef)
         }
 
         try p.expectTerminated(stoppedRef)
 
         try self.testKit.eventually(within: .seconds(3)) {
             let back: HasStringRef = try shouldNotThrow {
-                try system.serialization.deserialize(HasStringRef.self, from: bytes)
+                try system.serialization.deserialize(as: HasStringRef.self, from: bytes)
             }
 
             guard "\(back.containedRef.address)" == "/dead/user/dead-on-arrival" else {
@@ -201,12 +201,12 @@ class SerializationTests: ActorSystemTestBase {
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let bytes = try shouldNotThrow {
-            try system.serialization.serialize(message: hasRef)
+            try system.serialization.serialize(hasRef)
         }
 
         try self.testKit.eventually(within: .seconds(3)) {
             let back: HasInterestingMessageRef = try shouldNotThrow {
-                try system.serialization.deserialize(HasInterestingMessageRef.self, from: bytes)
+                try system.serialization.deserialize(as: HasInterestingMessageRef.self, from: bytes)
             }
 
             back.containedInterestingRef.tell(InterestingMessage())
@@ -218,7 +218,7 @@ class SerializationTests: ActorSystemTestBase {
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
         let err = shouldThrow {
-            try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))
+            try system.serialization.serialize(NotCodableHasInt(containedInt: 1337))
         }
 
         switch err {
@@ -252,11 +252,11 @@ class SerializationTests: ActorSystemTestBase {
         let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
 
         let bytes = try shouldNotThrow {
-            try system.serialization.serialize(message: hasSysRef)
+            try system.serialization.serialize(hasSysRef)
         }
 
         let back: HasReceivesSystemMsgs = try shouldNotThrow {
-            try system.serialization.deserialize(HasReceivesSystemMsgs.self, from: bytes)
+            try system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: bytes)
         }
 
         back.sysRef.address.shouldEqual(sysRef.address)
@@ -312,7 +312,7 @@ private class Mid: Top, Hashable {
         self._path.hash(into: &hasher)
     }
 
-    static func ==(lhs: Mid, rhs: Mid) -> Bool {
+    static func == (lhs: Mid, rhs: Mid) -> Bool {
         return lhs.path == rhs.path
     }
 }
@@ -325,8 +325,7 @@ private struct HasIntRef: Codable, Equatable {
     let containedRef: ActorRef<Int>
 }
 
-private struct InterestingMessage: Codable, Equatable {
-}
+private struct InterestingMessage: Codable, Equatable {}
 
 private struct HasInterestingMessageRef: Codable, Equatable {
     let containedInterestingRef: ActorRef<InterestingMessage>

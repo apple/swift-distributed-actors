@@ -30,7 +30,7 @@ public struct EventStream<Event> {
     }
 
     internal init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self, systemStream: Bool, customBehavior: Behavior<EventStreamShell.Message<Event>>? = nil) throws {
-        let behavior = customBehavior ?? EventStreamShell.behavior(type)
+        let behavior: Behavior<EventStreamShell.Message<Event>> = customBehavior ?? EventStreamShell.behavior(type)
         if systemStream {
             self.ref = try system._spawnSystemActor(.unique(name), behavior)
         } else {

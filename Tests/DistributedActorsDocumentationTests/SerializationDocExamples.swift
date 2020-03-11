@@ -89,8 +89,8 @@ class SerializationDocExamples {
 
     func prepare_system_codable() throws {
         // tag::prepare_system_codable[]
-        let system = ActorSystem("CodableExample") { settings in
-            settings.serialization.registerCodable(for: ParkingSpotStatus.self, underId: 1002) // TODO: simplify this
+        let system = ActorSystem("CodableExample") { _ in
+//            settings.serialization.registerCodable(ParkingSpotStatus.self, underId: 1002) // TODO: simplify this
         }
         // end::prepare_system_codable[]
         _ = system // silence not-used warnings
@@ -114,8 +114,8 @@ class SerializationDocExamples {
 
     func prepare_system_protobuf() throws {
         // tag::prepare_system_protobuf[]
-        let system = ActorSystem("ProtobufExample") { settings in
-            settings.serialization.registerProtobufRepresentable(for: ParkingGarageStatus.self, underId: 1002) // TODO: simplify this
+        let system = ActorSystem("ProtobufExample") { _ in
+//            settings.serialization.registerProtobufRepresentable(for: ParkingGarageStatus.self, underId: 1002) // TODO: simplify this
         }
         // end::prepare_system_protobuf[]
         _ = system // silence not-used warnings
@@ -140,17 +140,16 @@ class SerializationDocExamples {
     func prepare_system_custom() throws {
         // tag::prepare_system_custom[]
         let system = ActorSystem("CustomSerializerExample") { settings in
-            func makeCustomSerializer(allocator: NIO.ByteBufferAllocator) -> TypeSpecificSerializer<CustomlyEncodedMessage> {
-                return CustomlyEncodedSerializer(allocator)
+            settings.serialization.registerSerializer(CustomlyEncodedMessage.self, serializerID: 1001) { allocator in
+                CustomlyEncodedSerializer(allocator)
             }
-            settings.serialization.register(makeCustomSerializer, for: CustomlyEncodedMessage.self, underId: 1101)
         }
         // end::prepare_system_custom[]
         _ = system // silence not-used warnings
     }
 
     // tag::custom_serializer[]
-    final class CustomlyEncodedSerializer: TypeSpecificSerializer<CustomlyEncodedMessage> {
+    final class CustomlyEncodedSerializer: Serializer<CustomlyEncodedMessage> {
         private let allocator: NIO.ByteBufferAllocator
 
         private let availableRepr: ByteBuffer
@@ -168,14 +167,14 @@ class SerializationDocExamples {
             self.takenRepr = takenRepr
         }
 
-        override func serialize(message: CustomlyEncodedMessage) throws -> ByteBuffer { // <2>
+        override func serialize(_ message: CustomlyEncodedMessage) throws -> ByteBuffer { // <2>
             switch message {
             case .available: return self.availableRepr
             case .taken: return self.takenRepr
             }
         }
 
-        override func deserialize(bytes: ByteBuffer) throws -> CustomlyEncodedMessage { // <3>
+        override func deserialize(from bytes: ByteBuffer) throws -> CustomlyEncodedMessage { // <3>
             var bytes = bytes // TODO: bytes should become `inout`
             guard let letter = bytes.readString(length: 1) else {
                 throw CodingError.notEnoughBytes
@@ -201,7 +200,7 @@ class SerializationDocExamples {
         let ref: ActorRef<String>
     }
 
-    final class CustomContainingActorRefSerializer: TypeSpecificSerializer<ContainsActorRef> {
+    final class CustomContainingActorRefSerializer: Serializer<ContainsActorRef> {
         private let allocator: NIO.ByteBufferAllocator
         private var context: ActorSerializationContext!
 
@@ -213,11 +212,11 @@ class SerializationDocExamples {
             self.context = context // <1>
         }
 
-        override func serialize(message: ContainsActorRef) throws -> ByteBuffer {
+        override func serialize(_ message: ContainsActorRef) throws -> ByteBuffer {
             fatalError("apply your favourite serialization mechanism here")
         }
 
-        override func deserialize(bytes: ByteBuffer) throws -> ContainsActorRef {
+        override func deserialize(from bytes: ByteBuffer) throws -> ContainsActorRef {
             let address: ActorAddress = undefined(hint: "your favourite serialization")
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable

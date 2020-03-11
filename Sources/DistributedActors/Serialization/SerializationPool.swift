@@ -64,7 +64,11 @@ internal final class SerializationPool {
     }
 
     @inlinable
-    internal func serialize<M>(message: M, recipientPath: ActorPath, promise: EventLoopPromise<ByteBuffer>) {
+    internal func serialize<Message>(
+        message: Message,
+        recipientPath: ActorPath,
+        promise: EventLoopPromise<(Serialization.Manifest, ByteBuffer)>
+    ) {
         // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
             do {
@@ -75,7 +79,7 @@ internal final class SerializationPool {
                 self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: bytes.readableBytes)
                 self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, bytes.readableBytes)
 
-                return bytes
+                return (manifest, bytes)
 
             } catch {
                 self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: 0)
@@ -85,31 +89,14 @@ internal final class SerializationPool {
     }
 
     @inlinable
-    internal func serialize(message: Any, metaType: AnyMetaType, recipientPath: ActorPath, promise: EventLoopPromise<(Serialization.Manifest, ByteBuffer)>) {
-        // TODO: also record the delay between submitting and starting serialization work here?
-        self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
-            do {
-                self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipientPath, message: message)
-                let result = try self.serialization.serialize(message)
-
-                // TODO: collapse those two and only use the instrumentation points, also for metrics
-                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: result.1.readableBytes)
-                self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, result.1.readableBytes)
-
-                return result
-            } catch {
-                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: 0)
-                throw error
-            }
-        }
-    }
-
-    @inlinable
-    internal func deserialize(
-        from bytes: ByteBuffer, using manifest: Serialization.Manifest,
+    internal func deserialize<Message>(
+        from bytes: ByteBuffer,
+        using manifest: Serialization.Manifest,
         recipientPath: ActorPath,
-        promise: EventLoopPromise<Any>
+        promise: EventLoopPromise<Message>
     ) {
+        pprint("deserialize = \(bytes.getString(at: 0, length: bytes.readableBytes)) >>>> \(Message.self)")
+
         // TODO: bytes to become inout?
         // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
@@ -117,30 +104,8 @@ internal final class SerializationPool {
                 self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
                 self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: bytes.readableBytes)
 
-                if let deserialized = try self.serialization.deserializeAny(from: bytes, using: manifest) {
-                    self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: deserialized)
-                    return deserialized
-                } else {
-                    throw ActorCoding.CodingError.unableToDeserialize(hint: "manifest: \(manifest), bytes: \(bytes.readableBytes)")
-                }
-            } catch {
-                self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: nil)
-                throw error
-            }
-        }
-    }
-
-    @inlinable
-    internal func deserialize(manifest: Serialization.Manifest, from bytes: ByteBuffer, recipientPath: ActorPath, promise: EventLoopPromise<Any>) {
-        // TODO: bytes to become inout?
-        // TODO: also record thr delay between submitting and starting serialization work here?
-        self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            do {
-                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
-                self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: bytes.readableBytes)
-
-                let deserialized = try self.serialization.deserializeAny(from: bytes, using: manifest)
-
+                // FIXME: this has to use the _serializers (!!!)
+                let deserialized = try self.serialization.deserialize(as: Message.self, from: bytes, using: manifest)
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: deserialized)
                 return deserialized
             } catch {
@@ -179,6 +144,6 @@ public struct SerializationPoolSettings {
     public let serializationGroups: [[ActorPath]]
 
     internal static var `default`: SerializationPoolSettings {
-        return SerializationPoolSettings(serializationGroups: [])
+        SerializationPoolSettings(serializationGroups: [])
     }
 }
