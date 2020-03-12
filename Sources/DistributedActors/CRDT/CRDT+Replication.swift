@@ -148,7 +148,7 @@ extension CRDT.Replicator.LocalCommand.RegisterError: Equatable {
     public static func == (lhs: CRDT.Replicator.LocalCommand.RegisterError, rhs: CRDT.Replicator.LocalCommand.RegisterError) -> Bool {
         switch (lhs, rhs) {
         case (.inputAndStoredDataTypeMismatch(let lType), .inputAndStoredDataTypeMismatch(let rType)):
-            return lType.asHashable() == rType.asHashable()
+            return lType.asHashable == rType.asHashable
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
         default:
@@ -161,7 +161,7 @@ extension CRDT.Replicator.LocalCommand.WriteError: Equatable {
     public static func == (lhs: CRDT.Replicator.LocalCommand.WriteError, rhs: CRDT.Replicator.LocalCommand.WriteError) -> Bool {
         switch (lhs, rhs) {
         case (.inputAndStoredDataTypeMismatch(let lType), .inputAndStoredDataTypeMismatch(let rType)):
-            return lType.asHashable() == rType.asHashable()
+            return lType.asHashable == rType.asHashable
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
         case (.consistencyError(let lError), .consistencyError(let rError)):

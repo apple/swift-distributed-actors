@@ -26,7 +26,8 @@ import Metrics
 /// are reported in to actual metrics backends; Most often the segments are separated by `.`, `/`, or `_`.
 ///
 /// - SeeAlso: [SwiftMetrics](https://github.com/apple/swift-metrics) for compatible backend implementations.
-internal class ActorSystemMetrics {
+@usableFromInline
+final class ActorSystemMetrics {
     let settings: MetricsSettings
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -233,6 +234,7 @@ internal class ActorSystemMetrics {
     let _serialization_user_outbound_msg_size: Recorder
     let _serialization_user_inbound_msg_size: Recorder
 
+    @usableFromInline
     func recordSerializationMessageOutbound(_ path: ActorPath, _ bytes: Int) {
         if path.starts(with: ._user) {
             self._serialization_user_outbound_msg_size.record(bytes)
@@ -241,6 +243,7 @@ internal class ActorSystemMetrics {
         }
     }
 
+    @usableFromInline
     func recordSerializationMessageInbound(_ path: ActorPath, _ bytes: Int) {
         if path.starts(with: ._user) {
             self._serialization_user_inbound_msg_size.record(bytes)

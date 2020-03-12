@@ -14,6 +14,7 @@
 
 import CDistributedActorsMailbox
 import Logging
+import struct NIO.ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Public API
@@ -108,7 +109,7 @@ extension ActorRef: Hashable {
     }
 
     public static func == (lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
-        return lhs.address == rhs.address
+        lhs.address == rhs.address
     }
 }
 
@@ -160,8 +161,19 @@ public protocol _ReceivesSystemMessages: Codable {
     func _sendSystemMessage(_ message: _SystemMessage, file: String, line: UInt)
 
     /// :nodoc: INTERNAL API: This way remoting sends messages
-    func _tellOrDeadLetter(_ message: Any, file: String, line: UInt)
+    ///
+    /// - Reminder: DO NOT use this to deliver messages from the network, deserialization and delivery,
+    ///   must be performed in "one go" by `_deserializeDeliver`.
+    func _tellOrDeadLetter(_ message: Any, file: String, line: UInt) // TODO: This must die?
 
+    /// :nodoc: INTERNAL API: This way remoting sends messages
+    func _deserializeDeliver(
+        _ messageBytes: NIO.ByteBuffer, using manifest: Serialization.Manifest,
+        on pool: SerializationPool,
+        file: String, line: UInt
+    )
+
+    /// :nodoc: INTERNAL API
     func _unsafeGetRemotePersonality() -> RemotePersonality<Any>
 }
 
@@ -209,7 +221,6 @@ extension ActorRef {
         }
     }
 
-    /// Used internally by remoting layer, to send message when known it should be "fine"
     public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
             traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
@@ -218,6 +229,33 @@ extension ActorRef {
         }
 
         self.tell(_message, file: file, line: line)
+    }
+
+    public func _deserializeDeliver(
+        _ messageBytes: NIO.ByteBuffer, using manifest: Serialization.Manifest,
+        on pool: SerializationPool,
+        file: String = #file, line: UInt = #line
+    ) {
+        pool.deserialize(as: Message.self, from: messageBytes, using: manifest, recipientPath: self.path, callback: .init {
+            switch $0 {
+            case .success(let message):
+                self.tell(message, file: file, line: line)
+
+            case .failure(let error):
+                let metadata: Logger.Metadata = [
+                    "recipient": "\(self.path)",
+                    "message/expected/type": "\(String(reflecting: Message.self))",
+                    "message/manifest": "\(manifest)",
+                ]
+
+                if let system = self._system {
+                    system.log.warning("Failed to deserialize/delivery message to \(self.path)", metadata: metadata)
+                } else {
+                    // TODO: last resort, print error (system could be going down)
+                    print("Failed to deserialize/delivery message to \(self.path). Metadata: \(metadata)")
+                }
+            }
+        })
     }
 
     public func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
@@ -397,15 +435,25 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     let address: ActorAddress = ._localRoot
 
     @usableFromInline
-    func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
 
     @usableFromInline
-    func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    internal func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+    }
+
+    @usableFromInline
+    internal func _deserializeDeliver(
+        _ messageBytes: ByteBuffer, using manifest: Serialization.Manifest,
+        on pool: SerializationPool,
+        file: String = #file, line: UInt = #line
+    ) {
+        CDistributedActorsMailbox.sact_dump_backtrace()
+        fatalError("The \(self.address) actor MUST NOT receive any messages, yet attempted \(#function); Sent at \(file):\(line)")
     }
 
     @usableFromInline
@@ -422,11 +470,11 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
 
 extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "/"
+        "/"
     }
 
     public var debugDescription: String {
-        return "TheOneWhoHasNoParentActorRef(path: \"/\")"
+        "TheOneWhoHasNoParentActorRef(path: \"/\")"
     }
 }
 

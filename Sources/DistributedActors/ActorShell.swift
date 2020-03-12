@@ -971,7 +971,13 @@ extension AbstractActor {
         }
     }
 
+    public func _resolve<Message: Codable>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        return self.__resolve(context: context)
+    }
     public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        return self.__resolve(context: context)
+    }
+    private func __resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
         guard context.selectorSegments.first != nil else {

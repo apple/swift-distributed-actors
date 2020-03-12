@@ -194,6 +194,7 @@ public protocol _ActorTreeTraversable {
     ///
     /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
+    func _resolve<Message: Codable>(context: ResolveContext<Message>) -> ActorRef<Message>
 
     /// Resolves the given actor path against the underlying actor tree.
     ///

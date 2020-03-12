@@ -55,6 +55,7 @@ public final class ActorSystem {
     public let settings: ActorSystemSettings
 
     // initialized during startup
+    // TODO: Use "set once" atomic structure
     public var serialization: Serialization!
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -572,7 +573,36 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
     /// :nodoc: INTERNAL API: Not intended to be used by end users.
+    public func _resolve<Message: Codable>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        if let serialization = context.system.serialization {
+            do {
+                pprint("_resolve + ensure codable: = \(String(reflecting: Message.self))")
+                try serialization._ensureCodableSerializer(Message.self)
+            } catch {
+                context.system.log.warning("_resolve(\(context.address)) failed: \(error)")
+                return context.personalDeadLetters
+            }
+        }
+
+        return self.__resolve(context: context)
+    }
+
+    /// :nodoc: INTERNAL API: Not intended to be used by end users.
     public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        if let serialization = context.system.serialization {
+            do {
+                pprint("_resolve + ensure: = \(String(reflecting: Message.self))")
+                try serialization._ensureSerializer(Message.self)
+            } catch {
+                context.system.log.warning("_resolve(\(context.address)) failed: \(error)")
+                return context.personalDeadLetters
+            }
+        }
+
+        return self.__resolve(context: context)
+    }
+
+    private func __resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
         }
