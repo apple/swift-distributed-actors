@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension ConvergentGossip.Message: Codable {
+extension ConvergentGossip.Message {
     public enum DiscriminatorKeys: String, Codable {
         case gossip
     }

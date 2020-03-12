@@ -294,7 +294,8 @@ private enum SerializationBehavior: Codable {
 private struct SerializationTestMessage {
     let serializationBehavior: SerializationBehavior
 }
-//extension SerializationTestMessage: Codable {
+
+// extension SerializationTestMessage: Codable {
 //    enum CodingKeys: String, CodingKey {
 //        case fails
 //    }
@@ -315,8 +316,7 @@ private struct SerializationTestMessage {
 //        var container = encoder.container(keyedBy: CodingKeys.self)
 //        try container.encode(self.serializationBehavior == .failDecoding, forKey: .fails)
 //    }
-//}
-
+// }
 
 private struct EchoTestMessage: Codable {
     let string: String

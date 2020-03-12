@@ -82,7 +82,7 @@ internal struct CRDTEnvelope {
 //
 //    init(fromProto proto: ProtoCRDTEnvelope, context: ActorSerializationContext) throws {
 //        guard proto.hasManifest else {
-//            throw ActorCoding.CodingError.missingManifest(hint: "missing .manifest in: \(proto)")
+//            throw SerializationError.missingManifest(hint: "missing .manifest in: \(proto)")
 //        }
 //        let manifest = Serialization.Manifest(fromProto: proto.manifest)
 //

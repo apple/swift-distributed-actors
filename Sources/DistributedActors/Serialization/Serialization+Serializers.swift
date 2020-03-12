@@ -90,7 +90,7 @@ public protocol AnySerializer {
     func setSerializationContext(_ context: ActorSerializationContext)
 }
 
-internal struct BoxedAnySerializer: AnySerializer {
+internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
     private let serializer: AnySerializer
 
     init<Serializer: AnySerializer>(_ serializer: Serializer) {
@@ -120,32 +120,9 @@ internal struct BoxedAnySerializer: AnySerializer {
     func tryDeserialize(_ bytes: ByteBuffer) throws -> Any {
         try self.serializer.tryDeserialize(bytes)
     }
-}
 
-public enum SerializationError: Error {
-    // --- registration errors ---
-    case alreadyDefined(hint: String, serializerID: Serialization.SerializerID, serializer: AnySerializer?)
-
-    // --- lookup errors ---
-    case noSerializerKeyAvailableFor(hint: String)
-    case noSerializerRegisteredFor(hint: String, manifest: Serialization.Manifest?)
-    case notAbleToDeserialize(hint: String)
-    case wrongSerializer(hint: String)
-
-    // --- format errors ---
-    case missingField(String, type: String)
-    case emptyRepeatedField(String)
-
-    case unknownEnumValue(Int)
-
-    // --- illegal errors ---
-    case mayNeverBeSerialized(type: String)
-
-    static func alreadyDefined<T>(type: T.Type, serializerID: Serialization.SerializerID, serializer: AnySerializer?) -> SerializationError {
-        .alreadyDefined(hint: String(reflecting: type), serializerID: serializerID, serializer: serializer)
+    public var description: String {
+        "BoxedAnySerializer(\(self.serializer))"
     }
 
-//    static func noSerializerRegisteredFor(message: Any, meta: AnyMetaType) -> SerializationError {
-//        return .noSerializerKeyAvailableFor(hint: "\(String(reflecting: type(of: message))), using meta type key: \(meta)")
-//    }
 }

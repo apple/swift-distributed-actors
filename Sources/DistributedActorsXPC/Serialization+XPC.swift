@@ -113,11 +113,15 @@ public enum XPCSerialization {
         let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, &length)
         let rawDataBufferPointer = UnsafeRawBufferPointer(start: rawDataPointer, count: length)
 
-        var buf = system.serialization.allocator.buffer(capacity: 0)
+        guard let serialization: Serialization = system.serialization else {
+            throw SerializationError.unableToDeserialize(hint: "No Serialization instance available! ActorSystem could be shutting down?")
+        }
+
+        var buf = serialization.allocator.buffer(capacity: 0)
         buf.writeBytes(rawDataBufferPointer)
 
         do {
-            let address = try system.serialization.deserialize(as: ActorAddress.self, from: buf, using: .init(serializerID: .jsonCodable, hint: "???"))
+            let address = try serialization.deserialize(as: ActorAddress.self, from: buf, using: .init(serializerID: .jsonCodable, hint: "???"))
             try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))
         } catch {

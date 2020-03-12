@@ -26,7 +26,7 @@ public extension CodingUserInfoKey {
 ///
 /// Context MAY be accessed concurrently be encoders/decoders.
 public struct ActorSerializationContext {
-    typealias MetaTypeKey = Serialization.MetaTypeKey
+    typealias MetaTypeKey = AnyHashable
 
     public let log: Logger
     public let system: ActorSystem
@@ -56,6 +56,11 @@ public struct ActorSerializationContext {
     ///
     /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
     public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> ActorRef<Message> {
+        let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
+        return self.system._resolve(context: context)
+    }
+
+    public func resolveActorRef<Message: Codable>(_: Message.Type = Message.self, identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> ActorRef<Message> {
         let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
         return self.system._resolve(context: context)
     }

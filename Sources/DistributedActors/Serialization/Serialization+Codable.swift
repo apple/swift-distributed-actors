@@ -96,7 +96,7 @@ public protocol ActorSerializationContextEncoder {
     ///
     /// ```
     ///    guard let serializationContext = encoder.actorSerializationContext else {
-    //         throw ActorCoding.CodingError.missingActorSerializationContext(MyMessage.self, details: "While encoding [\(self)], using [\(encoder)]")
+    //         throw SerializationError.missingActorSerializationContext(MyMessage.self, details: "While encoding [\(self)], using [\(encoder)]")
     //     }
     /// ```
     var actorSerializationContext: ActorSerializationContext? { get }
@@ -120,30 +120,6 @@ public enum ActorCoding {
         case path
         case incarnation
     }
-
-    /// `Codable` support specific errors
-    public enum CodingError: Error {
-        // TODO: make SerializationError rather than this
-
-        /// Thrown when an operation needs to obtain an `ActorSerializationContext` however none was present in coder.
-        ///
-        /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
-        /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
-        case missingActorSerializationContext(Any.Type, details: String)
-        case missingManifest(hint: String)
-        case unableToCreateManifest(hint: String)
-        case unableToSummonTypeFromManifest(hint: String)
-
-        case serializerNotKnown(hint: String)
-
-        case unableToSerialize(hint: String)
-        case unableToDeserialize(hint: String)
-
-        case reservedSerializerID(hint: String)
-
-        /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
-        case noNeedToEnsureSerializer
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -160,7 +136,7 @@ extension ActorRef {
         let address = try container.decode(ActorAddress.self)
 
         guard let context = decoder.actorSerializationContext else {
-            throw ActorCoding.CodingError.missingActorSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
+            throw SerializationError.missingActorSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
         }
 
         // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in
@@ -219,7 +195,7 @@ extension _ReceivesSystemMessages {
 internal struct ReceivesSystemMessagesDecoder {
     public static func decode(from decoder: Decoder) throws -> _ReceivesSystemMessages {
         guard let context = decoder.actorSerializationContext else {
-            throw ActorCoding.CodingError.missingActorSerializationContext(_ReceivesSystemMessages.self, details: "While decoding ReceivesSystemMessages from [\(decoder)]")
+            throw SerializationError.missingActorSerializationContext(_ReceivesSystemMessages.self, details: "While decoding ReceivesSystemMessages from [\(decoder)]")
         }
 
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
@@ -239,7 +215,7 @@ extension ActorAddress: Codable {
             try container.encode(node, forKey: ActorCoding.CodingKeys.node)
         } else {
             guard let context = encoder.actorSerializationContext else {
-                throw ActorCoding.CodingError.missingActorSerializationContext(ActorAddress.self, details: "While encoding [\(self)] from [\(encoder)]")
+                throw SerializationError.missingActorSerializationContext(ActorAddress.self, details: "While encoding [\(self)] from [\(encoder)]")
             }
 
             try container.encode(context.localNode, forKey: ActorCoding.CodingKeys.node)

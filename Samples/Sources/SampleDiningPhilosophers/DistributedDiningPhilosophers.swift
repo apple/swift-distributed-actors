@@ -35,25 +35,27 @@ struct DistributedDiningPhilosophers {
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
         systemA.cluster.join(node: systemB.settings.cluster.node)
         systemA.cluster.join(node: systemC.settings.cluster.node)
-        systemC.cluster.join(node: systemB.settings.cluster.node)
+//        systemC.cluster.join(node: systemB.settings.cluster.node)
 
         Thread.sleep(.seconds(2))
 
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
-        let fork1: Fork.Ref = try systemA.spawn(.prefixed(with: "fork"), Fork.behavior)
+//        let fork1: Fork.Ref = try systemA.spawn(.prefixed(with: "fork"), Fork.behavior)
         let fork2: Fork.Ref = try systemB.spawn(.prefixed(with: "fork"), Fork.behavior)
         let fork3: Fork.Ref = try systemB.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork4: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork5: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
+//        let fork4: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
+//        let fork5: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        _ = try systemA.spawn("Konrad", Philosopher(left: fork5, right: fork1).behavior)
-        _ = try systemB.spawn("Dario", Philosopher(left: fork1, right: fork2).behavior)
-        _ = try systemB.spawn("Johannes", Philosopher(left: fork2, right: fork3).behavior)
-        _ = try systemC.spawn("Cory", Philosopher(left: fork3, right: fork4).behavior)
-        _ = try systemC.spawn("Norman", Philosopher(left: fork4, right: fork5).behavior)
+        _ = try systemA.spawn("Konrad", Philosopher(left: fork2, right: fork3).behavior)
+
+//        _ = try systemA.spawn("Konrad", Philosopher(left: fork5, right: fork1).behavior)
+//        _ = try systemB.spawn("Dario", Philosopher(left: fork1, right: fork2).behavior)
+//        _ = try systemB.spawn("Johannes", Philosopher(left: fork2, right: fork3).behavior)
+//        _ = try systemC.spawn("Cory", Philosopher(left: fork3, right: fork4).behavior)
+//        _ = try systemC.spawn("Norman", Philosopher(left: fork4, right: fork5).behavior)
 
         systemA.park(atMost: time)
     }

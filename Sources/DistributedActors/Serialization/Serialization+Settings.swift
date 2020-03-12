@@ -25,6 +25,13 @@ import Foundation // for Codable
 
 extension Serialization {
     public struct Settings {
+
+        // TODO: Workaround for https://bugs.swift.org/browse/SR-12315 "Extension of nested type does not have access to types it is nested in"
+        public typealias SerializerID = Serialization.SerializerID
+        public typealias CodableSerializerID = Serialization.CodableSerializerID
+        internal typealias ReservedID = Serialization.ReservedID
+        public typealias Manifest = Serialization.Manifest
+
         public static var `default`: Settings {
             .init()
         }
@@ -58,35 +65,72 @@ extension Serialization {
 
         typealias SerializerMaker = (NIO.ByteBufferAllocator) -> AnySerializer
         internal var specializedSerializerMakers: [Manifest: SerializerMaker] = [:]
-        // internal var codableSerializerMakers: [SerializerID: (AnyTopLevelEncoder, AnyTopLevelDecoder)] = [:]
 
-        internal var customType2Manifest: [MetaTypeKey: Serialization.Manifest] = [:]
+        internal var customType2Manifest: [ObjectIdentifier: Serialization.Manifest] = [:]
         internal var customManifest2Type: [Manifest: Any.Type] = [:]
-
-        // TODO: express it nicer somehow?
-        /// List of trusted types, which may be serialized using the automatic Codable infrastructure
-        internal var _safeList: Set<MetaTypeKey> = []
 
         // FIXME: should not be here! // figure out where to allocate it
         internal let allocator = NIO.ByteBufferAllocator()
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialization: Manifest Registration
+
 extension Serialization.Settings {
-    // TODO: Workaround for https://bugs.swift.org/browse/SR-12315 "Extension of nested type does not have access to types it is nested in"
-    public typealias SerializerID = Serialization.SerializerID
-    public typealias CodableSerializerID = Serialization.CodableSerializerID
-    internal typealias ReservedID = Serialization.ReservedID
-    public typealias Manifest = Serialization.Manifest
 
     public mutating func getCustomOrRegisterManifest<Message>(_ type: Message.Type, serializerID: Serialization.SerializerID) -> Serialization.Manifest {
-        self.customType2Manifest[MetaType(type).asHashable()] ??
+        self.customType2Manifest[ObjectIdentifier(type)] ??
             self.registerManifest(type, serializer: serializerID)
     }
 
     public mutating func getCustomOrRegisterManifest<Message: Codable>(_ type: Message.Type, serializerID: Serialization.CodableSerializerID) -> Serialization.Manifest {
-        self.customType2Manifest[MetaType(type).asHashable()] ??
+        self.customType2Manifest[ObjectIdentifier(type)] ??
             self.registerManifest(type, serializer: serializerID.value)
+    }
+
+    /// Register a `Serialization.Manifest` for the given `Codable` type and `Serializer`.
+    ///
+    /// If no `serializer` is selected, it will default to the the `settings.defaultCodableSerializerID`.
+    /// If you aim to change the default, be sure to do so before registering any manifests as they pick up
+    /// the default serializer ID at time of registration.
+    ///
+    /// This can be used to "force" a specific serializer be used for a message type,
+    /// regardless if it is codable or not.
+    @discardableResult
+    public mutating func registerManifest<Message: Codable>(
+        _ type: Message.Type, hintOverride: String? = nil,
+        serializer overrideSerializerID: CodableSerializerID?
+    ) -> Manifest {
+        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
+        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName
+        let serializerID = overrideSerializerID ?? self.defaultCodableSerializerID
+
+        let manifest = Manifest(serializerID: serializerID.value, hint: hint)
+
+        self.customType2Manifest[ObjectIdentifier(type)] = manifest
+        self.customManifest2Type[manifest] = type
+
+        return manifest
+    }
+
+    /// Register a `Serialization.Manifest` for the given type and serializer.
+    ///
+    /// This can be used to "force" a specific serializer be used for a message type,
+    /// regardless if it is codable or not.
+    @discardableResult
+    public mutating func registerManifest<Message>(
+        _ type: Message.Type, hintOverride: String? = nil,
+        serializer serializerID: SerializerID
+    ) -> Manifest {
+        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
+        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName
+        let manifest = Manifest(serializerID: serializerID, hint: hint)
+
+        self.customType2Manifest[ObjectIdentifier(type)] = manifest
+        self.customManifest2Type[manifest] = type
+
+        return manifest
     }
 }
 
@@ -97,7 +141,7 @@ extension Serialization.Settings {
     public mutating func registerCodable<Message: Codable>(_ type: Message.Type, serializer serializerID: CodableSerializerID = .jsonCodable) {
         let manifest = self.registerManifest(type, serializer: serializerID.value)
 
-        self.customType2Manifest[MetaType(type).asHashable()] = manifest
+        self.customType2Manifest[ObjectIdentifier(type)] = manifest
         self.customManifest2Type[manifest] = type
     }
 
@@ -125,7 +169,7 @@ extension Serialization.Settings {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Serialization: Protobuf manifest and serializer registration
+// MARK: Serialization: ProtobufRepresentable
 
 extension Serialization.Settings {
     /// Register a type to be serialized using Google Protocol Buffers.
@@ -134,16 +178,16 @@ extension Serialization.Settings {
     /// how to de/encode it from its protobuf representation.
     public mutating func registerProtobufRepresentable<Message: AnyProtobufRepresentable>(_ type: Message.Type) {
         let manifest = self.getCustomOrRegisterManifest(Message.self, serializerID: .publicProtobufRepresentable)
-        self.customType2Manifest[MetaType(Message.self).asHashable()] = manifest
+        self.customType2Manifest[ObjectIdentifier(type)] = manifest
         self.customManifest2Type[manifest] = type
     }
 
     // Internal since we want to touch only internal types and not be forced to make the public.
     internal mutating func _registerInternalProtobufRepresentable<Message: AnyInternalProtobufRepresentable>(
-        _ type: Message.Type, serializerID: SerializerID = Serialization.SerializerID.doNotSerialize
+        _ type: Message.Type, serializerID: SerializerID
     ) {
         let manifest = self.getCustomOrRegisterManifest(type, serializerID: serializerID)
-        self.customType2Manifest[MetaType(type).asHashable()] = manifest
+        self.customType2Manifest[ObjectIdentifier(type)] = manifest
         self.customManifest2Type[manifest] = type
     }
 
@@ -156,60 +200,11 @@ extension Serialization.Settings {
             makeSerializer(allocator).asAnySerializer
         }
     }
-
-    /// Register a `Serialization.Manifest` for the given `Codable` type and `Serializer`.
-    ///
-    /// If no `serializer` is selected, it will default to the the `settings.defaultCodableSerializerID`.
-    /// If you aim to change the default, be sure to do so before registering any manifests as they pick up
-    /// the default serializer ID at time of registration.
-    ///
-    /// This can be used to "force" a specific serializer be used for a message type,
-    /// regardless if it is codable or not.
-    @discardableResult
-    public mutating func registerManifest<Message: Codable>(
-        _ type: Message.Type, hintOverride: String? = nil,
-        serializer overrideSerializerID: CodableSerializerID?
-    ) -> Manifest {
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName
-        let serializerID = overrideSerializerID ?? self.defaultCodableSerializerID
-
-        let manifest = Manifest(serializerID: serializerID.value, hint: hint)
-
-        self.customType2Manifest[MetaType(type).asHashable()] = manifest
-        self.customManifest2Type[manifest] = type
-
-        return manifest
-    }
-
-    /// Register a `Serialization.Manifest` for the given type and serializer.
-    ///
-    /// This can be used to "force" a specific serializer be used for a message type,
-    /// regardless if it is codable or not.
-    @discardableResult
-    public mutating func registerManifest<Message>(
-        _ type: Message.Type, hintOverride: String? = nil,
-        serializer serializerID: SerializerID
-    ) -> Manifest {
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName
-        let manifest = Manifest(serializerID: serializerID, hint: hint)
-
-        self.customType2Manifest[MetaType(type).asHashable()] = manifest
-        self.customManifest2Type[manifest] = type
-
-        return manifest
-    }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Manifest Serialization
+// MARK: Serialization: Manifest mappings (for evolving message types)
 
 extension Serialization.Settings {
-    // TODO: move to Serialization.Settings
-    public mutating func safeList<T>(_ type: T.Type) { // TODO: Messageable
-        self._safeList.insert(MetaType(type).asHashable())
-    }
 
     // TODO: potentially allow functions?
     public mutating func mapInbound(manifest: Serialization.Manifest, as: Serialization.Manifest) {}

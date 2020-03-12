@@ -26,7 +26,9 @@ import NIO
 /// same amount of work, however it allows avoiding head-of-line blocking in presence of large messages, e.g. when typically
 /// a given set of actors often sends large messages, which would have otherwise stalled the sending of other high-priority
 /// (e.g. system) messages.
-internal final class SerializationPool {
+///
+// Implementation note: This should be internal, but is forced to be public by `_deserializeDeliver`
+public final class SerializationPool {
     @usableFromInline
     internal let serialization: Serialization
     @usableFromInline
@@ -80,7 +82,6 @@ internal final class SerializationPool {
                 self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, bytes.readableBytes)
 
                 return (manifest, bytes)
-
             } catch {
                 self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: 0)
                 throw error
@@ -90,6 +91,7 @@ internal final class SerializationPool {
 
     @inlinable
     internal func deserialize<Message>(
+        as type: Message.Type,
         from bytes: ByteBuffer,
         using manifest: Serialization.Manifest,
         recipientPath: ActorPath,
@@ -104,8 +106,9 @@ internal final class SerializationPool {
                 self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
                 self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: bytes.readableBytes)
 
-                // FIXME: this has to use the _serializers (!!!)
+                // do the work, this may be "heavy"
                 let deserialized = try self.serialization.deserialize(as: Message.self, from: bytes, using: manifest)
+
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: deserialized)
                 return deserialized
             } catch {
@@ -115,26 +118,81 @@ internal final class SerializationPool {
         }
     }
 
-    private func enqueue<T>(recipientPath: ActorPath, promise: EventLoopPromise<T>, workerPool: AffinityThreadPool, task: @escaping () throws -> T) {
+    @inlinable
+    internal func deserialize<Message>(
+        as type: Message.Type,
+        from bytes: ByteBuffer,
+        using manifest: Serialization.Manifest,
+        recipientPath: ActorPath,
+        // The only reason we use a wrapper instead of raw function is that (...) -> () do not have identity,
+        // and we use identity of the callback to interact with the instrumentation for start/stop correlation.
+        callback: DeserializationCallback<Message>
+    ) {
+        pprint("deserialize = \(bytes.getString(at: 0, length: bytes.readableBytes)) >>>> \(Message.self)")
+
+        self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
+            do {
+                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
+                self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: bytes.readableBytes)
+
+                // do the work, this may be "heavy"
+                let deserialized = try self.serialization.deserialize(as: Message.self, from: bytes, using: manifest)
+
+                self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
+                return deserialized
+            } catch {
+                self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: nil)
+                throw error
+            }
+        }
+    }
+
+    @inline(__always)
+    @usableFromInline
+    internal func enqueue<Message>(
+        recipientPath: ActorPath,
+        promise: EventLoopPromise<Message>,
+        workerPool: AffinityThreadPool,
+        task: @escaping () throws -> Message
+    ) {
+        self.enqueue(recipientPath: recipientPath, onComplete: promise.completeWith, workerPool: workerPool, task: { try task() })
+    }
+
+    @inline(__always)
+    @usableFromInline
+    internal func enqueue<Message>(
+        recipientPath: ActorPath,
+        onComplete: @escaping (Result<Message, Error>) -> Void,
+        workerPool: AffinityThreadPool,
+        task: @escaping () throws -> Message
+    ) {
+        // TODO: also record thr delay between submitting and starting serialization work here?
         do {
             // check if messages for this particular actor should be handled
             // on a separate thread and submit to the worker pool
             if let workerNumber = self.workerMapping[recipientPath] {
                 try workerPool.execute(on: workerNumber) {
                     do {
-                        let result = try task()
-                        promise.succeed(result)
+                        onComplete(.success(try task()))
                     } catch {
-                        promise.fail(error)
+                        onComplete(.failure(error))
                     }
                 }
             } else { // otherwise handle on the calling thread
-                promise.succeed(try task())
+                onComplete(.success(try task()))
             }
         } catch {
-            promise.fail(error)
+            onComplete(.failure(error))
         }
     }
+}
+
+/// Allows to "box" another value.
+@usableFromInline
+final class DeserializationCallback<Message> {
+    @usableFromInline
+    let call: (Result<Message, Error>) -> Void
+    init(_ callback: @escaping (Result<Message, Error>) -> Void) { self.call = callback }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
