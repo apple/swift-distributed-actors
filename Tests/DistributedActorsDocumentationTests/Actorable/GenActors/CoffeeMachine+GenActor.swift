@@ -29,7 +29,7 @@ import XCTest
 // MARK: DO NOT EDIT: Generated CoffeeMachine messages 
 
 extension GeneratedActor.Messages {
-    public enum CoffeeMachine { 
+    public enum CoffeeMachine: ActorMessage { 
         case makeCoffee(_replyTo: ActorRef<Coffee>)  
     }
 }

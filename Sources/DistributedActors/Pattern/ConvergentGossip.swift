@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-internal final class ConvergentGossip<Payload: Codable> {
+internal final class ConvergentGossip<Payload: ActorMessage> {
     typealias GossipPeerRef = ActorRef<Message>
 
     let settings: Settings
@@ -142,7 +142,7 @@ internal final class ConvergentGossip<Payload: Codable> {
 }
 
 extension ConvergentGossip {
-    enum Message: Codable {
+    enum Message: Codable, ActorMessage {
         // gossip
         case gossip(GossipEnvelope)
 
@@ -176,7 +176,7 @@ extension ConvergentGossip {
     }
 }
 
-internal struct ConvergentGossipControl<Payload: Codable> {
+internal struct ConvergentGossipControl<Payload: ActorMessage> {
     // TODO: rather let's hide it trough methods
     private let ref: ConvergentGossip<Payload>.Ref
 

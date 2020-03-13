@@ -33,18 +33,18 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-enum ProtoClusterMemberReachability: SwiftProtobuf.Enum {
-  typealias RawValue = Int
+public enum ProtoClusterMemberReachability: SwiftProtobuf.Enum {
+  public typealias RawValue = Int
   case unspecified // = 0
   case reachable // = 1
   case unreachable // = 2
   case UNRECOGNIZED(Int)
 
-  init() {
+  public init() {
     self = .unspecified
   }
 
-  init?(rawValue: Int) {
+  public init?(rawValue: Int) {
     switch rawValue {
     case 0: self = .unspecified
     case 1: self = .reachable
@@ -53,7 +53,7 @@ enum ProtoClusterMemberReachability: SwiftProtobuf.Enum {
     }
   }
 
-  var rawValue: Int {
+  public var rawValue: Int {
     switch self {
     case .unspecified: return 0
     case .reachable: return 1
@@ -68,7 +68,7 @@ enum ProtoClusterMemberReachability: SwiftProtobuf.Enum {
 
 extension ProtoClusterMemberReachability: CaseIterable {
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [ProtoClusterMemberReachability] = [
+  public static var allCases: [ProtoClusterMemberReachability] = [
     .unspecified,
     .reachable,
     .unreachable,
@@ -77,8 +77,8 @@ extension ProtoClusterMemberReachability: CaseIterable {
 
 #endif  // swift(>=4.2)
 
-enum ProtoClusterMemberStatus: SwiftProtobuf.Enum {
-  typealias RawValue = Int
+public enum ProtoClusterMemberStatus: SwiftProtobuf.Enum {
+  public typealias RawValue = Int
   case unspecified // = 0
   case joining // = 1
   case up // = 2
@@ -87,11 +87,11 @@ enum ProtoClusterMemberStatus: SwiftProtobuf.Enum {
   case removed // = 5
   case UNRECOGNIZED(Int)
 
-  init() {
+  public init() {
     self = .unspecified
   }
 
-  init?(rawValue: Int) {
+  public init?(rawValue: Int) {
     switch rawValue {
     case 0: self = .unspecified
     case 1: self = .joining
@@ -103,7 +103,7 @@ enum ProtoClusterMemberStatus: SwiftProtobuf.Enum {
     }
   }
 
-  var rawValue: Int {
+  public var rawValue: Int {
     switch self {
     case .unspecified: return 0
     case .joining: return 1
@@ -121,7 +121,7 @@ enum ProtoClusterMemberStatus: SwiftProtobuf.Enum {
 
 extension ProtoClusterMemberStatus: CaseIterable {
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [ProtoClusterMemberStatus] = [
+  public static var allCases: [ProtoClusterMemberStatus] = [
     .unspecified,
     .joining,
     .up,
@@ -133,92 +133,92 @@ extension ProtoClusterMemberStatus: CaseIterable {
 
 #endif  // swift(>=4.2)
 
-struct ProtoClusterMembership {
+public struct ProtoClusterMembership {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var members: [ProtoClusterMember] {
+  public var members: [ProtoClusterMember] {
     get {return _storage._members}
     set {_uniqueStorage()._members = newValue}
   }
 
-  var leaderNode: ProtoUniqueNode {
+  public var leaderNode: ProtoUniqueNode {
     get {return _storage._leaderNode ?? ProtoUniqueNode()}
     set {_uniqueStorage()._leaderNode = newValue}
   }
   /// Returns true if `leaderNode` has been explicitly set.
-  var hasLeaderNode: Bool {return _storage._leaderNode != nil}
+  public var hasLeaderNode: Bool {return _storage._leaderNode != nil}
   /// Clears the value of `leaderNode`. Subsequent reads from it will return its default value.
-  mutating func clearLeaderNode() {_uniqueStorage()._leaderNode = nil}
+  public mutating func clearLeaderNode() {_uniqueStorage()._leaderNode = nil}
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoClusterMember {
+public struct ProtoClusterMember {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var node: ProtoUniqueNode {
+  public var node: ProtoUniqueNode {
     get {return _storage._node ?? ProtoUniqueNode()}
     set {_uniqueStorage()._node = newValue}
   }
   /// Returns true if `node` has been explicitly set.
-  var hasNode: Bool {return _storage._node != nil}
+  public var hasNode: Bool {return _storage._node != nil}
   /// Clears the value of `node`. Subsequent reads from it will return its default value.
-  mutating func clearNode() {_uniqueStorage()._node = nil}
+  public mutating func clearNode() {_uniqueStorage()._node = nil}
 
-  var status: ProtoClusterMemberStatus {
+  public var status: ProtoClusterMemberStatus {
     get {return _storage._status}
     set {_uniqueStorage()._status = newValue}
   }
 
-  var reachability: ProtoClusterMemberReachability {
+  public var reachability: ProtoClusterMemberReachability {
     get {return _storage._reachability}
     set {_uniqueStorage()._reachability = newValue}
   }
 
-  var upNumber: UInt32 {
+  public var upNumber: UInt32 {
     get {return _storage._upNumber}
     set {_uniqueStorage()._upNumber = newValue}
   }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoClusterMembershipGossip {
+public struct ProtoClusterMembershipGossip {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// origin of the gossip
-  var from: ProtoUniqueNode {
+  public var from: ProtoUniqueNode {
     get {return _storage._from ?? ProtoUniqueNode()}
     set {_uniqueStorage()._from = newValue}
   }
   /// Returns true if `from` has been explicitly set.
-  var hasFrom: Bool {return _storage._from != nil}
+  public var hasFrom: Bool {return _storage._from != nil}
   /// Clears the value of `from`. Subsequent reads from it will return its default value.
-  mutating func clearFrom() {_uniqueStorage()._from = nil}
+  public mutating func clearFrom() {_uniqueStorage()._from = nil}
 
   /// TODO: Something else, "membership diff"?
-  var members: [ProtoClusterMember] {
+  public var members: [ProtoClusterMember] {
     get {return _storage._members}
     set {_uniqueStorage()._members = newValue}
   }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
@@ -226,7 +226,7 @@ struct ProtoClusterMembershipGossip {
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoClusterMemberReachability: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     0: .same(proto: "CLUSTER_MEMBER_REACHABILITY_UNSPECIFIED"),
     1: .same(proto: "CLUSTER_MEMBER_REACHABILITY_REACHABLE"),
     2: .same(proto: "CLUSTER_MEMBER_REACHABILITY_UNREACHABLE"),
@@ -234,7 +234,7 @@ extension ProtoClusterMemberReachability: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension ProtoClusterMemberStatus: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     0: .same(proto: "CLUSTER_MEMBER_STATUS_UNSPECIFIED"),
     1: .same(proto: "CLUSTER_MEMBER_STATUS_JOINING"),
     2: .same(proto: "CLUSTER_MEMBER_STATUS_UP"),
@@ -245,8 +245,8 @@ extension ProtoClusterMemberStatus: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "ClusterMembership"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "ClusterMembership"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "members"),
     2: .same(proto: "leaderNode"),
   ]
@@ -272,7 +272,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -285,7 +285,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if !_storage._members.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._members, fieldNumber: 1)
@@ -297,7 +297,7 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoClusterMembership, rhs: ProtoClusterMembership) -> Bool {
+  public static func ==(lhs: ProtoClusterMembership, rhs: ProtoClusterMembership) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -314,8 +314,8 @@ extension ProtoClusterMembership: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 }
 
 extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "ClusterMember"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "ClusterMember"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "node"),
     2: .same(proto: "status"),
     3: .same(proto: "reachability"),
@@ -347,7 +347,7 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -362,7 +362,7 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._node {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
@@ -380,7 +380,7 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoClusterMember, rhs: ProtoClusterMember) -> Bool {
+  public static func ==(lhs: ProtoClusterMember, rhs: ProtoClusterMember) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -399,8 +399,8 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 }
 
 extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "ClusterMembershipGossip"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "ClusterMembershipGossip"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "from"),
     2: .same(proto: "members"),
   ]
@@ -426,7 +426,7 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -439,7 +439,7 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._from {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
@@ -451,7 +451,7 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoClusterMembershipGossip, rhs: ProtoClusterMembershipGossip) -> Bool {
+  public static func ==(lhs: ProtoClusterMembershipGossip, rhs: ProtoClusterMembershipGossip) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0

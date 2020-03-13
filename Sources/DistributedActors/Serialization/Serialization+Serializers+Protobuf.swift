@@ -14,36 +14,133 @@
 
 import NIO
 import SwiftProtobuf
+import protocol Swift.Decoder // to prevent shadowing by the ones in SwiftProtobuf
+import protocol Swift.Encoder // to prevent shadowing by the ones in SwiftProtobuf
+import struct Foundation.Data
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
 
-public protocol AnyInternalProtobufRepresentable {}
+public protocol AnyInternalProtobufRepresentable: ActorMessage {
+}
+
+public protocol AnyProtobufRepresentable:  AnyInternalProtobufRepresentable {
+}
 
 /// A protocol that facilitates conversion between Swift and protobuf messages.
 ///
-/// - SeeAlso: Serialization.registerProtobufRepresentable
+/// - SeeAlso: `ActorMessage`
 public protocol ProtobufRepresentable: AnyProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
     /// Convert this `ProtobufRepresentable` instance to an instance of type `ProtobufRepresentation`.
-    func toProto(context: ActorSerializationContext) throws -> ProtobufRepresentation
+    func toProto(context: Serialization.Context) throws -> ProtobufRepresentation
 
     /// Initialize a `ProtobufRepresentable` instance from the given `ProtobufRepresentation` instance.
-    init(fromProto proto: ProtobufRepresentation, context: ActorSerializationContext) throws
+    init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws
 }
 
-public protocol AnyProtobufRepresentable: AnyInternalProtobufRepresentable {}
+
+// Implementation note:
+// This conformance is a bit weird, and it is not usually going to be invoked through Codable
+// however it could, so we allow for this use case.
+extension ProtobufRepresentable {
+    public init(from decoder: Decoder) throws {
+        pprint("Self.self = \(Self.self) \(#function) @ \(#file):\(#line)")
+
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(
+                Self.self,
+                details: """
+                         \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: decoder))).userInfo, \
+                         but is necessary deserialize the ProtobufRepresentable codable message [\(Self.self)]!
+                         """)
+        }
+
+        pprint("Self.self = \(Self.self) \(#function) @ \(#file):\(#line)")
+        let container = try decoder.singleValueContainer()
+
+        pprint("Self.self = \(Self.self) \(#function) @ \(#file):\(#line)")
+
+        let data: Data = try container.decode(Data.self)
+        let proto = try ProtobufRepresentation(serializedData: data)
+        pprint("Self.self = \(Self.self) \(#function) @ \(#file):\(#line)")
+
+        try self.init(fromProto: proto, context: context)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        pprint("#function = \(Self.self).\(#function)")
+        guard let context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(
+                Self.self,
+                details: """
+                         \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: encoder))).userInfo, \
+                         but is necessary deserialize the ProtobufRepresentable codable message [\(Self.self)]!
+                         """)
+        }
+
+        var container = encoder.singleValueContainer()
+
+        let proto = try self.toProto(context: context)
+        let data = try proto.serializedData()
+
+        try container.encode(data)
+    }
+}
 
 /// This protocol is for internal protobuf-serializable messages only.
 ///
-/// We need a protocol separate from `ProtobufRepresentable` because otherwise we would be forced to
-/// make internal types public.
+/// We need a protocol separate from `ProtobufRepresentable` because otherwise we would be forced to make internal types public.
 internal protocol InternalProtobufRepresentable: AnyInternalProtobufRepresentable {
-    associatedtype InternalProtobufRepresentation: SwiftProtobuf.Message
+    associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
-    func toProto(context: ActorSerializationContext) throws -> InternalProtobufRepresentation
-    init(fromProto proto: InternalProtobufRepresentation, context: ActorSerializationContext) throws
+    init(from decoder: Decoder) throws
+    func encode(to encoder: Encoder) throws
+
+    func toProto(context: Serialization.Context) throws -> ProtobufRepresentation
+    init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws
+}
+
+// Implementation note:
+// This conformance is a bit weird, and it is not usually going to be invoked through Codable
+// however it could, so we allow for this use case.
+extension InternalProtobufRepresentable {
+    init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(
+                Self.self,
+                details: """
+                         \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: decoder))).userInfo, \
+                         but is necessary deserialize the InternalProtobufRepresentable codable message [\(Self.self)]!
+                         """)
+        }
+
+        let container = try decoder.singleValueContainer()
+
+        let data: Data = try container.decode(Data.self)
+        let proto = try ProtobufRepresentation(serializedData: data)
+
+        try self.init(fromProto: proto, context: context)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(
+                Self.self,
+                details: """
+                         \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: encoder))).userInfo, \
+                         but is necessary deserialize the InternalProtobufRepresentable codable message [\(Self.self)]!
+                         """)
+        }
+
+        var container = encoder.singleValueContainer()
+
+        let proto = try self.toProto(context: context)
+        let data = try proto.serializedData()
+
+        try container.encode(data)
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -51,10 +148,10 @@ internal protocol InternalProtobufRepresentable: AnyInternalProtobufRepresentabl
 
 /// Base protobuf serializer containing common logic, customizable by subclass.
 open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Message>: Serializer<Message> {
-    var _serializationContext: ActorSerializationContext?
-    var serializationContext: ActorSerializationContext {
+    var _serializationContext: Serialization.Context?
+    var serializationContext: Serialization.Context {
         guard let context = self._serializationContext else {
-            fatalError("ActorSerializationContext not available on \(self). This is a bug, please report.")
+            fatalError("Serialization.Context not available on \(self). This is a bug, please report.")
         }
 
         return context
@@ -73,43 +170,43 @@ open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Messag
 
     open override func deserialize(from bytes: ByteBuffer) throws -> Message {
         var bytes = bytes
-        let proto = try ProtobufMessage(bytes: &bytes)
+        let proto = try ProtobufMessage(buffer: &bytes)
         return try self.fromProto(proto, context: self.serializationContext)
     }
 
     // To be implemented by subclass
-    open func toProto(_ message: Message, context: ActorSerializationContext) throws -> ProtobufMessage {
+    open func toProto(_ message: Message, context: Serialization.Context) throws -> ProtobufMessage {
         return undefined()
     }
 
     // To be implemented by subclass
-    open func fromProto(_ proto: ProtobufMessage, context: ActorSerializationContext) throws -> Message {
+    open func fromProto(_ proto: ProtobufMessage, context: Serialization.Context) throws -> Message {
         return undefined()
     }
 
-    open override func setSerializationContext(_ context: ActorSerializationContext) {
+    open override func setSerializationContext(_ context: Serialization.Context) {
         self._serializationContext = context
     }
 }
 
 /// Protobuf serializer for user-defined protobuf messages.
 public final class ProtobufSerializer<T: ProtobufRepresentable>: BaseProtobufSerializer<T, T.ProtobufRepresentation> {
-    public override func toProto(_ message: T, context: ActorSerializationContext) throws -> T.ProtobufRepresentation {
+    public override func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
         return try message.toProto(context: self.serializationContext)
     }
 
-    public override func fromProto(_ proto: T.ProtobufRepresentation, context: ActorSerializationContext) throws -> T {
+    public override func fromProto(_ proto: T.ProtobufRepresentation, context: Serialization.Context) throws -> T {
         return try T(fromProto: proto, context: self.serializationContext)
     }
 }
 
 /// Protobuf serializer for internal protobuf messages only.
-internal final class InternalProtobufSerializer<T: InternalProtobufRepresentable>: BaseProtobufSerializer<T, T.InternalProtobufRepresentation> {
-    public override func toProto(_ message: T, context: ActorSerializationContext) throws -> T.InternalProtobufRepresentation {
+internal final class InternalProtobufSerializer<T: InternalProtobufRepresentable>: BaseProtobufSerializer<T, T.ProtobufRepresentation> {
+    public override func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
         return try message.toProto(context: self.serializationContext)
     }
 
-    public override func fromProto(_ proto: T.InternalProtobufRepresentation, context: ActorSerializationContext) throws -> T {
+    public override func fromProto(_ proto: T.ProtobufRepresentation, context: Serialization.Context) throws -> T {
         return try T(fromProto: proto, context: self.serializationContext)
     }
 }

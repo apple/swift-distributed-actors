@@ -33,7 +33,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-struct ProtoSWIMMessage {
+struct ProtoSWIMRemoteMessage {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -66,7 +66,7 @@ struct ProtoSWIMMessage {
     case pingRequest(ProtoSWIMPingRequest)
 
   #if !swift(>=4.1)
-    static func ==(lhs: ProtoSWIMMessage.OneOf_Request, rhs: ProtoSWIMMessage.OneOf_Request) -> Bool {
+    static func ==(lhs: ProtoSWIMRemoteMessage.OneOf_Request, rhs: ProtoSWIMRemoteMessage.OneOf_Request) -> Bool {
       switch (lhs, rhs) {
       case (.ping(let l), .ping(let r)): return l == r
       case (.pingRequest(let l), .pingRequest(let r)): return l == r
@@ -384,15 +384,15 @@ struct ProtoSWIMPayload {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoSWIMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMMessage"
+extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "SWIMRemoteMessage"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "ping"),
     2: .same(proto: "pingRequest"),
   ]
 
   fileprivate class _StorageClass {
-    var _request: ProtoSWIMMessage.OneOf_Request?
+    var _request: ProtoSWIMRemoteMessage.OneOf_Request?
 
     static let defaultInstance = _StorageClass()
 
@@ -450,7 +450,7 @@ extension ProtoSWIMMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMMessage, rhs: ProtoSWIMMessage) -> Bool {
+  static func ==(lhs: ProtoSWIMRemoteMessage, rhs: ProtoSWIMRemoteMessage) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0

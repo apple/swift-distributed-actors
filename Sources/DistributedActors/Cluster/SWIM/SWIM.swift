@@ -37,13 +37,13 @@ public enum SWIM {
     typealias Members = [SWIMMember]
     internal typealias MembersValues = Dictionary<ActorRef<SWIM.Message>, SWIM.Member>.Values
 
-    internal enum Message {
+    internal enum Message: ActorMessage {
         case remote(RemoteMessage)
         case local(LocalMessage)
         case _testing(TestingMessage)
     }
 
-    internal enum RemoteMessage {
+    internal enum RemoteMessage: ActorMessage {
         case ping(lastKnownStatus: Status, replyTo: ActorRef<PingResponse>, payload: Payload)
 
         /// "Ping Request" requests a SWIM probe.
@@ -57,16 +57,16 @@ public enum SWIM {
     ///
     /// - parameter target: always contains the ref of the member that was the target of the `ping`.
 
-    internal enum PingResponse {
+    internal enum PingResponse: ActorMessage {
         case ack(target: ActorRef<Message>, incarnation: Incarnation, payload: Payload)
         case nack(target: ActorRef<Message>)
     }
 
-    internal struct MembershipState {
+    internal struct MembershipState: NotTransportableActorMessage {
         let membershipState: [ActorRef<SWIM.Message>: Status]
     }
 
-    internal enum LocalMessage: NoSerializationVerification {
+    internal enum LocalMessage: NotTransportableActorMessage {
         /// Periodic message used to wake up SWIM and perform a random ping probe among its members.
         case pingRandomMember
 
@@ -110,7 +110,7 @@ public enum SWIM {
         case confirmDead(UniqueNode)
     }
 
-    internal enum TestingMessage: NoSerializationVerification {
+    internal enum TestingMessage: NotTransportableActorMessage {
         /// FOR TESTING: Expose the entire membership state
         case getMembershipState(replyTo: ActorRef<MembershipState>)
     }

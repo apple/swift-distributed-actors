@@ -21,7 +21,7 @@ import XCTest
 class InteropDocExamples: XCTestCase {
     func example_asyncOp_sendResult_dispatch() throws {
         // tag::message_greetings[]
-        enum Messages {
+        enum Messages: NotTransportableActorMessage {
             case string(String)
         }
         // end::message_greetings[]
@@ -51,7 +51,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_sendResult_insideActor() throws {
         // tag::asyncOp_sendResult_insideActor_enum_Messages[]
-        enum Messages {
+        enum Messages: NotTransportableActorMessage {
             case fetchData
             case result(String)
         }
@@ -104,11 +104,11 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_onResultAsync_enum_Messages[]
-        enum Messages {
+        enum Messages: NotTransportableActorMessage {
             case lookupUser(name: String, recipient: ActorRef<LookupResponse>)
         }
 
-        enum LookupResponse {
+        enum LookupResponse: NotTransportableActorMessage {
             case user(User)
             case unknownUser(name: String)
             case lookupFailed(Error)
@@ -161,7 +161,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_awaitResult() throws {
         // tag::asyncOp_awaitResult_enum_Messages[]
-        enum Messages {
+        enum Message: NotTransportableActorMessage {
             case addPrefix(string: String, recipient: ActorRef<String>)
         }
         // end::asyncOp_awaitResult_enum_Messages[]
@@ -175,7 +175,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_awaitResult[]
-        let behavior: Behavior<Messages> = .setup { context in
+        let behavior: Behavior<Message> = .setup { context in
             let future: EventLoopFuture<String> = fetchDataAsync() // <1>
             return context.awaitResult(of: future, timeout: .milliseconds(100)) { // <2>
                 switch $0 {
@@ -187,7 +187,7 @@ class InteropDocExamples: XCTestCase {
             }
         }
 
-        func prefixer(prefix: String) -> Behavior<Messages> {
+        func prefixer(prefix: String) -> Behavior<Message> {
             return .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
@@ -200,7 +200,7 @@ class InteropDocExamples: XCTestCase {
     }
 
     func example_asyncOp_awaitResultThrowing() throws {
-        enum Messages {
+        enum Message: NotTransportableActorMessage {
             case addPrefix(string: String, recipient: ActorRef<String>)
         }
 
@@ -212,7 +212,7 @@ class InteropDocExamples: XCTestCase {
             return eventLoop.makeSucceededFuture("success")
         }
 
-        func prefixer(prefix: String) -> Behavior<Messages> {
+        func prefixer(prefix: String) -> Behavior<Message> {
             return .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
@@ -223,7 +223,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_awaitResultThrowing[]
-        let behavior: Behavior<Messages> = .setup { context in
+        let behavior: Behavior<Message> = .setup { context in
             let future: EventLoopFuture<String> = fetchDataAsync() // <1>
             return context.awaitResultThrowing(of: future, timeout: .milliseconds(100)) { // <2>
                 prefixer(prefix: $0)

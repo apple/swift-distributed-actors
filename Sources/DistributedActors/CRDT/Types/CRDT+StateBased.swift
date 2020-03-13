@@ -64,13 +64,15 @@ extension CvRDT {
     }
 }
 
+public protocol _DeltaCRDT: CvRDT {}
+
 /// Delta State CRDT (ẟ-CRDT), a kind of state-based CRDT.
 ///
 /// Incremental state (delta) rather than the entire state is disseminated as an optimization.
 ///
 /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
 /// - SeeAlso: [Efficient Synchronization of State-based CRDTs](https://arxiv.org/pdf/1803.02750.pdf)
-public protocol DeltaCRDT: CvRDT {
+public protocol DeltaCRDT: _DeltaCRDT {
     /// `Delta` type should be registered and (de-)serializable using the Actor serialization infrastructure.
     ///
     /// - SeeAlso: The library's documentation on serialization for more information.

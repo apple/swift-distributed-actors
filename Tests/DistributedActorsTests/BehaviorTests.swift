@@ -20,7 +20,7 @@ import NIO
 import XCTest
 
 final class BehaviorTests: ActorSystemTestBase {
-    public struct TestMessage {
+    public struct TestMessage: ActorMessage {
         let message: String
         let replyTo: ActorRef<String>
     }
@@ -227,13 +227,13 @@ final class BehaviorTests: ActorSystemTestBase {
         // receiveSignalType was invoked successfully
     }
 
-    enum OrElseProtocol {
+    enum OrElseMessage: String, ActorMessage {
         case first
         case second
         case other
     }
 
-    func firstBehavior(_ probe: ActorRef<OrElseProtocol>) -> Behavior<OrElseProtocol> {
+    func firstBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
         return .receiveMessage { message in
             switch message {
             case .first:
@@ -247,36 +247,36 @@ final class BehaviorTests: ActorSystemTestBase {
         }
     }
 
-    func secondBehavior(_ probe: ActorRef<OrElseProtocol>) -> Behavior<OrElseProtocol> {
+    func secondBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
         return .receiveMessage { message in
             probe.tell(message)
             return .same
         }
     }
 
-    func combinedBehavior(_ probe: ActorRef<OrElseProtocol>) -> Behavior<OrElseProtocol> {
+    func combinedBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
         return self.firstBehavior(probe).orElse(self.secondBehavior(probe))
     }
 
     func test_orElse_shouldExecuteFirstBehavior() throws {
-        let p: ActorTestProbe<OrElseProtocol> = self.testKit.spawnTestProbe()
-        let ref: ActorRef<OrElseProtocol> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
+        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.first)
         try p.expectMessage(.first)
     }
 
     func test_orElse_shouldExecuteSecondBehavior() throws {
-        let p: ActorTestProbe<OrElseProtocol> = self.testKit.spawnTestProbe()
-        let ref: ActorRef<OrElseProtocol> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
+        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.second)
         try p.expectMessage(.second)
     }
 
     func test_orElse_shouldNotExecuteSecondBehaviorOnIgnore() throws {
-        let p: ActorTestProbe<OrElseProtocol> = self.testKit.spawnTestProbe()
-        let ref: ActorRef<OrElseProtocol> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
+        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.other)
         try p.expectNoMessage(for: .milliseconds(100))
@@ -345,12 +345,12 @@ final class BehaviorTests: ActorSystemTestBase {
     }
 
     func test_orElse_shouldCanonicalizeNestedSetupInAlternative() throws {
-        let p: ActorTestProbe<OrElseProtocol> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
 
-        let first: Behavior<OrElseProtocol> = .receiveMessage { _ in
+        let first: Behavior<OrElseMessage> = .receiveMessage { _ in
             .unhandled
         }
-        let second: Behavior<OrElseProtocol> = .setup { _ in
+        let second: Behavior<OrElseMessage> = .setup { _ in
             p.tell(.second)
             return .setup { _ in
                 p.tell(.second)
@@ -360,7 +360,7 @@ final class BehaviorTests: ActorSystemTestBase {
                 }
             }
         }
-        let ref: ActorRef<OrElseProtocol> = try system.spawn(.anonymous, first.orElse(second))
+        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, first.orElse(second))
 
         ref.tell(.second)
         try p.expectMessage(.second)
@@ -454,7 +454,7 @@ final class BehaviorTests: ActorSystemTestBase {
         try capture.shouldContain(message: "*BehaviorTests.swift:\(mockLine)*")
     }
 
-    enum ContextClosureMessage {
+    enum ContextClosureMessage: NotTransportableActorMessage {
         case context(() -> ActorRef<String>)
     }
 
@@ -1025,14 +1025,14 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe: ActorTestProbe<Error> = self.testKit.spawnTestProbe()
+        let probe = self.testKit.spawnTestProbe(expecting: AnyErrorEnvelope.self)
         let error = self.testKit.error()
 
         let behavior: Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
                 case .success: throw self.testKit.error()
-                case .failure(let error): probe.tell(error)
+                case .failure(let error): probe.tell(.init(error))
                 }
                 return .same
             }

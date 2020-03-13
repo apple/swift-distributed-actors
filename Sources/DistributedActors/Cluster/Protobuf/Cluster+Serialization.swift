@@ -18,10 +18,10 @@ import Foundation
 // MARK: Serialization
 
 extension ClusterShell.Message: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoClusterShellMessage
+    typealias ProtobufRepresentation = ProtoClusterShellMessage
 
     // FIXME: change this completely
-    func toProto(context: ActorSerializationContext) throws -> ProtoClusterShellMessage {
+    func toProto(context: Serialization.Context) throws -> ProtoClusterShellMessage {
         var proto = ProtoClusterShellMessage()
 
         switch self {
@@ -40,7 +40,7 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         return proto
     }
 
-    init(fromProto proto: ProtoClusterShellMessage, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoClusterShellMessage, context: Serialization.Context) throws {
         switch proto.message {
         case .some(.clusterEvent(let protoEvent)):
             self = try .requestMembershipChange(.init(fromProto: protoEvent, context: context))
@@ -57,7 +57,7 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
                 throw SerializationError.missingField("inbound.message", type: "\(ProtoClusterInbound.self)")
             }
         case .none:
-            throw SerializationError.missingField("message", type: "\(InternalProtobufRepresentation.self)")
+            throw SerializationError.missingField("message", type: "\(ProtobufRepresentation.self)")
         }
     }
 }

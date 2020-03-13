@@ -28,7 +28,7 @@ extension CRDT {
     /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf)
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct ORSet<Element: Hashable>: NamedDeltaCRDT, ORSetOperations {
+    public struct ORSet<Element: Codable & Hashable>: NamedDeltaCRDT, ORSetOperations {
         public typealias ORSetDelta = VersionedContainerDelta<Element>
         public typealias Delta = ORSetDelta
 

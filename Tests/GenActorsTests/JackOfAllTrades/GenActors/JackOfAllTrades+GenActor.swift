@@ -25,7 +25,7 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated JackOfAllTrades messages
 extension JackOfAllTrades {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(replyTo: ActorRef<String>) 
         case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 
         case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 

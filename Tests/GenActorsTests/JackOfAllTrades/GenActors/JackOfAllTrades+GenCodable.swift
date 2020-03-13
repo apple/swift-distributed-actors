@@ -23,7 +23,7 @@ import class NIO.EventLoopFuture
 // MARK: DO NOT EDIT: Codable conformance for JackOfAllTrades.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension JackOfAllTrades.Message: Codable {
+extension JackOfAllTrades.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case hello

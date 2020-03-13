@@ -51,7 +51,7 @@ extension CRDT {
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
     /// - SeeAlso: `CRDT.ORSet`
-    public struct ORMap<Key: Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
+    public struct ORMap<Key: Codable & Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
         public let replicaId: ReplicaId
@@ -160,7 +160,7 @@ extension CRDT {
         }
     }
 
-    public struct ORMapDelta<Key: Hashable, Value: CvRDT>: CvRDT {
+    public struct ORMapDelta<Key: Codable & Hashable, Value: CvRDT>: CvRDT {
         var keys: ORSet<Key>.Delta
         // TODO: potential optimization: send only the delta if Value is DeltaCRDT. i.e., instead of Value here we would use Value.Delta
         // TODO: `merge` defined in the Dictionary extension below should use `mergeDelta` when Value is DeltaCRDT

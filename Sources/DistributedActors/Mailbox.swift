@@ -51,7 +51,7 @@ internal enum MailboxBitMasks {
     //                           = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001_1101
 }
 
-internal final class Mailbox<Message> {
+internal final class Mailbox<Message: ActorMessage> {
     weak var shell: ActorShell<Message>?
     let _status: Atomic<UInt64> = Atomic(value: 0)
     let userMessages: MPSCLinkedQueue<Envelope>
@@ -117,7 +117,7 @@ internal final class Mailbox<Message> {
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
-                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerification`. " +
+                    "Make sure this type has either a serializer registered OR is marked as `NotTransportableActorMessage`. " +
                     "This check was performed since `settings.serialization.allMessages` was enabled.")
             }
         }
@@ -639,7 +639,7 @@ internal enum WrappedMessage {
     case subMessage(SubMessageCarry)
 }
 
-extension WrappedMessage: NoSerializationVerification {}
+extension WrappedMessage: NotTransportableActorMessage {}
 
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
 internal struct Envelope {

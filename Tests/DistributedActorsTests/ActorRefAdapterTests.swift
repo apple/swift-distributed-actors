@@ -140,7 +140,7 @@ class ActorRefAdapterTests: ActorSystemTestBase {
         try pAdapted.expectNoMessage(for: .milliseconds(10))
     }
 
-    enum LifecycleTestMessage {
+    enum LifecycleTestMessage: NotTransportableActorMessage {
         case createAdapter(replyTo: ActorRef<ActorRef<String>>)
         case crash
         case stop
@@ -275,7 +275,7 @@ class ActorRefAdapterTests: ActorSystemTestBase {
     }
 
     func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
-        class TopExample {}
+        class TopExample: NotTransportableActorMessage{}
         class BottomExample: TopExample {}
 
         let probe = self.testKit.spawnTestProbe(expecting: String.self)

@@ -46,7 +46,7 @@ open class ActorTransport {
     }
 
     /// May return `nil` if this transport is NOT able to resolve this ref.
-    open func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
+    open func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef? {
         fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
     }
 

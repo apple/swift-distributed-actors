@@ -27,15 +27,16 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     /// The returned actor ref is immediately valid and may have messages sent to.
     ///
     /// ### Lack of `.spawnWatch` on top level
-    /// Note that it is not possible to `.spawnWatch` top level actors. // TODO this is on purpose,
-    /// since any stop would mean the system shutdown if you really want this then implement your own top actor to spawn children.
-    /// It is possible however to use .supervision(strategy: .escalate)) as failures bubbling up through the system may indeed be a reason to terminate.
+    /// Note that it is not possible to `.spawnWatch` top level actors, since any stop would mean the system shutdown
+    /// if you really want this then implement your own top actor to spawn children. It is possible however to use
+    /// `.supervision(strategy: .escalate))` as failures bubbling up through the system may indeed be a reason to terminate.
     func spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
     ) throws -> ActorRef<Message>
+        where Message: ActorMessage
 
     /// Stops all actors created by this `ActorRefProvider` and blocks until they have all stopped.
     func stopAll()
@@ -74,7 +75,13 @@ extension RemoteActorRefProvider {
         return self.localProvider.rootAddress
     }
 
-    func spawn<Message>(system: ActorSystem, behavior: Behavior<Message>, address: ActorAddress, dispatcher: MessageDispatcher, props: Props, startImmediately: Bool) throws -> ActorRef<Message> {
+    func spawn<Message>(
+        system: ActorSystem,
+        behavior: Behavior<Message>, address: ActorAddress,
+        dispatcher: MessageDispatcher, props: Props,
+        startImmediately: Bool
+    ) throws -> ActorRef<Message>
+        where Message: ActorMessage {
         // spawn is always local, thus we delegate to the underlying provider
         return try self.localProvider.spawn(system: system, behavior: behavior, address: address, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
     }
@@ -105,7 +112,7 @@ extension RemoteActorRefProvider {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         if self.localNode == context.address.node {
             return self.localProvider._resolveUntyped(context: context)
         } else {
@@ -137,7 +144,8 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
-    ) throws -> ActorRef<Message> {
+    ) throws -> ActorRef<Message>
+    where Message: ActorMessage {
         return try self.root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
             let actor: ActorShell<Message> = ActorShell(
@@ -179,7 +187,7 @@ extension LocalActorRefProvider {
         self.root._resolve(context: context)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         self.root._resolveUntyped(context: context)
     }
 }
@@ -193,15 +201,14 @@ public protocol _ActorTreeTraversable {
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
     /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
-    func _resolve<Message: Codable>(context: ResolveContext<Message>) -> ActorRef<Message>
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> where Message: ActorMessage
 
     /// Resolves the given actor path against the underlying actor tree.
     ///
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
     /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef
+    func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef
 }
 
 // TODO: Would be nice to not need this type at all; though initialization dance prohibiting self access makes this a bit hard
@@ -253,7 +260,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable() // i.e. we resolved a "dead reference" as it points to nothing
         }
@@ -317,7 +324,7 @@ public struct TraversalContext<T> {
 }
 
 /// :nodoc: INTERNAL API: May change without any prior notice.
-public struct ResolveContext<Message> {
+public struct ResolveContext<Message: ActorMessage> {
     /// The "remaining path" of the resolve being performed
     public var selectorSegments: ArraySlice<ActorPathSegment>
 

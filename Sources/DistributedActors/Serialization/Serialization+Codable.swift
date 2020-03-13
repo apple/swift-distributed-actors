@@ -17,102 +17,80 @@ import NIOFoundationCompat
 
 import Foundation // for Codable
 
-//// ==== ----------------------------------------------------------------------------------------------------------------
-//// MARK: "TopLevelDecoder"
-//
-//// TODO: we could use those but it causes an annoying avalanche of:
-////     @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *) through the codebase
-//// so not doing that for now. We hope to get those types to stdlib tho soon!
-////
-////#if canImport(Combine)
-////import protocol Combine.TopLevelDecoder
-////import protocol Combine.TopLevelEncoder
-////#else
-//
-//// TODO: Move into standard library -- coordinate with Foundation and form a SE proposal
-//// Same as Combine's `TopLevelDecoder` of the same name
-// public protocol AnyTopLevelDecoder {
-//    associatedtype Input
-//    func decode<T: Decodable>(_ type: T.Type, from: Input) throws -> T
-//
-//    var userInfo: [CodingUserInfoKey : Any] { get set }
-// }
-//
-//// TODO: Move into standard library -- coordinate with Foundation and form a SE proposal
-//// Same as Combine's `TopLevelEncoder` of the same name
-// public protocol AnyTopLevelEncoder {
-//    associatedtype Output: SerializationOutput
-//    func encode<T: Encodable>(_ value: T) throws -> Output
-//
-//    var userInfo: [CodingUserInfoKey : Any] { get set }
-// }
-//
-// public protocol SerializationOutput {
-//    var count: Int { get }
-// }
-//
-// extension Data: SerializationOutput {
-// }
-//
-// extension JSONDecoder: AnyTopLevelDecoder {
-// }
-// extension JSONEncoder: AnyTopLevelEncoder {
-// }
-//
-////#endif
-
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSerializationContext for Encoder & Decoder
+// MARK: Serialization.Context for Encoder & Decoder
 
-public protocol ActorSerializationContextDecoder {
-    /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
+public protocol CodableSerializationContext {
+    /// Extracts an `Serialization.Context` which can be used to perform actor serialization specific tasks
     /// such as resolving an actor ref from its serialized form.
-    ///
-    /// This context is only available when the decoder is invoked from the context of `DistributedActors.Serialization`.
-    var actorSerializationContext: ActorSerializationContext? { get }
-}
-
-extension Decoder {
-    // Cannot conform it to ActorSerializationContextDecoder:
-    //     error: extension of protocol 'Decoder' cannot have an inheritance clause
-    public var actorSerializationContext: ActorSerializationContext? {
-        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
-    }
-}
-
-extension JSONDecoder: ActorSerializationContextDecoder {
-    public var actorSerializationContext: ActorSerializationContext? {
-        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
-    }
-}
-
-public protocol ActorSerializationContextEncoder {
-    /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
-    /// such as accessing additional system information which may be used while serializing actor references etc.
     ///
     /// This context is only available when the decoder is invoked from the context of `DistributedActors.Serialization`.
     ///
     /// ## Example
     ///
     /// ```
-    ///    guard let serializationContext = encoder.actorSerializationContext else {
-    //         throw SerializationError.missingActorSerializationContext(MyMessage.self, details: "While encoding [\(self)], using [\(encoder)]")
+    ///    guard let serializationContext = decoder.actorSerializationContext else {
+    //         throw SerializationError.missingSerializationContext(MyMessage.self, details: "While encoding [\(MyMessage.self)], using [\(decoder)]")
     //     }
     /// ```
-    var actorSerializationContext: ActorSerializationContext? { get }
+    var actorSerializationContext: Serialization.Context? { get }
+}
+
+extension Decoder {
+    // Cannot conform it to DecoderSerializationContext:
+    //     error: extension of protocol 'Decoder' cannot have an inheritance clause
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
+    }
+}
+
+extension JSONDecoder: CodableSerializationContext {
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
+    }
 }
 
 extension Encoder {
-    public var actorSerializationContext: ActorSerializationContext? {
-        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
 }
 
-extension JSONEncoder: ActorSerializationContextEncoder {
-    public var actorSerializationContext: ActorSerializationContext? {
-        self.userInfo[.actorSerializationContext] as? ActorSerializationContext
+extension JSONEncoder: CodableSerializationContext {
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable + Serialization extensions
+
+extension Decodable {
+    static func _decode(from buffer: inout NIO.ByteBuffer, using decoder: JSONDecoder) throws -> Self {
+        let readableBytes = buffer.readableBytes
+
+        return try buffer.withUnsafeMutableReadableBytes {
+            // we are getting the pointer from a ByteBuffer, so it should be valid and force unwrap should be fine
+            let data = Data(bytesNoCopy: $0.baseAddress!, count: readableBytes, deallocator: .none)
+            return try decoder.decode(Self.self, from: data)
+        }
+    }
+}
+
+extension Decodable {
+    static func _decode(from buffer: inout NIO.ByteBuffer, using decoder: TopLevelBytesBlobDecoder) throws -> Self {
+        try decoder.decode(Self.self, from: buffer)
+    }
+}
+
+extension Decodable {
+    static func _decode(from buffer: inout NIO.ByteBuffer, using decoder: TopLevelProtobufBlobDecoder) throws -> Self {
+        try decoder.decode(Self.self, from: buffer)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ActorRef
 
 public enum ActorCoding {
     public enum CodingKeys: CodingKey {
@@ -121,9 +99,6 @@ public enum ActorCoding {
         case incarnation
     }
 }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Codable ActorRef
 
 extension ActorRef {
     public func encode(to encoder: Encoder) throws {
@@ -136,7 +111,7 @@ extension ActorRef {
         let address = try container.decode(ActorAddress.self)
 
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingActorSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
+            throw SerializationError.missingSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
         }
 
         // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in
@@ -195,7 +170,7 @@ extension _ReceivesSystemMessages {
 internal struct ReceivesSystemMessagesDecoder {
     public static func decode(from decoder: Decoder) throws -> _ReceivesSystemMessages {
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingActorSerializationContext(_ReceivesSystemMessages.self, details: "While decoding ReceivesSystemMessages from [\(decoder)]")
+            throw SerializationError.missingSerializationContext(_ReceivesSystemMessages.self, details: "While decoding ReceivesSystemMessages from [\(decoder)]")
         }
 
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
@@ -215,7 +190,7 @@ extension ActorAddress: Codable {
             try container.encode(node, forKey: ActorCoding.CodingKeys.node)
         } else {
             guard let context = encoder.actorSerializationContext else {
-                throw SerializationError.missingActorSerializationContext(ActorAddress.self, details: "While encoding [\(self)] from [\(encoder)]")
+                throw SerializationError.missingSerializationContext(ActorAddress.self, details: "While encoding [\(self)] from [\(encoder)]")
             }
 
             try container.encode(context.localNode, forKey: ActorCoding.CodingKeys.node)

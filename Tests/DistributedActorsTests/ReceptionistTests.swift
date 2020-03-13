@@ -18,6 +18,8 @@ import Foundation
 import XCTest
 
 final class ReceptionistTests: ActorSystemTestBase {
+    let LocalReceptionist = OperationLogClusterReceptionist(settings: .default)
+
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()

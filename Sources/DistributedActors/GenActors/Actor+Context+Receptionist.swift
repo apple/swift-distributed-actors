@@ -149,7 +149,7 @@ extension Reception {
     /// A listing MAY be empty.
     ///
     /// This is the `Actorable` version of `SystemReceptionist.Listing`, allowing location of `Actor` instances.
-    public struct Listing<A: Actorable>: Equatable {
+    public struct Listing<A: Actorable>: ActorMessage, Equatable {
         public let refs: Set<ActorRef<A.Message>>
 
         public var isEmpty: Bool {

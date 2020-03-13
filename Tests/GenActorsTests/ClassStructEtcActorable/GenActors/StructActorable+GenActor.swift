@@ -24,7 +24,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated StructActorable messages
 extension StructActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(_replyTo: ActorRef<String>) 
     }
     

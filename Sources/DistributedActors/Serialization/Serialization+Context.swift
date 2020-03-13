@@ -20,66 +20,78 @@ public extension CodingUserInfoKey {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSerializationContext
+// MARK: Serialization.Context
 
-/// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as ActorRef).
-///
-/// Context MAY be accessed concurrently be encoders/decoders.
-public struct ActorSerializationContext {
-    typealias MetaTypeKey = AnyHashable
+extension Serialization {
 
-    public let log: Logger
-    public let system: ActorSystem
-
-    /// Shared among serializers allocator for purposes of (de-)serializing messages.
-    public let allocator: NIO.ByteBufferAllocator
-
-    /// Address to be included in serialized actor refs if they are local references.
-    public var localNode: UniqueNode {
-        self.system.cluster.node
-    }
-
-    internal init(log: Logger, system: ActorSystem, allocator: NIO.ByteBufferAllocator) {
-        self.log = log
-        self.system = system
-        self.allocator = allocator
-    }
-
-    /// Attempts to resolve ("find") an actor reference given its unique path in the current actor tree.
-    /// The located actor is the _exact_ one as identified by the unique path (i.e. matching `path` and `incarnation`).
+    /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as ActorRef).
     ///
-    /// If a "new" actor was started on the same `path`, its `incarnation` would be different, and thus it would not resolve using this method.
-    /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
-    ///
-    /// Carrying `userInfo` from serialization (Coder) infrastructure may be useful to carry Transport specific information,
-    /// such that a transport may _resolve_ using its own metadata.
-    ///
-    /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
-    public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> ActorRef<Message> {
-        let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
-        return self.system._resolve(context: context)
-    }
+    /// Context MAY be accessed concurrently be encoders/decoders.
+    public struct Context {
+        typealias MetaTypeKey = AnyHashable // TODO: remove?
 
-    public func resolveActorRef<Message: Codable>(_: Message.Type = Message.self, identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> ActorRef<Message> {
-        let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
-        return self.system._resolve(context: context)
-    }
+        public let log: Logger
+        public let system: ActorSystem
 
-    // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
-    /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
-    internal func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
-        let context = ResolveContext<Any>(address: address, system: self.system, userInfo: userInfo)
-        return self.system._resolveUntyped(context: context)
-    }
+        public var serialization: Serialization {
+            self.system.serialization
+        }
 
-    public func summonType(from manifest: Serialization.Manifest) throws -> Any.Type { // TODO: force codable?
-        try self.system.serialization.summonType(from: manifest)
-    }
+        /// Shared among serializers allocator for purposes of (de-)serializing messages.
+        public let allocator: NIO.ByteBufferAllocator
 
-    /// Obtain a manifest for the passed `Message` type, which allows to determine which serializer should be used for the type.
-    ///
-    /// - SeeAlso: `Serialization.outboundManifest` for more details.
-    public func outboundManifest<Message>(_ type: Message.Type) throws -> Serialization.Manifest {
-        try self.system.serialization.outboundManifest(type)
+//        public var encoder: TopLevelDataEncoder {
+//            fatalError(" NOT IMPLEMENTED: TopLevelDataEncoder")
+//        }
+//        public var decoder: TopLevelDataDecoder {
+//            fatalError("NOT IMPLEMENTED: TopLevelDataDecoder")
+//        }
+
+        /// Address to be included in serialized actor refs if they are local references.
+        public var localNode: UniqueNode {
+            self.system.cluster.node
+        }
+
+        internal init(log: Logger, system: ActorSystem, allocator: NIO.ByteBufferAllocator) {
+            self.log = log
+            self.system = system
+            self.allocator = allocator
+        }
+
+        /// Attempts to resolve ("find") an actor reference given its unique path in the current actor tree.
+        /// The located actor is the _exact_ one as identified by the unique path (i.e. matching `path` and `incarnation`).
+        ///
+        /// If a "new" actor was started on the same `path`, its `incarnation` would be different, and thus it would not resolve using this method.
+        /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
+        ///
+        /// Carrying `userInfo` from serialization (Coder) infrastructure may be useful to carry Transport specific information,
+        /// such that a transport may _resolve_ using its own metadata.
+        ///
+        /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
+        public func resolveActorRef<Message>(
+            _ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress,
+            userInfo: [CodingUserInfoKey: Any] = [:]
+        ) -> ActorRef<Message> where Message: ActorMessage {
+            let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
+            return self.system._resolve(context: context)
+        }
+
+        // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
+        /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
+        internal func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
+            let context = ResolveContext<Never>(address: address, system: self.system, userInfo: userInfo)
+            return self.system._resolveUntyped(context: context)
+        }
+
+        public func summonType(from manifest: Serialization.Manifest) throws -> Any.Type {
+            try self.system.serialization.summonType(from: manifest)
+        }
+
+        /// Obtain a manifest for the passed `Message` type, which allows to determine which serializer should be used for the type.
+        ///
+        /// - SeeAlso: `Serialization.outboundManifest` for more details.
+        public func outboundManifest<Message: ActorMessage>(_ type: Message.Type) throws -> Serialization.Manifest {
+            try self.system.serialization.outboundManifest(type)
+        }
     }
 }

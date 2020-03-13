@@ -24,7 +24,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated MutatingStructActorable messages
 extension MutatingStructActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(_replyTo: ActorRef<String>) 
     }
     

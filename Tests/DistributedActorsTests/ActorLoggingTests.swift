@@ -19,13 +19,6 @@ import XCTest
 
 final class ActorLoggingTests: ActorSystemTestBase {
     var exampleSenderPath: ActorPath!
-    let exampleTrace = Trace(
-        version: 0,
-        traceIdHead: UInt64.max,
-        traceIdTail: UInt64.max,
-        parentId: UInt64.max,
-        traceFlags: 134
-    )
 
     override func setUp() {
         super.setUp()
@@ -115,38 +108,6 @@ final class ActorLoggingTests: ActorSystemTestBase {
     }
 }
 
-struct Trace {
-    var version: UInt8
-    var versionHexString: String {
-        return String(self.version, radix: 16)
-    }
-
-    // 16 bytes identifier. All zeroes forbidden
-    var traceIdHead: UInt64
-    var traceIdTail: UInt64
-    var traceIdHexString: String {
-        return "\(String(self.traceIdHead, radix: 16))\(String(self.traceIdTail, radix: 16))"
-    }
-
-    // 8 bytes identifier. All zeroes forbidden
-    var parentId: UInt64
-    var parentIdHexString: String {
-        return String(self.parentId, radix: 16)
-    }
-
-    // 8 bit flags. Currently only one bit is used. See below for details
-    var traceFlags: UInt8
-    var traceFlagsHexString: String {
-        return String(self.traceFlags, radix: 16)
-    }
-}
-
-extension Trace: CustomStringConvertible {
-    public var description: String {
-        return "\(self.versionHexString)-\(self.traceIdHexString)-\(self.parentIdHexString)-\(self.traceFlagsHexString)"
-    }
-}
-
-private enum Rendered {
+private enum Rendered: String, ActorMessage {
     case instance
 }

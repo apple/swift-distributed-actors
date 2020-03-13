@@ -17,12 +17,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTReplicationSerializationTests: ActorSystemTestBase {
-    override func setUp() {
-        _ = self.setUpNode(String(describing: type(of: self))) { _ in
-//            settings.serialization.registerProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1001) // TODO
-        }
-    }
-
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
     let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 
@@ -43,8 +37,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
             let write: CRDT.Replicator.Message = .remoteCommand(.write(id, g1.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
 
-            let bytes = try system.serialization.serialize(write)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(write)
+            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
 
             guard case .remoteCommand(.write(let deserializedId, let deserializedData, let deserializedReplyTo)) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.write message")
@@ -71,8 +65,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
             let write: CRDT.Replicator.Message = .remoteCommand(.write(id, set.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
 
-            let bytes = try system.serialization.serialize(write)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(write)
+            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
 
             guard case .remoteCommand(.write(let deserializedId, let deserializedData, let deserializedReplyTo)) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.write message")
@@ -98,8 +92,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             let resultProbe = self.testKit.spawnTestProbe(expecting: WriteResult.self)
             let write: CRDT.Replicator.Message = .remoteCommand(.writeDelta(id, delta: g1.delta!.asAnyStateBasedCRDT, replyTo: resultProbe.ref)) // !-safe since we check for nil above
 
-            let bytes = try system.serialization.serialize(write)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(write)
+            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
 
             guard case .remoteCommand(.writeDelta(let deserializedId, let deserializedDelta, let deserializedReplyTo)) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.write message")
@@ -118,8 +112,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let result = WriteResult.success
 
-            let bytes = try system.serialization.serialize(result)
-            let deserialized = try system.serialization.deserialize(as: WriteResult.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(result)
+            let deserialized = try system.serialization.deserialize(as: WriteResult.self, from: &bytes, using: manifest)
 
             guard case .success = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.WriteResult.success message")
@@ -132,8 +126,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             let hint = "should be this other type"
             let result = WriteResult.failure(.inputAndStoredDataTypeMismatch(hint: hint))
 
-            let bytes = try system.serialization.serialize(result)
-            let deserialized = try system.serialization.deserialize(as: WriteResult.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(result)
+            let deserialized = try system.serialization.deserialize(as: WriteResult.self, from: &bytes, using: manifest)
 
             guard case .failure(.inputAndStoredDataTypeMismatch(let deserializedHint)) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.WriteResult.failure message with .inputAndStoredDataTypeMismatch error")
@@ -152,8 +146,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             let resultProbe = self.testKit.spawnTestProbe(expecting: ReadResult.self)
             let read: CRDT.Replicator.Message = .remoteCommand(.read(id, replyTo: resultProbe.ref))
 
-            let bytes = try system.serialization.serialize(read)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(read)
+            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
 
             guard case .remoteCommand(.read(let deserializedId, let deserializedReplyTo)) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.read message")
@@ -171,8 +165,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
 
             let result = ReadResult.success(g1.asAnyStateBasedCRDT)
 
-            let bytes = try system.serialization.serialize(result)
-            let deserialized = try system.serialization.deserialize(as: ReadResult.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(result)
+            let deserialized = try system.serialization.deserialize(as: ReadResult.self, from: &bytes, using: manifest)
 
             guard case .success(let deserializedData) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.ReadResult.success message")
@@ -189,8 +183,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let result = ReadResult.failure(.notFound)
 
-            let bytes = try system.serialization.serialize(result)
-            let deserialized = try system.serialization.deserialize(as: ReadResult.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(result)
+            let deserialized = try system.serialization.deserialize(as: ReadResult.self, from: &bytes, using: manifest)
 
             guard case .failure(.notFound) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.ReadResult.failure message with .notFound error")
@@ -208,8 +202,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             let resultProbe = self.testKit.spawnTestProbe(expecting: DeleteResult.self)
             let delete: CRDT.Replicator.Message = .remoteCommand(.delete(id, replyTo: resultProbe.ref))
 
-            let bytes = try system.serialization.serialize(delete)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(delete)
+            let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
 
             guard case .remoteCommand(.delete(let deserializedId, let deserializedReplyTo)) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.delete message")
@@ -223,8 +217,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let result = DeleteResult.success
 
-            let bytes = try system.serialization.serialize(result)
-            let deserialized = try system.serialization.deserialize(as: DeleteResult.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(result)
+            let deserialized = try system.serialization.deserialize(as: DeleteResult.self, from: &bytes, using: manifest)
 
             guard case .success = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.DeleteResult.success message")

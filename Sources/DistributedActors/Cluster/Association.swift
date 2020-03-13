@@ -116,8 +116,8 @@ internal struct AssociationRemoteControl {
         self.remoteNode = remoteNode
     }
 
-    func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
-        let transportEnvelope = TransportEnvelope(envelope: envelope, underlyingMessageType: type, recipient: recipient)
+    func sendUserMessage(envelope: Envelope, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
+        let transportEnvelope = TransportEnvelope(envelope: envelope, recipient: recipient)
         self.channel.writeAndFlush(NIOAny(transportEnvelope), promise: promise)
     }
 

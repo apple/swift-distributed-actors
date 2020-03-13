@@ -25,7 +25,7 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated OwnerOfThings messages
 extension OwnerOfThings {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
         case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>) 
         case performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) 

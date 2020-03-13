@@ -22,7 +22,7 @@ import NIO
 /// All function calls made on this object are turned into message sends and delivered *asynchronously* to the underlying actor.
 ///
 /// It is safe (including thread-safe) to share the `Actor` object with other threads, as well as to share it across the network.
-public struct Actor<A: Actorable>: Codable {
+public struct Actor<A: Actorable>: ActorMessage {
     public typealias Message = A.Message
     public typealias Myself = Actor<A>
 

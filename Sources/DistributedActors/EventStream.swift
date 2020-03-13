@@ -18,7 +18,7 @@
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.
-public struct EventStream<Event> {
+public struct EventStream<Event: ActorMessage> {
     internal let ref: ActorRef<EventStreamShell.Message<Event>>
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
@@ -29,7 +29,11 @@ public struct EventStream<Event> {
         self.ref = ref
     }
 
-    internal init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self, systemStream: Bool, customBehavior: Behavior<EventStreamShell.Message<Event>>? = nil) throws {
+    internal init(
+        _ system: ActorSystem, name: String, of type: Event.Type = Event.self,
+        systemStream: Bool,
+        customBehavior: Behavior<EventStreamShell.Message<Event>>? = nil
+    ) throws {
         let behavior: Behavior<EventStreamShell.Message<Event>> = customBehavior ?? EventStreamShell.behavior(type)
         if systemStream {
             self.ref = try system._spawnSystemActor(.unique(name), behavior)
@@ -52,7 +56,7 @@ public struct EventStream<Event> {
 }
 
 internal enum EventStreamShell {
-    enum Message<Event> {
+    enum Message<Event: ActorMessage>: NotTransportableActorMessage { // TODO make it codable, transportability depends on the Event really
         /// Subscribe to receive events
         case subscribe(ActorRef<Event>)
         /// Unsubscribe from receiving events

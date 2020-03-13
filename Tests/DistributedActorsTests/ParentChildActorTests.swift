@@ -19,7 +19,7 @@ import XCTest
 
 final class ParentChildActorTests: ActorSystemTestBase {
     typealias ParentRef = ActorRef<ParentProtocol>
-    enum ParentProtocol {
+    enum ParentProtocol: NotTransportableActorMessage {
         case spawnChild(name: String, behavior: Behavior<ChildProtocol>)
         case spawnAnonymousChild(behavior: Behavior<ChildProtocol>)
 
@@ -29,7 +29,7 @@ final class ParentChildActorTests: ActorSystemTestBase {
     }
 
     typealias ChildRef = ActorRef<ChildProtocol>
-    enum ChildProtocol {
+    enum ChildProtocol: NotTransportableActorMessage {
         case howAreYou(replyTo: ActorRef<String>)
         case fail
         case throwWhoops
@@ -37,7 +37,7 @@ final class ParentChildActorTests: ActorSystemTestBase {
     }
 
     typealias ParentChildProbeRef = ActorRef<ParentChildProbeProtocol>
-    enum ParentChildProbeProtocol: Equatable {
+    enum ParentChildProbeProtocol: Equatable, NotTransportableActorMessage {
         case spawned(child: ChildRef)
         case spawnFailed(path: ActorPath)
 
