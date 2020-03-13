@@ -41,6 +41,10 @@ extension Serialization {
         /// Use this option to test that all messages you expected to
         public var allMessages: Bool = false
 
+        /// Allows for attempting to use a Manifest's hint to summon the actual type,
+        /// and perform a sanity check if it equals the type on the present system.
+        public var sanityCheckHintSummonedTypesAreExpected: Bool = false
+
         /// `UniqueNode` to be included in actor addresses when serializing them.
         /// By default this should be equal to the exposed node of the actor system.
         ///
@@ -63,14 +67,20 @@ extension Serialization {
         /// // TODO: detailed docs on how to use this for a serialization changing rollout of a type
         internal var inboundSerializerManifestMappings: [Serialization.Manifest: Serialization.Manifest] = [:]
 
-        typealias SerializerMaker = (NIO.ByteBufferAllocator) -> AnySerializer
+        /// Factories for specialized (e.g. specific `SerializerID -> T`) serializers,
+        /// which unlike Codable serializers can not be created ad-hoc for a given T.
+        ///
+        /// E.g. protocol buffer based serializers.
         internal var specializedSerializerMakers: [Manifest: SerializerMaker] = [:]
+        typealias SerializerMaker = (NIO.ByteBufferAllocator) -> AnySerializer
 
-        internal var customType2Manifest: [ObjectIdentifier: Serialization.Manifest] = [:]
-        internal var customManifest2Type: [Manifest: Any.Type] = [:]
+        internal var type2ManifestRegistry: [SerializerTypeKey: Serialization.Manifest] = [:]
+        internal var manifest2TypeRegistry: [Manifest: Any.Type] = [:]
 
-        // FIXME: should not be here! // figure out where to allocate it
-        internal let allocator = NIO.ByteBufferAllocator()
+        /// Allocator to be used by the serialization infrastructure.
+        ///
+        /// It will be shared by all serialization/deserialization invocations.
+        public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
     }
 }
 
@@ -78,16 +88,6 @@ extension Serialization {
 // MARK: Serialization: Manifest Registration
 
 extension Serialization.Settings {
-
-    public mutating func getCustomOrRegisterManifest<Message>(_ type: Message.Type, serializerID: Serialization.SerializerID) -> Serialization.Manifest {
-        self.customType2Manifest[ObjectIdentifier(type)] ??
-            self.registerManifest(type, serializer: serializerID)
-    }
-
-    public mutating func getCustomOrRegisterManifest<Message: Codable>(_ type: Message.Type, serializerID: Serialization.CodableSerializerID) -> Serialization.Manifest {
-        self.customType2Manifest[ObjectIdentifier(type)] ??
-            self.registerManifest(type, serializer: serializerID.value)
-    }
 
     /// Register a `Serialization.Manifest` for the given `Codable` type and `Serializer`.
     ///
@@ -108,8 +108,10 @@ extension Serialization.Settings {
 
         let manifest = Manifest(serializerID: serializerID.value, hint: hint)
 
-        self.customType2Manifest[ObjectIdentifier(type)] = manifest
-        self.customManifest2Type[manifest] = type
+        self.type2ManifestRegistry[.init(codable: type)] = manifest
+        self.manifest2TypeRegistry[manifest] = type
+
+pprint("self.type2ManifestRegistry = \(self.type2ManifestRegistry)")
 
         return manifest
     }
@@ -127,45 +129,34 @@ extension Serialization.Settings {
         let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName
         let manifest = Manifest(serializerID: serializerID, hint: hint)
 
-        self.customType2Manifest[ObjectIdentifier(type)] = manifest
-        self.customManifest2Type[manifest] = type
+        self.type2ManifestRegistry[.init(type)] = manifest
+        self.manifest2TypeRegistry[manifest] = type
 
         return manifest
     }
+
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization: Codable manifest and serializer registration
 
 extension Serialization.Settings {
+
+    /// Eagerly register a `Codable` message type to be used with a specific serializer.
+    ///
+    /// By doing this before system startup you can ensure a specific serializer is used for those messages.
+    /// Make sure tha other nodes in the system are configured the same way though.
     public mutating func registerCodable<Message: Codable>(_ type: Message.Type, serializer serializerID: CodableSerializerID = .jsonCodable) {
-        let manifest = self.registerManifest(type, serializer: serializerID.value)
+//        let manifest = self.registerManifest(type, serializer: serializerID.value)
 
-        self.customType2Manifest[ObjectIdentifier(type)] = manifest
-        self.customManifest2Type[manifest] = type
+        let hint = _typeName(type) // FIXME: _mangledTypeName
+        let manifest = Manifest(serializerID: serializerID.value, hint: hint)
+
+        self.type2ManifestRegistry[.init(codable: type)] = manifest
+        self.manifest2TypeRegistry[manifest] = type
+
+        pprint("type2ManifestRegistry = \(type2ManifestRegistry)")
     }
-
-//    /// Registers a custom `Codable` serializer, which will invoke the passed in `Encoder`/`Decoder` instances for serialization work.
-//    ///
-//    /// This serializer may be configured to be the `defaultCodableSerializerID`.
-//    public mutating func registerCodableSerializer<Encoder: AnyTopLevelEncoder, Decoder: AnyTopLevelDecoder>(
-//        _ serializerID: SerializerID, encoder: Encoder, decoder: Decoder
-//    ) {
-//        if ReservedID.range.contains(serializerID) {
-//            fatalError("""
-//                       Attempted to use \(serializerID) which is reserved for the system's internal use.\
-//                       Pick a serializerID outside of \(ReservedID.range) and try again.
-//                       """)
-//        }
-//
-//        self._registerCodableSerializer(serializerID: serializerID, encoder: encoder, decoder: decoder)
-//    }
-//
-//    public mutating func _registerCodableSerializer<Encoder: AnyTopLevelEncoder, Decoder: AnyTopLevelDecoder>(
-//        _ serializerID: SerializerID, encoder: Encoder, decoder: Decoder
-//    ) {
-//        self.codableSerializerMakers[serializerID] = (encoder, decoder)
-//    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -176,30 +167,39 @@ extension Serialization.Settings {
     ///
     /// The type should conform to `ProtobufRepresentable`, in order to instruct the serializer infrastructure
     /// how to de/encode it from its protobuf representation.
-    public mutating func registerProtobufRepresentable<Message: AnyProtobufRepresentable>(_ type: Message.Type) {
-        let manifest = self.getCustomOrRegisterManifest(Message.self, serializerID: .publicProtobufRepresentable)
-        self.customType2Manifest[ObjectIdentifier(type)] = manifest
-        self.customManifest2Type[manifest] = type
+    public mutating func registerProtobufRepresentable<Message: ProtobufRepresentable>(_ type: Message.Type) {
     }
 
     // Internal since we want to touch only internal types and not be forced to make the public.
-    internal mutating func _registerInternalProtobufRepresentable<Message: AnyInternalProtobufRepresentable>(
+    internal mutating func _registerInternalProtobufRepresentable<Message: InternalProtobufRepresentable>(
         _ type: Message.Type, serializerID: SerializerID
     ) {
-        let manifest = self.getCustomOrRegisterManifest(type, serializerID: serializerID)
-        self.customType2Manifest[ObjectIdentifier(type)] = manifest
-        self.customManifest2Type[manifest] = type
+        // 1. register the specific to this type serializer (maker)
+        self.registerSerializer(type, id: serializerID) { allocator in
+            InternalProtobufSerializer<Message>(allocator: allocator)
+        }
+
+        // 2. register manifest pointing to that specialized serializer
+        let manifest = self.getSpecializedOrRegisterManifest(type, serializerID: serializerID)
+        self.type2ManifestRegistry[.init(type)] = manifest
+        self.manifest2TypeRegistry[manifest] = type
     }
 
     public mutating func registerSerializer<Message>(
         _ type: Message.Type, id serializerID: SerializerID,
         makeSerializer: @escaping (NIO.ByteBufferAllocator) -> Serializer<Message>
     ) {
-        let manifest = self.getCustomOrRegisterManifest(type, serializerID: serializerID)
+        let manifest = self.getSpecializedOrRegisterManifest(type, serializerID: serializerID)
         self.specializedSerializerMakers[manifest] = { allocator in
             makeSerializer(allocator).asAnySerializer
         }
     }
+
+    public mutating func getSpecializedOrRegisterManifest<Message>(_ type: Message.Type, serializerID: Serialization.SerializerID) -> Serialization.Manifest {
+        self.type2ManifestRegistry[.init(type)] ??
+            self.registerManifest(type, serializer: serializerID)
+    }
+    
 }
 
 // MARK: Serialization: Manifest mappings (for evolving message types)

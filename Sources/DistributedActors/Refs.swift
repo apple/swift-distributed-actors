@@ -249,7 +249,7 @@ extension ActorRef {
                 ]
 
                 if let system = self._system {
-                    system.log.warning("Failed to deserialize/delivery message to \(self.path)", metadata: metadata)
+                    system.log.warning("Failed to deserialize/delivery message to \(self.path), error: \(error)", metadata: metadata)
                 } else {
                     // TODO: last resort, print error (system could be going down)
                     print("Failed to deserialize/delivery message to \(self.path). Metadata: \(metadata)")

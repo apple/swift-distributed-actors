@@ -140,7 +140,7 @@ class SerializationDocExamples {
     func prepare_system_custom() throws {
         // tag::prepare_system_custom[]
         let system = ActorSystem("CustomSerializerExample") { settings in
-            settings.serialization.registerSerializer(CustomlyEncodedMessage.self, serializerID: 1001) { allocator in
+            settings.serialization.registerSerializer(CustomlyEncodedMessage.self, id: 1001) { allocator in
                 CustomlyEncodedSerializer(allocator)
             }
         }

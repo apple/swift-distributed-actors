@@ -40,8 +40,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let id = CRDT.Identity("test-crdt")
 
-            let bytes = try system.serialization.serialize(id)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Identity.self, from: bytes)
+            let (manifest, bytes) = try system.serialization.serialize(id)
+            let deserialized = try system.serialization.deserialize(as: CRDT.Identity.self, from: bytes, using: manifest)
 
             deserialized.id.shouldEqual("test-crdt")
         }
@@ -74,8 +74,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let versionContext = CRDT.VersionContext()
 
-            let bytes = try system.serialization.serialize(versionContext)
-            let deserialized = try system.serialization.deserialize(as: CRDT.VersionContext.self, from: bytes)
+            let (manifest, bytes) = try system.serialization.serialize(versionContext)
+            let deserialized = try system.serialization.deserialize(as: CRDT.VersionContext.self, from: bytes, using: manifest)
 
             deserialized.vv.isEmpty.shouldBeTrue()
             deserialized.gaps.isEmpty.shouldBeTrue()
@@ -100,8 +100,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             // Adding an element should set delta
             versionedContainer.add("bye")
 
-            let bytes = try system.serialization.serialize(versionedContainer)
-            let deserialized = try system.serialization.deserialize(as: CRDT.VersionedContainer<String>.self, from: bytes)
+            let (manifest, bytes) = try system.serialization.serialize(versionedContainer)
+            let deserialized = try system.serialization.deserialize(as: CRDT.VersionedContainer<String>.self, from: bytes, using: manifest)
 
             "\(deserialized.replicaId)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             "\(deserialized.versionContext.vv)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 3") // adding "bye" bumps version to 3
@@ -126,8 +126,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let versionedContainer = CRDT.VersionedContainer<String>(replicaId: .actorAddress(ownerAlpha))
 
-            let bytes = try system.serialization.serialize(versionedContainer)
-            let deserialized = try system.serialization.deserialize(as: CRDT.VersionedContainer<String>.self, from: bytes)
+            let (manifest, bytes) = try system.serialization.serialize(versionedContainer)
+            let deserialized = try system.serialization.deserialize(as: CRDT.VersionedContainer<String>.self, from: bytes, using: manifest)
 
             "\(deserialized.replicaId)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             deserialized.versionContext.vv.isEmpty.shouldBeTrue()
@@ -145,7 +145,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
             g1.increment(by: 2)
 
-            let bytes = try system.serialization.serialize(g1)
+            let (manifest, bytes) = try system.serialization.serialize(g1)
             let deserialized = try system.serialization.deserialize(as: CRDT.GCounter.self, from: bytes)
 
             g1.value.shouldEqual(deserialized.value)
@@ -159,8 +159,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
             g1.increment(by: 13)
 
-            let bytes = try system.serialization.serialize(g1.delta!) // !-safe, must have a delta, we just changed it
-            let deserialized = try system.serialization.deserialize(as: CRDT.GCounter.Delta.self, from: bytes)
+            let (manifest, bytes) = try system.serialization.serialize(g1.delta!) // !-safe, must have a delta, we just changed it
+            let deserialized = try system.serialization.deserialize(as: CRDT.GCounter.Delta.self, from: bytes, using: manifest)
 
             "\(deserialized.state)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 13]")
         }
@@ -177,8 +177,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             set.remove("nein")
             set.delta.shouldNotBeNil()
 
-            let bytes = try system.serialization.serialize(set)
-            let deserialized = try system.serialization.deserialize(as: CRDT.ORSet<String>.self, from: bytes)
+            let (manifest, bytes) = try system.serialization.serialize(set)
+            let deserialized = try system.serialization.deserialize(as: CRDT.ORSet<String>.self, from: bytes, using: manifest)
 
             "\(deserialized.replicaId)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             deserialized.elements.shouldEqual(set.elements)
@@ -200,8 +200,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             set.add("world") // (alpha, 2)
             set.remove("nein")
 
-            let bytes = try system.serialization.serialize(set.delta!) // !-safe, must have a delta, we just changed it
-            let deserialized = try system.serialization.deserialize(as: CRDT.ORSet<String>.Delta.self, from: bytes)
+            let (manifest, bytes) = try system.serialization.serialize(set.delta!) // !-safe, must have a delta, we just changed it
+            let deserialized = try system.serialization.deserialize(as: CRDT.ORSet<String>.Delta.self, from: bytes, using: manifest)
 
             // delta contains the same elements as set
             "\(deserialized.versionContext.vv)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 2]")

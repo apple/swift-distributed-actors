@@ -45,7 +45,7 @@ private func registerBenchmark(_ name: String, _ function: @escaping (Int) -> Vo
 
 registerBenchmark(ActorTreeTraversalBenchmarks)
 registerBenchmark(SerializationCodableBenchmarks)
-registerBenchmark(SerializationProtobufBenchmarks)
+// registerBenchmark(SerializationProtobufBenchmarks) // TODO: unlock again
 registerBenchmark(RingBenchmarks)
 registerBenchmark(ActorPingPongBenchmarks)
 registerBenchmark(ActorMessageFloodingBenchmarks)
