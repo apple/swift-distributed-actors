@@ -32,7 +32,7 @@ public enum XPCSerialization {
     public static func serializeActorMessage<Message>(_ system: ActorSystem, message: Message) throws -> xpc_object_t {
         let (manifest, buf) = try system.serialization.serialize(message)
 
-        // TODO: mark that this invocation will be over XPC somehow; serializer.setSerializationContext(<#T##context: ActorSerializationContext##ActorSerializationContext#>)
+        // TODO: mark that this invocation will be over XPC somehow; serializer.setSerializationContext(<#T##context: Serialization.Context##Serialization.Context#>)
 
         // TODO: serialize the Envelope
         let xdict: xpc_object_t = xpc_dictionary_create(nil, nil, 0)
@@ -113,16 +113,14 @@ public enum XPCSerialization {
         let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, &length)
         let rawDataBufferPointer = UnsafeRawBufferPointer(start: rawDataPointer, count: length)
 
-        guard let serialization: Serialization = system.serialization else {
-            throw SerializationError.unableToDeserialize(hint: "No Serialization instance available! ActorSystem could be shutting down?")
-        }
+        let serialization: Serialization = system.serialization
 
         var buf = serialization.allocator.buffer(capacity: 0)
         buf.writeBytes(rawDataBufferPointer)
 
         do {
             let manifest: Serialization.Manifest = .init(serializerID: Serialization.SerializerID.jsonCodable.value, hint: "???")
-            let address = try serialization.deserialize(as: ActorAddress.self, from: buf, using: manifest)
+            let address = try serialization.deserialize(as: ActorAddress.self, from: &buf, using: manifest)
             try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))
         } catch {

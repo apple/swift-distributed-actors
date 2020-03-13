@@ -10,7 +10,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated Philosopher messages
 extension Philosopher {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case attemptToTakeForks 
         case stopEating 
     }

@@ -382,18 +382,50 @@ final class DeathWatchTests: ActorSystemTestBase {
     }
 }
 
-private enum Done {
+private enum Done: String, ActorMessage {
     case done
 }
 
-private enum RomeoMessage {
+private enum RomeoMessage: ActorMessage {
     case pleaseWatch(juliet: ActorRef<JulietMessage>, probe: ActorRef<Done>)
 }
 
-private enum JulietMessage {
+extension RomeoMessage {
+    public enum DiscriminatorKeys: String, Codable {
+        case pleaseWatch
+    }
+    public enum CodingKeys: CodingKey {
+        case _case
+
+        case pleaseWatch_juliet
+        case pleaseWatch_probe
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .pleaseWatch(let juliet, let probe):
+            try container.encode(juliet, forKey: .pleaseWatch_juliet)
+            try container.encode(probe, forKey: .pleaseWatch_probe)
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
+        case .pleaseWatch:
+            let juliet = try container.decode(ActorRef<JulietMessage>.self, forKey: .pleaseWatch_juliet)
+            let probe = try container.decode(ActorRef<Done>.self, forKey: .pleaseWatch_probe)
+            self = .pleaseWatch(juliet: juliet, probe: probe)
+        }
+    }
+}
+
+
+private enum JulietMessage: String, ActorMessage {
     case takePoison
 }
 
-private enum StoppableRefMessage {
+private enum StoppableRefMessage: String, ActorMessage {
     case stop
 }

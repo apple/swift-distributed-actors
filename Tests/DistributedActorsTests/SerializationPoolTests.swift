@@ -20,7 +20,7 @@ import NIOFoundationCompat
 import XCTest
 
 class SerializationPoolTests: XCTestCase {
-    struct Test1: Codable {
+    struct Test1: NotTransportableActorMessage {
         // These locks are used to validate the different ordering guarantees
         // we give in the serialization pool. The locks are used to block
         // the serializer until we want it to complete serialization.
@@ -46,7 +46,7 @@ class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
-    struct Test2: Codable {
+    struct Test2: NotTransportableActorMessage {
         static let deserializerLock = _Mutex()
         let lock = _Mutex()
 
@@ -69,6 +69,9 @@ class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
+    let manifest1: Serialization.Manifest = .init(serializerID: Serialization.CodableSerializerID.jsonCodable.value, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test1")
+    let manifest2: Serialization.Manifest = .init(serializerID: Serialization.CodableSerializerID.jsonCodable.value, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test2")
+
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
@@ -81,8 +84,8 @@ class SerializationPoolTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem("SerializationTests") { settings in
-            settings.serialization.registerCodable(Test1.self, underId: 1001)
-            settings.serialization.registerCodable(Test2.self, underId: 1002)
+            settings.serialization.registerCodable(Test1.self)
+            settings.serialization.registerCodable(Test2.self)
         }
         self.testKit = ActorTestKit(self.system)
         self.elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -108,7 +111,7 @@ class SerializationPoolTests: XCTestCase {
         let test1 = Test1()
         test1.lock.lock()
         defer { test1.lock.unlock() }
-        let promise1: NIO.EventLoopPromise<(Manifest, NIO.ByteBuffer)> = self.el.makePromise()
+        let promise1: NIO.EventLoopPromise<(Serialization.Manifest, NIO.ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -116,14 +119,14 @@ class SerializationPoolTests: XCTestCase {
         let test2 = Test1()
         test2.lock.lock()
         defer { test2.lock.unlock() }
-        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.serialize(test2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
@@ -139,20 +142,20 @@ class SerializationPoolTests: XCTestCase {
         // wait on the `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.serialize(test2, recipientPath: self.actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectNoMessage(for: .milliseconds(20))
@@ -174,20 +177,20 @@ class SerializationPoolTests: XCTestCase {
         // when unlocking `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.serialize(test2, recipientPath: self.actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectMessage("p2")
@@ -227,9 +230,9 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
@@ -262,8 +265,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, promise: promise2)
 
         Test2.deserializerLock.unlock()
 
@@ -302,8 +305,8 @@ class SerializationPoolTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath2, promise: promise2)
+        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, promise: promise2)
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -322,7 +325,7 @@ class SerializationPoolTests: XCTestCase {
         // on different, separate threads, than the objects being deserialized
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -337,8 +340,8 @@ class SerializationPoolTests: XCTestCase {
         }
         promise1.futureResult.whenFailure { print("\($0)") }
 
-        serializationPool.serialize(test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(Test1.self, from: buffer, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test1.self, from: buffer, using: self.manifest1, recipientPath: self.actorPath1, promise: promise2)
 
         try p.expectNoMessage(for: .milliseconds(20))
 

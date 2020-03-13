@@ -26,7 +26,7 @@ import XCTest
 /// DO NOT EDIT: Generated TestMeActorable messages
 extension TestMeActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(_replyTo: ActorRef<String>) 
     }
     

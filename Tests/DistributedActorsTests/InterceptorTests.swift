@@ -34,7 +34,7 @@ final class ShoutingInterceptor: Interceptor<String> {
     }
 }
 
-final class TerminatedInterceptor<Message>: Interceptor<Message> {
+final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
     let probe: ActorTestProbe<Signals.Terminated>
 
     init(probe: ActorTestProbe<Signals.Terminated>) {
@@ -148,7 +148,7 @@ final class InterceptorTests: ActorSystemTestBase {
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
-    class SignalToStringInterceptor<Message>: Interceptor<Message> {
+    class SignalToStringInterceptor<Message: ActorMessage>: Interceptor<Message> {
         let probe: ActorTestProbe<String>
 
         init(_ probe: ActorTestProbe<String>) {

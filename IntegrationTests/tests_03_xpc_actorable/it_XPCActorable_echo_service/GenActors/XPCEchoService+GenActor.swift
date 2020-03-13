@@ -27,7 +27,7 @@ import Files
 /// DO NOT EDIT: Generated XPCEchoService messages
 extension XPCEchoService {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case xPCEchoServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCEchoServiceProtocol) 
     }
     

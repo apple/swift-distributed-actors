@@ -25,7 +25,7 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated AwaitingActorable messages
 extension AwaitingActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 
         case onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 
     }

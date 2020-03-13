@@ -116,7 +116,6 @@ XCTMain([
     testCase(SWIMInstanceTests.allTests),
     testCase(SWIMSerializationTests.allTests),
     testCase(SWIMShellClusteredTests.allTests),
-    testCase(SerializationEvolutionClusteredTests.allTests),
     testCase(SerializationPoolTests.allTests),
     testCase(SerializationTests.allTests),
     testCase(ShootTheOtherNodeClusteredTests.allTests),

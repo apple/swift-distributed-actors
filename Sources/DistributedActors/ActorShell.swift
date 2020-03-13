@@ -27,7 +27,7 @@ import NIO
 /// all actor interactions with messages, user code, and the mailbox itself happen.
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
-public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
+public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractActor {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -651,15 +651,45 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spawn implementations
 
-    public override func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        try self._spawn(naming, props: props, behavior)
+    public override func spawn<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
+        try self.system.serialization._ensureSerializer(type, file: file, line: line)
+        return try self._spawn(naming, props: props, behavior)
     }
 
-    public override func spawnWatch<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+//    public override func spawn<M>(
+//        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+//        file: String = #file, line: UInt = #line,
+//        _ behavior: Behavior<M>
+//    ) throws -> ActorRef<M>
+//    where M: ActorMessage {
+//        try self.system.serialization._ensureCodableSerializer(type, file: file, line: line)
+//        return try self._spawn(naming, props: props, behavior)
+//    }
+
+    public override func spawnWatch<Message>(
+        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props,
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<Message>
+    ) throws -> ActorRef<Message>
+        where Message: ActorMessage {
         self.watch(try self.spawn(naming, props: props, behavior))
     }
 
-    public override func stop<Message>(child ref: ActorRef<Message>) throws {
+//    public override func spawnWatch<Message>(
+//        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props,
+//        file: String = #file, line: UInt = #line,
+//        _ behavior: Behavior<Message>
+//    ) throws -> ActorRef<Message>
+//        where Message: ActorMessage {
+//        self.watch(try self.spawn(naming, props: props, behavior))
+//    }
+
+    public override func stop<Message: ActorMessage>(child ref: ActorRef<Message>) throws {
         try self._stop(child: ref)
     }
 
@@ -694,7 +724,8 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.subReceives[identifier]?.0
     }
 
-    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
+    where SubMessage: ActorMessage {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
@@ -743,7 +774,8 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     private var messageAdapters: [MessageAdapterClosure] = []
 
-    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
+        where From: ActorMessage {
         do {
             let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
@@ -971,14 +1003,16 @@ extension AbstractActor {
         }
     }
 
-    public func _resolve<Message: Codable>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        return self.__resolve(context: context)
-    }
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        return self.__resolve(context: context)
-    }
-    private func __resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
+        where Message: ActorMessage {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
+
+        do {
+            try context.system.serialization._ensureSerializer(Message.self)
+        } catch {
+            context.system.log.warning("Failed to ensure serializer for \(String(reflecting: Message.self))")
+            return context.personalDeadLetters
+        }
 
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
@@ -998,7 +1032,8 @@ extension AbstractActor {
         return self.children._resolve(context: context)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    // TODO: can we reuse __resolve?
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if self._myselfReceivesSystemMessages.address.incarnation == context.address.incarnation {

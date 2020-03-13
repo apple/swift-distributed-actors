@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated LifecycleReacting messages
 extension LifecycleReacting {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case something 
     }
     

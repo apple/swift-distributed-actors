@@ -145,7 +145,7 @@ extension CRDT.Replicator {
 
         private func handleLocalWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalWriteResult>) {
             switch self.replicator.write(id, data, deltaMerge: true) {
-            // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
+                // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
             case .applied(let updatedData, let isNew):
                 switch consistency {
                 case .local: // we are done; no need to replicate
@@ -248,7 +248,7 @@ extension CRDT.Replicator {
                 switch self.replicator.read(id) {
                 case .data(let stored):
                     replyTo.tell(.success(stored.underlying))
-                // No need to notify owners since it's a read-only operation
+                    // No need to notify owners since it's a read-only operation
                 case .notFound:
                     replyTo.tell(.failure(.notFound))
                 }
@@ -353,13 +353,15 @@ extension CRDT.Replicator {
             }
         }
 
-        private func performOnRemoteMembers<RemoteCommandResult>(_ context: ActorContext<Message>,
-                                                                 for id: CRDT.Identity,
-                                                                 with consistency: OperationConsistency,
-                                                                 localConfirmed: Bool,
-                                                                 isSuccessful: @escaping (RemoteCommandResult) -> Bool,
-                                                                 _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
-            let promise = context.system._eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
+        private func performOnRemoteMembers<RemoteCommandResult>(
+            _ context: ActorContext<Message>,
+            for id: CRDT.Identity,
+            with consistency: OperationConsistency,
+            localConfirmed: Bool,
+            isSuccessful: @escaping (RemoteCommandResult) -> Bool,
+            _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message
+        ) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
+            let promise = context.system._eventLoopGroup.next().makePromise(of: [ActorRef < Message>: RemoteCommandResult].self)
 
             // Determine the number of successful responses needed to satisfy consistency requirement.
             // The `RemoteCommand` is sent to *all* known remote replicators, but the consistency
@@ -533,7 +535,7 @@ extension CRDT.Replicator {
         let confirmationsRequired: Int
 
         let remoteConfirmationsNeeded: Int
-        var remoteConfirmationsReceived = [ActorRef<Message>: Result]()
+        var remoteConfirmationsReceived = [ActorRef < Message>: Result]()
 
         let remoteFailuresAllowed: Int
         var remoteFailuresCount: Int = 0

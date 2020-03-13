@@ -55,6 +55,7 @@ public protocol ReceivesQuestions: Codable {
         file: String, function: String, line: UInt,
         _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer>
+
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -64,12 +65,35 @@ extension ActorRef: ReceivesQuestions {
     public typealias Question = Message
 
     public func ask<Answer>(
-        for type: Answer.Type = Answer.self,
+        for answerType: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
         _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer> {
         guard let system = self._system else {
+            // TODO: this can be improved if we change AskResponse a little
+            fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
+        }
+
+        if let serialization = system._serialization {
+            do {
+                try serialization._ensureSerializer(answerType)
+            } catch {
+                return AskResponse(nioFuture: system._eventLoopGroup.next().makeFailedFuture(error))
+            }
+        }
+
+        return self._ask(system, for: answerType, timeout: timeout, file: file, function: function, line: line, makeQuestion)
+    }
+
+    public func ask<Answer: Codable>(
+        for answerType: Answer.Type = Answer.self,
+        timeout: TimeAmount,
+        file: String = #file, function: String = #function, line: UInt = #line,
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+    ) -> AskResponse<Answer> {
+        guard let system = self._system else {
+            // TODO: this can be improved if we change AskResponse a little
             fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
         }
 
@@ -77,7 +101,25 @@ extension ActorRef: ReceivesQuestions {
             return .completed(.failure(AskError.systemAlreadyShutDown))
         }
 
-        let promise = system._eventLoopGroup.next().makePromise(of: type)
+        if let serialization = system.serialization {
+            do {
+                try serialization._ensureSerializer(answerType)
+            } catch {
+                return AskResponse(nioFuture: system._eventLoopGroup.next().makeFailedFuture(error))
+            }
+        }
+        return self._ask(system, for: answerType, timeout: timeout, file: file, function: function, line: line, makeQuestion)
+
+    }
+
+    private func _ask<Answer>(_ system: ActorSystem,
+        for answerType: Answer.Type,
+        timeout: TimeAmount,
+        file: String = #file, function: String = #function, line: UInt = #line,
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+    ) -> AskResponse<Answer> {
+
+        let promise = system._eventLoopGroup.next().makePromise(of: answerType)
 
         // TODO: maybe a specialized one... for ask?
         let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
@@ -209,7 +251,7 @@ extension AskResponse {
 ///
 // TODO: replace with a special minimal `ActorRef` that does not require spawning or scheduling.
 internal enum AskActor {
-    enum Event {
+    enum Event: NotTransportableActorMessage {
         case timeout
     }
 

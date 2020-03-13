@@ -29,7 +29,7 @@ import XCTest
 // MARK: DO NOT EDIT: Codable conformance for AccessControl.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension AccessControl.Message: Codable {
+extension AccessControl.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case greetPublicly

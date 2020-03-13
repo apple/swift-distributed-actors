@@ -24,7 +24,7 @@
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
 /// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
-public protocol Signal {}
+public protocol Signal: NotTransportableActorMessage {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
 
 /// Namespace for all pre-defined `Signal` types.
 ///
@@ -64,6 +64,9 @@ public enum Signals {
     ///
     /// The actual reason for the terminated message being sent may vary from the actor terminating, to the entire `Node`
     /// hosting this actor having been marked as `.down` and thus any actors residing on it have to be assumed terminated.
+    ///
+    /// The class is open only for expansion by other Transports which may need to carry additional information
+    /// explaining the reason for an actor having terminated.
     ///
     /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
     open class Terminated: Signal, CustomStringConvertible {

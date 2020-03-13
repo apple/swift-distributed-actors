@@ -25,23 +25,28 @@ import Logging
 ///
 /// The receptionist can be accessed through `system.receptionist`.
 public enum Receptionist {
+
     public typealias Message = ReceptionistMessage
+
+    // Implementation notes: // TODO: Intercept messages to register at remote receptionist, and hande locally?
+    // Receptionist messages are a bit special. Technically we CAN allow sending them over to remotes
+    // but we do not today. Generally though, for example registering with a remote's receptionist is a "bad idea"™
+    // it is more efficient to register on the local one, so what we could do, is when sending to a remote receptionist,
+    // is to detect that and rather send to the local one.
 
     internal static let naming: ActorNaming = .unique("receptionist")
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
-    public struct RegistrationKey<Message>: _RegistrationKey {
-        public let id: String
+    public class RegistrationKey<Message: ActorMessage>: _RegistrationKey {
 
         public init(_ type: Message.Type, id: String) {
-            self.id = id
+            super.init(id: id, typeHint: _typeName(Message.self as Any.Type))
         }
 
         internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Message> {
             if addressable.isRemote() {
-                let remotePersonality: RemotePersonality<Any> = addressable.ref._unsafeGetRemotePersonality()
-                let remoteWellTypedPersonality: RemotePersonality<Message> = remotePersonality.cast(to: Message.self)
+                let remoteWellTypedPersonality: RemotePersonality<Message> = addressable.ref._unsafeGetRemotePersonality(Message.self)
                 return ActorRef(.remote(remoteWellTypedPersonality))
             } else {
                 guard let ref = addressable.ref as? ActorRef<Message> else {
@@ -52,22 +57,18 @@ public enum Receptionist {
             }
         }
 
-        internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+        internal override func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
             let ref: ActorRef<Message> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable()
         }
 
-        internal var typeString: FullyQualifiedTypeName {
-            return String(reflecting: Message.self)
-        }
-
-        internal var boxed: AnyRegistrationKey {
+        internal override var asAnyRegistrationKey: AnyRegistrationKey {
             return AnyRegistrationKey(from: self)
         }
     }
 
     /// When sent to receptionist will register the specified `ActorRef` under the given `RegistrationKey`
-    public struct Register<Message>: _Register {
+    public class Register<Message: ActorMessage>: _Register {
         public let ref: ActorRef<Message>
         public let key: RegistrationKey<Message>
         public let replyTo: ActorRef<Registered<Message>>?
@@ -78,38 +79,52 @@ public enum Receptionist {
             self.replyTo = replyTo
         }
 
-        internal var _addressableActorRef: AddressableActorRef {
+        internal override var _addressableActorRef: AddressableActorRef {
             return AddressableActorRef(self.ref)
         }
 
-        internal var _key: _RegistrationKey {
+        internal override var _key: _RegistrationKey {
             return self.key
         }
 
-        internal func replyRegistered() {
+        internal override func replyRegistered() {
             self.replyTo?.tell(Registered(ref: self.ref, key: self.key))
         }
     }
 
     /// Response to a `Register` message
-    public struct Registered<Message> {
+    public class Registered<Message: ActorMessage>: NotTransportableActorMessage {
         public let ref: ActorRef<Message>
         public let key: RegistrationKey<Message>
+
+        public init(ref: ActorRef<Message>, key: RegistrationKey<Message>) {
+            self.ref = ref
+            self.key = key
+        }
     }
 
     /// Used to lookup `ActorRef`s for the given `RegistrationKey`
-    public struct Lookup<Message>: ListingRequest, _Lookup {
+    public class Lookup<Message: ActorMessage>: _Lookup, ListingRequest {
         public let key: RegistrationKey<Message>
         public let replyTo: ActorRef<Listing<Message>>
 
         public init(key: RegistrationKey<Message>, replyTo: ActorRef<Listing<Message>>) {
             self.key = key
             self.replyTo = replyTo
+            super.init(_key: key)
+        }
+
+        override func replyWith(_ refs: Set<AddressableActorRef>) {
+            let typedRefs = refs.map { ref in
+                key._unsafeAsActorRef(ref)
+            }
+
+            replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
         }
     }
 
     /// Subscribe to periodic updates of the specified key
-    public struct Subscribe<Message>: _Subscribe, ListingRequest {
+    public class Subscribe<Message: ActorMessage>: _Subscribe, ListingRequest {
         public let key: RegistrationKey<Message>
         public let replyTo: ActorRef<Listing<Message>>
 
@@ -118,17 +133,29 @@ public enum Receptionist {
             self.replyTo = subscriber
         }
 
-        internal var _boxed: AnySubscribe {
-            return AnySubscribe(subscribe: self)
+        internal override var _key: _RegistrationKey {
+            self.key.asAnyRegistrationKey
         }
 
-        var _addressableActorRef: AddressableActorRef {
-            return self.replyTo.asAddressable()
+        internal override var _boxed: AnySubscribe {
+            AnySubscribe(subscribe: self)
+        }
+
+        internal override var _addressableActorRef: AddressableActorRef {
+            self.replyTo.asAddressable()
+        }
+
+        func replyWith(_ refs: Set<AddressableActorRef>) {
+            let typedRefs = refs.map { ref in
+                key._unsafeAsActorRef(ref)
+            }
+
+            replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
         }
     }
 
     /// Response to `Lookup` and `Subscribe` requests
-    public struct Listing<Message>: Equatable, CustomStringConvertible {
+    public struct Listing<Message: ActorMessage>: NotTransportableActorMessage, Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
         public var description: String {
             "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
@@ -260,111 +287,6 @@ public extension ActorRef where Message == ReceptionistMessage {
     }
 }
 
-/// Receptionist for local execution. Does not depend on a cluster being available.
-internal enum LocalReceptionist {
-    static var behavior: Behavior<Receptionist.Message> {
-        return .setup { context in
-            let storage = Receptionist.Storage()
-
-            // TODO: implement configurable logging (to log if it gets registers etc)
-            // TODO: since all states access all the same state, allocating a local receptionist would result in less passing around storage
-            return .receiveMessage { message in
-                switch message {
-                case let message as _Register:
-                    try LocalReceptionist.onRegister(context: context, message: message, storage: storage)
-
-                case let message as _Lookup:
-                    try LocalReceptionist.onLookup(context: context, message: message, storage: storage)
-
-                case let message as _Subscribe:
-                    try LocalReceptionist.onSubscribe(context: context, message: message, storage: storage)
-
-                default:
-                    context.log.warning("Received unexpected message \(message)")
-                }
-                return .same
-            }
-        }
-    }
-
-    private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
-        let key = message._key.boxed
-        let addressable = message._addressableActorRef
-
-        context.log.debug("Registering \(addressable) under key: \(key)")
-
-        if storage.addRegistration(key: key, ref: addressable) {
-            let terminatedCallback = LocalReceptionist.makeRemoveRegistrationCallback(context: context, message: message, storage: storage)
-            try LocalReceptionist.startWatcher(ref: addressable, context: context, terminatedCallback: terminatedCallback.invoke(()))
-
-            if let subscribed = storage.subscriptions(forKey: key) {
-                let registrations = storage.registrations(forKey: key) ?? []
-                for subscription in subscribed {
-                    subscription._replyWith(registrations)
-                }
-            }
-        }
-
-        message.replyRegistered()
-    }
-
-    private static func onSubscribe(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) throws {
-        let boxedMessage = message._boxed
-        let key = AnyRegistrationKey(from: message._key)
-
-        context.log.debug("Subscribing \(message._addressableActorRef) to: \(key)")
-
-        if storage.addSubscription(key: key, subscription: boxedMessage) {
-            let terminatedCallback = LocalReceptionist.makeRemoveSubscriptionCallback(context: context, message: message, storage: storage)
-            try LocalReceptionist.startWatcher(ref: message._addressableActorRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
-
-            boxedMessage.replyWith(storage.registrations(forKey: key) ?? [])
-        }
-    }
-
-    private static func onLookup(context: ActorContext<Receptionist.Message>, message: _Lookup, storage: Receptionist.Storage) throws {
-        if let registered = storage.registrations(forKey: message._key.boxed) {
-            message.replyWith(registered)
-        } else {
-            message.replyWith([])
-        }
-    }
-
-    // TODO: use context aware watch once implemented. See: issue #544
-    private static func startWatcher<M>(ref: AddressableActorRef, context: ActorContext<M>, terminatedCallback: @autoclosure @escaping () -> Void) throws {
-        let behavior: Behavior<Never> = .setup { context in
-            context.watch(ref)
-            return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                if terminated.address == ref.address {
-                    terminatedCallback()
-                    return .stop
-                }
-                return .same
-            }
-        }
-
-        _ = try context.spawn(.anonymous, behavior)
-    }
-
-    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
-        context.makeAsynchronousCallback {
-            let remainingRegistrations = storage.removeRegistration(key: message._key.boxed, ref: message._addressableActorRef) ?? []
-
-            if let subscribed = storage.subscriptions(forKey: message._key.boxed) {
-                for subscription in subscribed {
-                    subscription._replyWith(remainingRegistrations)
-                }
-            }
-        }
-    }
-
-    private static func makeRemoveSubscriptionCallback(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
-        context.makeAsynchronousCallback {
-            storage.removeSubscription(key: message._key.boxed, subscription: message._boxed)
-        }
-    }
-}
-
 extension ActorPath {
     internal static let _receptionist: ActorPath = try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
 }
@@ -384,62 +306,128 @@ extension ActorAddress {
 ///     - `Receptionist.Lookup`
 ///     - `Receptionist.Register`
 ///     - `Receptionist.Subscribe`
-public protocol ReceptionistMessage {}
+public class ReceptionistMessage: NotTransportableActorMessage, ActorMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: internal untyped protocols
 
 internal typealias FullyQualifiedTypeName = String
 
-internal protocol _Register: ReceptionistMessage {
-    var _addressableActorRef: AddressableActorRef { get }
-    var _key: _RegistrationKey { get }
-    func replyRegistered()
+public class _Register: ReceptionistMessage {
+    var _addressableActorRef: AddressableActorRef { undefined() }
+    var _key: _RegistrationKey { undefined() }
+
+    func replyRegistered() {
+        return undefined()
+    }
 }
 
-internal protocol _Lookup: ReceptionistMessage {
-    var _key: _RegistrationKey { get }
-    func replyWith(_ refs: Set<AddressableActorRef>)
-    func replyWith(_ refs: [AddressableActorRef])
+public class _Lookup: ReceptionistMessage {
+    let _key: _RegistrationKey
+
+    init(_key: _RegistrationKey) {
+        self._key = _key
+    }
+
+    func replyWith(_ refs: Set<AddressableActorRef>) {
+        return undefined()
+    }
+    func replyWith(_ refs: [AddressableActorRef]) {
+        return undefined()
+    }
 }
 
-internal protocol _RegistrationKey {
-    var boxed: AnyRegistrationKey { get }
-    var id: String { get }
-    var typeString: FullyQualifiedTypeName { get }
+public class _RegistrationKey {
+    let id: String
+    let typeHint: FullyQualifiedTypeName
+
+    init(id: String, typeHint: FullyQualifiedTypeName) {
+        self.id = id
+        self.typeHint = typeHint
+    }
+
+    var asAnyRegistrationKey: AnyRegistrationKey {
+        return undefined()
+    }
+
     // `resolve` has to be here, because the key is the only thing that knows which
     // type is requested. See implementation in `RegistrationKey`
-    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef
+    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+        return undefined()
+    }
 }
 
 internal enum ReceptionistError: Error {
     case typeMismatch(expected: String)
 }
 
-internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
-    var boxed: AnyRegistrationKey {
+internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable {
+    enum CodingKeys: CodingKey {
+        case id
+        case typeHint
+    }
+
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        let id = try container.decode(String.self, forKey: .id)
+        let typeHint = try container.decode(String.self, forKey: .typeHint)
+        super.init(id: id, typeHint: typeHint)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.typeHint, forKey: .typeHint)
+    }
+
+    init(from key: _RegistrationKey) {
+        super.init(id: key.id, typeHint: key.typeHint)
+    }
+
+    override func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+        // Since we don't have the type information here, we can't properly resolve
+        // and the only safe thing to do is to return `deadLetters`.
+        return system.personalDeadLetters(type: Never.self, recipient: address).asAddressable()
+    }
+
+    override var asAnyRegistrationKey: AnyRegistrationKey {
         return self
     }
 
-    var id: String
-    var typeString: FullyQualifiedTypeName
-
-    init(from key: _RegistrationKey) {
-        self.id = key.id
-        self.typeString = key.typeString
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(typeHint)
     }
 
-    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
-        // Since we don't have the type information here, we can't properly resolve
-        // and the only safe thing to do is to return `deadLetters`.
-        return system.personalDeadLetters(type: Any.self, recipient: address).asAddressable()
+    static func ==(lhs: AnyRegistrationKey, rhs: AnyRegistrationKey) -> Bool {
+        if lhs === rhs {
+            return true
+        }
+        if type(of: lhs) != type(of: rhs) {
+            return false
+        }
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.typeHint != rhs.typeHint {
+            return false
+        }
+        return true
     }
 }
 
-internal protocol _Subscribe: ReceptionistMessage {
-    var _key: _RegistrationKey { get }
-    var _boxed: AnySubscribe { get }
-    var _addressableActorRef: AddressableActorRef { get }
+public class _Subscribe: ReceptionistMessage {
+    var _key: _RegistrationKey {
+        return fatalErrorBacktrace("failed \(#function)")
+    }
+    var _boxed: AnySubscribe {
+        return fatalErrorBacktrace("failed \(#function)")
+    }
+    var _addressableActorRef: AddressableActorRef {
+        return fatalErrorBacktrace("failed \(#function)")
+    }
 }
 
 internal struct AnySubscribe: Hashable {
@@ -470,34 +458,233 @@ internal struct AnySubscribe: Hashable {
 }
 
 internal protocol ListingRequest {
-    associatedtype Message
+    associatedtype Message: ActorMessage
 
     var key: Receptionist.RegistrationKey<Message> { get }
+    var _key: _RegistrationKey { get }
+
     var replyTo: ActorRef<Receptionist.Listing<Message>> { get }
 
     func replyWith(_ refs: Set<AddressableActorRef>)
 
-    var _key: _RegistrationKey { get }
 }
 
-internal extension ListingRequest {
-    func replyWith(_ refs: Set<AddressableActorRef>) {
-        let typedRefs = refs.map {
-            key._unsafeAsActorRef($0)
-        }
-
-        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
-    }
-
-    func replyWith(_ refs: [AddressableActorRef]) {
-        let typedRefs = refs.map {
-            key._unsafeAsActorRef($0)
-        }
-
-        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
-    }
-
-    var _key: _RegistrationKey {
-        return self.key
-    }
-}
+// TODO: uncomment if you like compiler crashes
+//
+//Assertion failed: (!isInvalid()), function getRequirement, file /Users/buildnode/jenkins/workspace/oss-swift-5.1-package-osx/swift/lib/AST/ProtocolConformance.cpp, line 77.
+//Stack dump:
+//0.	Program arguments: /Library/Developer/Toolchains/swift-5.1.4-RELEASE.xctoolchain/usr/bin/swift -frontend -c -filelist /var/folders/wh/s6r_3sk96596_wztm8w1pgfw0000gn/T/sources-7fc66e -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterSettings.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/HandshakeStateMachine.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Leadership.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/NodeDeathWatcher.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/ClusterReceptionistSettings.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist+Serialization.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIM.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/TransportPipelines.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/DeadLetters.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessIsolated.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Receptionist.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization.swift -supplementary-output-file-map /var/folders/wh/s6r_3sk96596_wztm8w1pgfw0000gn/T/supplementaryOutputs-c137ef -target x86_64-apple-macosx10.10 -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk -I /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug -I /Users/ktoso/code/actors/.build/checkouts/swift-backtrace/Sources/CBacktrace/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio-ssl/Sources/CNIOBoringSSLShims/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio-ssl/Sources/CNIOBoringSSL/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIOSHA1/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIOAtomics/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIODarwin/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIOLinux/include -I /Users/ktoso/code/actors/Sources/CDistributedActorsMailbox/include -I /Users/ktoso/code/actors/Sources/CDistributedActorsAtomics/include -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -enable-testing -g -module-cache-path /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/ModuleCache -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -color-diagnostics -enable-anonymous-context-mangled-names -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CBacktrace.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOBoringSSLShims.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOBoringSSL.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOSHA1.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOAtomics.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIODarwin.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOLinux.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CDistributedActorsMailbox.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CDistributedActorsAtomics.build/module.modulemap -parse-as-library -module-name DistributedActors -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/ClusterSettings.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/ClusterShell.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/HandshakeStateMachine.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Leadership.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/NodeDeathWatcher.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Reception/ClusterReceptionistSettings.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Reception/OperationLogClusterReceptionist+Serialization.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Reception/OperationLogClusterReceptionist.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/SWIM/SWIM.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Transport/TransportPipelines.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/DeadLetters.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/ProcessIsolated/ProcessIsolated.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Receptionist.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Serialization/Serialization.swift.o -index-store-path /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/index/store -index-system-modules
+//1.	Contents of /var/folders/wh/s6r_3sk96596_wztm8w1pgfw0000gn/T/sources-7fc66e:
+//---
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorAddress.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorContext.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorLogging.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorMessage+Protobuf.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorMessage.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorNaming.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorRef+Ask.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorRefProvider.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorShell+Children.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorShell+Defer.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorShell.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorSystem.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorSystemSettings.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ActorTransport.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Adapters.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/AffinityThreadPool.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/AsyncResult.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Await.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Backoff.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Behaviors.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+Logging.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+Replication.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+ReplicatorInstance.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+ReplicatorShell.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTEnvelope+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTReplication+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTReplication.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+Any.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+GCounter.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+LWWMap.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+LWWRegister.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+ORMap.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+ORMultiMap.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+ORSet.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+StateBased.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+Versioning.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Clocks/LamportClock.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Clocks/Protobuf/VersionVector+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Clocks/Protobuf/VersionVector.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Clocks/VersionVector.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Association.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Chaos/LossyMessagesHandler.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Event.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Gossip.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Member.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Membership.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterControl.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterEventStream.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterSettings.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell+LeaderActions.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell+Logging.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShellState.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Downing/DowningSettings.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Downing/DowningStrategy.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Downing/TimeoutBasedDowningStrategy.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/HandshakeStateMachine.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Leadership.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/NodeDeathWatcher.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Cluster+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Cluster.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/ClusterEvents+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/ClusterEvents.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Membership+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Membership.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/ClusterReceptionistSettings.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLog.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/Protobuf/SWIM+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/Protobuf/SWIM.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIM.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMInstance+Logging.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMInstance.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMSettings.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMShell.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SystemMessages+Redelivery.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/ActorRef+RemotePersonality.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/TransportPipelines.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/WireMessages.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Condition.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CountDownLatch.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/CustomStringInterpolations.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/DeadLetters.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/DeathWatch.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Dispatchers.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/EventStream.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/FixedThreadPool.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor+Codable.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor+Context+Receptionist.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor+Context.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actorable+ActorContext.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actorable+ActorSystem.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actorable.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/ActorableOwned.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/GenActors/ClusterControl+ActorableOwnedMembership.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Heap.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/ActorInstrumentation.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/ActorMailboxInstrumentation.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/ActorTransportInstrumentation.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/os_signpost/ActorInstrumentation+os_signpost.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/os_signpost/ActorTransportInstrumentation+os_signpost.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/os_signpost/InstrumentationProvider+os_signpost.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/LinkedBlockingQueue.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/MPSCLinkedQueue.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Mailbox.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Metrics/ActorSystem+Metrics.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Metrics/ActorSystemSettings+Metrics.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Metrics/CoreMetrics+MetricsPNCounter.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/NIO+Extensions.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Pattern/ConvergentGossip+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Pattern/ConvergentGossip.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Pattern/PeriodicBroadcast.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Pattern/WorkerPool.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Plugins/ActorSystem+Plugins.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Plugins/ActorSystemSettings+Plugins.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/POSIXProcessUtils.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/PollingParentMonitoringFailureDetector.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessCommander.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessIsolated+Supervision.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessIsolated.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Props.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/ActorAddress+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/ActorAddress.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/ProtobufMessage+Extensions.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/SystemMessages+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/SystemMessages.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/WireProtocol+Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/WireProtocol.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Receptionist+Local.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Receptionist.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Refs+any.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Refs.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/RingBuffer.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Scheduler.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Protobuf/Serialization.pb.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+BuiltIn.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Codable.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Context.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+SerializerID.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Serializers+Codable.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Serializers+Protobuf.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Serializers.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Settings.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Serialization/SerializationPool.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Signals.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/StashBuffer.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Supervision.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/SystemMessages.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Thread.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Time.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/TimeSpec.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Timers.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/Version.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/locks.swift
+///Users/ktoso/code/actors/Sources/DistributedActors/utils.swift
+//---
+//2.	While emitting IR SIL function "@$s17DistributedActors12ReceptionistO9SubscribeCy_qd__GAA14ListingRequestA2aGP4_keyAA16_RegistrationKeyCvgTW".
+// for getter for _key (at /Users/ktoso/code/actors/Sources/DistributedActors/Receptionist.swift:490:9)
+//0  swift                    0x000000010c667ff5 llvm::sys::PrintStackTrace(llvm::raw_ostream&) + 37
+//1  swift                    0x000000010c6672e5 llvm::sys::RunSignalHandlers() + 85
+//2  swift                    0x000000010c6685d8 SignalHandler(int) + 264
+//3  libsystem_platform.dylib 0x00007fff6824e5fd _sigtramp + 29
+//4  libdyld.dylib            0x00007fff6805478f dyldGlobalLockRelease() + 0
+//5  libsystem_c.dylib        0x00007fff68124808 abort + 120
+//6  libsystem_c.dylib        0x00007fff68123ac6 err + 0
+//7  swift                    0x000000010cac7e71 swift::ProtocolConformanceRef::getRequirement() const (.cold.1) + 33
+//8  swift                    0x0000000109b81da6 swift::ProtocolConformanceRef::getRequirement() const + 38
+//9  swift                    0x0000000108e65d32 void llvm::function_ref<void (unsigned int, swift::CanType, llvm::Optional<swift::ProtocolConformanceRef>)>::callback_fn<swift::irgen::FulfillmentMap::searchNominalTypeMetadata(swift::irgen::IRGenModule&, swift::CanType, swift::MetadataState, unsigned int, swift::irgen::MetadataPath&&, swift::irgen::FulfillmentMap::InterestingKeysCallback const&)::$_1>(long, unsigned int, swift::CanType, llvm::Optional<swift::ProtocolConformanceRef>) + 1138
+//10 swift                    0x0000000108f31870 swift::irgen::GenericTypeRequirements::enumerateFulfillments(swift::irgen::IRGenModule&, swift::SubstitutionMap, llvm::function_ref<void (unsigned int, swift::CanType, llvm::Optional<swift::ProtocolConformanceRef>)>) + 240
+//11 swift                    0x0000000108e64f45 swift::irgen::FulfillmentMap::searchNominalTypeMetadata(swift::irgen::IRGenModule&, swift::CanType, swift::MetadataState, unsigned int, swift::irgen::MetadataPath&&, swift::irgen::FulfillmentMap::InterestingKeysCallback const&) + 245
+//12 swift                    0x0000000108e64cf8 swift::irgen::FulfillmentMap::searchTypeMetadata(swift::irgen::IRGenModule&, swift::CanType, swift::irgen::IsExact_t, swift::MetadataState, unsigned int, swift::irgen::MetadataPath&&, swift::irgen::FulfillmentMap::InterestingKeysCallback const&) + 840
+//13 swift                    0x0000000108fc0442 swift::irgen::LocalTypeDataCache::addAbstractForTypeMetadata(swift::irgen::IRGenFunction&, swift::CanType, swift::irgen::IsExact_t, swift::irgen::MetadataResponse) + 114
+//14 swift                    0x0000000108fc03b5 swift::irgen::IRGenFunction::bindLocalTypeDataFromTypeMetadata(swift::CanType, swift::irgen::IsExact_t, llvm::Value*, swift::MetadataState) + 277
+//15 swift                    0x0000000108f30334 swift::irgen::emitPolymorphicParameters(swift::irgen::IRGenFunction&, swift::SILFunction&, swift::irgen::Explosion&, swift::irgen::WitnessMetadata*, llvm::function_ref<llvm::Value* (unsigned int)> const&) + 820
+//16 swift                    0x0000000108f8c1a0 swift::irgen::IRGenModule::emitSILFunction(swift::SILFunction*) + 5952
+//17 swift                    0x0000000108ea942b swift::irgen::IRGenerator::emitLazyDefinitions() + 1243
+//18 swift                    0x0000000108f676b5 performIRGeneration(swift::IRGenOptions&, swift::ModuleDecl*, std::__1::unique_ptr<swift::SILModule, std::__1::default_delete<swift::SILModule> >, llvm::StringRef, swift::PrimarySpecificPaths const&, llvm::LLVMContext&, swift::SourceFile*, llvm::GlobalVariable**) + 1477
+//19 swift                    0x0000000108f67ae2 swift::performIRGeneration(swift::IRGenOptions&, swift::SourceFile&, std::__1::unique_ptr<swift::SILModule, std::__1::default_delete<swift::SILModule> >, llvm::StringRef, swift::PrimarySpecificPaths const&, llvm::LLVMContext&, llvm::GlobalVariable**) + 82
+//20 swift                    0x0000000108e15827 performCompile(swift::CompilerInstance&, swift::CompilerInvocation&, llvm::ArrayRef<char const*>, int&, swift::FrontendObserver*, swift::UnifiedStatsReporter*) + 13975
+//21 swift                    0x0000000108e1126a swift::performFrontend(llvm::ArrayRef<char const*>, char const*, void*, swift::FrontendObserver*) + 3002
+//22 swift                    0x0000000108db9d18 main + 696
+//23 libdyld.dylib            0x00007fff68055cc9 start + 1
+//24 libdyld.dylib            0x000000000000007f start + 2549785527
+//
+//internal extension ListingRequest {
+//
+////    func replyWith(_ refs: Set<AddressableActorRef>) {
+////        let typedRefs = refs.map { ref in
+////            key._unsafeAsActorRef(ref)
+////        }
+////
+////        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
+////    }
+//
+//    func replyWith(_ refs: [AddressableActorRef]) {
+//        let typedRefs = refs.map {
+//            key._unsafeAsActorRef($0)
+//        }
+//
+//        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
+//    }
+//
+//    var _key: _RegistrationKey {
+//        return self.key
+//    }
+//}

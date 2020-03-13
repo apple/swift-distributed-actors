@@ -17,9 +17,26 @@ import NIOFoundationCompat
 
 import Foundation // for Codable
 
-//// ==== ----------------------------------------------------------------------------------------------------------------
-//// MARK: Any Codable Serializer
-//
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Any Codable Serializer
+
+// TODO: API - Move into standard libary
+public protocol TopLevelDataDecoder {
+    // associatedtype Input
+    typealias Input = Data
+    func decode<T: Decodable>(_ type: T.Type, from: Input) throws -> T
+}
+
+// TODO: API - Move into standard libary
+public protocol TopLevelDataEncoder {
+    // associatedtype Output
+    typealias Output = Data
+    func encode<T: Encodable>(_ value: T) throws -> Output
+}
+
+extension JSONDecoder: TopLevelDataDecoder {}
+extension JSONEncoder: TopLevelDataEncoder {}
+
 ///// Allows for serialization of messages using any compatible `Encoder` and `Decoder` pair.
 /////
 ///// Such serializer may be registered with `Serialization` and assigned either as default (see `Serialization.Settings
@@ -30,10 +47,10 @@ import Foundation // for Codable
 //    : Serializer<Message>, CustomStringConvertible {
 //
 //    internal let allocate: ByteBufferAllocator
-//    internal var encoder: AnyTopLevelEncoder
-//    internal var decoder: AnyTopLevelDecoder
+//    internal var encoder: TopLevelEncoder
+//    internal var decoder: TopLevelDecoder
 //
-//    public init(allocator: ByteBufferAllocator, encoder: AnyTopLevelEncoder, decoder: AnyTopLevelDecoder) {
+//    public init(allocator: ByteBufferAllocator, encoder: TopLevelEncoder, decoder: TopLevelDecoder) {
 //        self.allocate = allocator
 //        self.encoder = encoder
 //        self.decoder = decoder
@@ -56,7 +73,7 @@ import Foundation // for Codable
 //        return try self.decoder.decode(Message.self, from: data)
 //    }
 //
-//    public override func setSerializationContext(_ context: ActorSerializationContext) {
+//    public override func setSerializationContext(_ context: Serialization.Context) {
 //        // same context shared for encoding/decoding is safe
 //        self.decoder.userInfo[.actorSerializationContext] = context
 //        self.encoder.userInfo[.actorSerializationContext] = context
@@ -128,7 +145,7 @@ public class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
         return try self.decoder.decode(Message.self, from: data)
     }
 
-    public override func setSerializationContext(_ context: ActorSerializationContext) {
+    public override func setSerializationContext(_ context: Serialization.Context) {
         // same context shared for encoding/decoding is safe
         self.decoder.userInfo[.actorSerializationContext] = context
         self.encoder.userInfo[.actorSerializationContext] = context

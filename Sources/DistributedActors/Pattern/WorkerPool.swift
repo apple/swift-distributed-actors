@@ -22,7 +22,7 @@ import Logging
 /// dynamically, e.g. if a node joins or removes itself from the cluster.
 ///
 // TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
-public class WorkerPool<Message> {
+public class WorkerPool<Message: ActorMessage> { // TODO: really has to be Codable?
     typealias Ref = WorkerPoolRef<Message>
 
     /// A selector defines how actors should be selected to participate in the pool.
@@ -64,14 +64,19 @@ public class WorkerPool<Message> {
 
     // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?
     // TODO: round robin or what strategy?
-    public static func spawn(_ factory: ActorRefFactory, _ naming: ActorNaming, select selector: WorkerPool<Message>.Selector) throws -> WorkerPoolRef<Message> {
+    public static func spawn(
+        _ factory: ActorRefFactory, _ naming: ActorNaming, props: Props = Props(),
+        select selector: WorkerPool<Message>.Selector,
+        file: String = #file, line: UInt = #line
+    ) throws -> WorkerPoolRef<Message> {
         // TODO: pass in settings rather than create them here
         let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
 
         let pool: WorkerPool<Message> = WorkerPool(settings: settings)
-        let ref = try factory.spawn(naming, props: Props(), pool.initial())
+        let ref = try factory.spawn(naming, of: WorkerPoolMessage<Message>.self, props: props, file: file, line: line, pool.initial())
         return .init(ref: ref)
     }
+
 }
 
 /// Contains the various state behaviors the `WorkerPool` can be in.
@@ -205,7 +210,7 @@ internal extension WorkerPool {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Worker Pool Ref
 
-public struct WorkerPoolRef<Message>: ReceivesMessages {
+public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
     @usableFromInline
     internal let _ref: ActorRef<WorkerPoolMessage<Message>>
 
@@ -218,6 +223,17 @@ public struct WorkerPoolRef<Message>: ReceivesMessages {
         self._ref.tell(.forward(message), file: file, line: line)
     }
 
+    public func ask<Answer: ActorMessage>(
+        for type: Answer.Type = Answer.self,
+        timeout: TimeAmount,
+        file: String = #file, function: String = #function, line: UInt = #line,
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Message
+    ) -> AskResponse<Answer> {
+        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
+            .forward(makeQuestion(replyTo))
+        }
+    }
+
     public var address: ActorAddress {
         return self._ref.address
     }
@@ -227,23 +243,23 @@ public struct WorkerPoolRef<Message>: ReceivesMessages {
     }
 }
 
-extension WorkerPoolRef: ReceivesQuestions {
-    public typealias Question = Message
-
-    public func ask<Answer>(
-        for type: Answer.Type,
-        timeout: TimeAmount,
-        file: String = #file, function: String = #function, line: UInt = #line,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
-    ) -> AskResponse<Answer> {
-        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
-            .forward(makeQuestion(replyTo))
-        }
-    }
-}
+//extension WorkerPoolRef: ReceivesQuestions {
+//    public typealias Question = Message
+//
+//    public func ask<Answer: ActorMessage>(
+//        for type: Answer.Type = Answer.self,
+//        timeout: TimeAmount,
+//        file: String = #file, function: String = #function, line: UInt = #line,
+//        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+//    ) -> AskResponse<Answer> {
+//        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
+//            .forward(makeQuestion(replyTo))
+//        }
+//    }
+//}
 
 @usableFromInline
-internal enum WorkerPoolMessage<Message> {
+internal enum WorkerPoolMessage<Message: ActorMessage>: NotTransportableActorMessage {
     case forward(Message)
     case listing(Receptionist.Listing<Message>)
 }
@@ -264,7 +280,7 @@ public enum WorkerPoolError: Error {
 // MARK: WorkerPool Settings
 
 /// Used to configure a `WorkerPool`.
-public struct WorkerPoolSettings<Message> {
+public struct WorkerPoolSettings<Message: ActorMessage> { // TODO need the Codable?
     /// Log level at which the worker pool will log its internal messages.
     /// Usually not interesting unless debugging the workings of a worker pool and workers joining/leaving it.
     var logLevel: Logger.Level = .trace

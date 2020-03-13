@@ -26,7 +26,7 @@ extension Actor {
         let address = try container.decode(ActorAddress.self)
 
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingActorSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
+            throw SerializationError.missingSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
         }
 
         self = .init(ref: context.resolveActorRef(identifiedBy: address))

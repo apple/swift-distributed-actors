@@ -98,7 +98,7 @@ private func tearDown() {
 }
 
 // === -----------------------------------------------------------------------------------------------------------------
-private enum PingPongCommand {
+private enum PingPongCommand: NotTransportableActorMessage {
     case startPingPong(
         messagesPerPair: Int,
         numActors: Int,
@@ -186,7 +186,7 @@ private func startPingPongActorPairs(
     return actors
 }
 
-private struct EchoMessage: CustomStringConvertible {
+private struct EchoMessage: ActorMessage, CustomStringConvertible {
     var seqNr: Int
     let replyTo: ActorRef<EchoMessage>
 

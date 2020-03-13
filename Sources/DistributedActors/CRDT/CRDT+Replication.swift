@@ -16,6 +16,7 @@
 // TODO: when to call `resetDelta` on delta-CRDTs stored in Replicator? after gossip? (https://github.com/apple/swift-distributed-actors/pull/831#discussion_r1969174)
 // TODO: reduce CRDT state size by pruning replicas associated with removed nodes; listen to membership changes
 import Logging
+import struct NIO.ByteBuffer
 
 extension CRDT {
     internal enum Replication {
@@ -24,7 +25,7 @@ extension CRDT {
         typealias Data = AnyStateBasedCRDT
 
         // Messages from replicator to CRDT instance owner
-        internal enum DataOwnerMessage {
+        internal enum DataOwnerMessage: NotTransportableActorMessage {
             /// Sent when the CRDT instance has been updated. The update could have been issued locally by the same or
             /// another owner, or remotely then synchronized to this replicator.
             case updated(StateBasedCRDT)
@@ -44,14 +45,14 @@ extension CRDT {
         static let name: String = "replicator"
         static let naming: ActorNaming = .unique(Replicator.name)
 
-        enum Message {
+        enum Message: ActorMessage {
             // The API for CRDT instance owner (e.g., actor) to call local replicator
             case localCommand(LocalCommand)
             // Replication-related operations within the cluster and sent by local replicator to remote replicator
             case remoteCommand(RemoteCommand)
         }
 
-        enum LocalCommand: NoSerializationVerification {
+        enum LocalCommand: NotTransportableActorMessage {
             // Register owner for CRDT instance
             case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: AnyStateBasedCRDT, replyTo: ActorRef<RegisterResult>?)
 
@@ -63,49 +64,49 @@ extension CRDT {
             // Perform delete to at least `consistency` members
             case delete(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<DeleteResult>)
 
-            enum RegisterResult {
+            enum RegisterResult: NotTransportableActorMessage {
                 case success
                 case failure(RegisterError)
             }
 
-            enum RegisterError: Error {
+            enum RegisterError: Error, NotTransportableActorMessage {
                 case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
                 case unsupportedCRDT
             }
 
-            enum WriteResult {
+            enum WriteResult: NotTransportableActorMessage {
                 case success
                 case failure(WriteError)
             }
 
-            enum WriteError: Error {
+            enum WriteError: Error, NotTransportableActorMessage{
                 case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
                 case unsupportedCRDT
                 case consistencyError(CRDT.OperationConsistency.Error)
             }
 
-            enum ReadResult {
+            enum ReadResult: NotTransportableActorMessage {
                 // Returns the underlying CRDT
                 case success(StateBasedCRDT)
                 case failure(ReadError)
             }
 
-            enum ReadError: Error {
+            enum ReadError: Error, NotTransportableActorMessage {
                 case notFound
                 case consistencyError(CRDT.OperationConsistency.Error)
             }
 
-            enum DeleteResult {
+            enum DeleteResult: NotTransportableActorMessage {
                 case success
                 case failure(DeleteError)
             }
 
-            enum DeleteError: Error {
+            enum DeleteError: Error, NotTransportableActorMessage {
                 case consistencyError(CRDT.OperationConsistency.Error)
             }
         }
 
-        enum RemoteCommand {
+        enum RemoteCommand: ActorMessage {
             // Sent from one replicator to another to write the given CRDT instance as part of `OwnerCommand.write` to meet consistency requirement
             case write(_ id: Identity, _ data: AnyStateBasedCRDT, replyTo: ActorRef<WriteResult>)
             // Sent from one replicator to another to write the given delta of delta-CRDT instance as part of `OwnerCommand.write` to meet consistency requirement
@@ -115,12 +116,12 @@ extension CRDT {
             // Sent from one replicator to another to delete CRDT instance with the given identity as part of `OwnerCommand.delete` to meet consistency requirement
             case delete(_ id: Identity, replyTo: ActorRef<DeleteResult>)
 
-            enum WriteResult {
+            enum WriteResult: ActorMessage {
                 case success
                 case failure(WriteError)
             }
 
-            enum WriteError: Error {
+            enum WriteError: Error, ActorMessage {
                 case missingCRDTForDelta
                 case incorrectDeltaType(hint: String)
                 case cannotWriteDeltaForNonDeltaCRDT
@@ -128,16 +129,16 @@ extension CRDT {
                 case unsupportedCRDT
             }
 
-            enum ReadResult {
+            enum ReadResult: ActorMessage {
                 case success(AnyStateBasedCRDT)
                 case failure(ReadError)
             }
 
-            enum ReadError: Error {
+            enum ReadError: Error, ActorMessage {
                 case notFound
             }
 
-            enum DeleteResult {
+            enum DeleteResult: ActorMessage {
                 case success
             }
         }
@@ -222,6 +223,21 @@ extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
             return true
         default:
             return false
+        }
+    }
+}
+
+extension CRDT.Replicator.Message {
+    init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
+        self = .remoteCommand(try CRDT.Replicator.RemoteCommand(context: context, from: &buffer, using: manifest))
+    }
+
+    func serialize(context: Serialization.Context, to buffer: inout ByteBuffer) throws {
+        switch self {
+        case .localCommand:
+            return fatalErrorBacktrace("Attempted to serialize message: \(Self.self)! This should never happen.")
+        case .remoteCommand(let remoteCommand):
+            try remoteCommand.serialize(context: context, to: &buffer)
         }
     }
 }

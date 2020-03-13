@@ -40,7 +40,7 @@ open class Serializer<Message> {
     /// Invoked _once_ by `Serialization` during system startup, providing additional context bound to
     /// the given `ActorSystem` that enables certain system specific serialization operations, such as
     /// looking up actors.
-    open func setSerializationContext(_: ActorSerializationContext) {
+    open func setSerializationContext(_: Serialization.Context) {
         // nothing by default, implementations may choose to not care
     }
 
@@ -78,6 +78,20 @@ extension Serializer: AnySerializer {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: NopeSerializer
+
+/// Nope, as opposed to Noop
+internal class NopeSerializer<Message>: Serializer<Message> {
+    override func serialize(_ message: Message) throws -> ByteBuffer {
+        throw SerializationError.unableToSerialize(hint: "NoopSerializer: \(Message.self)")
+    }
+
+    override func deserialize(from bytes: ByteBuffer) throws -> Message {
+        throw SerializationError.unableToDeserialize(hint: "NoopSerializer: \(Message.self)")
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serializers: AnySerializer
 
 public protocol AnySerializer {
@@ -86,11 +100,11 @@ public protocol AnySerializer {
 
     func trySerialize(_ message: Any) throws -> ByteBuffer
 
-    // TODO tryDeserialize(as: from) // !!!!!!
+    // TODO: tryDeserialize(as: from) // !!!!!!
     func tryDeserialize(_ bytes: ByteBuffer) throws -> Any
 
     func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?)
-    func setSerializationContext(_ context: ActorSerializationContext)
+    func setSerializationContext(_ context: Serialization.Context)
 }
 
 internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
@@ -108,7 +122,7 @@ internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
         }
     }
 
-    func setSerializationContext(_ context: ActorSerializationContext) {
+    func setSerializationContext(_ context: Serialization.Context) {
         self.serializer.setSerializationContext(context)
     }
 
@@ -127,5 +141,5 @@ internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
     public var description: String {
         "BoxedAnySerializer(\(self.serializer))"
     }
-
 }
+

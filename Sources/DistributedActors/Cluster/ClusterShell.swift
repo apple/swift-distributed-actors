@@ -153,7 +153,6 @@ internal class ClusterShell {
 
         let ripMessage = Envelope(payload: .message(ClusterShell.Message.inbound(.restInPeace(remoteNode, from: system.cluster.node))))
         targetNodeRemoteControl.sendUserMessage(
-            type: ClusterShell.Message.self,
             envelope: ripMessage,
             recipient: ._clusterShell(on: remoteNode),
             promise: shootTheOtherNodePromise
@@ -236,7 +235,7 @@ internal class ClusterShell {
     }
 
     // Due to lack of Union Types, we have to emulate them
-    enum Message: NoSerializationVerification {
+    enum Message: ActorMessage {
         // The external API, exposed to users of the ClusterShell
         case command(CommandMessage)
         // The external API, exposed to users of the ClusterShell to query for state
@@ -257,7 +256,7 @@ internal class ClusterShell {
     }
 
     // this is basically our API internally for this system
-    enum CommandMessage: NoSerializationVerification, SilentDeadLetter {
+    enum CommandMessage: NotTransportableActorMessage, SilentDeadLetter {
         /// Initiate the joining procedure for the given `Node`, this will result in attempting a handshake,
         /// as well as notifying the underlying failure detector (e.g. SWIM) about the node once shook hands with it.
         case initJoin(Node)
@@ -277,7 +276,7 @@ internal class ClusterShell {
         case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
     }
 
-    enum QueryMessage: NoSerializationVerification {
+    enum QueryMessage: NotTransportableActorMessage {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO: better type here
         case currentMembership(ActorRef<Cluster.Membership>)
     }
@@ -296,7 +295,7 @@ internal class ClusterShell {
     }
 
     // TODO: reformulate as Wire.accept / reject?
-    internal enum HandshakeResult: Equatable, NoSerializationVerification {
+    internal enum HandshakeResult: Equatable, NotTransportableActorMessage {
         case success(UniqueNode)
         case failure(HandshakeConnectionError)
     }

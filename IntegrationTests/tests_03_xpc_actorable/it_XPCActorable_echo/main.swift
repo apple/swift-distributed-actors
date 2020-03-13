@@ -17,7 +17,7 @@ import DistributedActorsXPC
 import it_XPCActorable_echo_api
 import NIO
 
-let serviceName = "com.apple.sakkana.XPCLibService"
+let serviceName = "com.apple.actors.XPCLibService"
 
 let system = ActorSystem("it_XPCActorable_echo") { settings in
     settings.transports += .xpc

@@ -22,10 +22,9 @@ let system = ActorSystem("XPCActorServiceProvider") { settings in
     // TODO: make this the source of "truth" what transports are available
     settings.transports += .xpcService
 
-    // TODO: simplify serialization so we dont have to register them?
-    settings.serialization.registerCodable(GeneratedActor.Messages.GreetingsService.self, underId: 10001)
-    settings.serialization.registerCodable(GreetingsServiceImpl.Message.self, underId: 10002)
-    settings.serialization.registerCodable(Result<String, Error>.self, underId: 10003)
+//    settings.serialization.registerCodable(GeneratedActor.Messages.GreetingsService.self)
+//    settings.serialization.registerCodable(GreetingsServiceImpl.Message.self)
+//    settings.serialization.registerCodable(Result<String, Error>.self)
 }
 
 let service = try XPCActorableService(system, GreetingsServiceImpl.init)

@@ -229,7 +229,7 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
         var bytes = self.unwrapInboundIn(data)
 
         do {
-            let protoEnvelope = try ProtoEnvelope(bytes: &bytes)
+            let protoEnvelope = try ProtoEnvelope(buffer: &bytes)
             bytes.discardReadBytes()
             let envelope = try Wire.Envelope(protoEnvelope, allocator: context.channel.allocator)
             context.fireChannelRead(self.wrapInboundOut(envelope))
@@ -298,7 +298,6 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
 /// It follows the "Shell" pattern, all actual logic is implemented in the `OutboundSystemMessageRedelivery`
 /// and `InboundSystemMessages`
 internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
-
     // we largely pass-through messages, however if they are system messages we keep them buffered for potential re-delivery
     typealias OutboundIn = TransportEnvelope
     typealias OutboundOut = TransportEnvelope
@@ -379,9 +378,9 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
         case Serialization.ReservedID.SystemMessage:
             log.error("""
-                      Received SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
-                      Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
-                      """)
+            Received SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
+            Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
+            """)
 
         default:
             // it's a normal message, so we should directly pass it along
@@ -390,11 +389,11 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         }
     }
 
-    private func deserializeThenHandle<T>(type: T.Type, wireEnvelope: Wire.Envelope, callback: @escaping (T) -> ()) {
+    private func deserializeThenHandle<T>(type: T.Type, wireEnvelope: Wire.Envelope, callback: @escaping (T) -> Void) {
         self.serializationPool.deserialize(
             as: type, from: wireEnvelope.payload, using: wireEnvelope.manifest,
             recipientPath: wireEnvelope.recipient.path, // TODO: use addresses
-            callback: .init({ result in
+            callback: .init { result in
                 self.tracelog(.inbound, message: wireEnvelope)
                 switch result {
                 case .success(let message):
@@ -402,7 +401,8 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
                 case .failure(let error):
                     self.log.error("Failed to deserialize \(type), wireEnvelope: \(wireEnvelope), error: \(error)")
                 }
-        }))
+            }
+        )
     }
 
     private func onInboundSystemMessage(_ context: ChannelHandlerContext, systemEnvelope: SystemMessageEnvelope, wireEnvelope: Wire.Envelope) {
@@ -846,11 +846,9 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
 
     let recipient: ActorAddress
 
-    let underlyingMessageMetaType: AnyMetaType
-
     // TODO: carry same data as Envelope -- baggage etc
 
-    init<UnderlyingMessage>(envelope: Envelope, underlyingMessageType: UnderlyingMessage.Type, recipient: ActorAddress) {
+    init(envelope: Envelope, recipient: ActorAddress) {
         assert(recipient.node != nil, "Attempted to send remote message, though recipient is local! Was envelope: \(envelope), recipient: \(recipient)")
         switch envelope.payload {
         case .message(let message):
@@ -863,7 +861,6 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
             fatalError("Attempted to send .subMessage to remote actor, this is illegal and can not be made to work. Envelope: \(envelope), recipient: \(recipient)")
         }
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(underlyingMessageType)
         // TODO: carry metadata from Envelope
     }
 
@@ -871,31 +868,26 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         // assert(Message.self != Any.self)
         self.storage = .message(message)
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(Message.self)
     }
 
     init(systemMessage: _SystemMessage, recipient: ActorAddress) {
         self.storage = .systemMessage(systemMessage)
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(_SystemMessage.self)
     }
 
     init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorAddress) {
         self.storage = .systemMessageEnvelope(systemMessageEnvelope)
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(SystemMessageEnvelope.self)
     }
 
     init(ack: _SystemMessage.ACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.ack(ack))
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(_SystemMessage.ACK.self)
     }
 
     init(nack: _SystemMessage.NACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.nack(nack))
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(_SystemMessage.NACK.self)
     }
 
     /// Unwraps *ONE* layer of envelope
@@ -918,11 +910,11 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
     }
 
     var description: String {
-        "TransportEnvelope(\(storage), recipient: \(String(reflecting: recipient)), messageMetaType: \(underlyingMessageMetaType))"
+        "TransportEnvelope(\(storage), recipient: \(String(reflecting: recipient)))"
     }
 
     var debugDescription: String {
-        "TransportEnvelope(_storage: \(storage), recipient: \(String(reflecting: recipient)), messageMetaType: \(underlyingMessageMetaType))"
+        "TransportEnvelope(_storage: \(storage), recipient: \(String(reflecting: recipient)))"
     }
 }
 
@@ -932,4 +924,3 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
 enum WireFormatError: Error {
     case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
 }
-

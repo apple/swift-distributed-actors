@@ -12,12 +12,12 @@
 ////
 ////===----------------------------------------------------------------------===//
 //
-//import DistributedActors
-//import NIO
-//import SwiftBenchmarkTools
-//import SwiftProtobuf
+// import DistributedActors
+// import NIO
+// import SwiftBenchmarkTools
+// import SwiftProtobuf
 //
-//public let SerializationProtobufBenchmarks: [BenchmarkInfo] = [
+// public let SerializationProtobufBenchmarks: [BenchmarkInfo] = [
 //    BenchmarkInfo(
 //        name: "SerializationProtobuf.bench_protobuf_roundTrip_message_small",
 //        runFunction: bench_protobuf_roundTrip_message_small,
@@ -32,13 +32,13 @@
 //        setUpFunction: { setUp() },
 //        tearDownFunction: tearDown
 //    ),
-//]
+// ]
 //
-//enum ProtoSerializerError: Error {
+// enum ProtoSerializerError: Error {
 //    case x
-//}
+// }
 //
-//final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: Serializer<M> {
+// final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: Serializer<M> {
 //    let allocator: ByteBufferAllocator
 //
 //    init(allocator: ByteBufferAllocator) {
@@ -60,16 +60,16 @@
 //        return buffer
 //    }
 //
-//    override func setSerializationContext(_: ActorSerializationContext) {
+//    override func setSerializationContext(_: Serialization.Context) {
 //        return
 //    }
-//}
+// }
 //
-//private func protoSerializer<M: SwiftProtobuf.Message>(allocator: ByteBufferAllocator) -> Serializer<M> {
+// private func protoSerializer<M: SwiftProtobuf.Message>(allocator: ByteBufferAllocator) -> Serializer<M> {
 //    return ProtoMessageSerializer(allocator: allocator)
-//}
+// }
 //
-//private func setUp(and postSetUp: () -> Void = { () in () }) {
+// private func setUp(and postSetUp: () -> Void = { () in () }) {
 //    _system = ActorSystem("SerializationProtobufBenchmarks") { settings in
 //        settings.serialization.register(protoSerializer, for: ProtoSmallMessage.self, underId: 1001)
 //        settings.serialization.register(protoSerializer, for: ProtoMediumMessage.self, underId: 1002)
@@ -101,27 +101,27 @@
 //    protoMediumMessage.field17 = 51
 //
 //    postSetUp()
-//}
+// }
 //
-//private func tearDown() {
+// private func tearDown() {
 //    system.shutdown().wait()
 //    _system = nil
-//}
+// }
 //
 //// -------
 //
-//var protoSmallMessage = ProtoSmallMessage()
+// var protoSmallMessage = ProtoSmallMessage()
 //
-//func bench_protobuf_roundTrip_message_small(n: Int) {
+// func bench_protobuf_roundTrip_message_small(n: Int) {
 //    let bytes = try! system.serialization.serialize(protoSmallMessage)
-//    _ = try! system.serialization.deserialize(as: ProtoSmallMessage.self, from: bytes)
-//}
+//    _ = try! system.serialization.deserialize(as: ProtoSmallMessage.self, from: &bytes, using: manifest)
+// }
 //
 //// -------
 //
-//var protoMediumMessage = ProtoMediumMessage()
+// var protoMediumMessage = ProtoMediumMessage()
 //
-//func bench_protobuf_roundTrip_message_medium(n: Int) {
+// func bench_protobuf_roundTrip_message_medium(n: Int) {
 //    let bytes = try! system.serialization.serialize(protoMediumMessage)
-//    _ = try! system.serialization.deserialize(as: ProtoMediumMessage.self, from: bytes)
-//}
+//    _ = try! system.serialization.deserialize(as: ProtoMediumMessage.self, from: &bytes, using: manifest)
+// }

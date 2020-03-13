@@ -21,7 +21,7 @@ extension CRDT {
     /// - SeeAlso: Akka's [`ORMultiMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/ORMultiMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
     /// - SeeAlso: `CRDT.ORSet`
-    public struct ORMultiMap<Key: Hashable, Value: Hashable>: NamedDeltaCRDT, ORMultiMapOperations {
+    public struct ORMultiMap<Key: Codable & Hashable, Value: Codable & Hashable>: NamedDeltaCRDT, ORMultiMapOperations {
         public typealias Delta = ORMapDelta<Key, ORSet<Value>>
 
         public let replicaId: ReplicaId

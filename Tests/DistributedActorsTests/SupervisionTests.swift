@@ -25,27 +25,27 @@ import Glibc
 #endif
 
 final class SupervisionTests: ActorSystemTestBase {
-    enum FaultyError: Error {
+    enum FaultyError: Error, NotTransportableActorMessage {
         case boom(message: String)
     }
 
-    enum FaultyMessage {
+    enum FaultyMessage: NotTransportableActorMessage {
         case pleaseThrow(error: Error)
         case echo(message: String, replyTo: ActorRef<WorkerMessages>)
         case pleaseFailAwaiting(message: String)
     }
 
-    enum SimpleProbeMessages: Equatable {
+    enum SimpleProbeMessages: Equatable, NotTransportableActorMessage {
         case spawned(child: ActorRef<FaultyMessage>)
         case echoing(message: String)
     }
 
-    enum WorkerMessages: Equatable {
+    enum WorkerMessages: Equatable, NotTransportableActorMessage {
         case setupRunning(ref: ActorRef<FaultyMessage>)
         case echo(message: String)
     }
 
-    enum FailureMode {
+    enum FailureMode: NotTransportableActorMessage {
         case throwing
         // case faulting // Not implemented
 
@@ -103,7 +103,7 @@ final class SupervisionTests: ActorSystemTestBase {
             _ = try self.system.spawn(
                 "example",
                 props: Props()
-                    .supervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchable.self)
+                    .supervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchableError.self)
                     .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
                     .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)),
                 behavior
@@ -739,18 +739,18 @@ final class SupervisionTests: ActorSystemTestBase {
         let faultyWorker = try system.spawn(
             "compositeFailures-1",
             props: Props()
-                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self)
-                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchable.self),
+                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMeError.self)
+                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchableError.self),
             self.faulty(probe: probe.ref)
         )
 
         probe.watch(faultyWorker)
 
-        faultyWorker.tell(.pleaseThrow(error: CatchMe()))
+        faultyWorker.tell(.pleaseThrow(error: CatchMeError()))
         try probe.expectNoTerminationSignal(for: .milliseconds(20))
-        faultyWorker.tell(.pleaseThrow(error: EasilyCatchable()))
+        faultyWorker.tell(.pleaseThrow(error: EasilyCatchableError()))
         try probe.expectNoTerminationSignal(for: .milliseconds(20))
-        faultyWorker.tell(.pleaseThrow(error: CantTouchThis()))
+        faultyWorker.tell(.pleaseThrow(error: CantTouchThisError()))
         try probe.expectTerminated(faultyWorker)
     }
 
@@ -823,11 +823,11 @@ final class SupervisionTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Tests for selective failure handlers
 
-    /// Throws all Errors it receives, EXCEPT `PleaseReply` to which it replies to the probe
-    private func throwerBehavior(probe: ActorTestProbe<PleaseReply>) -> Behavior<Error> {
+    /// Throws all Errors it receives, EXCEPT `PleaseReplyError` to which it replies to the probe
+    private func throwerBehavior(probe: ActorTestProbe<PleaseReplyError>) -> Behavior<AnyErrorEnvelope> {
         return .receiveMessage { error in
-            switch error {
-            case let reply as PleaseReply:
+            switch error.failure {
+            case let reply as PleaseReplyError:
                 probe.tell(reply)
             default:
                 throw error
@@ -837,47 +837,47 @@ final class SupervisionTests: ActorSystemTestBase {
     }
 
     func test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType() throws {
-        let p = self.testKit.spawnTestProbe(expecting: PleaseReply.self)
+        let p = self.testKit.spawnTestProbe(expecting: PleaseReplyError.self)
 
-        let supervisedThrower: ActorRef<Error> = try system.spawn(
+        let supervisedThrower: ActorRef<AnyErrorEnvelope> = try system.spawn(
             "thrower-1",
-            props: .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: EasilyCatchable.self),
+            props: .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: EasilyCatchableError.self),
             self.throwerBehavior(probe: p)
         )
 
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
+        supervisedThrower.tell(.init(PleaseReplyError()))
+        try p.expectMessage(PleaseReplyError())
 
-        supervisedThrower.tell(EasilyCatchable()) // will cause restart
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
+        supervisedThrower.tell(.init(EasilyCatchableError())) // will cause restart
+        supervisedThrower.tell(.init(PleaseReplyError()))
+        try p.expectMessage(PleaseReplyError())
 
-        supervisedThrower.tell(CatchMe()) // will NOT be supervised
+        supervisedThrower.tell(.init(CatchMeError())) // will NOT be supervised
 
-        supervisedThrower.tell(PleaseReply())
+        supervisedThrower.tell(.init(PleaseReplyError()))
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
     func test_supervisor_shouldOnlyHandle_anyThrows() throws {
-        let p = self.testKit.spawnTestProbe(expecting: PleaseReply.self)
+        let p = self.testKit.spawnTestProbe(expecting: PleaseReplyError.self)
 
-        let supervisedThrower: ActorRef<Error> = try system.spawn(
+        let supervisedThrower: ActorRef<AnyErrorEnvelope> = try system.spawn(
             "thrower-2",
             props: .supervision(strategy: .restart(atMost: 100, within: nil), forAll: .errors),
             self.throwerBehavior(probe: p)
         )
 
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
+        supervisedThrower.tell(.init(PleaseReplyError()))
+        try p.expectMessage(PleaseReplyError())
 
-        supervisedThrower.tell(EasilyCatchable()) // will cause restart
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
+        supervisedThrower.tell(.init(EasilyCatchableError())) // will cause restart
+        supervisedThrower.tell(.init(PleaseReplyError()))
+        try p.expectMessage(PleaseReplyError())
 
-        supervisedThrower.tell(CatchMe()) // will cause restart
+        supervisedThrower.tell(.init(CatchMeError())) // will cause restart
 
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
+        supervisedThrower.tell(.init(PleaseReplyError()))
+        try p.expectMessage(PleaseReplyError())
     }
 
     func sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy failureMode: FailureMode) throws {
@@ -1074,8 +1074,8 @@ final class SupervisionTests: ActorSystemTestBase {
         try p.expectMessage("starting")
     }
 
-    private struct PleaseReply: Error, Equatable {}
-    private struct EasilyCatchable: Error, Equatable {}
-    private struct CantTouchThis: Error, Equatable {}
-    private struct CatchMe: Error, Equatable {}
+    private struct PleaseReplyError: Error, ActorMessage, Equatable {}
+    private struct EasilyCatchableError: Error, Equatable {}
+    private struct CantTouchThisError: Error, Equatable {}
+    private struct CatchMeError: Error, Equatable {}
 }

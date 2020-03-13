@@ -37,7 +37,7 @@ public enum DowningStrategyDirective {
 }
 
 /// EXPERIMENTAL: NOT STABLE API
-public enum DowningStrategyMessage {
+public enum DowningStrategyMessage: NotTransportableActorMessage {
     case timeout(Cluster.Member)
 }
 

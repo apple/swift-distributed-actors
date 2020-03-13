@@ -113,7 +113,7 @@ extension CRDT {
     /// Important: Each replica must be associated with a single `VersionedContainer` instance only to ensure version is incremented properly.
     ///
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
-    public struct VersionedContainer<Element: Hashable>: NamedDeltaCRDT {
+    public struct VersionedContainer<Element: Codable & Hashable>: NamedDeltaCRDT {
         public typealias Delta = VersionedContainerDelta<Element>
 
         public let replicaId: ReplicaId
@@ -241,7 +241,7 @@ extension CRDT {
         }
     }
 
-    public struct VersionedContainerDelta<Element: Hashable>: CvRDT {
+    public struct VersionedContainerDelta<Element: Codable & Hashable>: CvRDT {
         // Version context of the delta, containing new versions/dots associated with updates captured in this delta.
         internal var versionContext: VersionContext = VersionContext()
 

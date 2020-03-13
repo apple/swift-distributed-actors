@@ -19,7 +19,7 @@ extension Cluster {
     /// Gossip payload about members in the cluster.
     ///
     /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
-    struct Gossip: Equatable {
+    struct Gossip: Codable, ActorMessage, Equatable {
         let owner: UniqueNode
         /// A table maintaining our perception of other nodes views on the version of membership.
         /// Each row in the table represents what versionVector we know the given node has observed recently.
@@ -158,9 +158,9 @@ extension Cluster {
     }
 }
 
-extension Cluster.Gossip: Codable {
-    // Codable: synthesized conformance
-}
+//extension Cluster.Gossip: Codable {
+//    // Codable: synthesized conformance
+//}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.Gossip.SeenTable

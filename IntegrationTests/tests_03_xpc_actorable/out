@@ -1,5 +1,5 @@
 2019-12-23T14:31:14+0900 info: [it_XPCActorable_echo][XPCActorTransport.swift:211][thread:6265390][/system/xpc] XPC transport initialized.
-2019-12-23T14:31:14+0900 info: [it_XPCActorable_echo][XPCActorTransport.swift:217][thread:6265390][/system/xpc] Registered: AddressableActorRef(xpc://@localhost:1/xpc/com.apple.sakkana.XPCLibService)
+2019-12-23T14:31:14+0900 info: [it_XPCActorable_echo][XPCActorTransport.swift:217][thread:6265390][/system/xpc] Registered: AddressableActorRef(xpc://@localhost:1/xpc/com.apple.actors.XPCLibService)
 2019-12-23T14:31:14+0900 info: [it_XPCActorable_echo][ActorSystem.swift:275][thread:6265348] Parking actor system...
 2019-12-23T14:31:14+0900 info: [it_XPCActorable_echo][ActorSystem.swift:277][thread:6265348] Offering transport [xpc] chance to park the thread...
-2019-12-23T14:31:14+0900 info: [it_XPCActorable_echo][ActorableWatcher.swift:42][thread:6265398][/user/watcher] Received receiveSignal(context:signal:): Signals.XPC.Interrupted(xpc://@localhost:1/xpc/com.apple.sakkana.XPCLibService, description: "Connection Interrupted")
+2019-12-23T14:31:14+0900 info: [it_XPCActorable_echo][ActorableWatcher.swift:42][thread:6265398][/user/watcher] Received receiveSignal(context:signal:): Signals.XPC.Interrupted(xpc://@localhost:1/xpc/com.apple.actors.XPCLibService, description: "Connection Interrupted")

@@ -25,7 +25,7 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated LifecycleActor messages
 extension LifecycleActor {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case pleaseStop 
         case watchChildAndTerminateIt 
         case _doNOTSkipMe 

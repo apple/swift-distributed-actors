@@ -24,7 +24,7 @@ import SwiftUI
 if #available(macOS 10.15, *) {
     class AppDelegate: NSObject, NSApplicationDelegate {
         func applicationDidFinishLaunching(_ aNotification: Notification) {
-            let connection = NSXPCConnection(serviceName: "com.apple.sakkana.HelloXPCService")
+            let connection = NSXPCConnection(serviceName: "com.apple.actors.HelloXPCService")
             connection.remoteObjectInterface = NSXPCInterface(with: HelloXPCServiceProtocol.self)
             connection.resume()
 

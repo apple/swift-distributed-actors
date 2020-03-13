@@ -29,7 +29,7 @@ import XCTest
 // MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.CoffeeMachine
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension GeneratedActor.Messages.CoffeeMachine: Codable {
+extension GeneratedActor.Messages.CoffeeMachine {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case makeCoffee

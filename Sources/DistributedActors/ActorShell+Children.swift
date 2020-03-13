@@ -15,11 +15,19 @@
 import Dispatch
 import NIO
 
-protocol ChildActorRefFactory: ActorRefFactory {
+internal protocol ChildActorRefFactory: ActorRefFactory {
     var children: Children { get set } // lock-protected
 
-    func spawn<Message>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
-    func stop<M>(child ref: ActorRef<M>) throws
+    func spawn<Message>(
+        _ naming: ActorNaming, of messageType: Message.Type, props: Props,
+        file: String, line: UInt,
+        _ behavior: Behavior<Message>
+    ) throws -> ActorRef<Message>
+        where Message: ActorMessage
+
+    func stop<Message>(child ref: ActorRef<Message>) throws
+        where Message: ActorMessage
+
 }
 
 internal enum Child {
@@ -248,7 +256,7 @@ extension Children: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")

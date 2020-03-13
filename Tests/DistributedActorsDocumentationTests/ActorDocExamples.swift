@@ -23,7 +23,7 @@ import XCTest
 
 class ActorDocExamples: XCTestCase {
     // tag::message_greetings[]
-    enum Greetings {
+    enum Greetings: NotTransportableActorMessage {
         case greet(name: String)
         case greeting(String)
     }
@@ -268,7 +268,7 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::ask_outside[]
-        struct Hello {
+        struct Hello: ActorMessage {
             let name: String
             let replyTo: ActorRef<String>
         }
@@ -292,7 +292,7 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::ask_inside[]
-        struct Hello {
+        struct Hello: ActorMessage {
             let name: String
             let replyTo: ActorRef<String>
         }
@@ -331,7 +331,7 @@ class ActorDocExamples: XCTestCase {
         let ref: ActorRef<Event>! = nil
 
         // tag::eventStream[]
-        enum Event {
+        enum Event: String, ActorMessage {
             case eventOne
             case eventTwo
         }
@@ -362,7 +362,7 @@ struct ExampleWorker {
     internal static var props: Props = Props().dispatcher(.pinnedThread)
 }
 
-enum WorkerMessages {
+enum WorkerMessages: String, ActorMessage {
     case something
 }
 
