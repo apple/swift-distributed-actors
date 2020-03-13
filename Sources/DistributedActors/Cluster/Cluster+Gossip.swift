@@ -20,7 +20,6 @@ extension Cluster {
     ///
     /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
     struct Gossip: Equatable {
-        // TODO: can be moved to generic envelope ---------
         let owner: UniqueNode
         /// A table maintaining our perception of other nodes views on the version of membership.
         /// Each row in the table represents what versionVector we know the given node has observed recently.
@@ -31,8 +30,6 @@ extension Cluster {
         var version: VersionVector {
             self.seen.underlying[self.owner]! // !-safe, since we _always_ know our own world view
         }
-
-        // TODO: end of can be moved to generic envelope ---------
 
         // Would be Payload of the generic envelope.
         /// IMPORTANT: Whenever the membership is updated with an effective change, we MUST move the version forward (!)

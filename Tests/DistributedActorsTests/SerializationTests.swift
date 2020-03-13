@@ -179,7 +179,7 @@ class SerializationTests: ActorSystemTestBase {
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
-        let bytes = try shouldNotThrow {
+        let (manifest, bytes) = try shouldNotThrow {
             try system.serialization.serialize(hasRef)
         }
 

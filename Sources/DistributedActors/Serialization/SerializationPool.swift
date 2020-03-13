@@ -120,7 +120,7 @@ public final class SerializationPool {
 
     @inlinable
     internal func deserialize<Message>(
-        as type: Message.Type,
+        as messageType: Message.Type,
         from bytes: ByteBuffer,
         using manifest: Serialization.Manifest,
         recipientPath: ActorPath,
@@ -128,7 +128,7 @@ public final class SerializationPool {
         // and we use identity of the callback to interact with the instrumentation for start/stop correlation.
         callback: DeserializationCallback<Message>
     ) {
-        pprint("deserialize = \(bytes.getString(at: 0, length: bytes.readableBytes)) >>>> \(Message.self)")
+        pprint("deserialize = \(bytes.getString(at: 0, length: bytes.readableBytes)) >>>> \(messageType)")
 
         self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
             do {
@@ -136,7 +136,7 @@ public final class SerializationPool {
                 self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: bytes.readableBytes)
 
                 // do the work, this may be "heavy"
-                let deserialized = try self.serialization.deserialize(as: Message.self, from: bytes, using: manifest)
+                let deserialized = try self.serialization.deserialize(as: messageType, from: bytes, using: manifest)
 
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
                 return deserialized

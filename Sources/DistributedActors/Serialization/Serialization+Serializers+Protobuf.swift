@@ -18,7 +18,7 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
 
-public protocol AnyProtobufRepresentable {}
+public protocol AnyInternalProtobufRepresentable {}
 
 /// A protocol that facilitates conversion between Swift and protobuf messages.
 ///
@@ -33,7 +33,7 @@ public protocol ProtobufRepresentable: AnyProtobufRepresentable {
     init(fromProto proto: ProtobufRepresentation, context: ActorSerializationContext) throws
 }
 
-public protocol AnyInternalProtobufRepresentable {}
+public protocol AnyProtobufRepresentable: AnyInternalProtobufRepresentable {}
 
 /// This protocol is for internal protobuf-serializable messages only.
 ///

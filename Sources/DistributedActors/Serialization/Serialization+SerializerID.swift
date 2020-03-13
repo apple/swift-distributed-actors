@@ -38,12 +38,19 @@ extension Serialization {
         public static func == (lhs: Serialization.SerializerID, rhs: Serialization.SerializerID) -> Bool {
             lhs.value == rhs.value
         }
+
+        /// Based on guaranteed range of serializers (1-16) we always know if this was a serializer for codables or a specialized one.
+        var isCodableSerializer: Bool {
+            0 < value && value <= CodableSerializerID.range.max() ?? 0
+        }
     }
 
     public struct CodableSerializerID: ExpressibleByIntegerLiteral, Hashable, Comparable, CustomStringConvertible {
+        public static let range: ClosedRange<Int> = 1...16
+
         public typealias IntegerLiteralType = UInt32
 
-        let value: SerializerID
+        public let value: SerializerID
 
         public init(integerLiteral value: UInt32) {
             self.init(value)
@@ -77,8 +84,6 @@ extension Serialization.SerializerID {
     public static let jsonCodable = CodableSerializerID.jsonCodable
     // reserved for other codable = 2
     // reserved for other codable = 3
-    public static let internalProtobufRepresentable: SerializerID = 5
-    public static let publicProtobufRepresentable: SerializerID = 6
     // ...
     // reserved until 16
 }
