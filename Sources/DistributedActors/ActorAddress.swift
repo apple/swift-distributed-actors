@@ -33,7 +33,7 @@
 ///
 /// An address can be serialized using `Codable` or other serialization mechanisms, and when shared over the network
 /// it shall include its local system's address. When using Codable serialization this is done automatically,
-/// and when implementing custom serializers the `ActorSerializationContext` should be used to access the node address
+/// and when implementing custom serializers the `Serialization.Context` should be used to access the node address
 /// to include while serializing the address.
 ///
 /// ## Format

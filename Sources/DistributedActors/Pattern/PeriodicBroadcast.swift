@@ -31,7 +31,7 @@ import NIO // Future
 // TODO: configurable period as parameter
 // TODO: configurable name of the broadcast
 internal struct PeriodicBroadcast {
-    typealias Ref<M> = ActorRef<PeriodicBroadcastShell<M>.Message>
+    typealias Ref<M: ActorMessage> = ActorRef<PeriodicBroadcastShell<M>.Message>
 
     static func start<ParentMessage, Payload>(_ context: ActorContext<ParentMessage>, of type: Payload.Type = Payload.self) throws -> PeriodicBroadcastControl<Payload> {
         let ref = try context.spawn(.periodicBroadcast, of: PeriodicBroadcastShell<Payload>.Message.self, PeriodicBroadcastShell().behavior(parent: context.myself.asAddressable()))
@@ -43,8 +43,8 @@ extension ActorNaming {
     static let periodicBroadcast: ActorNaming = "periodicBroadcast"
 }
 
-internal class PeriodicBroadcastShell<Payload> {
-    enum Message: SilentDeadLetter {
+internal class PeriodicBroadcastShell<Payload: ActorMessage> {
+    enum Message: NotTransportableActorMessage, SilentDeadLetter {
         case set(Payload)
         case introduce(peer: ActorRef<Payload>)
         case tick
@@ -100,7 +100,7 @@ internal class PeriodicBroadcastShell<Payload> {
     }
 }
 
-internal struct PeriodicBroadcastControl<Payload> {
+internal struct PeriodicBroadcastControl<Payload: ActorMessage> {
     // TODO: rather let's hide it trough methods
     internal let ref: PeriodicBroadcast.Ref<Payload>
 
@@ -110,5 +110,9 @@ internal struct PeriodicBroadcastControl<Payload> {
 
     func set(_ payload: Payload) {
         self.ref.tell(.set(payload))
+    }
+
+    func introduce(peer: ActorRef<Payload>) {
+        self.ref.tell(.introduce(peer: peer))
     }
 }

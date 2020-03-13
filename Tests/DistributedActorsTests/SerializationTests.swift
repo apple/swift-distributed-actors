@@ -22,14 +22,7 @@ import XCTest
 
 class SerializationTests: ActorSystemTestBase {
     override func setUp() {
-        _ = self.setUpNode(String(describing: type(of: self))) { settings in
-            settings.serialization.registerManifest(ActorRef<String>.self, hint: nil, serializer: .jsonCodable)
-            settings.serialization.registerManifest(HasStringRef.self, hint: nil, serializer: .jsonCodable)
-
-            settings.serialization.registerManifest(InterestingMessage.self, hint: nil, serializer: .jsonCodable)
-            settings.serialization.registerManifest(HasInterestingMessageRef.self, hint: nil, serializer: .jsonCodable)
-
-            settings.serialization.registerManifest(HasReceivesSystemMsgs.self, hint: nil, serializer: .jsonCodable)
+        _ = self.setUpNode(String(describing: type(of: self))) { _ in
         }
     }
 
@@ -72,7 +65,7 @@ class SerializationTests: ActorSystemTestBase {
         }
 
         "\(err)".shouldStartWith(prefix: """
-        missingActorSerializationContext(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
+        missingSerialization.Context(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
         """)
     }
 
@@ -83,15 +76,14 @@ class SerializationTests: ActorSystemTestBase {
             let encoder = JSONEncoder()
             let decoder = JSONDecoder()
 
-            let context = ActorSerializationContext(
+            let context = Serialization.Context(
                 log: self.system.log,
-                localNode: self.system.settings.cluster.uniqueBindNode,
                 system: self.system,
                 allocator: ByteBufferAllocator()
             )
 
-            encoder.userInfo[.serializationContext] = context
-            decoder.userInfo[.serializationContext] = context
+            encoder.userInfo[.actorSerializationContext] = context
+            decoder.userInfo[.actorSerializationContext] = context
 
             let encoded = try encoder.encode(address)
             pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
@@ -117,13 +109,13 @@ class SerializationTests: ActorSystemTestBase {
 
         pinfo("Before serialize: \(hasRef)")
 
-        let bytes = try shouldNotThrow {
+        var (manifest, bytes) = try shouldNotThrow {
             try system.serialization.serialize(hasRef)
         }
         pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            try system.serialization.deserialize(as: HasStringRef.self, from: bytes)
+            try system.serialization.deserialize(as: HasStringRef.self, from: &bytes, using: manifest)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -136,8 +128,7 @@ class SerializationTests: ActorSystemTestBase {
     func test_serialize_actorRef_inMessage_forRemoting() throws {
         let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings in
             settings.cluster.enabled = true
-
-            settings.serialization.registerCodable(HasStringRef.self, underId: 1002)
+            // settings.serialization.registerCodable(HasStringRef.self)
         }
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.spawnTestProbe(expecting: String.self)
@@ -151,7 +142,7 @@ class SerializationTests: ActorSystemTestBase {
 
         pinfo("Before serialize: \(hasRef)")
 
-        let bytes = try shouldNotThrow {
+        var (manifest, bytes) = try shouldNotThrow {
             try remoteCapableSystem.serialization.serialize(hasRef)
         }
         let serializedFormat: String = bytes.stringDebugDescription()
@@ -163,7 +154,7 @@ class SerializationTests: ActorSystemTestBase {
         serializedFormat.contains("\(ClusterSettings.Default.bindPort)").shouldBeTrue()
 
         let back: HasStringRef = try shouldNotThrow {
-            try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: bytes)
+            try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: &bytes, using: manifest)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -179,7 +170,7 @@ class SerializationTests: ActorSystemTestBase {
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
-        let (manifest, bytes) = try shouldNotThrow {
+        var (manifest, bytes) = try shouldNotThrow {
             try system.serialization.serialize(hasRef)
         }
 
@@ -187,7 +178,7 @@ class SerializationTests: ActorSystemTestBase {
 
         try self.testKit.eventually(within: .seconds(3)) {
             let back: HasStringRef = try shouldNotThrow {
-                try system.serialization.deserialize(as: HasStringRef.self, from: bytes)
+                try system.serialization.deserialize(as: HasStringRef.self, from: &bytes, using: manifest)
             }
 
             guard "\(back.containedRef.address)" == "/dead/user/dead-on-arrival" else {
@@ -200,13 +191,13 @@ class SerializationTests: ActorSystemTestBase {
         let stoppedRef: ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
-        let bytes = try shouldNotThrow {
+        var (manifest, bytes) = try shouldNotThrow {
             try system.serialization.serialize(hasRef)
         }
 
         try self.testKit.eventually(within: .seconds(3)) {
             let back: HasInterestingMessageRef = try shouldNotThrow {
-                try system.serialization.deserialize(as: HasInterestingMessageRef.self, from: bytes)
+                try system.serialization.deserialize(as: HasInterestingMessageRef.self, from: &bytes, using: manifest)
             }
 
             back.containedInterestingRef.tell(InterestingMessage())
@@ -251,12 +242,12 @@ class SerializationTests: ActorSystemTestBase {
 
         let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
 
-        let bytes = try shouldNotThrow {
+        var (manifest, bytes) = try shouldNotThrow {
             try system.serialization.serialize(hasSysRef)
         }
 
         let back: HasReceivesSystemMsgs = try shouldNotThrow {
-            try system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: bytes)
+            try system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: &bytes, using: manifest)
         }
 
         back.sysRef.address.shouldEqual(sysRef.address)
@@ -317,17 +308,17 @@ private class Mid: Top, Hashable {
     }
 }
 
-private struct HasStringRef: Codable, Equatable {
+private struct HasStringRef: ActorMessage, Equatable {
     let containedRef: ActorRef<String>
 }
 
-private struct HasIntRef: Codable, Equatable {
+private struct HasIntRef: ActorMessage, Equatable {
     let containedRef: ActorRef<Int>
 }
 
-private struct InterestingMessage: Codable, Equatable {}
+private struct InterestingMessage: ActorMessage, Equatable {}
 
-private struct HasInterestingMessageRef: Codable, Equatable {
+private struct HasInterestingMessageRef: ActorMessage, Equatable {
     let containedInterestingRef: ActorRef<InterestingMessage>
 }
 

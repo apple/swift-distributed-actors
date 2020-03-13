@@ -138,9 +138,9 @@ struct AllInOneMachine: Actorable, CoffeeMachine, Diagnostics { // <5>
 }
 
 // end::compose_protocols_1[]
-public struct Tea {}
+public struct Tea: ActorMessage {}
 
-public struct Coffee {}
+public struct Coffee: ActorMessage {}
 
 class UsingAllInOneMachine {
     func run() throws {
@@ -226,5 +226,8 @@ public struct DontConformMessageToCodable: Actorable {
         text
     }
 }
+
+// can provide a conformance manually, rather than relying on the built in Codable generated one
+extension DontConformMessageToCodable.Message: NotTransportableActorMessage {}
 
 // end::disable_codable_gen[]

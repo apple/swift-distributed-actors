@@ -25,7 +25,7 @@ fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 ///
 /// Messages are serialized as `xpc_dictionary` using the `XPCMessageField` keys, and may be received
 /// by a service implemented in C using `libxpc` or `XPCActorable`.
-internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
+internal final class XPCServiceCellDelegate<Message: ActorMessage>: CellDelegate<Message> {
     /// XPC Connection to the service named `serviceName`
     private let peer: xpc_connection_t
 

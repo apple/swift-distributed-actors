@@ -38,11 +38,15 @@ struct ProtoCRDTEnvelope {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var boxed: ProtoCRDTEnvelope.Boxed {
-    get {return _storage._boxed}
-    set {_uniqueStorage()._boxed = newValue}
-  }
-
+  ///    enum Boxed {
+  ///        UNSPECIFIED = 0;
+  ///        /// Box as `AnyCvRDT` when deserializing
+  ///        ANY_CVRDT = 1;
+  ///        /// Box as `AnyDeltaCRDT` when deserializing
+  ///        ANY_DELTA_CRDT = 2;
+  ///    } // FIXME: will bocing still be needed
+  ///
+  ///    Boxed boxed = 1;
   var manifest: ProtoManifest {
     get {return _storage._manifest ?? ProtoManifest()}
     set {_uniqueStorage()._manifest = newValue}
@@ -59,60 +63,34 @@ struct ProtoCRDTEnvelope {
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum Boxed: SwiftProtobuf.Enum {
-    typealias RawValue = Int
-    case unspecified // = 0
+  init() {}
 
-    //// Box as `AnyCvRDT` when deserializing
-    case anyCvrdt // = 1
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
 
-    //// Box as `AnyDeltaCRDT` when deserializing
-    case anyDeltaCrdt // = 2
-    case UNRECOGNIZED(Int)
+struct ProtoCRDTReplicatorMessage {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
 
-    init() {
-      self = .unspecified
-    }
-
-    init?(rawValue: Int) {
-      switch rawValue {
-      case 0: self = .unspecified
-      case 1: self = .anyCvrdt
-      case 2: self = .anyDeltaCrdt
-      default: self = .UNRECOGNIZED(rawValue)
-      }
-    }
-
-    var rawValue: Int {
-      switch self {
-      case .unspecified: return 0
-      case .anyCvrdt: return 1
-      case .anyDeltaCrdt: return 2
-      case .UNRECOGNIZED(let i): return i
-      }
-    }
-
+  var remoteCommand: ProtoCRDTReplicatorRemoteCommand {
+    get {return _storage._remoteCommand ?? ProtoCRDTReplicatorRemoteCommand()}
+    set {_uniqueStorage()._remoteCommand = newValue}
   }
+  /// Returns true if `remoteCommand` has been explicitly set.
+  var hasRemoteCommand: Bool {return _storage._remoteCommand != nil}
+  /// Clears the value of `remoteCommand`. Subsequent reads from it will return its default value.
+  mutating func clearRemoteCommand() {_uniqueStorage()._remoteCommand = nil}
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-#if swift(>=4.2)
-
-extension ProtoCRDTEnvelope.Boxed: CaseIterable {
-  // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [ProtoCRDTEnvelope.Boxed] = [
-    .unspecified,
-    .anyCvrdt,
-    .anyDeltaCrdt,
-  ]
-}
-
-#endif  // swift(>=4.2)
-
-struct ProtoCRDTReplicatorMessage {
+/// ***** CRDT.Replicator.RemoteCommand *****
+struct ProtoCRDTReplicatorRemoteCommand {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -163,7 +141,7 @@ struct ProtoCRDTReplicatorMessage {
     case delete(ProtoCRDTDelete)
 
   #if !swift(>=4.1)
-    static func ==(lhs: ProtoCRDTReplicatorMessage.OneOf_Value, rhs: ProtoCRDTReplicatorMessage.OneOf_Value) -> Bool {
+    static func ==(lhs: ProtoCRDTReplicatorRemoteCommand.OneOf_Value, rhs: ProtoCRDTReplicatorRemoteCommand.OneOf_Value) -> Bool {
       switch (lhs, rhs) {
       case (.write(let l), .write(let r)): return l == r
       case (.writeDelta(let l), .writeDelta(let r)): return l == r
@@ -607,13 +585,11 @@ extension ProtoCRDTDeleteResult.TypeEnum: CaseIterable {
 extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "CRDTEnvelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "boxed"),
-    2: .same(proto: "manifest"),
-    3: .same(proto: "payload"),
+    1: .same(proto: "manifest"),
+    2: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
-    var _boxed: ProtoCRDTEnvelope.Boxed = .unspecified
     var _manifest: ProtoManifest? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
 
@@ -622,7 +598,6 @@ extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     private init() {}
 
     init(copying source: _StorageClass) {
-      _boxed = source._boxed
       _manifest = source._manifest
       _payload = source._payload
     }
@@ -640,9 +615,8 @@ extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularEnumField(value: &_storage._boxed)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._manifest)
-        case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._manifest)
+        case 2: try decoder.decodeSingularBytesField(value: &_storage._payload)
         default: break
         }
       }
@@ -651,14 +625,11 @@ extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if _storage._boxed != .unspecified {
-        try visitor.visitSingularEnumField(value: _storage._boxed, fieldNumber: 1)
-      }
       if let v = _storage._manifest {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if !_storage._payload.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
+        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 2)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -669,7 +640,6 @@ extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._boxed != rhs_storage._boxed {return false}
         if _storage._manifest != rhs_storage._manifest {return false}
         if _storage._payload != rhs_storage._payload {return false}
         return true
@@ -681,16 +651,69 @@ extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   }
 }
 
-extension ProtoCRDTEnvelope.Boxed: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "UNSPECIFIED"),
-    1: .same(proto: "ANY_CVRDT"),
-    2: .same(proto: "ANY_DELTA_CRDT"),
-  ]
-}
-
 extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "CRDTReplicatorMessage"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "remoteCommand"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _remoteCommand: ProtoCRDTReplicatorRemoteCommand? = nil
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _remoteCommand = source._remoteCommand
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._remoteCommand)
+        default: break
+        }
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._remoteCommand {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: ProtoCRDTReplicatorMessage, rhs: ProtoCRDTReplicatorMessage) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._remoteCommand != rhs_storage._remoteCommand {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoCRDTReplicatorRemoteCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "CRDTReplicatorRemoteCommand"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "write"),
     2: .same(proto: "writeDelta"),
@@ -699,7 +722,7 @@ extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._Mess
   ]
 
   fileprivate class _StorageClass {
-    var _value: ProtoCRDTReplicatorMessage.OneOf_Value?
+    var _value: ProtoCRDTReplicatorRemoteCommand.OneOf_Value?
 
     static let defaultInstance = _StorageClass()
 
@@ -777,7 +800,7 @@ extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._Mess
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoCRDTReplicatorMessage, rhs: ProtoCRDTReplicatorMessage) -> Bool {
+  static func ==(lhs: ProtoCRDTReplicatorRemoteCommand, rhs: ProtoCRDTReplicatorRemoteCommand) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0

@@ -43,14 +43,23 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 
         let outbound = OutboundSystemMessageRedelivery()
         let inbound = InboundSystemMessages()
+        let serializationPool = try! SerializationPool(settings: .default, serialization: system.serialization)
         if self.printLossyNetworkTestLogs {
-            self.handler = SystemMessageRedeliveryHandler(log: self.system.log, cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            self.handler = SystemMessageRedeliveryHandler(
+                log: self.system.log, cluster: self.system.deadLetters.adapted(),
+                serializationPool: serializationPool,
+                outbound: outbound, inbound: inbound
+            )
         } else {
-            self.handler = SystemMessageRedeliveryHandler(log: self.logCapture.loggerFactory(captureLabel: "/")("/"), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            self.handler = SystemMessageRedeliveryHandler(
+                log: self.logCapture.loggerFactory(captureLabel: "/")("/"), cluster: self.system.deadLetters.adapted(),
+                serializationPool: serializationPool,
+                outbound: outbound, inbound: inbound
+            )
         }
         /// reads go this way: vvv
         try! shouldNotThrow { try self.channel.pipeline.addHandler(self.writeRecorder).wait() }
-        try! shouldNotThrow { try self.channel.pipeline.addHandler(self.handler).wait() }
+        try! shouldNotThrow { try self.channel.pipeline.addHandler(self.handler!).wait() }
         try! shouldNotThrow { try self.channel.pipeline.addHandler(self.readRecorder).wait() }
         /// writes go this way: ^^^
         self.remoteControl = AssociationRemoteControl(channel: self.channel, remoteNode: .init(node: .init(systemName: "sys", host: "127.0.0.1", port: 8228), nid: .random()))
@@ -133,16 +142,8 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
         let partnerWriteRecorder = WriteRecorder()
 
         let settings = OutboundSystemMessageRedeliverySettings()
-        let outbound = OutboundSystemMessageRedelivery(settings: settings)
-        let inbound = InboundSystemMessages()
         let system = ActorSystem("                        OtherSystem") // formatting is such specific to align names in printout
         defer { system.shutdown().wait() }
-        let handler: SystemMessageRedeliveryHandler
-        if self.printLossyNetworkTestLogs {
-            handler = SystemMessageRedeliveryHandler(log: system.log, cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
-        } else {
-            handler = SystemMessageRedeliveryHandler(log: self.logCapture.loggerFactory(captureLabel: "mock")("mock"), cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
-        }
 
         var lossySettings = FaultyNetworkSimulationSettings(mode: .drop(probability: 0.25))
         lossySettings.label = "    (DROP)    :" // formatting is such specific to align names in printout
@@ -150,7 +151,7 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 
         try! shouldNotThrow { try partnerChannel.pipeline.addHandler(partnerWriteRecorder).wait() }
         try! shouldNotThrow { try partnerChannel.pipeline.addHandler(lossyNetwork).wait() }
-        try! shouldNotThrow { try partnerChannel.pipeline.addHandler(handler).wait() }
+        try! shouldNotThrow { try partnerChannel.pipeline.addHandler(self.handler!).wait() }
         try! shouldNotThrow { try partnerChannel.pipeline.addHandler(partnerReadRecorder).wait() }
 
         var lastDelivered: SystemMessageEnvelope.SequenceNr = 0

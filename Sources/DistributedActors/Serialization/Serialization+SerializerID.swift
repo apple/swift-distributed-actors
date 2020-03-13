@@ -41,12 +41,12 @@ extension Serialization {
 
         /// Based on guaranteed range of serializers (1-16) we always know if this was a serializer for codables or a specialized one.
         var isCodableSerializer: Bool {
-            0 < value && value <= CodableSerializerID.range.max() ?? 0
+            self.value > 0 && self.value <= CodableSerializerID.range.max() ?? 0
         }
     }
 
     public struct CodableSerializerID: ExpressibleByIntegerLiteral, Hashable, Comparable, CustomStringConvertible {
-        public static let range: ClosedRange<Int> = 1...16
+        public static let range: ClosedRange<Int> = 1 ... 16
 
         public typealias IntegerLiteralType = UInt32
 
@@ -88,6 +88,40 @@ extension Serialization.SerializerID {
     // reserved until 16
 }
 
+extension Optional where Wrapped == Serialization.CodableSerializerID {
+    public static let `default`: Serialization.CodableSerializerID? = nil
+}
+
+/*
+ 2020-03-13T16:20:26+0900 warning:
+ message/expected/type=DistributedActors.ReceptionistMessage
+ recipient=/system/receptionist
+ message/manifest=Serialization.Manifest(serializerID:1,
+ hint: DistributedActors.OperationLogClusterReceptionist.AckOps)
+
+ [sact://DistributedPhilosophers@localhost:1111][Refs.swift:252][thread:5661799]
+ Failed to deserialize/deliver message to /system/receptionist, error:
+ noSerializerRegisteredFor(manifest: Optional(Serialization.Manifest(
+ serializerID:1,
+ hint: DistributedActors.OperationLogClusterReceptionist.AckOps)),
+ hint: "Type: ReceptionistMessage,
+
+ known serializers: [
+ ObjectIdentifier(0x0000000109bbddd8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.SWIM.PingResponse>),
+ ObjectIdentifier(0x0000000109bd9318): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<SampleDiningPhilosophers.Philosopher.Message>),
+ ObjectIdentifier(0x0000000109bbcbf0): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<DistributedActors.OperationLogClusterReceptionist.PushOps>),
+ ObjectIdentifier(0x0000000109bbee28): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors._SystemMessage.NACK>),
+ ObjectIdentifier(0x0000000109bbede8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.SystemMessageEnvelope>),
+ ObjectIdentifier(0x0000000109bbee08): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors._SystemMessage.ACK>),
+ ObjectIdentifier(0x0000000109bbccf8): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<DistributedActors.OperationLogClusterReceptionist.AckOps>),
+ ObjectIdentifier(0x0000000109bbdcc8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.SWIM.Message>),
+ ObjectIdentifier(0x0000000109bb8ce8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.Cluster.Event>),
+ ObjectIdentifier(0x0000000109bd9190): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<SampleDiningPhilosophers.Fork.Message>),
+ ObjectIdentifier(0x0000000109bb9e70): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.ClusterShell.Message>),
+ ObjectIdentifier(0x00007fff96838c98): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<DistributedActors.ConvergentGossip<DistributedActors.Cluster.Gossip>.Message>),
+ ObjectIdentifier(0x0000000109bc80b8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors._SystemMessage>)]")
+ */
+
 extension Serialization.CodableSerializerID {
     public static let jsonCodable: Serialization.CodableSerializerID = 1
     // reserved for other codable = 2
@@ -103,6 +137,9 @@ extension Serialization {
         /// Range of serialization IDs reserved for the actor system's internal messages.
         public static let range: Range<SerializerID.IntegerLiteralType> =
             SerializerID.IntegerLiteralType(0) ..< SerializerID.IntegerLiteralType(1000)
+
+        // TODO: The IDs we'll need to actually become manifests perhaps?
+        // TODO: or rather, those IDs should say "json / proto" rather than be type specific
 
         // TODO: readjust the numbers we use
         internal static let SystemMessage: SerializerID = 17
@@ -137,10 +174,6 @@ extension Serialization {
         internal static let ConvergentGossipMembership: SerializerID = 30
 
         // op log receptionist
-//        internal static let FullStateRequest: SerializerID = 6
-//        internal static let Replicate: SerializerID = 7
-//        internal static let FullState: SerializerID = 8
-
         internal static let PushOps: SerializerID = 31
         internal static let AckOps: SerializerID = 32
     }

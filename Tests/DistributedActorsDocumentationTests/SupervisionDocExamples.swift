@@ -130,34 +130,36 @@ class SupervisionDocExamples {
 
     func supervise_specific_error_else_stop() throws {
         // tag::supervise_specific_error_else_stop[]
-        struct CatchThisError: Error {}
-        struct NotIntendedToBeCaught: Error {}
 
-        /// "Re-throws" whichever error was sent to it.
-        let throwerBehavior: Behavior<Error> = .setup { context in
-            context.log.info("Starting...")
-
-            return .receiveMessage { error in
-                context.log.info("Throwing: \(error)")
-                throw error // "re-throw", yet inside the actor // <1>
-            }
-        }
-
-        let thrower = try system.spawn(
-            "thrower",
-            props: Props()
-                .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self), // <2>
-            // .supervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
-            throwerBehavior
-        )
-        // Logs: [info] Starting...
-
-        thrower.tell(CatchThisError()) // will crash and restart
-        // Logs: [info] Starting...
-        thrower.tell(CatchThisError()) // again
-        // Logs: [info] Starting...
-        thrower.tell(NotIntendedToBeCaught()) // crashes the actor for good
-        // further messages sent to it will end up in `system.deadLetters`
+//        // FIXME: can't easily express this now with codable
+//        struct CatchThisError: Error {}
+//        struct NotIntendedToBeCaught: Error {}
+//
+//        /// "Re-throws" whichever error was sent to it.
+//        let throwerBehavior: Behavior<Error> = .setup { context in
+//            context.log.info("Starting...")
+//
+//            return .receiveMessage { error in
+//                context.log.info("Throwing: \(error)")
+//                throw error // "re-throw", yet inside the actor // <1>
+//            }
+//        }
+//
+//        let thrower = try system.spawn(
+//            "thrower",
+//            props: Props()
+//                .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self), // <2>
+//            // .supervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
+//            throwerBehavior
+//        )
+//        // Logs: [info] Starting...
+//
+//        thrower.tell(CatchThisError()) // will crash and restart
+//        // Logs: [info] Starting...
+//        thrower.tell(CatchThisError()) // again
+//        // Logs: [info] Starting...
+//        thrower.tell(NotIntendedToBeCaught()) // crashes the actor for good
+//        // further messages sent to it will end up in `system.deadLetters`
 
         // end::supervise_specific_error_else_stop[]
     }

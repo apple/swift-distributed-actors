@@ -25,7 +25,7 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated SkipCodableActorable messages
 extension SkipCodableActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case echo(text: String, _replyTo: ActorRef<String>) 
     }
     

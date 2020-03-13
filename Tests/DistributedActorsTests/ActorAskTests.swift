@@ -19,9 +19,25 @@ import Foundation
 import XCTest
 
 final class ActorAskTests: ActorSystemTestBase {
-    struct TestMessage {
+    struct TestMessage: ActorMessage {
         let replyTo: ActorRef<String>
     }
+
+    func test_ask_forSimpleType() throws {
+        let behavior: Behavior<TestMessage> = .receiveMessage {
+            $0.replyTo.tell("received")
+            return .stop
+        }
+
+        let ref = try system.spawn(.anonymous, behavior)
+
+        let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
+
+        let result = try response.nioFuture.wait()
+
+        result.shouldEqual("received")
+    }
+
 
     func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() throws {
         let behavior: Behavior<TestMessage> = .receiveMessage {
@@ -72,7 +88,7 @@ final class ActorAskTests: ActorSystemTestBase {
         result.shouldEqual("received:1")
     }
 
-    struct AnswerMePlease {
+    struct AnswerMePlease: ActorMessage {
         let replyTo: ActorRef<String>
     }
 

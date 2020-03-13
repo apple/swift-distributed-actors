@@ -55,35 +55,48 @@ public final class ActorSystem {
     public let settings: ActorSystemSettings
 
     // initialized during startup
+    private let lazyInitializationLock: ReadWriteLock
+
     // TODO: Use "set once" atomic structure
-    public var serialization: Serialization!
+    internal var _serialization: Serialization?
+
+    public var serialization: Serialization {
+        self.lazyInitializationLock.withReaderLock {
+            if let s = self._serialization {
+                return s
+            } else {
+                return fatalErrorBacktrace("Serialization is not initialized! This is likely a bug, as it is initialized synchronously during system startup.")
+            }
+        }
+    }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Receptionist
 
+    // TODO: Use "set once" atomic structure
+    private var _receptionist: ActorRef<Receptionist.Message>!
     public var receptionist: ActorRef<Receptionist.Message> {
         return self._receptionist
     }
 
-    private var _receptionist: ActorRef<Receptionist.Message>!
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: CRDT Replicator
 
+    // TODO: Use "set once" atomic structure
+    private var _replicator: ActorRef<CRDT.Replicator.Message>!
     internal var replicator: ActorRef<CRDT.Replicator.Message> {
         return self._replicator
     }
 
-    private var _replicator: ActorRef<CRDT.Replicator.Message>!
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
 
+    // TODO: Use "set once" atomic structure
+    private lazy var _metrics: ActorSystemMetrics = ActorSystemMetrics(self.settings.metrics)
     internal var metrics: ActorSystemMetrics {
         return self._metrics
     }
-
-    private lazy var _metrics: ActorSystemMetrics = ActorSystemMetrics(self.settings.metrics)
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
@@ -173,6 +186,17 @@ public final class ActorSystem {
         self._root = TheOneWhoHasNoParent()
         let theOne = self._root
 
+
+        let serializationLock = ReadWriteLock()
+        self.lazyInitializationLock = serializationLock
+
+        // serialization
+        serializationLock.withWriterLockVoid {
+            self._serialization = Serialization(settings: settings, system: self)
+        }
+
+        // vvv all properties initialized, self can be shared vvv
+
         // dead letters init
         let overrideLogger: Logger? = settings.logging.overrideLoggerFactory.map { f in f("\(ActorPath._deadLetters)") }
         var deadLogger = overrideLogger ?? Logger(label: "\(ActorPath._deadLetters)", factory: {
@@ -209,20 +233,13 @@ public final class ActorSystem {
         self.systemProvider = effectiveSystemProvider
         self.userProvider = effectiveUserProvider
 
-        // serialization
-        self.serialization = Serialization(settings: settings, system: self)
-
         // receptionist
-        let receptionistBehavior: Behavior<Receptionist.Message> = self.settings.cluster.enabled ?
-            self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist) :
-            LocalReceptionist.behavior
+        let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionist = lazyReceptionist.ref
 
-//        // FIXME: RE ENABLE REPLICATOR !!!!!
-//        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, props: ._wellKnown)
-//        self._replicator = lazyReplicator.ref
-//        // TODO: remember to uncomment the lazyReplicator.wakeUp()
+        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, props: ._wellKnown)
+        self._replicator = lazyReplicator.ref
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
@@ -259,7 +276,7 @@ public final class ActorSystem {
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
-        // lazyReplicator.wakeUp() // FIXME
+         lazyReplicator.wakeUp()
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
@@ -338,7 +355,10 @@ public final class ActorSystem {
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
-        self.serialization = nil
+        // removing it poses a risk, there may be ongoing work still invoking serialization
+//        self.serializationLock.withWriterLockVoid {
+//            self._serialization = nil
+//        }
         self._cluster = nil
 
         self.settings.plugins.stopAll(self)
@@ -403,20 +423,31 @@ public protocol ActorRefFactory {
     /// A name can be sequentially (or otherwise) assigned based on the owning naming context (i.e. `ActorContext` or `ActorSystem`).
     ///
     /// - Returns: `ActorRef` for the spawned actor.
-    func spawn<Message>(_ naming: ActorNaming, of type: Message.Type, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
-
-    func spawn<Message: Codable>(_ naming: ActorNaming, of type: Message.Type, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
+    func spawn<Message>(
+        _ naming: ActorNaming, of type: Message.Type, props: Props,
+        file: String, line: UInt,
+        _ behavior: Behavior<Message>
+    ) throws -> ActorRef<Message>
+        where Message: ActorMessage
 }
 
-extension ActorRefFactory {
-    func spawn<Message>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        try self.spawn(naming, of: Message.self, props: props, behavior)
-    }
-
-    func spawn<Message: Codable>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        try self.spawn(naming, of: Message.self, props: props, behavior)
-    }
-}
+//extension ActorRefFactory {
+//    func spawn<Message>(
+//        _ naming: ActorNaming, props: Props,
+//        file: String = #file, line: UInt = #line,
+//        _ behavior: Behavior<Message>
+//    ) throws -> ActorRef<Message> {
+//        try self.spawn(naming, of: Message.self, props: props, file: file, line: line, behavior)
+//    }
+//
+//    func spawn<Message: Codable>(
+//        _ naming: ActorNaming, props: Props,
+//        file: String = #file, line: UInt = #line,
+//        _ behavior: Behavior<Message>
+//    ) throws -> ActorRef<Message> {
+//        try self.spawn(naming, of: Message.self, props: props, file: file, line: line, behavior)
+//    }
+//}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
@@ -426,13 +457,13 @@ extension ActorSystem: ActorRefFactory {
     ///
     /// - throws: when the passed behavior is not a legal initial behavior
     /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
-    public func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        try self.serialization._ensureSerializer(type) // FIXME: do we need to ensure when it is not Codable?
-        return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
-    }
-
-    public func spawn<Message: Codable>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        try self.serialization._ensureCodableSerializer(type)
+    public func spawn<Message>(
+        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<Message>
+    ) throws -> ActorRef<Message>
+    where Message: ActorMessage {
+        try self.serialization._ensureSerializer(type, file: file, line: line) // FIXME: do we need to ensure when it is not Codable?
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
 
@@ -440,16 +471,14 @@ extension ActorSystem: ActorRefFactory {
     ///
     /// Implementation note:
     /// `wellKnown` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
-    /// to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.wellKnown`. This
-    /// also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
-    /// should be configured for these types of actors.
-    public func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-//        try self.serialization._ensureSerializer(Message.self)
-        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
-    }
-
-    public func _spawnSystemActor<Message: Codable>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        try self.serialization._ensureCodableSerializer(Message.self)
+    /// to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.wellKnown`.
+    /// This also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system.
+    /// Appropriate supervision strategies should be configured for these types of actors.
+    public func _spawnSystemActor<Message>(
+        _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
+    ) throws -> ActorRef<Message>
+        where Message: ActorMessage {
+        try self.serialization._ensureSerializer(Message.self)
         return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
     }
 
@@ -463,20 +492,21 @@ extension ActorSystem: ActorRefFactory {
     /// Otherwise this function behaves the same as `_spawnSystemActor`.
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
-    internal func _prepareSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> LazyStart<Message> {
-        // try self.serialization._ensureSerializer(Message.self)
-        let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
-        return LazyStart(ref: ref)
-    }
-
-    internal func _prepareSystemActor<Message: Codable>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> LazyStart<Message> {
-        try self.serialization._ensureCodableSerializer(Message.self)
+    internal func _prepareSystemActor<Message>(
+        _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
+    ) throws -> LazyStart<Message>
+        where Message: ActorMessage {
+        // try self._serialization._ensureSerializer(Message.self)
         let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
         return LazyStart(ref: ref)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
-    internal func _spawn<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), startImmediately: Bool = true) throws -> ActorRef<Message> {
+    internal func _spawn<Message>(
+        using provider: _ActorRefProvider,
+        _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
+        startImmediately: Bool = true) throws -> ActorRef<Message>
+        where Message: ActorMessage {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
@@ -573,36 +603,15 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
     /// :nodoc: INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: Codable>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        if let serialization = context.system.serialization {
+    public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> ActorRef<Message> {
+//        if let serialization = context.system._serialization {
             do {
-//                pprint("_resolve + ensure codable: = \(String(reflecting: Message.self))")
-                try serialization._ensureCodableSerializer(Message.self)
+                try context.system.serialization._ensureSerializer(Message.self)
             } catch {
-                context.system.log.warning("_resolve(\(context.address)) failed: \(error)")
                 return context.personalDeadLetters
             }
-        }
+//        }
 
-        return self.__resolve(context: context)
-    }
-
-    /// :nodoc: INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        if let serialization = context.system.serialization {
-            do {
-//                pprint("_resolve + ensure: = \(String(reflecting: Message.self))")
-                try serialization._ensureSerializer(Message.self)
-            } catch {
-                context.system.log.warning("_resolve(\(context.address)) failed: \(error)")
-                return context.personalDeadLetters
-            }
-        }
-
-        return self.__resolve(context: context)
-    }
-
-    private func __resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
         }
@@ -625,7 +634,7 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable()
         }
@@ -660,7 +669,7 @@ public enum ActorSystemError: Error {
 /// **CAUTION** Not calling `wakeUp` will prevent the actor from ever running
 /// and can cause leaks. Also `wakeUp` MUST NOT be called more than once,
 /// as that would violate the single-threaded execution guaranteed of actors.
-internal struct LazyStart<Message> {
+internal struct LazyStart<Message: ActorMessage> {
     let ref: ActorRef<Message>
 
     init(ref: ActorRef<Message>) {

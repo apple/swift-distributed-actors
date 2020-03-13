@@ -23,7 +23,7 @@ import class NIO.EventLoopFuture
 // MARK: DO NOT EDIT: Generated Parking messages 
 
 extension GeneratedActor.Messages {
-    public enum Parking { 
+    public enum Parking: ActorMessage { 
         case park  
     }
 }

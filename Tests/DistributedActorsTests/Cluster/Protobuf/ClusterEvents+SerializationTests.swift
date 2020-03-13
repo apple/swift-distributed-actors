@@ -19,7 +19,7 @@ import NIO
 import XCTest
 
 final class ClusterEventsSerializationTests: ActorSystemTestBase {
-    lazy var context: ActorSerializationContext! = ActorSerializationContext(
+    lazy var context: Serialization.Context! = Serialization.Context(
         log: system.log,
         system: system,
         allocator: system.settings.serialization.allocator

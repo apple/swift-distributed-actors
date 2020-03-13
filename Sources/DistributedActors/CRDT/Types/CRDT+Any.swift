@@ -14,7 +14,7 @@
 
 /// Protocol adopted by any CRDT type, including their delta types
 internal protocol AnyStateBasedCRDT {
-    var metaType: AnyMetaType { get }
+    var metaType: AnyMetaType { get } // TODO: maybe not needed anymore?
     var underlying: StateBasedCRDT { get set }
     var _merge: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT { get }
 }

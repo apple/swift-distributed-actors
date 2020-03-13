@@ -19,7 +19,7 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message>: ActorRefFactory {
+public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
         return undefined()
@@ -180,7 +180,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// #### Concurrency:
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
-    public func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+    public func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M>
+    where M: ActorMessage {
         return undefined()
     }
 
@@ -203,7 +204,8 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     @discardableResult
-    public func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+    public func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M>
+        where M: ActorMessage {
         return undefined()
     }
 
@@ -214,7 +216,12 @@ public class ActorContext<Message>: ActorRefFactory {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 
-    public func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    public func spawn<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         return undefined()
     }
 
@@ -224,10 +231,15 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// - SeeAlso: `spawn`
     /// - SeeAlso: `watch`
-    public func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    public func spawnWatch<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         return undefined()
     }
-
+    
     /// Container of spawned child actors.
     ///
     /// Allows obtaining references to previously spawned actors by their name.
@@ -252,7 +264,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
-    public func stop<M>(child ref: ActorRef<M>) throws {
+    public func stop<M>(child ref: ActorRef<M>) throws where M: ActorMessage {
         return undefined()
     }
 
@@ -409,7 +421,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
-    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From> 
+    where From: ActorMessage {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
@@ -424,7 +437,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
-    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
+    where From: ActorMessage {
         return undefined()
     }
 
@@ -438,7 +452,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
+    where SubMessage: ActorMessage {
         return undefined()
     }
 

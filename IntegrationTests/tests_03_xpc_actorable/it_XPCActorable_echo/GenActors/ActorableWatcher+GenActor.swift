@@ -27,7 +27,7 @@ import it_XPCActorable_echo_api
 /// DO NOT EDIT: Generated ActorableWatcher messages
 extension ActorableWatcher {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case noop 
     }
     

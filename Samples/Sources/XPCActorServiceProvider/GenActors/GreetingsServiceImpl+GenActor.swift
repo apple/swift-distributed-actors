@@ -14,7 +14,7 @@ import XPCActorServiceAPI
 /// DO NOT EDIT: Generated GreetingsServiceImpl messages
 extension GreetingsServiceImpl {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case greetingsService(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsService) 
     }
     

@@ -18,7 +18,7 @@
 extension ReplicaId: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionReplicaId
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionReplicaId {
+    public func toProto(context: Serialization.Context) throws -> ProtoVersionReplicaId {
         var proto = ProtoVersionReplicaId()
         switch self {
         case .actorAddress(let actorAddress):
@@ -29,7 +29,7 @@ extension ReplicaId: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionReplicaId, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoVersionReplicaId, context: Serialization.Context) throws {
         guard let value = proto.value else {
             throw SerializationError.missingField("value", type: String(describing: ReplicaId.self))
         }
@@ -51,7 +51,7 @@ extension ReplicaId: ProtobufRepresentable {
 extension VersionVector: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionVector
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionVector {
+    public func toProto(context: Serialization.Context) throws -> ProtoVersionVector {
         var proto = ProtoVersionVector()
 
         let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaId, version in
@@ -65,7 +65,7 @@ extension VersionVector: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionVector, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoVersionVector, context: Serialization.Context) throws {
         // `state` defaults to [:]
         self.state.reserveCapacity(proto.state.count)
 
@@ -85,14 +85,14 @@ extension VersionVector: ProtobufRepresentable {
 extension VersionDot: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionDot
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionDot {
+    public func toProto(context: Serialization.Context) throws -> ProtoVersionDot {
         var proto = ProtoVersionDot()
         proto.replicaID = try self.replicaId.toProto(context: context)
         proto.version = UInt64(self.version)
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionDot, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoVersionDot, context: Serialization.Context) throws {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: VersionDot.self))
         }

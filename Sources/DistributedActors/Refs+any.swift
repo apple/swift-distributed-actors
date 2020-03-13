@@ -106,8 +106,8 @@ extension AddressableActorRef: _ReceivesSystemMessages {
         return self.ref._deserializeDeliver(messageBytes, using: manifest, on: pool, file: file, line: line)
     }
 
-    public func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
-        self.ref._unsafeGetRemotePersonality()
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
+        self.ref._unsafeGetRemotePersonality(M.self)
     }
 }
 

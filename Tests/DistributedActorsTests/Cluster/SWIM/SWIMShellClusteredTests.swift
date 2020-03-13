@@ -861,7 +861,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: utility functions
 
-    struct ForwardedSWIMMessage {
+    struct ForwardedSWIMMessage: ActorMessage {
         let message: SWIM.Message
         let recipient: ActorRef<SWIM.Message>
     }

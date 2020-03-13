@@ -12,7 +12,7 @@ import NIO
 // MARK: DO NOT EDIT: Generated GreetingsService messages 
 
 extension GeneratedActor.Messages {
-    public enum GreetingsService { 
+    public enum GreetingsService: ActorMessage { 
         case logGreeting(name: String) 
         case greet(name: String, _replyTo: ActorRef<Result<String, Error>>) 
         case fatalCrash 

@@ -41,8 +41,8 @@ final class SWIMSerializationTests: ActorSystemTestBase {
     }
 
     func shared_serializationRoundtrip<T: InternalProtobufRepresentable>(_ obj: T) throws {
-        let bytes = try system.serialization.serialize(obj)
-        let deserialized = try system.serialization.deserialize(as: T.self, from: bytes)
+        var (manifest, bytes) = try system.serialization.serialize(obj)
+        let deserialized = try system.serialization.deserialize(as: T.self, from: &bytes, using: manifest)
         "\(obj)".shouldEqual("\(deserialized)")
     }
 }

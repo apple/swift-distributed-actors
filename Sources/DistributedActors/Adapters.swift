@@ -38,7 +38,7 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class ActorRefAdapter<To>: AbstractAdapter {
+internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     private let target: ActorRef<To>
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
@@ -60,8 +60,8 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
         self.deadLetters = self.target._deadLetters
     }
 
-    private var myself: ActorRef<Any> {
-        return ActorRef(.adapter(self))
+    private var myself: ActorRef<Never> {
+        ActorRef(.adapter(self))
     }
 
     var system: ActorSystem? {
@@ -172,7 +172,7 @@ extension ActorRefAdapter {
         return .init(.adapter(self))
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable()
         }
@@ -224,7 +224,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
         self.deadLetters.adapted()
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         self.deadLetters.asAddressable()
     }
 }
@@ -232,7 +232,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SubReceiveAdapter
 
-internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
+internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: ActorMessage>: AbstractAdapter {
     private let target: ActorRef<OwnerMessage>
     private let identifier: AnySubReceiveId
     private let adapterAddress: ActorAddress
@@ -388,7 +388,7 @@ extension SubReceiveAdapter {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable()
         }

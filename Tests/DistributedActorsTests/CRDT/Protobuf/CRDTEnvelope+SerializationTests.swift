@@ -26,10 +26,10 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
             g1.delta.shouldNotBeNil()
 
             let g1AsAny = g1.asAnyDeltaCRDT
-            let envelope = CRDTEnvelope(manifest: Serialization.Id.InternalSerializer.CRDTGCounter, g1AsAny)
+            let envelope = CRDTEnvelope(manifest: .init(serializerID: Serialization.ReservedID.CRDTGCounter, hint: _typeName(CRDT.GCounter.self)), g1AsAny) // FIXME: real manifest
 
-            let bytes = try system.serialization.serialize(envelope)
-            let deserialized = try system.serialization.deserialize(as: CRDTEnvelope.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(envelope)
+            let deserialized = try system.serialization.deserialize(as: CRDTEnvelope.self, from: &bytes, using: manifest)
 
             guard case .DeltaCRDT(let data) = deserialized._boxed else {
                 throw self.testKit.fail("CRDTEnvelope._boxed should be .DeltaCRDT for AnyDeltaCRDT")
@@ -52,10 +52,10 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
             g1.delta.shouldNotBeNil()
 
             let g1DeltaAsAny = g1.delta!.asAnyCvRDT
-            let envelope = CRDTEnvelope(manifest: Serialization.Id.InternalSerializer.CRDTGCounterDelta, g1DeltaAsAny)
+            let envelope = CRDTEnvelope(manifest: .init(serializerID: Serialization.ReservedID.CRDTGCounterDelta, hint: _typeName(CRDT.GCounterDelta.self)), g1DeltaAsAny)
 
-            let bytes = try system.serialization.serialize(envelope)
-            let deserialized = try system.serialization.deserialize(as: CRDTEnvelope.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(envelope)
+            let deserialized = try system.serialization.deserialize(as: CRDTEnvelope.self, from: &bytes, using: manifest)
 
             guard case .CvRDT(let data) = deserialized._boxed else {
                 throw self.testKit.fail("CRDTEnvelope._boxed should be .CvRDT for AnyCvRDT")

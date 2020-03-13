@@ -384,7 +384,7 @@ internal enum ProcessingType {
 }
 
 @usableFromInline
-internal enum ProcessingAction<Message> {
+internal enum ProcessingAction<Message: ActorMessage> {
     case start
     case message(Message)
     case signal(Signal)
@@ -411,7 +411,7 @@ extension ProcessingAction {
 ///
 /// Currently not for user extension.
 @usableFromInline
-internal class Supervisor<Message> {
+internal class Supervisor<Message: ActorMessage> {
     @usableFromInline
     typealias Directive = SupervisionDirective<Message>
 
@@ -578,7 +578,7 @@ internal class Supervisor<Message> {
 /// Supervisor equivalent to not having supervision enabled, since stopping is the default behavior of failing actors.
 /// At the same time, it may be useful to sometimes explicitly specify that for some type of error we want to stop
 /// (e.g. when used with composite supervisors, which restart for all failures, yet should not do so for some specific type of error).
-final class StoppingSupervisor<Message>: Supervisor<Message> {
+final class StoppingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal init(failureType: Error.Type) {
@@ -612,7 +612,7 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
 }
 
 /// Escalates failure to parent, while failing the current actor.
-final class EscalatingSupervisor<Message>: Supervisor<Message> {
+final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal init(failureType: Error.Type) {
@@ -649,7 +649,7 @@ final class EscalatingSupervisor<Message>: Supervisor<Message> {
 //
 // The scan also makes implementing the "catch" all types `Supervision.AllFailures` etc simpler rather than having to search
 // the underlying map for the catch all handlers as well as the specific error.
-final class CompositeSupervisor<Message>: Supervisor<Message> {
+final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
     private let supervisors: [Supervisor<Message>]
 
     init(supervisors: [Supervisor<Message>]) {
@@ -678,7 +678,7 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
 ///
 /// - SeeAlso: `Supervisor.handleFailure`
 @usableFromInline
-internal enum SupervisionDirective<Message> {
+internal enum SupervisionDirective<Message: ActorMessage> {
     /// Directs mailbox to directly stop processing.
     case stop
     /// Directs mailbox to prepare AND complete a restart immediately.
@@ -774,7 +774,7 @@ internal struct RestartDecisionLogic {
     }
 }
 
-final class RestartingSupervisor<Message>: Supervisor<Message> {
+final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal let initialBehavior: Behavior<Message>
@@ -837,7 +837,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
 /// Behavior used to suspend after a `restartPrepare` has been issued by an `restartDelayed`.
 @usableFromInline
-internal enum SupervisionRestartDelayedBehavior<Message> {
+internal enum SupervisionRestartDelayedBehavior<Message: ActorMessage> {
     @usableFromInline
     internal struct WakeUp {}
 

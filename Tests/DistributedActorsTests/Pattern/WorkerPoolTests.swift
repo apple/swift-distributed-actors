@@ -175,7 +175,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         try pB.expectMessage("work:BBB at \(workerB.path.name)")
     }
 
-    struct WorkerPoolQuestion {
+    struct WorkerPoolQuestion: ActorMessage {
         let id: String
         let replyTo: ActorRef<String>
     }

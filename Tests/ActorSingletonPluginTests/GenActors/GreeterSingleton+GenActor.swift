@@ -27,7 +27,7 @@ import XCTest
 /// DO NOT EDIT: Generated GreeterSingleton messages
 extension GreeterSingleton {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case greet(name: String, _replyTo: ActorRef<String>) 
     }
     

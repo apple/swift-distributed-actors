@@ -24,7 +24,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated TestActorableNamespace.TestActorableNamespaceDirectly messages
 extension TestActorableNamespace.TestActorableNamespaceDirectly {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case echo(String, _replyTo: ActorRef<String>) 
     }
     

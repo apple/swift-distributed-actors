@@ -45,7 +45,7 @@ extension Rendering {
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
 
-                {{messageAccess}} enum Message { {% for case in funcCases %}
+                {{messageAccess}} enum Message: ActorMessage { {% for case in funcCases %}
                     {{case}} {% endfor %}
                 }
                 {%for tell in boxFuncs %}
@@ -62,7 +62,7 @@ extension Rendering {
             // MARK: DO NOT EDIT: Generated {{baseName}} messages 
 
             extension GeneratedActor.Messages {
-                {{messageAccess}} enum {{baseName}} { {% for case in funcCases %}
+                {{messageAccess}} enum {{baseName}}: ActorMessage { {% for case in funcCases %}
                     {{case}} {% endfor %} 
                 }
             }

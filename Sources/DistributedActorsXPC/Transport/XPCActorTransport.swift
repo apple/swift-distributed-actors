@@ -75,13 +75,13 @@ public final class XPCActorTransport: ActorTransport {
         }
     }
 
-    public override func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
+    public override func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef? {
         guard context.address.starts(with: ._xpc) else {
             return nil
         }
 
         do {
-            return try ActorRef<Any>(
+            return try ActorRef<Never>(
                 .delegate(XPCServiceCellDelegate(system: context.system, address: context.address))
             ).asAddressable()
         } catch {
@@ -103,7 +103,7 @@ public final class XPCActorTransport: ActorTransport {
     /// Obtain `DispatchQueue` to be used to drive the xpc connection with this service.
     internal func makeServiceQueue(serviceName: String) -> DispatchQueue {
         // similar to NSXPCConnection
-        DispatchQueue(label: "com.apple.sakkana.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
+        DispatchQueue(label: "com.apple.actors.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
     }
 }
 
@@ -189,7 +189,7 @@ final class XPCMaster {
 
     // private var serviceTombstones: [xpc_connection_t] = [] // TODO: Think if we need tombstones, or can rely on XPC doing the right thing
 
-    enum Message {
+    enum Message: NotTransportableActorMessage {
         case xpcRegisterService(xpc_connection_t, AddressableActorRef)
         case xpcConnectionInvalidated(AddressableActorRef)
         case xpcConnectionInterrupted(AddressableActorRef)

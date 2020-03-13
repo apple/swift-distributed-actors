@@ -71,7 +71,7 @@ private let ringStop = Atomic<UInt64>(value: 0)
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-private struct Token {
+private struct Token: ActorMessage {
     let payload: Int
 
     init(_ payload: Int) {

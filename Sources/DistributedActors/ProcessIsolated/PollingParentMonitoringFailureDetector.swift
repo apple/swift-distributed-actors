@@ -17,7 +17,7 @@
 #else
 internal final class PollingParentMonitoringFailureDetector {
     public static let name: ActorNaming = "processFailureDetector"
-    public enum Message {
+    public enum Message: NotTransportableActorMessage {
         case checkOnParent
     }
 

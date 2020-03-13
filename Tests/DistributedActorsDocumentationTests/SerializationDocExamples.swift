@@ -19,7 +19,7 @@ import NIO
 // MARK: Serialization example - Codable messages
 
 // tag::serialization_codable_messages[]
-enum ParkingSpotStatus: String, Codable {
+enum ParkingSpotStatus: String, ActorMessage {
     case available
     case taken
 }
@@ -30,7 +30,7 @@ enum ParkingSpotStatus: String, Codable {
 // MARK: Serialization example - protobuf messages
 
 // tag::serialization_protobuf_messages[]
-enum ParkingGarageStatus {
+enum ParkingGarageStatus: ProtobufRepresentable {
     case available
     case full
 }
@@ -38,10 +38,10 @@ enum ParkingGarageStatus {
 // end::serialization_protobuf_messages[]
 
 // tag::serialization_protobuf_representable[]
-extension ParkingGarageStatus: ProtobufRepresentable {
+extension ParkingGarageStatus {
     typealias ProtobufRepresentation = ProtoParkingGarageStatus
 
-    func toProto(context: ActorSerializationContext) throws -> ProtoParkingGarageStatus {
+    func toProto(context: Serialization.Context) throws -> ProtoParkingGarageStatus {
         var proto = ProtoParkingGarageStatus()
         switch self {
         case .available:
@@ -52,7 +52,7 @@ extension ParkingGarageStatus: ProtobufRepresentable {
         return proto
     }
 
-    init(fromProto proto: ProtoParkingGarageStatus, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoParkingGarageStatus, context: Serialization.Context) throws {
         switch proto.type {
         case .available:
             self = .available
@@ -138,14 +138,14 @@ class SerializationDocExamples {
     // MARK: Serialized custom messages
 
     func prepare_system_custom() throws {
-        // tag::prepare_system_custom[]
-        let system = ActorSystem("CustomSerializerExample") { settings in
-            settings.serialization.registerSerializer(CustomlyEncodedMessage.self, id: 1001) { allocator in
-                CustomlyEncodedSerializer(allocator)
-            }
-        }
-        // end::prepare_system_custom[]
-        _ = system // silence not-used warnings
+//        // tag::prepare_system_custom[]
+//        let system = ActorSystem("CustomSerializerExample") { settings in
+//            settings.serialization.registerSerializer(CustomlyEncodedMessage.self, id: 1001) { allocator in
+//                CustomlyEncodedSerializer(allocator)
+//            }
+//        }
+//        // end::prepare_system_custom[]
+//        _ = system // silence not-used warnings
     }
 
     // tag::custom_serializer[]
@@ -202,13 +202,13 @@ class SerializationDocExamples {
 
     final class CustomContainingActorRefSerializer: Serializer<ContainsActorRef> {
         private let allocator: NIO.ByteBufferAllocator
-        private var context: ActorSerializationContext!
+        private var context: Serialization.Context!
 
         init(_ allocator: ByteBufferAllocator) {
             self.allocator = allocator
         }
 
-        override func setSerializationContext(_ context: ActorSerializationContext) {
+        override func setSerializationContext(_ context: Serialization.Context) {
             self.context = context // <1>
         }
 

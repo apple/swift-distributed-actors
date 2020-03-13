@@ -33,7 +33,7 @@ import Logging
 /// The term dead letters, or rather "dead letter office" originates from the postal system, where undeliverable
 /// mail would be called such, and shipped to one specific place to deal with these letters.
 /// See also [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
-public struct DeadLetter {
+public struct DeadLetter: NotTransportableActorMessage { // TODO: make it also remote
     let message: Any
     let recipient: ActorAddress?
 
@@ -56,7 +56,7 @@ public struct DeadLetter {
 
 extension ActorSystem {
     /// Dead letters reference dedicated to a specific address.
-    public func personalDeadLetters<Message>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
+    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.node == nil || recipient.node == self.settings.cluster.uniqueBindNode else {

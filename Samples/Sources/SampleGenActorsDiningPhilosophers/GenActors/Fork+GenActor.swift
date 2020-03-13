@@ -10,7 +10,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated Fork messages
 extension Fork {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case take(_replyTo: ActorRef<Bool>) 
         case putBack 
     }

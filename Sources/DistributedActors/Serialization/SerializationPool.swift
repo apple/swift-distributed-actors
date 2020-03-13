@@ -66,8 +66,8 @@ public final class SerializationPool {
     }
 
     @inlinable
-    internal func serialize<Message>(
-        message: Message,
+    internal func serialize(
+        message: Any,
         recipientPath: ActorPath,
         promise: EventLoopPromise<(Serialization.Manifest, ByteBuffer)>
     ) {
@@ -91,23 +91,21 @@ public final class SerializationPool {
 
     @inlinable
     internal func deserialize<Message>(
-        as type: Message.Type,
-        from bytes: ByteBuffer,
+        as messageType: Message.Type,
+        from _bytes: ByteBuffer,
         using manifest: Serialization.Manifest,
         recipientPath: ActorPath,
         promise: EventLoopPromise<Message>
     ) {
-        pprint("deserialize = \(bytes.getString(at: 0, length: bytes.readableBytes)) >>>> \(Message.self)")
-
-        // TODO: bytes to become inout?
         // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
             do {
-                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
-                self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: bytes.readableBytes)
+                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, _bytes.readableBytes)
+                self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: _bytes.readableBytes)
 
+                var bytes = _bytes
                 // do the work, this may be "heavy"
-                let deserialized = try self.serialization.deserialize(as: Message.self, from: bytes, using: manifest)
+                let deserialized = try self.serialization.deserialize(as: messageType, from: &bytes, using: manifest)
 
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: deserialized)
                 return deserialized
@@ -121,22 +119,21 @@ public final class SerializationPool {
     @inlinable
     internal func deserialize<Message>(
         as messageType: Message.Type,
-        from bytes: ByteBuffer,
+        from _bytes: ByteBuffer,
         using manifest: Serialization.Manifest,
         recipientPath: ActorPath,
         // The only reason we use a wrapper instead of raw function is that (...) -> () do not have identity,
         // and we use identity of the callback to interact with the instrumentation for start/stop correlation.
         callback: DeserializationCallback<Message>
     ) {
-        pprint("deserialize = \(bytes.getString(at: 0, length: bytes.readableBytes)) >>>> \(messageType)")
-
         self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
             do {
+                var bytes = _bytes
                 self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
                 self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: bytes.readableBytes)
 
                 // do the work, this may be "heavy"
-                let deserialized = try self.serialization.deserialize(as: messageType, from: bytes, using: manifest)
+                let deserialized = try self.serialization.deserialize(as: messageType, from: &bytes, using: manifest)
 
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
                 return deserialized

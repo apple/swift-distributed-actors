@@ -296,13 +296,13 @@ extension ActorTestKit {
 public extension ActorTestKit {
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
+    func makeFakeContext<M: ActorMessage>(forType: M.Type = M.self) -> ActorContext<M> {
         return MockActorContext(self.system)
     }
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M>(for: Behavior<M>) -> ActorContext<M> {
+    func makeFakeContext<M: ActorMessage>(for: Behavior<M>) -> ActorContext<M> {
         return self.makeFakeContext(forType: M.self)
     }
 }
@@ -316,7 +316,7 @@ struct MockActorContextError: Error, CustomStringConvertible {
     }
 }
 
-final class MockActorContext<Message>: ActorContext<Message> {
+final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
     private let _system: ActorSystem
 
     init(_ system: ActorSystem) {
@@ -365,11 +365,21 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    override func spawn<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    override func spawnWatch<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         fatalError("Failed: \(MockActorContextError())")
     }
 

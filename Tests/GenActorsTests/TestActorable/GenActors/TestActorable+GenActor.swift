@@ -25,7 +25,7 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated TestActorable messages
 extension TestActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case ping 
         case greet(name: String) 
         case greetUnderscoreParam(String) 

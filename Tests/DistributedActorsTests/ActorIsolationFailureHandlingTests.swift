@@ -22,12 +22,12 @@ final class ActorIsolationFailureHandlingTests: ActorSystemTestBase {
         case simpleError(reason: String)
     }
 
-    enum SimpleProbeMessages: Equatable {
-        case spawned(child: ActorRef<FaultyWorkerMessages>)
+    enum SimpleProbeMessage: Equatable, NotTransportableActorMessage {
+        case spawned(child: ActorRef<FaultyWorkerMessage>)
         case echoing(message: String)
     }
 
-    enum FaultyWorkerMessages {
+    enum FaultyWorkerMessage: NotTransportableActorMessage {
         case work(n: Int, divideBy: Int)
         case throwError(error: Error)
     }
@@ -36,7 +36,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemTestBase {
         case error(code: Int)
     }
 
-    func faultyWorkerBehavior(probe pw: ActorRef<Int>) -> Behavior<FaultyWorkerMessages> {
+    func faultyWorkerBehavior(probe pw: ActorRef<Int>) -> Behavior<FaultyWorkerMessage> {
         return .receive { context, message in
             context.log.info("Working on: \(message)")
             switch message {
@@ -51,7 +51,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemTestBase {
     }
 
     let spawnFaultyWorkerCommand = "spawnFaultyWorker"
-    func healthyMasterBehavior(pm: ActorRef<SimpleProbeMessages>, pw: ActorRef<Int>) -> Behavior<String> {
+    func healthyMasterBehavior(pm: ActorRef<SimpleProbeMessage>, pw: ActorRef<Int>) -> Behavior<String> {
         return .receive { context, message in
             switch message {
             case self.spawnFaultyWorkerCommand:
@@ -65,7 +65,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemTestBase {
     }
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
-        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe("testProbe-master-1")
+        let pm: ActorTestProbe<SimpleProbeMessage> = self.testKit.spawnTestProbe("testProbe-master-1")
         let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe("testProbeForWorker-1")
 
         let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))

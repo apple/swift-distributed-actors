@@ -23,7 +23,7 @@ import struct NIO.ByteBuffer
 ///
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message>: ReceivesMessages, _ReceivesSystemMessages {
+public struct ActorRef<Message: ActorMessage>: ReceivesMessages, _ReceivesSystemMessages {
     /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -138,7 +138,7 @@ extension ActorRef.Personality {
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 public protocol ReceivesMessages: Codable {
-    associatedtype Message
+    associatedtype Message: ActorMessage
     /// Send message to actor referred to by this `ActorRef`.
     ///
     /// The symbolic version of "tell" is `!` and should also be pronounced as "tell".
@@ -174,7 +174,7 @@ public protocol _ReceivesSystemMessages: Codable {
     )
 
     /// :nodoc: INTERNAL API
-    func _unsafeGetRemotePersonality() -> RemotePersonality<Any>
+    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> RemotePersonality<M>
 }
 
 extension _ReceivesSystemMessages {
@@ -242,6 +242,8 @@ extension ActorRef {
                 self.tell(message, file: file, line: line)
 
             case .failure(let error):
+                pool.serialization.debugPrintSerializerTable()
+
                 let metadata: Logger.Metadata = [
                     "recipient": "\(self.path)",
                     "message/expected/type": "\(String(reflecting: Message.self))",
@@ -249,7 +251,7 @@ extension ActorRef {
                 ]
 
                 if let system = self._system {
-                    system.log.warning("Failed to deserialize/delivery message to \(self.path), error: \(error)", metadata: metadata)
+                    system.log.warning("Failed to deserialize/deliver message to \(self.path), error: \(error)", metadata: metadata)
                 } else {
                     // TODO: last resort, print error (system could be going down)
                     print("Failed to deserialize/delivery message to \(self.path). Metadata: \(metadata)")
@@ -258,10 +260,10 @@ extension ActorRef {
         })
     }
 
-    public func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
         switch self.personality {
-        case .remote(let remote):
-            return remote as! RemotePersonality<Any>
+        case .remote(let personality):
+            return personality._unsafeAssumeCast(to: type)
         default:
             fatalError("Wrongly assumed personality of \(self) to be [remote]!")
         }
@@ -298,7 +300,7 @@ extension ActorRef {
 /// and are such that a stopped actor can be released as soon as possible (shell), yet the cell remains
 /// active while anyone still holds references to it. The mailbox class on the other hand, is kept alive by
 /// by the cell, as it may result in message sends to dead letters which the mailbox handles
-public final class ActorCell<Message> {
+public final class ActorCell<Message: ActorMessage> {
     let mailbox: Mailbox<Message>
 
     weak var actor: ActorShell<Message>?
@@ -387,7 +389,7 @@ public extension ActorRef where Message == DeadLetter {
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
 // TODO: we could use this to make TestProbes more "real" rather than wrappers
-open class CellDelegate<Message> {
+open class CellDelegate<Message: ActorMessage> {
     public init() {
         // nothing
     }
@@ -462,7 +464,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     }
 
     @usableFromInline
-    func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
+    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT be interacted with directly!")
     }
@@ -680,7 +682,7 @@ extension Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

@@ -238,7 +238,7 @@ public class OperationLogClusterReceptionist {
             )
 
             // === behavior -----------
-            return Behavior<Message>.receiveMessage {
+            return Behavior<Receptionist.Message>.receiveMessage {
                 self.tracelog(context, .receive, message: $0)
                 switch $0 {
                 case let push as PushOps:
@@ -278,13 +278,10 @@ public class OperationLogClusterReceptionist {
     }
 
     // TODO: Serialization rework to remove the need for this
-    private func _sendWithSerializerSubclassWorkaround<T: Message>(_ message: T, to: ActorRef<Message>, typeForSerialization: T.Type) {
+    private func _sendWithSerializerSubclassWorkaround<T: Message>(_ message: T, to: ActorRef<Message>) {
         switch to.personality {
         case .remote(let remote):
-            remote.sendUserMessage(
-                message,
-                messageTypeForSerialization: typeForSerialization
-            )
+            remote.sendUserMessage(message)
         case .cell(let cell):
             cell.sendMessage(message)
         default:
@@ -308,11 +305,11 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onLookup(context: ActorContext<Message>, message: _Lookup) throws {
-        message.replyWith(self.storage.registrations(forKey: message._key.boxed) ?? [])
+        message.replyWith(self.storage.registrations(forKey: message._key.asAnyRegistrationKey) ?? [])
     }
 
     private func onRegister(context: ActorContext<Message>, message: _Register) throws {
-        let key = message._key.boxed
+        let key = message._key.asAnyRegistrationKey
         let ref = message._addressableActorRef
 
         guard ref.address.isLocal || (ref.address.node == context.system.cluster.node) else {
@@ -511,7 +508,7 @@ extension OperationLogClusterReceptionist {
         )
 
         tracelog(context, .push(to: peerReceptionistRef), message: ack)
-        self._sendWithSerializerSubclassWorkaround(ack, to: peerReceptionistRef, typeForSerialization: AckOps.self)
+        self._sendWithSerializerSubclassWorkaround(ack, to: peerReceptionistRef)
     }
 
     /// Listings have changed for this key, thus we need to publish them to all subscribers
@@ -601,7 +598,7 @@ extension OperationLogClusterReceptionist {
         /// hack in order ro override the Message.self being used to find the serializer
         switch peer.personality {
         case .remote(let remote):
-            remote.sendUserMessage(pushOps, messageTypeForSerialization: PushOps.self)
+            remote.sendUserMessage(pushOps)
         default:
             fatalError("Remote receptionists MUST be of .remote personality, was: \(peer.personality), \(peer.address)")
         }
@@ -716,7 +713,7 @@ extension OperationLogClusterReceptionist {
 extension OperationLogClusterReceptionist {
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
-    struct PushOps: Receptionist.Message, Codable {
+    class PushOps: Receptionist.Message {
         // the "sender" of the push
         let peer: ActorRef<Receptionist.Message>
 
@@ -730,6 +727,13 @@ extension OperationLogClusterReceptionist {
 
         let sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]
 
+        init(peer: ActorRef<Receptionist.Message>, observedSeqNrs: VersionVector, sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]) {
+            self.peer = peer
+            self.observedSeqNrs = observedSeqNrs
+            self.sequencedOps = sequencedOps
+            super.init()
+        }
+
         // the passed ops cover the range until the following sequenceNr
         func findMaxSequenceNr() -> UInt64 {
             self.sequencedOps.lazy.map { $0.sequenceRange.max }.max() ?? 0
@@ -738,7 +742,7 @@ extension OperationLogClusterReceptionist {
 
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
-    struct AckOps: Receptionist.Message, Codable {
+    class AckOps: Receptionist.Message {
         /// Cumulative ACK of all ops until (and including) this one.
         ///
         /// If a recipient has more ops than the `confirmedUntil` confirms seeing, it shall offer
@@ -758,9 +762,9 @@ extension OperationLogClusterReceptionist {
         }
     }
 
-    internal struct PeriodicAckTick: Receptionist.Message {}
+    internal class PeriodicAckTick: Receptionist.Message {}
 
-    internal struct PublishLocalListingsTrigger: Receptionist.Message {}
+    internal class PublishLocalListingsTrigger: Receptionist.Message {}
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

@@ -24,17 +24,17 @@ import "Serialization/Serialization.proto";
 // ==== Wire envelope for CRDT types -----------------------------------------------------------------------------------
 
 message CRDTEnvelope {
-    enum Boxed {
-        UNSPECIFIED = 0;
-        /// Box as `AnyCvRDT` when deserializing
-        ANY_CVRDT = 1;
-        /// Box as `AnyDeltaCRDT` when deserializing
-        ANY_DELTA_CRDT = 2;
-    } // FIXME: will bocing still be needed
-
-    Boxed boxed = 1;
-    Manifest manifest = 2;
-    bytes payload = 3;
+//    enum Boxed {
+//        UNSPECIFIED = 0;
+//        /// Box as `AnyCvRDT` when deserializing
+//        ANY_CVRDT = 1;
+//        /// Box as `AnyDeltaCRDT` when deserializing
+//        ANY_DELTA_CRDT = 2;
+//    } // FIXME: will bocing still be needed
+//
+//    Boxed boxed = 1;
+    Manifest manifest = 1;
+    bytes payload     = 2;
 }
 
 // ==== CRDT Direct Replication ----------------------------------------------------------------------------------------
@@ -42,6 +42,11 @@ message CRDTEnvelope {
 // ***** CRDT.Replicator.Message *****
 
 message CRDTReplicatorMessage {
+    CRDTReplicatorRemoteCommand remoteCommand = 1;
+}
+
+// ***** CRDT.Replicator.RemoteCommand *****
+message CRDTReplicatorRemoteCommand {
     oneof value {
         CRDTWrite write = 1;
         CRDTWrite writeDelta = 2;
