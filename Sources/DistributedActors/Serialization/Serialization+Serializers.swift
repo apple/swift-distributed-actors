@@ -81,9 +81,12 @@ extension Serializer: AnySerializer {
 // MARK: Serializers: AnySerializer
 
 public protocol AnySerializer {
+    // FIXME: remove this
     func _asSerializerOf<M>(_ type: M.Type) throws -> Serializer<M>
 
     func trySerialize(_ message: Any) throws -> ByteBuffer
+
+    // TODO tryDeserialize(as: from) // !!!!!!
     func tryDeserialize(_ bytes: ByteBuffer) throws -> Any
 
     func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?)

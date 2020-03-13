@@ -23,13 +23,13 @@ import XCTest
 class SerializationTests: ActorSystemTestBase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
-            settings.serialization.registerManifest(ActorRef<String>.self, hint: nil, serializer: .jsonCodable)
-            settings.serialization.registerManifest(HasStringRef.self, hint: nil, serializer: .jsonCodable)
+            settings.serialization.registerSpecializedManifest(ActorRef<String>.self, hint: nil, serializer: .jsonCodable)
+            settings.serialization.registerSpecializedManifest(HasStringRef.self, hint: nil, serializer: .jsonCodable)
 
-            settings.serialization.registerManifest(InterestingMessage.self, hint: nil, serializer: .jsonCodable)
-            settings.serialization.registerManifest(HasInterestingMessageRef.self, hint: nil, serializer: .jsonCodable)
+            settings.serialization.registerSpecializedManifest(InterestingMessage.self, hint: nil, serializer: .jsonCodable)
+            settings.serialization.registerSpecializedManifest(HasInterestingMessageRef.self, hint: nil, serializer: .jsonCodable)
 
-            settings.serialization.registerManifest(HasReceivesSystemMsgs.self, hint: nil, serializer: .jsonCodable)
+            settings.serialization.registerSpecializedManifest(HasReceivesSystemMsgs.self, hint: nil, serializer: .jsonCodable)
         }
     }
 
