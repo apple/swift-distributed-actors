@@ -269,8 +269,6 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
         )
 
         serializationPromise.futureResult.whenComplete {
-            pprint("OUT >>>>> \($0)")
-
             switch $0 {
             case .success((let manifest, let bytes)):
                 // force unwrapping here is safe because we read exactly the amount of readable bytes
@@ -595,90 +593,15 @@ private final class ActorMessageHandler: ChannelInboundHandler {
         // We resolved "untyped" meaning that we did not take into account the Type of the actor when looking for it.
         // However, the actor ref "inside" has strict knowledge about what specific Message type it is about (!).
 
-        pprint("IN: = \(wireEnvelope.manifest) >>>> \(ref)")
-
         // all other messages are "normal" and should be delivered to the target actor normally
         ref._deserializeDeliver(
             wireEnvelope.payload, using: wireEnvelope.manifest,
             on: self.serializationPool
         )
     }
-
-//        let deserializationPromise: EventLoopPromise<Any> = context.eventLoop.makePromise()
-//        serializationPool.deserialize(
-//            from: wireEnvelope.payload,
-//            using: wireEnvelope.manifest,
-//            recipientPath: wireEnvelope.recipient.path,
-//            promise: deserializationPromise
-//        )
-//        pprint("IN >>>>> ...")
-//
-//        // TODO: ensure message ordering. See comment in `write`.
-//        deserializationPromise.futureResult.whenComplete { deserializedResult in
-//            pprint("IN >>>>> \(deserializedResult)")
-//
-//            switch deserializedResult {
-//            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessageEnvelope:
-//                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessageEnvelope: message as! SystemMessageEnvelope, recipient: wireEnvelope.recipient)))
-//
-//            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessageACK:
-//                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(ack: message as! _SystemMessage.ACK, recipient: wireEnvelope.recipient)))
-//            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessageNACK:
-//                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(nack: message as! _SystemMessage.NACK, recipient: wireEnvelope.recipient)))
-//
-//            case .success(let message) where wireEnvelope.manifest.serializerID == Serialization.ReservedID.SystemMessage:
-//                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: message as! _SystemMessage, recipient: wireEnvelope.recipient)))
-//
-//            case .success(let message):
-//                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(message: message, recipient: wireEnvelope.recipient)))
-//
-//            case .failure(let error):
-//                self.log.error("Deserialization error: \(error)", metadata: ["recipient": "\(wireEnvelope.recipient)"])
-//            }
-//        }
-//    }
 }
 
-
-// private final class ActorDeliveryHandler: ChannelInboundHandler {
-//    typealias InboundIn = TransportEnvelope
-//    typealias InboundOut = Never // we terminate here, by sending messages off to local actors
-//
-//    let log: Logger
-//    let system: ActorSystem
-//
-//    init(system: ActorSystem) {
-//        self.log = ActorLogger.make(system: system, identifier: "message-delivery")
-//        self.system = system
-//    }
-//
-//    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-//        let transportEnvelope: TransportEnvelope = self.unwrapInboundIn(data)
-//
-//        let resolveContext = ResolveContext<Any>(address: transportEnvelope.recipient, system: self.system)
-//        let ref = self.system._resolveUntyped(context: resolveContext)
-//
-//        switch transportEnvelope.storage {
-//        case .message(let message):
-//            ref._tellOrDeadLetter(message)
-//        case .systemMessage(let message):
-//            ref._sendSystemMessage(message)
-//        case .systemMessageEnvelope(let systemMessageEnvelope):
-//            fatalError("""
-//            .systemMessageEnvelope should not be allowed through to the \(self) handler! \
-//            The \(SystemMessageRedeliveryHandler.self) should have peeled off the system envelope. \
-//            This is a bug in pipeline construction! Was: \(systemMessageEnvelope)
-//            """)
-//        case .systemMessageDelivery(let delivery):
-//            fatalError("""
-//            .systemMessageDelivery should not be allowed through to the \(self) handler!
-//            The \(SystemMessageRedeliveryHandler.self) should have stopped the propagation of delivery confirmations. \
-//            This is a bug in pipeline construction! Was: \(delivery)
-//            """)
-//        }
-//    }
-// }
-
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf read... implementations
 
 extension InitiatingHandshakeHandler {
@@ -701,10 +624,6 @@ extension ReceivingHandshakeHandler {
         let proto = try ProtoHandshakeOffer(serializedData: data)
         return try Wire.HandshakeOffer(fromProto: proto)
     }
-}
-
-enum WireFormatError: Error {
-    case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
 }
 
 private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
@@ -1006,3 +925,11 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         "TransportEnvelope(_storage: \(storage), recipient: \(String(reflecting: recipient)), messageMetaType: \(underlyingMessageMetaType))"
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Errors
+
+enum WireFormatError: Error {
+    case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
+}
+

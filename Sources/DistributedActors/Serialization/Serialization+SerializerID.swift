@@ -88,6 +88,40 @@ extension Serialization.SerializerID {
     // reserved until 16
 }
 
+extension Optional where Wrapped == Serialization.CodableSerializerID {
+    public static let `default`: Serialization.CodableSerializerID? = nil
+}
+
+/*
+2020-03-13T16:20:26+0900 warning:
+message/expected/type=DistributedActors.ReceptionistMessage
+recipient=/system/receptionist
+message/manifest=Serialization.Manifest(serializerID:1,
+hint: DistributedActors.OperationLogClusterReceptionist.AckOps)
+
+[sact://DistributedPhilosophers@localhost:1111][Refs.swift:252][thread:5661799]
+Failed to deserialize/deliver message to /system/receptionist, error:
+noSerializerRegisteredFor(manifest: Optional(Serialization.Manifest(
+serializerID:1,
+hint: DistributedActors.OperationLogClusterReceptionist.AckOps)),
+hint: "Type: ReceptionistMessage,
+
+known serializers: [
+ObjectIdentifier(0x0000000109bbddd8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.SWIM.PingResponse>),
+ObjectIdentifier(0x0000000109bd9318): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<SampleDiningPhilosophers.Philosopher.Message>),
+ObjectIdentifier(0x0000000109bbcbf0): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<DistributedActors.OperationLogClusterReceptionist.PushOps>),
+ObjectIdentifier(0x0000000109bbee28): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors._SystemMessage.NACK>),
+ObjectIdentifier(0x0000000109bbede8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.SystemMessageEnvelope>),
+ObjectIdentifier(0x0000000109bbee08): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors._SystemMessage.ACK>),
+ObjectIdentifier(0x0000000109bbccf8): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<DistributedActors.OperationLogClusterReceptionist.AckOps>),
+ObjectIdentifier(0x0000000109bbdcc8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.SWIM.Message>),
+ObjectIdentifier(0x0000000109bb8ce8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.Cluster.Event>),
+ObjectIdentifier(0x0000000109bd9190): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<SampleDiningPhilosophers.Fork.Message>),
+ ObjectIdentifier(0x0000000109bb9e70): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors.ClusterShell.Message>),
+ ObjectIdentifier(0x00007fff96838c98): BoxedAnySerializer(DistributedActors.JSONCodableSerializer<DistributedActors.ConvergentGossip<DistributedActors.Cluster.Gossip>.Message>),
+ ObjectIdentifier(0x0000000109bc80b8): BoxedAnySerializer(DistributedActors.InternalProtobufSerializer<DistributedActors._SystemMessage>)]")
+*/
+
 extension Serialization.CodableSerializerID {
     public static let jsonCodable: Serialization.CodableSerializerID = 1
     // reserved for other codable = 2

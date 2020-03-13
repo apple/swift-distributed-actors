@@ -69,6 +69,7 @@ public class Serialization {
     internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem) {
         var settings = systemSettings.serialization
 
+        // ==== Declare some system messages to be handled with specialized serializers:
         // system messages
         settings._registerInternalProtobufRepresentable(_SystemMessage.self, serializerID: ReservedID.SystemMessage)
         settings._registerInternalProtobufRepresentable(_SystemMessage.ACK.self, serializerID: ReservedID.SystemMessageACK)
@@ -78,14 +79,22 @@ public class Serialization {
         // cluster
         settings._registerInternalProtobufRepresentable(ClusterShell.Message.self, serializerID: ReservedID.ClusterShellMessage)
         settings._registerInternalProtobufRepresentable(Cluster.Event.self, serializerID: ReservedID.ClusterEvent)
-        settings.registerCodable(ConvergentGossip<Cluster.Gossip>.Message.self)
+        settings.registerCodable(ConvergentGossip<Cluster.Gossip>.Message.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
-        // receptionist
+        // receptionist needs some special casing
         // TODO: document how to deal with `protocol` message accepting actors, those should be very rare.
         // TODO: do we HAVE to do this in the Receptionist?
-        settings.registerManifest(Receptionist.Message.self, serializer: .doNotSerialize)
-        settings.registerCodable(OperationLogClusterReceptionist.PushOps.self)
-        settings.registerCodable(OperationLogClusterReceptionist.AckOps.self)
+        settings.registerSpecializedManifest(Receptionist.Message.self, serializer: .doNotSerialize)
+        settings.registerCodable(OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+
+        // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
+        settings.registerCodable(OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.registerInboundCodableManifest(OperationLogClusterReceptionist.PushOps.self,
+            hintOverride: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializer: .default)
+        // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
+        settings.registerInboundCodableManifest(OperationLogClusterReceptionist.AckOps.self, hintOverride: "ReceptionistMessage", serializer: .default)
+        settings.registerInboundCodableManifest(OperationLogClusterReceptionist.AckOps.self,
+            hintOverride: "DistributedActors.\(OperationLogClusterReceptionist.AckOps.self)", serializer: .default)
 
         // swim failure detector
         settings._registerInternalProtobufRepresentable(SWIM.Message.self, serializerID: ReservedID.SWIMMessage)
@@ -113,88 +122,6 @@ public class Serialization {
 
         // == eagerly ensure serializers for message types which would not otherwise be registered for some reason ----
         try! self._ensureAllRegisteredSerializers()
-//        // need to special handle those as they have a top-level protocol which is .doNotSerialize
-//        try! self._ensureCodableSerializer(OperationLogClusterReceptionist.PushOps.self) // TODO use proto for this
-//        try! self._ensureCodableSerializer(OperationLogClusterReceptionist.AckOps.self) // TODO use proto for this
-        // ====
-
-        // try self._ensureAllRegisteredSerializers()
-
-//        func registerInternalProtobufSerializer<T: InternalProtobufRepresentable>(id: SerializerID, type: T.Type) {
-//            try! self._ensureSerializer(T.self)
-//        }
-//        registerInternalProtobufSerializer(id: ReservedID.SystemMessage, type: _SystemMessage.self)
-//        registerInternalProtobufSerializer(id: ReservedID.SystemMessageACK, type: _SystemMessage.ACK.self)
-//        registerInternalProtobufSerializer(id: ReservedID.SystemMessageNACK, type: _SystemMessage.NACK.self)
-//        registerInternalProtobufSerializer(id: ReservedID.SystemMessageEnvelope, type: SystemMessageEnvelope.self)
-//
-//        registerInternalProtobufSerializer(id: ReservedID.ClusterShellMessage, type: ClusterShell.Message.self)
-//        registerInternalProtobufSerializer(id: ReservedID.ClusterEvent, type: Cluster.Event.self)
-//
-//        registerInternalProtobufSerializer(id: ReservedID.SWIMMessage, type: SWIM.Message.self)
-//        registerInternalProtobufSerializer(id: ReservedID.SWIMPingResponse, type: SWIM.PingResponse.self)
-//
-//        try! self._ensureCodableSerializer(ConvergentGossip<Cluster.Gossip>.Message.self)
-//        try! self._ensureCodableSerializer(OperationLogClusterReceptionist.PushOps.self)
-//        try! self._ensureCodableSerializer(OperationLogClusterReceptionist.AckOps.self)
-
-        // register all serializers
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<_SystemMessage>(allocator: self.allocator), for: _SystemMessage.self, underId: SerializerIDs.SystemMessage)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<_SystemMessage.ACK>(allocator: self.allocator), for: _SystemMessage.ACK.self, underId: SerializerIDs.SystemMessageACK)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<_SystemMessage.NACK>(allocator: self.allocator), for: _SystemMessage.NACK.self, underId: SerializerIDs.SystemMessageNACK)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: SerializerIDs.SystemMessageEnvelope)
-
-        // TODO: optimize, should be proto
-//        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ActorAddress.self, underId: SerializerIDs.ActorAddress)
-
-        // Predefined "primitive" types
-//        self.registerSystemSerializer(context, serializer: StringSerializer(self.allocator), underId: SerializerIDs.String)
-//        self.registerSystemSerializer(context, serializer: NumberSerializer(Int.self, self.allocator), underId: SerializerIDs.Int)
-//        self.registerSystemSerializer(context, serializer: NumberSerializer(Int32.self, self.allocator), underId: SerializerIDs.Int32)
-//        self.registerSystemSerializer(context, serializer: NumberSerializer(UInt32.self, self.allocator), underId: SerializerIDs.UInt32)
-//        self.registerSystemSerializer(context, serializer: NumberSerializer(Int64.self, self.allocator), underId: SerializerIDs.Int64)
-//        self.registerSystemSerializer(context, serializer: NumberSerializer(UInt64.self, self.allocator), underId: SerializerIDs.UInt64)
-
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<ClusterShell.Message>(allocator: self.allocator), for: ClusterShell.Message.self, underId: SerializerIDs.ClusterShellMessage)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<Cluster.Event>(allocator: self.allocator), for: Cluster.Event.self, underId: SerializerIDs.ClusterEvent)
-
-        // Cluster Receptionist
-//        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OperationLogClusterReceptionist.PushOps.self, underId: SerializerIDs.PushOps)
-//        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: OperationLogClusterReceptionist.AckOps.self, underId: SerializerIDs.AckOps)
-
-        // SWIM serializers
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: SerializerIDs.SWIMMessage)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.PingResponse>(allocator: self.allocator), for: SWIM.PingResponse.self, underId: SerializerIDs.SWIMAck)
-
-        // CRDT replication
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.Message>(allocator: self.allocator), for: CRDT.Replicator.Message.self, underId: SerializerIDs.CRDTReplicatorMessage)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDTEnvelope>(allocator: self.allocator), for: CRDTEnvelope.self, underId: SerializerIDs.CRDTEnvelope)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.RemoteCommand.WriteResult>(allocator: self.allocator), for: CRDT.Replicator.RemoteCommand.WriteResult.self, underId: SerializerIDs.CRDTWriteResult)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.RemoteCommand.ReadResult>(allocator: self.allocator), for: CRDT.Replicator.RemoteCommand.ReadResult.self, underId: SerializerIDs.CRDTReadResult)
-//        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.RemoteCommand.DeleteResult>(allocator: self.allocator), for: CRDT.Replicator.RemoteCommand.DeleteResult.self, underId: SerializerIDs.CRDTDeleteResult)
-//        self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter>(allocator: self.allocator), for: CRDT.GCounter.self, underId: SerializerIDs.CRDTGCounter)
-//        self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter.Delta>(allocator: self.allocator), for: CRDT.GCounter.Delta.self, underId: SerializerIDs.CRDTGCounterDelta)
-        // CRDTs and their deltas are boxed with AnyDeltaCRDT or AnyCvRDT
-        //        self.registerBoxing(from: CRDT.GCounter.self, into: AnyCvRDT.self) { counter in
-        //            counter.asAnyCvRDT
-        //        }
-        //        self.registerBoxing(from: CRDT.GCounter.self, into: AnyDeltaCRDT.self) { counter in
-        //            AnyDeltaCRDT(counter)
-        //        }
-        //        self.registerBoxing(from: CRDT.GCounter.Delta.self, into: AnyCvRDT.self) { delta in
-        //            AnyCvRDT(delta)
-        //        }
-        //
-        //        self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyCvRDT.self) { set in
-        //            set.asAnyCvRDT
-        //        }
-        //        self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyDeltaCRDT.self) { set in
-        //            AnyDeltaCRDT(set)
-        //        }
-        //        self.registerBoxing(from: CRDT.ORSet<String>.Delta.self, into: AnyCvRDT.self) { set in
-        //            AnyCvRDT(set)
-        //        }
-//        self.registerSystemSerializer(context, serializer: JSONCodableSerializer<DistributedActors.GossipShell<Cluster.Gossip.SeenTable, DistributedActors.Cluster.Gossip>.Message>(allocator: self.allocator), underId: SerializerIDs.ConvergentGossipMembership)
 
         #if SACT_TRACE_SERIALIZATION
         self.debugPrintSerializerTable(header: "SACT_TRACE_SERIALIZATION: Registered serializers")
@@ -218,22 +145,20 @@ public class Serialization {
 
 extension Serialization {
 
+    /// Eagerly allocates serializer instances for configured (in settings) types and manifests.
+    /// This allows us to lessen the contention on spawning things (as they also ensure serializers),
+    /// as well as register "specific" serializers immediately which is plenty important (as those are allowed
+    /// to not carry type hints in their manifests, and just ride on the serializer IDs).
     private func _ensureAllRegisteredSerializers() throws {
-        self._serializersLock.withReaderLock {
-            for serializer in self._serializers {
-                self.log.info("Serializer: \(serializer)")
-            }
-        }
-
         // all non-codable types are specialized types; register specific serializer instances for them early
         for typeKey in self.settings.type2ManifestRegistry.keys {
-            self.log.info("Ensure serializer eagerly: \(typeKey)")
+            self.log.trace("Ensure serializer eagerly: \(typeKey)")
             try typeKey._ensureSerializer(self)
         }
 
         self._serializersLock.withReaderLock {
             for serializer in self._serializers {
-                self.log.info("Eagerly registered serializer: \(serializer)")
+                self.log.debug("Eagerly registered serializer: \(serializer)")
             }
         }
 
@@ -360,7 +285,7 @@ extension Serialization {
             self._serializers[ObjectIdentifier(messageType)]
         }) else {
             self.debugPrintSerializerTable(header: "Unable to find serializer for manifest's serializerID (\(manifest)), message type: \(String(reflecting: messageType))")
-            throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Message: \(message)\n  Known Serializers: \(self._serializers)")
+            throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Message: \(message), known serializers: \(self._serializers)")
         }
 
         do {
@@ -378,51 +303,58 @@ extension Serialization {
     ///   - type: expected type that the deserialized message should be
     ///   - bytes: containing the serialized bytes of the message
     ///   - manifest: used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
-    public func deserialize<Message>(as type: Message.Type, from bytes: ByteBuffer, using manifest: Serialization.Manifest) throws -> Message {
-        let messageType = Message.self
+    public func deserialize<Message>(as messageType: Message.Type, from bytes: ByteBuffer, using manifest: Serialization.Manifest) throws -> Message {
+
+        // TODO: if hints were mangled names we can summon the type here.
+        // Manifest type may be used to summon specific instances of types from the manifest
+        // even if the expected type is some `Outer` type (e.g. when we sent a sub class).
+        let manifestMessageType = (try? self.summonType(from: manifest)) ?? Message.self
+        let manifestMessageTypeID = ObjectIdentifier(manifestMessageType)
+
         let messageTypeID = ObjectIdentifier(messageType)
 
-        pprint("IN: deserialize(\(type), from: \(bytes), manifest: \(manifest)")
-
-        guard type != Any.self else {
+        guard messageType != Any.self else {
             // most likely deadLetters is trying to deserialize (!), and it only has an `Any` in hand.
             // let's use the manifest to invoke the right serializer, however
             return fatalErrorBacktrace("ATTEMPT TO DESERIALIZE FROM DEAD LETTERS? payload: \(bytes)")
         }
 
-        traceLog_Serialization("deserialize(as: \(type), manifest: \(manifest))")
-        pprint("deserialize(as: \(type), manifest: \(manifest))")
+        traceLog_Serialization("deserialize(as: \(String(reflecting: messageType)), manifest: \(manifest))")
 
-        if self.settings.sanityCheckHintSummonedTypesAreExpected {
-            if let typeHint = manifest.hint {
-                guard let manifestMessageType = _typeByName(typeHint) else {
-                    throw SerializationError.unableToSummonTypeFromManifest(hint: "Message type: \(typeHint)")
-                }
-                let manifestMessageTypeID = ObjectIdentifier(manifestMessageType)
-                assert(
-                    messageTypeID == manifestMessageTypeID,
-                    """
-                    Type identity of manifest.hint does NOT equal identity of Message.self! \
-                    Message type ID: \(messageTypeID) (\(messageType)), \
-                    Manifest Message Type ID: \(manifestMessageTypeID) (\(manifestMessageType))
-                    """
-                )
-            }
-        }
+//        if self.settings.sanityCheckHintSummonedTypesAreExpected {
+//            if let typeHint = manifest.hint {
+//                guard let manifestMessageType = _typeByName(typeHint) else {
+//                    throw SerializationError.unableToSummonTypeFromManifest(hint: "Message type: \(typeHint)")
+//                }
+//                let manifestMessageTypeID = ObjectIdentifier(manifestMessageType)
+//                assert(
+//                    messageTypeID == manifestMessageTypeID,
+//                    """
+//                    Type identity of manifest.hint does NOT equal identity of Message.self! \
+//                    Message type ID: \(messageTypeID) (\(messageType)), \
+//                    Manifest Message Type ID: \(manifestMessageTypeID) (\(manifestMessageType))
+//                    """
+//                )
+//            }
+//        }
 
         guard let serializer: AnySerializer = (self._serializersLock.withReaderLock {
-            self._serializers[messageTypeID]
+            self._serializers[manifestMessageTypeID]
         }) else {
-            self.debugPrintSerializerTable(header: """
-            Unable to find serializer for manifest (\(manifest)),\
-            message type: \(String(reflecting: type))
-            """)
-            throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "\(type)")
+            self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: messageType))")
+            throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Type: \(messageType), id: \(messageTypeID), known serializers: \(self._serializers)")
         }
 
-        let typedSerializer = try serializer._asSerializerOf(messageType) // TODO: is this enough?
-        let result: Message = try typedSerializer.deserialize(from: bytes)
-        return result
+//        let typedSerializer = try serializer._asSerializerOf(messageType) // TODO: is this enough?
+//        let result: Message = try typedSerializer.deserialize(from: bytes)
+
+        let result = try serializer.tryDeserialize(bytes)
+
+        if let wellTypedResult = result as? Message {
+            return wellTypedResult
+        } else {
+            throw SerializationError.wrongSerializer(hint: "Cannot cast \(type(of: result as Any)) to \(String(reflecting: messageType))")
+        }
     }
 
     public func deserialize<Message: Codable>(as type: Message.Type, from bytes: ByteBuffer, using manifest: Manifest) throws -> Message {
@@ -454,7 +386,7 @@ extension Serialization {
             Unable to find serializer for manifest (\(manifest)),\
             message type: \(String(reflecting: type))
             """)
-            throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "\(type)")
+            throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Codable Type: \(type), known serializers: \(self._serializers), ")
         }
 
         let typedSerializer = try serializer._asSerializerOf(messageType) // TODO: is this enough?
@@ -581,14 +513,10 @@ extension Serialization {
     // public func outboundManifest<Message>(_ type: Message.Type) throws -> Manifest {
     public func outboundManifest(_ type: Any.Type) throws -> Manifest {
         assert(type != Any.self, "Any.Type was passed in to outboundManifest, this cannot be right.")
-        pprint("\(#function): outboundManifest for: \(String(reflecting: type))")
 
         if let manifest = self.settings.type2ManifestRegistry[.init(any: type)] {
-            pprint("\(#function): overridenManifest = \(manifest)")
             return manifest
         }
-
-        pprint("\(#function): _typeName(type) = \(_typeName(type))")
 
         let hint: String
         switch _typeName(type) {
@@ -602,27 +530,26 @@ extension Serialization {
         if type is Codable.Type {
             let defaultCodableSerializerID = self.settings.defaultCodableSerializerID
             manifest = Manifest(serializerID: defaultCodableSerializerID.value, hint: hint)
-//        } else if type is AnyInternalProtobufRepresentable.Type {
-//            manifest = Manifest(serializerID: .internalProtobufRepresentable, hint: hint)
-//        } else if type is AnyProtobufRepresentable.Type {
-//            manifest = Manifest(serializerID: .publicProtobufRepresentable, hint: hint)
         } else if type is NoSerializationVerification.Type {
             manifest = Manifest(serializerID: .doNotSerialize, hint: nil)
         } else {
             manifest = nil
         }
 
-        pprint("\(#function): manifest = \(reflecting: manifest)")
-
-        guard let m = manifest else {
+        guard let selectedManifest = manifest else {
 //             throw SerializationError.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: type))]")
             return fatalErrorBacktrace("Cannot create manifest for type [\(String(reflecting: type))]")
         }
 
-        return m
+        return selectedManifest
     }
 
-    // TODO: summon type
+    // FIXME: Once https://github.com/apple/swift/pull/30318 is merged we can make this "real"
+    /// Summon a `Type` from a manifest which's `hint` contains a mangled name.
+    ///
+    /// While such `Any.Type` can not be used to invoke Codable's decode() and friends directly,
+    /// it does allow us to locate by type identifier the exact right Serializer which knows about the specific type
+    /// and can perform the cast safely.
     public func summonType(from manifest: Manifest) throws -> Any.Type {
         if let custom = self.settings.manifest2TypeRegistry[manifest] {
             return custom
@@ -635,31 +562,6 @@ extension Serialization {
         return fatalErrorBacktrace("Unable to summon type from: \(manifest)")
     }
 }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: SafeList
-
-extension Serialization {
-    // FIXME: IMPLEMENT THIS
-    public func isSafeListed<T>(_ type: T.Type) -> Bool { // TODO: Messageable
-//        self._safeList.contains(MetaType(from: type).asHashable())
-        return true
-    }
-}
-
-// extension Serialization {
-//    private func serializeEncodableMessage<M>(enc: Encodable, message: M) throws -> ByteBuffer {
-//        let id = try self.outboundSerializerIDFor(message: message)
-//
-//        guard let serializer = self.serializers[id] else {
-//            fatalError("Serializer id [\(id)] available for \(M.self), yet serializer not present in registry. This should never happen!")
-//        }
-//
-//        let ser: Serializer<M> = try serializer._asSerializerOf(M.self)
-//        traceLog_Serialization("Serialize Encodable: \(enc), with serializer id: \(id), serializer [\(ser)]")
-//        return try ser.serialize(message)
-//    }
-// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: MetaTypes so we can store Type -> Serializer mappings
@@ -685,7 +587,7 @@ struct MetaType<T>: Hashable, CustomStringConvertible {
 
     @usableFromInline
     static func == (lhs: MetaType, rhs: MetaType) -> Bool {
-        return lhs.id == rhs.id
+        lhs.id == rhs.id
     }
 
     @usableFromInline
@@ -694,7 +596,7 @@ struct MetaType<T>: Hashable, CustomStringConvertible {
     }
 
     public var description: String {
-        return "MetaType<\(String(reflecting: T.self))@\(self.id)>"
+        "MetaType<\(String(reflecting: T.self))@\(self.id)>"
     }
 }
 
@@ -724,44 +626,44 @@ extension MetaType: AnyMetaType {
     }
 }
 
-@usableFromInline
-internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
-    private let meta: AnyMetaType
-
-    init<T>(_ meta: MetaType<T>) {
-        self.meta = meta
-    }
-
-    @usableFromInline
-    func hash(into hasher: inout Hasher) {
-        self.meta.asHashable.hash(into: &hasher)
-    }
-
-    @usableFromInline
-    static func == (lhs: BoxedHashableAnyMetaType, rhs: BoxedHashableAnyMetaType) -> Bool {
-        return lhs.is(rhs.meta)
-    }
-
-    @usableFromInline
-    var asHashable: AnyHashable {
-        return AnyHashable(self)
-    }
-
-    @usableFromInline
-    func unsafeUnwrapAs<M>(_: M.Type) -> MetaType<M> {
-        fatalError("unsafeUnwrapAs(_:) has not been implemented")
-    }
-
-    @usableFromInline
-    func `is`(_ other: AnyMetaType) -> Bool {
-        return self.meta.asHashable == other.asHashable
-    }
-
-    @usableFromInline
-    func isInstance(_ obj: Any) -> Bool {
-        return self.meta.isInstance(obj)
-    }
-}
+//@usableFromInline
+//internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
+//    private let meta: AnyMetaType
+//
+//    init<T>(_ meta: MetaType<T>) {
+//        self.meta = meta
+//    }
+//
+//    @usableFromInline
+//    func hash(into hasher: inout Hasher) {
+//        self.meta.asHashable.hash(into: &hasher)
+//    }
+//
+//    @usableFromInline
+//    static func == (lhs: BoxedHashableAnyMetaType, rhs: BoxedHashableAnyMetaType) -> Bool {
+//        return lhs.is(rhs.meta)
+//    }
+//
+//    @usableFromInline
+//    var asHashable: AnyHashable {
+//        AnyHashable(self)
+//    }
+//
+//    @usableFromInline
+//    func unsafeUnwrapAs<M>(_: M.Type) -> MetaType<M> {
+//        fatalError("unsafeUnwrapAs(_:) has not been implemented")
+//    }
+//
+//    @usableFromInline
+//    func `is`(_ other: AnyMetaType) -> Bool {
+//        self.meta.asHashable == other.asHashable
+//    }
+//
+//    @usableFromInline
+//    func isInstance(_ obj: Any) -> Bool {
+//        self.meta.isInstance(obj)
+//    }
+//}
 
 @usableFromInline
 struct SerializerTypeKey: Hashable, CustomStringConvertible {
@@ -783,34 +685,23 @@ struct SerializerTypeKey: Hashable, CustomStringConvertible {
     init<Message: Codable>(codable type: Message.Type) {
         self.type = type
         self._typeID = ObjectIdentifier(type)
-        pprint("!!! PREPARE codable type = \(String(reflecting: type))")
         self._ensure = { serialization in
-            pprint("!!! ENSURE codable type = \(String(reflecting: type))")
             try serialization._ensureCodableSerializer(type)
         }
     }
 
-    // TODO: Messageable
+    // TODO: Messageable?
     @usableFromInline
     init<Message>(_ type: Message.Type) {
         self.type = type
         self._typeID = ObjectIdentifier(type)
-        pprint("!!! PREPARE type = \(String(reflecting: type))")
-
-        if String(reflecting: type).contains("AckOps") {
-         let x: String = fatalErrorBacktrace("ATTEMPTED TO STORE \(String(reflecting: type)) as NOT CODABLE")
-        }
-
-
         self._ensure = { serialization in
-            pprint("!!! ENSURE type = \(String(reflecting: type))")
             try serialization._ensureSerializer(type)
         }
     }
 
     @usableFromInline
     func _ensureSerializer(_ serialization: Serialization) throws {
-        pprint("ensure serializer \(self) ::: \(self.type is Codable.Type)")
         try self._ensure(serialization)
     }
 

@@ -98,12 +98,12 @@ extension Serialization.Settings {
     /// This can be used to "force" a specific serializer be used for a message type,
     /// regardless if it is codable or not.
     @discardableResult
-    public mutating func registerManifest<Message: Codable>(
+    public mutating func registerCodableManifest<Message: Codable>(
         _ type: Message.Type, hintOverride: String? = nil,
         serializer overrideSerializerID: CodableSerializerID?
     ) -> Manifest {
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName
+        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
         let serializerID = overrideSerializerID ?? self.defaultCodableSerializerID
 
         let manifest = Manifest(serializerID: serializerID.value, hint: hint)
@@ -111,7 +111,24 @@ extension Serialization.Settings {
         self.type2ManifestRegistry[.init(codable: type)] = manifest
         self.manifest2TypeRegistry[manifest] = type
 
-pprint("self.type2ManifestRegistry = \(self.type2ManifestRegistry)")
+        return manifest
+    }
+
+    /// Store additional manifest that is known may be incoming, yet resolves to a specific type.
+    ///
+    /// This manifest will NOT be used when _sending_ messages of the `Message` type.
+    @discardableResult
+    public mutating func registerInboundCodableManifest<Message: Codable>(
+        _ type: Message.Type, hintOverride: String? = nil,
+        serializer overrideSerializerID: CodableSerializerID?
+    ) -> Manifest {
+        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
+        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
+        let serializerID = overrideSerializerID ?? self.defaultCodableSerializerID
+
+        let manifest = Manifest(serializerID: serializerID.value, hint: hint)
+
+        self.manifest2TypeRegistry[manifest] = type
 
         return manifest
     }
@@ -121,12 +138,12 @@ pprint("self.type2ManifestRegistry = \(self.type2ManifestRegistry)")
     /// This can be used to "force" a specific serializer be used for a message type,
     /// regardless if it is codable or not.
     @discardableResult
-    public mutating func registerManifest<Message>(
+    public mutating func registerSpecializedManifest<Message>(
         _ type: Message.Type, hintOverride: String? = nil,
         serializer serializerID: SerializerID
     ) -> Manifest {
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName
+        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
+        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
         let manifest = Manifest(serializerID: serializerID, hint: hint)
 
         self.type2ManifestRegistry[.init(type)] = manifest
@@ -146,16 +163,16 @@ extension Serialization.Settings {
     ///
     /// By doing this before system startup you can ensure a specific serializer is used for those messages.
     /// Make sure tha other nodes in the system are configured the same way though.
-    public mutating func registerCodable<Message: Codable>(_ type: Message.Type, serializer serializerID: CodableSerializerID = .jsonCodable) {
-//        let manifest = self.registerManifest(type, serializer: serializerID.value)
-
-        let hint = _typeName(type) // FIXME: _mangledTypeName
-        let manifest = Manifest(serializerID: serializerID.value, hint: hint)
+    public mutating func registerCodable<Message: Codable>(
+        _ type: Message.Type, hint hintOverride: String? = nil,
+        serializer serializerOverride: CodableSerializerID? = .default
+    ) {
+        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
+        let serializerID = (serializerOverride ?? self.defaultCodableSerializerID).value
+        let manifest = Manifest(serializerID: serializerID, hint: hint)
 
         self.type2ManifestRegistry[.init(codable: type)] = manifest
         self.manifest2TypeRegistry[manifest] = type
-
-        pprint("type2ManifestRegistry = \(type2ManifestRegistry)")
     }
 }
 
@@ -197,7 +214,7 @@ extension Serialization.Settings {
 
     public mutating func getSpecializedOrRegisterManifest<Message>(_ type: Message.Type, serializerID: Serialization.SerializerID) -> Serialization.Manifest {
         self.type2ManifestRegistry[.init(type)] ??
-            self.registerManifest(type, serializer: serializerID)
+            self.registerSpecializedManifest(type, serializer: serializerID)
     }
     
 }
