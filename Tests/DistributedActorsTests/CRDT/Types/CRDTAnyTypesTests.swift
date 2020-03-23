@@ -106,28 +106,28 @@ final class CRDTAnyTypesTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: AnyDeltaCRDT tests
+    // MARK: DeltaCRDTBox tests
 
-    // AnyDeltaCRDT has at least the same features as AnyCvRDT
-    func test_AnyDeltaCRDT_canBeUsedToMergeRightTypes() throws {
+    // DeltaCRDTBox has at least the same features as AnyCvRDT
+    func test_DeltaCRDTBox_canBeUsedToMergeRightTypes() throws {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
-        // A collection of AnyCvRDTs and AnyDeltaCRDTs
+        // A collection of AnyCvRDTs and DeltaCRDTBoxs
         let anyCRDTs: [CRDT.Identity: AnyStateBasedCRDT] = [
             "gcounter-1": g1.asAnyCvRDT,
             "gcounter-2": g2.asAnyCvRDT,
-            "gcounter-as-delta-1": g1.asAnyDeltaCRDT,
-            "gcounter-as-delta-2": g2.asAnyDeltaCRDT,
+            "gcounter-as-delta-1": g1.asDeltaCRDTBox,
+            "gcounter-as-delta-2": g2.asDeltaCRDTBox,
         ]
 
-        guard var gg1 = anyCRDTs["gcounter-as-delta-1"] as? AnyDeltaCRDT else {
-            throw shouldNotHappen("Should be a AnyDeltaCRDT")
+        guard var gg1 = anyCRDTs["gcounter-as-delta-1"] as? DeltaCRDTBox else {
+            throw shouldNotHappen("Should be a DeltaCRDTBox")
         }
-        guard let gg2 = anyCRDTs["gcounter-as-delta-2"] as? AnyDeltaCRDT else {
-            throw shouldNotHappen("Should be a AnyDeltaCRDT")
+        guard let gg2 = anyCRDTs["gcounter-as-delta-2"] as? DeltaCRDTBox else {
+            throw shouldNotHappen("Should be a DeltaCRDTBox")
         }
 
         // delta should not be nil since increment was called on underlying
@@ -147,23 +147,23 @@ final class CRDTAnyTypesTests: XCTestCase {
         ugg2.value.shouldEqual(10) // unchanged
     }
 
-    // AnyDeltaCRDT has at least the same features as AnyCvRDT
-    func test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged() throws {
+    // DeltaCRDTBox has at least the same features as AnyCvRDT
+    func test_DeltaCRDTBox_throwWhenIncompatibleTypesAttemptToBeMerged() throws {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
         var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
         s1.add(3)
 
-        let anyDeltaCRDTs: [CRDT.Identity: AnyDeltaCRDT] = [
-            "gcounter-1": g1.asAnyDeltaCRDT,
-            "orset-1": s1.asAnyDeltaCRDT,
+        let DeltaCRDTBoxs: [CRDT.Identity: DeltaCRDTBox] = [
+            "gcounter-1": g1.asDeltaCRDTBox,
+            "orset-1": s1.asDeltaCRDTBox,
         ]
 
-        guard var gg1: AnyDeltaCRDT = anyDeltaCRDTs["gcounter-1"] else {
+        guard var gg1: DeltaCRDTBox = DeltaCRDTBoxs["gcounter-1"] else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
-        guard let ss1: AnyDeltaCRDT = anyDeltaCRDTs["orset-1"] else {
+        guard let ss1: DeltaCRDTBox = DeltaCRDTBoxs["orset-1"] else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
 
@@ -173,14 +173,14 @@ final class CRDTAnyTypesTests: XCTestCase {
         "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
 
-    func test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType() throws {
+    func test_DeltaCRDTBox_canBeUsedToMergeRightDeltaType() throws {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
-        var gg1 = g1.asAnyDeltaCRDT
-        let gg2 = g2.asAnyDeltaCRDT
+        var gg1 = g1.asDeltaCRDTBox
+        let gg2 = g2.asDeltaCRDTBox
 
         let d = gg2.delta! // ! safe because of nil check right above
         // gg1 is mutated
@@ -192,14 +192,14 @@ final class CRDTAnyTypesTests: XCTestCase {
         ugg1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
     }
 
-    func test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType() throws {
+    func test_DeltaCRDTBox_throwWhenAttemptToMergeInvalidDeltaType() throws {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
         var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
         s1.add(3)
 
-        var gg1 = g1.asAnyDeltaCRDT
+        var gg1 = g1.asDeltaCRDTBox
 
         guard let d = s1.delta else {
             throw shouldNotHappen("Delta should not be nil")
@@ -211,11 +211,11 @@ final class CRDTAnyTypesTests: XCTestCase {
         "\(error)".shouldStartWith(prefix: "incompatibleDeltaTypeMergeAttempted")
     }
 
-    func test_AnyDeltaCRDT_canResetDelta() throws {
+    func test_DeltaCRDTBox_canResetDelta() throws {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
-        var gg1 = g1.asAnyDeltaCRDT
+        var gg1 = g1.asDeltaCRDTBox
         // gg1 should have delta
         gg1.delta.shouldNotBeNil()
         gg1.resetDelta()

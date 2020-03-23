@@ -145,7 +145,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
     ) throws -> ActorRef<Message>
-    where Message: ActorMessage {
+        where Message: ActorMessage {
         return try self.root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
             let actor: ActorShell<Message> = ActorShell(

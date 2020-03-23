@@ -15,9 +15,7 @@
 import DistributedActors
 import class NIO.EventLoopFuture
 
-extension SkipCodableActorable.Message: NotTransportableActorMessage {
-
-}
+extension SkipCodableActorable.Message: NotTransportableActorMessage {}
 
 public struct SkipCodableActorable: Actorable {
     public static let generateCodableConformance: Bool = false

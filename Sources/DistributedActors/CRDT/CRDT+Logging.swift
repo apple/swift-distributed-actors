@@ -20,7 +20,7 @@ import Logging
 extension CRDT.ActorOwned {
     func metadata() -> Logger.Metadata {
         [
-            "crdt/id": "\(self.id)",
+            "crdt/id": "\(self.id.id)",
             "crdt/status": "\(self.status)",
         ]
     }
@@ -56,9 +56,9 @@ extension CRDT.LWWMap {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: LWWRegister + Logger Metadata
-
+//// ==== ----------------------------------------------------------------------------------------------------------------
+//// MARK: LWWRegister + Logger Metadata
+//
 extension CRDT.LWWRegister {
     func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
         [

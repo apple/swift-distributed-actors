@@ -12,10 +12,10 @@
 ////
 ////===----------------------------------------------------------------------===//
 //
-//import Logging
+// import Logging
 //
 ///// Receptionist for local execution. Does not depend on a cluster being available.
-//internal enum LocalReceptionist {
+// internal enum LocalReceptionist {
 //    static var behavior: Behavior<Receptionist.Message> {
 //        return .setup { context in
 //            let storage = Receptionist.Storage()
@@ -117,4 +117,4 @@
 //            storage.removeSubscription(key: message._key.boxed, subscription: message._boxed)
 //        }
 //    }
-//}
+// }

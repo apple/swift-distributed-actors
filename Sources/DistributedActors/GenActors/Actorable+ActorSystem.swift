@@ -16,7 +16,6 @@
 // MARK: Spawning `Actorable`
 
 extension ActorSystem {
-
     // Implementation note:
     // So technically Actorable's associated Message type is always fulfilled by GenActor's source code gen today,
     // so we "could" assume that it is always `Codable`.

@@ -19,9 +19,20 @@ import NIO
 // MARK: Core CRDT protocols
 
 /// Root type for all state-based CRDTs.
-public protocol StateBasedCRDT {
+public protocol StateBasedCRDT: Codable {
     // State-based CRDT and CvRDT mean the same thing literally. This protocol is not necessary if the restriction of
     // the `CvRDT` protocol being used as a generic constraint only is lifted.
+
+    // Impl note: cannot restrict to Self as then we cannot store this protocol in storage
+    mutating func _tryMerge(other: StateBasedCRDT) throws
+}
+
+extension StateBasedCRDT {
+    public func _tryMerging(other: StateBasedCRDT) throws -> StateBasedCRDT {
+        var merged = self
+        try merged._tryMerge(other: other)
+        return merged
+    }
 }
 
 /// State-based CRDT aka Convergent Replicated Data Type (CvRDT).
@@ -64,7 +75,7 @@ extension CvRDT {
     }
 }
 
-public protocol _DeltaCRDT: CvRDT {}
+public protocol _DeltaCRDT {}
 
 /// Delta State CRDT (ẟ-CRDT), a kind of state-based CRDT.
 ///
@@ -72,7 +83,7 @@ public protocol _DeltaCRDT: CvRDT {}
 ///
 /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
 /// - SeeAlso: [Efficient Synchronization of State-based CRDTs](https://arxiv.org/pdf/1803.02750.pdf)
-public protocol DeltaCRDT: _DeltaCRDT {
+public protocol DeltaCRDT: _DeltaCRDT, CvRDT {
     /// `Delta` type should be registered and (de-)serializable using the Actor serialization infrastructure.
     ///
     /// - SeeAlso: The library's documentation on serialization for more information.
@@ -104,11 +115,11 @@ extension DeltaCRDT {
 
 extension DeltaCRDT {
     internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-        self.asAnyDeltaCRDT
+        self.asDeltaCRDTBox
     }
 
-    internal var asAnyDeltaCRDT: AnyDeltaCRDT {
-        AnyDeltaCRDT(self)
+    internal var asDeltaCRDTBox: DeltaCRDTBox {
+        DeltaCRDTBox(self)
     }
 }
 

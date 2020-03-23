@@ -30,7 +30,7 @@ public class TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message> 
     }
 
     public override func serialize(_ message: Message) throws -> ByteBuffer {
-        var encoder = TopLevelBytesBlobEncoder(allocator: self.allocator)
+        let encoder = TopLevelBytesBlobEncoder(allocator: self.allocator) // TODO: make it not a class?
         encoder.userInfo[.actorSerializationContext] = self.context
         try message.encode(to: encoder)
         guard let bytes = encoder.result else {
@@ -49,9 +49,7 @@ public class TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message> 
         return try Message._decode(from: &_bytes, using: decoder)
     }
 
-    public override func setSerializationContext(_ context: Serialization.Context) {
-    }
+    public override func setSerializationContext(_ context: Serialization.Context) {}
 
-    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
-    }
+    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {}
 }

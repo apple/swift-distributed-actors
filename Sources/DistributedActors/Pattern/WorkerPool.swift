@@ -76,7 +76,6 @@ public class WorkerPool<Message: ActorMessage> { // TODO: really has to be Codab
         let ref = try factory.spawn(naming, of: WorkerPoolMessage<Message>.self, props: props, file: file, line: line, pool.initial())
         return .init(ref: ref)
     }
-
 }
 
 /// Contains the various state behaviors the `WorkerPool` can be in.
@@ -243,7 +242,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
     }
 }
 
-//extension WorkerPoolRef: ReceivesQuestions {
+// extension WorkerPoolRef: ReceivesQuestions {
 //    public typealias Question = Message
 //
 //    public func ask<Answer: ActorMessage>(
@@ -256,7 +255,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
 //            .forward(makeQuestion(replyTo))
 //        }
 //    }
-//}
+// }
 
 @usableFromInline
 internal enum WorkerPoolMessage<Message: ActorMessage>: NotTransportableActorMessage {
@@ -280,7 +279,7 @@ public enum WorkerPoolError: Error {
 // MARK: WorkerPool Settings
 
 /// Used to configure a `WorkerPool`.
-public struct WorkerPoolSettings<Message: ActorMessage> { // TODO need the Codable?
+public struct WorkerPoolSettings<Message: ActorMessage> { // TODO: need the Codable?
     /// Log level at which the worker pool will log its internal messages.
     /// Usually not interesting unless debugging the workings of a worker pool and workers joining/leaving it.
     var logLevel: Logger.Level = .trace

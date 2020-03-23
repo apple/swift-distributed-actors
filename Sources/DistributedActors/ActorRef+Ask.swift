@@ -55,7 +55,6 @@ public protocol ReceivesQuestions: Codable {
         file: String, function: String, line: UInt,
         _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer>
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

@@ -39,7 +39,7 @@ extension ConvergentGossip.Message {
             try container.encode(DiscriminatorKeys.gossip, forKey: ._case)
             try container.encode(envelope, forKey: .gossip_envelope)
         default:
-            throw SerializationError.mayNeverBeSerialized(type: "\(self)")
+            throw SerializationError.notTransportableMessage(type: "\(self)")
         }
     }
 }

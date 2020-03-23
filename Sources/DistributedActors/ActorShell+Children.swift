@@ -27,7 +27,6 @@ internal protocol ChildActorRefFactory: ActorRefFactory {
 
     func stop<Message>(child ref: ActorRef<Message>) throws
         where Message: ActorMessage
-
 }
 
 internal enum Child {

@@ -275,7 +275,7 @@ class ActorRefAdapterTests: ActorSystemTestBase {
     }
 
     func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
-        class TopExample: NotTransportableActorMessage{}
+        class TopExample: NotTransportableActorMessage {}
         class BottomExample: TopExample {}
 
         let probe = self.testKit.spawnTestProbe(expecting: String.self)

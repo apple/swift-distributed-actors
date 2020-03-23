@@ -17,3 +17,5 @@
 # rules
 
 --disable blankLinesAroundMark
+# since we sometimes MUST invoke MetaType.init explicitly (and not doing so is a compile error)
+--disable redundantInit

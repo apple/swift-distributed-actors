@@ -394,6 +394,7 @@ extension RomeoMessage {
     public enum DiscriminatorKeys: String, Codable {
         case pleaseWatch
     }
+
     public enum CodingKeys: CodingKey {
         case _case
 
@@ -420,7 +421,6 @@ extension RomeoMessage {
         }
     }
 }
-
 
 private enum JulietMessage: String, ActorMessage {
     case takePoison

@@ -35,7 +35,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             g1.delta.shouldNotBeNil()
 
             let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
-            let write: CRDT.Replicator.Message = .remoteCommand(.write(id, g1.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
+            let write: CRDT.Replicator.Message = .remoteCommand(.write(id, g1, replyTo: resultProbe.ref))
 
             var (manifest, bytes) = try system.serialization.serialize(write)
             let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
@@ -46,7 +46,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
 
-            guard let dg1 = deserializedData.underlying as? CRDT.GCounter else {
+            guard let dg1 = deserializedData as? CRDT.GCounter else {
                 throw self.testKit.fail("Should be a GCounter")
             }
             dg1.value.shouldEqual(g1.value)
@@ -63,7 +63,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             set.delta.shouldNotBeNil()
 
             let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
-            let write: CRDT.Replicator.Message = .remoteCommand(.write(id, set.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
+            let write: CRDT.Replicator.Message = .remoteCommand(.write(id, set, replyTo: resultProbe.ref))
 
             var (manifest, bytes) = try system.serialization.serialize(write)
             let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
@@ -74,7 +74,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
 
-            guard let dset = deserializedData.underlying as? CRDT.ORSet<String> else {
+            guard let dset = deserializedData as? CRDT.ORSet<String> else {
                 throw self.testKit.fail("Should be a ORSet<String>")
             }
             dset.elements.shouldEqual(set.elements)
@@ -90,7 +90,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             g1.delta.shouldNotBeNil()
 
             let resultProbe = self.testKit.spawnTestProbe(expecting: WriteResult.self)
-            let write: CRDT.Replicator.Message = .remoteCommand(.writeDelta(id, delta: g1.delta!.asAnyStateBasedCRDT, replyTo: resultProbe.ref)) // !-safe since we check for nil above
+            let write: CRDT.Replicator.Message = .remoteCommand(.writeDelta(id, delta: g1.delta!, replyTo: resultProbe.ref)) // !-safe since we check for nil above
 
             var (manifest, bytes) = try system.serialization.serialize(write)
             let deserialized = try system.serialization.deserialize(as: CRDT.Replicator.Message.self, from: &bytes, using: manifest)
@@ -101,7 +101,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
 
-            guard let ddg1 = deserializedDelta.underlying as? CRDT.GCounterDelta else {
+            guard let ddg1 = deserializedDelta as? CRDT.GCounterDelta else {
                 throw self.testKit.fail("Should be a GCounter")
             }
             "\(ddg1.state)".shouldContain("[actor:sact://CRDTReplicationSerializationTests@localhost:9001/user/alpha: 5]")
@@ -163,7 +163,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             g1.increment(by: 5)
             g1.delta.shouldNotBeNil()
 
-            let result = ReadResult.success(g1.asAnyStateBasedCRDT)
+            let result = ReadResult.success(g1)
 
             var (manifest, bytes) = try system.serialization.serialize(result)
             let deserialized = try system.serialization.deserialize(as: ReadResult.self, from: &bytes, using: manifest)
@@ -171,7 +171,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             guard case .success(let deserializedData) = deserialized else {
                 throw self.testKit.fail("Should be RemoteCommand.ReadResult.success message")
             }
-            guard let dg1 = deserializedData.underlying as? CRDT.GCounter else {
+            guard let dg1 = deserializedData as? CRDT.GCounter else {
                 throw self.testKit.fail("Should be a GCounter")
             }
             dg1.value.shouldEqual(g1.value)

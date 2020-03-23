@@ -58,6 +58,16 @@ extension CRDT {
             self.gaps.insert(dot)
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+            let OtherType = type(of: other as Any)
+            guard let wellTypedOther = other as? Self else {
+                // TODO: make this "merge error"
+                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+            }
+
+            self.merge(other: wellTypedOther)
+        }
+
         /// Merge another `VersionContext` into this. This `VersionContext` is mutated while `other` is not.
         ///
         /// - Parameter other: The `VersionContext` to merge.
@@ -222,6 +232,19 @@ extension CRDT {
             self.elementByBirthDot = [:]
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+            let OtherType = type(of: other as Any)
+            guard let wellTypedOther = other as? Self else {
+                // TODO: make this "merge error"
+                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+            }
+
+            // TODO: check if delta merge or normal
+            // TODO: what if we simplify and compute deltas...?
+
+            self.merge(other: wellTypedOther)
+        }
+
         public mutating func merge(other: VersionedContainer<Element>) {
             let merged = VersionContextAndElements(self.versionContext, self.elementByBirthDot)
                 .merging(other: VersionContextAndElements(other.versionContext, other.elementByBirthDot))
@@ -253,6 +276,20 @@ extension CRDT {
         }
 
         init() {}
+
+        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+            let OtherType = type(of: other as Any)
+            guard let wellTypedOther = other as? Self else {
+                // TODO: make this "merge error"
+                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+            }
+
+            // TODO: check if delta merge or normal
+            // TODO: what if we simplify and compute deltas...?
+
+            self.merge(other: wellTypedOther)
+        }
+
 
         public mutating func merge(other: VersionedContainerDelta) {
             let merged = VersionContextAndElements(self.versionContext, self.elementByBirthDot)
