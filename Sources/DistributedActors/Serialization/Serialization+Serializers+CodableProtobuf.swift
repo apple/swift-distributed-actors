@@ -18,7 +18,6 @@ import NIOFoundationCompat
 import Foundation // for Codable
 
 public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
-
     let allocator: ByteBufferAllocator
     private let context: Serialization.Context
 
@@ -32,7 +31,7 @@ public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
             throw SerializationError.unableToSerialize(hint: "Can only serialize AnyInternalProtobufRepresentable types, was: \(String(reflecting: Message.self))")
         }
 
-        var encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
+        let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
         encoder.userInfo[.actorSerializationContext] = self.context
         try repr.encode(to: encoder)
 
@@ -48,17 +47,16 @@ public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
         guard let ProtoType = Message.self as? AnyInternalProtobufRepresentable.Type else {
             throw SerializationError.unableToDeserialize(hint: "Can only deserialize AnyInternalProtobufRepresentable but was \(Message.self)")
         }
-        
-        var decoder = TopLevelProtobufBlobDecoder()
+
+        let decoder = TopLevelProtobufBlobDecoder()
         decoder.userInfo[.actorSerializationContext] = self.context
 
-        return try ProtoType.init(from: decoder) as! Message
+        return try ProtoType.init(from: decoder) as! Message // explicit .init() is required here (!)
     }
 
     public override func setSerializationContext(_ context: Serialization.Context) {
         // self.context = context
     }
 
-    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
-    }
+    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {}
 }

@@ -17,9 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTActorOwnedTests: ActorSystemTestBase {
-    private struct Done:  ActorMessage {
-    }
-    
+    private struct Done: ActorMessage {}
+
     private enum OwnerEventProbeMessage: String, ActorMessage {
         case ownerDefinedOnUpdate
         case ownerDefinedOnDelete

@@ -79,7 +79,6 @@ public final class ActorSystem {
         return self._receptionist
     }
 
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: CRDT Replicator
 
@@ -186,7 +185,6 @@ public final class ActorSystem {
         self._root = TheOneWhoHasNoParent()
         let theOne = self._root
 
-
         let serializationLock = ReadWriteLock()
         self.lazyInitializationLock = serializationLock
 
@@ -276,7 +274,7 @@ public final class ActorSystem {
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
-         lazyReplicator.wakeUp()
+        lazyReplicator.wakeUp()
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
@@ -431,7 +429,7 @@ public protocol ActorRefFactory {
         where Message: ActorMessage
 }
 
-//extension ActorRefFactory {
+// extension ActorRefFactory {
 //    func spawn<Message>(
 //        _ naming: ActorNaming, props: Props,
 //        file: String = #file, line: UInt = #line,
@@ -447,7 +445,7 @@ public protocol ActorRefFactory {
 //    ) throws -> ActorRef<Message> {
 //        try self.spawn(naming, of: Message.self, props: props, file: file, line: line, behavior)
 //    }
-//}
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
@@ -462,7 +460,7 @@ extension ActorSystem: ActorRefFactory {
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message>
-    where Message: ActorMessage {
+        where Message: ActorMessage {
         try self.serialization._ensureSerializer(type, file: file, line: line) // FIXME: do we need to ensure when it is not Codable?
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
@@ -505,7 +503,8 @@ extension ActorSystem: ActorRefFactory {
     internal func _spawn<Message>(
         using provider: _ActorRefProvider,
         _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
-        startImmediately: Bool = true) throws -> ActorRef<Message>
+        startImmediately: Bool = true
+    ) throws -> ActorRef<Message>
         where Message: ActorMessage {
         try behavior.validateAsInitial()
 
@@ -605,11 +604,11 @@ extension ActorSystem: _ActorTreeTraversable {
     /// :nodoc: INTERNAL API: Not intended to be used by end users.
     public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> ActorRef<Message> {
 //        if let serialization = context.system._serialization {
-            do {
-                try context.system.serialization._ensureSerializer(Message.self)
-            } catch {
-                return context.personalDeadLetters
-            }
+        do {
+            try context.system.serialization._ensureSerializer(Message.self)
+        } catch {
+            return context.personalDeadLetters
+        }
 //        }
 
         guard let selector = context.selectorSegments.first else {

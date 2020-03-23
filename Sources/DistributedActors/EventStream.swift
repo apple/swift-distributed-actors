@@ -56,7 +56,7 @@ public struct EventStream<Event: ActorMessage> {
 }
 
 internal enum EventStreamShell {
-    enum Message<Event: ActorMessage>: NotTransportableActorMessage { // TODO make it codable, transportability depends on the Event really
+    enum Message<Event: ActorMessage>: NotTransportableActorMessage { // TODO: make it codable, transportability depends on the Event really
         /// Subscribe to receive events
         case subscribe(ActorRef<Event>)
         /// Unsubscribe from receiving events

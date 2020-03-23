@@ -20,7 +20,7 @@ import struct NIO.ByteBuffer
 
 extension CRDT {
     internal enum Replication {
-        // Replicator works with type-erased CRDTs (i.e., `AnyCvRDT`, `AnyDeltaCRDT`) because protocols `CvRDT` and
+        // Replicator works with type-erased CRDTs (i.e., `AnyCvRDT`, `DeltaCRDTBox`) because protocols `CvRDT` and
         // `DeltaCRDT` can be used as generic constraint only due to `Self` or associated type requirements.
         typealias Data = AnyStateBasedCRDT
 
@@ -79,7 +79,7 @@ extension CRDT {
                 case failure(WriteError)
             }
 
-            enum WriteError: Error, NotTransportableActorMessage{
+            enum WriteError: Error, NotTransportableActorMessage {
                 case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
                 case unsupportedCRDT
                 case consistencyError(CRDT.OperationConsistency.Error)
@@ -108,9 +108,9 @@ extension CRDT {
 
         enum RemoteCommand: ActorMessage {
             // Sent from one replicator to another to write the given CRDT instance as part of `OwnerCommand.write` to meet consistency requirement
-            case write(_ id: Identity, _ data: AnyStateBasedCRDT, replyTo: ActorRef<WriteResult>)
+            case write(_ id: Identity, _ data: StateBasedCRDT, replyTo: ActorRef<WriteResult>)
             // Sent from one replicator to another to write the given delta of delta-CRDT instance as part of `OwnerCommand.write` to meet consistency requirement
-            case writeDelta(_ id: Identity, delta: AnyStateBasedCRDT, replyTo: ActorRef<WriteResult>)
+            case writeDelta(_ id: Identity, delta: StateBasedCRDT, replyTo: ActorRef<WriteResult>) // TODO: can it be one replication write command instead?
             // Sent from one replicator to another to read CRDT instance with the given identity as part of `OwnerCommand.read` to meet consistency requirement
             case read(_ id: Identity, replyTo: ActorRef<ReadResult>)
             // Sent from one replicator to another to delete CRDT instance with the given identity as part of `OwnerCommand.delete` to meet consistency requirement
@@ -130,7 +130,7 @@ extension CRDT {
             }
 
             enum ReadResult: ActorMessage {
-                case success(AnyStateBasedCRDT)
+                case success(StateBasedCRDT)
                 case failure(ReadError)
             }
 

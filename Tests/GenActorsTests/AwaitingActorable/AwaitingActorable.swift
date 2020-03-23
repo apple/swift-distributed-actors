@@ -15,8 +15,7 @@
 import DistributedActors
 import class NIO.EventLoopFuture
 
-extension AwaitingActorable.Message: NotTransportableActorMessage {
-}
+extension AwaitingActorable.Message: NotTransportableActorMessage {}
 
 public struct AwaitingActorable: Actorable {
     let context: Myself.Context

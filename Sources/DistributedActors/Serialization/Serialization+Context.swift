@@ -23,7 +23,6 @@ public extension CodingUserInfoKey {
 // MARK: Serialization.Context
 
 extension Serialization {
-
     /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as ActorRef).
     ///
     /// Context MAY be accessed concurrently be encoders/decoders.

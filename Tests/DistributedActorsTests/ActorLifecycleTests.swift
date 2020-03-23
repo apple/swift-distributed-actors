@@ -115,7 +115,7 @@ class ActorLifecycleTests: ActorSystemTestBase {
     }
 }
 
-private enum LifecycleDeinitActorMessage: String, ActorMessage{
+private enum LifecycleDeinitActorMessage: String, ActorMessage {
     case stop
 }
 

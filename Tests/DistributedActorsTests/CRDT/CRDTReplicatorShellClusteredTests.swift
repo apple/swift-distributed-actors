@@ -169,7 +169,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 10)
 
         // Tell replicator to write the updated g1
-        self.localSystem.replicator.tell(.remoteCommand(.write(id, g1.asAnyStateBasedCRDT, replyTo: writeP.ref)))
+        self.localSystem.replicator.tell(.remoteCommand(.write(id, g1, replyTo: writeP.ref)))
         guard case .success = try writeP.expectMessage() else { throw writeP.error() }
 
         // replicator's g1 should be updated
@@ -177,7 +177,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         guard case .success(let data) = try readP.expectMessage() else { throw readP.error() }
 
         // `read` returns type-erased CRDT
-        guard let gg1 = data.underlying as? CRDT.GCounter else {
+        guard let gg1 = data as? CRDT.GCounter else {
             throw self.localTestKit.fail("Should be a GCounter")
         }
         gg1.value.shouldEqual(g1.value)
@@ -209,7 +209,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 10)
 
         // Tell replicator to write g1.delta
-        self.localSystem.replicator.tell(.remoteCommand(.writeDelta(id, delta: g1.delta!.asAnyStateBasedCRDT, replyTo: writeP.ref))) // ! safe because `increment` should set `delta`
+        self.localSystem.replicator.tell(.remoteCommand(.writeDelta(id, delta: g1.delta!, replyTo: writeP.ref))) // ! safe because `increment` should set `delta`
         guard case .success = try writeP.expectMessage() else { throw writeP.error() }
 
         // replicator's g1 should be updated
@@ -217,7 +217,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         guard case .success(let data) = try readP.expectMessage() else { throw readP.error() }
 
         // `read` returns type-erased CRDT
-        guard let gg1 = data.underlying as? CRDT.GCounter else {
+        guard let gg1 = data as? CRDT.GCounter else {
             throw self.localTestKit.fail("Should be a GCounter")
         }
         gg1.value.shouldEqual(g1.value)

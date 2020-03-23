@@ -75,3 +75,10 @@ message CRDTORSet {
     // Includes delta
     CRDTVersionedContainer state = 2;
 }
+
+// ***** CRDT.LWWRegistry *****
+
+// TODO: NOT DONE: LWWRegistry
+message CRDTLWWRegistry {
+
+}

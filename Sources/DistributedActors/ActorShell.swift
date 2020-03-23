@@ -725,7 +725,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     }
 
     public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
-    where SubMessage: ActorMessage {
+        where SubMessage: ActorMessage {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {

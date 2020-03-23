@@ -116,6 +116,7 @@ public class Serialization {
         settings.registerSpecializedManifest(CRDT.Replicator.RemoteCommand.DeleteResult.self, serializer: ReservedID.CRDTDeleteResult)
         settings.registerSpecializedManifest(CRDT.GCounter.self, serializer: ReservedID.CRDTGCounter)
         settings.registerSpecializedManifest(CRDT.GCounterDelta.self, serializer: ReservedID.CRDTGCounterDelta)
+        // settings.registerSpecializedManifest(DeltaCRDTBox.self, serializer: ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDTEnvelope+SerializationTests
 
         self.settings = settings
         self.metrics = system.metrics
@@ -215,40 +216,23 @@ extension Serialization {
     }
 
     public func _ensureSerializer<Message: ActorMessage>(_ type: Message.Type, file: String = #file, line: UInt = #line) throws {
-        self.log.notice("Ensure serializer for [\(String(reflecting: type))] at \(file):\(line)")
         try self.__ensureSerializer(type) { manifest in
-        self.log.notice("Registered [\(manifest)] for [\(String(reflecting: type))]")
+            self.log.notice("Registered [\(manifest)] for [\(String(reflecting: type))]")
 
-            if type is NotTransportableActorMessage.Type {
-                return NopeSerializer<Message>().asAnySerializer
-            } else if type is AnyProtobufRepresentable.Type {
+            if type is AnyProtobufRepresentable.Type {
                 return try self.makeCodableSerializer(type, manifest: manifest) // can't do this since our coder is JSON, and encodes bytes as string
-                    .asAnySerializer                                            // which is illegal on top-level in JSON; thus blows up
-//                return try self.makeSerializer(type, manifest: manifest)
-//                    .asAnySerializer
+                    .asAnySerializer // which is illegal on top-level in JSON; thus blows up
             } else if type is AnyInternalProtobufRepresentable.Type {
                 return try self.makeCodableSerializer(type, manifest: manifest)
                     .asAnySerializer
-//                return try self.makeSerializer(type, manifest: manifest)
-//                    .asAnySerializer
-
-//            } else if let codableType = type as? Codable.Type {
+            } else if type is NotTransportableActorMessage.Type {
+                return NotTransportableSerializer<Message>().asAnySerializer
             } else {
                 return try self.makeCodableSerializer(type, manifest: manifest)
                     .asAnySerializer
-//            } else {
-//              //   FIXME ActorMessage is ALWAYS CODABLE. THIS IS DEAD CODE.
-//                return try type.makeSerializer(for: manifest, allocator: self.allocator)
             }
         }
     }
-
-//    public func _ensureCodableSerializer<Message: Codable>(_ type: Message.Type, file: String = #file, line: UInt = #line) throws {
-//        try self.__ensureSerializer(type) { manifest in
-//            try self.makeCodableSerializer(type, serializerID: .init(manifest.serializerID.value))
-//                .asAnySerializer
-//        }
-//    }
 
     internal func makeSerializer<Message>(_ type: Message.Type, manifest: Manifest) throws -> Serializer<Message> {
         guard manifest.serializerID != .doNotSerialize else {
@@ -265,29 +249,15 @@ extension Serialization {
     }
 
     internal func makeCodableSerializer<Message: Codable>(_ type: Message.Type, manifest: Manifest) throws -> Serializer<Message> {
-        pprint("Self.self = \(Self.self) \(#function) @ \(#file):\(#line)")
-
         switch manifest.serializerID {
         case Serialization.CodableSerializerID.jsonCodable.value:
             let serializer = JSONCodableSerializer<Message>(allocator: self.allocator)
             serializer.setSerializationContext(self.context)
             return serializer
 
-//        case let customID:
-//            // FIXME: Note: We're assuming anything other than those is a "blob" and use that serializer
-//            // self.log.info("Will use BLOB SERIALIZER for \(manifest)")
-//            // return TopLevelBytesBlobSerializer(allocator: self.allocator)
-
         case let customSerializerID:
             // TODO: determine what custom one to use, proto or what else
-
-//            if let t = type as? AnyInternalProtobufRepresentable.Type {
-                pprint("Using Proto serializer for \(_typeName(type as Any.Type))")
-            // FIXME: use the proto one
-                // let serializer: TopLevelProtobufSerializer<Message> = TopLevelProtobufSerializer(allocator: self.allocator, context: self.context)
-                let serializer = TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
-//                serializer.setSerializationContext(self.context)
-                return serializer
+            return TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
 //            } else {
 //                throw SerializationError.unableToMakeSerializer(hint: "Codable Type: \(String(reflecting: type)), Manifest: \(customSerializerID)")
 //            }
@@ -392,7 +362,8 @@ extension Serialization {
         } else {
             throw SerializationError.serializationError(
                 SerializationError.unableToDeserialize(hint: "Deserialized value is NOT an instance of \(String(reflecting: T.self)), was: \(value)"),
-                file: file, line: line)
+                file: file, line: line
+            )
         }
     }
 
@@ -407,8 +378,6 @@ extension Serialization {
         file: String = #file, line: UInt = #line
     ) throws -> Any {
         do {
-            pprint("Self.self = \(Self.self) T == \(messageType) \(#function) @ \(#file):\(#line)")
-
             // Manifest type may be used to summon specific instances of types from the manifest
             // even if the expected type is some `Outer` type (e.g. when we sent a sub class).
             let manifestMessageType = try self.summonType(from: manifest)
@@ -443,10 +412,12 @@ extension Serialization {
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: &bytes, using: decoder)
                 case let otherSerializerID:
-                // default:
-                //    throw SerializationError.unableToMakeSerializer(hint: "messageType: \(messageType), manifest: \(manifest)")
+                    // FIXME: pick the apropriate Coder by the ID here
 
-                    var decoder = TopLevelProtobufBlobDecoder()
+                    // default:
+                    //    throw SerializationError.unableToMakeSerializer(hint: "messageType: \(messageType), manifest: \(manifest)")
+
+                    let decoder = TopLevelProtobufBlobDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: &bytes, using: decoder)
 
@@ -668,17 +639,17 @@ extension Serialization {
 // See: https://stackoverflow.com/questions/42459484/make-a-swift-dictionary-where-the-key-is-type
 @usableFromInline
 struct MetaType<T>: Hashable, CustomStringConvertible {
-    let underlying: Any.Type?
+    let _underlying: Any.Type?
     let id: ObjectIdentifier
 
     init(_ base: T.Type) {
-        self.underlying = base
+        self._underlying = base
         self.id = ObjectIdentifier(base)
     }
 
     init(from value: T) {
         let t = type(of: value as Any) // `as Any` on purpose(!), see `serialize(_:)` for details
-        self.underlying = t
+        self._underlying = t
         self.id = ObjectIdentifier(t)
     }
 
@@ -697,6 +668,7 @@ struct MetaType<T>: Hashable, CustomStringConvertible {
     }
 }
 
+// TODO: remove and always just use the Any.Type
 public protocol AnyMetaType {
     var asHashable: AnyHashable { get }
 
@@ -704,6 +676,8 @@ public protocol AnyMetaType {
     func `is`(_ other: AnyMetaType) -> Bool
 
     func isInstance(_ obj: Any) -> Bool
+
+    var underlying: Any.Type? { get }
 }
 
 extension MetaType: AnyMetaType {
@@ -720,6 +694,11 @@ extension MetaType: AnyMetaType {
     @usableFromInline
     func isInstance(_ obj: Any) -> Bool {
         obj is T
+    }
+
+    @usableFromInline
+    var underlying: Any.Type? {
+        self._underlying
     }
 }
 
@@ -862,7 +841,7 @@ public enum SerializationError: Error {
     case unknownEnumValue(Int)
 
     // --- illegal errors ---
-    case mayNeverBeSerialized(type: String)
+    case notTransportableMessage(type: String)
 
     case unableToMakeSerializer(hint: String)
     case unableToSerialize(hint: String)
