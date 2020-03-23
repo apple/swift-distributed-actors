@@ -25,11 +25,11 @@ extension CRDTAnyTypesTests {
         return [
             ("test_AnyCvRDT_canBeUsedToMergeRightTypes", test_AnyCvRDT_canBeUsedToMergeRightTypes),
             ("test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
-            ("test_AnyDeltaCRDT_canBeUsedToMergeRightTypes", test_AnyDeltaCRDT_canBeUsedToMergeRightTypes),
-            ("test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
-            ("test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType", test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType),
-            ("test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType", test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType),
-            ("test_AnyDeltaCRDT_canResetDelta", test_AnyDeltaCRDT_canResetDelta),
+            ("test_DeltaCRDTBox_canBeUsedToMergeRightTypes", test_DeltaCRDTBox_canBeUsedToMergeRightTypes),
+            ("test_DeltaCRDTBox_throwWhenIncompatibleTypesAttemptToBeMerged", test_DeltaCRDTBox_throwWhenIncompatibleTypesAttemptToBeMerged),
+            ("test_DeltaCRDTBox_canBeUsedToMergeRightDeltaType", test_DeltaCRDTBox_canBeUsedToMergeRightDeltaType),
+            ("test_DeltaCRDTBox_throwWhenAttemptToMergeInvalidDeltaType", test_DeltaCRDTBox_throwWhenAttemptToMergeInvalidDeltaType),
+            ("test_DeltaCRDTBox_canResetDelta", test_DeltaCRDTBox_canResetDelta),
         ]
     }
 }

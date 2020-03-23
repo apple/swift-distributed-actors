@@ -257,9 +257,8 @@ public class OperationLogClusterReceptionist {
 
                 case let message as _Subscribe:
                     try self.onSubscribe(context: context, message: message)
-
                 default:
-                    context.log.warning("Received unexpected message: \($0)")
+                    context.log.warning("Received unexpected message: \(String(reflecting: $0)), \(type(of: $0))")
                 }
                 return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
@@ -738,11 +737,33 @@ extension OperationLogClusterReceptionist {
         func findMaxSequenceNr() -> UInt64 {
             self.sequencedOps.lazy.map { $0.sequenceRange.max }.max() ?? 0
         }
+
+        public enum CodingKeys: CodingKey {
+            case peer
+            case observedSeqNrs
+            case sequencedOps
+        }
+
+        // TODO: annoyance; init MUST be defined here rather than in extension since it is required
+        public required init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.peer = try container.decode(ActorRef<Receptionist.Message>.self, forKey: .peer)
+            self.observedSeqNrs = try container.decode(VersionVector.self, forKey: .observedSeqNrs)
+            self.sequencedOps = try container.decode([OpLog<ReceptionistOp>.SequencedOp].self, forKey: .sequencedOps)
+            super.init()
+        }
+
+        public override func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.peer, forKey: .peer)
+            try container.encode(self.observedSeqNrs, forKey: .observedSeqNrs)
+            try container.encode(self.sequencedOps, forKey: .sequencedOps)
+        }
     }
 
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
-    class AckOps: Receptionist.Message {
+    class AckOps: Receptionist.Message, CustomStringConvertible {
         /// Cumulative ACK of all ops until (and including) this one.
         ///
         /// If a recipient has more ops than the `confirmedUntil` confirms seeing, it shall offer
@@ -759,12 +780,67 @@ extension OperationLogClusterReceptionist {
             self.until = appliedUntil
             self.otherObservedSeqNrs = observedSeqNrs
             self.peer = peer
+            super.init()
+        }
+
+        public enum CodingKeys: CodingKey {
+            case until
+            case otherObservedSeqNrs
+            case peer
+        }
+
+        // TODO: annoyance; init MUST be defined here rather than in extension since it is required
+        public required init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let until = try container.decode(UInt64.self, forKey: .until)
+            let otherObservedSeqNrs = try container.decode(VersionVector.self, forKey: .otherObservedSeqNrs)
+            let peer = try container.decode(ActorRef<Receptionist.Message>.self, forKey: .peer)
+
+            self.until = until
+            self.otherObservedSeqNrs = otherObservedSeqNrs
+            self.peer = peer
+            super.init()
+        }
+
+        public override func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.until, forKey: .until)
+            try container.encode(self.otherObservedSeqNrs, forKey: .otherObservedSeqNrs)
+            try container.encode(self.peer, forKey: .peer)
+        }
+
+        var description: String {
+            "Receptionist.AckOps(until: \(until), otherObservedSeqNrs: \(otherObservedSeqNrs), peer: \(peer))"
         }
     }
 
-    internal class PeriodicAckTick: Receptionist.Message {}
+    internal class PeriodicAckTick: Receptionist.Message, NotTransportableActorMessage, CustomStringConvertible {
+        override init() {
+            super.init()
+        }
 
-    internal class PublishLocalListingsTrigger: Receptionist.Message {}
+        public required init(from decoder: Decoder) throws {
+            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+        }
+
+        var description: String {
+            "Receptionist.PeriodicAckTick()"
+        }
+    }
+
+    internal class PublishLocalListingsTrigger: Receptionist.Message, NotTransportableActorMessage, CustomStringConvertible {
+        override init() {
+            super.init()
+        }
+
+        public required init(from decoder: Decoder) throws {
+            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+        }
+
+        var description: String {
+            "Receptionist.PublishLocalListingsTrigger()"
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

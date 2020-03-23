@@ -12,15 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftProtobuf
 import NIO
+import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Specialized ActorMessage: Protocol Buffers
 
 // TODO: Is this doable?
-//extension SwiftProtobuf.Message where Self: ActorMessage {
-//}
+// extension SwiftProtobuf.Message where Self: ActorMessage {
+// }
 
 extension InternalProtobufRepresentable where Self: ActorMessage {
     init(context: Serialization.Context, from buffer: inout NIO.ByteBuffer, using manifest: Serialization.Manifest) throws {

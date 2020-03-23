@@ -22,10 +22,9 @@ import struct NIO.ByteBufferAllocator
 // TODO: TopLevelDataEncoder
 
 class TopLevelBytesBlobEncoder: Encoder {
-
     let allocator: ByteBufferAllocator
 
-    var result: ByteBuffer? = nil
+    var result: ByteBuffer?
 
     init(allocator: ByteBufferAllocator) {
         self.allocator = allocator
@@ -77,7 +76,6 @@ class TopLevelBytesBlobEncoder: Encoder {
     func singleValueContainer() -> SingleValueEncodingContainer {
         TopLevelBytesBlobSingleValueEncodingContainer(superEncoder: self)
     }
-
 }
 
 struct TopLevelBytesBlobSingleValueEncodingContainer: SingleValueEncodingContainer {
@@ -95,7 +93,7 @@ struct TopLevelBytesBlobSingleValueEncodingContainer: SingleValueEncodingContain
             try self.superEncoder.store(data: data)
         case let buffer as ByteBuffer:
             try self.superEncoder.store(buffer: buffer)
-        case let bytes as Array<UInt8>:
+        case let bytes as [UInt8]:
             try self.superEncoder.store(bytes: bytes)
         default:
             throw SerializationError.unableToSerialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only suports raw bytes")
@@ -164,10 +162,9 @@ struct TopLevelBytesBlobSingleValueEncodingContainer: SingleValueEncodingContain
     func encode(_ value: UInt64) throws {
         throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
     }
-
 }
 
-//struct TopLevelBytesBlobEncoderContainer: UnkeyedEncodingContainer {
+// struct TopLevelBytesBlobEncoderContainer: UnkeyedEncodingContainer {
 //    private(set) var codingPath: [CodingKey] = []
 //    private(set) var count: Int = 0
 //
@@ -256,7 +253,7 @@ struct TopLevelBytesBlobSingleValueEncodingContainer: SingleValueEncodingContain
 //        fatalError("nestedUnkeyedContainer() is not supported by \(Self.self)")
 //    }
 //
-//}
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Top-Level Bytes-Blob Decoder
@@ -277,12 +274,11 @@ class TopLevelBytesBlobDecoder: Decoder {
 
     func singleValueContainer() throws -> SingleValueDecodingContainer {
         TopLevelBytesBlobSingleValueDecodingContainer(superEncoder: self)
-
     }
 
     func decode<T: Decodable>(_ type: T.Type, from: Input) throws -> T {
         var buf = from
-        return try T._decode(from: &buf, using: TopLevelProtobufBlobDecoder()) // FIXME should be the proto one
+        return try T._decode(from: &buf, using: TopLevelProtobufBlobDecoder()) // FIXME: should be the proto one
     }
 }
 
@@ -358,5 +354,4 @@ struct TopLevelBytesBlobSingleValueDecodingContainer: SingleValueDecodingContain
     func decode(_ type: UInt64.Type) throws -> UInt64 {
         throw SerializationError.unableToDeserialize(hint: "\(#function) failed! Only a top-level blob of bytes can be deserialized by \(Self.self)!")
     }
-
 }

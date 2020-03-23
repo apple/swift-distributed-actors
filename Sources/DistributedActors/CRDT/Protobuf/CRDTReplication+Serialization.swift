@@ -50,22 +50,24 @@ extension CRDT.Replicator.RemoteCommand: InternalProtobufRepresentable {
         var proto = ProtobufRepresentation()
 
         switch self {
-        case .write(let id, let data, let replyTo):
+        case .write(let id, let crdt, let replyTo):
             traceLog_Serialization("\(self)")
 
             var protoWrite = ProtoCRDTWrite()
             protoWrite.identity = id.toProto(context: context)
-            protoWrite.envelope = try data.wrapWithEnvelope(context).toProto(context: context)
+            protoWrite.envelope = try ProtoCRDTEnvelope.serialize(context, crdt: crdt)
             protoWrite.replyTo = try replyTo.toProto(context: context)
             proto.write = protoWrite
+
         case .writeDelta(let id, let delta, let replyTo):
             traceLog_Serialization("\(self)")
 
             var protoWrite = ProtoCRDTWrite()
             protoWrite.identity = id.toProto(context: context)
-            protoWrite.envelope = try delta.wrapWithEnvelope(context).toProto(context: context)
+            protoWrite.envelope = try ProtoCRDTEnvelope.serialize(context, crdt: delta)
             protoWrite.replyTo = try replyTo.toProto(context: context)
             proto.writeDelta = protoWrite
+
         case .read(let id, let replyTo):
             traceLog_Serialization("\(self)")
 
@@ -73,6 +75,7 @@ extension CRDT.Replicator.RemoteCommand: InternalProtobufRepresentable {
             protoRead.identity = id.toProto(context: context)
             protoRead.replyTo = try replyTo.toProto(context: context)
             proto.read = protoRead
+
         case .delete(let id, let replyTo):
             traceLog_Serialization("\(self)")
 
@@ -145,11 +148,10 @@ extension ProtoCRDTWrite {
     }
 
     internal func envelope(context: Serialization.Context) throws -> CRDTEnvelope {
-        fatalError("NOT DONE \(#function)")
-//        guard self.hasEnvelope else {
-//            throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
-//        }
-//        return try CRDTEnvelope(fromProto: self.envelope, context: context)
+        guard self.hasEnvelope else {
+            throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
+        }
+        return try CRDTEnvelope(fromProto: self.envelope, context: context)
     }
 }
 
@@ -235,7 +237,7 @@ extension CRDT.Replicator.RemoteCommand.WriteError: InternalProtobufRepresentabl
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.Replicator.RemoteCommand.ReadResult and ReadError
 
- extension CRDT.Replicator.RemoteCommand.ReadResult: InternalProtobufRepresentable {
+extension CRDT.Replicator.RemoteCommand.ReadResult: InternalProtobufRepresentable {
     typealias ProtobufRepresentation = ProtoCRDTReadResult
 
     func toProto(context: Serialization.Context) throws -> ProtoCRDTReadResult {
@@ -243,7 +245,7 @@ extension CRDT.Replicator.RemoteCommand.WriteError: InternalProtobufRepresentabl
         switch self {
         case .success(let data):
             proto.type = .success
-            proto.envelope = try data.wrapWithEnvelope(context).toProto(context: context)
+            proto.envelope = try ProtoCRDTEnvelope.serialize(context, crdt: data)
         case .failure(let error):
             proto.type = .failure
             proto.error = error.toProto(context: context)
@@ -273,7 +275,7 @@ extension CRDT.Replicator.RemoteCommand.WriteError: InternalProtobufRepresentabl
             throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTReadResult.type field.")
         }
     }
- }
+}
 
 extension CRDT.Replicator.RemoteCommand.ReadError: InternalProtobufRepresentable {
     typealias ProtobufRepresentation = ProtoCRDTReadError
@@ -323,5 +325,19 @@ extension CRDT.Replicator.RemoteCommand.DeleteResult: InternalProtobufRepresenta
         case .UNRECOGNIZED:
             throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTDeleteResult.type field.")
         }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Proto CRDT Envelope extensions
+
+extension ProtoCRDTEnvelope {
+    /// Not an init to make it explicit that we perform serialization here.
+    public static func serialize(_ context: Serialization.Context, crdt: StateBasedCRDT) throws -> ProtoCRDTEnvelope {
+        var (manifest, bytes) = try context.serialization.serialize(crdt)
+        var proto = ProtoCRDTEnvelope()
+        proto.manifest = manifest.toProto()
+        proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe, since we definitely read a safe amount of data here
+        return proto
     }
 }

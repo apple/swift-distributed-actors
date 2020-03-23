@@ -181,7 +181,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
     public func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M>
-    where M: ActorMessage {
+        where M: ActorMessage {
         return undefined()
     }
 
@@ -239,7 +239,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
         where M: ActorMessage {
         return undefined()
     }
-    
+
     /// Container of spawned child actors.
     ///
     /// Allows obtaining references to previously spawned actors by their name.
@@ -421,8 +421,8 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
-    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From> 
-    where From: ActorMessage {
+    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From>
+        where From: ActorMessage {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
@@ -438,7 +438,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
-    where From: ActorMessage {
+        where From: ActorMessage {
         return undefined()
     }
 
@@ -453,7 +453,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
-    where SubMessage: ActorMessage {
+        where SubMessage: ActorMessage {
         return undefined()
     }
 

@@ -38,7 +38,6 @@ final class ActorAskTests: ActorSystemTestBase {
         result.shouldEqual("received")
     }
 
-
     func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() throws {
         let behavior: Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")

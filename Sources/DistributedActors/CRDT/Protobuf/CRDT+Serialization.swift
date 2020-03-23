@@ -236,18 +236,34 @@ extension CRDT.GCounterDelta: ProtobufRepresentable {
 extension CRDT.ORSet: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoCRDTORSet
 
-    public func toProto(context: Serialization.Context) throws -> ProtoCRDTORSet {
-        var proto = ProtoCRDTORSet()
+    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
+        var proto = ProtobufRepresentation()
         proto.replicaID = try self.replicaId.toProto(context: context)
         proto.state = try self.state.toProto(context: context)
         return proto
     }
 
-    public init(fromProto proto: ProtoCRDTORSet, context: Serialization.Context) throws {
+    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: CRDT.ORSet<Element>.self))
         }
         self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
         self.state = try CRDT.VersionedContainer<Element>(fromProto: proto.state, context: context)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT.LWWRegister
+
+// FIXME: https://github.com/apple/swift-distributed-actors/issues/509
+extension CRDT.LWWRegister: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoCRDTLWWRegistry
+
+    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
+        fatalError("TODO: Serialization of LWWRegistry is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
+    }
+
+    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
+        fatalError("TODO: Serialization of LWWRegistry is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
     }
 }

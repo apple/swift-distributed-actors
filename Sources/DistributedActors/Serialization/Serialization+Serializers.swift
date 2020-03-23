@@ -78,10 +78,10 @@ extension Serializer: AnySerializer {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: NopeSerializer
+// MARK: NotTransportableSerializer
 
 /// Nope, as opposed to Noop
-internal class NopeSerializer<Message>: Serializer<Message> {
+internal class NotTransportableSerializer<Message>: Serializer<Message> {
     override func serialize(_ message: Message) throws -> ByteBuffer {
         throw SerializationError.unableToSerialize(hint: "NoopSerializer: \(Message.self)")
     }
@@ -142,4 +142,3 @@ internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
         "BoxedAnySerializer(\(self.serializer))"
     }
 }
-

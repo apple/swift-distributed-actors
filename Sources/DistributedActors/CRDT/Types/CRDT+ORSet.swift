@@ -81,6 +81,19 @@ extension CRDT {
             self.state.removeAll()
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+            let OtherType = type(of: other as Any)
+            guard let wellTypedOther = other as? Self else {
+                // TODO: make this "merge error"
+                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+            }
+
+            // TODO: check if delta merge or normal
+            // TODO: what if we simplify and compute deltas...?
+
+            self.merge(other: wellTypedOther)
+        }
+
         public mutating func merge(other: ORSet<Element>) {
             self.state.merge(other: other.state)
             self.compact()

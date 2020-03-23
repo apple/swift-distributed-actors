@@ -53,13 +53,13 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         }
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied(let writeResult, let isNew) = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied(let writeResult, let isNew) = try replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeTrue()
 
         // Return value should match g1
-        guard let wg1 = writeResult.underlying as? CRDT.GCounter else {
+        guard let wg1 = writeResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         // Delta is cleared before writing delta-CRDT to data store
@@ -70,7 +70,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have g1")
         }
-        guard let rg1 = readResult.underlying as? CRDT.GCounter else {
+        guard let rg1 = readResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         rg1.delta.shouldBeNil()
@@ -85,7 +85,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -94,13 +94,13 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.resetDelta()
 
         // Write the updated g1
-        guard case .applied(let writeResult, let isNew) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: false) else {
+        guard case .applied(let writeResult, let isNew) = try replicator.write(id, g1, deltaMerge: false) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeFalse()
 
         // Return value should match g1
-        guard let wg1 = writeResult.underlying as? CRDT.GCounter else {
+        guard let wg1 = writeResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         wg1.value.shouldEqual(g1.value)
@@ -109,7 +109,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have g1")
         }
-        guard let rg1 = readResult.underlying as? CRDT.GCounter else {
+        guard let rg1 = readResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         rg1.value.shouldEqual(g1.value)
@@ -123,7 +123,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -132,12 +132,12 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.delta.shouldNotBeNil()
 
         // Write the updated g1
-        guard case .applied(let writeResult, _) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: true) else {
+        guard case .applied(let writeResult, _) = try replicator.write(id, g1, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
         // Return value should match g1
-        guard let wg1 = writeResult.underlying as? CRDT.GCounter else {
+        guard let wg1 = writeResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         wg1.value.shouldEqual(g1.value)
@@ -146,7 +146,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have g1")
         }
-        guard let rg1 = readResult.underlying as? CRDT.GCounter else {
+        guard let rg1 = readResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         rg1.value.shouldEqual(g1.value)
@@ -160,7 +160,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -169,12 +169,12 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.resetDelta()
 
         // Write g1 with deltaMerge == true but g1.delta is nil; code should fallback to `merge`
-        guard case .applied(let writeResult, _) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: true) else {
+        guard case .applied(let writeResult, _) = try replicator.write(id, g1, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
         // Return value should match g1
-        guard let wg1 = writeResult.underlying as? CRDT.GCounter else {
+        guard let wg1 = writeResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         wg1.value.shouldEqual(g1.value)
@@ -183,7 +183,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have g1")
         }
-        guard let rg1 = readResult.underlying as? CRDT.GCounter else {
+        guard let rg1 = readResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         rg1.value.shouldEqual(g1.value)
@@ -199,16 +199,16 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1Beta.increment(by: 10)
 
         // Write g1Alpha (as new so `deltaMerge` ignored)
-        guard case .applied = replicator.write(id, g1Alpha.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, g1Alpha) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         // Write g1Beta (with `mergeDelta`)
-        guard case .applied(let bResult, _) = replicator.write(id, g1Beta.asAnyStateBasedCRDT, deltaMerge: true) else {
+        guard case .applied(let bResult, _) = try replicator.write(id, g1Beta, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
         // Return value of the last write should equal g1Alpha and g1Beta combined
-        guard let wg1 = bResult.underlying as? CRDT.GCounter else {
+        guard let wg1 = bResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         wg1.value.shouldEqual(11) // 1 + 10
@@ -217,7 +217,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have g1")
         }
-        guard let rg1 = readResult.underlying as? CRDT.GCounter else {
+        guard let rg1 = readResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         rg1.value.shouldEqual(11) // 1 + 10
@@ -231,7 +231,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -239,7 +239,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         s1.add(3)
 
         // Cannot write data of different data under `id`
-        guard case .inputAndStoredDataTypeMismatch(let stored) = replicator.write(id, s1.asAnyStateBasedCRDT, deltaMerge: true) else {
+        guard case .inputAndStoredDataTypeMismatch(let stored) = try replicator.write(id, s1, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have failed due to type mismatch")
         }
         // Stored data should be a GCounter
@@ -258,13 +258,13 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         }
 
         // Write r1
-        guard case .applied(let writeResult, let isNew) = replicator.write(id, r1.asAnyStateBasedCRDT) else {
+        guard case .applied(let writeResult, let isNew) = try replicator.write(id, r1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeTrue()
 
         // Return value should match r1
-        guard let wr1 = writeResult.underlying as? CRDT.LWWRegister<Int> else {
+        guard let wr1 = writeResult as? CRDT.LWWRegister<Int> else {
             throw self.testKit.fail("Should be a LWWRegister<Int>")
         }
         wr1.value.shouldEqual(r1.value)
@@ -273,7 +273,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have r1")
         }
-        guard let rr1 = readResult.underlying as? CRDT.LWWRegister<Int> else {
+        guard let rr1 = readResult as? CRDT.LWWRegister<Int> else {
             throw self.testKit.fail("Should be a LWWRegister<Int>")
         }
         rr1.value.shouldEqual(r1.value)
@@ -287,7 +287,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let r1a = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1aClock))
 
         // Write r1
-        guard case .applied = replicator.write(id, r1a.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, r1a) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -295,13 +295,13 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let r1b = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1aClock.timestamp.addingTimeInterval(1))))
 
         // Write the updated r1
-        guard case .applied(let writeResult, let isNew) = replicator.write(id, r1b.asAnyStateBasedCRDT) else {
+        guard case .applied(let writeResult, let isNew) = try replicator.write(id, r1b) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeFalse()
 
         // Return value should match r1b
-        guard let wr1 = writeResult.underlying as? CRDT.LWWRegister<Int> else {
+        guard let wr1 = writeResult as? CRDT.LWWRegister<Int> else {
             throw self.testKit.fail("Should be a LWWRegister<Int>")
         }
         wr1.value.shouldEqual(r1b.value)
@@ -310,7 +310,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have r1b")
         }
-        guard let rr1 = readResult.underlying as? CRDT.LWWRegister<Int> else {
+        guard let rr1 = readResult as? CRDT.LWWRegister<Int> else {
             throw self.testKit.fail("Should be a LWWRegister<Int>")
         }
         rr1.value.shouldEqual(r1b.value)
@@ -323,7 +323,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
-        guard case .missingCRDTForDelta = replicator.writeDelta(id, g1.delta!.asAnyStateBasedCRDT) else { // ! safe because `increment` should set `delta`
+        guard case .missingCRDTForDelta = replicator.writeDelta(id, g1.delta!) else { // ! safe because `increment` should set `delta`
             throw self.testKit.fail("The writeDelta operation should have failed because CRDT does not exist")
         }
     }
@@ -336,19 +336,19 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 to data store
-        guard case .applied = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
         g1.increment(by: 10)
 
         // Now write g1.delta
-        guard case .applied(let writeResult) = replicator.writeDelta(id, g1.delta!.asAnyStateBasedCRDT) else { // ! safe because `increment` should set `delta`
+        guard case .applied(let writeResult) = replicator.writeDelta(id, g1.delta!) else { // ! safe because `increment` should set `delta`
             throw self.testKit.fail("The writeDelta operation should have been applied")
         }
 
         // Return value should match g1
-        guard let wg1 = writeResult.underlying as? CRDT.GCounter else {
+        guard let wg1 = writeResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         wg1.value.shouldEqual(g1.value)
@@ -357,7 +357,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         guard case .data(let readResult) = replicator.read(id) else {
             throw self.testKit.fail("Data store should have g1")
         }
-        guard let rg1 = readResult.underlying as? CRDT.GCounter else {
+        guard let rg1 = readResult as? CRDT.GCounter else {
             throw self.testKit.fail("Should be a GCounter")
         }
         rg1.value.shouldEqual(g1.value)
@@ -370,11 +370,11 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
 
         // Write r1 to data store
-        guard case .applied = replicator.write(id, r1.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, r1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
-        guard case .cannotWriteDeltaForNonDeltaCRDT = replicator.writeDelta(id, r1.asAnyStateBasedCRDT) else {
+        guard case .cannotWriteDeltaForNonDeltaCRDT = replicator.writeDelta(id, r1) else {
             throw self.testKit.fail("The writeDelta operation should have failed because r1 is not delta-CRDT")
         }
     }
@@ -396,7 +396,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 to data store
-        guard case .applied = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied = try replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 

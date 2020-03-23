@@ -96,7 +96,7 @@ extension Serialization.Settings {
     /// This can be used to "force" a specific serializer be used for a message type,
     /// regardless if it is codable or not.
     @discardableResult
-    public mutating func registerCodableManifest<Message: ActorMessage>( // FIXME entire method can be removed?
+    public mutating func registerCodableManifest<Message: ActorMessage>( // FIXME: entire method can be removed?
         _ type: Message.Type, hintOverride: String? = nil,
         serializer overrideSerializerID: CodableSerializerID?
     ) -> Manifest {
@@ -116,7 +116,7 @@ extension Serialization.Settings {
     ///
     /// This manifest will NOT be used when _sending_ messages of the `Message` type.
     @discardableResult
-    public mutating func registerInboundCodableManifest<Message: ActorMessage>( // FIXME entire method can be removed?
+    public mutating func registerInboundCodableManifest<Message: ActorMessage>( // FIXME: entire method can be removed?
         _ type: Message.Type, hintOverride: String? = nil,
         serializer overrideSerializerID: CodableSerializerID?
     ) -> Manifest {

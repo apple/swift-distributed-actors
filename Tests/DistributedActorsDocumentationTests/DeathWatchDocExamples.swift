@@ -34,6 +34,7 @@ extension GameUnit.Command {
         case player
         case otherCommand
     }
+
     enum CodingKeys: CodingKey {
         case _case
         case player_value
@@ -49,6 +50,7 @@ extension GameUnit.Command {
             self = .otherCommand
         }
     }
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
@@ -73,6 +75,7 @@ extension GameMatch.Command {
         case playerConnected
         case disconnectedPleaseStop
     }
+
     enum CodingKeys: CodingKey {
         case _case
         case playerConnected_value
@@ -88,6 +91,7 @@ extension GameMatch.Command {
             self = .disconnectedPleaseStop
         }
     }
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {

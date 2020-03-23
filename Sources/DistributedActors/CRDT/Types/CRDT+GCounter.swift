@@ -23,7 +23,7 @@ extension CRDT {
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct GCounter: NamedDeltaCRDT {
+    public struct GCounter: NamedDeltaCRDT, Codable {
         public typealias Delta = GCounterDelta
 
         public let replicaId: ReplicaId
@@ -42,6 +42,7 @@ extension CRDT {
             self.state = [:]
         }
 
+        /// - Faults: on overflow // TODO perhaps just saturate?
         mutating func increment(by amount: Int) {
             precondition(amount > 0, "Amount must be greater than 0")
 
@@ -68,6 +69,20 @@ extension CRDT {
             }
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+            let OtherType = type(of: other as Any)
+            guard let wellTypedOther = other as? Self else {
+                // TODO: make this "merge error"
+                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+            }
+
+            // TODO: check if delta merge or normal
+            // TODO: what if we simplify and compute deltas...?
+
+            self.merge(other: wellTypedOther)
+        }
+
+
         // To merge delta into state, call `mergeDelta`.
         public mutating func merge(other: GCounter) {
             self.state.merge(other.state, uniquingKeysWith: max)
@@ -89,6 +104,17 @@ extension CRDT {
         init(state: [ReplicaId: Int] = [:]) {
             self.state = state
         }
+
+        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+            let OtherType = type(of: other as Any)
+            guard let wellTypedOther = other as? Self else {
+                // TODO: make this "merge error"
+                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+            }
+
+            self.merge(other: wellTypedOther)
+        }
+
 
         public mutating func merge(other: GCounterDelta) {
             self.state.merge(other.state, uniquingKeysWith: max)

@@ -170,11 +170,12 @@ extension Serialization {
         internal static let CRDTDeleteResult: SerializerID = 27
         internal static let CRDTGCounter: SerializerID = 28
         internal static let CRDTGCounterDelta: SerializerID = 29
+        internal static let CRDTDeltaBox: SerializerID = 30
 
-        internal static let ConvergentGossipMembership: SerializerID = 30
+        internal static let ConvergentGossipMembership: SerializerID = 40
 
         // op log receptionist
-        internal static let PushOps: SerializerID = 31
-        internal static let AckOps: SerializerID = 32
+        internal static let PushOps: SerializerID = 50
+        internal static let AckOps: SerializerID = 51
     }
 }

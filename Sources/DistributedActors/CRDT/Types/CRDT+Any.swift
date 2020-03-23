@@ -13,10 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 /// Protocol adopted by any CRDT type, including their delta types
-internal protocol AnyStateBasedCRDT {
+internal protocol AnyStateBasedCRDT { // TODO: can we remove this?
     var metaType: AnyMetaType { get } // TODO: maybe not needed anymore?
     var underlying: StateBasedCRDT { get set }
-    var _merge: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT { get }
+    var _makeMergeFunction: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT { get }
 }
 
 extension AnyStateBasedCRDT where Self: CvRDT {
@@ -42,7 +42,7 @@ extension AnyStateBasedCRDT where Self: CvRDT {
         }
     }
 
-    ///
+    // FIXME: can this be removed now that top level has a _tryMerge?
     /// - Throws: when invoked with incompatible concrete types of CRDTs.
     ///   This should normally never happen, although it might in case somehow a tombstone of a CRDT is forgotten
     ///   and a different type of CRDT is replicated under the same identity.
@@ -51,7 +51,7 @@ extension AnyStateBasedCRDT where Self: CvRDT {
             throw AnyStateBasedCRDTError.incompatibleTypesMergeAttempted(self, other: other)
         }
 
-        self.underlying = self._merge(self.underlying, other.underlying)
+        self.underlying = self._makeMergeFunction(self.underlying, other.underlying)
     }
 }
 
@@ -68,13 +68,35 @@ internal enum AnyStateBasedCRDTError: Error {
 internal struct AnyCvRDT: CvRDT, AnyStateBasedCRDT {
     let metaType: AnyMetaType // TODO: use manifests!
     var underlying: StateBasedCRDT
-    let _merge: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT
+    let _makeMergeFunction: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT
 
     init<T: CvRDT>(_ data: T) {
         self.metaType = MetaType(T.self)
         self.underlying = data
-        self._merge = AnyCvRDT._merge(T.self)
+        self._makeMergeFunction = AnyCvRDT._merge(T.self)
     }
+
+    init(from decoder: Decoder) throws {
+        fatalError("TODO: not yet") // FIXME: implement serialization here
+    }
+
+    func encode(to encoder: Encoder) throws {
+        fatalError("TODO: not yet") // FIXME: implement serialization here
+    }
+
+    public mutating func _tryMerge(other: StateBasedCRDT) throws {
+        let OtherType = type(of: other as Any)
+        guard let wellTypedOther = other as? Self else {
+            // TODO: make this "merge error"
+            throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+        }
+
+        // TODO: check if delta merge or normal
+        // TODO: what if we simplify and compute deltas...?
+
+        self.merge(other: wellTypedOther)
+    }
+
 }
 
 extension AnyCvRDT: CustomStringConvertible {
@@ -84,19 +106,19 @@ extension AnyCvRDT: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: AnyDeltaCRDT
+// MARK: DeltaCRDTBox
 
 // Protocol `DeltaCRDT` can only be used as a generic constraint because it has `Self` or
 // associated type requirements. Perform type erasure as work-around.
-internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
+internal struct DeltaCRDTBox: DeltaCRDT, AnyStateBasedCRDT {
     typealias AnyDelta = AnyCvRDT
     typealias Delta = AnyDelta
 
-    let metaType: AnyMetaType
+    let metaType: AnyMetaType // TODO: remove, just expose the Any.Type
     var underlying: StateBasedCRDT
-    let _merge: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT
+    let _makeMergeFunction: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT
 
-    let deltaMetaType: AnyMetaType
+    let deltaMetaType: AnyMetaType // TODO: remove, just expose the Any.Type
     let _delta: (StateBasedCRDT) -> AnyDelta?
     let _mergeDelta: (StateBasedCRDT, AnyDelta) -> StateBasedCRDT
     let _resetDelta: (StateBasedCRDT) -> StateBasedCRDT
@@ -108,7 +130,7 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
     init<T: DeltaCRDT>(_ data: T) {
         self.metaType = MetaType(T.self)
         self.underlying = data
-        self._merge = AnyDeltaCRDT._merge(T.self)
+        self._makeMergeFunction = DeltaCRDTBox._merge(T.self)
 
         self.deltaMetaType = MetaType(T.Delta.self)
         self._delta = { data in
@@ -131,6 +153,28 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
             return data
         }
     }
+
+    init(from decoder: Decoder) throws {
+        fatalError("TODO: not yet") // FIXME: implement serialization here
+    }
+
+    func encode(to encoder: Encoder) throws {
+        fatalError("TODO: not yet") // FIXME: implement serialization here
+    }
+
+    public mutating func _tryMerge(other: StateBasedCRDT) throws {
+        let OtherType = type(of: other as Any)
+        guard let wellTypedOther = other as? Self else {
+            // TODO: make this "merge error"
+            throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+        }
+
+        // TODO: check if delta merge or normal
+        // TODO: what if we simplify and compute deltas...?
+
+        self.merge(other: wellTypedOther)
+    }
+
 
     /// Fulfilling DeltaCRDT contract
     ///
@@ -160,8 +204,8 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
     }
 }
 
-extension AnyDeltaCRDT: CustomStringConvertible {
+extension DeltaCRDTBox: CustomStringConvertible {
     public var description: String {
-        "AnyDeltaCRDT(\(self.underlying))"
+        "DeltaCRDTBox(\(self.underlying))"
     }
 }

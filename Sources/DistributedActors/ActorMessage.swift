@@ -15,11 +15,11 @@
 import NIO
 
 // FIXME: OMG REALLY DO WE NEED THIS!??!?!?!
-//internal protocol _InternalActorMessage {
+// internal protocol _InternalActorMessage {
 //    init(context: Serialization.Context, from buffer: inout NIO.ByteBuffer, using manifest: Serialization.Manifest) throws
 //
 //    func serialize(context: Serialization.Context, to buffer: inout NIO.ByteBuffer) throws
-//}
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Message
@@ -45,9 +45,9 @@ public protocol ActorMessage: Codable {
 // MARK: Codable Actor Messages
 
 ///// `ActorMessage`s which are `Codable` just work™
-//public typealias CodableActorMessage = ActorMessage
+// public typealias CodableActorMessage = ActorMessage
 
-//extension ActorMessage {
+// extension ActorMessage {
 //    public init(context: Serialization.Context, from bytes: inout NIO.ByteBuffer, using manifest: Serialization.Manifest) throws {
 //        try context.decoder.decode(Self.self, from: &bytes)
 //    }
@@ -55,7 +55,7 @@ public protocol ActorMessage: Codable {
 //    public func serialize(context: Serialization.Context, to bytes: inout NIO.ByteBuffer) throws {
 //
 //    }
-//}
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable Errors
@@ -70,7 +70,6 @@ public struct AnyErrorEnvelope: Error, ActorMessage {
 }
 
 extension AnyErrorEnvelope {
-
     public init(from decoder: Swift.Decoder) throws {
         // let container = try decoder.singleValueContainer()
 
