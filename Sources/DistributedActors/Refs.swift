@@ -166,6 +166,8 @@ public protocol _ReceivesSystemMessages: Codable {
     ///   must be performed in "one go" by `_deserializeDeliver`.
     func _tellOrDeadLetter(_ message: Any, file: String, line: UInt) // TODO: This must die?
 
+    func _dropAsDeadLetter(_ message: Any, file: String, line: UInt)
+
     /// :nodoc: INTERNAL API: This way remoting sends messages
     func _deserializeDeliver(
         _ messageBytes: NIO.ByteBuffer, using manifest: Serialization.Manifest,
@@ -221,14 +223,19 @@ extension ActorRef {
         }
     }
 
+    // FIXME: can this be removed?
     public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
-            self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
+            traceLog_Mailbox(self.path, "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
+            self._dropAsDeadLetter(message, file: file, line: line)
             return // TODO: "drop" the message rather than dead letter it?
         }
 
         self.tell(_message, file: file, line: line)
+    }
+
+    public func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
     }
 
     public func _deserializeDeliver(
@@ -238,12 +245,12 @@ extension ActorRef {
     ) {
         pool.deserialize(as: Message.self, from: messageBytes, using: manifest, recipientPath: self.path, callback: .init {
             switch $0 {
-            case .success(let message):
+            case .success(.message(let message)):
                 self.tell(message, file: file, line: line)
+            case .success(.deadLetter(let message)):
+                self._dropAsDeadLetter(message)
 
             case .failure(let error):
-                pool.serialization.debugPrintSerializerTable()
-
                 let metadata: Logger.Metadata = [
                     "recipient": "\(self.path)",
                     "message/expected/type": "\(String(reflecting: Message.self))",
@@ -444,6 +451,12 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
 
     @usableFromInline
     internal func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        CDistributedActorsMailbox.sact_dump_backtrace()
+        fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+    }
+
+    @usableFromInline
+    internal func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }

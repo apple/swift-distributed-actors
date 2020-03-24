@@ -55,7 +55,7 @@ public enum XPCSerialization {
         address.node?.node.protocol = "xpc"
         try! _file.append("[sending] [TO: \(address)]\n")
 
-        let (manifest, buf) = try system.serialization.serialize(address)
+        let (_, buf) = try system.serialization.serialize(address)
         buf.withUnsafeReadableBytes { bytes in
             if let baseAddress = bytes.baseAddress {
                 // FIXME: what about manifest?
@@ -73,7 +73,7 @@ public enum XPCSerialization {
 
     public static func deserializeActorMessage(_ system: ActorSystem, peer: xpc_connection_t, xdict: xpc_object_t) throws -> Any {
         // let manifestHint = Serialization.SerializerID(xpc_dictionary_get_string(xdict, ActorableXPCMessageField.manifestHint.rawValue)) // FIXME manifest?
-        let serializerID = Serialization.SerializerID(UInt32(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue)))
+        // let serializerID = Serialization.SerializerID(UInt32(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue)))
         // let manifest = Serialization.Manifest(serializerID: serializerID, hint: manifestHint)
 
         fatalError("NOT IMPLEMENTED OVER MANIFESTS YET")
@@ -119,7 +119,7 @@ public enum XPCSerialization {
         buf.writeBytes(rawDataBufferPointer)
 
         do {
-            let manifest: Serialization.Manifest = .init(serializerID: Serialization.SerializerID.jsonCodable.value, hint: "???")
+            let manifest: Serialization.Manifest = .init(serializerID: Serialization.SerializerID.jsonCodable, hint: "???")
             let address = try serialization.deserialize(as: ActorAddress.self, from: &buf, using: manifest)
             try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))

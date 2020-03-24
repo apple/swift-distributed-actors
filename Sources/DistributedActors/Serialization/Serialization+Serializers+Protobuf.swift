@@ -21,14 +21,14 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
 
-public protocol AnyInternalProtobufRepresentable: ActorMessage {}
+public protocol AnyProtobufRepresentable: ActorMessage {}
 
-public protocol AnyProtobufRepresentable: AnyInternalProtobufRepresentable {}
+public protocol AnyPublicProtobufRepresentable: AnyProtobufRepresentable {}
 
 /// A protocol that facilitates conversion between Swift and protobuf messages.
 ///
 /// - SeeAlso: `ActorMessage`
-public protocol ProtobufRepresentable: AnyProtobufRepresentable {
+public protocol ProtobufRepresentable: AnyPublicProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
     /// Convert this `ProtobufRepresentable` instance to an instance of type `ProtobufRepresentation`.
@@ -84,7 +84,7 @@ extension ProtobufRepresentable {
 /// This protocol is for internal protobuf-serializable messages only.
 ///
 /// We need a protocol separate from `ProtobufRepresentable` because otherwise we would be forced to make internal types public.
-internal protocol InternalProtobufRepresentable: AnyInternalProtobufRepresentable {
+internal protocol InternalProtobufRepresentable: AnyProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
     init(from decoder: Decoder) throws

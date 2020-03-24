@@ -42,7 +42,7 @@ extension LifecycleActor {
             let context = Actor<LifecycleActor>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -89,17 +89,17 @@ extension LifecycleActor {
 extension Actor where A.Message == LifecycleActor.Message {
 
     public func pleaseStop() {
-        self.ref.tell(.pleaseStop)
+        self.ref.tell(Self.Message.pleaseStop)
     }
  
 
      func watchChildAndTerminateIt() {
-        self.ref.tell(.watchChildAndTerminateIt)
+        self.ref.tell(Self.Message.watchChildAndTerminateIt)
     }
  
 
     internal func _doNOTSkipMe() {
-        self.ref.tell(._doNOTSkipMe)
+        self.ref.tell(Self.Message._doNOTSkipMe)
     }
  
 

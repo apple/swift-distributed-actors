@@ -39,7 +39,7 @@ extension MutatingStructActorable {
             let context = Actor<MutatingStructActorable>.Context(underlying: _context)
             var instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 

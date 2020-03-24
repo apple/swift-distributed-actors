@@ -17,7 +17,7 @@ extension GeneratedActor.Messages {
         case greet(name: String, _replyTo: ActorRef<Result<String, Error>>) 
         case fatalCrash 
         case greetDirect(who: ActorRef<String>) 
-        case greetFuture(name: String, _replyTo: ActorRef<Result<String, Error>>)  
+        case greetFuture(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>)  
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -35,6 +35,12 @@ extension Actor where A: GreetingsService {
         Reply.from(askResponse: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
                 A._boxGreetingsService(.greet(name: name, _replyTo: _replyTo))
+            }
+            .nioFuture.flatMapThrowing { result in
+                switch result {
+                case .success(let res): return res
+                case .failure(let err): throw err
+                }
             }
         )
     }

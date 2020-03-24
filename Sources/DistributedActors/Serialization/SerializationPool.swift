@@ -89,33 +89,7 @@ public final class SerializationPool {
         }
     }
 
-    @inlinable
-    internal func deserialize<Message>(
-        as messageType: Message.Type,
-        from _bytes: ByteBuffer,
-        using manifest: Serialization.Manifest,
-        recipientPath: ActorPath,
-        promise: EventLoopPromise<Message>
-    ) {
-        // TODO: also record thr delay between submitting and starting serialization work here?
-        self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            do {
-                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, _bytes.readableBytes)
-                self.instrumentation.remoteActorMessageDeserializeStart(id: promise.futureResult, recipient: recipientPath, bytes: _bytes.readableBytes)
-
-                var bytes = _bytes
-                // do the work, this may be "heavy"
-                let deserialized = try self.serialization.deserialize(as: messageType, from: &bytes, using: manifest)
-
-                self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: deserialized)
-                return deserialized
-            } catch {
-                self.instrumentation.remoteActorMessageDeserializeEnd(id: promise.futureResult, message: nil)
-                throw error
-            }
-        }
-    }
-
+    /// Note: The `Message` type MAY be `Never` in which case it is assumed that the message was intended for an already dead actor and the deserialized message is returned as such.
     @inlinable
     internal func deserialize<Message>(
         as messageType: Message.Type,
@@ -133,10 +107,24 @@ public final class SerializationPool {
                 self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: bytes.readableBytes)
 
                 // do the work, this may be "heavy"
-                let deserialized = try self.serialization.deserialize(as: messageType, from: &bytes, using: manifest)
+                let deserialized = try self.serialization.deserializeAny(from: &bytes, using: manifest)
 
-                self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
-                return deserialized
+                // The order of the below if/if-else/else is quite important:
+                if let wellTyped = deserialized as? Message {
+                    // 1) we usually have the right Message type, as we resolved an alive actor and are delivering to it,
+                    //    the cast will be successful and we can safely deliver the message
+                    self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
+                    return .message(wellTyped)
+                } else if messageType == Never.self {
+                    // 2) we may have resolved an already-dead actor ref, in which case the type of its message would be Never;
+                    //    Since such Never message can never be fulfilled, it also makes no sense that such message was even sent(!),
+                    //    thus we treat this simply as a dead letter and deliver it as such
+                    self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
+                    return .deadLetter(deserialized)
+                } else {
+                    // 3) the message was neither the right type, nor was the recipient a `Never` expecting ref, thus something went quite wrong and we should throw.
+                    throw SerializationError.unableToDeserialize(hint: "Unable to deserialize payload (manifest: \(manifest)) as [\(String(reflecting: messageType))]")
+                }
             } catch {
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: nil)
                 throw error
@@ -187,9 +175,24 @@ public final class SerializationPool {
 /// Allows to "box" another value.
 @usableFromInline
 final class DeserializationCallback<Message> {
+    /// A message deserialization may either be successful or fail due to attempting to deliver at an already dead actor,
+    /// if this happens, we do not *statically* have the right `Message`  to cast to and the only remaining thing for such
+    /// message is to be delivered as a dead letter thus we can avoid the cast entirely.
+    ///
+    /// Note: resolving a dead actor yields `ActorRef<Never>` thus we would _never_ be able to deliver the message to it,
+    /// and have to special case the dead letter delivery.
     @usableFromInline
-    let call: (Result<Message, Error>) -> Void
-    init(_ callback: @escaping (Result<Message, Error>) -> Void) { self.call = callback }
+    enum DeserializedMessage {
+        case message(Message)
+        case deadLetter(Any)
+    }
+
+    @usableFromInline
+    let call: (Result<DeserializedMessage, Error>) -> Void
+
+    init(_ callback: @escaping (Result<DeserializedMessage, Error>) -> Void) {
+        self.call = callback
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

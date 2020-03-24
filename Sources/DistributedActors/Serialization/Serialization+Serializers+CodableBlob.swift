@@ -42,7 +42,7 @@ public class TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message> 
     }
 
     public override func deserialize(from bytes: ByteBuffer) throws -> Message {
-        var decoder = TopLevelBytesBlobDecoder()
+        let decoder = TopLevelBytesBlobDecoder()
         decoder.userInfo[.actorSerializationContext] = self.context
 
         var _bytes = bytes

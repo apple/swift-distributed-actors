@@ -46,7 +46,7 @@ extension LifecycleReacting {
             let context = Actor<LifecycleReacting>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -87,7 +87,7 @@ extension LifecycleReacting {
 extension Actor where A.Message == LifecycleReacting.Message {
 
      func something() {
-        self.ref.tell(.something)
+        self.ref.tell(Self.Message.something)
     }
  
 

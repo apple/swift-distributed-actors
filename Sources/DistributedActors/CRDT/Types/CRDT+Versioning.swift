@@ -58,14 +58,14 @@ extension CRDT {
             self.gaps.insert(dot)
         }
 
-        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
             let OtherType = type(of: other as Any)
             guard let wellTypedOther = other as? Self else {
-                // TODO: make this "merge error"
-                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
             }
 
             self.merge(other: wellTypedOther)
+            return nil
         }
 
         /// Merge another `VersionContext` into this. This `VersionContext` is mutated while `other` is not.
@@ -232,17 +232,17 @@ extension CRDT {
             self.elementByBirthDot = [:]
         }
 
-        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
             let OtherType = type(of: other as Any)
             guard let wellTypedOther = other as? Self else {
-                // TODO: make this "merge error"
-                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
             }
 
             // TODO: check if delta merge or normal
             // TODO: what if we simplify and compute deltas...?
 
             self.merge(other: wellTypedOther)
+            return nil
         }
 
         public mutating func merge(other: VersionedContainer<Element>) {
@@ -277,19 +277,18 @@ extension CRDT {
 
         init() {}
 
-        public mutating func _tryMerge(other: StateBasedCRDT) throws {
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
             let OtherType = type(of: other as Any)
             guard let wellTypedOther = other as? Self else {
-                // TODO: make this "merge error"
-                throw CRDT.Replicator.RemoteCommand.WriteError.inputAndStoredDataTypeMismatch(hint: "\(Self.self) cannot merge with other: \(OtherType)")
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
             }
 
             // TODO: check if delta merge or normal
             // TODO: what if we simplify and compute deltas...?
 
             self.merge(other: wellTypedOther)
+            return nil
         }
-
 
         public mutating func merge(other: VersionedContainerDelta) {
             let merged = VersionContextAndElements(self.versionContext, self.elementByBirthDot)

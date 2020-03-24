@@ -51,6 +51,12 @@ public struct DeadLetter: NotTransportableActorMessage { // TODO: make it also r
     }
 }
 
+///// Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.
+///// This type is used by serialization to notice that a message shall be delivered as dead letter
+///// (rather than attempting to cast the deserialized payload to the "found type" (which would be `Never` or `MessageForDeadRecipient`).
+// @usableFromInline
+// internal protocol MessageForDeadRecipient: NotTransportableActorMessage {}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSystem.deadLetters
 

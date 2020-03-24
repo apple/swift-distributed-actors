@@ -98,6 +98,10 @@ extension AddressableActorRef: _ReceivesSystemMessages {
         return self.ref._tellOrDeadLetter(message, file: file, line: line)
     }
 
+    public func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        self.ref._dropAsDeadLetter(message, file: file, line: line)
+    }
+
     public func _deserializeDeliver(
         _ messageBytes: ByteBuffer, using manifest: Serialization.Manifest,
         on pool: SerializationPool,

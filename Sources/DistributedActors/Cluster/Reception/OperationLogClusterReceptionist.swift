@@ -257,6 +257,7 @@ public class OperationLogClusterReceptionist {
 
                 case let message as _Subscribe:
                     try self.onSubscribe(context: context, message: message)
+
                 default:
                     context.log.warning("Received unexpected message: \(String(reflecting: $0)), \(type(of: $0))")
                 }
@@ -810,7 +811,7 @@ extension OperationLogClusterReceptionist {
         }
 
         var description: String {
-            "Receptionist.AckOps(until: \(until), otherObservedSeqNrs: \(otherObservedSeqNrs), peer: \(peer))"
+            "Receptionist.AckOps(until: \(self.until), otherObservedSeqNrs: \(self.otherObservedSeqNrs), peer: \(self.peer))"
         }
     }
 

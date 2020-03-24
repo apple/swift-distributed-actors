@@ -58,7 +58,7 @@ extension AllInOneMachine {
             let context = Actor<AllInOneMachine>.Context(underlying: _context)
             var instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -106,7 +106,7 @@ extension AllInOneMachine {
 extension Actor where A.Message == AllInOneMachine.Message {
 
      func clean() {
-        self.ref.tell(.clean)
+        self.ref.tell(Self.Message.clean)
     }
  
 
