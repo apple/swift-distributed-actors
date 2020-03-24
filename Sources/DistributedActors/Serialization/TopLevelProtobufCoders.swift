@@ -90,7 +90,7 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
 
     func encode<T>(_ value: T) throws where T: Encodable {
         switch value {
-        case let repr as AnyInternalProtobufRepresentable:
+        case let repr as AnyProtobufRepresentable:
             try repr.encode(to: self.superEncoder)
         case let data as Data:
             try data.encode(to: self.superEncoder)
@@ -257,7 +257,6 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Top-Level Bytes-Blob Decoder
 
-// TODO: TopLevelDataDecoder
 class TopLevelProtobufBlobDecoder: Decoder {
     typealias Input = ByteBuffer
 
@@ -271,7 +270,10 @@ class TopLevelProtobufBlobDecoder: Decoder {
     }
 
     func unkeyedContainer() throws -> UnkeyedDecodingContainer {
-        fatalError("unkeyedContainer() has not been implemented")
+        fatalError("""
+        \(#function)
+         has not been implemented
+        """)
     }
 
     func singleValueContainer() throws -> SingleValueDecodingContainer {
@@ -280,25 +282,14 @@ class TopLevelProtobufBlobDecoder: Decoder {
 
     func decode<T: Decodable>(_ type: T.Type, from bytes: ByteBuffer) throws -> T {
         self.bytes = bytes
-        if let P = type as? AnyInternalProtobufRepresentable.Type {
+
+        if let P = type as? AnyProtobufRepresentable.Type {
             return try P.init(from: self) as! T // explicit .init() is required here (!)
-        }
-
-        if type is Data.Type {
-            guard let data = bytes.getData(at: 0, length: bytes.readableBytes, byteTransferStrategy: .noCopy) else {
-                throw SerializationError.unableToDeserialize(hint: "Failed to get data from bytes")
-            }
-            return data as! T
-
-        } else if type is ByteBuffer.Type {
-            return bytes as! T
-
+        } else if let P = type as? AnyPublicProtobufRepresentable.Type {
+            return try P.init(from: self) as! T // explicit .init() is required here (!)
         } else {
-            fatalError("Can only deserialize Data or ByteBuffer!")
+            return fatalErrorBacktrace("XXXXX \(T.self)")
         }
-
-        // let container = TopLevelProtobufBlobSingleValueDecodingContainer(superEncoder: self, bytes: bytes)
-        // return try container.decode(T.self)
     }
 }
 
@@ -321,7 +312,8 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
                 fatalError("Could not read data! Was: \(bytes), trying to deserialize: \(T.self)")
             }
             return data as! T
-
+        } else if type is NIO.ByteBuffer.Type {
+            return bytes as! T
         } else {
             throw SerializationError.unableToDeserialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only suports raw bytes")
         }

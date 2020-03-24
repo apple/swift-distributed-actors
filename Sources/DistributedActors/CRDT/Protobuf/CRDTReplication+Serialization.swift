@@ -97,13 +97,13 @@ extension CRDT.Replicator.RemoteCommand: InternalProtobufRepresentable {
             let id = try protoWrite.identity(context: context)
             let envelope = try protoWrite.envelope(context: context)
             let replyTo: ActorRef<WriteResult> = try protoWrite.replyTo(context: context)
-            self = .write(id, envelope.underlying, replyTo: replyTo)
+            self = .write(id, envelope.data, replyTo: replyTo)
 
         case .writeDelta(let protoWrite):
             let id = try protoWrite.identity(context: context)
             let envelope = try protoWrite.envelope(context: context)
             let replyTo: ActorRef<WriteResult> = try protoWrite.replyTo(context: context)
-            self = .writeDelta(id, delta: envelope.underlying, replyTo: replyTo)
+            self = .writeDelta(id, delta: envelope.data, replyTo: replyTo)
 
         case .read(let protoRead):
             guard protoRead.hasIdentity else {
@@ -147,11 +147,11 @@ extension ProtoCRDTWrite {
         return try ActorRef<Message>(fromProto: self.replyTo, context: context)
     }
 
-    internal func envelope(context: Serialization.Context) throws -> CRDTEnvelope {
+    internal func envelope(context: Serialization.Context) throws -> CRDT.Envelope {
         guard self.hasEnvelope else {
             throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
         }
-        return try CRDTEnvelope(fromProto: self.envelope, context: context)
+        return try CRDT.Envelope(fromProto: self.envelope, context: context)
     }
 }
 
@@ -259,9 +259,9 @@ extension CRDT.Replicator.RemoteCommand.ReadResult: InternalProtobufRepresentabl
             guard proto.hasEnvelope else {
                 throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
             }
-            let envelope = try CRDTEnvelope(fromProto: proto.envelope, context: context)
+            let envelope = try CRDT.Envelope(fromProto: proto.envelope, context: context)
 
-            self = .success(envelope.underlying)
+            self = .success(envelope.data)
         case .failure:
             guard proto.hasError else {
                 throw SerializationError.missingField("error", type: String(describing: CRDT.Replicator.RemoteCommand.ReadResult.self))
@@ -336,7 +336,7 @@ extension ProtoCRDTEnvelope {
     public static func serialize(_ context: Serialization.Context, crdt: StateBasedCRDT) throws -> ProtoCRDTEnvelope {
         var (manifest, bytes) = try context.serialization.serialize(crdt)
         var proto = ProtoCRDTEnvelope()
-        proto.manifest = manifest.toProto()
+        proto.manifest = try manifest.toProto(context: context)
         proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe, since we definitely read a safe amount of data here
         return proto
     }

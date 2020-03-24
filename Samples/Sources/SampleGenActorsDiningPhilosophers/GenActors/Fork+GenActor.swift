@@ -26,7 +26,7 @@ extension Fork {
             let context = Actor<Fork>.Context(underlying: _context)
             var instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -80,7 +80,7 @@ extension Actor where A.Message == Fork.Message {
  
 
      func putBack() {
-        self.ref.tell(.putBack)
+        self.ref.tell(Self.Message.putBack)
     }
  
 

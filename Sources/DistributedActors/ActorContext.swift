@@ -368,8 +368,8 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
     ///   - timeout: time after which the asyncResult will be failed if it does not complete
-    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
-    ///                   and modify actor state from here.
+    ///   - continuation: continuation to run after `AsyncResult` completes.
+    ///     It is safe to access and modify actor state from here.
     public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self) {
             let nextBehavior = try continuation($0)

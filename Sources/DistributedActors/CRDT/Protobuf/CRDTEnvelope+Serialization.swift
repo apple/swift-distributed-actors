@@ -14,77 +14,38 @@
 
 import NIO
 
-/// An envelope representing `AnyStateBasedCRDT` type such as `AnyCvRDT`, `DeltaCRDTBox`.
-///
-/// Due to Swift language restriction, `CvRDT` and `DeltaCRDT` types can only be used as generic constraints. As a
-/// result the type-erasing `AnyCvRDT` and `DeltaCRDTBox` were introduced and used in CRDT replication and gossiping.
-/// We have to distinguish between CvRDT and delta-CRDT in order to take advantage of optimizations offered by the
-/// latter (i.e., replicate partial state or delta instead of full state).
-///
-/// We must also keep the underlying CRDT intact during de/serialization, and thanks to the envelope, we can do that.
-/// The "boxing" serialization mechanism allows restoration of the `AnyStateBasedCRDT` instance given the underlying CRDT.
-internal struct CRDTEnvelope {
-//    enum Boxed {
-//        case CvRDT(AnyCvRDT)
-//        case DeltaCRDT(DeltaCRDTBox)
-//    }
+extension CRDT {
+    /// An envelope representing `AnyStateBasedCRDT` type such as `AnyCvRDT`, `DeltaCRDTBox`.
+    ///
+    /// Due to Swift language restriction, `CvRDT` and `DeltaCRDT` types can only be used as generic constraints. As a
+    /// result the type-erasing `AnyCvRDT` and `DeltaCRDTBox` were introduced and used in CRDT replication and gossiping.
+    /// We have to distinguish between CvRDT and delta-CRDT in order to take advantage of optimizations offered by the
+    /// latter (i.e., replicate partial state or delta instead of full state).
+    ///
+    /// We must also keep the underlying CRDT intact during de/serialization, and thanks to the envelope, we can do that.
+    /// The "boxing" serialization mechanism allows restoration of the `AnyStateBasedCRDT` instance given the underlying CRDT.
+    internal struct Envelope {
 
-    let manifest: Serialization.Manifest
-    // let _boxed: Boxed // FIXME: won't be good...
-    let data: StateBasedCRDT
+        let manifest: Serialization.Manifest
+        let data: StateBasedCRDT
 
-    init(manifest: Serialization.Manifest, _ data: StateBasedCRDT) {
-//        switch data {
-//        case let data as AnyCvRDT:
-//            self._boxed = .CvRDT(data)
-//        case let data as DeltaCRDTBox:
-//            self._boxed = .DeltaCRDT(data)
-//        default:
-//            fatalError("Unsupported \(data)")
-//        }
-        self.data = data
-        self.manifest = manifest
-
-        traceLog_Serialization("\(self)")
-    }
-
-    var underlying: StateBasedCRDT {
-//        switch self._boxed {
-//        case .CvRDT(let data):
-//            return data
-//        case .DeltaCRDT(let data):
-//            return data
-//        }
-        return self.data
+        init(manifest: Serialization.Manifest, _ data: StateBasedCRDT) {
+            self.data = data
+            self.manifest = manifest
+        }
     }
 }
 
-extension CRDTEnvelope: InternalProtobufRepresentable {
+extension CRDT.Envelope: InternalProtobufRepresentable {
     typealias ProtobufRepresentation = ProtoCRDTEnvelope
 
     func toProto(context: Serialization.Context) throws -> ProtoCRDTEnvelope {
         var proto = ProtoCRDTEnvelope()
         var (manifest, bytes) = try context.serialization.serialize(self.data)
         pprint("Serialize: manifest: \(manifest)")
-        proto.manifest = manifest.toProto()
+        proto.manifest = try manifest.toProto(context: context)
         proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe, since we know exactly how many bytes to read here
         return proto
-//        switch self._boxed {
-//        case .CvRDT(let data):
-//            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
-//            var bytes = _bytes
-//            // proto.boxed = .anyCvrdt
-//            proto.manifest = manifest.toProto()
-//            proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
-//            return proto
-//        case .DeltaCRDT(let data):
-//            let (manifest, _bytes) = try context.system.serialization.serialize(data.underlying)
-//            var bytes = _bytes
-//            // proto.boxed = .DeltaCRDTBox
-//            proto.manifest = manifest.toProto()
-//            proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
-//            return proto
-//        }
     }
 
     init(fromProto proto: ProtoCRDTEnvelope, context: Serialization.Context) throws {
@@ -92,33 +53,13 @@ extension CRDTEnvelope: InternalProtobufRepresentable {
             throw SerializationError.missingManifest(hint: "missing .manifest in: \(proto)")
         }
 
-        let manifest = Serialization.Manifest(fromProto: proto.manifest)
+        let manifest = try Serialization.Manifest(fromProto: proto.manifest, context: context)
         self.manifest = manifest
-
-        pprint("Deserialize: manifest: \(manifest)")
 
         var bytes = context.allocator.buffer(capacity: proto.payload.count)
         bytes.writeBytes(proto.payload)
 
-        let PayloadType = try context.serialization.summonType(from: manifest)
-        let deserialized = try context.serialization.deserializeAny(as: PayloadType, from: &bytes, using: manifest)
-
-//        pprint("deserialized = \(deserialized)")
-//        pprint("deserialized DeltaCRDTBox      = \(deserialized is DeltaCRDTBox)")
-        ////        pprint("deserialized DeltaCRDT         = \(deserialized is DeltaCRDT)")
-//        pprint("deserialized GCounter          = \(deserialized is CRDT.GCounter)")
-//        pprint("deserialized GCounterDelta     = \(deserialized is CRDT.GCounterDelta)")
-//        pprint("deserialized AnyCvRDT          = \(deserialized is AnyCvRDT)")
-//        pprint("deserialized AnyStateBasedCRDT = \(deserialized is AnyStateBasedCRDT)")
-//
-//        pprint("--------------------------------------------------------------------------------------------")
-//        pprint("deserialized DeltaCRDTBox      = \(type(of: deserialized as Any) is DeltaCRDTBox.Type)")
-        ////        pprint("deserialized DeltaCRDT         = \(type(of: deserialized as Any) is DeltaCRDT.Type)")
-//        pprint("deserialized GCounter          = \(type(of: deserialized as Any) is CRDT.GCounter.Type)")
-//        pprint("deserialized GCounterDelta     = \(type(of: deserialized as Any) is CRDT.GCounterDelta.Type)")
-//        pprint("deserialized AnyCvRDT          = \(type(of: deserialized as Any) is AnyCvRDT.Type)")
-//        pprint("deserialized AnyStateBasedCRDT = \(type(of: deserialized as Any) is AnyStateBasedCRDT.Type)")
-//        pprint("deserialized AnyStateBasedCRDT = \(type(of: deserialized as Any) is StateBasedCRDT.Type)")
+        let deserialized = try context.serialization.deserializeAny(from: &bytes, using: manifest)
 
         switch deserialized {
 //        case let delta as DeltaCRDTBox:
@@ -134,15 +75,11 @@ extension CRDTEnvelope: InternalProtobufRepresentable {
         //    ^
         case let data as StateBasedCRDT:
             self.data = data
-//            self._boxed = .CvRDT(.init(data)) // , won't compile tho
-//            error: protocol type 'StateBasedCRDT' cannot conform to 'CvRDT' because only concrete types can conform to protocols
-//            self._boxed = .CvRDT(.init(data)) // , won't compile tho
-//                ^
         default:
             throw SerializationError.unableToDeserialize(
                 hint:
                 """
-                CRDTEnvelope can only contain \(DeltaCRDTBox.self) or \(AnyCvRDT.self). \
+                CRDT.Envelope can only contain StateBasedCRDT. \
                 Deserialized unexpected type: \(String(reflecting: type(of: deserialized))), value: \(deserialized)
                 """
             )
@@ -168,7 +105,7 @@ extension CRDTEnvelope: InternalProtobufRepresentable {
         ////            }
 //        } else {
         ////        case .unspecified:
-//            throw SerializationError.missingField("type", type: String(describing: CRDTEnvelope.self))
+//            throw SerializationError.missingField("type", type: String(describing: CRDT.Envelope.self))
         ////        case .UNRECOGNIZED:
         ////            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
 //        }
@@ -178,8 +115,8 @@ extension CRDTEnvelope: InternalProtobufRepresentable {
 // extension AnyStateBasedCRDT {
 //
 //    // TODO: cleanup of this, do we need it like that?
-//    internal func wrapWithEnvelope(_ context: Serialization.Context) throws -> CRDTEnvelope {
+//    internal func wrapWithEnvelope(_ context: Serialization.Context) throws -> CRDT.Envelope {
 //        let manifest = try context.serialization.outboundManifest(Self.self)
-//        return CRDTEnvelope(manifest: manifest, self)
+//        return CRDT.Envelope(manifest: manifest, self)
 //    }
 // }

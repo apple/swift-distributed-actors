@@ -30,7 +30,7 @@ public protocol CodableSerializationContext {
     ///
     /// ```
     ///    guard let serializationContext = decoder.actorSerializationContext else {
-    //         throw SerializationError.missingSerializationContext(MyMessage.self, details: "While encoding [\(MyMessage.self)], using [\(decoder)]")
+    //         throw SerializationError.missingSerializationContext(MyMessage.self, details: "While decoding [\(MyMessage.self)], using [\(decoder)]")
     //     }
     /// ```
     var actorSerializationContext: Serialization.Context? { get }

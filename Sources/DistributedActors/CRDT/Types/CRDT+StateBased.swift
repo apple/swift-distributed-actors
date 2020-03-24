@@ -18,20 +18,41 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Core CRDT protocols
 
-/// Root type for all state-based CRDTs.
+/// Type erased, top-level, protocol for any kind of state based (also known as `CvRDT`).
+///
+// FIXME: This protocol is not necessary if the restriction of the `CvRDT` protocol being used as a generic constraint only is lifted.
 public protocol StateBasedCRDT: Codable {
-    // State-based CRDT and CvRDT mean the same thing literally. This protocol is not necessary if the restriction of
-    // the `CvRDT` protocol being used as a generic constraint only is lifted.
-
-    // Impl note: cannot restrict to Self as then we cannot store this protocol in storage
-    mutating func _tryMerge(other: StateBasedCRDT) throws
+    /// Attempts to merge the state of the given data type instance into this data type instance.
+    ///
+    /// `Self` type should be registered and (de-)serializable using the Actor serialization infrastructure.
+    ///
+    /// - SeeAlso: The library's documentation on serialization for more information.
+    ///
+    /// - Parameter other: A data type instance to merge.
+    /// - Returns: `CRDT.MergeError` when the passed in `other` CRDT is of an not compatible type (not the same as the Self).
+    ///   This cannot be enforced in this protocol, since we cannot refer to `Self`, as it would make the protocol
+    ///   not suitable for storage purposes.
+    mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError?
 }
 
 extension StateBasedCRDT {
-    public func _tryMerging(other: StateBasedCRDT) throws -> StateBasedCRDT {
+    /// Attempts to create a data type instance by merging the state of the given with this data type instance.
+    ///
+    /// `Self` type should be registered and (de-)serializable using the Actor serialization infrastructure.
+    ///
+    /// - SeeAlso: The library's documentation on serialization for more information.
+    ///
+    /// - Parameter other: A data type instance to merge.
+    /// - Returns: A new data type instance with the merged state of this data type instance and `other`,
+    ///   or an `CRDT.MergeError` when the passed in `other` CRDT is of an not compatible type (not the same as the Self).
+    ///   This cannot be enforced in this protocol, since we cannot refer to `Self`, as it would make the protocol
+    ///   not suitable for storage purposes.
+    public func _tryMerging(other: StateBasedCRDT) -> Result<StateBasedCRDT, CRDT.MergeError> {
         var merged = self
-        try merged._tryMerge(other: other)
-        return merged
+        if let error = merged._tryMerge(other: other) {
+            return .failure(error)
+        }
+        return .success(merged)
     }
 }
 
@@ -65,17 +86,7 @@ extension CvRDT {
     }
 }
 
-extension CvRDT {
-    internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-        self.asAnyCvRDT
-    }
-
-    internal var asAnyCvRDT: AnyCvRDT {
-        AnyCvRDT(self)
-    }
-}
-
-public protocol _DeltaCRDT {}
+public protocol AnyDeltaCRDT: StateBasedCRDT {}
 
 /// Delta State CRDT (ẟ-CRDT), a kind of state-based CRDT.
 ///
@@ -83,7 +94,7 @@ public protocol _DeltaCRDT {}
 ///
 /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
 /// - SeeAlso: [Efficient Synchronization of State-based CRDTs](https://arxiv.org/pdf/1803.02750.pdf)
-public protocol DeltaCRDT: _DeltaCRDT, CvRDT {
+public protocol DeltaCRDT: AnyDeltaCRDT, CvRDT {
     /// `Delta` type should be registered and (de-)serializable using the Actor serialization infrastructure.
     ///
     /// - SeeAlso: The library's documentation on serialization for more information.
@@ -113,15 +124,15 @@ extension DeltaCRDT {
     }
 }
 
-extension DeltaCRDT {
-    internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-        self.asDeltaCRDTBox
-    }
-
-    internal var asDeltaCRDTBox: DeltaCRDTBox {
-        DeltaCRDTBox(self)
-    }
-}
+// extension DeltaCRDT {
+//    internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
+//        self.asDeltaCRDTBox
+//    }
+//
+//    internal var asDeltaCRDTBox: DeltaCRDTBox {
+//        DeltaCRDTBox(self)
+//    }
+// }
 
 /// Named ẟ-CRDT makes use of an identifier (e.g., replica ID) to change a specific part of the state.
 ///

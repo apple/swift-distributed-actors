@@ -22,7 +22,7 @@ extension CRDT {
     internal enum Replication {
         // Replicator works with type-erased CRDTs (i.e., `AnyCvRDT`, `DeltaCRDTBox`) because protocols `CvRDT` and
         // `DeltaCRDT` can be used as generic constraint only due to `Self` or associated type requirements.
-        typealias Data = AnyStateBasedCRDT
+        typealias Data = StateBasedCRDT
 
         // Messages from replicator to CRDT instance owner
         internal enum DataOwnerMessage: NotTransportableActorMessage {
@@ -54,11 +54,11 @@ extension CRDT {
 
         enum LocalCommand: NotTransportableActorMessage {
             // Register owner for CRDT instance
-            case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: AnyStateBasedCRDT, replyTo: ActorRef<RegisterResult>?)
+            case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: StateBasedCRDT, replyTo: ActorRef<RegisterResult>?)
 
             // Perform write to at least `consistency` members
             // `data` is expected to be the full CRDT. Do not send delta even if it is a delta-CRDT.
-            case write(_ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<WriteResult>)
+            case write(_ id: Identity, _ data: StateBasedCRDT, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<WriteResult>)
             // Perform read from at least `consistency` members
             case read(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<ReadResult>)
             // Perform delete to at least `consistency` members
@@ -70,7 +70,7 @@ extension CRDT {
             }
 
             enum RegisterError: Error, NotTransportableActorMessage {
-                case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
+                case inputAndStoredDataTypeMismatch(CRDT.MergeError)
                 case unsupportedCRDT
             }
 
@@ -80,7 +80,7 @@ extension CRDT {
             }
 
             enum WriteError: Error, NotTransportableActorMessage {
-                case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
+                case inputAndStoredDataTypeMismatch(CRDT.MergeError)
                 case unsupportedCRDT
                 case consistencyError(CRDT.OperationConsistency.Error)
             }
@@ -148,8 +148,8 @@ extension CRDT {
 extension CRDT.Replicator.LocalCommand.RegisterError: Equatable {
     public static func == (lhs: CRDT.Replicator.LocalCommand.RegisterError, rhs: CRDT.Replicator.LocalCommand.RegisterError) -> Bool {
         switch (lhs, rhs) {
-        case (.inputAndStoredDataTypeMismatch(let lType), .inputAndStoredDataTypeMismatch(let rType)):
-            return lType.asHashable == rType.asHashable
+        case (.inputAndStoredDataTypeMismatch(let lError), .inputAndStoredDataTypeMismatch(let rError)):
+            return lError == rError
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
         default:
@@ -161,8 +161,8 @@ extension CRDT.Replicator.LocalCommand.RegisterError: Equatable {
 extension CRDT.Replicator.LocalCommand.WriteError: Equatable {
     public static func == (lhs: CRDT.Replicator.LocalCommand.WriteError, rhs: CRDT.Replicator.LocalCommand.WriteError) -> Bool {
         switch (lhs, rhs) {
-        case (.inputAndStoredDataTypeMismatch(let lType), .inputAndStoredDataTypeMismatch(let rType)):
-            return lType.asHashable == rType.asHashable
+        case (.inputAndStoredDataTypeMismatch(let lError), .inputAndStoredDataTypeMismatch(let rError)):
+            return lError == rError
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
         case (.consistencyError(let lError), .consistencyError(let rError)):

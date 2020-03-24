@@ -39,7 +39,7 @@ extension TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionE
             let context = Actor<TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 

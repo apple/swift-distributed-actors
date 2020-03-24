@@ -37,8 +37,8 @@ extension TestActorable {
         case greetReplyToActorRef(name: String, replyTo: ActorRef<String>) 
         case greetReplyToActor(name: String, replyTo: Actor<TestActorable>) 
         case greetReplyToReturnStrict(name: String, _replyTo: ActorRef<String>) 
-        case greetReplyToReturnStrictThrowing(name: String, _replyTo: ActorRef<Result<String, Error>>) 
-        case greetReplyToReturnNIOFuture(name: String, _replyTo: ActorRef<Result<String, Error>>) 
+        case greetReplyToReturnStrictThrowing(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
+        case greetReplyToReturnNIOFuture(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
         case becomeStopped 
         case contextSpawnExample 
         case timer 
@@ -55,7 +55,7 @@ extension TestActorable {
             let context = Actor<TestActorable>.Context(underlying: _context)
             var instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -100,12 +100,19 @@ extension TestActorable {
                     _replyTo.tell(.success(result))
                     } catch {
                         context.log.warning("Error thrown while handling [\(message)], error: \(error)")
-                        _replyTo.tell(.failure(error))
+                        _replyTo.tell(.failure(ErrorEnvelope(error)))
                     }
  
                 case .greetReplyToReturnNIOFuture(let name, let _replyTo):
                     instance.greetReplyToReturnNIOFuture(name: name)
-                                    .whenComplete { res in _replyTo.tell(res) } 
+                        .whenComplete { res in
+                            switch res {
+                            case .success(let value):
+                                _replyTo.tell(.success(value))
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        } 
                 case .becomeStopped:
                     return /*become*/ instance.becomeStopped()
  
@@ -148,52 +155,52 @@ extension TestActorable {
 extension Actor where A.Message == TestActorable.Message {
 
     public func ping() {
-        self.ref.tell(.ping)
+        self.ref.tell(Self.Message.ping)
     }
  
 
     public func greet(name: String) {
-        self.ref.tell(.greet(name: name))
+        self.ref.tell(Self.Message.greet(name: name))
     }
  
 
     public func greetUnderscoreParam(_ name: String) {
-        self.ref.tell(.greetUnderscoreParam(name))
+        self.ref.tell(Self.Message.greetUnderscoreParam(name))
     }
  
 
     public func greet2(name: String, surname: String) {
-        self.ref.tell(.greet2(name: name, surname: surname))
+        self.ref.tell(Self.Message.greet2(name: name, surname: surname))
     }
  
 
     public func throwing() {
-        self.ref.tell(.throwing)
+        self.ref.tell(Self.Message.throwing)
     }
  
 
      func passMyself(someone: ActorRef<Actor<TestActorable>>) {
-        self.ref.tell(.passMyself(someone: someone))
+        self.ref.tell(Self.Message.passMyself(someone: someone))
     }
  
 
     public func _ignoreInGenActor() {
-        self.ref.tell(._ignoreInGenActor)
+        self.ref.tell(Self.Message._ignoreInGenActor)
     }
  
 
      func parameterNames(first second: String) {
-        self.ref.tell(.parameterNames(first: second))
+        self.ref.tell(Self.Message.parameterNames(first: second))
     }
  
 
     public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) {
-        self.ref.tell(.greetReplyToActorRef(name: name, replyTo: replyTo))
+        self.ref.tell(Self.Message.greetReplyToActorRef(name: name, replyTo: replyTo))
     }
  
 
     public func greetReplyToActor(name: String, replyTo: Actor<TestActorable>) {
-        self.ref.tell(.greetReplyToActor(name: name, replyTo: replyTo))
+        self.ref.tell(Self.Message.greetReplyToActor(name: name, replyTo: replyTo))
     }
  
 
@@ -225,17 +232,17 @@ extension Actor where A.Message == TestActorable.Message {
  
 
      func becomeStopped() {
-        self.ref.tell(.becomeStopped)
+        self.ref.tell(Self.Message.becomeStopped)
     }
  
 
      func contextSpawnExample() {
-        self.ref.tell(.contextSpawnExample)
+        self.ref.tell(Self.Message.contextSpawnExample)
     }
  
 
      func timer() {
-        self.ref.tell(.timer)
+        self.ref.tell(Self.Message.timer)
     }
  
 

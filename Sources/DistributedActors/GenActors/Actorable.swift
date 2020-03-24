@@ -111,7 +111,7 @@ extension Actorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reply
 
-public typealias Reply<Value> = ResultReply<Value, Error>
+public typealias Reply<Value> = ResultReply<Value>
 
 public enum ResultReply<Value, ErrorType: Error> {
     case completed(Result<Value, Error>)

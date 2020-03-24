@@ -583,7 +583,7 @@ extension ProtoCRDTDeleteResult.TypeEnum: CaseIterable {
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "CRDTEnvelope"
+  static let protoMessageName: String = "CRDT.Envelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "manifest"),
     2: .same(proto: "payload"),

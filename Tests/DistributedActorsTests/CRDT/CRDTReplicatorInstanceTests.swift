@@ -239,11 +239,11 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         s1.add(3)
 
         // Cannot write data of different data under `id`
-        guard case .inputAndStoredDataTypeMismatch(let stored) = try replicator.write(id, s1, deltaMerge: true) else {
+        guard case .inputAndStoredDataTypeMismatch(let error) = try replicator.write(id, s1, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have failed due to type mismatch")
         }
         // Stored data should be a GCounter
-        g1.asAnyStateBasedCRDT.metaType.is(stored).shouldBeTrue()
+        (error.storedType is CRDT.GCounter).shouldBeTrue()
     }
 
     func test_write_shouldAddCRDTToDataStoreIfNew_nonDeltaCRDT() throws {

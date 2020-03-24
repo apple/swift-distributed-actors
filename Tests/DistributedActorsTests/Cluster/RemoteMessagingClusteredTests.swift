@@ -281,7 +281,7 @@ private struct SerializationTestMessage: ActorMessage {
     let serializationBehavior: SerializationBehavior
 }
 
-extension SerializationTestMessage: Codable {
+extension SerializationTestMessage {
     enum CodingKeys: String, CodingKey {
         case fails
     }

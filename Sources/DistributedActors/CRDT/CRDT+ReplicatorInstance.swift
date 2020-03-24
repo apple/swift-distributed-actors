@@ -59,16 +59,16 @@ extension CRDT.Replicator {
             // Return the updated full CRDT
             case applied(_ updatedData: StateBasedCRDT, isNew: Bool)
 
-            case inputAndStoredDataTypeMismatch(stored: AnyMetaType) // FIXME: rather throw, and want to get rid of AnyMetaType
+            case inputAndStoredDataTypeMismatch(CRDT.MergeError)
             case unsupportedCRDT
         }
 
         enum WriteDeltaDirective {
             // Return the updated full CRDT
-            case applied(_ updatedData: AnyStateBasedCRDT)
+            case applied(_ updatedData: StateBasedCRDT)
 
             case missingCRDTForDelta
-            case incorrectDeltaType(expected: AnyMetaType)
+            case incorrectDeltaType(CRDT.MergeError)
             case cannotWriteDeltaForNonDeltaCRDT
         }
 
@@ -80,7 +80,7 @@ extension CRDT.Replicator {
         /// - Parameter deltaMerge: True if merge can be done with the delta only; false if full state merge is required.
         /// - Returns: `WriteDirective` indicating if the write has succeeded or failed.
         // func write(_ id: Identity, _ data: AnyStateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective { // TODO: used to be this, to be able to only write a delta
-        func write(_ id: Identity, _ data: StateBasedCRDT, deltaMerge: Bool = true) throws -> WriteDirective { // TODO: used to be this, to be able to
+        func write(_ id: Identity, _ data: StateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective { // TODO: used to be this, to be able to
             switch self.dataStore[id] {
             case .none: // New CRDT; just add to store
 
@@ -97,14 +97,19 @@ extension CRDT.Replicator {
                 // TODO: check tombstone with same id
                 self.dataStore[id] = data
                 return .applied(data, isNew: true)
+
             case .some(let stored):
-                let merged = try stored._tryMerging(other: data)
-                self.dataStore[id] = merged
-                return .applied(merged, isNew: false)
+                switch stored._tryMerging(other: data) {
+                case .success(let merged):
+                    self.dataStore[id] = merged
+                    return .applied(merged, isNew: false)
+                case .failure(let error):
+                    return .inputAndStoredDataTypeMismatch(error)
+                }
 //                switch stored {
 //                case var stored as AnyCvRDT:
 //                    guard let input = data as? AnyCvRDT, input.metaType.is(stored.metaType) else {
-//                        return .inputAndStoredDataTypeMismatch(stored: stored.metaType)
+//                        return .inputAndStoredDataTypeMismatch(stored.metaType)
 //                    }
 //
 //                    stored.merge(other: input)
@@ -113,7 +118,7 @@ extension CRDT.Replicator {
 //                    return .applied(stored, isNew: false)
 //                case var stored as DeltaCRDTBox:
 //                    guard let input = data as? DeltaCRDTBox, input.metaType.is(stored.metaType) else {
-//                        return .inputAndStoredDataTypeMismatch(stored: stored.metaType)
+//                        return .inputAndStoredDataTypeMismatch(stored.metaType)
 //                    }
 //
 //                    if deltaMerge, let delta = input.delta {
@@ -143,21 +148,29 @@ extension CRDT.Replicator {
                 // Cannot do anything if delta (i.e., partial state) is sent and full CRDT is unknown.
                 return .missingCRDTForDelta
             case .some(let stored):
-                switch stored {
-                case var stored as DeltaCRDTBox:
-                    // Existing CRDT in store better be delta-CRDT
-                    guard let delta = delta as? _DeltaCRDT, type(of: delta) == stored.deltaMetaType.underlying else {
-                        return .incorrectDeltaType(expected: stored.deltaMetaType)
-                    }
-
-                    stored.mergeDelta(delta as! DeltaCRDTBox.Delta) // FIXME: THIS IS A HAAAAACK!!!!!!
-                    self.dataStore[id] = stored
-
-                    return .applied(stored)
-                default:
-                    // This method should not be used for non-delta-CRDT
-                    return .cannotWriteDeltaForNonDeltaCRDT
+                switch stored._tryMerging(other: delta) {
+                case .success(let merged):
+                    self.dataStore[id] = merged
+                    return .applied(merged)
+                case .failure(let error):
+                    return .incorrectDeltaType(error)
                 }
+
+//                switch stored {
+//                case var stored as DeltaCRDTBox:
+//                    // Existing CRDT in store better be delta-CRDT
+//                    guard let delta = delta as? _DeltaCRDT, type(of: delta) == stored.deltaMetaType.underlying else {
+//                        return .incorrectDeltaType(expected: stored.deltaMetaType)
+//                    }
+//
+//                    stored.mergeDelta(delta as! DeltaCRDTBox.Delta) // FIXME: THIS IS A HAAAAACK!!!!!!
+//                    self.dataStore[id] = stored
+//
+//                    return .applied(stored)
+//                default:
+//                    // This method should not be used for non-delta-CRDT
+//                    return .cannotWriteDeltaForNonDeltaCRDT
+//                }
             }
         }
 

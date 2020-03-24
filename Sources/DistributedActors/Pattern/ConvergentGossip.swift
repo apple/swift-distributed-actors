@@ -142,7 +142,7 @@ internal final class ConvergentGossip<Payload: ActorMessage> {
 }
 
 extension ConvergentGossip {
-    enum Message: Codable, ActorMessage {
+    enum Message: ActorMessage {
         // gossip
         case gossip(GossipEnvelope)
 
