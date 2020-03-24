@@ -69,8 +69,8 @@ class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
-    let manifest1: Serialization.Manifest = .init(serializerID: Serialization.CodableSerializerID.jsonCodable.value, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test1")
-    let manifest2: Serialization.Manifest = .init(serializerID: Serialization.CodableSerializerID.jsonCodable.value, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test2")
+    let manifest1 = Serialization.Manifest(serializerID: Serialization.SerializerID.jsonCodable, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test1")
+    let manifest2 = Serialization.Manifest(serializerID: Serialization.SerializerID.jsonCodable, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test2")
 
     var system: ActorSystem!
     var testKit: ActorTestKit!
@@ -81,6 +81,16 @@ class SerializationPoolTests: XCTestCase {
     var elg: MultiThreadedEventLoopGroup!
     var el: EventLoop!
     let allocator = ByteBufferAllocator()
+
+    private func completePromise<T>(_ promise: EventLoopPromise<T>) -> DeserializationCallback<T> {
+        DeserializationCallback {
+            switch $0 {
+            case .success(.message(let message)): promise.succeed(message)
+            case .success(.deadLetter(let message)): fatalError("Expected a success, but got .deadLetter(\(message))")
+            case .failure(let error): promise.fail(error)
+            }
+        }
+    }
 
     override func setUp() {
         self.system = ActorSystem("SerializationTests") { settings in
@@ -230,9 +240,9 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise1))
         try p.expectMessage("p1")
-        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(promise2))
         try p.expectMessage("p2")
     }
 
@@ -265,8 +275,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise1))
+        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(promise2))
 
         Test2.deserializerLock.unlock()
 
@@ -305,8 +315,8 @@ class SerializationPoolTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, promise: promise2)
+        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise1))
+        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(promise2))
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -341,7 +351,7 @@ class SerializationPoolTests: XCTestCase {
         promise1.futureResult.whenFailure { print("\($0)") }
 
         serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(as: Test1.self, from: buffer, using: self.manifest1, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserialize(as: Test1.self, from: buffer, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise2))
 
         try p.expectNoMessage(for: .milliseconds(20))
 

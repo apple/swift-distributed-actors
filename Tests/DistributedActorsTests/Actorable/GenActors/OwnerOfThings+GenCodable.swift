@@ -47,7 +47,7 @@ extension OwnerOfThings.Message {
             let _replyTo = try container.decode(ActorRef<Reception.Listing<OwnerOfThings>?>.self, forKey: CodingKeys.readLastObservedValue__replyTo)
             self = .readLastObservedValue(_replyTo: _replyTo)
         case .performLookup:
-            let _replyTo = try container.decode(ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>.self, forKey: CodingKeys.performLookup__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>>.self, forKey: CodingKeys.performLookup__replyTo)
             self = .performLookup(_replyTo: _replyTo)
         case .performSubscribe:
             let p = try container.decode(ActorRef<Reception.Listing<OwnerOfThings>>.self, forKey: CodingKeys.performSubscribe_p)

@@ -27,7 +27,7 @@ extension OwnerOfThings {
 
     public enum Message: ActorMessage { 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
-        case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>) 
+        case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>>) 
         case performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) 
     }
     
@@ -42,7 +42,7 @@ extension OwnerOfThings {
             let context = Actor<OwnerOfThings>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -53,7 +53,14 @@ extension OwnerOfThings {
  
                 case .performLookup(let _replyTo):
                     instance.performLookup()
+                        .whenComplete { res in
+                            switch res {
+                            case .success(let value):
                                     ._onComplete { res in _replyTo.tell(res) }
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        } 
                 case .performSubscribe(let p):
                     instance.performSubscribe(p: p)
  
@@ -108,7 +115,7 @@ extension Actor where A.Message == OwnerOfThings.Message {
  
 
      func performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) {
-        self.ref.tell(.performSubscribe(p: p))
+        self.ref.tell(Self.Message.performSubscribe(p: p))
     }
  
 

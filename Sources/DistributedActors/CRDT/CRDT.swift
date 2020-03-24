@@ -102,7 +102,7 @@ extension CRDT {
             )
 
             // Register as owner of the CRDT instance with local replicator
-            replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: nil)))
+            replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data, replyTo: nil)))
         }
 
         // TODO: handle error instead of throw? convert replicator error to something else?
@@ -113,7 +113,7 @@ extension CRDT {
 
             // TODO: think more about timeouts: https://github.com/apple/swift-distributed-actors/issues/137
             let writeResponse = self.owner.replicator.ask(for: WriteResult.self, timeout: .effectivelyInfinite) { replyTo in
-                .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, timeout: timeout, replyTo: replyTo))
+                .localCommand(.write(id, data, consistency: consistency, timeout: timeout, replyTo: replyTo))
             }
 
             return self.owner.onWriteComplete(writeResponse) {
@@ -445,6 +445,22 @@ extension CRDT.OperationConsistency.Error: Equatable {
             return true
         default:
             return false
+        }
+    }
+}
+
+extension CRDT {
+    public struct MergeError: Error, CustomStringConvertible, Equatable {
+        let storedType: Any.Type
+        let incomingType: Any.Type
+
+        public var description: String {
+            "MergeError(Unable to merge \(self.storedType) with other \(self.incomingType))"
+        }
+
+        public static func == (lhs: MergeError, rhs: MergeError) -> Bool {
+            ObjectIdentifier(lhs.storedType) == ObjectIdentifier(rhs.storedType) &&
+                ObjectIdentifier(lhs.incomingType) == ObjectIdentifier(rhs.incomingType)
         }
     }
 }

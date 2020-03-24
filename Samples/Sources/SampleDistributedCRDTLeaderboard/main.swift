@@ -63,7 +63,7 @@ struct DistributedLeaderboard {
 
 extension DistributedLeaderboard {
 
-    enum GameEvent: ActorMessage {
+    enum GameEvent: Codable {
         case scorePoints(Int)
     }
 
@@ -76,13 +76,13 @@ extension DistributedLeaderboard {
 
             /// A cluster-wise distributed counter; each time we perform updates to it, the update will be replicated.
             let totalScore: CRDT.ActorOwned<CRDT.GCounter> = CRDT.GCounter.owned(by: context, id: DataID.totalScore)
-            _ = totalScore.increment(by: 1, writeConsistency: .quorum, timeout: .seconds(1))
+            _ = totalScore.increment(by: 1, writeConsistency: .all, timeout: .seconds(1))
 
             return .receiveMessage {
                 switch $0 {
                 case .scorePoints(let points):
                     myScore += points
-                    _ = totalScore.increment(by: points, writeConsistency: .quorum, timeout: .seconds(1))
+                    _ = totalScore.increment(by: points, writeConsistency: .all, timeout: .seconds(1))
                     context.log.info("Scored +\(points), my score: \(myScore), global total score: \(totalScore.lastObservedValue)"
                         //     , metadata: ["total/score": "\(totalScore.data)"]
                     )
@@ -121,7 +121,7 @@ struct DataID {
 }
 
 
-extension DistributedLeaderboard.GameEvent: Codable {
+extension DistributedLeaderboard.GameEvent {
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let points = try container.decode(Int.self)

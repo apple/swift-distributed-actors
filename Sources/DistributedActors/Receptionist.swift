@@ -63,6 +63,7 @@ public enum Receptionist {
         internal override var asAnyRegistrationKey: AnyRegistrationKey {
             return AnyRegistrationKey(from: self)
         }
+
         public var description: String {
             "RegistrationKey(id: \(self.id), typeHint: \(self.typeHint))"
         }
@@ -141,7 +142,7 @@ public enum Receptionist {
         }
 
         public var description: String {
-            "Receptionist.Lookup(key: \(key), replyTo: \(replyTo))"
+            "Receptionist.Lookup(key: \(self.key), replyTo: \(self.replyTo))"
         }
     }
 
@@ -181,7 +182,7 @@ public enum Receptionist {
         }
 
         public var description: String {
-            "Receptionist.Subscribe(key: \(key), replyTo: \(replyTo))"
+            "Receptionist.Subscribe(key: \(self.key), replyTo: \(self.replyTo))"
         }
     }
 
@@ -555,7 +556,7 @@ internal protocol ListingRequest {
 /// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT.swift
 /// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT+Serialization.swift
 /// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTEnvelope+Serialization.swift
+/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT.Envelope+Serialization.swift
 /// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTReplication+Serialization.swift
 /// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTReplication.pb.swift
 /// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+Any.swift

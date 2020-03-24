@@ -146,11 +146,11 @@ struct ActorableMessageDecl {
             res.append((nil, "_replyTo", "ActorRef<\(valueType)>"))
 
         case .type(let valueType) /* self.throwing */:
-            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), Error>>"))
+            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         case .result(let valueType, let errorType):
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), \(errorType)>>"))
         case .nioEventLoopFuture(let valueType):
-            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), Error>>"))
+            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         }
 
         return res

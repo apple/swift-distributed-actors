@@ -105,11 +105,11 @@ extension TestActorable.Message {
             self = .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)
         case .greetReplyToReturnStrictThrowing:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing__replyTo)
             self = .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)
         case .greetReplyToReturnNIOFuture:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnNIOFuture_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetReplyToReturnNIOFuture__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetReplyToReturnNIOFuture__replyTo)
             self = .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)
         case .becomeStopped:
             self = .becomeStopped
