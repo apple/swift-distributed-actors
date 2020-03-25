@@ -28,7 +28,18 @@ extension Serialization {
         }
 
         public var description: String {
-            "serializerID:\(self.value)"
+            switch self.value {
+            case SerializerID.doNotSerialize.value:
+                return "serializerID:doNotSerialize(\(self.value))"
+            case SerializerID.specialized.value:
+                return "serializerID:specialized(\(self.value))"
+            case SerializerID.jsonCodable.value:
+                return "serializerID:jsonCodable(\(self.value))"
+            case SerializerID.protobufRepresentable.value:
+                return "serializerID:protobufRepresentable(\(self.value))"
+            default:
+                return "serializerID:\(self.value)"
+            }
         }
 
         public static func < (lhs: Serialization.SerializerID, rhs: Serialization.SerializerID) -> Bool {
@@ -52,7 +63,8 @@ extension Serialization.SerializerID {
     // ~~~~~~~~~~~~~~~~ general purpose serializer ids ~~~~~~~~~~~~~~~~
     public static let doNotSerialize: SerializerID = 0
 
-    public static let jsonCodable: SerializerID = 1
+    public static let specialized: SerializerID = 1
+    public static let jsonCodable: SerializerID = 2
     // reserved for other "general purpose" codable = 2
     // reserved for other "general purpose" codable = 3
     public static let protobufRepresentable: SerializerID = 4
@@ -86,9 +98,9 @@ extension Serialization {
 
         // TODO: readjust the numbers we use
         internal static let SystemMessage: SerializerID = .doNotSerialize
-        internal static let SystemMessageACK: SerializerID = 18
-        internal static let SystemMessageNACK: SerializerID = 19
-        internal static let SystemMessageEnvelope: SerializerID = 20
+        internal static let SystemMessageACK: SerializerID = .checkProtobufRepresentable(_SystemMessage.ACK.self)
+        internal static let SystemMessageNACK: SerializerID = .checkProtobufRepresentable(_SystemMessage.NACK.self)
+        internal static let SystemMessageEnvelope: SerializerID = .checkProtobufRepresentable(DistributedActors.SystemMessageEnvelope.self)
 
         internal static let Int: SerializerID = 100
         internal static let UInt: SerializerID = 101

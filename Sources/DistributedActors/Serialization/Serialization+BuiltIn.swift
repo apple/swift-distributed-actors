@@ -47,25 +47,49 @@ internal class StringSerializer: Serializer<String> {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Number Serializer
 
-// @usableFromInline
-// internal class NumberSerializer<Number: FixedWidthInteger>: TypeSpecificSerializer<Number> {
-//    private let allocate: ByteBufferAllocator
-//
-//    init(_: Number.Type, _ allocator: ByteBufferAllocator) {
-//        self.allocate = allocator
-//    }
-//
-//    override func serialize(_ message: Number) throws -> ByteBuffer {
-//        var buffer = self.allocate.buffer(capacity: MemoryLayout<Number>.size)
-//        buffer.writeInteger(message, as: Number.self)
-//        return buffer
-//    }
-//
-//    override func deserialize(from bytes: ByteBuffer) throws -> Number {
-//        if let i = bytes.getInteger(at: 0, endianness: .big, as: Number.self) {
-//            return i
-//        } else {
-//            throw SerializationError.notAbleToDeserialize(hint: "\(bytes) as \(Number.self)")
-//        }
-//    }
-// }
+@usableFromInline
+internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> {
+    private let allocate: ByteBufferAllocator
+
+    init(_: Number.Type, _ allocator: ByteBufferAllocator) {
+        self.allocate = allocator
+    }
+
+    override func serialize(_ message: Number) throws -> ByteBuffer {
+        var buffer = self.allocate.buffer(capacity: MemoryLayout<Number>.size)
+        buffer.writeInteger(message, endianness: .big, as: Number.self)
+        return buffer
+    }
+
+    override func deserialize(from bytes: ByteBuffer) throws -> Number {
+        if let i = bytes.getInteger(at: 0, endianness: .big, as: Number.self) {
+            return i
+        } else {
+            throw SerializationError.notAbleToDeserialize(hint: "\(bytes) as \(Number.self)")
+        }
+    }
+}
+
+@usableFromInline
+internal class BoolSerializer: Serializer<Bool> {
+    private let allocate: ByteBufferAllocator
+
+    init(_ allocator: ByteBufferAllocator) {
+        self.allocate = allocator
+    }
+
+    override func serialize(_ message: Bool) throws -> ByteBuffer {
+        var buffer = self.allocate.buffer(capacity: 1)
+        let v: Int8 = message ? 1 : 0
+        buffer.writeInteger(v)
+        return buffer
+    }
+
+    override func deserialize(from bytes: ByteBuffer) throws -> Bool {
+        if let i = bytes.getInteger(at: 0, endianness: .big, as: Int8.self) {
+            return i == 1
+        } else {
+            throw SerializationError.notAbleToDeserialize(hint: "\(bytes) as \(Bool.self) (1/0 Int8)")
+        }
+    }
+}

@@ -39,10 +39,6 @@ extension Serialization {
         /// Use this option to test that all messages you expected to
         public var allMessages: Bool = false
 
-        /// Allows for attempting to use a Manifest's hint to summon the actual type,
-        /// and perform a sanity check if it equals the type on the present system.
-        public var sanityCheckHintSummonedTypesAreExpected: Bool = false
-
         /// `UniqueNode` to be included in actor addresses when serializing them.
         /// By default this should be equal to the exposed node of the actor system.
         ///
@@ -164,7 +160,7 @@ extension Serialization.Settings {
         _ type: Message.Type
     ) {
         // 1. register the specific to this type serializer (maker)
-        self.registerSpecializedSerializer(type, serializerID: .protobufRepresentable) { allocator in
+        self.registerSpecializedSerializer(type, serializer: .protobufRepresentable) { allocator in
             ProtobufSerializer<Message>(allocator: allocator) // FIXME: should be able to avoid registering all together
         }
 
@@ -179,7 +175,7 @@ extension Serialization.Settings {
         _ type: Message.Type
     ) {
         // 1. register the specific to this type serializer (maker)
-        self.registerSpecializedSerializer(type, serializerID: .protobufRepresentable) { allocator in
+        self.registerSpecializedSerializer(type, serializer: .protobufRepresentable) { allocator in
             InternalProtobufSerializer<Message>(allocator: allocator) // FIXME: should be able to avoid registering all together
         }
 
@@ -193,12 +189,12 @@ extension Serialization.Settings {
     /// Register a specialized serializer for a specific `Serialization.Manifest`.
     public mutating func registerSpecializedSerializer<Message: ActorMessage>(
         _ type: Message.Type, hint hintOverride: String? = nil,
-        serializerID: SerializerID,
+        serializer: SerializerID,
         makeSerializer: @escaping (NIO.ByteBufferAllocator) -> Serializer<Message>
     ) {
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
         let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
-        let manifest = Serialization.Manifest(serializerID: serializerID, hint: hint)
+        let manifest = Serialization.Manifest(serializerID: serializer, hint: hint)
 
         self.specializedSerializerMakers[manifest] = { allocator in
             makeSerializer(allocator).asAnySerializer
