@@ -98,6 +98,7 @@ extension Serialization.Settings {
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
         let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
         let serializerID = overrideSerializerID ?? self.defaultSerializerID
+        // TODO: We could do educated guess work here -- if a type is protobuf representable, that's the coding we want
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
 

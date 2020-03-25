@@ -25,7 +25,6 @@ extension CRDT {
     /// We must also keep the underlying CRDT intact during de/serialization, and thanks to the envelope, we can do that.
     /// The "boxing" serialization mechanism allows restoration of the `AnyStateBasedCRDT` instance given the underlying CRDT.
     internal struct Envelope {
-
         let manifest: Serialization.Manifest
         let data: StateBasedCRDT
 

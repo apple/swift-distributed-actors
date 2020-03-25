@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import struct Foundation.Data
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Message
@@ -51,15 +51,13 @@ extension Dictionary: ActorMessage where Key: Codable, Value: Codable {}
 #endif
 
 /// A `Never` can never be sent as message, even more so over the wire.
-extension Never: NotTransportableActorMessage {
-}
+extension Never: NotTransportableActorMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Common utility messages
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
 extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then: , Failure == ErrorEnvelope {
-
     public enum DiscriminatorKeys: String, Codable {
         case success
         case failure
@@ -166,7 +164,6 @@ public struct ErrorEnvelope: Error, ActorMessage {
         try container.encode(context.outboundManifest(BestEffortStringError.self), forKey: .manifest)
         try container.encode(BestEffortStringError(representation: "\(type(of: self.error as Any))"), forKey: .error)
 //        }
-
     }
 }
 
@@ -177,7 +174,6 @@ public struct BestEffortStringError: Error, Codable, CustomStringConvertible {
         "BestEffortStringError(\(representation))"
     }
 }
-
 
 /// Useful error wrapper which performs an best effort Error serialization as configured by the actor system.
 public struct NotTransportableAnyError: Error, NotTransportableActorMessage {

@@ -376,9 +376,9 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             }
         } else if Type == _SystemMessage.self {
             log.error("""
-                      Received SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
-                      Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
-                      """)
+            Received SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
+            Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
+            """)
         } else {
             // it's a normal message, so we should directly pass it along
             let wrapped = InboundWrappedActorMessage.userMessage(wireEnvelope)

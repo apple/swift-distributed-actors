@@ -86,7 +86,7 @@ public class Serialization {
             IntegerSerializer(Int.self, allocator)
         }
         settings.registerCodable(UInt.self, hint: "u", serializer: .specialized)
-        settings.registerSpecializedSerializer(UInt.self, hint: "u", serializer: .specialized) { allocator in 
+        settings.registerSpecializedSerializer(UInt.self, hint: "u", serializer: .specialized) { allocator in
             IntegerSerializer(UInt.self, allocator)
         }
 
@@ -103,8 +103,8 @@ public class Serialization {
         settings.registerSpecializedSerializer(String.self, hint: "S", serializer: .specialized) { allocator in
             StringSerializer(allocator)
         }
-        settings.registerCodable(Optional<String>.self, hint: "qS")
-        settings.registerCodable(Optional<Int>.self, hint: "qI")
+        settings.registerCodable(String?.self, hint: "qS")
+        settings.registerCodable(Int?.self, hint: "qI")
 
         // ==== Declare some system messages to be handled with specialized serializers:
         // system messages
@@ -144,15 +144,21 @@ public class Serialization {
         // TODO: Allow plugins to register types...?
 
         // crdts
-        settings.registerManifest(CRDT.Replicator.Message.self, serializer: ReservedID.CRDTReplicatorMessage)
-        settings.registerManifest(CRDT.Envelope.self, serializer: ReservedID.CRDTEnvelope)
-        settings.registerManifest(CRDT.Replicator.RemoteCommand.WriteResult.self, serializer: ReservedID.CRDTWriteResult)
-        settings.registerManifest(CRDT.Replicator.RemoteCommand.ReadResult.self, serializer: ReservedID.CRDTReadResult)
-        settings.registerManifest(CRDT.Replicator.RemoteCommand.DeleteResult.self, serializer: ReservedID.CRDTDeleteResult)
-        settings.registerManifest(CRDT.GCounter.self, serializer: ReservedID.CRDTGCounter)
-        settings.registerManifest(CRDT.GCounterDelta.self, serializer: ReservedID.CRDTGCounterDelta)
-        settings.registerManifest(CRDT.ORSet<String>.self, serializer: SerializerID.protobufRepresentable)
-        settings.registerManifest(CRDT.ORSet<Int>.self, serializer: SerializerID.protobufRepresentable)
+        // TODO: all this registering will go away with _mangledTypeName
+        settings.registerManifest(CRDT.Identity.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.VersionedContainer<String>.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.VersionContext.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.VersionedContainerDelta<String>.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.VersionedContainerDelta<Int>.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.Replicator.Message.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.Envelope.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.Replicator.RemoteCommand.WriteResult.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.Replicator.RemoteCommand.ReadResult.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.Replicator.RemoteCommand.DeleteResult.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.GCounter.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.GCounterDelta.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.ORSet<String>.self, serializer: .protobufRepresentable)
+        settings.registerManifest(CRDT.ORSet<Int>.self, serializer: .protobufRepresentable)
         // settings.registerManifest(DeltaCRDTBox.self, serializer: ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDT.Envelope+SerializationTests
 
         self.settings = settings
@@ -577,6 +583,7 @@ extension Serialization.Manifest: ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         self.toProto()
     }
+
     // Convenience API for encoding manually
     public func toProto() -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
@@ -591,6 +598,7 @@ extension Serialization.Manifest: ProtobufRepresentable {
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         self.init(fromProto: proto)
     }
+
     // Convenience API for decoding manually
     public init(fromProto proto: ProtobufRepresentation) {
         let hint: String? = proto.hint.isEmpty ? nil : proto.hint
