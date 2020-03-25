@@ -361,28 +361,25 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let wireEnvelope: Wire.Envelope = self.unwrapInboundIn(data)
 
-        switch wireEnvelope.manifest.serializerID {
-        case Serialization.ReservedID.SystemMessageEnvelope:
+        let Type = try? self.serializationPool.serialization.summonType(from: wireEnvelope.manifest)
+        if Type == SystemMessageEnvelope.self {
             self.deserializeThenHandle(type: SystemMessageEnvelope.self, wireEnvelope: wireEnvelope) { envelope in
                 self.onInboundSystemMessage(context, systemEnvelope: envelope, wireEnvelope: wireEnvelope)
             }
-
-        case Serialization.ReservedID.SystemMessageACK:
+        } else if Type == _SystemMessage.ACK.self {
             self.deserializeThenHandle(type: _SystemMessage.ACK.self, wireEnvelope: wireEnvelope) { ack in
                 self.onInboundACK(ack: ack)
             }
-        case Serialization.ReservedID.SystemMessageNACK:
+        } else if Type == _SystemMessage.NACK.self {
             self.deserializeThenHandle(type: _SystemMessage.NACK.self, wireEnvelope: wireEnvelope) { nack in
                 self.onInboundNACK(context, nack: nack)
             }
-
-        case Serialization.ReservedID.SystemMessage:
+        } else if Type == _SystemMessage.self {
             log.error("""
-            Received SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
-            Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
-            """)
-
-        default:
+                      Received SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
+                      Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
+                      """)
+        } else {
             // it's a normal message, so we should directly pass it along
             let wrapped = InboundWrappedActorMessage.userMessage(wireEnvelope)
             context.fireChannelRead(self.wrapInboundOut(wrapped))
