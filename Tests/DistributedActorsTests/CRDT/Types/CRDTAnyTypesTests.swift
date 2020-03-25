@@ -69,7 +69,7 @@ final class CRDTAnyTypesTests: XCTestCase {
         }
 
         // rr1 is mutated; rr2 is not
-        try rr1._tryMerge(other: rr2)
+        rr1._tryMerge(other: rr2)
 
         guard let urr1 = rr1 as? CRDT.LWWRegister<Int> else {
             throw shouldNotHappen("Underlying should be a LWWRegister<Int>")
@@ -162,9 +162,8 @@ final class CRDTAnyTypesTests: XCTestCase {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
 
-        let error = shouldThrow {
-            gg1._tryMerge(other: ss1)
-        }
+        let error: CRDT.MergeError? = gg1._tryMerge(other: ss1)
+        error.shouldNotBeNil()
         "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
 
@@ -200,11 +199,8 @@ final class CRDTAnyTypesTests: XCTestCase {
             throw shouldNotHappen("Delta should not be nil")
         }
 
-        if gg1._tryMerge(other: d) != nil {
-            () // good error was expected
-        } else {
-            throw TestError("Expected an error to be returned!")
-        }
+        let error = gg1._tryMerge(other: d)
+        error.shouldNotBeNil()
     }
 
     func test_DeltaCRDTBox_canResetDelta() throws {

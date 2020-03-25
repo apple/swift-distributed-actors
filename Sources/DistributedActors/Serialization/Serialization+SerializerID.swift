@@ -72,12 +72,10 @@ extension Serialization.SerializerID {
     // ... -- || --
     // ... reserved = 16
 
-
     /// Helper function to never accidentally register a not-AnyProtobufRepresentable as such.
     public static func checkProtobufRepresentable<M: AnyProtobufRepresentable>(_ type: M.Type) -> SerializerID {
         .protobufRepresentable
     }
-
 
     // ~~~~~~~~~~~~~~~~ users may use ids above 16 ~~~~~~~~~~~~~~~~
     // reserved for end-users
