@@ -83,11 +83,11 @@ extension Serializer: AnySerializer {
 /// Nope, as opposed to Noop
 internal class NotTransportableSerializer<Message>: Serializer<Message> {
     override func serialize(_ message: Message) throws -> ByteBuffer {
-        throw SerializationError.unableToSerialize(hint: "NoopSerializer: \(Message.self)")
+        throw SerializationError.unableToSerialize(hint: "\(Self.self): \(Message.self)")
     }
 
     override func deserialize(from bytes: ByteBuffer) throws -> Message {
-        throw SerializationError.unableToDeserialize(hint: "NoopSerializer: \(Message.self)")
+        throw SerializationError.unableToDeserialize(hint: "\(Self.self): \(Message.self)")
     }
 }
 
@@ -139,6 +139,6 @@ internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
     }
 
     public var description: String {
-        "BoxedAnySerializer(\(self.serializer))"
+        "AnySerializer(\(self.serializer))"
     }
 }

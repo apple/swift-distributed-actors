@@ -243,7 +243,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
             throw self.testKit.fail("The write operation should have failed due to type mismatch")
         }
         // Stored data should be a GCounter
-        (error.storedType is CRDT.GCounter).shouldBeTrue()
+        (error.storedType == CRDT.GCounter.self).shouldBeTrue()
     }
 
     func test_write_shouldAddCRDTToDataStoreIfNew_nonDeltaCRDT() throws {

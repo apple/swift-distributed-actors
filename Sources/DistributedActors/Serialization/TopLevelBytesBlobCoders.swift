@@ -21,7 +21,7 @@ import struct NIO.ByteBufferAllocator
 
 // TODO: TopLevelDataEncoder
 
-class TopLevelBytesBlobEncoder: Encoder {
+class TopLevelBytesBlobEncoder: _TopLevelBlobEncoder {
     let allocator: ByteBufferAllocator
 
     var result: ByteBuffer?
@@ -35,6 +35,15 @@ class TopLevelBytesBlobEncoder: Encoder {
     }
 
     var userInfo: [CodingUserInfoKey: Any] = [:]
+
+    func encode<T>(_ value: T) throws -> ByteBuffer where T : Encodable {
+        var container = self.singleValueContainer()
+        try container.encode(value)
+        guard let result = self.result else {
+            throw SerializationError.unableToSerialize(hint: "No bytes were written while encoding \(value) using \(Self.self)!")
+        }
+        return result
+    }
 
     func store(data: Data) throws {
         guard self.result == nil else {
@@ -259,7 +268,8 @@ struct TopLevelBytesBlobSingleValueEncodingContainer: SingleValueEncodingContain
 // MARK: Top-Level Bytes-Blob Decoder
 
 // TODO: TopLevelDataDecoder
-class TopLevelBytesBlobDecoder: Decoder {
+
+class TopLevelBytesBlobDecoder: _TopLevelBlobDecoder {
     typealias Input = ByteBuffer
     private(set) var codingPath: [CodingKey] = []
     var userInfo: [CodingUserInfoKey: Any] = [:]
@@ -276,7 +286,7 @@ class TopLevelBytesBlobDecoder: Decoder {
         TopLevelBytesBlobSingleValueDecodingContainer(superEncoder: self)
     }
 
-    func decode<T: Decodable>(_ type: T.Type, from: Input) throws -> T {
+    func decode<T>(_ type: T.Type, from: Input) throws -> T where T: Decodable {
         var buf = from
         return try T._decode(from: &buf, using: TopLevelProtobufBlobDecoder()) // FIXME: should be the proto one
     }

@@ -51,7 +51,7 @@ extension Serialization {
         /// Configures which `Codable` serializer should be used whenever a
         ///
         /// - Note: Affects only _outbound_ messages which are `Codable`.
-        public var defaultSerializerID: Serialization.SerializerID = .jsonCodable
+        public var defaultSerializerID: Serialization.SerializerID = .foundationJSON
 
         /// Applied before automatically selecting a serializer based on manifest.
         /// Allows to deserialize incoming messages when "the same" message is now represented on this system differently.
