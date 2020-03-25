@@ -99,7 +99,7 @@ public enum Receptionist {
         }
 
         public override var description: String {
-            "Register(ref: \(self.ref), key: \(self.key), replyTo: \(self.replyTo))"
+            "Register(ref: \(self.ref), key: \(self.key), replyTo: \(String(reflecting: self.replyTo))"
         }
     }
 

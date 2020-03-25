@@ -50,7 +50,8 @@ final class CRDTAnyTypesTests: XCTestCase {
         }
 
         // gg1 is mutated; gg2 is not
-        gg1._tryMerge(other: gg2)
+        let error = gg1._tryMerge(other: gg2)
+        error.shouldBeNil()
 
         guard let ugg1 = gg1 as? CRDT.GCounter else {
             throw shouldNotHappen("Underlying should be a GCounter")
@@ -69,7 +70,8 @@ final class CRDTAnyTypesTests: XCTestCase {
         }
 
         // rr1 is mutated; rr2 is not
-        rr1._tryMerge(other: rr2)
+        let error2 = rr1._tryMerge(other: rr2)
+        error2.shouldBeNil()
 
         guard let urr1 = rr1 as? CRDT.LWWRegister<Int> else {
             throw shouldNotHappen("Underlying should be a LWWRegister<Int>")
@@ -158,13 +160,9 @@ final class CRDTAnyTypesTests: XCTestCase {
         guard var gg1 = anyCvRDTs["gcounter-1"] as? CRDT.GCounter else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
-        guard let ss1 = anyCvRDTs["orset-1"] as? CRDT.GCounter else {
-            throw shouldNotHappen("Dictionary should not return nil for key")
-        }
 
-        let error: CRDT.MergeError? = gg1._tryMerge(other: ss1)
+        let error: CRDT.MergeError? = gg1._tryMerge(other: s1)
         error.shouldNotBeNil()
-        "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
 
     func test_DeltaCRDTBox_canBeUsedToMergeRightDeltaType() throws {
@@ -180,10 +178,7 @@ final class CRDTAnyTypesTests: XCTestCase {
         // gg1 is mutated
         gg1.mergeDelta(d)
 
-        guard let ugg1 = gg1 as? CRDT.GCounter else {
-            throw shouldNotHappen("Should be a GCounter")
-        }
-        ugg1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
+        gg1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
     }
 
     func test_DeltaCRDTBox_throwWhenAttemptToMergeInvalidDeltaType() throws {

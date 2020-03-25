@@ -368,7 +368,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     func interpretAdaptedMessage(_ carry: AdaptedMessageCarry) throws -> ActorRunResult {
         let maybeAdapter = self.messageAdapters.first(where: { adapter in
-            adapter.metaType.isInstance(carry.message)
+            adapter.metaType == type(of: carry.message as Any)
         })
 
         guard let adapter = maybeAdapter?.closure else {
@@ -768,7 +768,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     private var messageAdapterRef: ActorRefAdapter<Message>?
     struct MessageAdapterClosure {
-        let metaType: AnyMetaType
+        let metaType: Any.Type
         let closure: (Any) -> Message?
     }
 
@@ -777,7 +777,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
         where From: ActorMessage {
         do {
-            let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
                 guard let typedMessage = message as? From else {
                     fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
@@ -788,10 +787,10 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
             }
 
             self.messageAdapters.removeAll(where: { adapter in
-                adapter.metaType.is(metaType)
+                adapter.metaType == fromType
             })
 
-            self.messageAdapters.insert(MessageAdapterClosure(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
+            self.messageAdapters.insert(MessageAdapterClosure(metaType: fromType, closure: anyAdapter), at: self.messageAdapters.startIndex)
 
             guard let adapterRef = self.messageAdapterRef else {
                 let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)

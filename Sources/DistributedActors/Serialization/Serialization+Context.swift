@@ -13,11 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import class Foundation.JSONDecoder
+import class Foundation.JSONEncoder
 import struct NIO.ByteBufferAllocator
-
-public extension CodingUserInfoKey {
-    static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sact_ser_context")!
-}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization.Context
@@ -92,5 +90,54 @@ extension Serialization {
         public func outboundManifest<Message: ActorMessage>(_ type: Message.Type) throws -> Serialization.Manifest {
             try self.system.serialization.outboundManifest(type)
         }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialization.Context for Encoder & Decoder
+
+public extension CodingUserInfoKey {
+    static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sact_ser_context")!
+}
+
+public protocol CodableSerializationContext {
+    /// Extracts an `Serialization.Context` which can be used to perform actor serialization specific tasks
+    /// such as resolving an actor ref from its serialized form.
+    ///
+    /// This context is only available when the decoder is invoked from the context of `DistributedActors.Serialization`.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    ///    guard let serializationContext = decoder.actorSerializationContext else {
+    //         throw SerializationError.missingSerializationContext(MyMessage.self, details: "While decoding [\(MyMessage.self)], using [\(decoder)]")
+    //     }
+    /// ```
+    var actorSerializationContext: Serialization.Context? { get }
+}
+
+extension Decoder {
+    // Cannot conform it to DecoderSerializationContext:
+    //     error: extension of protocol 'Decoder' cannot have an inheritance clause
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
+    }
+}
+
+extension JSONDecoder: CodableSerializationContext {
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
+    }
+}
+
+extension Encoder {
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
+    }
+}
+
+extension JSONEncoder: CodableSerializationContext {
+    public var actorSerializationContext: Serialization.Context? {
+        self.userInfo[.actorSerializationContext] as? Serialization.Context
     }
 }
