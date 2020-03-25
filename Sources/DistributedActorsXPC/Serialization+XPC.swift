@@ -119,7 +119,7 @@ public enum XPCSerialization {
         buf.writeBytes(rawDataBufferPointer)
 
         do {
-            let manifest: Serialization.Manifest = .init(serializerID: Serialization.SerializerID.jsonCodable, hint: "???")
+            let manifest: Serialization.Manifest = .init(serializerID: Serialization.SerializerID.foundationJSON, hint: "???")
             let address = try serialization.deserialize(as: ActorAddress.self, from: &buf, using: manifest)
             try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))

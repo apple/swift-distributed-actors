@@ -198,12 +198,12 @@ extension CRDT {
 
         public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
             let OtherType = type(of: other as Any)
-            guard let wellTypedOther = other as? Self else {
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else {
                 return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
             }
-
-            self.merge(other: wellTypedOther)
-            return nil
         }
 
         public mutating func merge(other: ORMapDelta<Key, Value>) {

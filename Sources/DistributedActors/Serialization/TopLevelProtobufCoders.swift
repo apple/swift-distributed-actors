@@ -22,7 +22,7 @@ import NIOFoundationCompat
 
 // TODO: TopLevelDataEncoder
 
-class TopLevelProtobufBlobEncoder: Encoder {
+class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     let allocator: ByteBufferAllocator
 
     var result: ByteBuffer?
@@ -36,6 +36,15 @@ class TopLevelProtobufBlobEncoder: Encoder {
     }
 
     var userInfo: [CodingUserInfoKey: Any] = [:]
+
+    func encode<T>(_ value: T) throws -> ByteBuffer where T : Encodable {
+        var container = self.singleValueContainer()
+        try container.encode(value)
+        guard let result = self.result else {
+            throw SerializationError.unableToSerialize(hint: "No bytes were written while encoding \(value) using \(Self.self)!")
+        }
+        return result
+    }
 
     func store(data: Data) throws {
         guard self.result == nil else {
@@ -163,101 +172,10 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
     }
 }
 
-// struct TopLevelProtobufBlobEncoderContainer: UnkeyedEncodingContainer {
-//    private(set) var codingPath: [CodingKey] = []
-//    private(set) var count: Int = 0
-//
-//    let superEncoder: TopLevelProtobufBlobEncoder
-//
-//    init(superEncoder: TopLevelProtobufBlobEncoder) {
-//        self.superEncoder = superEncoder
-//    }
-//
-//    // ==== ------------------------------------------------------------------------------------------------------------
-//    // MARK: Not supported operations
-//
-//    func encode<T>(_ value: T) throws where T: Encodable {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encodeNil() throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Bool) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: String) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Double) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Float) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Int) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Int8) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Int16) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Int32) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: Int64) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: UInt) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: UInt8) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: UInt16) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: UInt32) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode(_ value: UInt64) throws {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func encode<T>(contentsOf sequence: T) throws where T: Sequence, T.Element: Encodable {
-//        throw SerializationError.unableToSerialize(hint: "\(#function) for \(value) failed! Only a top-level blob of bytes can be serialized by \(Self.self)!")
-//    }
-//
-//    func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type) -> KeyedEncodingContainer<NestedKey> where NestedKey: CodingKey {
-//        fatalError("nestedContainer(keyedBy:) is not supported by \(Self.self)")
-//    }
-//
-//    func nestedUnkeyedContainer() -> UnkeyedEncodingContainer {
-//        fatalError("nestedUnkeyedContainer() is not supported by \(Self.self)")
-//    }
-//
-// }
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Top-Level Bytes-Blob Decoder
 
-class TopLevelProtobufBlobDecoder: Decoder {
+class TopLevelProtobufBlobDecoder: _TopLevelBlobDecoder {
     typealias Input = ByteBuffer
 
     private(set) var codingPath: [CodingKey] = []
@@ -277,10 +195,10 @@ class TopLevelProtobufBlobDecoder: Decoder {
     }
 
     func singleValueContainer() throws -> SingleValueDecodingContainer {
-        return TopLevelProtobufBlobSingleValueDecodingContainer(superEncoder: self)
+        TopLevelProtobufBlobSingleValueDecodingContainer(superEncoder: self)
     }
 
-    func decode<T: Decodable>(_ type: T.Type, from bytes: ByteBuffer) throws -> T {
+    func decode<T>(_ type: T.Type, from bytes: ByteBuffer) throws -> T where T: Decodable {
         self.bytes = bytes
 
         if let P = type as? AnyProtobufRepresentable.Type {

@@ -20,7 +20,7 @@ import NIOFoundationCompat
 import XCTest
 
 class SerializationPoolTests: XCTestCase {
-    struct Test1: NotTransportableActorMessage {
+    struct Test1: Codable {
         // These locks are used to validate the different ordering guarantees
         // we give in the serialization pool. The locks are used to block
         // the serializer until we want it to complete serialization.
@@ -46,7 +46,7 @@ class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
-    struct Test2: NotTransportableActorMessage {
+    struct Test2: Codable {
         static let deserializerLock = _Mutex()
         let lock = _Mutex()
 
@@ -69,8 +69,8 @@ class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
-    let manifest1 = Serialization.Manifest(serializerID: Serialization.SerializerID.jsonCodable, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test1")
-    let manifest2 = Serialization.Manifest(serializerID: Serialization.SerializerID.jsonCodable, hint: "SwiftDistributedActorsTests.SerializationPoolTests.Test2")
+    let manifest1 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: String(reflecting: Test1.self))
+    let manifest2 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: String(reflecting: Test2.self))
 
     var system: ActorSystem!
     var testKit: ActorTestKit!
@@ -210,7 +210,7 @@ class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
-        let serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
+        let serializationPool = try SerializationPool(settings: .default, serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let json = "{}"
