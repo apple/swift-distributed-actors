@@ -99,7 +99,7 @@ final class CRDTAnyTypesTests: XCTestCase {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
 
-        if let x = gg1._tryMerge(other: rr1) {
+        if gg1._tryMerge(other: rr1) != nil {
             () // good error was expected
         } else {
             throw TestError("Expected an error to be returned!")

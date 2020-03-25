@@ -72,14 +72,39 @@ public class Serialization {
         var settings = systemSettings.serialization
 
         // ==== Declare mangled names of some known popular types // TODO: hardcoded mangled name until we have _mangledTypeName
-        settings.registerCodable(Bool.self, hint: "b") 
-        settings.registerCodable(Float64.self, hint: "d")
-        settings.registerCodable(Float32.self, hint: "f")
-        settings.registerCodable(Int.self, hint: "i")
+        settings.registerCodable(Bool.self, hint: "b", serializer: .specialized)
+        settings.registerSpecializedSerializer(Bool.self, hint: "b", serializer: .specialized) { allocator in
+            BoolSerializer(allocator)
+        }
+        // harder since no direct mapping to write... onto a byte buffer
+        // settings.registerCodable(Float.self, hint: "f", serializer: .specialized)
+        // settings.registerCodable(Float32.self, hint: "f", serializer: .specialized)
+        // settings.registerCodable(Float64.self, hint: "d", serializer: .specialized)
+
+        settings.registerCodable(Int.self, hint: "i", serializer: .specialized)
+        settings.registerSpecializedSerializer(Int.self, hint: "i", serializer: .specialized) { allocator in
+            IntegerSerializer(Int.self, allocator)
+        }
+        settings.registerCodable(UInt.self, hint: "u", serializer: .specialized)
+        settings.registerSpecializedSerializer(UInt.self, hint: "u", serializer: .specialized) { allocator in 
+            IntegerSerializer(UInt.self, allocator)
+        }
+
+        settings.registerCodable(Int64.self, hint: "i64", serializer: .specialized)
+        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializer: .specialized) { allocator in
+            IntegerSerializer(Int64.self, allocator)
+        }
+        settings.registerCodable(UInt64.self, hint: "u64", serializer: .specialized)
+        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializer: .specialized) { allocator in
+            IntegerSerializer(UInt64.self, allocator)
+        }
+
+        settings.registerCodable(String.self, hint: "S", serializer: .specialized)
+        settings.registerSpecializedSerializer(String.self, hint: "S", serializer: .specialized) { allocator in
+            StringSerializer(allocator)
+        }
         settings.registerCodable(Optional<String>.self, hint: "qS")
         settings.registerCodable(Optional<Int>.self, hint: "qI")
-        settings.registerCodable(String.self, hint: "S")
-        settings.registerCodable(UInt.self, hint: "u")
 
         // ==== Declare some system messages to be handled with specialized serializers:
         // system messages
@@ -251,6 +276,8 @@ extension Serialization {
             throw SerializationError.noNeedToEnsureSerializer
         }
 
+        pprint("self.settings.specializedSerializerMakers = \(self.settings.specializedSerializerMakers)")
+
         guard let make = self.settings.specializedSerializerMakers[manifest] else {
             throw SerializationError.unableToMakeSerializer(hint: "Type: \(String(reflecting: type)), Manifest: \(manifest)")
         }
@@ -265,17 +292,26 @@ extension Serialization {
         case .doNotSerialize:
             throw SerializationError.noNeedToEnsureSerializer
 
+        case Serialization.SerializerID.specialized:
+            guard let make = self.settings.specializedSerializerMakers[manifest] else {
+                throw SerializationError.unableToMakeSerializer(hint: "Type: \(String(reflecting: type)), Manifest: \(manifest), Specialized serializer makers: \(self.settings.specializedSerializerMakers)")
+            }
+
+            let serializer = make(self.allocator)
+            serializer.setSerializationContext(self.context)
+            return try serializer._asSerializerOf(Message.self)
+
         case Serialization.SerializerID.jsonCodable:
             let serializer = JSONCodableSerializer<Message>(allocator: self.allocator)
             serializer.setSerializationContext(self.context)
             return serializer
 
-        case let Serialization.SerializerID.protobufRepresentable:
+        case Serialization.SerializerID.protobufRepresentable:
             // TODO: determine what custom one to use, proto or what else
             return TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
 
         default:
-            throw SerializationError.unableToMakeSerializer(hint: "Not recognized serializerID: \(manifest.serializerID), in manifest: \(manifest) for type \(type)")
+            throw SerializationError.unableToMakeSerializer(hint: "Not recognized serializerID: \(manifest.serializerID), in manifest: [\(manifest)] for type [\(type)]")
         }
     }
 }
@@ -396,6 +432,7 @@ extension Serialization {
             let result: Any
             if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let specializedSerializer = makeSpecializedSerializer(self.allocator)
+                specializedSerializer.setSerializationContext(self.context)
                 result = try specializedSerializer.tryDeserialize(bytes)
             } else if let decodableMessageType = manifestMessageType as? Codable.Type {
                 switch manifest.serializerID {

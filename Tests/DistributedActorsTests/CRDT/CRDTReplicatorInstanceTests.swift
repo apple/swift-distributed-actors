@@ -53,7 +53,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         }
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied(let writeResult, let isNew) = try replicator.write(id, g1) else {
+        guard case .applied(let writeResult, let isNew) = replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeTrue()
@@ -85,7 +85,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = try replicator.write(id, g1) else {
+        guard case .applied = replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -94,7 +94,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.resetDelta()
 
         // Write the updated g1
-        guard case .applied(let writeResult, let isNew) = try replicator.write(id, g1, deltaMerge: false) else {
+        guard case .applied(let writeResult, let isNew) = replicator.write(id, g1, deltaMerge: false) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeFalse()
@@ -123,7 +123,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = try replicator.write(id, g1) else {
+        guard case .applied  = replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -132,7 +132,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.delta.shouldNotBeNil()
 
         // Write the updated g1
-        guard case .applied(let writeResult, _) = try replicator.write(id, g1, deltaMerge: true) else {
+        guard case .applied(let writeResult, _) = replicator.write(id, g1, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -160,7 +160,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = try replicator.write(id, g1) else {
+        guard case .applied  = replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -169,7 +169,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.resetDelta()
 
         // Write g1 with deltaMerge == true but g1.delta is nil; code should fallback to `merge`
-        guard case .applied(let writeResult, _) = try replicator.write(id, g1, deltaMerge: true) else {
+        guard case .applied(let writeResult, _) = replicator.write(id, g1, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -199,11 +199,11 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1Beta.increment(by: 10)
 
         // Write g1Alpha (as new so `deltaMerge` ignored)
-        guard case .applied = try replicator.write(id, g1Alpha) else {
+        guard case .applied = replicator.write(id, g1Alpha) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         // Write g1Beta (with `mergeDelta`)
-        guard case .applied(let bResult, _) = try replicator.write(id, g1Beta, deltaMerge: true) else {
+        guard case .applied(let bResult, _) = replicator.write(id, g1Beta, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -231,7 +231,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied = try replicator.write(id, g1) else {
+        guard case .applied = replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -239,7 +239,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         s1.add(3)
 
         // Cannot write data of different data under `id`
-        guard case .inputAndStoredDataTypeMismatch(let error) = try replicator.write(id, s1, deltaMerge: true) else {
+        guard case .inputAndStoredDataTypeMismatch(let error) = replicator.write(id, s1, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have failed due to type mismatch")
         }
         // Stored data should be a GCounter
@@ -258,7 +258,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         }
 
         // Write r1
-        guard case .applied(let writeResult, let isNew) = try replicator.write(id, r1) else {
+        guard case .applied(let writeResult, let isNew) = replicator.write(id, r1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeTrue()
@@ -287,7 +287,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let r1a = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1aClock))
 
         // Write r1
-        guard case .applied = try replicator.write(id, r1a) else {
+        guard case .applied = replicator.write(id, r1a) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -295,7 +295,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let r1b = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1aClock.timestamp.addingTimeInterval(1))))
 
         // Write the updated r1
-        guard case .applied(let writeResult, let isNew) = try replicator.write(id, r1b) else {
+        guard case .applied(let writeResult, let isNew) = replicator.write(id, r1b) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeFalse()
@@ -336,7 +336,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 to data store
-        guard case .applied = try replicator.write(id, g1) else {
+        guard case .applied  = replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -370,7 +370,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
 
         // Write r1 to data store
-        guard case .applied = try replicator.write(id, r1) else {
+        guard case .applied  = replicator.write(id, r1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -396,7 +396,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         g1.increment(by: 1)
 
         // Write g1 to data store
-        guard case .applied = try replicator.write(id, g1) else {
+        guard case .applied  = replicator.write(id, g1) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
