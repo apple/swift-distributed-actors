@@ -53,9 +53,15 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() throws {
-        let local = self.setUpNode("local")
+        let local = self.setUpNode("local") { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
+        }
 
-        let remote = setUpNode("remote")
+        let remote = setUpNode("remote") { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
+        }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
         let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn("remoteAcquaintance1", .receiveMessage { message in
