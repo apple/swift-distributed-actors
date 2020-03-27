@@ -90,7 +90,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() throws {
-        let (local, remote) = setUpPair() { settings in
+        let (local, remote) = setUpPair { settings in
             settings.serialization.registerCodable(SerializationTestMessage.self)
             settings.serialization.registerCodable(EchoTestMessage.self)
         }
@@ -115,7 +115,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() throws {
-        let (local, remote) = setUpPair() { settings in
+        let (local, remote) = setUpPair { settings in
             settings.serialization.registerCodable(SerializationTestMessage.self)
             settings.serialization.registerCodable(EchoTestMessage.self)
         }

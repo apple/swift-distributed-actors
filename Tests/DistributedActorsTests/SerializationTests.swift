@@ -24,6 +24,9 @@ class SerializationTests: ActorSystemTestBase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.registerCodable(HasReceivesSystemMsgs.self)
+            settings.serialization.registerCodable(HasStringRef.self)
+            settings.serialization.registerCodable(HasIntRef.self)
+            settings.serialization.registerCodable(HasInterestingMessageRef.self)
         }
     }
 
@@ -127,7 +130,7 @@ class SerializationTests: ActorSystemTestBase {
     func test_serialize_actorRef_inMessage_forRemoting() throws {
         let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings in
             settings.cluster.enabled = true
-            // settings.serialization.registerCodable(HasStringRef.self)
+            settings.serialization.registerCodable(HasStringRef.self)
         }
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.spawnTestProbe(expecting: String.self)
