@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
 import class Foundation.JSONDecoder
 import class Foundation.JSONEncoder
+import Logging
 import struct NIO.ByteBufferAllocator
 
 // ==== ----------------------------------------------------------------------------------------------------------------

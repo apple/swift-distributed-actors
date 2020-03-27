@@ -110,11 +110,11 @@ public final class SerializationPool {
 
 //                // The order of the below if/if-else/else is quite important:
 //                if let wellTyped = deserialized as? Message {
-                    // 1) we usually have the right Message type, as we resolved an alive actor and are delivering to it,
-                    //    the cast will be successful and we can safely deliver the message
-                    self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
+                // 1) we usually have the right Message type, as we resolved an alive actor and are delivering to it,
+                //    the cast will be successful and we can safely deliver the message
+                self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
 //                    return .message(wellTyped)
-                    return .message(deserialized)
+                return .message(deserialized)
 
 //                } else if messageType == Never.self {
 //                    // 2) we may have resolved an already-dead actor ref, in which case the type of its message would be Never;
