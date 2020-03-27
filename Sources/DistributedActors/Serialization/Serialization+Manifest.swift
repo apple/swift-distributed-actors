@@ -131,7 +131,7 @@ extension Serialization {
         }
 
         guard let selectedManifest = manifest else {
-             throw SerializationError.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: type))]")
+            throw SerializationError.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: type))]")
         }
 
         return selectedManifest

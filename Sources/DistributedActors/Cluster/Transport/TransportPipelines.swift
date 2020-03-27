@@ -393,9 +393,9 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             callback: .init { result in
                 self.tracelog(.inbound, message: wireEnvelope)
                 switch result {
-                case .success(.message(let message as T)) :
+                case .success(.message(let message as T)):
                     callback(message)
-                case .success(.message(let message)) :
+                case .success(.message(let message)):
                     self.log.error("Unable to cast system message \(message) as \(T.self)!")
                 case .success(.deadLetter(let message)):
                     self.log.error("Deserialized as system message dead letter, this is highly suspect; Type \(type), wireEnvelope: \(wireEnvelope), message: \(message)")

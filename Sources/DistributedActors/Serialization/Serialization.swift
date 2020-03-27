@@ -372,13 +372,15 @@ extension Serialization {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().encode()"
                 switch manifest.serializerID {
                 case .specialized:
-                    throw SerializationError.unableToMakeSerializer(hint:
-                    """
-                    Manifest hints at using specialized serializer for \(message), \
-                    however no specialized serializer could be made for it! Manifest: \(manifest), \
-                    known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
-                    """)
-                    
+                    throw SerializationError.unableToMakeSerializer(
+                        hint:
+                        """
+                        Manifest hints at using specialized serializer for \(message), \
+                        however no specialized serializer could be made for it! Manifest: \(manifest), \
+                        known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
+                        """
+                    )
+
                 case .foundationJSON:
                     let encoder = JSONEncoder()
                     encoder.userInfo[.actorSerializationContext] = self.context
@@ -389,7 +391,7 @@ extension Serialization {
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = try encodableMessage._encode(using: encoder)
 
-                case let otherSerializerID: 
+                case let otherSerializerID:
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(messageType), manifest: \(manifest)")
                 }
             } else {
@@ -404,7 +406,6 @@ extension Serialization {
 
                 result = try serializer.trySerialize(message)
             }
-
 
             return (manifest, result)
         } catch {
@@ -475,12 +476,14 @@ extension Serialization {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().decode()"
                 switch manifest.serializerID {
                 case .specialized:
-                    throw SerializationError.unableToMakeSerializer(hint:
-                    """
-                    Manifest hints at using specialized serializer for manifest \(manifest), \
-                    however no specialized serializer could be made for it! \
-                    Known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
-                    """)
+                    throw SerializationError.unableToMakeSerializer(
+                        hint:
+                        """
+                        Manifest hints at using specialized serializer for manifest \(manifest), \
+                        however no specialized serializer could be made for it! \
+                        Known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
+                        """
+                    )
                 case .foundationJSON:
                     let decoder = JSONDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
@@ -614,6 +617,7 @@ struct SerializerTypeKey: Hashable, CustomStringConvertible {
     var _typeID: ObjectIdentifier {
         .init(self.type)
     }
+
     @usableFromInline
     let _ensure: (Serialization) throws -> Void
 

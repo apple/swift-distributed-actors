@@ -19,7 +19,7 @@ import XCTest
 
 class RemoteMessagingTests: ClusteredNodesTestBase {
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide() throws {
-        let local = setUpNode("local") { settings in 
+        let local = setUpNode("local") { settings in
             settings.serialization.registerCodable(SerializationTestMessage.self)
         }
         let remote = setUpNode("remote") { settings in
@@ -234,40 +234,47 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages() throws {
-        let (local, remote) = setUpPair()
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
+        }
         remote.cluster.join(node: local.cluster.node.node)
 
-        try assertAssociated(local, withExactly: remote.cluster.node)
+        try shouldNotThrow {
+            try assertAssociated(local, withExactly: remote.cluster.node)
 
-        let thirdSystem = self.setUpNode("ClusterAssociationTests") { settings in
-            settings.cluster.bindPort = 9119
+            let thirdSystem = self.setUpNode("ClusterAssociationTests") { settings in
+                settings.cluster.bindPort = 9119
+                settings.serialization.registerCodable(SerializationTestMessage.self)
+                settings.serialization.registerCodable(EchoTestMessage.self)
+            }
+            defer { thirdSystem.shutdown().wait() }
+
+            thirdSystem.cluster.join(node: local.cluster.node.node)
+            thirdSystem.cluster.join(node: remote.cluster.node.node)
+            try assertAssociated(thirdSystem, withExactly: [local.cluster.node, remote.cluster.node])
+            let thirdTestKit = ActorTestKit(thirdSystem)
+
+            let localRef: ActorRef<EchoTestMessage> = try local.spawn("Local", .receiveMessage { message in
+                message.respondTo.tell("local:\(message.string)")
+                return .stop
+            })
+
+            let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
+
+            let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn("Remote", .receiveMessage { message in
+                localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
+                return .stop
+            })
+
+            let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)
+
+            let probeThird = thirdTestKit.spawnTestProbe(expecting: String.self)
+
+            remoteRefThird.tell(EchoTestMessage(string: "test", respondTo: probeThird.ref))
+
+            try probeThird.expectMessage().shouldEqual("local:remote:test")
         }
-        defer { thirdSystem.shutdown().wait() }
-
-        thirdSystem.cluster.join(node: local.cluster.node.node)
-        thirdSystem.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(thirdSystem, withExactly: [local.cluster.node, remote.cluster.node])
-        let thirdTestKit = ActorTestKit(thirdSystem)
-
-        let localRef: ActorRef<EchoTestMessage> = try local.spawn("Local", .receiveMessage { message in
-            message.respondTo.tell("local:\(message.string)")
-            return .stop
-        })
-
-        let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
-
-        let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn("Remote", .receiveMessage { message in
-            localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
-            return .stop
-        })
-
-        let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)
-
-        let probeThird = thirdTestKit.spawnTestProbe(expecting: String.self)
-
-        remoteRefThird.tell(EchoTestMessage(string: "test", respondTo: probeThird.ref))
-
-        try probeThird.expectMessage().shouldEqual("local:remote:test")
     }
 }
 
