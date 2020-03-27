@@ -26,10 +26,10 @@ extension CRDT {
     public struct GCounter: NamedDeltaCRDT, Codable {
         public typealias Delta = GCounterDelta
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         // State is a dictionary of replicas and the counter values they've observed.
-        var state: [ReplicaId: Int]
+        var state: [ReplicaID: Int]
 
         public var delta: Delta?
 
@@ -37,7 +37,7 @@ extension CRDT {
             self.state.values.reduce(0, +)
         }
 
-        init(replicaId: ReplicaId) {
+        init(replicaId: ReplicaID) {
             self.replicaId = replicaId
             self.state = [:]
         }
@@ -100,9 +100,9 @@ extension CRDT {
 
     public struct GCounterDelta: CvRDT {
         // State is a dictionary of replicas and their counter values.
-        var state: [ReplicaId: Int]
+        var state: [ReplicaID: Int]
 
-        init(state: [ReplicaId: Int] = [:]) {
+        init(state: [ReplicaID: Int] = [:]) {
             self.state = state
         }
 

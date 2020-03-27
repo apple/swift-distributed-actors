@@ -26,20 +26,6 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
     let actorB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: ReplicaId
-
-    func test_serializationOf_ReplicaId_actorAddress() throws {
-        try shouldNotThrow {
-            let r = ReplicaId.actorAddress(self.actorA)
-
-            var (manifest, bytes) = try system.serialization.serialize(r)
-            let deserialized = try system.serialization.deserialize(as: ReplicaId.self, from: &bytes, using: manifest)
-
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A")
-        }
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector
 
     func test_serializationOf_VersionVector() throws {

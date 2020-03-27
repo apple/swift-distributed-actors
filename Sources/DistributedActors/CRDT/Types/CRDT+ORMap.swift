@@ -54,7 +54,7 @@ extension CRDT {
     public struct ORMap<Key: Codable & Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         /// Creates a new `Value` instance. e.g., zero counter, empty set, etc.
         /// The initializer should not close over mutable state as no strong guarantees are provided about
@@ -99,7 +99,7 @@ extension CRDT {
             self._values.isEmpty
         }
 
-        init(replicaId: ReplicaId, valueInitializer: @escaping () -> Value) {
+        init(replicaId: ReplicaID, valueInitializer: @escaping () -> Value) {
             self.replicaId = replicaId
             self.valueInitializer = valueInitializer
             self._keys = ORSet(replicaId: replicaId)

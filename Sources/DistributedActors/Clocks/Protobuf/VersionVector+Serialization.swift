@@ -15,7 +15,7 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ReplicaId
 
-extension ReplicaId: ProtobufRepresentable {
+extension ReplicaID: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionReplicaId
 
     public func toProto(context: Serialization.Context) throws -> ProtoVersionReplicaId {
@@ -31,7 +31,7 @@ extension ReplicaId: ProtobufRepresentable {
 
     public init(fromProto proto: ProtoVersionReplicaId, context: Serialization.Context) throws {
         guard let value = proto.value else {
-            throw SerializationError.missingField("value", type: String(describing: ReplicaId.self))
+            throw SerializationError.missingField("value", type: String(describing: ReplicaID.self))
         }
 
         switch value {
@@ -73,7 +73,7 @@ extension VersionVector: ProtobufRepresentable {
             guard replicaVersion.hasReplicaID else {
                 throw SerializationError.missingField("replicaID", type: String(describing: ReplicaVersion.self))
             }
-            let replicaId = try ReplicaId(fromProto: replicaVersion.replicaID, context: context)
+            let replicaId = try ReplicaID(fromProto: replicaVersion.replicaID, context: context)
             state[replicaId] = replicaVersion.version
         }
     }
@@ -96,7 +96,7 @@ extension VersionDot: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: VersionDot.self))
         }
-        self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
+        self.replicaId = try ReplicaID(fromProto: proto.replicaID, context: context)
         self.version = proto.version
     }
 }

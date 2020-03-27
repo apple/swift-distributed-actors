@@ -19,9 +19,9 @@ import XCTest
 final class CRDTVersioningTests: XCTestCase {
     typealias V = UInt64
 
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
-    let replicaC: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("c"), incarnation: .wellKnown))
+    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaC: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("c"), incarnation: .wellKnown))
 
     private typealias IntContainer = CRDT.VersionedContainer<Int>
 

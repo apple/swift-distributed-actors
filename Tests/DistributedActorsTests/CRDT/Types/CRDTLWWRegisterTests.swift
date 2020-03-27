@@ -17,8 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTLWWRegisterTests: XCTestCase {
-    let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
     func test_LWWRegister_assign_shouldSetValueAndTimestamp() throws {
         var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)

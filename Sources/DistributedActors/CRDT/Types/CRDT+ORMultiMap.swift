@@ -24,7 +24,7 @@ extension CRDT {
     public struct ORMultiMap<Key: Codable & Hashable, Value: Codable & Hashable>: NamedDeltaCRDT, ORMultiMapOperations {
         public typealias Delta = ORMapDelta<Key, ORSet<Value>>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         /// Underlying ORMap for storing pairs of key and its set of values and managing causal history and delta
         var state: ORMap<Key, ORSet<Value>>
@@ -53,7 +53,7 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId) {
+        init(replicaId: ReplicaID) {
             self.replicaId = replicaId
             self.state = .init(replicaId: replicaId) {
                 ORSet<Value>(replicaId: replicaId)
