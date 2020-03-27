@@ -368,7 +368,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     func interpretAdaptedMessage(_ carry: AdaptedMessageCarry) throws -> ActorRunResult {
         let maybeAdapter = self.messageAdapters.first(where: { adapter in
-            adapter.metaType == type(of: carry.message as Any)
+            adapter.fromType == type(of: carry.message as Any)
         })
 
         guard let adapter = maybeAdapter?.closure else {
@@ -766,10 +766,11 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapter
 
-    private var messageAdapterRef: ActorRefAdapter<Message>?
+    private var messageAdapter: ActorRefAdapter<Message>?
     struct MessageAdapterClosure {
-        let metaType: Any.Type
-        let closure: (Any) -> Message?
+        typealias From = Any
+        let fromType: From.Type
+        let closure: (From) -> Message?
     }
 
     private var messageAdapters: [MessageAdapterClosure] = []
@@ -787,21 +788,21 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
             }
 
             self.messageAdapters.removeAll(where: { adapter in
-                adapter.metaType == fromType
+                adapter.fromType == fromType
             })
+            self.messageAdapters.insert(MessageAdapterClosure(fromType: fromType, closure: anyAdapter), at: self.messageAdapters.startIndex)
 
-            self.messageAdapters.insert(MessageAdapterClosure(metaType: fromType, closure: anyAdapter), at: self.messageAdapters.startIndex)
-
-            guard let adapterRef = self.messageAdapterRef else {
+            if let adapter: ActorRefAdapter<Message> = self.messageAdapter {
+                return .init(.adapter(adapter))
+            } else {
                 let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
-                let ref = ActorRefAdapter(self.myself, address: adaptedAddress)
-                self.messageAdapterRef = ref
+                let adapter = ActorRefAdapter(fromType: From.self, to: self.myself, address: adaptedAddress)
 
-                self._children.insert(ref) // TODO: separate adapters collection?
-                return .init(.adapter(ref))
+                self.messageAdapter = adapter
+                self._children.insert(adapter) // TODO: separate adapters collection?
+
+                return .init(.adapter(adapter))
             }
-
-            return .init(.adapter(adapterRef))
         } catch {
             fatalError("""
             Failed while creating message adapter. This should never happen, since message adapters have a unique name.

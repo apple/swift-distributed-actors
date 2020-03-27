@@ -277,17 +277,6 @@ public class OperationLogClusterReceptionist {
         }
     }
 
-    // TODO: Serialization rework to remove the need for this
-    private func _sendWithSerializerSubclassWorkaround<T: Message>(_ message: T, to: ActorRef<Message>) {
-        switch to.personality {
-        case .remote(let remote):
-            remote.sendUserMessage(message)
-        case .cell(let cell):
-            cell.sendMessage(message)
-        default:
-            fatalError("Receptionist ref MUST be to a remote or local ref, was \(to.personality)")
-        }
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -508,7 +497,7 @@ extension OperationLogClusterReceptionist {
         )
 
         tracelog(context, .push(to: peerReceptionistRef), message: ack)
-        self._sendWithSerializerSubclassWorkaround(ack, to: peerReceptionistRef)
+        peerReceptionistRef.tell(ack)
     }
 
     /// Listings have changed for this key, thus we need to publish them to all subscribers

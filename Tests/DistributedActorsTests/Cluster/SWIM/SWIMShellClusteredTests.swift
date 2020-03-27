@@ -19,6 +19,10 @@ import Foundation
 import XCTest
 
 final class SWIMShellClusteredTests: ClusteredNodesTestBase {
+    override var captureLogs: Bool {
+        false
+    }
+
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
@@ -704,70 +708,72 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        try shouldNotThrow {
+            first.cluster.join(node: second.cluster.node.node)
+            try assertAssociated(first, withExactly: second.cluster.node)
 
-        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+            let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+            let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
 
-        let behavior = SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
-            settings.failureDetector.pingTimeout = .milliseconds(50)
-        }
+            let behavior = SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
+                settings.failureDetector.pingTimeout = .milliseconds(50)
+            }
 
-        let swimRef = try first.spawn("SWIM", behavior)
-        let remoteSwimRef = second._resolveKnownRemote(swimRef, onRemoteSystem: first)
+            let swimRef = try first.spawn("SWIM", behavior)
+            let remoteSwimRef = second._resolveKnownRemote(swimRef, onRemoteSystem: first)
 
-        swimRef.tell(.local(.pingRandomMember))
+            swimRef.tell(.local(.pingRandomMember))
 
-        try self.expectPing(on: p, reply: false) {
-            switch $0 {
-            case .membership(let members):
-                members.shouldContain(SWIM.Member(ref: p.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
-                members.shouldContain(SWIM.Member(ref: remoteSwimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
-                members.count.shouldEqual(2)
-            case .none:
-                throw p.error("Expected gossip, but got `.none`")
+            try self.expectPing(on: p, reply: false) {
+                switch $0 {
+                case .membership(let members):
+                    members.shouldContain(SWIM.Member(ref: p.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
+                    members.shouldContain(SWIM.Member(ref: remoteSwimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
+                    members.count.shouldEqual(2)
+                case .none:
+                    throw p.error("Expected gossip, but got `.none`")
+                }
             }
         }
     }
 
-    func test_swim_shouldSendGossipInPingReq() throws {
-        let first = self.setUpFirst()
-
-        let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
-
-        let refA = try first.spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probe.ref))
-        let refB = try first.spawn("SWIM-B", self.forwardingSWIMBehavior(forwardTo: probe.ref))
-
-        let behavior = SWIMShell.swimBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
-            settings.failureDetector.pingTimeout = .milliseconds(50)
-        }
-
-        let swimRef = try first.spawn("SWIM", behavior)
-
-        swimRef.tell(.local(.pingRandomMember))
-
-        let forwardedPing = try probe.expectMessage()
-        guard case SWIM.Message.remote(.ping(.alive(incarnation: 0), _, _)) = forwardedPing.message else {
-            throw self.testKit(first).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
-        }
-        let suspiciousRef = forwardedPing.recipient
-
-        let forwardedPingReq = try probe.expectMessage()
-        guard case SWIM.Message.remote(.pingReq(target: suspiciousRef, lastKnownStatus: .alive(0), _, let gossip)) = forwardedPingReq.message else {
-            throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
-        }
-
-        switch gossip {
-        case .membership(let members):
-            members.shouldContain(SWIM.Member(ref: refA, status: .alive(incarnation: 0), protocolPeriod: 0))
-            members.shouldContain(SWIM.Member(ref: refB, status: .alive(incarnation: 0), protocolPeriod: 0))
-            members.shouldContain(SWIM.Member(ref: swimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
-            members.count.shouldEqual(3)
-        case .none:
-            throw probe.error("Expected gossip, but got `.none`")
-        }
-    }
+//    func test_swim_shouldSendGossipInPingReq() throws {
+//        let first = self.setUpFirst()
+//
+//        let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+//
+//        let refA = try first.spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+//        let refB = try first.spawn("SWIM-B", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+//
+//        let behavior = SWIMShell.swimBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
+//            settings.failureDetector.pingTimeout = .milliseconds(50)
+//        }
+//
+//        let swimRef = try first.spawn("SWIM", behavior)
+//
+//        swimRef.tell(.local(.pingRandomMember))
+//
+//        let forwardedPing = try probe.expectMessage()
+//        guard case SWIM.Message.remote(.ping(.alive(incarnation: 0), _, _)) = forwardedPing.message else {
+//            throw self.testKit(first).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
+//        }
+//        let suspiciousRef = forwardedPing.recipient
+//
+//        let forwardedPingReq = try probe.expectMessage()
+//        guard case SWIM.Message.remote(.pingReq(target: suspiciousRef, lastKnownStatus: .alive(0), _, let gossip)) = forwardedPingReq.message else {
+//            throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
+//        }
+//
+//        switch gossip {
+//        case .membership(let members):
+//            members.shouldContain(SWIM.Member(ref: refA, status: .alive(incarnation: 0), protocolPeriod: 0))
+//            members.shouldContain(SWIM.Member(ref: refB, status: .alive(incarnation: 0), protocolPeriod: 0))
+//            members.shouldContain(SWIM.Member(ref: swimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
+//            members.count.shouldEqual(3)
+//        case .none:
+//            throw probe.error("Expected gossip, but got `.none`")
+//        }
+//    }
 
     func test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes() throws {
         let first = self.setUpFirst()
