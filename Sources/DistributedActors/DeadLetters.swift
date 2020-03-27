@@ -241,12 +241,13 @@ public final class DeadLetterOffice {
             // are inherently racy in the during actor system shutdown:
             let ignored = recipient == ActorAddress._clusterShell
             return ignored
-//        case .terminated, .childTerminated:
-//            // we ignore terminated messages in dead letter logging, as those are often harmless side effects of "everyone is shutting down"
-//            return true
         default:
-            // ignore other messages, no special handling needed
-            return false
+            if let system = self.system {
+                // ignore other messages if we are shutting down, there will be many dead letters now
+                return system.isShuttingDown
+            } else {
+                return false
+            }
         }
     }
 }

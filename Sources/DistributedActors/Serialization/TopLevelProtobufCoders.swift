@@ -37,7 +37,7 @@ class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
 
     var userInfo: [CodingUserInfoKey: Any] = [:]
 
-    func encode<T>(_ value: T) throws -> ByteBuffer where T : Encodable {
+    func encode<T>(_ value: T) throws -> ByteBuffer where T: Encodable {
         var container = self.singleValueContainer()
         try container.encode(value)
         guard let result = self.result else {

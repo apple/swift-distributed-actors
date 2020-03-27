@@ -17,7 +17,7 @@ import struct NIO.ByteBuffer
 import struct NIO.ByteBufferAllocator
 
 internal protocol _TopLevelBlobEncoder: Encoder {
-    func encode<T>(_ value: T) throws -> ByteBuffer where T : Encodable
+    func encode<T>(_ value: T) throws -> ByteBuffer where T: Encodable
 }
 
 internal protocol _TopLevelBlobDecoder: Decoder {
