@@ -91,14 +91,13 @@ public final class SerializationPool {
 
     /// Note: The `Message` type MAY be `Never` in which case it is assumed that the message was intended for an already dead actor and the deserialized message is returned as such.
     @inlinable
-    internal func deserialize<Message>(
-        as messageType: Message.Type,
+    internal func deserializeAny(
         from _bytes: ByteBuffer,
         using manifest: Serialization.Manifest,
         recipientPath: ActorPath,
         // The only reason we use a wrapper instead of raw function is that (...) -> () do not have identity,
         // and we use identity of the callback to interact with the instrumentation for start/stop correlation.
-        callback: DeserializationCallback<Message>
+        callback: DeserializationCallback
     ) {
         self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
             do {
@@ -109,22 +108,25 @@ public final class SerializationPool {
                 // do the work, this may be "heavy"
                 let deserialized = try self.serialization.deserializeAny(from: &bytes, using: manifest)
 
-                // The order of the below if/if-else/else is quite important:
-                if let wellTyped = deserialized as? Message {
+//                // The order of the below if/if-else/else is quite important:
+//                if let wellTyped = deserialized as? Message {
                     // 1) we usually have the right Message type, as we resolved an alive actor and are delivering to it,
                     //    the cast will be successful and we can safely deliver the message
                     self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
-                    return .message(wellTyped)
-                } else if messageType == Never.self {
-                    // 2) we may have resolved an already-dead actor ref, in which case the type of its message would be Never;
-                    //    Since such Never message can never be fulfilled, it also makes no sense that such message was even sent(!),
-                    //    thus we treat this simply as a dead letter and deliver it as such
-                    self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
-                    return .deadLetter(deserialized)
-                } else {
-                    // 3) the message was neither the right type, nor was the recipient a `Never` expecting ref, thus something went quite wrong and we should throw.
-                    throw SerializationError.unableToDeserialize(hint: "Unable to deserialize payload (manifest: \(manifest)) as [\(String(reflecting: messageType))]")
-                }
+//                    return .message(wellTyped)
+                    return .message(deserialized)
+
+//                } else if messageType == Never.self {
+//                    // 2) we may have resolved an already-dead actor ref, in which case the type of its message would be Never;
+//                    //    Since such Never message can never be fulfilled, it also makes no sense that such message was even sent(!),
+//                    //    thus we treat this simply as a dead letter and deliver it as such
+//                    self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
+//                    pprint("DEAD LETTER; \n    \(messageType)\n    \(Message.self)\n    Deserialized: \(deserialized)")
+//                    return .deadLetter(deserialized)
+//                } else {
+//                    // 3) the message was neither the right type, nor was the recipient a `Never` expecting ref, thus something went quite wrong and we should throw.
+//                    throw SerializationError.unableToDeserialize(hint: "Unable to deserialize payload (manifest: \(manifest)) as [\(String(reflecting: messageType))]")
+//                }
             } catch {
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: nil)
                 throw error
@@ -174,7 +176,7 @@ public final class SerializationPool {
 
 /// Allows to "box" another value.
 @usableFromInline
-final class DeserializationCallback<Message> {
+final class DeserializationCallback {
     /// A message deserialization may either be successful or fail due to attempting to deliver at an already dead actor,
     /// if this happens, we do not *statically* have the right `Message`  to cast to and the only remaining thing for such
     /// message is to be delivered as a dead letter thus we can avoid the cast entirely.
@@ -183,7 +185,7 @@ final class DeserializationCallback<Message> {
     /// and have to special case the dead letter delivery.
     @usableFromInline
     enum DeserializedMessage {
-        case message(Message)
+        case message(Any)
         case deadLetter(Any)
     }
 

@@ -82,11 +82,11 @@ class SerializationPoolTests: XCTestCase {
     var el: EventLoop!
     let allocator = ByteBufferAllocator()
 
-    private func completePromise<T>(_ promise: EventLoopPromise<T>) -> DeserializationCallback<T> {
+    private func completePromise<T>(_: T.Type, _ promise: EventLoopPromise<T>) -> DeserializationCallback {
         DeserializationCallback {
             switch $0 {
-            case .success(.message(let message)): promise.succeed(message)
-            case .success(.deadLetter(let message)): fatalError("Expected a success, but got .deadLetter(\(message))")
+            case .success(let message as T): promise.succeed(message)
+            case .success(let message): promise.fail(TestError("Could not treat \(message) as \(T.self)"))
             case .failure(let error): promise.fail(error)
             }
         }
@@ -240,9 +240,9 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise1))
+        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
         try p.expectMessage("p1")
-        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(promise2))
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(Test2.self, promise2))
         try p.expectMessage("p2")
     }
 
@@ -275,8 +275,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise1))
-        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(promise2))
+        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(Test2.self, promise2))
 
         Test2.deserializerLock.unlock()
 
@@ -315,8 +315,8 @@ class SerializationPoolTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserialize(as: Test1.self, from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise1))
-        serializationPool.deserialize(as: Test2.self, from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(promise2))
+        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -351,7 +351,7 @@ class SerializationPoolTests: XCTestCase {
         promise1.futureResult.whenFailure { print("\($0)") }
 
         serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(as: Test1.self, from: buffer, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(promise2))
+        serializationPool.deserializeAny(from: buffer, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise2))
 
         try p.expectNoMessage(for: .milliseconds(20))
 

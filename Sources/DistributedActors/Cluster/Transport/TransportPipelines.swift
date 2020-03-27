@@ -387,14 +387,16 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 
     private func deserializeThenHandle<T>(type: T.Type, wireEnvelope: Wire.Envelope, callback: @escaping (T) -> Void) {
-        self.serializationPool.deserialize(
-            as: type, from: wireEnvelope.payload, using: wireEnvelope.manifest,
+        self.serializationPool.deserializeAny(
+            from: wireEnvelope.payload, using: wireEnvelope.manifest,
             recipientPath: wireEnvelope.recipient.path, // TODO: use addresses
             callback: .init { result in
                 self.tracelog(.inbound, message: wireEnvelope)
                 switch result {
-                case .success(.message(let message)):
+                case .success(.message(let message as T)) :
                     callback(message)
+                case .success(.message(let message)) :
+                    self.log.error("Unable to cast system message \(message) as \(T.self)!")
                 case .success(.deadLetter(let message)):
                     self.log.error("Deserialized as system message dead letter, this is highly suspect; Type \(type), wireEnvelope: \(wireEnvelope), message: \(message)")
                 case .failure(let error):
