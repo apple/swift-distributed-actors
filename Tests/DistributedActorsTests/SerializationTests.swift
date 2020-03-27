@@ -22,7 +22,8 @@ import XCTest
 
 class SerializationTests: ActorSystemTestBase {
     override func setUp() {
-        _ = self.setUpNode(String(describing: type(of: self))) { _ in
+        _ = self.setUpNode(String(describing: type(of: self))) { settings in
+            settings.serialization.registerCodable(HasReceivesSystemMsgs.self)
         }
     }
 
