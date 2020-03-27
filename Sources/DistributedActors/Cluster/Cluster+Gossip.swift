@@ -268,7 +268,7 @@ extension Cluster.Gossip {
         /// must be taken on the cluster layer, by using and checking for tombstones. // TODO: make a nasty test for this, a simple one we got; See MembershipGossipSeenTableTests
         mutating func prune(_ nodeToPrune: UniqueNode) {
             _ = self.underlying.removeValue(forKey: nodeToPrune)
-            let replicaToPrune: ReplicaId = .uniqueNode(nodeToPrune)
+            let replicaToPrune: ReplicaID = .uniqueNode(nodeToPrune)
 
             for (key, version) in self.underlying where version.contains(replicaToPrune, 0) {
                 self.underlying[key] = version.pruneReplica(replicaToPrune)

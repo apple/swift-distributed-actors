@@ -126,7 +126,7 @@ extension CRDT {
     public struct VersionedContainer<Element: Codable & Hashable>: NamedDeltaCRDT {
         public typealias Delta = VersionedContainerDelta<Element>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         // Version context of the container
         internal var versionContext: VersionContext
@@ -151,7 +151,7 @@ extension CRDT {
             self.elementByBirthDot.isEmpty
         }
 
-        public init(replicaId: ReplicaId, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
+        public init(replicaId: ReplicaID, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
             self.replicaId = replicaId
             self.versionContext = versionContext
             self.elementByBirthDot = elementByBirthDot

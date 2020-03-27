@@ -25,7 +25,7 @@ extension CRDT {
     public struct LWWMap<Key: Codable & Hashable, Value: ActorMessage>: NamedDeltaCRDT, LWWMapOperations {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         /// Underlying ORMap for storing key-value entries and managing causal history and delta
         var state: ORMap<Key, LWWRegister<Value>>
@@ -54,7 +54,7 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId, defaultValue: Value) {
+        init(replicaId: ReplicaID, defaultValue: Value) {
             self.replicaId = replicaId
             self.state = .init(replicaId: replicaId) {
                 // This is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self` and therefore we

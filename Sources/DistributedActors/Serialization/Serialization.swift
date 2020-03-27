@@ -142,6 +142,9 @@ public class Serialization {
 
         // TODO: Allow plugins to register types...?
 
+        settings.registerManifest(ActorAddress.self, serializer: .protobufRepresentable)
+        settings.registerManifest(ReplicaID.self, serializer: .foundationJSON)
+        settings.registerManifest(VersionDot.self, serializer: .protobufRepresentable)
         settings.registerManifest(VersionVector.self, serializer: .protobufRepresentable)
 
         // crdts

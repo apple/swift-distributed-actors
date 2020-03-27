@@ -46,8 +46,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_VersionContext() throws {
         try shouldNotThrow {
-            let replicaAlpha = ReplicaId.actorAddress(self.ownerAlpha)
-            let replicaBeta = ReplicaId.actorAddress(self.ownerBeta)
+            let replicaAlpha = ReplicaID.actorAddress(self.ownerAlpha)
+            let replicaBeta = ReplicaID.actorAddress(self.ownerBeta)
 
             let vv = VersionVector([(replicaAlpha, V(1)), (replicaBeta, V(3))])
             let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaAlpha, V(4))])
@@ -81,8 +81,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_VersionedContainer_VersionedContainerDelta() throws {
         try shouldNotThrow {
-            let replicaAlpha = ReplicaId.actorAddress(self.ownerAlpha)
-            let replicaBeta = ReplicaId.actorAddress(self.ownerBeta)
+            let replicaAlpha = ReplicaID.actorAddress(self.ownerAlpha)
+            let replicaBeta = ReplicaID.actorAddress(self.ownerBeta)
 
             let vv = VersionVector([(replicaAlpha, V(2)), (replicaBeta, V(1))])
             let versionContext = CRDT.VersionContext(vv: vv, gaps: [VersionDot(replicaBeta, V(3))])

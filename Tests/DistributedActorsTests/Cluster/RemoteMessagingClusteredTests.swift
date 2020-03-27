@@ -90,7 +90,10 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() throws {
-        let (local, remote) = setUpPair()
+        let (local, remote) = setUpPair() { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
+        }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
         let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.anonymous, .receiveMessage { message in
@@ -112,7 +115,10 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() throws {
-        let (local, remote) = setUpPair()
+        let (local, remote) = setUpPair() { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
+        }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
         let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.anonymous, .receiveMessage { message in
@@ -134,7 +140,10 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() throws {
-        let local = self.setUpNode("local")
+        let local = self.setUpNode("local") { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
+        }
 
         let testKit = ActorTestKit(local)
         let probe = testKit.spawnTestProbe(expecting: String.self)
@@ -151,8 +160,10 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_remoteActors_echo() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(EchoTestMessage.self)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(EchoTestMessage.self)
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
@@ -178,8 +189,10 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_sendingToNonTopLevelRemoteRef_shouldWork() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(EchoTestMessage.self)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(EchoTestMessage.self)
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
@@ -210,8 +223,10 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_sendingToRemoteAdaptedRef_shouldWork() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(EchoTestMessage.self)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(EchoTestMessage.self)
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
