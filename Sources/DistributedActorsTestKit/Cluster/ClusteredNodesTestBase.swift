@@ -96,7 +96,7 @@ open class ClusteredNodesTestBase: XCTestCase {
     }
 
     open override func tearDown() {
-        let testsFailed = self.testRun?.failureCount ?? 0 > 0
+        let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()
         }
