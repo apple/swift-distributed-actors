@@ -243,10 +243,15 @@ extension ActorRef {
         on pool: SerializationPool,
         file: String = #file, line: UInt = #line
     ) {
-        pool.deserialize(as: Message.self, from: messageBytes, using: manifest, recipientPath: self.path, callback: .init {
+        pool.deserializeAny(from: messageBytes, using: manifest, recipientPath: self.path, callback: .init {
             switch $0 {
             case .success(.message(let message)):
-                self.tell(message, file: file, line: line)
+                switch self.personality {
+                case .adapter(let adapter):
+                    adapter.trySendUserMessage(message, file: #file, line: #line)
+                default:
+                    self._tellOrDeadLetter(message)
+                }
             case .success(.deadLetter(let message)):
                 self._dropAsDeadLetter(message)
 

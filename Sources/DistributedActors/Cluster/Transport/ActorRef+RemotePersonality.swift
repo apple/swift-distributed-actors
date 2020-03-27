@@ -124,16 +124,16 @@ public final class RemotePersonality<Message: ActorMessage> {
         for spinNr in 1 ... maxWorkaroundSpins {
             switch self.clusterShell.associationRemoteControl(with: remoteAddress) {
             case .unknown:
-                // FIXME: we may get this if we did a resolve() yet the handshakes did not complete yet
-                if spinNr == maxWorkaroundSpins {
-                    return self.remoteControl
-                } // else, fall through to the return nil below
+                // keep spinning...
+                Thread.sleep(.milliseconds(50))
+
             case .associated(let remoteControl):
                 if spinNr > 1 {
-                    self.system.log.debug("FIXME: Workaround, ActorRef's RemotePersonality had to spin \(spinNr) times to obtain remoteControl to send message to \(self.address)")
+                    self.system.log.notice("FIXME: Workaround, ActorRef's RemotePersonality had to spin \(spinNr) times to obtain remoteControl to send message to \(self.address)")
                 }
                 // self._cachedAssociationRemoteControl = remoteControl // TODO: atomically cache a remote control?
                 return remoteControl
+
             case .tombstone:
                 return nil
             }

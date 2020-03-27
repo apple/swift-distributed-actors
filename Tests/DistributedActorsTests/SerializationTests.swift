@@ -64,9 +64,7 @@ class SerializationTests: ActorSystemTestBase {
             _ = try encoder.encode(address)
         }
 
-        "\(err)".shouldStartWith(prefix: """
-        missingSerialization.Context(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
-        """)
+        "\(err)".shouldStartWith(prefix: "missingSerializationContext(DistributedActors.ActorAddress,")
     }
 
     func test_serialize_actorAddress_usingContext() throws {
@@ -208,15 +206,8 @@ class SerializationTests: ActorSystemTestBase {
     }
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
-        let err = shouldThrow {
+        _ = shouldThrow {
             try system.serialization.serialize(NotCodableHasInt(containedInt: 1337))
-        }
-
-        switch err {
-        case SerializationError<NotCodableHasInt>.noSerializerRegisteredFor:
-            () // good
-        default:
-            fatalError("Not expected error type! Was: \(err):\(type(of: err))")
         }
     }
 

@@ -41,7 +41,6 @@ extension SWIMShellClusteredTests {
             ("test_swim_shouldNotifyClusterAboutUnreachableNode_whenUnreachableDiscoveredByOtherNode", test_swim_shouldNotifyClusterAboutUnreachableNode_whenUnreachableDiscoveredByOtherNode),
             ("test_swim_shouldSendGossipInAck", test_swim_shouldSendGossipInAck),
             ("test_swim_shouldSendGossipInPing", test_swim_shouldSendGossipInPing),
-            ("test_swim_shouldSendGossipInPingReq", test_swim_shouldSendGossipInPingReq),
             ("test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes", test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes),
             ("test_swim_shouldConvergeStateThroughGossip", test_swim_shouldConvergeStateThroughGossip),
             ("test_SWIMShell_shouldMonitorJoinedClusterMembers", test_SWIMShell_shouldMonitorJoinedClusterMembers),

@@ -137,6 +137,7 @@ public class Serialization {
 
         // swim failure detector
         settings._registerInternalProtobufRepresentable(SWIM.Message.self)
+        settings._registerInternalProtobufRepresentable(SWIM.RemoteMessage.self)
         settings._registerInternalProtobufRepresentable(SWIM.PingResponse.self)
 
         // TODO: Allow plugins to register types...?
@@ -226,57 +227,55 @@ extension Serialization {
         #endif
     }
 
-    private func __ensureSerializer<Message: ActorMessage>(_ type: Message.Type, makeSerializer: (Manifest) throws -> AnySerializer) throws {
-        let oid = ObjectIdentifier(type)
-
-        // 1. check if this type already has a serializer registered, bail out quickly if so
-        self._serializersLock.withReaderLock {
-            if self._serializers[oid] != nil {
-                return
-            }
-        }
-
-        // 2. seems this type was not registered yet, so we need to store the appropriate serializer for it
-        try self._serializersLock.withWriterLock {
-            // 2.1. check again, in case someone had just stored a serializer while we were waiting for the writer lock
-            if self._serializers[oid] != nil {
-                return
-            }
-
-            // 2.2. obtain the manifest that we would use for this type, as it carries the right serializerID
-            let manifest = try self.outboundManifest(type)
-
-            // 2.3. create and store the appropriate serializer
-            do {
-                self._serializers[oid] = try makeSerializer(manifest)
-            } catch SerializationError.noNeedToEnsureSerializer {
-                // some types are specifically marked as "do not serialize" and we should ignore failures
-                // to create serializers for them. E.g. this cna happen for a "top level protocol"
-                // which by itself is never sent/serialized, but subclasses of it might.
-                return
-            } catch {
-                // all other errors are real and should be escalated
-                throw error
-            }
-        }
-    }
-
     public func _ensureSerializer<Message: ActorMessage>(_ type: Message.Type, file: String = #file, line: UInt = #line) throws {
-        try self.__ensureSerializer(type) { manifest in
-            traceLog_Serialization("Registered [\(manifest)] for [\(String(reflecting: type))]")
+        func _ensureSerializer0<Message: ActorMessage>(_ type: Message.Type, makeSerializer: (Manifest) throws -> AnySerializer) throws {
+            let oid = ObjectIdentifier(type)
 
-            if type is AnyPublicProtobufRepresentable.Type {
-                return try self.makeCodableSerializer(type, manifest: manifest) // can't do this since our coder is JSON, and encodes bytes as string
-                    .asAnySerializer // which is illegal on top-level in JSON; thus blows up
-            } else if type is AnyProtobufRepresentable.Type {
-                return try self.makeCodableSerializer(type, manifest: manifest)
-                    .asAnySerializer
-            } else if type is NotTransportableActorMessage.Type {
-                return NotTransportableSerializer<Message>().asAnySerializer
-            } else {
-                return try self.makeCodableSerializer(type, manifest: manifest)
-                    .asAnySerializer
+            // 1. check if this type already has a serializer registered, bail out quickly if so
+            self._serializersLock.withReaderLock {
+                if self._serializers[oid] != nil {
+                    return
+                }
             }
+
+            // 2. seems this type was not registered yet, so we need to store the appropriate serializer for it
+            try self._serializersLock.withWriterLock {
+                // 2.1. check again, in case someone had just stored a serializer while we were waiting for the writer lock
+                if self._serializers[oid] != nil {
+                    return
+                }
+
+                // 2.2. obtain the manifest that we would use for this type, as it carries the right serializerID
+                let manifest = try self.outboundManifest(type)
+
+                // 2.3. create and store the appropriate serializer
+                do {
+                    self._serializers[oid] = try makeSerializer(manifest)
+                } catch SerializationError.noNeedToEnsureSerializer {
+                    // some types are specifically marked as "do not serialize" and we should ignore failures
+                    // to create serializers for them. E.g. this cna happen for a "top level protocol"
+                    // which by itself is never sent/serialized, but subclasses of it might.
+                    return
+                } catch {
+                    // all other errors are real and should be escalated
+                    throw error
+                }
+            }
+        }
+
+        try _ensureSerializer0(type) { manifest in
+            traceLog_Serialization("Registered [\(manifest)] for [\(String(reflecting: type))]")
+            return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
+
+//            if type is AnyPublicProtobufRepresentable.Type {
+//                return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
+//            } else if type is AnyProtobufRepresentable.Type {
+//                return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
+//            } else if type is NotTransportableActorMessage.Type {
+//                return NotTransportableSerializer<Message>().asAnySerializer
+//            } else {
+//                return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
+//            }
         }
     }
 
