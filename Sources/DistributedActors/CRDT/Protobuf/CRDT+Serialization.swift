@@ -76,7 +76,7 @@ extension CRDT.VersionedContainer: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: CRDT.VersionedContainer<Element>.self))
         }
-        self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
+        self.replicaId = try ReplicaID(fromProto: proto.replicaID, context: context)
 
         guard proto.hasVersionContext else {
             throw SerializationError.missingField("versionContext", type: String(describing: CRDT.VersionedContainer<Element>.self))
@@ -162,17 +162,17 @@ private extension Dictionary where Key == VersionDot, Value: Codable & Hashable 
 // MARK: CRDT.GCounter
 
 extension CRDT.GCounter {
-    fileprivate typealias State = [ReplicaId: Int]
+    fileprivate typealias State = [ReplicaID: Int]
     fileprivate typealias ProtoState = [ProtoCRDTGCounter.ReplicaState]
 }
 
 extension CRDT.GCounter.State {
     fileprivate init(fromProto proto: CRDT.GCounter.ProtoState, context: Serialization.Context) throws {
-        self = try proto.reduce(into: [ReplicaId: Int]()) { result, protoReplicaState in
+        self = try proto.reduce(into: [ReplicaID: Int]()) { result, protoReplicaState in
             guard protoReplicaState.hasReplicaID else {
                 throw SerializationError.missingField("state.replicaID", type: String(describing: CRDT.GCounter.self))
             }
-            let replicaId = try ReplicaId(fromProto: protoReplicaState.replicaID, context: context)
+            let replicaId = try ReplicaID(fromProto: protoReplicaState.replicaID, context: context)
             result[replicaId] = Int(protoReplicaState.count)
         }
     }
@@ -206,7 +206,7 @@ extension CRDT.GCounter: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: CRDT.GCounter.self))
         }
-        self.init(replicaId: try ReplicaId(fromProto: proto.replicaID, context: context))
+        self.init(replicaId: try ReplicaID(fromProto: proto.replicaID, context: context))
 
         self.state = try CRDT.GCounter.State(fromProto: proto.state, context: context)
 
@@ -247,7 +247,7 @@ extension CRDT.ORSet: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: CRDT.ORSet<Element>.self))
         }
-        self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
+        self.replicaId = try ReplicaID(fromProto: proto.replicaID, context: context)
         self.state = try CRDT.VersionedContainer<Element>(fromProto: proto.state, context: context)
     }
 }

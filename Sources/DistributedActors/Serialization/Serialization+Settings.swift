@@ -100,6 +100,19 @@ extension Serialization.Settings {
         let serializerID = overrideSerializerID ?? self.defaultSerializerID
         // TODO: We could do educated guess work here -- if a type is protobuf representable, that's the coding we want
 
+        switch serializerID {
+        case .protobufRepresentable:
+            precondition(
+                type is AnyProtobufRepresentable.Type || type is SwiftProtobuf.Message.Type,
+                """
+                Attempted to register \(String(reflecting: type)) as \
+                serializable using \(SerializerID.protobufRepresentable) yet the type does NOT conform to ProtobufRepresentable or SwiftProtobuf.Message 
+                """
+            )
+        default:
+            () // OK
+        }
+
         let manifest = Manifest(serializerID: serializerID, hint: hint)
 
         self.type2ManifestRegistry[.init(type)] = manifest

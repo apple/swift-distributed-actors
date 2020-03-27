@@ -32,7 +32,7 @@ extension CRDT {
         public typealias ORSetDelta = VersionedContainerDelta<Element>
         public typealias Delta = ORSetDelta
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         // State is a `VersionedContainer` which does most of the heavy-lifting, which includes tracking delta
         var state: VersionedContainer<Element>
@@ -53,7 +53,7 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId) {
+        init(replicaId: ReplicaID) {
             self.replicaId = replicaId
             self.state = VersionedContainer(replicaId: replicaId)
         }
@@ -110,7 +110,7 @@ extension CRDT {
             if self.state.elementByBirthDot.count > 1 {
                 // Sort birth dots in descending order. i.e., newest version to oldest version by replica
                 let sortedBirthDots = self.state.elementByBirthDot.keys.sorted(by: >)
-                var replica: ReplicaId = sortedBirthDots[0].replicaId
+                var replica: ReplicaID = sortedBirthDots[0].replicaId
                 var seenReplicaElements: Set<Element> = []
 
                 // Birth dots of duplicate elements within a replica.
