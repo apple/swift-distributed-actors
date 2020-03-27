@@ -388,7 +388,7 @@ public extension ActorRef where Message == DeadLetter {
 
     /// Simplified `adapt` method for dead letters, which can be used in contexts where the adapted type can be inferred from context
     func adapted<IncomingMessage>() -> ActorRef<IncomingMessage> {
-        return self.adapt(from: IncomingMessage.self)
+        self.adapt(from: IncomingMessage.self)
     }
 }
 

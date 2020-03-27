@@ -43,20 +43,22 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
 internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     public let fromType: Any.Type
     private let target: ActorRef<To>
-    private let adapterAddress: ActorAddress
+    let address: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = _Mutex()
 
-    var address: ActorAddress {
-        return self.adapterAddress
-    }
 
     let deadLetters: ActorRef<DeadLetter>
 
+<<<<<<< Updated upstream
+    init(_ ref: ActorRef<To>, address: ActorAddress) {
+=======
     init<From>(fromType: From.Type, to ref: ActorRef<To>, address: ActorAddress) {
+        assert(From.self != Never.self)
         self.fromType = fromType
+>>>>>>> Stashed changes
         self.target = ref
-        self.adapterAddress = address
+        self.address = address
         self.watchers = []
 
         // since we are an adapter, we must be attached to some "real" actor ref (be it local, remote or dead),
@@ -91,7 +93,7 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     }
 
     private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.address == self.address && watcher.address != self.address, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -109,7 +111,7 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     }
 
     private func removeWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.address == self.address && watcher.address != self.address, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
