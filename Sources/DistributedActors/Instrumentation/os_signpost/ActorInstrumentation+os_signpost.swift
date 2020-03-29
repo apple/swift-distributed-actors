@@ -45,6 +45,18 @@ public struct OSSignpostActorInstrumentation: ActorInstrumentation {
 @available(tvOS 10.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorInstrumentation {
+    static let actorSpawnedStartFormat: StaticString =
+        """
+        spawned,\
+        node:%{public}s,\
+        path:%{public}s
+        """
+    static let actorSpawnedEndFormat: StaticString =
+        """
+        stopped,\
+        reason:%{public}s
+        """
+
     public func actorSpawned() {
         guard OSSignpostActorInstrumentation.logLifecycle.signpostsEnabled else {
             return
@@ -56,14 +68,12 @@ extension OSSignpostActorInstrumentation {
             return
         }
 
-        let format: StaticString = "spawned,node:%{public}s,path:%{public}s"
-
         os_signpost(
             .event,
             log: OSSignpostActorInstrumentation.logLifecycle,
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
-            format,
+            Self.actorSpawnedStartFormat,
             "\(self.address.node?.description ?? "")", "\(self.address.path)"
         )
 
@@ -72,7 +82,7 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logLifecycle,
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
-            format,
+            Self.actorSpawnedStartFormat,
             "\(self.address.node?.description ?? "")", "\(self.address.path)"
         )
     }
@@ -93,7 +103,7 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logLifecycle,
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
-            "stopped,reason:%{public}s",
+            Self.actorSpawnedEndFormat,
             "stop"
         )
     }
@@ -114,7 +124,7 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logLifecycle,
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
-            "stopped,reason:%{public}s",
+            Self.actorSpawnedEndFormat,
             "\(failure)"
         )
     }
@@ -128,12 +138,26 @@ extension OSSignpostActorInstrumentation {
 @available(tvOS 10.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorInstrumentation {
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Mailbox
+
     public func actorMailboxRunStarted(mailboxCount: Int) {}
 
     public func actorMailboxRunCompleted(processed: Int) {}
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Actor Messages: Tell
+
+    static let actorToldEventPattern: StaticString =
+        """
+        actor-message-told,\
+        recipient-node:%{public}s,\
+        recipient-path:%{public}s,\
+        sender-node:%{public}s,\
+        sender-path:%{public}s,\
+        message:%{public}s,\
+        message-type:%{public}s,
+        """
 
     // FIXME: we need the sender() to attach properly
     public func actorTold(message: Any, from: ActorAddress?) {
@@ -146,7 +170,7 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logMessages,
             name: "Actor Message (Tell)",
             signpostID: self.signpostID,
-            "actor-message-told,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,type:%{public}s",
+            Self.actorToldEventPattern,
             "\(self.address.node?.description ?? "")", "\(self.address.path)",
             "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
@@ -155,6 +179,29 @@ extension OSSignpostActorInstrumentation {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Actor Messages: Ask
+
+    static let signpostNameActorAsk: StaticString =
+        "Actor Message (Ask)"
+
+    static let actorAskedEventPattern: StaticString =
+        """
+        actor-message-asked,\
+        recipient-node:%{public}s,\
+        recipient-path:%{public}s,\
+        sender-node:%{public}s,\
+        sender-path:%{public}s,\
+        message:%{public}s,\
+        message-type:%{public}s,
+        """
+
+    static let actorAskRepliedEventPattern: StaticString =
+        """
+        actor-message-ask-answered,\
+        message:%{public}s,\
+        message-type:%{public}s,\
+        error:%{public}s,\
+        error-type:%{public}s,
+        """
 
     public func actorAsked(message: Any, from: ActorAddress?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
@@ -166,7 +213,7 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logMessages,
             name: "Actor Message (Ask)",
             signpostID: self.signpostID,
-            "actor-message-asked,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,question:%{public}s,type:%{public}s",
+            Self.actorAskedEventPattern,
             "\(self.address.node?.description ?? "")", "\(self.address.path)",
             "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
@@ -178,15 +225,13 @@ extension OSSignpostActorInstrumentation {
             return
         }
 
-        let format: StaticString = "actor-message-ask-answered,answer:%{public}s,type:%{public}s,error:%{public}s,type:%{public}s"
-
         if let error = error {
             os_signpost(
                 .end,
                 log: OSSignpostActorInstrumentation.logMessages,
-                name: "Actor Message (Ask)",
+                name: Self.signpostNameActorAsk,
                 signpostID: self.signpostID,
-                format,
+                Self.actorAskRepliedEventPattern,
                 "", "", "\(error)", String(reflecting: type(of: error))
             )
             return
@@ -196,9 +241,9 @@ extension OSSignpostActorInstrumentation {
             os_signpost(
                 .end,
                 log: OSSignpostActorInstrumentation.logMessages,
-                name: "Actor Message (Ask)",
+                name: Self.signpostNameActorAsk,
                 signpostID: self.signpostID,
-                format,
+                Self.actorAskRepliedEventPattern,
                 "", "", "", ""
             )
             return
@@ -207,15 +252,26 @@ extension OSSignpostActorInstrumentation {
         os_signpost(
             .end,
             log: OSSignpostActorInstrumentation.logMessages,
-            name: "Actor Message (Ask)",
+            name: Self.signpostNameActorAsk,
             signpostID: self.signpostID,
-            format,
+            Self.actorAskRepliedEventPattern,
             "\(message)", String(reflecting: type(of: message)), "", ""
         )
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Actor Messages: Receive
+
+    public static let actorReceivedEventPattern: StaticString =
+        """
+        actor-message-received,\
+        recipient-node:%{public}s,\
+        recipient-path:%{public}s,\
+        sender-node:%{public}s,\
+        sender-path:%{public}s,\
+        message:%{public}s,\
+        message-type:%{public}s,
+        """
 
     public func actorReceivedStart(message: Any, from: ActorAddress?) {
         guard OSSignpostActorInstrumentation.logMessages.signpostsEnabled else {
@@ -227,10 +283,13 @@ extension OSSignpostActorInstrumentation {
             log: OSSignpostActorInstrumentation.logMessages,
             name: "Actor Message (Received)",
             signpostID: self.signpostID,
-            "actor-message-received,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,type:%{public}s",
-            "\(self.address.node?.description ?? "")", "\(self.address.path)",
-            "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
-            "\(message)", String(reflecting: type(of: message))
+            Self.actorReceivedEventPattern,
+            "\(self.address.node?.description ?? "")",
+            "\(self.address.path)",
+            "\(from?.node?.description ?? "")",
+            "\(from?.path.description ?? "")",
+            "\(message)",
+            String(reflecting: type(of: message))
         )
     }
 

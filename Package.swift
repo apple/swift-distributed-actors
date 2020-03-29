@@ -27,6 +27,7 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
+            "SwiftyInstrumentsPackageDefinition",
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
@@ -52,13 +53,31 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
+
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Plugins
+    // MARK: InstrumentsPackageDefinition
 
     .target(
-        name: "ActorSingletonPlugin",
-        dependencies: ["DistributedActors"]
+        name: "GenActorInstruments",
+        dependencies: [
+            "DistributedActors",
+            "SwiftyInstrumentsPackageDefinition",
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "XMLCoder", package: "XMLCoder"),
+        ]
     ),
+    .target(
+        name: "SwiftyInstrumentsPackageDefinition",
+        dependencies: []
+    ),
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Plugins
+    
+    .target(
+         name: "ActorSingletonPlugin",
+         dependencies: ["DistributedActors"]
+     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: XPC
@@ -264,6 +283,9 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.1"), // BSD license
     .package(url: "https://github.com/JohnSundell/Files", from: "4.1.0"), // MIT license
     .package(url: "https://github.com/apple/swift-argument-parser", .exact("0.0.1")), // not API stable, Apache v2
+
+    // ~~~ only for GenActorInstruments ~~~
+    .package(url: "https://github.com/MaxDesiatov/XMLCoder.git", from: "0.9.0"),
 ]
 
 #if swift(>=5.2)
@@ -289,6 +311,18 @@ let products: [PackageDescription.Product] = [
     .executable(
         name: "GenActors",
         targets: ["GenActors"]
+    ),
+
+    /* --- GenActorInstruments --- */
+
+    .executable(
+        name: "GenActorInstruments",
+        targets: ["GenActorInstruments"]
+    ),
+
+    .library(
+        name: "SwiftyInstrumentsPackageDefinition",
+        targets: ["SwiftyInstrumentsPackageDefinition"]
     ),
 
     /* --- Plugins --- */

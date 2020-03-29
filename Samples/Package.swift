@@ -124,6 +124,10 @@ let package = Package(
             targets: ["SampleLetItCrash"]
         ),
         .executable(
+            name: "SampleSwiftyActorInstruments",
+            targets: ["SampleSwiftyActorInstruments"]
+        ),
+        .executable(
             name: "SampleCluster",
             targets: ["SampleCluster"]
         ),
