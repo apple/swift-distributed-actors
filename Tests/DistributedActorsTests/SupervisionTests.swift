@@ -825,12 +825,12 @@ final class SupervisionTests: ActorSystemTestBase {
 
     /// Throws all Errors it receives, EXCEPT `PleaseReplyError` to which it replies to the probe
     private func throwerBehavior(probe: ActorTestProbe<PleaseReplyError>) -> Behavior<NotTransportableAnyError> {
-        return .receiveMessage { error in
-            switch error.failure {
+        .receiveMessage { errorEnvelope in
+            switch errorEnvelope.failure {
             case let reply as PleaseReplyError:
                 probe.tell(reply)
-            default:
-                throw error
+            case let failure:
+                throw failure
             }
             return .same
         }

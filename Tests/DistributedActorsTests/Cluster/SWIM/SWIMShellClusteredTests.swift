@@ -653,7 +653,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
 
     private func expectReachabilityInSnapshot(_ testKit: ActorTestKit, node: UniqueNode, expect expected: Cluster.MemberReachability) throws {
         try testKit.eventually(within: .seconds(3)) {
-            let p11 = testKit.spawnTestProbe(subscribedTo: testKit.system.cluster.events)
+            let p11 = testKit.spawnEventStreamTestProbe(subscribedTo: testKit.system.cluster.events)
             guard case .some(Cluster.Event.snapshot(let snapshot)) = try p11.maybeExpectMessage() else {
                 throw testKit.error("Expected snapshot, was: \(String(reflecting: p11.lastMessage))")
             }

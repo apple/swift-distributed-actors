@@ -63,8 +63,8 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
         let expectedDownNode = expectedDownSystem.cluster.node
 
         // we start cluster event probes early, so they get the events one by one as they happen
-        let eventsProbeOther = self.testKit(otherNotDownPairSystem).spawnTestProbe(subscribedTo: otherNotDownPairSystem.cluster.events)
-        let eventsProbeThird = self.testKit(thirdNeverDownSystem).spawnTestProbe(subscribedTo: thirdNeverDownSystem.cluster.events)
+        let eventsProbeOther = self.testKit(otherNotDownPairSystem).spawnEventStreamTestProbe(subscribedTo: otherNotDownPairSystem.cluster.events)
+        let eventsProbeThird = self.testKit(thirdNeverDownSystem).spawnEventStreamTestProbe(subscribedTo: thirdNeverDownSystem.cluster.events)
 
         pinfo("Expecting [\(expectedDownSystem)] to become [.down], method to stop the node [\(stopMethod)]")
 
