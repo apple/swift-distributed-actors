@@ -303,9 +303,10 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     typealias OutboundOut = TransportEnvelope
 
     typealias InboundIn = Wire.Envelope // we handle deserialization in case it is about a system message (since message == system message envelope)
-    typealias InboundOut = InboundWrappedActorMessage // we pass along to the actor handler either a ready to deliver message, or the wire envelope it should deserialize
+    typealias InboundOut = Wire.Envelope // we pass along user messages; all system messages are handled in-place here (ack, nack), or delivered directly to the recipient from this handler
 
     private let log: Logger
+    private let system: ActorSystem
     private let clusterShell: ClusterShell.Ref
 
     private let serializationPool: SerializationPool
@@ -316,8 +317,16 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     struct RedeliveryTick {}
     private var redeliveryScheduled: Scheduled<RedeliveryTick>?
 
-    init(log: Logger, cluster: ClusterShell.Ref, serializationPool: SerializationPool, outbound: OutboundSystemMessageRedelivery, inbound: InboundSystemMessages) {
+    init(
+        log: Logger,
+        system: ActorSystem,
+        cluster: ClusterShell.Ref,
+        serializationPool: SerializationPool,
+        outbound: OutboundSystemMessageRedelivery,
+        inbound: InboundSystemMessages
+    ) {
         self.log = log
+        self.system = system
         self.clusterShell = cluster
         self.serializationPool = serializationPool
 
@@ -331,6 +340,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     // MARK: Outbound: Store System messages for re-delivery, pass along all other ones
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        pprint("[[[[\(Self.self)]]]] write data = \(data)")
         let transportEnvelope: TransportEnvelope = self.unwrapOutboundIn(data)
 
         guard case .systemMessage(let systemMessage) = transportEnvelope.storage else {
@@ -347,6 +357,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
             self.tracelog(.outbound, message: redeliveryEnvelope)
             context.writeAndFlush(self.wrapOutboundOut(redeliveryEnvelope), promise: promise)
+
         case .bufferOverflowMustAbortAssociation:
             self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).")
             if let node = transportEnvelope.recipient.node {
@@ -359,8 +370,11 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     // MARK: Inbound: If the message is definitely a system message (we know thanks to the manifests serializerID) decode and handle it
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let wireEnvelope: Wire.Envelope = self.unwrapInboundIn(data)
+        pprint("[[[[\(Self.self)]]]] channelRead data = \(data)")
 
+        let wireEnvelope = self.unwrapInboundIn(data)
+
+        // TODO: optimize by carrying ID in envelope of if we need to special handle this as system message
         let Type = try? self.serializationPool.serialization.summonType(from: wireEnvelope.manifest)
         if Type == SystemMessageEnvelope.self {
             self.deserializeThenHandle(type: SystemMessageEnvelope.self, wireEnvelope: wireEnvelope) { envelope in
@@ -376,13 +390,12 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             }
         } else if Type == _SystemMessage.self {
             log.error("""
-            Received SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
+            Received _SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
             Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
             """)
         } else {
             // it's a normal message, so we should directly pass it along
-            let wrapped = InboundWrappedActorMessage.userMessage(wireEnvelope)
-            context.fireChannelRead(self.wrapInboundOut(wrapped))
+            context.fireChannelRead(self.wrapInboundOut(wireEnvelope))
         }
     }
 
@@ -411,9 +424,9 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
         switch self.inboundSystemMessages.onDelivery(systemEnvelope) {
         case .accept(let ack):
-            // we unwrap the system envelope, as the ActorDelivery handler does not need to care about any sequence numbers anymore
-            let wrapped: InboundWrappedActorMessage = .systemMessage(systemEnvelope.message, wireEnvelope)
-            context.fireChannelRead(self.wrapInboundOut(wrapped))
+            // unwrap and immediately deliver the message; we do not need to forward it to the user-message handler
+            let ref = self.system._resolveUntyped(context: .init(address: wireEnvelope.recipient, system: self.system))
+            ref._sendSystemMessage(systemEnvelope.message)
 
             // TODO: potential for coalescing some ACKs here; schedule "lets write back in 300ms"
             let ackEnvelope = TransportEnvelope(ack: ack, recipient: recipient)
@@ -498,11 +511,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 }
 
-internal enum InboundWrappedActorMessage {
-    case systemMessage(_SystemMessage, Wire.Envelope)
-    case userMessage(Wire.Envelope)
-}
-
 extension SystemMessageRedeliveryHandler {
     /// Optional "dump all messages" logging.
     private func tracelog(
@@ -544,8 +552,9 @@ extension SystemMessageRedeliveryHandler {
     }
 }
 
-private final class ActorMessageHandler: ChannelInboundHandler {
-    typealias InboundIn = InboundWrappedActorMessage
+/// Deserializes and delivers user messages (i.e. anything that is not a system message).
+private final class UserMessageHandler: ChannelInboundHandler {
+    typealias InboundIn = Wire.Envelope
     typealias InboundOut = Never // we terminate here, by sending messages off to local actors
 
     let log: Logger
@@ -561,20 +570,7 @@ private final class ActorMessageHandler: ChannelInboundHandler {
 
     /// This ends the processing chain for incoming messages.
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        switch self.unwrapInboundIn(data) {
-        case .systemMessage(let systemMessage, let envelope):
-            self.deliverSystemMessage(context, systemMessage, wireEnvelope: envelope)
-        case .userMessage(let envelope):
-            self.deserializeThenDeliver(context, wireEnvelope: envelope)
-        }
-    }
-
-    private func deliverSystemMessage(_ context: ChannelHandlerContext, _ systemMessage: _SystemMessage, wireEnvelope: Wire.Envelope) {
-        let ref = self.system._resolveUntyped(
-            context: .init(address: wireEnvelope.recipient, system: self.system)
-        )
-
-        ref._sendSystemMessage(systemMessage)
+        self.deserializeThenDeliver(context, wireEnvelope: self.unwrapInboundIn(data))
     }
 
     private func deserializeThenDeliver(_ context: ChannelHandlerContext, wireEnvelope: Wire.Envelope) {
@@ -706,8 +702,8 @@ extension ClusterShell {
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME only include for debug -DSACT_TRACE_NIO things?
                     ("wire envelope handler", WireEnvelopeHandler(log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
-                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
-                    ("actor message handler", ActorMessageHandler(log: log, system: system, serializationPool: serializationPool)),
+                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
+                    ("actor message handler", UserMessageHandler(log: log, system: system, serializationPool: serializationPool)),
                     // writes go this way: ^^^
                 ]
 
@@ -769,8 +765,8 @@ extension ClusterShell {
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)), // FIXME make available via compilation flag
                     ("envelope handler", WireEnvelopeHandler(log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
-                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
-                    ("actor message handler", ActorMessageHandler(log: log, system: system, serializationPool: serializationPool)),
+                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
+                    ("actor message handler", UserMessageHandler(log: log, system: system, serializationPool: serializationPool)),
                     // writes go this way: ^^^
                 ]
 
