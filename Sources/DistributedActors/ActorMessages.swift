@@ -94,8 +94,8 @@ extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then
             self = .success(try container.decode(Success.self, forKey: .success_value))
         case .failure:
             let error = try container.decode(ErrorEnvelope.self, forKey: .failure_value)
-            if let wellTyped = Result<Success, Error>.failure(error) as? Result<Success, Failure> {
-                self = wellTyped
+            if let wellTypedError = error as? Failure {
+                self = .failure(wellTypedError)
             } else {
                 throw SerializationError.unableToDeserialize(hint: "Decoded failure: \(error) but unable to cast it as \(Result<Success, Failure>.self)")
             }

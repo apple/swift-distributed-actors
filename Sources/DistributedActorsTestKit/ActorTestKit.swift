@@ -65,7 +65,11 @@ public struct ActorTestKitSettings {
 
 extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    public func spawnTestProbe<M>(_ naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
+    public func spawnTestProbe<Message: ActorMessage>(
+        _ naming: ActorNaming? = nil,
+        expecting type: Message.Type = Message.self,
+        file: StaticString = #file, line: UInt = #line
+    ) -> ActorTestProbe<Message> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
         // we want to use our own sequence number for the naming here, so we make it here rather than let the
@@ -74,7 +78,7 @@ extension ActorTestKit {
         if let naming = naming {
             name = naming.makeName(&self._namingContext)
         } else {
-            name = ActorTestProbe<M>.naming.makeName(&self._namingContext)
+            name = ActorTestProbe<Message>.naming.makeName(&self._namingContext)
         }
 
         return ActorTestProbe(spawn: { probeBehavior in
@@ -90,8 +94,11 @@ extension ActorTestKit {
     }
 
     /// Spawn `ActorableTestProbe` which offers various assertions for actor messaging interactions.
-    public func spawnActorableTestProbe<A: Actorable>(_ naming: ActorNaming? = nil, of actorable: A.Type = A.self, file: StaticString = #file, line: UInt = #line)
-        -> ActorableTestProbe<A> {
+    public func spawnActorableTestProbe<A: Actorable>(
+        _ naming: ActorNaming? = nil,
+        of actorable: A.Type = A.self,
+        file: StaticString = #file, line: UInt = #line
+    ) -> ActorableTestProbe<A> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
         // we want to use our own sequence number for the naming here, so we make it here rather than let the
@@ -118,7 +125,7 @@ extension ActorTestKit {
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnTestProbe<Event>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
+    public func spawnEventStreamTestProbe<Event: ActorMessage>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
         let p = self.spawnTestProbe(.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
         eventStream.subscribe(p.ref)
         return p
