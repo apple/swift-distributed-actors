@@ -41,7 +41,9 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
     }
 
     func test_write_shouldAddCRDTToDataStoreIfNew_deltaMergeBoolNotApplicable() throws {
-<<<<<<< Updated upstream
+        pnote("Skipping test \(#function), ") // FIXME: Enable this test again after CRDT work
+        return ()
+
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
@@ -76,45 +78,6 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         }
         rg1.delta.shouldBeNil()
         rg1.value.shouldEqual(g1.value)
-=======
-        pnote("Skipping test \(#function), ") // FIXME: Enable this test again after CRDT work
-        return ()
-//
-//        let replicator = CRDT.Replicator.Instance(.default)
-//
-//        let id = CRDT.Identity("gcounter-1")
-//        var g1 = CRDT.GCounter(replicaId: self.replicaA)
-//        g1.increment(by: 10)
-//
-//        // Ensure g1 is not in data store
-//        guard case .notFound = replicator.read(id) else {
-//            throw self.testKit.fail("Data store should not have g1")
-//        }
-//
-//        // Write g1 (as new so `deltaMerge` ignored)
-//        guard case .applied(let writeResult, let isNew) = replicator.write(id, g1) else {
-//            throw self.testKit.fail("The write operation should have been applied")
-//        }
-//        isNew.shouldBeTrue()
-//
-//        // Return value should match g1
-//        guard let wg1 = writeResult as? CRDT.GCounter else {
-//            throw self.testKit.fail("Should be a GCounter")
-//        }
-//        // Delta is cleared before writing delta-CRDT to data store
-//        wg1.delta.shouldBeNil()
-//        wg1.value.shouldEqual(g1.value)
-//
-//        // Value in the data store should also match g1
-//        guard case .data(let readResult) = replicator.read(id) else {
-//            throw self.testKit.fail("Data store should have g1")
-//        }
-//        guard let rg1 = readResult as? CRDT.GCounter else {
-//            throw self.testKit.fail("Should be a GCounter")
-//        }
-//        rg1.delta.shouldBeNil()
-//        rg1.value.shouldEqual(g1.value)
->>>>>>> Stashed changes
     }
 
     func test_write_shouldUpdateDeltaCRDTInDataStoreUsingMerge_whenDeltaMergeIsFalse() throws {

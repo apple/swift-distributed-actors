@@ -50,13 +50,8 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
 
     let deadLetters: ActorRef<DeadLetter>
 
-<<<<<<< Updated upstream
-    init(_ ref: ActorRef<To>, address: ActorAddress) {
-=======
     init<From>(fromType: From.Type, to ref: ActorRef<To>, address: ActorAddress) {
-        assert(From.self != Never.self)
         self.fromType = fromType
->>>>>>> Stashed changes
         self.target = ref
         self.address = address
         self.watchers = []
