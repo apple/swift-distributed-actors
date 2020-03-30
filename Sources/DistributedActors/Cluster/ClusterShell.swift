@@ -269,7 +269,7 @@ internal class ClusterShell {
         case failureDetectorReachabilityChanged(UniqueNode, Cluster.MemberReachability)
 
         /// Used to signal a "down was issued" either by the user, or another part of the system.
-        case downCommand(Node)
+        case downCommand(Node) // TODO: add reason
         /// Used to signal a "down was issued" either by the user, or another part of the system.
         case downCommandMember(Cluster.Member)
 
