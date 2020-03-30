@@ -20,6 +20,10 @@ import GenActors
 import XCTest
 
 final class GenerateActorsTests: XCTestCase {
+    
+    // The Tests/GenActorsTests/ directory
+    let testFolder: Folder = try! File(path: #file).parent!.parent!.subfolder(at: "GenActorsTests")
+    
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
@@ -118,7 +122,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Imports
 
     func test_imports_shouldBe_carriedToGenActorFile() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldContain("import DistributedActors")
@@ -126,7 +130,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_imports_shouldBe_carriedToGenCodableFile() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenCodable.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "TestActorable/GenActors").file(named: "TestActorable+GenCodable.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldContain("import DistributedActors")
@@ -137,7 +141,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Storing instance in right type of reference
 
     func test_ClassActorableInstance() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case __skipMe")
@@ -163,7 +167,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Ignoring certain methods from exposing
 
     func test_LifecycleActor_doesNotContainUnderscorePrefixedMessage() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case __skipMe")
@@ -171,7 +175,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case preStart")
@@ -180,7 +184,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_TestActorable_doesNotContainGenerated_privateFuncs() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case privateFunc")
