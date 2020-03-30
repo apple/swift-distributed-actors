@@ -18,11 +18,11 @@ import NIO
 /// Handler which simulates selective messages being lost or delayed.
 /// Can be used to simulate system operation on bad network; useful for testing re-deliveries,
 /// eventually consistent data-structures or consensus algorithms in face of lost messages.
-internal final class FaultyNetworkSimulatingHandler<Message>: ChannelDuplexHandler {
-    typealias OutboundIn = Message
-    typealias OutboundOut = Message
-    typealias InboundIn = Message
-    typealias InboundOut = Message
+internal final class FaultyNetworkSimulatingHandler: ChannelDuplexHandler {
+    typealias InboundIn = Wire.Envelope
+    typealias InboundOut = TransportEnvelope
+    typealias OutboundIn = TransportEnvelope
+    typealias OutboundOut = TransportEnvelope
 
     private let log: Logger
     private let settings: FaultyNetworkSimulationSettings
@@ -69,6 +69,7 @@ internal final class FaultyNetworkSimulatingHandler<Message>: ChannelDuplexHandl
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        pprint("WRITE data = \(data)")
         let message = self.unwrapOutboundIn(data)
 
         switch self.gremlin.decide() {
@@ -93,7 +94,9 @@ internal struct FaultyNetworkSimulationSettings {
     var mode: Mode
 
     /// Transform the message before logging it when it is being dropped or delayed.
-    var formatMessage: (Any) -> Any = { any in any }
+    var formatMessage: (Any) -> Any = { any in
+        any
+    }
 
     /// String added before the output but after IN or OUT when a delay/drop is directed.
     var label: String?
@@ -112,5 +115,27 @@ internal struct FaultyNetworkSimulationSettings {
 
     init(mode: Mode) {
         self.mode = mode
+    }
+}
+
+internal final class TransportToWireInboundHandler: ChannelInboundHandler {
+    typealias InboundIn = TransportEnvelope
+    typealias InboundOut = Wire.Envelope
+
+    let system: ActorSystem
+
+    init(_ system: ActorSystem) {
+        self.system = system
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        pprint("[[[[\(Self.self)]]]] channelRead data = \(data)")
+        let transportEnvelope = self.unwrapInboundIn(data)
+
+        let (manifest, buffer) = try! self.system.serialization.serialize(transportEnvelope.underlyingMessage)
+        let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, payload: buffer, manifest: manifest)
+
+        pprint("[[[[\(Self.self)]]]] fireChannelRead = \(wireEnvelope)")
+        context.fireChannelRead(self.wrapInboundOut(wireEnvelope))
     }
 }
