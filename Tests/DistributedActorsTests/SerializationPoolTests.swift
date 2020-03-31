@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -85,8 +85,9 @@ class SerializationPoolTests: XCTestCase {
     private func completePromise<T>(_: T.Type, _ promise: EventLoopPromise<T>) -> DeserializationCallback {
         DeserializationCallback {
             switch $0 {
-            case .success(let message as T): promise.succeed(message)
-            case .success(let message): promise.fail(TestError("Could not treat \(message) as \(T.self)"))
+            case .success(.message(let message as T)): promise.succeed(message)
+            case .success(.message(let message)): promise.fail(TestError("Could not treat [\(message)]:\(type(of: message as Any)) as \(T.self)"))
+            case .success(.deadLetter(let deadLetter)): promise.fail(TestError("Got unexpected dead letter: \(deadLetter)"))
             case .failure(let error): promise.fail(error)
             }
         }
@@ -136,7 +137,7 @@ class SerializationPoolTests: XCTestCase {
 
         serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.serialize(message: test2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
         try p.expectMessage("p2")
     }
 
@@ -242,7 +243,7 @@ class SerializationPoolTests: XCTestCase {
 
         serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
         try p.expectMessage("p1")
-        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
         try p.expectMessage("p2")
     }
 
@@ -276,7 +277,7 @@ class SerializationPoolTests: XCTestCase {
         }
 
         serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
-        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath1, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
 
         Test2.deserializerLock.unlock()
 
