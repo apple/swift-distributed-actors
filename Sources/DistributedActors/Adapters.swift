@@ -47,7 +47,6 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     private var watchers: Set<AddressableActorRef>?
     private let lock = _Mutex()
 
-
     let deadLetters: ActorRef<DeadLetter>
 
     init<From>(fromType: From.Type, to ref: ActorRef<To>, address: ActorAddress) {

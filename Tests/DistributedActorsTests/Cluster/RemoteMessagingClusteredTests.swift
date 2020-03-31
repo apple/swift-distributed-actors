@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class RemoteMessagingTests: ClusteredNodesTestBase {
+class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide() throws {
         let local = setUpNode("local") { settings in
             settings.serialization.registerCodable(SerializationTestMessage.self)
@@ -320,7 +320,7 @@ extension SerializationTestMessage {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        guard try! container.decode(Bool.self, forKey: .fails) else {
+        guard try !container.decode(Bool.self, forKey: .fails) else {
             throw Boom()
         }
 
