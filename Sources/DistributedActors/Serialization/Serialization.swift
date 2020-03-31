@@ -695,7 +695,7 @@ public enum SerializationError: Error {
     case missingSerializationContext(Any.Type, details: String, file: String, line: UInt)
     case missingManifest(hint: String)
     case unableToCreateManifest(hint: String)
-    case unableToSummonTypeFromManifest(hint: String)
+    case unableToSummonTypeFromManifest(Serialization.Manifest)
 
     // --- format errors ---
     case missingField(String, type: String)
