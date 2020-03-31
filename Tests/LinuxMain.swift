@@ -109,7 +109,7 @@ XCTMain([
     testCase(ReceptionistTests.allTests),
     testCase(RemoteActorRefProviderTests.allTests),
     testCase(RemoteHandshakeStateMachineTests.allTests),
-    testCase(RemoteMessagingTests.allTests),
+    testCase(RemoteMessagingClusteredTests.allTests),
     testCase(RemotingTLSTests.allTests),
     testCase(RingBufferTests.allTests),
     testCase(SWIMInstanceClusteredTests.allTests),
