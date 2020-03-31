@@ -340,7 +340,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     // MARK: Outbound: Store System messages for re-delivery, pass along all other ones
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        pprint("[[[[\(Self.self)]]]] write data = \(data)")
         let transportEnvelope: TransportEnvelope = self.unwrapOutboundIn(data)
 
         guard case .systemMessage(let systemMessage) = transportEnvelope.storage else {
