@@ -22,7 +22,7 @@ import XCTest
 
 extension BackoffStrategyTests {
     static var allTests: [(String, (BackoffStrategyTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_constantBackoff_shouldAlwaysYieldSameTimeAmount", test_constantBackoff_shouldAlwaysYieldSameTimeAmount),
             ("test_constantBackoff_reset_shouldDoNothing", test_constantBackoff_reset_shouldDoNothing),
             ("test_exponentialBackoff_shouldIncreaseBackoffEachTime", test_exponentialBackoff_shouldIncreaseBackoffEachTime),

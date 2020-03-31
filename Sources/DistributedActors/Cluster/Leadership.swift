@@ -110,7 +110,7 @@ extension Leadership {
         }
 
         var behavior: Behavior<Cluster.Event> {
-            return .setup { context in
+            .setup { context in
                 context.log.trace("Spawned \(context.path) to run \(self.election)")
                 context.system.cluster.events.subscribe(context.myself)
 
@@ -121,7 +121,7 @@ extension Leadership {
         }
 
         private var ready: Behavior<Cluster.Event> {
-            return .receive { context, event in
+            .receive { context, event in
                 switch event {
                 case .snapshot(let membership):
                     self.membership = membership

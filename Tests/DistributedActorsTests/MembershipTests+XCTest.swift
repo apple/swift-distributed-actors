@@ -22,7 +22,7 @@ import XCTest
 
 extension MembershipTests {
     static var allTests: [(String, (MembershipTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_status_ordering", test_status_ordering),
             ("test_age_ordering", test_age_ordering),
             ("test_membership_equality", test_membership_equality),

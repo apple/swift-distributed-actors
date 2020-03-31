@@ -22,7 +22,7 @@ import XCTest
 
 extension ProtobufRoundTripTests {
     static var allTests: [(String, (ProtobufRoundTripTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_roundTrip_ActorAddress", test_roundTrip_ActorAddress),
             ("test_roundTrip_ActorPath", test_roundTrip_ActorPath),
             ("test_roundTrip_Wire_HandshakeOffer", test_roundTrip_Wire_HandshakeOffer),

@@ -22,7 +22,7 @@ import XCTest
 
 extension PeriodicBroadcastTests {
     static var allTests: [(String, (PeriodicBroadcastTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_PeriodicBroadcast_send", test_PeriodicBroadcast_send),
         ]
     }

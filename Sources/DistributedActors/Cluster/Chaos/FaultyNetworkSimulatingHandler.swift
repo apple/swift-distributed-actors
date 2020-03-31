@@ -129,13 +129,11 @@ internal final class TransportToWireInboundHandler: ChannelInboundHandler {
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        pprint("[[[[\(Self.self)]]]] channelRead data = \(data)")
         let transportEnvelope = self.unwrapInboundIn(data)
 
         let (manifest, buffer) = try! self.system.serialization.serialize(transportEnvelope.underlyingMessage)
         let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, payload: buffer, manifest: manifest)
 
-        pprint("[[[[\(Self.self)]]]] fireChannelRead = \(wireEnvelope)")
         context.fireChannelRead(self.wrapInboundOut(wireEnvelope))
     }
 }

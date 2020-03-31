@@ -153,6 +153,6 @@ extension Serialization {
             return type
         }
 
-        return fatalErrorBacktrace("Unable to summon type from: \(manifest)")
+        throw SerializationError.unableToSummonTypeFromManifest(manifest)
     }
 }

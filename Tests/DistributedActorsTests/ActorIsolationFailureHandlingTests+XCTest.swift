@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorIsolationFailureHandlingTests {
     static var allTests: [(String, (ActorIsolationFailureHandlingTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_worker_crashOnlyWorkerOnPlainErrorThrow", test_worker_crashOnlyWorkerOnPlainErrorThrow),
         ]
     }

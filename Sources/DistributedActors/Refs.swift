@@ -325,15 +325,15 @@ public final class ActorCell<Message: ActorMessage> {
     }
 
     var system: ActorSystem? {
-        return self._system
+        self._system
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return self.mailbox.deadLetters
+        self.mailbox.deadLetters
     }
 
     var address: ActorAddress {
-        return self.mailbox.address
+        self.mailbox.address
     }
 
     @usableFromInline
@@ -372,7 +372,7 @@ public final class ActorCell<Message: ActorMessage> {
 
 extension ActorCell: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "ActorCell(\(self.address), mailbox: \(self.mailbox), actor: \(String(describing: self.actor)))"
+        "ActorCell(\(self.address), mailbox: \(self.mailbox), actor: \(String(describing: self.actor)))"
     }
 }
 
@@ -478,7 +478,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(self.address)
+        AnyHashable(self.address)
     }
 
     @usableFromInline
@@ -506,11 +506,11 @@ public class Guardian {
     @usableFromInline
     let _address: ActorAddress
     var address: ActorAddress {
-        return self._address
+        self._address
     }
 
     var path: ActorPath {
-        return self.address.path
+        self.address.path
     }
 
     let name: String
@@ -519,7 +519,7 @@ public class Guardian {
     private var _children: Children
     private let _childrenLock: _Mutex = _Mutex()
     private var children: Children {
-        return self._childrenLock.synchronized { () in
+        self._childrenLock.synchronized { () in
             _children
         }
     }
@@ -606,11 +606,11 @@ public class Guardian {
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(self.address)
+        AnyHashable(self.address)
     }
 
     func makeChild<Message>(path: ActorPath, spawn: () throws -> ActorShell<Message>) throws -> ActorRef<Message> {
-        return try self._childrenLock.synchronized {
+        try self._childrenLock.synchronized {
             if self.stopping {
                 throw ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
             }
@@ -627,7 +627,7 @@ public class Guardian {
     }
 
     func stopChild(_ childRef: AddressableActorRef) throws {
-        return try self._childrenLock.synchronized {
+        try self._childrenLock.synchronized {
             guard self._children.contains(identifiedBy: childRef.address) else {
                 throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
             }
@@ -665,7 +665,7 @@ public class Guardian {
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.address))"), address: self.address, system: self.system)))
+        ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.address))"), address: self.address, system: self.system)))
     }
 }
 
@@ -715,6 +715,6 @@ extension Guardian: _ActorTreeTraversable {
 
 extension Guardian: CustomStringConvertible {
     public var description: String {
-        return "Guardian(\(self.address.path))"
+        "Guardian(\(self.address.path))"
     }
 }

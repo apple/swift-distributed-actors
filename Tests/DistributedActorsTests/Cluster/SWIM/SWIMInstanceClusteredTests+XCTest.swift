@@ -22,7 +22,7 @@ import XCTest
 
 extension SWIMInstanceClusteredTests {
     static var allTests: [(String, (SWIMInstanceClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully", test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully),
             ("test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember", test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember),
         ]

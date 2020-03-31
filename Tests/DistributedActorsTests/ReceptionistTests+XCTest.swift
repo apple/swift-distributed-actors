@@ -22,7 +22,7 @@ import XCTest
 
 extension ReceptionistTests {
     static var allTests: [(String, (ReceptionistTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_receptionist_shouldRespondWithRegisteredRefsForKey", test_receptionist_shouldRespondWithRegisteredRefsForKey),
             ("test_receptionist_shouldRespondWithEmptyRefForUnknownKey", test_receptionist_shouldRespondWithEmptyRefForUnknownKey),
             ("test_receptionist_shouldNotRegisterTheSameRefTwice", test_receptionist_shouldNotRegisterTheSameRefTwice),

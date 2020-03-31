@@ -71,19 +71,19 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages {
-        return self.myself
+        self.myself
     }
 
     @usableFromInline
     var asAddressable: AddressableActorRef {
-        return self.myself.asAddressable()
+        self.myself.asAddressable()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 
     public override var timers: Timers<Message> {
-        return self._timers
+        self._timers
     }
 
     lazy var _timers: Timers<Message> = Timers(context: self)
@@ -211,12 +211,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
             defer { self._childrenLock.unlock() }
             return self._children
         }
-    }
-
-    func dropMessage(_ message: Message) {
-        // TODO: implement support for logging dropped messages; those are different than deadLetters
-        pprint("[dropped] Message [\(message)]:\(type(of: message)) was not delivered.")
-        // system.deadLetters.tell(Dropped(message)) // TODO metadata
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -368,11 +362,13 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     func interpretAdaptedMessage(_ carry: AdaptedMessageCarry) throws -> ActorRunResult {
         let maybeAdapter = self.messageAdapters.first(where: { adapter in
-            adapter.fromType == type(of: carry.message as Any)
+            adapter.metaType.isInstance(carry.message)
         })
 
         guard let adapter = maybeAdapter?.closure else {
-            self.log.warning("Received adapted message [\(carry.message)]:\(type(of: carry.message)) for which no adapter was registered.")
+            self.log.warning("Received adapted message [\(carry.message)]:\(type(of: carry.message as Any)) for which no adapter was registered.", metadata: [
+                "actorRef/adapters": "\(self.messageAdapters)",
+            ])
             try self.becomeNext(behavior: .ignore) // TODO: make .drop once implemented
             return self.runState
         }
@@ -422,7 +418,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     internal var isSuspended: Bool {
-        return self.behavior.isSuspended
+        self.behavior.isSuspended
     }
 
     /// Fails the actor using the passed in error.
@@ -721,7 +717,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
-        return self.subReceives[identifier]?.0
+        self.subReceives[identifier]?.0
     }
 
     public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
@@ -767,17 +763,19 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     // MARK: Message Adapter
 
     private var messageAdapter: ActorRefAdapter<Message>?
-    struct MessageAdapterClosure {
-        typealias From = Any
-        let fromType: From.Type
-        let closure: (From) -> Message?
-    }
-
     private var messageAdapters: [MessageAdapterClosure] = []
+    struct MessageAdapterClosure {
+        /// The metatype of the expected incoming parameter; it will be cast and handled by the erased closure.
+        ///
+        /// We need to store the metatype, because we need `is` relationship to support adapters over classes
+        let metaType: AnyMetaType
+        let closure: (Any) -> Message?
+    }
 
     public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
         where From: ActorMessage {
         do {
+            let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
                 guard let typedMessage = message as? From else {
                     fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
@@ -788,15 +786,15 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
             }
 
             self.messageAdapters.removeAll(where: { adapter in
-                adapter.fromType == fromType
+                adapter.metaType.is(metaType)
             })
-            self.messageAdapters.insert(MessageAdapterClosure(fromType: fromType, closure: anyAdapter), at: self.messageAdapters.startIndex)
+            self.messageAdapters.insert(MessageAdapterClosure(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
 
             if let adapter: ActorRefAdapter<Message> = self.messageAdapter {
                 return .init(.adapter(adapter))
             } else {
                 let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
-                let adapter = ActorRefAdapter(fromType: From.self, to: self.myself, address: adaptedAddress)
+                let adapter = ActorRefAdapter(fromType: fromType, to: self.myself, address: adaptedAddress)
 
                 self.messageAdapter = adapter
                 self._children.insert(adapter) // TODO: separate adapters collection?

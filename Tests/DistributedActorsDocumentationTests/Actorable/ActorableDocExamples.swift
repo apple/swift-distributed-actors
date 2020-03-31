@@ -158,6 +158,7 @@ class UsingAllInOneMachine {
         printAnyDiagnostics(diagnostics: machine) // <3>
 
         // end::compose_protocols_2[]
+        _ = coffee // avoids warning: unused variable
     }
 }
 
@@ -172,7 +173,7 @@ struct LifecycleReacting: Actorable {
     }
 
     func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective { // <4>
-        return .ignore
+        .ignore
     }
 
     func something() {

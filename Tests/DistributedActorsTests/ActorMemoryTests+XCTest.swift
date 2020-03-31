@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorMemoryTests {
     static var allTests: [(String, (ActorMemoryTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_osx_actorShell_instanceSize", test_osx_actorShell_instanceSize),
         ]
     }

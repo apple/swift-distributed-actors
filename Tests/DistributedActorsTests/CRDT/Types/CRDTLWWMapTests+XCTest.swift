@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTLWWMapTests {
     static var allTests: [(String, (CRDTLWWMapTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_LWWMap_basicOperations", test_LWWMap_basicOperations),
             ("test_LWWMap_update_remove_shouldUpdateDelta", test_LWWMap_update_remove_shouldUpdateDelta),
             ("test_LWWMap_merge_shouldMutate", test_LWWMap_merge_shouldMutate),

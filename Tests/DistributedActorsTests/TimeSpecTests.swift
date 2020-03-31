@@ -22,19 +22,19 @@ class TimeSpecTests: XCTestCase {
     let nanosAmount: TimeAmount = .nanoseconds(100)
     let secondsAmount: TimeAmount = .seconds(2)
     var totalAmount: TimeAmount {
-        return self.secondsAmount + self.nanosAmount
+        self.secondsAmount + self.nanosAmount
     }
 
     var nanos: TimeSpec {
-        return .from(timeAmount: self.nanosAmount)
+        .from(timeAmount: self.nanosAmount)
     }
 
     var seconds: TimeSpec {
-        return .from(timeAmount: self.secondsAmount)
+        .from(timeAmount: self.secondsAmount)
     }
 
     var total: TimeSpec {
-        return .from(timeAmount: self.totalAmount)
+        .from(timeAmount: self.totalAmount)
     }
 
     func test_timeSpecShouldBeCreatedProperlyFromTimeAmount() {

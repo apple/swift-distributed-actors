@@ -97,7 +97,7 @@ extension Cluster {
 
         /// More efficient than using `members(withStatus:)` followed by a `.count`
         public func count(withStatus status: Cluster.MemberStatus) -> Int {
-            return self._members.values
+            self._members.values
                 .lazy
                 .filter { member in status == member.status }
                 .count

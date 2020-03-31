@@ -89,7 +89,7 @@ public enum Signals {
 
         /// Adopters may adjust the specific description as they see fit.
         open var description: String {
-            "Terminated(\(self.address), existenceConfirmed: \(self.existenceConfirmed), nodeTerminated: \(self.nodeTerminated))"
+            "Terminated(\(self.address), existenceConfirmed: \(self.existenceConfirmed))"
         }
     }
 
@@ -160,7 +160,7 @@ public enum Signals {
 
 extension Signals.Terminated: Equatable, Hashable {
     public static func == (lhs: Signals.Terminated, rhs: Signals.Terminated) -> Bool {
-        return lhs.address == rhs.address &&
+        lhs.address == rhs.address &&
             lhs.existenceConfirmed == rhs.existenceConfirmed
     }
 

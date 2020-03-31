@@ -22,7 +22,7 @@ import XCTest
 
 extension TimeoutBasedDowningInstanceTests {
     static var allTests: [(String, (TimeoutBasedDowningInstanceTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_onLeaderChange_whenNotLeaderAndNewLeaderIsSelfAddress_shouldBecomeLeader", test_onLeaderChange_whenNotLeaderAndNewLeaderIsSelfAddress_shouldBecomeLeader),
             ("test_onLeaderChange_whenNotLeaderAndNewLeaderIsOtherAddress_shouldNotBecomeLeader", test_onLeaderChange_whenNotLeaderAndNewLeaderIsOtherAddress_shouldNotBecomeLeader),
             ("test_onLeaderChange_whenLeaderAndNewLeaderIsOtherAddress_shouldLoseLeadership", test_onLeaderChange_whenLeaderAndNewLeaderIsOtherAddress_shouldLoseLeadership),

@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTReplicatorShellClusteredTests {
     static var allTests: [(String, (CRDTReplicatorShellClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore", test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore),
             ("test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
             ("test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),

@@ -360,9 +360,9 @@ extension Serialization {
             let messageType = type(of: message as Any) // `as Any` on purpose (!), see above.
             assert(messageType != Any.self, "Underlying message type resolved as Any.Type. This should never happen, please file a bug. Was: \(message)")
 
-            pprint("OUT: serialize(\(message)) :::: \(String(reflecting: messageType))")
+//            pprint("OUT: serialize(\(message)) :::: \(String(reflecting: messageType))")
             let manifest = try self.outboundManifest(messageType)
-            pprint("OUT: serialize(\(message)) ::: \(manifest) ::: \(String(reflecting: messageType))")
+//            pprint("OUT: serialize(\(message)) ::: \(manifest) ::: \(String(reflecting: messageType))")
 
             traceLog_Serialization("serialize(\(message), manifest: \(manifest))")
 
@@ -544,11 +544,9 @@ extension Serialization {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: MetaTypes so we can store Type -> Serializer mappings
 
-// Implementation notes:
-// We need this since we will receive data from the wire and need to pick "the right" deserializer
-// See: https://stackoverflow.com/questions/42459484/make-a-swift-dictionary-where-the-key-is-type
+/// A meta type is a type eraser for any `T`, such that we can still perform `value is T` checks.
 @usableFromInline
-struct MetaType<T>: Hashable, CustomStringConvertible {
+internal struct MetaType<T>: Hashable, CustomStringConvertible {
     let _underlying: Any.Type?
     let id: ObjectIdentifier
 
@@ -574,7 +572,7 @@ struct MetaType<T>: Hashable, CustomStringConvertible {
     }
 
     public var description: String {
-        "MetaType<\(String(reflecting: T.self))@\(self.id)>"
+        "MetaType<\(String(reflecting: T.self))"
     }
 }
 
@@ -695,7 +693,7 @@ public enum SerializationError: Error {
     case missingSerializationContext(Any.Type, details: String, file: String, line: UInt)
     case missingManifest(hint: String)
     case unableToCreateManifest(hint: String)
-    case unableToSummonTypeFromManifest(hint: String)
+    case unableToSummonTypeFromManifest(Serialization.Manifest)
 
     // --- format errors ---
     case missingField(String, type: String)

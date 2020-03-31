@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTReplicatorInstanceTests {
     static var allTests: [(String, (CRDTReplicatorInstanceTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_registerOwner_shouldAddActorRefToOwnersSetForCRDT", test_registerOwner_shouldAddActorRefToOwnersSetForCRDT),
             ("test_write_shouldAddCRDTToDataStoreIfNew_deltaMergeBoolNotApplicable", test_write_shouldAddCRDTToDataStoreIfNew_deltaMergeBoolNotApplicable),
             ("test_write_shouldUpdateDeltaCRDTInDataStoreUsingMerge_whenDeltaMergeIsFalse", test_write_shouldUpdateDeltaCRDTInDataStoreUsingMerge_whenDeltaMergeIsFalse),

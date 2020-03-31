@@ -15,7 +15,6 @@
 import DistributedActors
 
 struct DistributedDiningPhilosophers {
-
     func run(for time: TimeAmount) throws {
         let systemA = ActorSystem("DistributedPhilosophers") { settings in
             settings.cluster.enabled = true

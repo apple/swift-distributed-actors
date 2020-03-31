@@ -23,7 +23,7 @@ import XCTest
 
 class ConcurrencyHelpersTests: XCTestCase {
     private func sumOfIntegers(until n: UInt64) -> UInt64 {
-        return n * (n + 1) / 2
+        n * (n + 1) / 2
     }
 
     func testLargeContendedAtomicSum() {

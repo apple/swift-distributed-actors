@@ -32,12 +32,12 @@ public class Philosopher {
     }
 
     public var behavior: Behavior<Philosopher.Message> {
-        return self.thinking
+        self.thinking
     }
 
     /// Initial and public state from which a Philosopher starts its life
     private var thinking: Behavior<Philosopher.Message> {
-        return .setup { context in
+        .setup { context in
             context.watch(self.left)
             context.watch(self.right)
 
@@ -66,7 +66,7 @@ public class Philosopher {
 
     /// A hungry philosopher is waiting to obtain both forks before it can start eating
     private func hungry(myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
-        return .receive { _, msg in
+        .receive { _, msg in
             switch msg {
             case .forkReply(.pickedUp(let fork)):
                 let other: Fork.Ref = (fork == self.left) ? self.right : self.left
@@ -99,7 +99,7 @@ public class Philosopher {
     }
 
     private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref, myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
-        return .receive { _, msg in
+        .receive { _, msg in
             switch msg {
             case .forkReply(.pickedUp(pending)):
                 return self.eating(myselfForFork: myselfForFork)
@@ -124,7 +124,7 @@ public class Philosopher {
     /// A state reached by successfully obtaining two forks and becoming "eating".
     /// Once the Philosopher is done eating, it will putBack both forks and become thinking again.
     private func eating(myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
-        return .setup { context in
+        .setup { context in
             // here we act as if we "think and then eat"
             context.log.info("Setup eating, I have: \(uniquePath: self.left) and \(uniquePath: self.right)")
 
@@ -147,6 +147,6 @@ public class Philosopher {
     }
 
     private func forkSideName(_ fork: Fork.Ref) -> String {
-        return fork == self.left ? "left" : "right"
+        fork == self.left ? "left" : "right"
     }
 }

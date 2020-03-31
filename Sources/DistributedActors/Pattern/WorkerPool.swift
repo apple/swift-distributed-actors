@@ -52,7 +52,7 @@ public class WorkerPool<Message: ActorMessage> { // TODO: really has to be Codab
 
     var settings: WorkerPoolSettings<Message>
     var selector: Selector {
-        return self.settings.selector
+        self.settings.selector
     }
 
     init(settings: WorkerPoolSettings<Message>) {
@@ -86,7 +86,7 @@ internal extension WorkerPool {
 
     /// Register with receptionist under `selector.key` and become `awaitingWorkers`.
     func initial() -> PoolBehavior {
-        return .setup { context in
+        .setup { context in
             switch self.selector {
             case .dynamic(let key):
                 context.system.receptionist.subscribe(
@@ -105,7 +105,7 @@ internal extension WorkerPool {
     }
 
     func awaitingWorkers() -> PoolBehavior {
-        return .setup { context in
+        .setup { context in
             let stash = StashBuffer(owner: context, capacity: self.settings.noWorkersAvailableStashCapacity)
 
             return .receive { context, message in
@@ -135,7 +135,7 @@ internal extension WorkerPool {
 
     // TODO: abstract how we keep them, for round robin / random etc
     func forwarding(to workers: [ActorRef<Message>]) -> PoolBehavior {
-        return .setup { context in
+        .setup { context in
             // TODO: would be some actual logic, that we can plug and play
             var _roundRobinPos = 0
 
@@ -228,17 +228,17 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
         file: String = #file, function: String = #function, line: UInt = #line,
         _ makeQuestion: @escaping (ActorRef<Answer>) -> Message
     ) -> AskResponse<Answer> {
-        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
+        self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
             .forward(makeQuestion(replyTo))
         }
     }
 
     public var address: ActorAddress {
-        return self._ref.address
+        self._ref.address
     }
 
     public var path: ActorPath {
-        return self.address.path
+        self.address.path
     }
 }
 

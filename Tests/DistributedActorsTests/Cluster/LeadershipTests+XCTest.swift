@@ -22,7 +22,7 @@ import XCTest
 
 extension LeadershipTests {
     static var allTests: [(String, (LeadershipTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_LowestAddressReachableMember_selectLeader", test_LowestAddressReachableMember_selectLeader),
             ("test_LowestAddressReachableMember_notEnoughMembersToDecide", test_LowestAddressReachableMember_notEnoughMembersToDecide),
             ("test_LowestAddressReachableMember_notEnoughReachableMembersToDecide", test_LowestAddressReachableMember_notEnoughReachableMembersToDecide),

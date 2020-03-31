@@ -14,8 +14,7 @@
 import DistributedActors
 
 struct DistributedLeaderboard {
-    private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
-    }
+    private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {}
 
     /// Enable networking on this node, and select which port it should bind to.
     private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
@@ -56,13 +55,11 @@ struct DistributedLeaderboard {
         // which other non participants may observe as well.
         _ = try first.spawn("game-engine", self.game(with: [player1, player2, player3]))
 
-
         first.park(atMost: time)
     }
 }
 
 extension DistributedLeaderboard {
-
     enum GameEvent: Codable {
         case scorePoints(Int)
     }
@@ -83,7 +80,8 @@ extension DistributedLeaderboard {
                 case .scorePoints(let points):
                     myScore += points
                     _ = totalScore.increment(by: points, writeConsistency: .all, timeout: .seconds(1))
-                    context.log.info("Scored +\(points), my score: \(myScore), global total score: \(totalScore.lastObservedValue)"
+                    context.log.info(
+                        "Scored +\(points), my score: \(myScore), global total score: \(totalScore.lastObservedValue)"
                         //     , metadata: ["total/score": "\(totalScore.data)"]
                     )
                 }
@@ -119,7 +117,6 @@ struct DataID {
     static let totalScore = "total-score-counter"
     static let totalScoreIdentity = CRDT.Identity(DataID.totalScore)
 }
-
 
 extension DistributedLeaderboard.GameEvent {
     public init(from decoder: Decoder) throws {

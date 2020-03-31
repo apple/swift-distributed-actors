@@ -17,41 +17,8 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
-    func test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide() throws {
-        let local = setUpNode("local") { settings in
-            settings.serialization.registerCodable(SerializationTestMessage.self)
-        }
-        let remote = setUpNode("remote") { settings in
-            settings.serialization.registerCodable(SerializationTestMessage.self)
-        }
-
-        let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn("remoteAcquaintance1", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
-
-        let codableRefOnRemoteSystem: ActorRef<String> = try remote.spawn("remoteAcquaintance2", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
-
-        local.cluster.join(node: remote.cluster.node.node)
-
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
-
-        let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address, on: remote)
-        nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
-
-        try probeOnRemote.expectNoMessage(for: .milliseconds(100))
-
-        let codableResolvedRef = self.resolveRef(local, type: String.self, address: codableRefOnRemoteSystem.address, on: remote)
-        codableResolvedRef.tell("HELLO")
-
-        try probeOnRemote.expectMessage("forwarded:HELLO")
-    }
-
+final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
+    // TODO: This will start failing once we implement _mangledTypeName manifests
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() throws {
         let local = self.setUpNode("local") { settings in
             settings.serialization.registerCodable(SerializationTestMessage.self)
@@ -59,7 +26,7 @@ class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
         }
 
         let remote = setUpNode("remote") { settings in
-            settings.serialization.registerCodable(SerializationTestMessage.self)
+            // do not register SerializationTestMessage on purpose, we want it to fail when receiving
             settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
@@ -81,7 +48,7 @@ class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
         let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
 
-        try probeOnRemote.expectNoMessage(for: .milliseconds(100))
+        try probeOnRemote.expectNoMessage(for: .milliseconds(500))
 
         let codableResolvedRef = self.resolveRef(local, type: String.self, address: codableRefOnRemoteSystem.address, on: remote)
         codableResolvedRef.tell("HELLO")
@@ -351,6 +318,6 @@ struct Boom: Error {
 
 extension SerializationTestMessage: CustomStringConvertible {
     var description: String {
-        return "SerializationTestMessage"
+        "SerializationTestMessage"
     }
 }

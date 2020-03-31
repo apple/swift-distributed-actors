@@ -85,7 +85,7 @@ extension _SystemMessage {
 
         /// Coalesce ("merge") two ACKs into one cumulative ACK up until the larger sequence number carried by either of them.
         func coalesce(_ other: ACK) -> ACK {
-            return .init(sequenceNr: max(self.sequenceNr, other.sequenceNr))
+            .init(sequenceNr: max(self.sequenceNr, other.sequenceNr))
         }
     }
 
@@ -255,7 +255,7 @@ internal final class OutboundSystemMessageRedelivery {
         //        if self.redeliveryTicksSinceLastACK > self.maxRedeliveryTicksWithoutACK {
         //            return GiveUpRedeliveringSystemMessagesError()
         //        } else {
-        return nil
+        nil
         //        }
     }
 

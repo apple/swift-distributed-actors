@@ -46,13 +46,23 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
     }
 
     func test_lookup_ofGenericType() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let notUsed = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
-            OwnerOfThings(context: $0, probe: p.ref)
+            OwnerOfThings(context: $0, probe: notUsed.ref)
         }
 
         let reply = owner.performLookup()
         try reply.wait().first.shouldEqual(owner)
+    }
+
+    func test_lookup_ofGenericType_exposedAskResponse_stillIsAReply() throws {
+        let notUsed = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
+            OwnerOfThings(context: $0, probe: notUsed.ref)
+        }
+
+        let reply: Reply<Receptionist.Listing<OwnerOfThings.Message>> = owner.performAskLookup()
+        try reply.wait().refs.first.shouldEqual(owner.ref)
     }
 
     func test_subscribe_genericType() throws {

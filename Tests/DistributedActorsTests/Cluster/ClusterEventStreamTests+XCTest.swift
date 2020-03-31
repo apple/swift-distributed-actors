@@ -22,7 +22,7 @@ import XCTest
 
 extension ClusterEventStreamTests {
     static var allTests: [(String, (ClusterEventStreamTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers", test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers),
             ("test_clusterEventStream_collapseManyEventsIntoSnapshot", test_clusterEventStream_collapseManyEventsIntoSnapshot),
         ]

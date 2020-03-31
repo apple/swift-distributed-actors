@@ -22,7 +22,7 @@ import XCTest
 
 extension RemoteActorRefProviderTests {
     static var allTests: [(String, (RemoteActorRefProviderTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath", test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath),
             ("test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext", test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext),
             ("test_remoteActorRefProvider_shouldResolveSameAsLocalNodeDeadLettersRef_forTypeMismatchOfActorAndResolveContext", test_remoteActorRefProvider_shouldResolveSameAsLocalNodeDeadLettersRef_forTypeMismatchOfActorAndResolveContext),

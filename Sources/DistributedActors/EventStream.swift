@@ -66,7 +66,7 @@ internal enum EventStreamShell {
     }
 
     static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
-        return .setup { context in
+        .setup { context in
             var subscribers: [ActorAddress: ActorRef<Event>] = [:]
 
             let behavior: Behavior<Message<Event>> = .receiveMessage { message in

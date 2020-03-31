@@ -22,7 +22,7 @@ import XCTest
 
 extension NodeTests {
     static var allTests: [(String, (NodeTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_nodes_equal_whenHostPortMatch", test_nodes_equal_whenHostPortMatch),
             ("test_uniqueNode_shouldRenderProperly", test_uniqueNode_shouldRenderProperly),
             ("test_uniqueNode_comparison_equal", test_uniqueNode_comparison_equal),

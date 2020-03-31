@@ -22,7 +22,7 @@ import XCTest
 
 extension MembershipSerializationTests {
     static var allTests: [(String, (MembershipSerializationTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_serializationOf_membership", test_serializationOf_membership),
         ]
     }

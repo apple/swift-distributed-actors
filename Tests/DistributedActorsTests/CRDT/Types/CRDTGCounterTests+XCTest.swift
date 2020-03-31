@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTGCounterTests {
     static var allTests: [(String, (CRDTGCounterTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_GCounter_increment_shouldUpdateDelta", test_GCounter_increment_shouldUpdateDelta),
             ("test_GCounter_merge_shouldMutate", test_GCounter_merge_shouldMutate),
             ("test_GCounter_merging_shouldNotMutate", test_GCounter_merging_shouldNotMutate),

@@ -27,7 +27,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
-            return .setup { context in
+            .setup { context in
                 context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
@@ -72,7 +72,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
-            return .setup { context in
+            .setup { context in
                 context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
@@ -142,10 +142,9 @@ final class WorkerPoolTests: ActorSystemTestBase {
     func test_workerPool_ask() throws {
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
-        let pW: ActorTestProbe<WorkerPoolQuestion> = self.testKit.spawnTestProbe("pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<WorkerPoolQuestion> {
-            return .receive { context, work in
+            .receive { context, work in
                 p.tell("work:\(work.id) at \(context.path.name)")
                 return .same
             }
@@ -187,7 +186,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let pW: ActorTestProbe<String> = self.testKit.spawnTestProbe("pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
-            return .receive { context, work in
+            .receive { context, work in
                 if work == "stop" {
                     return .stop
                 }

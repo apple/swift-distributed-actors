@@ -22,7 +22,7 @@ import XCTest
 
 extension SampleTest {
     static var allTests: [(String, (SampleTest) -> () throws -> Void)] {
-        return [
+        [
             ("test_empty", test_empty),
         ]
     }

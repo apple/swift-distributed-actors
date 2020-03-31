@@ -32,14 +32,14 @@ public struct ServantProcessSupervisionStrategy {
     /// action in case this happens (e.g. by terminating the master itself, and relying on a higher level orchestrator to restart
     /// the entire system).
     public static var stop: ServantProcessSupervisionStrategy {
-        return .init(underlying: .stop)
+        .init(underlying: .stop)
     }
 
     /// Supervision strategy binding the lifecycle of the master process with the given servant process,
     /// i.e. if a servant process supervised using this strategy terminates (exits, fails, for whatever reason),
     /// the master parent will also terminate (with an error exit code).
     public static var escalate: ServantProcessSupervisionStrategy {
-        return .init(underlying: .escalate)
+        .init(underlying: .escalate)
     }
 
     /// The respawn strategy allows the supervised servant process to be restarted `atMost` times `within` a time period.
@@ -60,7 +60,7 @@ public struct ServantProcessSupervisionStrategy {
     ///                     no restart is performed and the failure is escalated (and the actor terminates in the process).
     /// - parameter backoff: strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
     public static func respawn(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy? = nil) -> ServantProcessSupervisionStrategy {
-        return .init(underlying: .restart(atMost: atMost, within: within, backoff: backoff))
+        .init(underlying: .restart(atMost: atMost, within: within, backoff: backoff))
     }
 }
 

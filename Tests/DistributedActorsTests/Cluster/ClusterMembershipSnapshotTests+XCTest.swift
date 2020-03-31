@@ -22,7 +22,7 @@ import XCTest
 
 extension ClusterMembershipSnapshotTests {
     static var allTests: [(String, (ClusterMembershipSnapshotTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_membershipSnapshot_initialShouldContainSelfNode", test_membershipSnapshot_initialShouldContainSelfNode),
             ("test_membershipSnapshot_shouldBeUpdated", test_membershipSnapshot_shouldBeUpdated),
         ]

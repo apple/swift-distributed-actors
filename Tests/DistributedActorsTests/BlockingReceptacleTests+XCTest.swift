@@ -22,7 +22,7 @@ import XCTest
 
 extension BlockingReceptacleTests {
     static var allTests: [(String, (BlockingReceptacleTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_blockingReceptacle_singleThreadedOfferWait", test_blockingReceptacle_singleThreadedOfferWait),
             ("test_blockingReceptacle_twoThreads", test_blockingReceptacle_twoThreads),
             ("test_blockingReceptacle_manyWaiters", test_blockingReceptacle_manyWaiters),

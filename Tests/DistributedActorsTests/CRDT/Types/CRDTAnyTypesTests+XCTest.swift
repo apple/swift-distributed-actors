@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTAnyTypesTests {
     static var allTests: [(String, (CRDTAnyTypesTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_AnyCvRDT_canBeUsedToMergeRightTypes", test_AnyCvRDT_canBeUsedToMergeRightTypes),
             ("test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
             ("test_DeltaCRDTBox_canBeUsedToMergeRightTypes", test_DeltaCRDTBox_canBeUsedToMergeRightTypes),

@@ -19,7 +19,7 @@ import Prometheus
 // import StatsdClient
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Prometheus backend
+// MARK: Option A) Prometheus backend
 
 let prom = PrometheusClient()
 MetricsSystem.bootstrap(prom)
@@ -39,22 +39,20 @@ let system = ActorSystem("Metrics") { settings in
 }
 
 struct Talker {
-    enum Message {
-        case hello(Int, replyTo: ActorRef<Talker.Message>?)
+    struct Hello: Codable {
+        let number: Int
+        let replyTo: ActorRef<Talker.Hello>?
     }
 
-    static func talkTo(another talker: ActorRef<Message>?) -> Behavior<Message> {
-        return .setup { context in
+    static func talkTo(another talker: ActorRef<Hello>?) -> Behavior<Hello> {
+        .setup { context in
             context.log.info("Started \(context.myself.path)")
-            context.timers.startPeriodic(key: "next-chat", message: .hello(1, replyTo: talker), interval: .milliseconds(200))
+            context.timers.startPeriodic(key: "next-chat", message: Hello(number: 1, replyTo: talker), interval: .milliseconds(200))
 
-            return .receiveMessage { message in
-                // context.log.info("\(message)")
+            return .receiveMessage { hello in
+                context.log.info("\(hello)")
+                hello.replyTo?.tell(Hello(number: 1, replyTo: context.myself))
 
-                switch message {
-                case .hello(_, let talkTo):
-                    talkTo?.tell(.hello(1, replyTo: talkTo))
-                }
                 return .same
             }
         }
@@ -74,7 +72,7 @@ struct DieAfterSomeTime {
 
 struct MetricPrinter {
     static var behavior: Behavior<String> {
-        return .setup { context in
+        .setup { context in
             context.log.info("Started \(context.myself.path)")
             context.timers.startPeriodic(key: "print-metrics", message: "print", interval: .seconds(2))
 

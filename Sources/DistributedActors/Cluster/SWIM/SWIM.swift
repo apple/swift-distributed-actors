@@ -233,7 +233,7 @@ extension SWIM.Status {
     /// - Returns `true` if `self` is greater than or equal to `other` based on the
     ///   following ordering: `alive(N)` < `suspect(N)` < `alive(N+1)` < `suspect(N+1)` < `dead`
     func supersedes(_ other: SWIM.Status) -> Bool {
-        return self >= other
+        self >= other
     }
 }
 
@@ -242,7 +242,7 @@ extension SWIM.Status {
 
 internal struct SWIMMember {
     var node: UniqueNode {
-        return self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
+        self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
     }
 
     /// Each (SWIM) cluster member is running a `probe` actor which we interact with when gossiping the SWIM messages.
@@ -285,7 +285,7 @@ internal struct SWIMMember {
 /// Manual Hashable conformance since we ommit suspicionStartedAt from identity
 extension SWIMMember: Hashable, Equatable {
     static func == (lhs: SWIMMember, rhs: SWIMMember) -> Bool {
-        return lhs.ref == rhs.ref && lhs.protocolPeriod == rhs.protocolPeriod && lhs.status == rhs.status
+        lhs.ref == rhs.ref && lhs.protocolPeriod == rhs.protocolPeriod && lhs.status == rhs.status
     }
 
     func hash(into hasher: inout Hasher) {

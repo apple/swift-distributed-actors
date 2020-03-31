@@ -43,7 +43,7 @@ private func tearDown() {
 }
 
 func flooding_behavior(latch: CountDownLatch, messageCount: Int) -> Behavior<Int> {
-    return .setup { _ in
+    .setup { _ in
         var count = messageCount
         return .receiveMessage { _ in
             count -= 1

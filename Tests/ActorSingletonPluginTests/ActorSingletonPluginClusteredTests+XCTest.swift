@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorSingletonPluginClusteredTests {
     static var allTests: [(String, (ActorSingletonPluginClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_singletonByClusterLeadership", test_singletonByClusterLeadership),
             ("test_singletonByClusterLeadership_stashMessagesIfNoLeader", test_singletonByClusterLeadership_stashMessagesIfNoLeader),
             ("test_singletonByClusterLeadership_withLeaderChange", test_singletonByClusterLeadership_withLeaderChange),

@@ -19,7 +19,7 @@ import NIO
 internal extension ByteBuffer {
     /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
     var formatHexDump: String {
-        return self.formatHexDump()
+        self.formatHexDump()
     }
 
     /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
