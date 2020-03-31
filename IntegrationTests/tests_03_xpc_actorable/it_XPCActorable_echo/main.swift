@@ -36,7 +36,7 @@ case "echo":
     let reply: Reply<String> = xpcGreetingsActor.echo(string: "Capybara")
 
     // await reply
-    reply.withTimeout(after: .seconds(2))._nioFuture.whenComplete {
+    reply.withTimeout(after: .seconds(2))._onComplete {
         system.log.info("Received reply from \(xpcGreetingsActor): \($0)")
         exit(0) // good, we got the reply
     }

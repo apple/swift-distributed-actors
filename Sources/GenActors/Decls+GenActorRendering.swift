@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import NIO
 import Stencil
 import SwiftSyntax
 
@@ -521,14 +522,14 @@ extension ActorableMessageDecl {
         case .nioEventLoopFuture(let futureValueType):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
-            printer.print("Reply(nioFuture:")
+            printer.print("Reply.from(askResponse: ")
             printer.indent()
             printer.print("self.ref.ask(for: Result<\(futureValueType), Error>.self, timeout: .effectivelyInfinite) { _replyTo in")
             printer.indent()
         case .type(let t):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
-            printer.print("Reply(nioFuture:")
+            printer.print("Reply.from(askResponse: ")
             printer.indent()
             if self.throwing {
                 printer.print("self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in")
@@ -540,7 +541,7 @@ extension ActorableMessageDecl {
         case .result(let t, let errType):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
-            printer.print("Reply(nioFuture:")
+            printer.print("Reply.from(askResponse: ")
             printer.indent()
             printer.print("self.ref.ask(for: Result<\(t), \(errType)>.self, timeout: .effectivelyInfinite) { _replyTo in")
             printer.indent()
@@ -555,22 +556,7 @@ extension ActorableMessageDecl {
         if isAsk {
             self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
             printer.outdent()
-            if self.throwing || self.returnType.isFutureReturn {
-                printer.print("}", skipNewline: true)
-                printer.print(".nioFuture.flatMapThrowing { result in")
-                printer.indent()
-
-                printer.print("switch result {")
-                printer.print("case .success(let res): return res")
-                printer.print("case .failure(let err): throw err")
-                printer.print("}")
-                printer.outdent()
-
-                printer.print("}")
-            } else {
-                printer.print("}", skipNewline: true)
-                printer.print(".nioFuture")
-            }
+            printer.print("}")
             printer.outdent()
             printer.print(")")
         } else {

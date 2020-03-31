@@ -117,12 +117,19 @@ extension Actor.Context {
             let listingReply: AskResponse<SystemReceptionist.Listing<Act.Message>> = self.underlying.system.receptionist.ask(timeout: timeout) {
                 SystemReceptionist.Lookup(key: key.underlying, replyTo: $0)
             }
-
-            let actorListing: EventLoopFuture<Reception.Listing<Act>> = listingReply.nioFuture.map { listing in
-                Reception.Listing(refs: listing.refs)
+            
+            switch listingReply {
+            case .completed(let result):
+                let actorListing: Result<Reception.Listing<Act>, Error> = result.map { listing in
+                    Reception.Listing(refs: listing.refs)
+                }
+                return .completed(actorListing)
+            case .nioFuture(let nioFuture):
+                let actorListing: EventLoopFuture<Reception.Listing<Act>> = nioFuture.map { listing in
+                    Reception.Listing(refs: listing.refs)
+                }
+                return .nioFuture(actorListing)
             }
-
-            return Reply(nioFuture: actorListing)
         }
     }
 }

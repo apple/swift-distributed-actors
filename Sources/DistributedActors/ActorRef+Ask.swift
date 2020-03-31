@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -72,6 +72,11 @@ extension ActorRef: ReceivesQuestions {
         guard let system = self._system else {
             fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
         }
+
+        if system.isShuttingDown {
+            return .completed(.failure(AskError.systemAlreadyShutDown))
+        }
+
         let promise = system._eventLoopGroup.next().makePromise(of: type)
 
         // TODO: maybe a specialized one... for ask?
@@ -105,14 +110,14 @@ extension ActorRef: ReceivesQuestions {
             promise.fail(error)
         }
 
-        return AskResponse(nioFuture: promise.futureResult)
+        return .nioFuture(promise.futureResult)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: AskResponse
 
-/// Asynchronously completed response to an `ask` operation.
+/// Synchronously or asynchronously completed response to an `ask` operation.
 ///
 /// It is possible to `context.awaitResult` or `context.onResultAsync` on this type to safely consume it inside
 /// the actors "single threaded illusion" context.
@@ -120,25 +125,31 @@ extension ActorRef: ReceivesQuestions {
 /// - warning: When exposing the underlying implementation and attaching callbacks to it, modifying or capturing
 ///            enclosing actor state is NOT SAFE, as the underlying future MAY not be scheduled on the same context
 ///            as the actor.
-public struct AskResponse<Value> {
-    /// *WARNING* Use with caution.
+public enum AskResponse<Value> {
+    case completed(Result<Value, Error>)
+
+    /// **WARNING** Use with caution.
     ///
     /// Exposes underlying `NIO.EventLoopFuture`.
     ///
     /// - warning: DO NOT access or modify actor state from any of the future's callbacks as they MAY run concurrently to the actor.
-    /// - warning: `AskResponse` may in the future no longer be backed by a NIO future and this field deprecated, or replaced by an adapter.
-    public let nioFuture: EventLoopFuture<Value>
+    /// - warning: `AskResponse` may in the future no longer be backed by a NIO future and this option deprecated.
+    case nioFuture(EventLoopFuture<Value>)
+}
 
-    // FIXME: Leaking that we depend on NIO a bit here...
-    public init(nioFuture: EventLoopFuture<Value>) {
-        self.nioFuture = nioFuture
-    }
+public enum AskError: Error {
+    case systemAlreadyShutDown
 }
 
 extension AskResponse: AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
-        self.nioFuture._onComplete { result in
+        switch self {
+        case .completed(let result):
             callback(result)
+        case .nioFuture(let nioFuture):
+            nioFuture._onComplete { result in
+                callback(result)
+            }
         }
     }
 
@@ -147,22 +158,27 @@ extension AskResponse: AsyncResult {
             return self
         }
 
-        // TODO: ask errors should be lovely and include where they were asked from (source loc)
-        let eventLoop = self.nioFuture.eventLoop
-        let promise: EventLoopPromise<Value> = eventLoop.makePromise()
-        let timeoutTask = eventLoop.scheduleTask(in: timeout.toNIO) {
-            promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout))
-        }
-        self.nioFuture.whenFailure {
-            timeoutTask.cancel()
-            promise.fail($0)
-        }
-        self.nioFuture.whenSuccess {
-            timeoutTask.cancel()
-            promise.succeed($0)
-        }
+        switch self {
+        case .completed:
+            return self
+        case .nioFuture(let nioFuture):
+            // TODO: ask errors should be lovely and include where they were asked from (source loc)
+            let eventLoop = nioFuture.eventLoop
+            let promise: EventLoopPromise<Value> = eventLoop.makePromise()
+            let timeoutTask = eventLoop.scheduleTask(in: timeout.toNIO) {
+                promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout))
+            }
+            nioFuture.whenFailure {
+                timeoutTask.cancel()
+                promise.fail($0)
+            }
+            nioFuture.whenSuccess {
+                timeoutTask.cancel()
+                promise.succeed($0)
+            }
 
-        return .init(nioFuture: promise.futureResult)
+            return .nioFuture(promise.futureResult)
+        }
     }
 }
 
