@@ -369,8 +369,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     // MARK: Inbound: If the message is definitely a system message (we know thanks to the manifests serializerID) decode and handle it
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        pprint("[[[[\(Self.self)]]]] channelRead data = \(data)")
-
         let wireEnvelope = self.unwrapInboundIn(data)
 
         // TODO: optimize by carrying ID in envelope of if we need to special handle this as system message

@@ -213,12 +213,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         }
     }
 
-    func dropMessage(_ message: Message) {
-        // TODO: implement support for logging dropped messages; those are different than deadLetters
-        pprint("[dropped] Message [\(message)]:\(type(of: message)) was not delivered.")
-        // system.deadLetters.tell(Dropped(message)) // TODO metadata
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Conforming to ActorContext
 

@@ -89,7 +89,7 @@ public enum Signals {
 
         /// Adopters may adjust the specific description as they see fit.
         open var description: String {
-            "Terminated(\(self.address), existenceConfirmed: \(self.existenceConfirmed), nodeTerminated: \(self.nodeTerminated))"
+            "Terminated(\(self.address), existenceConfirmed: \(self.existenceConfirmed))"
         }
     }
 

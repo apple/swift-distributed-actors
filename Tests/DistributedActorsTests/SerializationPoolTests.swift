@@ -19,7 +19,7 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-class SerializationPoolTests: XCTestCase {
+final class SerializationPoolTests: XCTestCase {
     struct Test1: Codable {
         // These locks are used to validate the different ordering guarantees
         // we give in the serialization pool. The locks are used to block
@@ -63,7 +63,7 @@ class SerializationPoolTests: XCTestCase {
 
         init(from decoder: Decoder) throws {
             Test2.deserializerLock.lock()
-            defer { Test2.deserializerLock.unlock() }
+            Test2.deserializerLock.unlock()
         }
 
         init() {}

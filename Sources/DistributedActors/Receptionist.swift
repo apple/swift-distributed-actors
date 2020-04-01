@@ -37,9 +37,13 @@ public enum Receptionist {
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
-    public class RegistrationKey<Message: ActorMessage>: _RegistrationKey, CustomStringConvertible {
+    public class RegistrationKey<Message: ActorMessage>: _RegistrationKey, CustomStringConvertible, ExpressibleByStringLiteral {
         public init(_ type: Message.Type, id: String) {
             super.init(id: id, typeHint: _typeName(Message.self as Any.Type))
+        }
+
+        public required init(stringLiteral value: StringLiteralType) {
+            super.init(id: value, typeHint: _typeName(Message.self as Any.Type))
         }
 
         internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Message> {
@@ -199,23 +203,47 @@ public enum Receptionist {
         internal var _registrations: [AnyRegistrationKey: Set<AddressableActorRef>] = [:]
         private var _subscriptions: [AnyRegistrationKey: Set<AnySubscribe>] = [:]
 
+        /// Per (receptionist) node mapping of which keys are presently known to this receptionist on the given node.
+        /// This is used to perform quicker cleanups upon a node/receptionist crashing, and thus all existing references
+        /// on that node should be removed from our storage.
+        private var _registeredKeysByNode: [UniqueNode: Set<AnyRegistrationKey>] = [:]
+
         /// Allows for reverse lookups, when an actor terminates, we know from which registrations and subscriptions to remove it from.
         internal var _addressToKeys: [ActorAddress: Set<AnyRegistrationKey>] = [:]
+
+        // ==== --------------------------------------------------------------------------------------------------------
+        // MARK: Registrations
 
         /// - returns: `true` if the value was a newly inserted value, `false` otherwise
         func addRegistration(key: AnyRegistrationKey, ref: AddressableActorRef) -> Bool {
             self.addRefKeyMapping(address: ref.address, key: key)
+            self.storeRegistrationNodeRelation(key: key, node: ref.address.node)
             return self.addTo(dict: &self._registrations, key: key, value: ref)
         }
 
         func removeRegistration(key: AnyRegistrationKey, ref: AddressableActorRef) -> Set<AddressableActorRef>? {
             _ = self.removeFromKeyMappings(ref)
+            self.removeSingleRegistrationNodeRelation(key: key, node: ref.address.node)
             return self.removeFrom(dict: &self._registrations, key: key, value: ref)
         }
 
         func registrations(forKey key: AnyRegistrationKey) -> Set<AddressableActorRef>? {
             self._registrations[key]
         }
+
+        private func storeRegistrationNodeRelation(key: AnyRegistrationKey, node: UniqueNode?) {
+            if let node = node {
+                self._registeredKeysByNode[node, default: []].insert(key)
+            }
+        }
+        private func removeSingleRegistrationNodeRelation(key: AnyRegistrationKey, node: UniqueNode?) {
+            // FIXME: Implement me (!), we need to make the storage a counter
+            // and decrement here by one; once the counter reaches zero we know there is no more relationship
+            // and we can prune this key/node relationship
+        }
+
+        // ==== --------------------------------------------------------------------------------------------------------
+        // MARK: Subscriptions
 
         func addSubscription(key: AnyRegistrationKey, subscription: AnySubscribe) -> Bool {
             self.addRefKeyMapping(address: subscription.address, key: key)
@@ -254,6 +282,32 @@ public enum Receptionist {
             }
 
             return registeredKeys
+        }
+
+        func pruneNode(_ node: UniqueNode) {
+            guard let keys = self._registeredKeysByNode[node] else {
+                // no keys were related to this node, we should have nothing to clean-up here
+                return
+            }
+
+            // for every key that was related to the now terminated node
+            for key in keys {
+                // 1) we remove any registrations that it hosted
+                let regs: Set<AddressableActorRef> = self._registrations.removeValue(forKey: key) ?? []
+                let prunedRegs = regs.filter { $0.address.node != node }
+                pprint("regs = \(regs)")
+                pprint("prunedRegs = \(prunedRegs)")
+                if !prunedRegs.isEmpty {
+                    self._registrations[key] = prunedRegs
+                }
+
+                // 2) and remove any of our subscriptions
+                let subs: Set<AnySubscribe> = self._subscriptions.removeValue(forKey: key) ?? []
+                let prunedSubs = subs.filter { $0.address.node == node }
+                if !prunedSubs.isEmpty {
+                    self._subscriptions[key] = prunedSubs
+                }
+            }
         }
 
         /// - returns: `true` if the value was a newly inserted value, `false` otherwise
@@ -360,6 +414,7 @@ public class _Register: ReceptionistMessage, NotTransportableActorMessage, Custo
 }
 
 // TODO: Receptionist._Lookup
+// TODO: or rather move to not classes here: https://github.com/apple/swift-distributed-actors/issues/510
 public class _Lookup: ReceptionistMessage, NotTransportableActorMessage {
     let _key: _RegistrationKey
 
@@ -381,6 +436,7 @@ public class _Lookup: ReceptionistMessage, NotTransportableActorMessage {
     }
 }
 
+// TODO: Receptionist._Registration key, or rather move to not classes here: https://github.com/apple/swift-distributed-actors/issues/510
 public class _RegistrationKey {
     let id: String
     let typeHint: FullyQualifiedTypeName
