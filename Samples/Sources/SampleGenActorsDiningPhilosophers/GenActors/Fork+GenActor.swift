@@ -74,7 +74,7 @@ extension Actor where A.Message == Fork.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Bool.self, timeout: .effectivelyInfinite) { _replyTo in
-                .take(_replyTo: _replyTo)}
+                Self.Message.take(_replyTo: _replyTo)}
         )
     }
  

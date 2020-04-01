@@ -151,6 +151,9 @@ struct ActorableMessageDecl {
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), \(errorType)>>"))
         case .nioEventLoopFuture(let valueType):
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
+        case .actorReply(let valueType):
+            // FIXME carry the return type raw in the reply enum
+            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         }
 
         return res
@@ -164,6 +167,7 @@ struct ActorableMessageDecl {
         case void
         case result(String, errorType: String)
         case nioEventLoopFuture(of: String)
+        case actorReply(of: String)
         case behavior(String)
         case type(String)
 
@@ -174,6 +178,13 @@ struct ActorableMessageDecl {
 
             if "\(t)".starts(with: "Behavior<") {
                 return .behavior("\(t)")
+            } else if "\(t)".starts(with: "Reply<") {
+                let valueTypeString = String("\(t)"
+                    .trim(character: " ")
+                    .replacingOccurrences(of: "Reply<", with: "")
+                    .dropLast(1)
+                )
+                return .actorReply(of: "\(valueTypeString)")
             } else if "\(t)".starts(with: "Result<") {
                 // TODO: instead analyse the type syntax?
                 let trimmed = String("\(t)"

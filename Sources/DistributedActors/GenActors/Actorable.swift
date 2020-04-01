@@ -111,18 +111,22 @@ extension Actorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reply
 
-public typealias Reply<Value> = ResultReply<Value>
-
-public enum ResultReply<Value, ErrorType: Error> {
-    case completed(Result<Value, Error>)
+public enum Reply<Value>: NotTransportableActorMessage {
+    case completed(Result<Value, ErrorEnvelope>)
     case nioFuture(EventLoopFuture<Value>)
 }
 
-extension ResultReply {
-    public static func from<AskReplyValue>(askResponse: AskResponse<AskReplyValue>) -> ResultReply<Value, Error> {
+extension Reply {
+    public static func from<AskReplyValue>(askResponse: AskResponse<AskReplyValue>) -> Reply<Value> {
         switch askResponse {
         case .completed(let result as Result<Value, Error>):
-            return .completed(result)
+            switch result {
+            case .success(let value):
+                return .completed(.success(value))
+            case .failure(let error):
+                return .completed(.failure(ErrorEnvelope(error)))
+            }
+
         case .nioFuture(let nioFuture as EventLoopFuture<Value>):
             return .nioFuture(nioFuture)
         case .nioFuture(let nioFuture as EventLoopFuture<Result<Value, Error>>):
@@ -144,11 +148,13 @@ extension ResultReply {
     }
 }
 
-extension ResultReply: AsyncResult {
+extension Reply: AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         switch self {
-        case .completed(let result):
-            callback(result)
+        case .completed(.success((let value))):
+            callback(.success(value))
+        case .completed(.failure(let error)):
+            callback(.failure(error))
         case .nioFuture(let nioFuture):
             nioFuture.whenComplete { callback($0) }
         }

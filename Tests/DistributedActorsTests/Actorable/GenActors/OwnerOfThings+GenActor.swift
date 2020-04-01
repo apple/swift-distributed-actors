@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,7 +17,6 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import class NIO.EventLoopFuture
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated OwnerOfThings messages 
@@ -53,14 +52,7 @@ extension OwnerOfThings {
  
                 case .performLookup(let _replyTo):
                     instance.performLookup()
-                        .whenComplete { res in
-                            switch res {
-                            case .success(let value):
-                                    ._onComplete { res in _replyTo.tell(res) }
-                            case .failure(let error):
-                                _replyTo.tell(.failure(ErrorEnvelope(error)))
-                            }
-                        } 
+ 
                 case .performSubscribe(let p):
                     instance.performSubscribe(p: p)
  
@@ -100,7 +92,7 @@ extension Actor where A.Message == OwnerOfThings.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Reception.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
-                .readLastObservedValue(_replyTo: _replyTo)}
+                Self.Message.readLastObservedValue(_replyTo: _replyTo)}
         )
     }
  
@@ -108,8 +100,8 @@ extension Actor where A.Message == OwnerOfThings.Message {
      func performLookup() -> Reply<Reception.Listing<OwnerOfThings>> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<Reception.Listing<OwnerOfThings>, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .performLookup(_replyTo: _replyTo)}
+            self.ref.ask(for: Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.performLookup(_replyTo: _replyTo)}
         )
     }
  

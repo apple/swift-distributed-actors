@@ -108,7 +108,9 @@ public struct ErrorEnvelope: Error, ActorMessage {
     public let error: Error
 
     public init<Failure: Error>(_ error: Failure) {
-        if let codableError = error as? Error & Codable {
+        if let alreadyAnEnvelope = error as? Self {
+            self = alreadyAnEnvelope
+        } else if let codableError = error as? Error & Codable {
             self.error = codableError
         } else {
             // we we can at least carry the error type (not the whole string repr, since it may have information we'd rather not share though)

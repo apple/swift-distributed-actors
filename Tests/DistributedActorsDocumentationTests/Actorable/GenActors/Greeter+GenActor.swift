@@ -91,7 +91,7 @@ extension Actor where A.Message == Greeter.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greet(name: name, _replyTo: _replyTo)}
+                Self.Message.greet(name: name, _replyTo: _replyTo)}
         )
     }
  

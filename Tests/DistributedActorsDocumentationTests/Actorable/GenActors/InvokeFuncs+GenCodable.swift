@@ -53,7 +53,7 @@ extension InvokeFuncs.Message {
             let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.doThingsAndRunTask__replyTo)
             self = .doThingsAndRunTask(_replyTo: _replyTo)
         case .doThingsAsync:
-            let _replyTo = try container.decode(ActorRef<Reply<Int>>.self, forKey: CodingKeys.doThingsAsync__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<Int, ErrorEnvelope>>.self, forKey: CodingKeys.doThingsAsync__replyTo)
             self = .doThingsAsync(_replyTo: _replyTo)
         case .internalTask:
             let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.internalTask__replyTo)

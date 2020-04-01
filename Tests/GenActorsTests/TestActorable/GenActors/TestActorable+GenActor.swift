@@ -208,7 +208,7 @@ extension Actor where A.Message == TestActorable.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)}
+                Self.Message.greetReplyToReturnStrict(name: name, _replyTo: _replyTo)}
         )
     }
  
@@ -216,8 +216,8 @@ extension Actor where A.Message == TestActorable.Message {
     public func greetReplyToReturnStrictThrowing(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)}
+            self.ref.ask(for: Result<String, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)}
         )
     }
  
@@ -225,8 +225,8 @@ extension Actor where A.Message == TestActorable.Message {
     public func greetReplyToReturnNIOFuture(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)}
+            self.ref.ask(for: Result<String, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)}
         )
     }
  
