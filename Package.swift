@@ -1,8 +1,8 @@
 // swift-tools-version:5.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
-import PackageDescription
 import class Foundation.ProcessInfo
+import PackageDescription
 
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
@@ -12,7 +12,7 @@ let globalSwiftSettings: [SwiftSetting]
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
     print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
     globalSwiftSettings = [
-        SwiftSetting.unsafeFlags(["-warnings-as-errors"])
+        SwiftSetting.unsafeFlags(["-warnings-as-errors"]),
     ]
 } else {
     globalSwiftSettings = []
@@ -53,14 +53,14 @@ var targets: [PackageDescription.Target] = [
             "ArgumentParser",
         ]
     ),
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Plugins
-    
+
     .target(
-         name: "ActorSingletonPlugin",
-         dependencies: ["DistributedActors"]
-     ),
+        name: "ActorSingletonPlugin",
+        dependencies: ["DistributedActors"]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: XPC
@@ -94,10 +94,10 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "DistributedActorsDocumentationTests",
         dependencies: [
-            "DistributedActors", 
-            "DistributedActorsXPC", 
+            "DistributedActors",
+            "DistributedActorsXPC",
             "ActorSingletonPlugin",
-            "DistributedActorsTestKit"
+            "DistributedActorsTestKit",
         ]
     ),
 
@@ -108,7 +108,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
     ),
-    
+
     .testTarget(
         name: "DistributedActorsTestKitTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
@@ -131,15 +131,15 @@ var targets: [PackageDescription.Target] = [
             "DistributedActorsTestKit",
         ]
     ),
-    
+
     .testTarget(
-         name: "ActorSingletonPluginTests",
-         dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
-     ),
+        name: "ActorSingletonPluginTests",
+        dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
-    
+
     .target(
         name: "it_ProcessIsolated_escalatingWorkers",
         dependencies: [
@@ -228,7 +228,7 @@ targets.append(contentsOf: [
     .target(
         name: "it_XPCActorable_echo_api",
         dependencies: [
-            "DistributedActorsXPC"
+            "DistributedActorsXPC",
         ],
         path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
     ),

@@ -199,37 +199,27 @@ extension Actor where A.Message == TestActorable.Message {
 
     public func greetReplyToReturnStrict(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)}.nioFuture
+                .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)}
         )
     }
  
 
     public func greetReplyToReturnStrictThrowing(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)}.nioFuture.flatMapThrowing { result in
-                switch result {
-                case .success(let res): return res
-                case .failure(let err): throw err
-                }
-            }
+                .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)}
         )
     }
  
 
     public func greetReplyToReturnNIOFuture(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)}.nioFuture.flatMapThrowing { result in
-                switch result {
-                case .success(let res): return res
-                case .failure(let err): throw err
-                }
-            }
+                .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)}
         )
     }
  

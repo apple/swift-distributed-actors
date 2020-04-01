@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -161,12 +161,12 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let answerB: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "BBB", replyTo: $0) }
 
         try self.testKit.eventually(within: .seconds(1)) {
-            answerA.nioFuture._onComplete { res in
+            answerA._onComplete { res in
                 pA.tell("\(res)")
             }
         }
         try self.testKit.eventually(within: .seconds(1)) {
-            answerB.nioFuture._onComplete { res in
+            answerB._onComplete { res in
                 pB.tell("\(res)")
             }
         }

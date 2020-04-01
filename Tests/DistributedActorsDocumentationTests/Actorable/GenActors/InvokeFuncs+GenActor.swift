@@ -99,27 +99,27 @@ extension Actor where A.Message == InvokeFuncs.Message {
 
     public func doThingsAndRunTask() -> Reply<Int> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
-                .doThingsAndRunTask(_replyTo: _replyTo)}.nioFuture
+                .doThingsAndRunTask(_replyTo: _replyTo)}
         )
     }
  
 
     public func doThingsAsync() -> Reply<Reply<Int>> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Reply<Int>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .doThingsAsync(_replyTo: _replyTo)}.nioFuture
+                .doThingsAsync(_replyTo: _replyTo)}
         )
     }
  
 
     internal func internalTask() -> Reply<Int> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
-                .internalTask(_replyTo: _replyTo)}.nioFuture
+                .internalTask(_replyTo: _replyTo)}
         )
     }
  

@@ -13,68 +13,68 @@
 ////===----------------------------------------------------------------------===//
 //
 //
-//import Dispatch
-//import Foundation
+// import Dispatch
+// import Foundation
 //
-//import DistributedActors
-//import CDistributedActorsMailbox
+// import DistributedActors
+// import CDistributedActorsMailbox
 //
 //
-//let system = ActorSystem("LetItCrashSystem")
+// let system = ActorSystem("LetItCrashSystem")
 //
-//func consumeAny<T>(_ value: T) {
+// func consumeAny<T>(_ value: T) {
 //    if 2 * 12 / 2 == 12 { // to avoid compiler issued warning about infinite recursion
 //        consumeAny(value)
 //     } else {
 //        return ()
 //    }
-//}
+// }
 //
-//func returnTrue() -> Bool {
+// func returnTrue() -> Bool {
 //    return true
-//}
+// }
 //
-//class Foo {
-//}
+// class Foo {
+// }
 //
 //
-//func crashIntegerOverflow() {
+// func crashIntegerOverflow() {
 //    let x: Int8 = 127
 //    consumeAny(x + (returnTrue() ? 1 : 0))
-//}
+// }
 //
-//func crashNil() {
+// func crashNil() {
 //    let x: Foo? = returnTrue() ? nil : Foo()
 //    consumeAny(x!)
-//}
+// }
 //
-//func crashFatalError() {
+// func crashFatalError() {
 //    fatalError("deliberately crashing in fatalError")
-//}
+// }
 //
-//func crashDivBy0() {
+// func crashDivBy0() {
 //    consumeAny(1 / (returnTrue() ? 0 : 1))
-//}
+// }
 //
-//func crashViaCDanglingPointer() {
+// func crashViaCDanglingPointer() {
 //    let x: Int = UnsafeMutableRawPointer(bitPattern: 0x8)!.load(fromByteOffset: 0, as: Int.self)
 //    consumeAny(x + 1)
-//}
+// }
 //
-//func crashArrayOutOfBounds() {
+// func crashArrayOutOfBounds() {
 //    consumeAny(["nothing"][1])
-//}
+// }
 //
-//func crashObjCException() {
+// func crashObjCException() {
 //    #if os(macOS)
 //    NSException(name: NSExceptionName("crash"),
 //        reason: "you asked for it",
 //        userInfo: nil).raise()
 //    #endif
 //    fatalError("objc exceptions only supported on macOS")
-//}
+// }
 //
-//func crashStackOverflow() {
+// func crashStackOverflow() {
 //    func recurse(accumulator: Int) -> Int {
 //        if 2 * 12 / 2 == 12 { // to avoid compiler issued warning about infinite recursion
 //            return 1 + recurse(accumulator: accumulator + 1)
@@ -84,9 +84,9 @@
 //    }
 //
 //    consumeAny(recurse(accumulator: 0))
-//}
+// }
 //
-//func crashOOM() {
+// func crashOOM() {
 //    #if os(macOS)
 //    var datas: [Data] = []
 //    var i: UInt8 = 1
@@ -97,21 +97,21 @@
 //    consumeAny(datas)
 //    #endif
 //    fatalError("OOM currently only supported on macOS")
-//}
+// }
 //
-//func crashRangeFromUpperBoundWhichLessThanLowerBound() {
+// func crashRangeFromUpperBoundWhichLessThanLowerBound() {
 //    let _ = ["one", "two"].suffix(from: 3)
-//}
+// }
 //
-//struct FooExclusivityViolation {
+// struct FooExclusivityViolation {
 //    var x = 0
 //
 //    mutating func addAndCall(_ body: () -> Void) {
 //        self.x += 1
 //        body()
 //    }
-//}
-//class BarExclusivityViolation {
+// }
+// class BarExclusivityViolation {
 //    var foo = FooExclusivityViolation(x: 0)
 //
 //    func doIt() {
@@ -119,12 +119,12 @@
 //            self.foo.addAndCall {}
 //        }
 //    }
-//}
-//func crashExclusiveAccessViolation() {
-//}
+// }
+// func crashExclusiveAccessViolation() {
+// }
 //
 //// Results from binary compiled as: `swift build -c release`
-//let crashTests = [
+// let crashTests = [
 //
 //    "integer-overflow": crashIntegerOverflow
 //    // Results in:
@@ -337,9 +337,9 @@
 //    // 15  libsystem_pthread.dylib             0x00007fff6cdec40d thread_start + 13
 //    // Segmentation fault: 11
 //    // ==== ------------------------------------------------------------------------------------------------------------
-//]
+// ]
 //
-//func help() {
+// func help() {
 //    let program = CommandLine.arguments[0]
 //    print("LetItCrash: Choose one of the following options:")
 //    for key in crashTests.keys {
@@ -351,9 +351,9 @@
 //    print("  for f in \(crashTests.keys.joined(separator: " ")); do echo \"$f\"; \(program) \"$f\"; done")
 //    print("or all of them (inside an actor):")
 //    print("  for f in \(crashTests.keys.joined(separator: " ")); do echo \"$f >>>\"; \(program) \"$f\" actor; done")
-//}
+// }
 //
-//func main() {
+// func main() {
 //    let crasher = (crashTests[CommandLine.arguments.suffix(from: 1).first ?? "help"] ?? help)
 //
 //    if CommandLine.arguments.count > 1 && CommandLine.arguments.suffix(from: 2).first == "actor" {
@@ -367,6 +367,6 @@
 //    } else {
 //        crasher() // invoke crasher directly
 //    }
-//}
+// }
 //
-//main()
+// main()

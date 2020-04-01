@@ -29,9 +29,6 @@ internal enum POSIXProcessUtils {
     /// - SeeAlso: https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/posix_spawn.2.html
     /// - SeeAlso: https://github.com/apple/swift-corelibs-foundation/blob/master/Foundation/Process.swift
     public static func spawn(command: String, args argv: [String]) throws -> Int {
-        // what to launch
-        let launchPath = argv[0] // TODO: should be equal to command?
-
         // pid
         var pid = pid_t()
 

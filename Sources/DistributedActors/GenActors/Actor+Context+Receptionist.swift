@@ -114,15 +114,12 @@ extension Actor.Context {
         /// - Parameters:
         ///   - key: selects which actors we are interested in.
         public func lookup<Act: Actorable>(_ key: Reception.Key<Act>, timeout: TimeAmount) -> Reply<Reception.Listing<Act>> {
-            let listingReply: AskResponse<SystemReceptionist.Listing<Act.Message>> = self.underlying.system.receptionist.ask(timeout: timeout) {
+            let listingReply: AskResponse<Reception.Listing<Act>> = self.underlying.system.receptionist.ask(timeout: timeout) {
                 SystemReceptionist.Lookup(key: key.underlying, replyTo: $0)
-            }
-
-            let actorListing: EventLoopFuture<Reception.Listing<Act>> = listingReply.nioFuture.map { listing in
+            }.map { listing in
                 Reception.Listing(refs: listing.refs)
             }
-
-            return Reply(nioFuture: actorListing)
+            return Reply.from(askResponse: listingReply)
         }
     }
 }

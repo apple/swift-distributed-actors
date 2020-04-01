@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import DistributedActors
 import DistributedActorsXPC
 import it_XPCActorable_echo_api
+import NIO
 
 let serviceName = "com.apple.distributedactors.XPCLibService"
 
@@ -36,13 +36,13 @@ case "echo":
     let reply: Reply<String> = xpcGreetingsActor.echo(string: "Capybara")
 
     // await reply
-    reply.withTimeout(after: .seconds(2))._nioFuture.whenComplete {
+    reply.withTimeout(after: .seconds(2))._onComplete {
         system.log.info("Received reply from \(xpcGreetingsActor): \($0)")
         exit(0) // good, we got the reply
     }
 
 case "letItCrash":
-    _ = try system.spawn("watcher", { ActorableWatcher(context: $0, service: xpcGreetingsActor) })
+    _ = try system.spawn("watcher") { ActorableWatcher(context: $0, service: xpcGreetingsActor) }
     // the watcher watches service when it starts
     xpcGreetingsActor.letItCrash()
 

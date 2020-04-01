@@ -35,10 +35,10 @@ extension Actor where A: XPCEchoServiceProtocol {
 
     public func echo(string: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
                 A._boxXPCEchoServiceProtocol(.echo(string: string, _replyTo: _replyTo))
-            }.nioFuture
+            }
         )
     }
  

@@ -84,9 +84,9 @@ extension Actor where A.Message == TestMembershipOwner.Message {
 
      func replyMembership() -> Reply<Cluster.Membership?> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Cluster.Membership?.self, timeout: .effectivelyInfinite) { _replyTo in
-                .replyMembership(_replyTo: _replyTo)}.nioFuture
+                .replyMembership(_replyTo: _replyTo)}
         )
     }
  

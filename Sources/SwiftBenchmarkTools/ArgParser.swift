@@ -96,7 +96,7 @@ class ArgumentParser<U> {
         self.arguments += [
             Argument(
                 name: "--help", help: "show this help message and exit",
-                apply: printUsage
+                apply: self.printUsage
             ),
         ]
     }
