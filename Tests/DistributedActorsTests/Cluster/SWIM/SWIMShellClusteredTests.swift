@@ -19,9 +19,6 @@ import Foundation
 import XCTest
 
 final class SWIMShellClusteredTests: ClusteredNodesTestBase {
-    override var captureLogs: Bool {
-        false
-    }
 
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!

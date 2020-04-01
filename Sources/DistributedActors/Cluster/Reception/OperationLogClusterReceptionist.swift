@@ -598,23 +598,27 @@ extension OperationLogClusterReceptionist {
 
 extension OperationLogClusterReceptionist {
     private func onReceptionistTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
-        /// This is a sneaky trick to allow calling removeValue(ActorRef<Message>) directly rather than doing a full scan of the collection.
-        /// ActorRef equality is performed ONLY by `ActorAddress`, which means that we can "make up" this reference and it'd compare
-        /// correctly with a stored actor reference for this address if we had such.
-        let equalityHackRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminated.address, system: nil)))
-        if let removedReplayer = self.peerReceptionistReplayers.removeValue(forKey: equalityHackRef) {
-            context.log.trace("Removed peer receptionist [\(terminated.address)], was ops until: \(removedReplayer.atSeqNr)")
+        if let node = terminated.address.node {
+            self.pruneClusterMember(context, removedNode: node)
+        } else {
+            context.log.warning("Receptionist [\(terminated.address)] terminated however has no `node` set, this is highly suspect. It would mean this is 'us', but that cannot be.")
         }
     }
 
     private func onActorTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
-        let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log, address: terminated.address, system: nil)))
+        self.onActorTerminated(context, address: terminated.address)
+    }
+    
+    private func onActorTerminated(_ context: ActorContext<Message>, address: ActorAddress) {
+        let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log, address: address, system: nil)))
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAddressable())
 
         for key in wasRegisteredWithKeys {
-            self.addOperation(context, .remove(key: key, address: terminated.address))
+            self.addOperation(context, .remove(key: key, address: address))
             self.publishListings(context, forKey: key)
         }
+
+        context.log.trace("Actor terminated \(address), and removed from receptionist.")
     }
 }
 
@@ -646,7 +650,7 @@ extension OperationLogClusterReceptionist {
                 self.onNewClusterMember(context, change: effectiveChange)
             } else if effectiveChange.toStatus.isAtLeastDown {
                 // a member was removed, we should prune it from our observations
-                self.pruneClusterMember(context, removalChange: effectiveChange)
+                self.pruneClusterMember(context, removedNode: effectiveChange.node)
             }
 
         case .leadershipChange, .reachabilityChange:
@@ -679,19 +683,25 @@ extension OperationLogClusterReceptionist {
         self.replicateOpsBatch(context, to: remoteReceptionist)
     }
 
-    private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removalChange: Cluster.MembershipChange) {
-        // TODO: we could do this on the peer Receptionist dying, this way no need to invent the ref but get it from Terminated
-        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removalChange.node)
+    private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
+        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode)
         let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
 
-        _ = self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef)
+        guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {
+            // we already removed it, so no need to keep scanning for it.
+            // this could be because we received a receptionist termination before a node down or vice versa.
+            //
+            // although this should not happen and may indicate we got a Terminated for an address twice?
+            return
+        }
 
-        // clear observations
+        // clear observations; we only get them directly from the origin node, so since it has been downed
+        // we will never receive more observations from it.
         _ = self.observedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
         _ = self.appliedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
 
-        // clear state // FIXME: !!!!!!
-        context.log.warning("FIXME: !!!Should remove all registrations of actors on \(removalChange.node) but not implemented yet!!!")
+        // clear state any registrations still lingering about the now-known-to-be-down node
+        self.storage.pruneNode(removedNode)
     }
 }
 
