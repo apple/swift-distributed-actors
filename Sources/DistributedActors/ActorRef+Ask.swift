@@ -117,7 +117,7 @@ extension ActorRef: ReceivesQuestions {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: AskResponse
 
-/// Synchronously or asynchronously completed response to an `ask` operation.
+/// Eagerly or asynchronously completed response to an `ask` operation.
 ///
 /// It is possible to `context.awaitResult` or `context.onResultAsync` on this type to safely consume it inside
 /// the actors "single threaded illusion" context.
