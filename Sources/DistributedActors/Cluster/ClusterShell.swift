@@ -312,8 +312,8 @@ internal class ClusterShell {
 
     private let props: Props =
         Props()
-            .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
-            ._asWellKnown
+        .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
+        ._asWellKnown
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
