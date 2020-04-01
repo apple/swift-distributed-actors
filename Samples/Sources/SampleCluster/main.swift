@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -37,6 +37,7 @@ let args = CommandLine.arguments
 guard let port = (args.dropFirst().first.flatMap { n in Int(n) }) else {
     fatalError("no port provided; Example: swift run SampleCluster 8228 [[127.0.0.1:]7337]")
 }
+
 let joinAddress = args.dropFirst(2).first
 
 let system = ActorSystem("SampleCluster") { settings in
@@ -67,10 +68,10 @@ system.cluster.events.subscribe(eventsListener) // <2>
 // end::cluster-sample-event-listener[]
 
 // TODO: making this codable and making Chat Routlette example?
-//enum ChatMessage {
+// enum ChatMessage {
 //    case announcement(String)
 //    case text(String, from: ActorRef<ChatMessage>)
-//}
+// }
 // tag::cluster-sample-actors-discover-and-chat[]
 let chatter: ActorRef<String> = try system.spawn("chatter", .receive { context, text in
     context.log.info("Received: \(text)")
@@ -91,6 +92,7 @@ if system.cluster.node.port == 7337 { // <2>
         }
     })
 }
+
 // end::cluster-sample-actors-discover-and-chat[]
 
 system.park(atMost: .seconds(60))

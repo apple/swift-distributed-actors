@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import DistributedActors
 import DistributedActorsXPC
 import it_XPCActorable_echo_api
+import NIO
 
 let serviceName = "com.apple.sakkana.XPCLibService"
 
@@ -42,7 +42,7 @@ case "echo":
     }
 
 case "letItCrash":
-    _ = try system.spawn("watcher", { ActorableWatcher(context: $0, service: xpcGreetingsActor) })
+    _ = try system.spawn("watcher") { ActorableWatcher(context: $0, service: xpcGreetingsActor) }
     // the watcher watches service when it starts
     xpcGreetingsActor.letItCrash()
 

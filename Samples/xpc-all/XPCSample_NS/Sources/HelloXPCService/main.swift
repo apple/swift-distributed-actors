@@ -33,7 +33,6 @@ final class ServiceDelegate: NSObject, NSXPCListenerDelegate {
 // MARK: Impl
 
 @objc class HelloXPCService: NSObject, HelloXPCServiceProtocol {
-
     func hello(withReply reply: @escaping (String) -> Void) {
         reply("Hello!")
     }
@@ -47,4 +46,3 @@ let delegate = ServiceDelegate()
 listener.delegate = delegate
 listener.resume()
 RunLoop.main.run()
-

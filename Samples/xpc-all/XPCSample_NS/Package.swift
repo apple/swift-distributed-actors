@@ -4,7 +4,6 @@
 import PackageDescription
 
 let targets: [PackageDescription.Target] = [
-
     .target(
         name: "HelloXPCProtocol",
         dependencies: [
@@ -13,17 +12,16 @@ let targets: [PackageDescription.Target] = [
     .target(
         name: "HelloXPC",
         dependencies: [
-            "HelloXPCProtocol"
+            "HelloXPCProtocol",
         ]
     ),
 
     .target(
         name: "HelloXPCService",
         dependencies: [
-            "HelloXPCProtocol"
+            "HelloXPCProtocol",
         ]
     ),
-
 ]
 
 var dependencies: [Package.Dependency] = [
@@ -35,7 +33,7 @@ let package = Package(
         .executable(
             name: "HelloXPC",
             targets: [
-                "HelloXPC"
+                "HelloXPC",
             ]
         ),
     ],

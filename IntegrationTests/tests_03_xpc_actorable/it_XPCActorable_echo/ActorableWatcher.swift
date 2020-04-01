@@ -18,7 +18,6 @@ import Foundation
 import it_XPCActorable_echo_api
 
 struct ActorableWatcher: Actorable {
-
     let context: Myself.Context
     let service: Actor<XPCEchoServiceProtocolStub>
 
