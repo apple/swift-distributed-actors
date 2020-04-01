@@ -32,14 +32,9 @@ extension Actor where A: GreetingsService {
 
     public func greet(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
                 A._boxGreetingsService(.greet(name: name, _replyTo: _replyTo))
-            }.nioFuture.flatMapThrowing { result in
-                switch result {
-                case .success(let res): return res
-                case .failure(let err): throw err
-                }
             }
         )
     }
@@ -57,14 +52,9 @@ extension Actor where A: GreetingsService {
 
     public func greetFuture(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
                 A._boxGreetingsService(.greetFuture(name: name, _replyTo: _replyTo))
-            }.nioFuture.flatMapThrowing { result in
-                switch result {
-                case .success(let res): return res
-                case .failure(let err): throw err
-                }
             }
         )
     }
