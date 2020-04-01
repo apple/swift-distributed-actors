@@ -526,6 +526,13 @@ extension ActorableMessageDecl {
             printer.indent()
             printer.print("self.ref.ask(for: Result<\(futureValueType), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
             printer.indent()
+        case .actorReply(let replyValueType):
+            isAsk = true
+            printer.print("// TODO: FIXME perhaps timeout should be taken from context")
+            printer.print("Reply.from(askResponse: ")
+            printer.indent()
+            printer.print("self.ref.ask(for: Result<\(replyValueType), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.indent()
         case .type(let t):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
@@ -598,11 +605,13 @@ extension ActorableMessageDecl.ReturnType {
         case .behavior:
             return ""
         case .result(let t, let errT):
-            return " -> ResultReply<\(t), \(errT)>" // TODO: Reply type; ResultReply<T, Reason>
+            return " -> ResultReply<\(t), \(errT)>" 
         case .nioEventLoopFuture(let t):
-            return " -> Reply<\(t)>" // TODO: Reply type; Reply<T>
+            return " -> Reply<\(t)>"
+        case .actorReply(let t):
+            return " -> Reply<\(t)>"
         case .type(let t):
-            return " -> Reply<\(t)>" // TODO: Reply type; Reply<T>
+            return " -> Reply<\(t)>"
         }
     }
 
@@ -616,6 +625,8 @@ extension ActorableMessageDecl.ReturnType {
             return " -> Result<\(t), \(errT)>"
         case .nioEventLoopFuture(let t):
             return " -> EventLoopFuture<\(t)>"
+        case .actorReply(let t):
+            return " -> Reply<\(t)>"
         case .type(let t):
             return " -> \(t)"
         }
@@ -641,7 +652,7 @@ extension ActorableMessageDecl.ReturnType {
         switch self {
         case .void, .behavior:
             return false
-        case .type, .result, .nioEventLoopFuture:
+        case .type, .result, .actorReply, .nioEventLoopFuture:
             return true
         }
     }
