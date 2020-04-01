@@ -130,7 +130,11 @@ extension ResultReply {
                 }
             )
         default:
-            fatalError("ERROR!!!")
+            let errorMessage = """
+            Received unexpected ask reply of type [\(AskReplyValue.self)] which cannot be converted to reply type [\(Value.self)]. \
+            This is a bug, please report this on the issue tracker.
+            """
+            fatalError(errorMessage)
         }
     }
 }

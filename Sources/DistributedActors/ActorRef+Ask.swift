@@ -183,6 +183,22 @@ extension AskResponse: AsyncResult {
     }
 }
 
+extension AskResponse {
+    public func map<NewValue>(_ callback: @escaping (Value) -> (NewValue)) -> AskResponse<NewValue> {
+        switch self {
+        case .completed(let result):
+            switch result {
+            case .success(let value):
+                return .completed(.success(callback(value)))
+            case .failure(let error):
+                return .completed(.failure(error))
+            }
+        case .nioFuture(let nioFuture):
+            return .nioFuture(nioFuture.map { callback($0) })
+        }
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Ask Actor
 
