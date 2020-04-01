@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -108,19 +108,66 @@ extension Actorable {
 
 public typealias Reply<Value> = ResultReply<Value, Error>
 
-public struct ResultReply<Value, ErrorType: Error>: AsyncResult {
-    public let _nioFuture: EventLoopFuture<Value>
+public enum ResultReply<Value, ErrorType: Error> {
+    case completed(Result<Value, Error>)
+    case nioFuture(EventLoopFuture<Value>)
+}
 
-    public init(nioFuture: EventLoopFuture<Value>) {
-        self._nioFuture = nioFuture
+extension ResultReply {
+    public static func from<AskReplyValue>(askResponse: AskResponse<AskReplyValue>) -> ResultReply<Value, Error> {
+        switch askResponse {
+        case .completed(let result as Result<Value, Error>):
+            return .completed(result)
+        case .nioFuture(let nioFuture as EventLoopFuture<Value>):
+            return .nioFuture(nioFuture)
+        case .nioFuture(let nioFuture as EventLoopFuture<Result<Value, Error>>):
+            return .nioFuture(
+                nioFuture.flatMapThrowing { result in
+                    switch result {
+                    case .success(let res): return res
+                    case .failure(let err): throw err
+                    }
+                }
+            )
+        default:
+            let errorMessage = """
+            Received unexpected ask reply of type [\(AskReplyValue.self)] which cannot be converted to reply type [\(Value.self)]. \
+            This is a bug, please report this on the issue tracker.
+            """
+            fatalError(errorMessage)
+        }
     }
 
+    /// Blocks and waits until there is a reply or fails with an error.
+    ///
+    /// - Warning: This is blocking and should be avoided in production code. Use asynchronous callbacks instead.
+    public func wait() throws -> Value {
+        switch self {
+        case .completed(let result):
+            return try result.get()
+        case .nioFuture(let nioFuture):
+            return try nioFuture.wait()
+        }
+    }
+}
+
+extension ResultReply: AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
-        self._nioFuture.whenComplete { callback($0) }
+        switch self {
+        case .completed(let result):
+            callback(result)
+        case .nioFuture(let nioFuture):
+            nioFuture.whenComplete { callback($0) }
+        }
     }
 
     public func withTimeout(after timeout: TimeAmount) -> Self {
-        ResultReply(nioFuture: self._nioFuture.withTimeout(after: timeout))
+        switch self {
+        case .completed:
+            return self
+        case .nioFuture(let nioFuture):
+            return .nioFuture(nioFuture.withTimeout(after: timeout))
+        }
     }
 }
 

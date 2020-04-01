@@ -82,9 +82,9 @@ extension Actor where A.Message == TestActorableNamespace.TestActorableNamespace
 
      func echo(_ string: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .echo(string, _replyTo: _replyTo)}.nioFuture
+                .echo(string, _replyTo: _replyTo)}
         )
     }
  

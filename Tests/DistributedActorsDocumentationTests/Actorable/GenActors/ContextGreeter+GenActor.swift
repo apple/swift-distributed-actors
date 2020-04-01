@@ -89,9 +89,9 @@ extension Actor where A.Message == ContextGreeter.Message {
 
      func greet(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greet(name: name, _replyTo: _replyTo)}.nioFuture
+                .greet(name: name, _replyTo: _replyTo)}
         )
     }
  

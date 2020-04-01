@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -206,9 +206,11 @@ class ActorDocExamples: XCTestCase {
             Receptionist.Lookup(key: key, replyTo: $0)
         }
 
-        result.nioFuture.whenSuccess { listing in
-            for ref in listing.refs {
-                ref.tell("Hello")
+        result._onComplete { result in
+            if case .success(let listing) = result {
+                for ref in listing.refs {
+                    ref.tell("Hello")
+                }
             }
         }
 
@@ -282,7 +284,7 @@ class ActorDocExamples: XCTestCase {
             Hello(name: "Anne", replyTo: replyTo) // <2>
         }
 
-        let result = try response.nioFuture.wait() // <3>
+        let result = try response.wait() // <3>
         // end::ask_outside[]
         _ = result
     }

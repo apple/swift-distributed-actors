@@ -19,7 +19,6 @@ import DistributedActorsXPC
 import NIO
 
 public protocol GreetingsService: XPCActorableProtocol {
-
     func logGreeting(name: String) throws
     func greet(name: String) throws -> String
     func fatalCrash()

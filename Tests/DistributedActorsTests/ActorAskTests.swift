@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -33,7 +33,7 @@ final class ActorAskTests: ActorSystemTestBase {
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
-        let result = try response.nioFuture.wait()
+        let result = try response.wait()
 
         result.shouldEqual("received")
     }
@@ -47,8 +47,12 @@ final class ActorAskTests: ActorSystemTestBase {
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
-        shouldThrow(expected: TimeoutError.self) {
-            _ = try response.nioFuture.wait()
+        let error = shouldThrow {
+            _ = try response.wait()
+        }
+
+        guard case AskError.timedOut = error else {
+            throw testKit.fail("Expected AskError.timedOut, got \(error)")
         }
     }
 
@@ -63,7 +67,7 @@ final class ActorAskTests: ActorSystemTestBase {
 
         let response = ref.ask(for: String.self, timeout: .milliseconds(1)) { TestMessage(replyTo: $0) }
 
-        let result = try response.nioFuture.wait()
+        let result = try response.wait()
 
         result.shouldEqual("received:1")
     }
@@ -149,9 +153,9 @@ final class ActorAskTests: ActorSystemTestBase {
             }
         })
 
-        var msg = "TimeoutError("
+        var msg = "timedOut(DistributedActors.TimeoutError("
         msg += "message: \"AskResponse<String> timed out after 100ms\", "
-        msg += "timeout: TimeAmount(100ms, nanoseconds: 100000000))"
+        msg += "timeout: TimeAmount(100ms, nanoseconds: 100000000)))"
         try p.expectMessage(msg)
     }
 
@@ -162,8 +166,12 @@ final class ActorAskTests: ActorSystemTestBase {
             AnswerMePlease(replyTo: $0)
         }
 
-        shouldThrow(expected: TimeoutError.self) {
-            try result.nioFuture.wait()
+        let error = shouldThrow {
+            try result.wait()
+        }
+
+        guard case AskError.timedOut = error else {
+            throw testKit.fail("Expected AskError.timedOut, got \(error)")
         }
     }
 

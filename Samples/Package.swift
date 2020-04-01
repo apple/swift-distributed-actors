@@ -40,18 +40,18 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "SampleGenActorsDiningPhilosophers",
         dependencies: [
-            "DistributedActors"
+            "DistributedActors",
         ],
         path: "Sources/SampleGenActorsDiningPhilosophers"
     ),
 
     /* --- tests --- */
-    
+
     // no-tests placeholder project to not have `swift test` fail on Samples/
     .testTarget(
         name: "NoopTests",
         dependencies: [
-            "DistributedActorsTestKit"
+            "DistributedActorsTestKit",
         ],
         path: "Tests/NoopTests"
     ),
@@ -66,7 +66,7 @@ targets.append(contentsOf: [
     .target(
         name: "XPCActorServiceAPI",
         dependencies: [
-            "DistributedActorsXPC"
+            "DistributedActorsXPC",
         ],
         path: "Sources/XPCActorServiceAPI"
     ),

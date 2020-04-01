@@ -53,7 +53,7 @@ extension OwnerOfThings {
  
                 case .performLookup(let _replyTo):
                     instance.performLookup()
-                                    .whenComplete { res in _replyTo.tell(res) } 
+                                    ._onComplete { res in _replyTo.tell(res) }
                 case .performSubscribe(let p):
                     instance.performSubscribe(p: p)
  
@@ -91,23 +91,18 @@ extension Actor where A.Message == OwnerOfThings.Message {
 
      func readLastObservedValue() -> Reply<Reception.Listing<OwnerOfThings>?> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Reception.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
-                .readLastObservedValue(_replyTo: _replyTo)}.nioFuture
+                .readLastObservedValue(_replyTo: _replyTo)}
         )
     }
  
 
      func performLookup() -> Reply<Reception.Listing<OwnerOfThings>> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Result<Reception.Listing<OwnerOfThings>, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .performLookup(_replyTo: _replyTo)}.nioFuture.flatMapThrowing { result in
-                switch result {
-                case .success(let res): return res
-                case .failure(let err): throw err
-                }
-            }
+                .performLookup(_replyTo: _replyTo)}
         )
     }
  
