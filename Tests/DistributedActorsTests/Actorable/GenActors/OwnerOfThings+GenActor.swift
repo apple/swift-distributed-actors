@@ -53,7 +53,7 @@ extension OwnerOfThings {
  
                 case .performLookup(let _replyTo):
                     instance.performLookup()
-                                    .whenComplete { res in _replyTo.tell(res) } 
+                                    ._onComplete { res in _replyTo.tell(res) }
                 case .performSubscribe(let p):
                     instance.performSubscribe(p: p)
  

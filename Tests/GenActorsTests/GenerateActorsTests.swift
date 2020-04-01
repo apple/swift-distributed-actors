@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -93,7 +93,7 @@ final class GenerateActorsTests: XCTestCase {
         let name = "Caplin"
         let futureString: Reply<String> = actor.greetReplyToReturnStrict(name: name)
 
-        try futureString._nioFuture.wait().shouldEqual("Hello strict \(name)!")
+        try futureString.wait().shouldEqual("Hello strict \(name)!")
     }
 
     func test_TestActorable_greetReplyToReturnStrictThrowing() throws {
@@ -102,7 +102,7 @@ final class GenerateActorsTests: XCTestCase {
         let name = "Caplin"
         let futureString: Reply<String> = actor.greetReplyToReturnStrictThrowing(name: name)
 
-        try futureString._nioFuture.wait().shouldEqual("Hello strict \(name)!")
+        try futureString.wait().shouldEqual("Hello strict \(name)!")
     }
 
     func test_TestActorable_greetReplyToReturnNIOFuture() throws {
@@ -111,7 +111,7 @@ final class GenerateActorsTests: XCTestCase {
         let name = "Caplin"
         let futureString: Reply<String> = actor.greetReplyToReturnNIOFuture(name: name)
 
-        try futureString._nioFuture.wait().shouldEqual("Hello NIO \(name)!")
+        try futureString.wait().shouldEqual("Hello NIO \(name)!")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -319,7 +319,7 @@ final class GenerateActorsTests: XCTestCase {
         }
 
         let reply = nestedActor.echo("Hi!")
-        try reply._nioFuture.wait().shouldEqual("Hi!")
+        try reply.wait().shouldEqual("Hi!")
     }
 
     func test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly() throws {
@@ -328,7 +328,7 @@ final class GenerateActorsTests: XCTestCase {
         }
 
         let reply = nestedActor.echo("Hi!")
-        try reply._nioFuture.wait().shouldEqual("Hi!")
+        try reply.wait().shouldEqual("Hi!")
     }
 
     func test_TestActorableNamespaceExtensionEnumDirectly_shouldHaveBeenGeneratedProperly() throws {
@@ -337,6 +337,6 @@ final class GenerateActorsTests: XCTestCase {
         }
 
         let reply = nestedActor.echo("Hi!")
-        try reply._nioFuture.wait().shouldEqual("Hi!")
+        try reply.wait().shouldEqual("Hi!")
     }
 }

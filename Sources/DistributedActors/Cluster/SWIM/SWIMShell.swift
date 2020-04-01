@@ -204,10 +204,10 @@ internal struct SWIMShell {
                 self.tracelog(context, .ask(member.ref), message: pingReq)
                 return SWIM.Message.remote(pingReq)
             }
-            
+
             answer._onComplete { result in
                 context.system.metrics.recordSWIMPingPingResponseTime(since: startPingReq)
-                
+
                 // We choose to cascade only successes;
                 // While this has a slight timing implication on time timeout of the pings -- the node that is last
                 // in the list that we ping, has slightly less time to fulfil the "total ping timeout"; as we set a total timeout on the entire `firstSuccess`.

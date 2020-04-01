@@ -98,7 +98,7 @@ final class ClusterEventStreamTests: ActorSystemTestBase {
         switch try p1.expectMessage() {
         case .snapshot(let snapshot):
             let members = snapshot.members(atLeast: .joining)
-            Set(members).shouldEqual(Set([memberA, memberB]))
+            Set(members).shouldEqual(Set([self.memberA, self.memberB]))
 
         default:
             throw p1.error("Expected a snapshot with all the data")

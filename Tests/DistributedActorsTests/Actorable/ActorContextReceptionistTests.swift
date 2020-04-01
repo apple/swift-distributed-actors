@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,8 +23,8 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         }
 
         let listing: Reception.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(1)) {
-            let readFuture = owner.readLastObservedValue()
-            guard let listing = try readFuture._nioFuture.wait() else {
+            let readReply = owner.readLastObservedValue()
+            guard let listing = try readReply.wait() else {
                 throw self.testKit.error()
             }
             return listing
@@ -52,7 +52,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         }
 
         let reply = owner.performLookup()
-        try reply._nioFuture.wait().first.shouldEqual(owner)
+        try reply.wait().first.shouldEqual(owner)
     }
 
     func test_subscribe_genericType() throws {
