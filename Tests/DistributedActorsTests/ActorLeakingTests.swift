@@ -203,7 +203,7 @@ class ActorLeakingTests: ActorSystemTestBase {
         #endif
     }
 
-    class LeakTestMessage {
+    final class LeakTestMessage {
         let deallocated: Atomic<Bool>?
 
         init(_ deallocated: Atomic<Bool>?) {
@@ -250,5 +250,22 @@ class ActorLeakingTests: ActorSystemTestBase {
         pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
         return ()
         #endif
+    }
+}
+
+extension ActorLeakingTests.LeakTestMessage: Codable {
+    public enum CodingKeys: CodingKey {
+        case _deallocated
+    }
+
+    public convenience init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let value = try container.decode(Bool.self, forKey: CodingKeys._deallocated)
+        self.init(Atomic(value: value))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(deallocated?.load() ?? false, forKey: CodingKeys._deallocated)
     }
 }
