@@ -125,9 +125,12 @@ internal class ClusterShell {
         // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
         if state.membership.mark(remoteNode, as: .down) == nil {
             // it was already removed, nothing to do
-            state.log.trace("Finish association with \(remoteNode), yet node not in membership already?", metadata: [
-                "cluster/membership": "\(state.membership)",
-            ])
+            state.log.trace(
+                "Finish association with \(remoteNode), yet node not in membership already?",
+                metadata: [
+                    "cluster/membership": "\(state.membership)",
+                ]
+            )
         } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
 
         // The lat thing we attempt to do with the other node is to shoot it, in case it's a "zombie" that still may
@@ -505,13 +508,16 @@ extension ClusterShell {
             let beforeGossipMerge = state.latestGossip
 
             let mergeDirective = state.latestGossip.mergeForward(incoming: gossip) // mutates the gossip
-            context.log.trace("Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
-                "tag": "membership",
-                "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
-                "gossip/incoming": "\(gossip)",
-                "gossip/before": "\(beforeGossipMerge)",
-                "gossip/now": "\(state.latestGossip)",
-            ])
+            context.log.trace(
+                "Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.",
+                metadata: [
+                    "tag": "membership",
+                    "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
+                    "gossip/incoming": "\(gossip)",
+                    "gossip/before": "\(beforeGossipMerge)",
+                    "gossip/now": "\(state.latestGossip)",
+                ]
+            )
 
             mergeDirective.effectiveChanges.forEach { effectiveChange in
                 // a change COULD have also been a replacement, in which case we need to publish it as well
@@ -525,9 +531,12 @@ extension ClusterShell {
 
             let leaderActions = state.collectLeaderActions()
             if !leaderActions.isEmpty {
-                state.log.trace("Leadership actions upon gossip: \(leaderActions)", metadata: [
-                    "tag": "membership",
-                ])
+                state.log.trace(
+                    "Leadership actions upon gossip: \(leaderActions)",
+                    metadata: [
+                        "tag": "membership",
+                    ]
+                )
             }
 
             state = self.interpretLeaderActions(context.system, state, leaderActions)
@@ -854,23 +863,32 @@ extension ClusterShell {
         let myselfNode = state.myselfNode
 
         guard myselfNode == myselfNode else {
-            state.log.warning("Received stray .restInPeace message! Was intended for \(reflecting: intendedNode), ignoring.", metadata: [
-                "cluster/node": "\(String(reflecting: myselfNode))",
-                "sender/node": "\(String(reflecting: fromNode))",
-            ])
+            state.log.warning(
+                "Received stray .restInPeace message! Was intended for \(reflecting: intendedNode), ignoring.",
+                metadata: [
+                    "cluster/node": "\(String(reflecting: myselfNode))",
+                    "sender/node": "\(String(reflecting: fromNode))",
+                ]
+            )
             return .same
         }
         guard !context.system.isShuttingDown else {
             // we are already shutting down thus other nodes declaring us as down is expected
-            state.log.trace("Already shutting down, received .restInPeace from [\(fromNode)], this is expected, other nodes may sever their connections with this node while we terminate.", metadata: [
-                "sender/node": "\(String(reflecting: fromNode))",
-            ])
+            state.log.trace(
+                "Already shutting down, received .restInPeace from [\(fromNode)], this is expected, other nodes may sever their connections with this node while we terminate.",
+                metadata: [
+                    "sender/node": "\(String(reflecting: fromNode))",
+                ]
+            )
             return .same
         }
 
-        state.log.warning("Received .restInPeace from \(fromNode), meaning this node is known to be .down or worse, and should terminate. Initiating self .down-ing.", metadata: [
-            "sender/node": "\(String(reflecting: fromNode))",
-        ])
+        state.log.warning(
+            "Received .restInPeace from \(fromNode), meaning this node is known to be .down or worse, and should terminate. Initiating self .down-ing.",
+            metadata: [
+                "sender/node": "\(String(reflecting: fromNode))",
+            ]
+        )
 
         guard let myselfMember = state.membership.uniqueMember(myselfNode) else {
             state.log.error("Unable to find Cluster.Member for \(myselfNode) self node! This should not happen, please file an issue.")
@@ -981,9 +999,12 @@ extension ClusterShell {
         guard memberToDown.node != state.myselfNode else {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
-            context.log.warning("Self node was marked [.down]!", metadata: [ // TODO: carry reason why -- was it gossip, manual or other
-                "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
-            ])
+            context.log.warning(
+                "Self node was marked [.down]!",
+                metadata: [ // TODO: carry reason why -- was it gossip, manual or other
+                    "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
+                ]
+            )
 
             self._swimRef?.tell(.local(.confirmDead(memberToDown.node)))
 

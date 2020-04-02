@@ -160,9 +160,12 @@ extension CRDT {
         public mutating func add(_ element: Element) {
             // The assumption here is that a replica is always up-to-date with its updates (i.e., `versionContext.gaps`
             // should not contain dots for the current replica), so we can generate next dot using `versionContext.vv` only.
-            precondition(self.versionContext.gaps.filter { dot in
-                dot.replicaId == self.replicaId
-            }.isEmpty, "There must not be gaps in replica \(self.replicaId)'s version context")
+            precondition(
+                self.versionContext.gaps.filter { dot in
+                    dot.replicaId == self.replicaId
+                }.isEmpty,
+                "There must not be gaps in replica \(self.replicaId)'s version context"
+            )
 
             // Increment version vector and create a birth dot with the new version
             let nextVersion = self.versionContext.vv.increment(at: self.replicaId)

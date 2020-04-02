@@ -229,15 +229,18 @@ final class ParentChildActorTests: ActorSystemTestBase {
     func test_contextStop_shouldThrowIfRefIsNotChild() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let parent: ActorRef<String> = try system.spawn("parent-4", .receive { context, _ in
-            do {
-                try context.stop(child: p.ref)
-            } catch {
-                p.tell("Errored:\(error)")
-                throw error // throw as if we did not catch it
+        let parent: ActorRef<String> = try system.spawn(
+            "parent-4",
+            .receive { context, _ in
+                do {
+                    try context.stop(child: p.ref)
+                } catch {
+                    p.tell("Errored:\(error)")
+                    throw error // throw as if we did not catch it
+                }
+                return .same
             }
-            return .same
-        })
+        )
 
         p.watch(parent)
 
@@ -250,15 +253,18 @@ final class ParentChildActorTests: ActorSystemTestBase {
     func test_contextStop_shouldThrowIfRefIsMyself() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let parent: ActorRef<String> = try system.spawn("parent-5", .receive { context, _ in
-            do {
-                try context.stop(child: context.myself)
-            } catch {
-                p.tell("Errored:\(error)")
-                throw error // throw as if we did not catch it
+        let parent: ActorRef<String> = try system.spawn(
+            "parent-5",
+            .receive { context, _ in
+                do {
+                    try context.stop(child: context.myself)
+                } catch {
+                    p.tell("Errored:\(error)")
+                    throw error // throw as if we did not catch it
+                }
+                return .same
             }
-            return .same
-        })
+        )
 
         p.watch(parent)
 
@@ -273,26 +279,35 @@ final class ParentChildActorTests: ActorSystemTestBase {
         let p1: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe("p1")
         let p2: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe("p2")
 
-        let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { context, msg in
-            switch msg {
-            case "spawn":
-                let refA: ActorRef<ChildProtocol> = try context.spawn("child", .setup { context in
-                    p1.tell(.spawned(child: context.myself))
-                    return .ignore
-                })
-                try context.stop(child: refA)
+        let parent: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receive { context, msg in
+                switch msg {
+                case "spawn":
+                    let refA: ActorRef<ChildProtocol> = try context.spawn(
+                        "child",
+                        .setup { context in
+                            p1.tell(.spawned(child: context.myself))
+                            return .ignore
+                        }
+                    )
+                    try context.stop(child: refA)
 
-                let refB: ActorRef<ChildProtocol> = try context.spawn("child", .setup { context in
-                    p2.tell(.spawned(child: context.myself))
-                    return .ignore
-                })
-                try context.stop(child: refB)
+                    let refB: ActorRef<ChildProtocol> = try context.spawn(
+                        "child",
+                        .setup { context in
+                            p2.tell(.spawned(child: context.myself))
+                            return .ignore
+                        }
+                    )
+                    try context.stop(child: refB)
 
-                return .same
-            default:
-                return .ignore
+                    return .same
+                default:
+                    return .ignore
+                }
             }
-        })
+        )
 
         p.watch(parent)
         parent.tell("spawn")
@@ -447,13 +462,16 @@ final class ParentChildActorTests: ActorSystemTestBase {
             return .same
         }
 
-        let parent = try system.spawn(.anonymous, parentBehavior.receiveSignal { _, signal in
-            if case let terminated as Signals.Terminated = signal {
-                p.tell(.childStopped(name: terminated.address.name))
-            }
+        let parent = try system.spawn(
+            .anonymous,
+            parentBehavior.receiveSignal { _, signal in
+                if case let terminated as Signals.Terminated = signal {
+                    p.tell(.childStopped(name: terminated.address.name))
+                }
 
-            return .same
-        })
+                return .same
+            }
+        )
 
         parent.tell("spawn")
 
@@ -487,28 +505,34 @@ final class ParentChildActorTests: ActorSystemTestBase {
         let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe("p")
         let childCount = 100
 
-        let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { context, msg in
-            switch msg {
-            case "spawn":
-                for count in 1 ... childCount {
-                    let behavior: Behavior<Never> = .receiveMessage { _ in
-                        .ignore
-                    }
-                    let ref: ActorRef<Never> = try context.spawn("child", behavior.receiveSignal { _, signal in
-                        if signal is Signals.PostStop {
-                            p.tell(count)
+        let parent: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receive { context, msg in
+                switch msg {
+                case "spawn":
+                    for count in 1 ... childCount {
+                        let behavior: Behavior<Never> = .receiveMessage { _ in
+                            .ignore
                         }
+                        let ref: ActorRef<Never> = try context.spawn(
+                            "child",
+                            behavior.receiveSignal { _, signal in
+                                if signal is Signals.PostStop {
+                                    p.tell(count)
+                                }
 
-                        return .same
-                    })
-                    try context.stop(child: ref)
+                                return .same
+                            }
+                        )
+                        try context.stop(child: ref)
+                    }
+
+                    return .same
+                default:
+                    return .ignore
                 }
-
-                return .same
-            default:
-                return .ignore
             }
-        })
+        )
 
         parent.tell("spawn")
 

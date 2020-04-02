@@ -170,10 +170,13 @@ public class Serialization {
 
         self.allocator = self.settings.allocator
 
-        var log = Logger(label: "serialization", factory: { id in
-            let context = LoggingContext(identifier: id, useBuiltInFormatter: system.settings.logging.useBuiltInFormatter, dispatcher: nil)
-            return ActorOriginLogHandler(context)
-        })
+        var log = Logger(
+            label: "serialization",
+            factory: { id in
+                let context = LoggingContext(identifier: id, useBuiltInFormatter: system.settings.logging.useBuiltInFormatter, dispatcher: nil)
+                return ActorOriginLogHandler(context)
+            }
+        )
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
         log.logLevel = systemSettings.logging.defaultLevel

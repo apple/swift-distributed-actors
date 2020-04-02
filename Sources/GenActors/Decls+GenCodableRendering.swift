@@ -166,13 +166,15 @@ extension Rendering {
                 encodeCases.outdent()
             }
 
-            return try Self.messageCodableConformanceTemplate.render([
-                "baseName": baseName,
-                "discriminatorCases": discriminatorCases.content,
-                "codingKeys": codingKeys.content,
-                "decodeCases": decodeCases.content,
-                "encodeCases": encodeCases.content,
-            ])
+            return try Self.messageCodableConformanceTemplate.render(
+                [
+                    "baseName": baseName,
+                    "discriminatorCases": discriminatorCases.content,
+                    "codingKeys": codingKeys.content,
+                    "decodeCases": decodeCases.content,
+                    "encodeCases": encodeCases.content,
+                ]
+            )
         }
     }
 }

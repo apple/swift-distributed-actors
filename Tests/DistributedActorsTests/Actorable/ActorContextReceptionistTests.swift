@@ -88,17 +88,24 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         let n = 3000
 
         _ = try! self.system.spawn("owner") {
-            OwnerOfThings(context: $0, probe: p.ref, onListingUpdated: { probe, newValue in
-                if newValue.actors.count == n {
-                    probe.tell(newValue)
+            OwnerOfThings(
+                context: $0,
+                probe: p.ref,
+                onListingUpdated: { probe, newValue in
+                    if newValue.actors.count == n {
+                        probe.tell(newValue)
+                    }
                 }
-            })
+            )
         }
 
         for _ in 1 ... n {
-            let ref: ActorRef<OwnerOfThings.Message> = try! self.system.spawn(.prefixed(with: "owner"), .receive { _, _ in
-                .same
-            })
+            let ref: ActorRef<OwnerOfThings.Message> = try! self.system.spawn(
+                .prefixed(with: "owner"),
+                .receive { _, _ in
+                    .same
+                }
+            )
             self.system.receptionist.register(ref, key: .init(OwnerOfThings.Message.self, id: "owners-of-things"))
         }
 

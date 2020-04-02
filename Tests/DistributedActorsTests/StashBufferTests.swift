@@ -68,17 +68,23 @@ final class StashBufferTests: ActorSystemTestBase {
     func test_unstash_intoSetupBehavior_shouldCanonicalize() throws {
         let p = self.testKit.spawnTestProbe(expecting: Int.self)
 
-        _ = try self.system.spawn("unstashIntoSetup", Behavior<Int>.setup { context in
-            let stash = StashBuffer<Int>(capacity: 2)
-            try stash.stash(message: 1)
+        _ = try self.system.spawn(
+            "unstashIntoSetup",
+            Behavior<Int>.setup { context in
+                let stash = StashBuffer<Int>(capacity: 2)
+                try stash.stash(message: 1)
 
-            return try stash.unstashAll(context: context, behavior: .setup { _ in
-                .receiveMessage { message in
-                    p.tell(message)
-                    return .stop
-                }
-            })
-        })
+                return try stash.unstashAll(
+                    context: context,
+                    behavior: .setup { _ in
+                        .receiveMessage { message in
+                            p.tell(message)
+                            return .stop
+                        }
+                    }
+                )
+            }
+        )
 
         try p.expectMessage(1)
     }

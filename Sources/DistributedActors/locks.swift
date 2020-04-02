@@ -139,8 +139,10 @@ internal final class BlockingReceptacle<Value> {
     func offerOnce(_ value: Value) {
         self.lock.synchronized {
             if self._value != nil {
-                fatalError("BlockingReceptacle can only be offered once. Already was offered [\(self._value, orElse: "no-value")] before, " +
-                    "and can not accept new offer: [\(value)]!")
+                fatalError(
+                    "BlockingReceptacle can only be offered once. Already was offered [\(self._value, orElse: "no-value")] before, " +
+                        "and can not accept new offer: [\(value)]!"
+                )
             }
             self._value = value
             self.notEmpty.signalAll()

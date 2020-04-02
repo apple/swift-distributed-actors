@@ -225,9 +225,11 @@ public class OperationLogClusterReceptionist {
             context.log.info("Initialized cluster receptionist")
 
             // === listen to cluster events ------------------
-            context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
-                try self.onClusterEvent(context, event: event)
-            })
+            context.system.cluster.events.subscribe(
+                context.subReceive(Cluster.Event.self) { event in
+                    try self.onClusterEvent(context, event: event)
+                }
+            )
 
             // === timers ------------------
             // periodically gossip to other receptionists with the last seqNr we've seen,
@@ -316,11 +318,14 @@ extension OperationLogClusterReceptionist {
 
             self.addOperation(context, .register(key: key, address: addressWithNode))
 
-            context.log.debug("Registered [\(ref.address)] for key [\(key)]", metadata: [
-                "receptionist/key": "\(key)",
-                "receptionist/registered": "\(ref)",
-                "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
-            ])
+            context.log.debug(
+                "Registered [\(ref.address)] for key [\(key)]",
+                metadata: [
+                    "receptionist/key": "\(key)",
+                    "receptionist/registered": "\(ref)",
+                    "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
+                ]
+            )
 
             if let subscribed = self.storage.subscriptions(forKey: key) {
                 let registrations = self.storage.registrations(forKey: key) ?? []
@@ -378,11 +383,14 @@ extension OperationLogClusterReceptionist {
             op.sequenceRange.max <= lastAppliedSeqNrAtPeer
         })
 
-        context.log.trace("Received \(push.sequencedOps.count) ops", metadata: [
-            "receptionist/peer": "\(push.peer.address)",
-            "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
-            "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
-        ])
+        context.log.trace(
+            "Received \(push.sequencedOps.count) ops",
+            metadata: [
+                "receptionist/peer": "\(push.peer.address)",
+                "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
+                "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
+            ]
+        )
 
         /// Collect which keys have been updated during this push, so we can publish updated listings for them.
         var keysToPublish: Set<AnyRegistrationKey> = []
@@ -507,11 +515,14 @@ extension OperationLogClusterReceptionist {
 
         let registrations = self.storage.registrations(forKey: key) ?? []
 
-        context.log.trace("Publishing listing [\(key)]", metadata: [
-            "receptionist/key": "\(key.id)",
-            "receptionist/registrations": "\(registrations.count)",
-            "receptionist/subscribers": "\(subscribers.count)",
-        ])
+        context.log.trace(
+            "Publishing listing [\(key)]",
+            metadata: [
+                "receptionist/key": "\(key.id)",
+                "receptionist/registrations": "\(registrations.count)",
+                "receptionist/subscribers": "\(subscribers.count)",
+            ]
+        )
 
         for subscriber: AnySubscribe in subscribers {
             subscriber._replyWith(registrations)
@@ -570,11 +581,14 @@ extension OperationLogClusterReceptionist {
             return // nothing to stream, done
         }
 
-        context.log.debug("Streaming \(sequencedOps.count) ops: from [\(replayer.atSeqNr)]", metadata: [
-            "receptionist/peer": "\(peer.address)",
-            "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
-            "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
-        ]) // TODO: metadata pattern
+        context.log.debug(
+            "Streaming \(sequencedOps.count) ops: from [\(replayer.atSeqNr)]",
+            metadata: [
+                "receptionist/peer": "\(peer.address)",
+                "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
+                "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
+            ]
+        ) // TODO: metadata pattern
 
         let pushOps = PushOps(
             peer: context.myself,
@@ -633,9 +647,12 @@ extension OperationLogClusterReceptionist {
             guard !diff.changes.isEmpty else {
                 return // empty changes, nothing to act on
             }
-            context.log.debug("Changes from initial snapshot, applying one by one", metadata: [
-                "membership/changes": "\(diff.changes)",
-            ])
+            context.log.debug(
+                "Changes from initial snapshot, applying one by one",
+                metadata: [
+                    "membership/changes": "\(diff.changes)",
+                ]
+            )
             try diff.changes.forEach { change in
                 try self.onClusterEvent(context, event: .membershipChange(change))
             }

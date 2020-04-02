@@ -51,9 +51,11 @@ extension CRDT.Replicator {
         var behavior: Behavior<Message> {
             .setup { context in
 
-                context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
-                    self.receiveClusterEvent(context, event: event)
-                })
+                context.system.cluster.events.subscribe(
+                    context.subReceive(Cluster.Event.self) { event in
+                        self.receiveClusterEvent(context, event: event)
+                    }
+                )
 
                 return .receive { context, message in
                     switch message {
@@ -287,7 +289,11 @@ extension CRDT.Replicator {
 
                 do {
                     // swiftformat:disable indent unusedArguments wrapArguments
-                    let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: localConfirmed,
+                    let remoteFuture = try self.performOnRemoteMembers(
+                        context,
+                        for: id,
+                        with: consistency,
+                        localConfirmed: localConfirmed,
                         isSuccessful: {
                             // TODO: is there a way to make this less verbose?
                             if case .success = $0 {

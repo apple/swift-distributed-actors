@@ -43,7 +43,9 @@ try isolated.run(on: .servant) {
     // TODO: assert command line arguments are the expected ones
 
     // swiftformat:disable indent unusedArguments wrapArguments
-    _ = try isolated.system.spawn("failed", of: String.self,
+    _ = try isolated.system.spawn(
+        "failed",
+        of: String.self,
         props: Props().supervision(strategy: .escalate),
         .setup { context in
             context.log.info("Spawned \(context.path) on servant node it will fail soon...")
@@ -63,7 +65,8 @@ try isolated.run(on: .servant) {
                     fatalError("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
                 }
             }
-        })
+        }
+    )
 }
 
 // finally, once prepared, you have to invoke the following:

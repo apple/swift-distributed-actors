@@ -123,9 +123,12 @@ final class SWIMInstance {
 
     private let myNode: UniqueNode
 
-    private var _messagesToGossip = Heap(of: SWIM.Gossip.self, comparator: {
-        $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
-    })
+    private var _messagesToGossip = Heap(
+        of: SWIM.Gossip.self,
+        comparator: {
+            $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
+        }
+    )
 
     init(_ settings: SWIM.Settings, myShellMyself: ActorRef<SWIM.Message>, myNode: UniqueNode) {
         self.settings = settings
@@ -604,14 +607,17 @@ extension SWIM.Instance {
                 )
             }
         } else if let remoteMemberNode = member.ref.address.node {
-            return .connect(node: remoteMemberNode, onceConnected: {
-                switch $0 {
-                case .success:
-                    self.addMember(member.ref, status: member.status)
-                case .failure:
-                    self.addMember(member.ref, status: self.makeSuspicion(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)
+            return .connect(
+                node: remoteMemberNode,
+                onceConnected: {
+                    switch $0 {
+                    case .success:
+                        self.addMember(member.ref, status: member.status)
+                    case .failure:
+                        self.addMember(member.ref, status: self.makeSuspicion(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)
+                    }
                 }
-            })
+            )
         } else {
             return .ignored(
                 level: .warning,

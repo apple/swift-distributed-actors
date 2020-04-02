@@ -31,20 +31,22 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
 
             let p = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
 
-            _ = try first.spawn("selfishSingleLeader", Behavior<Cluster.Event>.setup { context in
-                context.system.cluster.events.subscribe(context.myself)
+            _ = try first.spawn(
+                "selfishSingleLeader",
+                Behavior<Cluster.Event>.setup { context in
+                    context.system.cluster.events.subscribe(context.myself)
 
-                return .receiveMessage { event in
-                    switch event {
-                    case .leadershipChange:
-                        p.tell(event)
-                        return .same
-                    default:
-                        return .same
+                    return .receiveMessage { event in
+                        switch event {
+                        case .leadershipChange:
+                            p.tell(event)
+                            return .same
+                        default:
+                            return .same
+                        }
                     }
                 }
-
-            })
+            )
 
             switch try p.expectMessage() {
             case .leadershipChange(let change):

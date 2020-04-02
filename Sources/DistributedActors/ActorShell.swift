@@ -366,9 +366,12 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         })
 
         guard let adapter = maybeAdapter?.closure else {
-            self.log.warning("Received adapted message [\(carry.message)]:\(type(of: carry.message as Any)) for which no adapter was registered.", metadata: [
-                "actorRef/adapters": "\(self.messageAdapters)",
-            ])
+            self.log.warning(
+                "Received adapted message [\(carry.message)]:\(type(of: carry.message as Any)) for which no adapter was registered.",
+                metadata: [
+                    "actorRef/adapters": "\(self.messageAdapters)",
+                ]
+            )
             try self.becomeNext(behavior: .ignore) // TODO: make .drop once implemented
             return self.runState
         }
@@ -939,17 +942,21 @@ extension ActorShell {
                     // causing a chain reaction of crashing until someone handles or the guardian receives it and shuts down the system.
                     self.log.warning("Failure escalated by [\(terminatedRef.path)] reached non-watching, non-signal handling parent, escalation will continue! Failure was: \(failure)")
 
-                    next = try self.supervisor.interpretSupervised(target: .signalHandling(
-                        handleMessage: self.behavior,
-                        handleSignal: { _, _ in
-                            switch failure {
-                            case .error(let error):
-                                throw error
-                            case .fault(let errorRepr):
-                                throw errorRepr
+                    next = try self.supervisor.interpretSupervised(
+                        target: .signalHandling(
+                            handleMessage: self.behavior,
+                            handleSignal: { _, _ in
+                                switch failure {
+                                case .error(let error):
+                                    throw error
+                                case .fault(let errorRepr):
+                                    throw errorRepr
+                                }
                             }
-                        }
-                    ), context: self, signal: terminated)
+                        ),
+                        context: self,
+                        signal: terminated
+                    )
 
                 case .none:
                     // the child actor has stopped without providing us with a reason // FIXME; does this need to carry manual stop as a reason?

@@ -74,16 +74,19 @@ final class BehaviorCanonicalizeTests: ActorSystemTestBase {
     func test_canonicalize_unwrapInterceptBehaviors() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe3")
 
-        let b: Behavior<String> = .intercept(behavior: .setup { _ in
-            p.tell("outer-1")
-            return .setup { _ in
-                p.tell("inner-2")
-                return .receiveMessage { m in
-                    p.tell("received:\(m)")
-                    return .same
+        let b: Behavior<String> = .intercept(
+            behavior: .setup { _ in
+                p.tell("outer-1")
+                return .setup { _ in
+                    p.tell("inner-2")
+                    return .receiveMessage { m in
+                        p.tell("received:\(m)")
+                        return .same
+                    }
                 }
-            }
-        }, with: ProbeInterceptor(probe: p))
+            },
+            with: ProbeInterceptor(probe: p)
+        )
 
         let ref = try system.spawn("nestedSetups", b)
 
@@ -121,31 +124,34 @@ final class BehaviorCanonicalizeTests: ActorSystemTestBase {
     func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn("orElseCanonicalizeNestedSetups", .receiveMessage { msg in
-            let onlyA = Behavior<String>.setup { _ in
-                p.ref.tell("setup:onlyA")
-                return .receiveMessage { msg in
-                    switch msg {
-                    case "A":
-                        p.ref.tell("got:A")
-                        return .same
-                    default: return .unhandled
+        let ref: ActorRef<String> = try system.spawn(
+            "orElseCanonicalizeNestedSetups",
+            .receiveMessage { msg in
+                let onlyA = Behavior<String>.setup { _ in
+                    p.ref.tell("setup:onlyA")
+                    return .receiveMessage { msg in
+                        switch msg {
+                        case "A":
+                            p.ref.tell("got:A")
+                            return .same
+                        default: return .unhandled
+                        }
                     }
                 }
-            }
-            let onlyB = Behavior<String>.setup { _ in
-                p.ref.tell("setup:onlyB")
-                return .receiveMessage { msg in
-                    switch msg {
-                    case "B":
-                        p.ref.tell("got:B")
-                        return .same
-                    default: return .unhandled
+                let onlyB = Behavior<String>.setup { _ in
+                    p.ref.tell("setup:onlyB")
+                    return .receiveMessage { msg in
+                        switch msg {
+                        case "B":
+                            p.ref.tell("got:B")
+                            return .same
+                        default: return .unhandled
+                        }
                     }
                 }
+                return onlyA.orElse(onlyB)
             }
-            return onlyA.orElse(onlyB)
-        })
+        )
 
         ref.tell("run the setups")
 

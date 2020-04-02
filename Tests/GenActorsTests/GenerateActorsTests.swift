@@ -267,11 +267,13 @@ final class GenerateActorsTests: XCTestCase {
 
         try p.expectMessage("preStart(context:):/user/watcher")
         try p.expectMessage("preStart(context:):/user/watcher/child")
-        try p.expectMessagesInAnyOrder([
-            // these signals are sent concurrently -- the child is stopping in one thread, and the notification in parent is processed in another
-            "postStop(context:):/user/watcher/child",
-            "terminated:ChildTerminated(/user/watcher/child)",
-        ])
+        try p.expectMessagesInAnyOrder(
+            [
+                // these signals are sent concurrently -- the child is stopping in one thread, and the notification in parent is processed in another
+                "postStop(context:):/user/watcher/child",
+                "terminated:ChildTerminated(/user/watcher/child)",
+            ]
+        )
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

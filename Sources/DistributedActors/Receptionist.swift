@@ -783,13 +783,13 @@ internal protocol ListingRequest {
 //
 // internal extension ListingRequest {
 //
-////    func replyWith(_ refs: Set<AddressableActorRef>) {
-////        let typedRefs = refs.map { ref in
-////            key._unsafeAsActorRef(ref)
-////        }
-////
-////        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
-////    }
+/// /    func replyWith(_ refs: Set<AddressableActorRef>) {
+/// /        let typedRefs = refs.map { ref in
+/// /            key._unsafeAsActorRef(ref)
+/// /        }
+/// /
+/// /        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
+/// /    }
 //
 //    func replyWith(_ refs: [AddressableActorRef]) {
 //        let typedRefs = refs.map {

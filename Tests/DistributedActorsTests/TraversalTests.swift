@@ -36,19 +36,25 @@ final class TraversalTests: ActorSystemTestBase {
             return .receiveMessage { _ in .same }
         }
 
-        let _: ActorRef<String> = try! self.system.spawn("hello", .setup { context in
-            probe.tell(ActorReady(name: context.name))
-            let _: ActorRef<Never> = try context.spawn("world", tellProbeWhenReady)
-            return .receiveMessage { _ in .same }
-        })
+        let _: ActorRef<String> = try! self.system.spawn(
+            "hello",
+            .setup { context in
+                probe.tell(ActorReady(name: context.name))
+                let _: ActorRef<Never> = try context.spawn("world", tellProbeWhenReady)
+                return .receiveMessage { _ in .same }
+            }
+        )
 
-        let _: ActorRef<String> = try! self.system.spawn("other", .setup { context in
-            probe.tell(ActorReady(name: context.name))
-            let _: ActorRef<Never> = try context.spawn("inner-1", tellProbeWhenReady)
-            let _: ActorRef<Never> = try context.spawn("inner-2", tellProbeWhenReady)
-            let _: ActorRef<Never> = try context.spawn("inner-3", tellProbeWhenReady)
-            return .receiveMessage { _ in .same }
-        })
+        let _: ActorRef<String> = try! self.system.spawn(
+            "other",
+            .setup { context in
+                probe.tell(ActorReady(name: context.name))
+                let _: ActorRef<Never> = try context.spawn("inner-1", tellProbeWhenReady)
+                let _: ActorRef<Never> = try context.spawn("inner-2", tellProbeWhenReady)
+                let _: ActorRef<Never> = try context.spawn("inner-3", tellProbeWhenReady)
+                return .receiveMessage { _ in .same }
+            }
+        )
 
         // once we get all ready messages here, we know the tree is "ready" and the tests which perform assertions on it can run
         _ = try! probe.expectMessages(count: 6)
@@ -71,18 +77,20 @@ final class TraversalTests: ActorSystemTestBase {
             return .continue
         }
 
-        seen.shouldEqual([
-            "system",
-            "receptionist",
-            "replicator",
-            "user",
-            "other",
-            "inner-1",
-            "inner-2",
-            "inner-3",
-            "hello",
-            "world",
-        ])
+        seen.shouldEqual(
+            [
+                "system",
+                "receptionist",
+                "replicator",
+                "user",
+                "other",
+                "inner-1",
+                "inner-2",
+                "inner-3",
+                "hello",
+                "world",
+            ]
+        )
     }
 
     func test_traverse_shouldAllowImplementingCollect() {

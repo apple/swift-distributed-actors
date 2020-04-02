@@ -81,16 +81,19 @@ extension ActorTestKit {
             name = ActorTestProbe<Message>.naming.makeName(&self._namingContext)
         }
 
-        return ActorTestProbe(spawn: { probeBehavior in
+        return ActorTestProbe(
+            spawn: { probeBehavior in
 
-            // TODO: allow configuring dispatcher for the probe or always use the calling thread one
-            var testProbeProps = Props()
-            #if SACT_PROBE_CALLING_THREAD
-            testProbeProps.dispatcher = .callingThread
-            #endif
+                // TODO: allow configuring dispatcher for the probe or always use the calling thread one
+                var testProbeProps = Props()
+                #if SACT_PROBE_CALLING_THREAD
+                testProbeProps.dispatcher = .callingThread
+                #endif
 
-            return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
-        }, settings: self.settings)
+                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+            },
+            settings: self.settings
+        )
     }
 
     /// Spawn `ActorableTestProbe` which offers various assertions for actor messaging interactions.
@@ -110,16 +113,19 @@ extension ActorTestKit {
             name = ActorTestProbe<A.Message>.naming.makeName(&self._namingContext)
         }
 
-        return ActorableTestProbe(spawn: { probeBehavior in
+        return ActorableTestProbe(
+            spawn: { probeBehavior in
 
-            // TODO: allow configuring dispatcher for the probe or always use the calling thread one
-            var testProbeProps = Props()
-            #if SACT_PROBE_CALLING_THREAD
-            testProbeProps.dispatcher = .callingThread
-            #endif
+                // TODO: allow configuring dispatcher for the probe or always use the calling thread one
+                var testProbeProps = Props()
+                #if SACT_PROBE_CALLING_THREAD
+                testProbeProps.dispatcher = .callingThread
+                #endif
 
-            return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
-        }, settings: self.settings)
+                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+            },
+            settings: self.settings
+        )
     }
 
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.

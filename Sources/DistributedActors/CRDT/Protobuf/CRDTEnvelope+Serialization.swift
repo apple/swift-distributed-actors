@@ -88,25 +88,25 @@ extension CRDT.Envelope: InternalProtobufRepresentable {
 //            let payload = try context.serialization.deserialize(as: Type, from: &bytes, using: manifest)
 //            let boxed = DeltaCRDTBox(payload)
 //            self._boxed = .DeltaCRDT(boxed)
-        ////            if let DeltaCRDTBox = context.box(payload, ofKnownType: type(of: payload), as: DeltaCRDTBox.self) {
-        ////                self._boxed = .DeltaCRDT(DeltaCRDTBox)
-        ////            } else {
-        ////                fatalError("Unable to box [\(payload)] to [\(DeltaCRDTBox.self)]")
+        /// /            if let DeltaCRDTBox = context.box(payload, ofKnownType: type(of: payload), as: DeltaCRDTBox.self) {
+        /// /                self._boxed = .DeltaCRDT(DeltaCRDTBox)
+        /// /            } else {
+        /// /                fatalError("Unable to box [\(payload)] to [\(DeltaCRDTBox.self)]")
 //        } else if let Type = PayloadType as? AnyStateBasedCRDT.Type {
 //            let payload = try context.serialization.deserialize(as: Type, from: &bytes, using: manifest)
 //            let boxed = AnyCvRDT(payload)
 //            self._boxed = .CvRDT(payload)
 //
-        ////            if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
-        ////                self._boxed = .CvRDT(anyCvRDT)
-        ////            } else {
-        ////                fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
-        ////            }
+        /// /            if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
+        /// /                self._boxed = .CvRDT(anyCvRDT)
+        /// /            } else {
+        /// /                fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
+        /// /            }
 //        } else {
-        ////        case .unspecified:
+        /// /        case .unspecified:
 //            throw SerializationError.missingField("type", type: String(describing: CRDT.Envelope.self))
-        ////        case .UNRECOGNIZED:
-        ////            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
+        /// /        case .UNRECOGNIZED:
+        /// /            throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
 //        }
     }
 }

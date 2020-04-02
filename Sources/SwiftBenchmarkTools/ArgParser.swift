@@ -205,8 +205,10 @@ class ArgumentParser<U> {
         help: String? = nil,
         parser: @escaping (String) throws -> T? = { _ in nil }
     ) {
-        self.arguments.append(Argument(name: name, help: help)
-            { try self.parseArgument(name, property, defaultValue, parser) })
+        self.arguments.append(
+            Argument(name: name, help: help)
+            { try self.parseArgument(name, property, defaultValue, parser) }
+        )
     }
 
     /// Process the specified command line argument.

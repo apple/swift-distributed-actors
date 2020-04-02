@@ -103,10 +103,13 @@ class SerializationTests: ActorSystemTestBase {
     func test_serialize_actorRef_inMessage() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let ref: ActorRef<String> = try system.spawn("hello", .receiveMessage { message in
-            p.tell("got:\(message)")
-            return .same
-        })
+        let ref: ActorRef<String> = try system.spawn(
+            "hello",
+            .receiveMessage { message in
+                p.tell("got:\(message)")
+                return .same
+            }
+        )
         let hasRef = HasStringRef(containedRef: ref)
 
         pinfo("Before serialize: \(hasRef)")
@@ -135,10 +138,13 @@ class SerializationTests: ActorSystemTestBase {
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let ref: ActorRef<String> = try remoteCapableSystem.spawn("hello", .receiveMessage { message in
-            p.tell("got:\(message)")
-            return .same
-        })
+        let ref: ActorRef<String> = try remoteCapableSystem.spawn(
+            "hello",
+            .receiveMessage { message in
+                p.tell("got:\(message)")
+                return .same
+            }
+        )
 
         let hasRef = HasStringRef(containedRef: ref)
 
@@ -220,18 +226,21 @@ class SerializationTests: ActorSystemTestBase {
 
         let watchMe: ActorRef<String> = try system.spawn("watchMe", .ignore)
 
-        let ref: ActorRef<String> = try system.spawn("shouldGetSystemMessage", .setup { context in
-            context.watch(watchMe)
-            return .receiveSignal { _, signal in
-                switch signal {
-                case let terminated as Signals.Terminated:
-                    p.tell("terminated:\(terminated.address.name)")
-                default:
-                    ()
+        let ref: ActorRef<String> = try system.spawn(
+            "shouldGetSystemMessage",
+            .setup { context in
+                context.watch(watchMe)
+                return .receiveSignal { _, signal in
+                    switch signal {
+                    case let terminated as Signals.Terminated:
+                        p.tell("terminated:\(terminated.address.name)")
+                    default:
+                        ()
+                    }
+                    return .same
                 }
-                return .same
             }
-        })
+        )
 
         let sysRef = ref.asAddressable()
 
@@ -262,10 +271,13 @@ class SerializationTests: ActorSystemTestBase {
 
         do {
             let p = self.testKit.spawnTestProbe("p1", expecting: String.self)
-            let echo: ActorRef<String> = try s2.spawn("echo", .receiveMessage { msg in
-                p.ref.tell("echo:\(msg)")
-                return .same
-            })
+            let echo: ActorRef<String> = try s2.spawn(
+                "echo",
+                .receiveMessage { msg in
+                    p.ref.tell("echo:\(msg)")
+                    return .same
+                }
+            )
 
             echo.tell("hi!") // is a built-in serializable message
             try p.expectMessage("echo:hi!")

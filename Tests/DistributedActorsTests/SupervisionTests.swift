@@ -458,30 +458,42 @@ final class SupervisionTests: ActorSystemTestBase {
     // MARK: Stopping supervision
 
     func test_stopSupervised_throws_shouldStop() throws {
-        try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: "throws", makeEvilMessage: { msg in
-            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
-        })
+        try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(
+            runName: "throws",
+            makeEvilMessage: { msg in
+                FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
+            }
+        )
     }
 
     func test_stopSupervised_throwsInAwaitResult_shouldStop() throws {
-        try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: "throws", makeEvilMessage: { _ in
-            FaultyMessage.pleaseFailAwaiting(message: "Boom!")
-        })
+        try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(
+            runName: "throws",
+            makeEvilMessage: { _ in
+                FaultyMessage.pleaseFailAwaiting(message: "Boom!")
+            }
+        )
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision
 
     func test_restartSupervised_throws_shouldRestart() throws {
-        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { msg in
-            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
-        })
+        try self.sharedTestLogic_restartSupervised_shouldRestart(
+            runName: "throws",
+            makeEvilMessage: { msg in
+                FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
+            }
+        )
     }
 
     func test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
-        try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "throws", makeEvilMessage: { msg in
-            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
-        })
+        try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(
+            runName: "throws",
+            makeEvilMessage: { msg in
+                FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
+            }
+        )
     }
 
     func test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior() throws {
@@ -507,9 +519,12 @@ final class SupervisionTests: ActorSystemTestBase {
     }
 
     func test_restartSupervised_throwsInAwaitResult_shouldRestart() throws {
-        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { _ in
-            FaultyMessage.pleaseFailAwaiting(message: "Boom!")
-        })
+        try self.sharedTestLogic_restartSupervised_shouldRestart(
+            runName: "throws",
+            makeEvilMessage: { _ in
+                FaultyMessage.pleaseFailAwaiting(message: "Boom!")
+            }
+        )
     }
 
     class MyCrashingClassBehavior: ClassBehavior<String> {
@@ -538,35 +553,53 @@ final class SupervisionTests: ActorSystemTestBase {
         let pb = self.testKit.spawnTestProbe("pb", expecting: ActorRef<String>.self)
         let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
-        _ = try self.system.spawn("top", of: String.self, .setup { c in
-            pt.tell(c.myself)
+        _ = try self.system.spawn(
+            "top",
+            of: String.self,
+            .setup { c in
+                pt.tell(c.myself)
 
-            _ = try c.spawn("middle", of: String.self, props: .supervision(strategy: .escalate), .setup { cc in
-                pm.tell(cc.myself)
+                _ = try c.spawn(
+                    "middle",
+                    of: String.self,
+                    props: .supervision(strategy: .escalate),
+                    .setup { cc in
+                        pm.tell(cc.myself)
 
-                // you can also just watch, this way the failure will be both in case of stop or crash; failure will be a Death Pact rather than indicating an escalation
-                _ = try cc.spawnWatch("almostBottom", of: String.self, .setup { ccc in
-                    pab.tell(ccc.myself)
+                        // you can also just watch, this way the failure will be both in case of stop or crash; failure will be a Death Pact rather than indicating an escalation
+                        _ = try cc.spawnWatch(
+                            "almostBottom",
+                            of: String.self,
+                            .setup { ccc in
+                                pab.tell(ccc.myself)
 
-                    _ = try ccc.spawnWatch("bottom", of: String.self, props: .supervision(strategy: .escalate), .setup { cccc in
-                        pb.tell(cccc.myself)
-                        return .receiveMessage { message in
-                            throw Boom(message)
-                        }
-                    })
+                                _ = try ccc.spawnWatch(
+                                    "bottom",
+                                    of: String.self,
+                                    props: .supervision(strategy: .escalate),
+                                    .setup { cccc in
+                                        pb.tell(cccc.myself)
+                                        return .receiveMessage { message in
+                                            throw Boom(message)
+                                        }
+                                    }
+                                )
 
-                    return .ignore
-                })
+                                return .ignore
+                            }
+                        )
 
-                return .ignore
-            })
+                        return .ignore
+                    }
+                )
 
-            return Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
-                pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
+                return Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
+                    pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
 
-                return .same // stop the failure from reaching the guardian and terminating the system
+                    return .same // stop the failure from reaching the guardian and terminating the system
+                }
             }
-        })
+        )
 
         let top = try pt.expectMessage()
         pt.watch(top)
@@ -598,34 +631,53 @@ final class SupervisionTests: ActorSystemTestBase {
         let pb = self.testKit.spawnTestProbe("pb", expecting: ActorRef<String>.self)
         let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
-        _ = try self.system.spawn("top", of: String.self, .setup { c in
-            pt.tell(c.myself)
+        _ = try self.system.spawn(
+            "top",
+            of: String.self,
+            .setup { c in
+                pt.tell(c.myself)
 
-            _ = try c.spawn("middle", of: String.self, props: .supervision(strategy: .escalate), .setup { cc in
-                pm.tell(cc.myself)
+                _ = try c.spawn(
+                    "middle",
+                    of: String.self,
+                    props: .supervision(strategy: .escalate),
+                    .setup { cc in
+                        pm.tell(cc.myself)
 
-                _ = try cc.spawn("almostBottom", of: String.self, props: .supervision(strategy: .escalate), .setup { ccc in
-                    pab.tell(ccc.myself)
+                        _ = try cc.spawn(
+                            "almostBottom",
+                            of: String.self,
+                            props: .supervision(strategy: .escalate),
+                            .setup { ccc in
+                                pab.tell(ccc.myself)
 
-                    _ = try ccc.spawn("bottom", of: String.self, props: .supervision(strategy: .escalate), .setup { cccc in
-                        pb.tell(cccc.myself)
-                        return .receiveMessage { message in
-                            throw Boom(message)
-                        }
-                    })
+                                _ = try ccc.spawn(
+                                    "bottom",
+                                    of: String.self,
+                                    props: .supervision(strategy: .escalate),
+                                    .setup { cccc in
+                                        pb.tell(cccc.myself)
+                                        return .receiveMessage { message in
+                                            throw Boom(message)
+                                        }
+                                    }
+                                )
 
-                    return .ignore
-                })
+                                return .ignore
+                            }
+                        )
 
-                return .ignore
-            })
+                        return .ignore
+                    }
+                )
 
-            return Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
-                pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
+                return Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
+                    pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
 
-                return .same // stop the failure from reaching the guardian and terminating the system
+                    return .same // stop the failure from reaching the guardian and terminating the system
+                }
             }
-        })
+        )
 
         let top = try pt.expectMessage()
         pt.watch(top)
@@ -656,31 +708,48 @@ final class SupervisionTests: ActorSystemTestBase {
         let pab = self.testKit.spawnTestProbe("pab", expecting: ActorRef<String>.self)
         let pb = self.testKit.spawnTestProbe("pb", expecting: ActorRef<String>.self)
 
-        _ = try self.system.spawn("top", of: String.self, .setup { c in
-            pt.tell(c.myself)
+        _ = try self.system.spawn(
+            "top",
+            of: String.self,
+            .setup { c in
+                pt.tell(c.myself)
 
-            _ = try c.spawn("middle", of: String.self, .setup { cc in
-                pm.tell(cc.myself)
+                _ = try c.spawn(
+                    "middle",
+                    of: String.self,
+                    .setup { cc in
+                        pm.tell(cc.myself)
 
-                // does not watch or escalate child failures, this means that this is our "failure isolator"; failures will be stopped at this actor (!)
-                _ = try cc.spawn("almostBottom", of: String.self, .setup { ccc in
-                    pab.tell(ccc.myself)
+                        // does not watch or escalate child failures, this means that this is our "failure isolator"; failures will be stopped at this actor (!)
+                        _ = try cc.spawn(
+                            "almostBottom",
+                            of: String.self,
+                            .setup { ccc in
+                                pab.tell(ccc.myself)
 
-                    _ = try ccc.spawn("bottom", of: String.self, props: .supervision(strategy: .escalate), .setup { cccc in
-                        pb.tell(cccc.myself)
-                        return .receiveMessage { message in
-                            throw Boom(message)
-                        }
-                    })
+                                _ = try ccc.spawn(
+                                    "bottom",
+                                    of: String.self,
+                                    props: .supervision(strategy: .escalate),
+                                    .setup { cccc in
+                                        pb.tell(cccc.myself)
+                                        return .receiveMessage { message in
+                                            throw Boom(message)
+                                        }
+                                    }
+                                )
 
-                    return .ignore
-                })
+                                return .ignore
+                            }
+                        )
+
+                        return .ignore
+                    }
+                )
 
                 return .ignore
-            })
-
-            return .ignore
-        })
+            }
+        )
 
         let top = try pt.expectMessage()
         pt.watch(top)
@@ -711,15 +780,21 @@ final class SupervisionTests: ActorSystemTestBase {
     }
 
     func test_restartSupervised_throws_shouldRestartWithConstantBackoff() throws {
-        try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(runName: "throws", makeEvilMessage: { msg in
-            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
-        })
+        try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(
+            runName: "throws",
+            makeEvilMessage: { msg in
+                FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
+            }
+        )
     }
 
     func test_restartSupervised_throws_shouldRestartWithExponentialBackoff() throws {
-        try self.sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(runName: "throws", makeEvilMessage: { msg in
-            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
-        })
+        try self.sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(
+            runName: "throws",
+            makeEvilMessage: { msg in
+                FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
+            }
+        )
     }
 
     func test_restart_throws_shouldHandleFailureWhenInterpretingStartAfterFailure() throws {

@@ -37,12 +37,12 @@ public protocol TopLevelDataEncoder {
 extension JSONDecoder: TopLevelDataDecoder {}
 extension JSONEncoder: TopLevelDataEncoder {}
 
-///// Allows for serialization of messages using any compatible `Encoder` and `Decoder` pair.
-/////
-///// Such serializer may be registered with `Serialization` and assigned either as default (see `Serialization.Settings
-/////
-///// - Note: Take care to ensure that both "ends" (sending and receiving members of a cluster)
-/////   use the same encoding/decoding mechanism for a specific message.
+/// // Allows for serialization of messages using any compatible `Encoder` and `Decoder` pair.
+/// //
+/// // Such serializer may be registered with `Serialization` and assigned either as default (see `Serialization.Settings
+/// //
+/// // - Note: Take care to ensure that both "ends" (sending and receiving members of a cluster)
+/// //   use the same encoding/decoding mechanism for a specific message.
 // public class CodableSerializer<Message: Codable>
 //    : Serializer<Message>, CustomStringConvertible {
 //
@@ -89,8 +89,8 @@ extension JSONEncoder: TopLevelDataEncoder {}
 //    }
 // }
 //
-//// ==== ----------------------------------------------------------------------------------------------------------------
-//// MARK: JSON Serializer
+/// / ==== ----------------------------------------------------------------------------------------------------------------
+/// / MARK: JSON Serializer
 //
 // final public class JSONCodableSerializer<Message: Codable>: CodableSerializer<Message> {
 //

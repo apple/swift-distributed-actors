@@ -56,8 +56,8 @@ extension CRDT.LWWMap {
     }
 }
 
-//// ==== ----------------------------------------------------------------------------------------------------------------
-//// MARK: LWWRegister + Logger Metadata
+/// / ==== ----------------------------------------------------------------------------------------------------------------
+/// / MARK: LWWRegister + Logger Metadata
 //
 extension CRDT.LWWRegister {
     func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {

@@ -177,20 +177,20 @@ internal extension WorkerPool {
 
             let eagerlyRemoteTerminatedWorkers: Behavior<WorkerPoolMessage<Message>> =
                 .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                    var remainingWorkers = workers
-                    remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version
+                        var remainingWorkers = workers
+                        remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version
 
-                    if remainingWorkers.count > 0 {
-                        return self.forwarding(to: remainingWorkers)
-                    } else {
-                        switch self.settings.whenAllWorkersTerminated {
-                        case .awaitNewWorkers:
-                            return self.awaitingWorkers()
-                        case .crash(let error):
-                            throw error
+                        if remainingWorkers.count > 0 {
+                            return self.forwarding(to: remainingWorkers)
+                        } else {
+                            switch self.settings.whenAllWorkersTerminated {
+                            case .awaitNewWorkers:
+                                return self.awaitingWorkers()
+                            case .crash(let error):
+                                throw error
+                            }
                         }
                     }
-                }
 
             return _forwarding.orElse(eagerlyRemoteTerminatedWorkers)
         }

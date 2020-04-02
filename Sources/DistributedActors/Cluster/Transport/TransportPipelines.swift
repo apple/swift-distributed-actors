@@ -280,9 +280,12 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
 
             case .failure(let error):
-                self.log.error("Serialization of outgoing message failed: \(error)", metadata: [
-                    "recipient": "\(transportEnvelope.recipient)",
-                ])
+                self.log.error(
+                    "Serialization of outgoing message failed: \(error)",
+                    metadata: [
+                        "recipient": "\(transportEnvelope.recipient)",
+                    ]
+                )
                 // TODO: drop message when it fails to be serialized?
                 promise?.fail(error)
             }

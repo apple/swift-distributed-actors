@@ -51,9 +51,9 @@ public struct DeadLetter: NotTransportableActorMessage { // TODO: make it also r
     }
 }
 
-///// Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.
-///// This type is used by serialization to notice that a message shall be delivered as dead letter
-///// (rather than attempting to cast the deserialized payload to the "found type" (which would be `Never` or `MessageForDeadRecipient`).
+/// // Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.
+/// // This type is used by serialization to notice that a message shall be delivered as dead letter
+/// // (rather than attempting to cast the deserialized payload to the "found type" (which would be `Never` or `MessageForDeadRecipient`).
 // @usableFromInline
 // internal protocol MessageForDeadRecipient: NotTransportableActorMessage {}
 
@@ -218,10 +218,15 @@ public final class DeadLetterOffice {
 
         // in all other cases, we want to log the dead letter:
         // TODO: more metadata (from Envelope)
-        self.log.info("""
-        Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
-        \(recipientString).
-        """, metadata: metadata, file: file, line: line)
+        self.log.info(
+            """
+            Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
+            \(recipientString).
+            """,
+            metadata: metadata,
+            file: file,
+            line: line
+        )
     }
 
     private func specialHandled(_ message: _SystemMessage, recipient: ActorAddress?) -> Bool {

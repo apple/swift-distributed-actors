@@ -68,30 +68,32 @@ var targets: [PackageDescription.Target] = [
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: XPCActorable Examples (only available on Apple platforms)
 
-targets.append(contentsOf: [
-    .target(
-        name: "XPCActorServiceAPI",
-        dependencies: [
-            "DistributedActorsXPC",
-        ],
-        path: "Sources/XPCActorServiceAPI"
-    ),
-    .target(
-        name: "XPCActorServiceProvider",
-        dependencies: [
-            "XPCActorServiceAPI",
-        ],
-        path: "Sources/XPCActorServiceProvider"
-    ),
-    .target(
-        name: "XPCActorCaller", // this is "main"
-        dependencies: [
-            "XPCActorServiceAPI",
-            "Files",
-        ],
-        path: "Sources/XPCActorCaller"
-    ),
-])
+targets.append(
+    contentsOf: [
+        .target(
+            name: "XPCActorServiceAPI",
+            dependencies: [
+                "DistributedActorsXPC",
+            ],
+            path: "Sources/XPCActorServiceAPI"
+        ),
+        .target(
+            name: "XPCActorServiceProvider",
+            dependencies: [
+                "XPCActorServiceAPI",
+            ],
+            path: "Sources/XPCActorServiceProvider"
+        ),
+        .target(
+            name: "XPCActorCaller", // this is "main"
+            dependencies: [
+                "XPCActorServiceAPI",
+                "Files",
+            ],
+            path: "Sources/XPCActorCaller"
+        ),
+    ]
+)
 
 #endif
 

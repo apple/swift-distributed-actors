@@ -29,9 +29,16 @@ extension ActorSystem {
         file: String = #file, line: UInt = #line,
         _ makeActorable: @escaping (Actor<A>.Context) -> A
     ) throws -> Actor<A> {
-        let ref = try self.spawn(naming, of: A.Message.self, props: props, file: file, line: line, Behavior<A.Message>.setup { context in
-            A.makeBehavior(instance: makeActorable(.init(underlying: context)))
-        })
+        let ref = try self.spawn(
+            naming,
+            of: A.Message.self,
+            props: props,
+            file: file,
+            line: line,
+            Behavior<A.Message>.setup { context in
+                A.makeBehavior(instance: makeActorable(.init(underlying: context)))
+            }
+        )
         return Actor(ref: ref)
     }
 

@@ -180,24 +180,27 @@ struct ActorableMessageDecl {
             if "\(t)".starts(with: "Behavior<") {
                 return .behavior("\(t)")
             } else if "\(t)".starts(with: "Reply<") {
-                let valueTypeString = String("\(t)"
-                    .trim(character: " ")
-                    .replacingOccurrences(of: "Reply<", with: "")
-                    .dropLast(1)
+                let valueTypeString = String(
+                    "\(t)"
+                        .trim(character: " ")
+                        .replacingOccurrences(of: "Reply<", with: "")
+                        .dropLast(1)
                 )
                 return .actorReply(of: "\(valueTypeString)")
             } else if "\(t)".starts(with: "AskResponse<") {
-                let valueTypeString = String("\(t)"
-                    .trim(character: " ")
-                    .replacingOccurrences(of: "AskResponse<", with: "")
-                    .dropLast(1)
+                let valueTypeString = String(
+                    "\(t)"
+                        .trim(character: " ")
+                        .replacingOccurrences(of: "AskResponse<", with: "")
+                        .dropLast(1)
                 )
                 return .askResponse(of: "\(valueTypeString)")
             } else if "\(t)".starts(with: "Result<") {
                 // TODO: instead analyse the type syntax?
-                let trimmed = String("\(t)"
-                    .trim(character: " ")
-                    .replacingOccurrences(of: " ", with: "")
+                let trimmed = String(
+                    "\(t)"
+                        .trim(character: " ")
+                        .replacingOccurrences(of: " ", with: "")
                 )
 
                 // FIXME: this will break with nexting...
@@ -206,10 +209,11 @@ struct ActorableMessageDecl {
 
                 return .result(valueType, errorType: errorType)
             } else if "\(t)".starts(with: "EventLoopFuture<") {
-                let valueTypeString = String("\(t)"
-                    .trim(character: " ")
-                    .replacingOccurrences(of: "EventLoopFuture<", with: "")
-                    .dropLast(1)
+                let valueTypeString = String(
+                    "\(t)"
+                        .trim(character: " ")
+                        .replacingOccurrences(of: "EventLoopFuture<", with: "")
+                        .dropLast(1)
                 )
                 return .nioEventLoopFuture(of: valueTypeString)
             } else {

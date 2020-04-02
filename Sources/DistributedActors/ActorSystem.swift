@@ -197,14 +197,17 @@ public final class ActorSystem {
 
         // dead letters init
         let overrideLogger: Logger? = settings.logging.overrideLoggerFactory.map { f in f("\(ActorPath._deadLetters)") }
-        var deadLogger = overrideLogger ?? Logger(label: "\(ActorPath._deadLetters)", factory: {
-            let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.logging.useBuiltInFormatter, dispatcher: nil)
-            if settings.cluster.enabled {
-                context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindNode)
+        var deadLogger = overrideLogger ?? Logger(
+            label: "\(ActorPath._deadLetters)",
+            factory: {
+                let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.logging.useBuiltInFormatter, dispatcher: nil)
+                if settings.cluster.enabled {
+                    context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindNode)
+                }
+                context[metadataKey: "nodeName"] = .stringConvertible(name)
+                return ActorOriginLogHandler(context)
             }
-            context[metadataKey: "nodeName"] = .stringConvertible(name)
-            return ActorOriginLogHandler(context)
-        })
+        )
         deadLogger.logLevel = settings.logging.defaultLevel
 
         self._deadLetters = ActorRef(.deadLetters(.init(deadLogger, address: ActorAddress._deadLetters, system: self)))

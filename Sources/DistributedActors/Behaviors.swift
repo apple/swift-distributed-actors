@@ -120,12 +120,15 @@ extension Behavior {
     /// allows users to specify a closure that will only be called on receipt of `PostStop` and therefore does not
     /// need to get the signal passed in. It also does not need to return a new behavior, as the actor is already stopping.
     public static func stop(_ postStop: @escaping (ActorContext<Message>) throws -> Void) -> Behavior<Message> {
-        Behavior.stop(postStop: Behavior.receiveSignal { context, signal in
-            if signal is Signals.PostStop {
-                try postStop(context)
-            }
-            return .same // will be ignored
-        }, reason: .stopMyself)
+        Behavior.stop(
+            postStop: Behavior.receiveSignal { context, signal in
+                if signal is Signals.PostStop {
+                    try postStop(context)
+                }
+                return .same // will be ignored
+            },
+            reason: .stopMyself
+        )
     }
 
     /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
@@ -177,10 +180,12 @@ extension Behavior {
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
     public func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
-        Behavior(underlying: .signalHandling(
-            handleMessage: self,
-            handleSignal: handle
-        ))
+        Behavior(
+            underlying: .signalHandling(
+                handleMessage: self,
+                handleSignal: handle
+            )
+        )
     }
 
     /// Allows reacting to `Signal`s, such as lifecycle events.
@@ -205,10 +210,12 @@ extension Behavior {
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
     public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
-        Behavior(underlying: .signalHandling(
-            handleMessage: .unhandled,
-            handleSignal: handle
-        ))
+        Behavior(
+            underlying: .signalHandling(
+                handleMessage: .unhandled,
+                handleSignal: handle
+            )
+        )
     }
 
     /// Convenience function similar to `Behavior.receiveSignal` however allowing for easier handling of a specific signal type, e.g.:
@@ -254,17 +261,19 @@ extension Behavior {
     /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
     /// - SeeAlso: `receiveSignal` which allows receiving multiple types of signals.
     public static func receiveSpecificSignal<SpecificSignal: Signal>(_: SpecificSignal.Type, _ handle: @escaping (ActorContext<Message>, SpecificSignal) throws -> Behavior<Message>) -> Behavior<Message> {
-        Behavior(underlying: .signalHandling(
-            handleMessage: .unhandled,
-            handleSignal: { context, signal in
-                switch signal {
-                case let matchingSignal as SpecificSignal:
-                    return try handle(context, matchingSignal)
-                default:
-                    return .unhandled
+        Behavior(
+            underlying: .signalHandling(
+                handleMessage: .unhandled,
+                handleSignal: { context, signal in
+                    switch signal {
+                    case let matchingSignal as SpecificSignal:
+                        return try handle(context, matchingSignal)
+                    default:
+                        return .unhandled
+                    }
                 }
-            }
-        ))
+            )
+        )
     }
 }
 

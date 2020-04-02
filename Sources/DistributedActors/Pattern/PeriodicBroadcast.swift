@@ -91,9 +91,12 @@ internal class PeriodicBroadcastShell<Payload: ActorMessage> {
     }
 
     private func onBroadcastTick(_ context: ActorContext<Message>, peers: Set<ActorRef<Payload>>, payload: Payload) {
-        context.log.trace("Periodic broadcast of [\(payload)] to \(peers.count) [\(peers.count)] peers", metadata: [
-            "broadcast/peers": "\(peers.map { $0.path })",
-        ])
+        context.log.trace(
+            "Periodic broadcast of [\(payload)] to \(peers.count) [\(peers.count)] peers",
+            metadata: [
+                "broadcast/peers": "\(peers.map { $0.path })",
+            ]
+        )
         for peer in peers {
             peer.tell(payload)
         }

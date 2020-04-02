@@ -38,19 +38,23 @@ class ClusterDocExamples: XCTestCase {
     func example_subscribe_events_apply() throws {
         let system = ActorSystem("Sample")
 
-        _ = try system.spawn(.anonymous, of: String.self, .setup { context in
-            // tag::subscribe-events-apply-general[]
-            var membership: Cluster.Membership = .empty // <1>
+        _ = try system.spawn(
+            .anonymous,
+            of: String.self,
+            .setup { context in
+                // tag::subscribe-events-apply-general[]
+                var membership: Cluster.Membership = .empty // <1>
 
-            let subRef = context.subReceive(Cluster.Event.self) { event in // <2>
-                try membership.apply(event: event) // <3>
-                context.log.info("The most up to date membership is: \(membership)")
+                let subRef = context.subReceive(Cluster.Event.self) { event in // <2>
+                    try membership.apply(event: event) // <3>
+                    context.log.info("The most up to date membership is: \(membership)")
+                }
+
+                context.system.cluster.events.subscribe(subRef) // <4>
+                // end::subscribe-events-apply-general[]
+                return .same
             }
-
-            context.system.cluster.events.subscribe(subRef) // <4>
-            // end::subscribe-events-apply-general[]
-            return .same
-        })
+        )
 
         // tag::membership-snapshot[]
         let snapshot: Cluster.Membership = system.cluster.membershipSnapshot

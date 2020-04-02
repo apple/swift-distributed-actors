@@ -128,9 +128,12 @@ final class InterceptorTests: ActorSystemTestBase {
                 )
                 one.tell("stop")
 
-                let two: ActorRef<String> = try context.spawnWatch("stopperTwo", .receiveMessage { _ in
-                    .stop
-                })
+                let two: ActorRef<String> = try context.spawnWatch(
+                    "stopperTwo",
+                    .receiveMessage { _ in
+                        .stop
+                    }
+                )
                 two.tell("stop")
 
                 return .same

@@ -464,7 +464,7 @@ internal final class Mailbox<Message: ActorMessage> {
             }
         } else if runResult == .shouldSuspend {
             traceLog_Mailbox(shell.path, "MAILBOX SUSPENDED, SKIPPING USER MESSAGE PROCESSING")
-        } else /* we are terminating and need to drain messages */ {
+        } else { /* we are terminating and need to drain messages */
             while let message = self.userMessages.dequeue() {
                 self.deadLetters.tell(DeadLetter(message, recipient: self.address))
                 processedActivations += MailboxBitMasks.singleUserMessage

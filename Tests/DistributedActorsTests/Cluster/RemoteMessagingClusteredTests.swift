@@ -31,15 +31,21 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn("remoteAcquaintance1", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+            "remoteAcquaintance1",
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
-        let codableRefOnRemoteSystem: ActorRef<String> = try remote.spawn("remoteAcquaintance2", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let codableRefOnRemoteSystem: ActorRef<String> = try remote.spawn(
+            "remoteAcquaintance2",
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -63,10 +69,13 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.anonymous, .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+            .anonymous,
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -88,10 +97,13 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.anonymous, .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+            .anonymous,
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -114,10 +126,13 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
 
         let testKit = ActorTestKit(local)
         let probe = testKit.spawnTestProbe(expecting: String.self)
-        let localRef: ActorRef<String> = try local.spawn("local", .receiveMessage { message in
-            probe.tell("received:\(message)")
-            return .same
-        })
+        let localRef: ActorRef<String> = try local.spawn(
+            "local",
+            .receiveMessage { message in
+                probe.tell("received:\(message)")
+                return .same
+            }
+        )
 
         let localResolvedRefWithLocalAddress =
             self.resolveRef(local, type: String.self, address: localRef.address, on: local)
@@ -135,15 +150,21 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let localRef: ActorRef<String> = try local.spawn("localRef", .receiveMessage { message in
-            probe.tell("response:\(message)")
-            return .same
-        })
+        let localRef: ActorRef<String> = try local.spawn(
+            "localRef",
+            .receiveMessage { message in
+                probe.tell("response:\(message)")
+                return .same
+            }
+        )
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
-            message.respondTo.tell("echo:\(message.string)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+            "remoteAcquaintance",
+            .receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -164,10 +185,13 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
-            message.respondTo.tell("echo:\(message.string)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+            "remoteAcquaintance",
+            .receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -175,16 +199,22 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
-        let _: ActorRef<Never> = try local.spawn("localRef", .setup { context in
-            let child: ActorRef<String> = try context.spawn(.anonymous, .receiveMessage { message in
-                probe.tell("response:\(message)")
-                return .same
-            })
+        let _: ActorRef<Never> = try local.spawn(
+            "localRef",
+            .setup { context in
+                let child: ActorRef<String> = try context.spawn(
+                    .anonymous,
+                    .receiveMessage { message in
+                        probe.tell("response:\(message)")
+                        return .same
+                    }
+                )
 
-            remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
+                remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
 
-            return .receiveMessage { _ in .same }
-        })
+                return .receiveMessage { _ in .same }
+            }
+        )
 
         try probe.expectMessage("response:echo:test")
     }
@@ -198,10 +228,13 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
-            message.respondTo.tell("echo:\(message.string)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+            "remoteAcquaintance",
+            .receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -209,14 +242,17 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
-        let _: ActorRef<WrappedString> = try local.spawn("localRef", .setup { context in
-            let adaptedRef = context.messageAdapter(from: String.self) { WrappedString(string: $0) }
-            remoteRef.tell(EchoTestMessage(string: "test", respondTo: adaptedRef))
-            return .receiveMessage { message in
-                probe.tell("response:\(message.string)")
-                return .same
+        let _: ActorRef<WrappedString> = try local.spawn(
+            "localRef",
+            .setup { context in
+                let adaptedRef = context.messageAdapter(from: String.self) { WrappedString(string: $0) }
+                remoteRef.tell(EchoTestMessage(string: "test", respondTo: adaptedRef))
+                return .receiveMessage { message in
+                    probe.tell("response:\(message.string)")
+                    return .same
+                }
             }
-        })
+        )
 
         try probe.expectMessage("response:echo:test")
     }
@@ -243,17 +279,23 @@ final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
             try assertAssociated(thirdSystem, withExactly: [local.cluster.node, remote.cluster.node])
             let thirdTestKit = ActorTestKit(thirdSystem)
 
-            let localRef: ActorRef<EchoTestMessage> = try local.spawn("Local", .receiveMessage { message in
-                message.respondTo.tell("local:\(message.string)")
-                return .stop
-            })
+            let localRef: ActorRef<EchoTestMessage> = try local.spawn(
+                "Local",
+                .receiveMessage { message in
+                    message.respondTo.tell("local:\(message.string)")
+                    return .stop
+                }
+            )
 
             let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
 
-            let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn("Remote", .receiveMessage { message in
-                localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
-                return .stop
-            })
+            let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn(
+                "Remote",
+                .receiveMessage { message in
+                    localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
+                    return .stop
+                }
+            )
 
             let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)
 

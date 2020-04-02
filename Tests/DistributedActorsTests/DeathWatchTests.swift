@@ -56,17 +56,21 @@ final class DeathWatchTests: ActorSystemTestBase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn("watcher", of: String.self, .setup { context in
-            context.watch(stoppableRef, with: "terminated:\(stoppableRef.address.path)")
-            stoppableRef.tell(.stop)
-            return (Behavior<String>.receiveMessage { message in
-                p.tell(message)
-                return .same
+        _ = try system.spawn(
+            "watcher",
+            of: String.self,
+            .setup { context in
+                context.watch(stoppableRef, with: "terminated:\(stoppableRef.address.path)")
+                stoppableRef.tell(.stop)
+                return (Behavior<String>.receiveMessage { message in
+                    p.tell(message)
+                    return .same
             }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                p.tell("signal:\(terminated.address.path)") // should not be signalled (!)
-                return .same
+                    p.tell("signal:\(terminated.address.path)") // should not be signalled (!)
+                    return .same
+                }
             }
-        })
+        )
 
         // the order of these messages is also guaranteed:
         // 1) first the dying actor has last chance to signal a message,
@@ -80,19 +84,23 @@ final class DeathWatchTests: ActorSystemTestBase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn("watcher", of: String.self, .setup { context in
-            context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
-            context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
-            context.watch(stoppableRef, with: "terminated-3:\(stoppableRef.address.path)")
-            stoppableRef.tell(.stop)
-            return (Behavior<String>.receiveMessage { message in
-                p.tell(message)
-                return .same
+        _ = try system.spawn(
+            "watcher",
+            of: String.self,
+            .setup { context in
+                context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
+                context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
+                context.watch(stoppableRef, with: "terminated-3:\(stoppableRef.address.path)")
+                stoppableRef.tell(.stop)
+                return (Behavior<String>.receiveMessage { message in
+                    p.tell(message)
+                    return .same
             }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                p.tell("signal:\(terminated)") // should not be signalled (!)
-                return .same
+                    p.tell("signal:\(terminated)") // should not be signalled (!)
+                    return .same
+                }
             }
-        })
+        )
 
         // the order of these messages is also guaranteed:
         // 1) first the dying actor has last chance to signal a message,
@@ -106,19 +114,23 @@ final class DeathWatchTests: ActorSystemTestBase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn("watcher", of: String.self, .setup { context in
-            context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
-            context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
-            context.watch(stoppableRef, with: nil)
-            stoppableRef.tell(.stop)
-            return (Behavior<String>.receiveMessage { message in
-                p.tell(message) // should NOT be signalled, we're back to Signals
-                return .same
+        _ = try system.spawn(
+            "watcher",
+            of: String.self,
+            .setup { context in
+                context.watch(stoppableRef, with: "terminated-1:\(stoppableRef.address.path)")
+                context.watch(stoppableRef, with: "terminated-2:\(stoppableRef.address.path)")
+                context.watch(stoppableRef, with: nil)
+                stoppableRef.tell(.stop)
+                return (Behavior<String>.receiveMessage { message in
+                    p.tell(message) // should NOT be signalled, we're back to Signals
+                    return .same
             }).receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                p.tell("signal:\(terminated.address.path)") // should be signalled (!)
-                return .same
+                    p.tell("signal:\(terminated.address.path)") // should be signalled (!)
+                    return .same
+                }
             }
-        })
+        )
 
         // the order of these messages is also guaranteed:
         // 1) first the dying actor has last chance to signal a message,
@@ -165,23 +177,26 @@ final class DeathWatchTests: ActorSystemTestBase {
 
         p1.watch(stoppableRef)
         p2.watch(stoppableRef)
-        let notActuallyWatching: ActorRef<String> = try system.spawn("notActuallyWatching", .setup { context in
-            context.watch(stoppableRef) // watching...
-            context.unwatch(stoppableRef) // ... not *actually* watching!
-            return Behavior<String>.receiveMessage { message in
-                switch message {
-                case "ping":
-                    p3_partnerOfNotActuallyWatching.tell("pong")
+        let notActuallyWatching: ActorRef<String> = try system.spawn(
+            "notActuallyWatching",
+            .setup { context in
+                context.watch(stoppableRef) // watching...
+                context.unwatch(stoppableRef) // ... not *actually* watching!
+                return Behavior<String>.receiveMessage { message in
+                    switch message {
+                    case "ping":
+                        p3_partnerOfNotActuallyWatching.tell("pong")
+                        return .same
+                    default:
+                        fatalError("no other message is expected")
+                    }
+                }
+                .receiveSpecificSignal(Signals.Terminated.self) { _, _ in
+                    p3_partnerOfNotActuallyWatching.tell("whoops: actually DID receive terminated!")
                     return .same
-                default:
-                    fatalError("no other message is expected")
                 }
             }
-            .receiveSpecificSignal(Signals.Terminated.self) { _, _ in
-                p3_partnerOfNotActuallyWatching.tell("whoops: actually DID receive terminated!")
-                return .same
-            }
-        })
+        )
 
         // we need to perform this ping/pong dance since watch/unwatch are async, so we only know they have been sent
         // once we get a reply for a message from this actor (i.e. it has completed its setup).
@@ -200,18 +215,24 @@ final class DeathWatchTests: ActorSystemTestBase {
     func test_minimized_deathPact_shouldTriggerForWatchedActor() throws {
         let probe = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
-        let juliet = try system.spawn("juliet", Behavior<String>.receiveMessage { _ in
-            .same
-        })
-
-        let romeo = try system.spawn("romeo", Behavior<String>.setup { context in
-            context.watch(juliet)
-
-            return .receiveMessage { msg in
-                probe.ref.tell("reply:\(msg)")
-                return .same
+        let juliet = try system.spawn(
+            "juliet",
+            Behavior<String>.receiveMessage { _ in
+                .same
             }
-        })
+        )
+
+        let romeo = try system.spawn(
+            "romeo",
+            Behavior<String>.setup { context in
+                context.watch(juliet)
+
+                return .receiveMessage { msg in
+                    probe.ref.tell("reply:\(msg)")
+                    return .same
+                }
+            }
+        )
 
         probe.watch(juliet)
         probe.watch(romeo)
@@ -237,28 +258,34 @@ final class DeathWatchTests: ActorSystemTestBase {
 
         let probe = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
-        let juliet = try system.spawn("juliet", Behavior<String>.receiveMessage { _ in
-            .same
-        })
+        let juliet = try system.spawn(
+            "juliet",
+            Behavior<String>.receiveMessage { _ in
+                .same
+            }
+        )
 
-        let romeo = try system.spawn("romeo", Behavior<String>.receive { context, message in
-            switch message {
-            case "watch":
-                context.watch(juliet)
-                probe.tell("reply:watch")
-            case "unwatch":
-                context.unwatch(juliet)
-                probe.tell("reply:unwatch")
-            default:
-                fatalError("should not happen")
+        let romeo = try system.spawn(
+            "romeo",
+            Behavior<String>.receive { context, message in
+                switch message {
+                case "watch":
+                    context.watch(juliet)
+                    probe.tell("reply:watch")
+                case "unwatch":
+                    context.unwatch(juliet)
+                    probe.tell("reply:unwatch")
+                default:
+                    fatalError("should not happen")
+                }
+                return .same
+            }.receiveSignal { _, signal in
+                if case let terminated as Signals.Terminated = signal {
+                    probe.tell("Unexpected terminated received!!! \(terminated)")
+                }
+                return .same
             }
-            return .same
-        }.receiveSignal { _, signal in
-            if case let terminated as Signals.Terminated = signal {
-                probe.tell("Unexpected terminated received!!! \(terminated)")
-            }
-            return .same
-        })
+        )
 
         probe.watch(juliet)
         probe.watch(romeo)
@@ -296,21 +323,27 @@ final class DeathWatchTests: ActorSystemTestBase {
     // MARK: Death pact
 
     func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeStops() throws {
-        let romeo = try system.spawn("romeo", Behavior<RomeoMessage>.receive { context, message in
-            switch message {
-            case .pleaseWatch(let juliet, let probe):
-                context.watch(juliet)
-                probe.tell(.done)
-                return .same
-            }
-        } /* NOT handling signal on purpose, we are in a Death Pact */ )
+        let romeo = try system.spawn(
+            "romeo",
+            Behavior<RomeoMessage>.receive { context, message in
+                switch message {
+                case .pleaseWatch(let juliet, let probe):
+                    context.watch(juliet)
+                    probe.tell(.done)
+                    return .same
+                }
+            } /* NOT handling signal on purpose, we are in a Death Pact */
+        )
 
-        let juliet = try system.spawn("juliet", Behavior<JulietMessage>.receiveMessage { message in
-            switch message {
-            case .takePoison:
-                return .stop // "stop myself"
+        let juliet = try system.spawn(
+            "juliet",
+            Behavior<JulietMessage>.receiveMessage { message in
+                switch message {
+                case .takePoison:
+                    return .stop // "stop myself"
+                }
             }
-        })
+        )
 
         let p = self.testKit.spawnTestProbe("p", expecting: Done.self)
 
@@ -326,21 +359,27 @@ final class DeathWatchTests: ActorSystemTestBase {
     }
 
     func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeThrows() throws {
-        let romeo = try system.spawn("romeo", Behavior<RomeoMessage>.receive { context, message in
-            switch message {
-            case .pleaseWatch(let juliet, let probe):
-                context.watch(juliet)
-                probe.tell(.done)
-                return .same
-            }
-        } /* NOT handling signal on purpose, we are in a Death Pact */ )
+        let romeo = try system.spawn(
+            "romeo",
+            Behavior<RomeoMessage>.receive { context, message in
+                switch message {
+                case .pleaseWatch(let juliet, let probe):
+                    context.watch(juliet)
+                    probe.tell(.done)
+                    return .same
+                }
+            } /* NOT handling signal on purpose, we are in a Death Pact */
+        )
 
-        let juliet = try system.spawn("juliet", Behavior<JulietMessage>.receiveMessage { message in
-            switch message {
-            case .takePoison:
-                throw TakePoisonError() // "stop myself"
+        let juliet = try system.spawn(
+            "juliet",
+            Behavior<JulietMessage>.receiveMessage { message in
+                switch message {
+                case .takePoison:
+                    throw TakePoisonError() // "stop myself"
+                }
             }
-        })
+        )
 
         let p = self.testKit.spawnTestProbe("p", expecting: Done.self)
 

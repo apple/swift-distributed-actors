@@ -243,33 +243,38 @@ extension ActorRef {
         on pool: SerializationPool,
         file: String = #file, line: UInt = #line
     ) {
-        pool.deserializeAny(from: messageBytes, using: manifest, recipientPath: self.path, callback: .init {
-            switch $0 {
-            case .success(.message(let message)):
-                switch self.personality {
-                case .adapter(let adapter):
-                    adapter.trySendUserMessage(message, file: #file, line: #line)
-                default:
-                    self._tellOrDeadLetter(message)
-                }
-            case .success(.deadLetter(let message)):
-                self._dropAsDeadLetter(message)
+        pool.deserializeAny(
+            from: messageBytes,
+            using: manifest,
+            recipientPath: self.path,
+            callback: .init {
+                switch $0 {
+                case .success(.message(let message)):
+                    switch self.personality {
+                    case .adapter(let adapter):
+                        adapter.trySendUserMessage(message, file: #file, line: #line)
+                    default:
+                        self._tellOrDeadLetter(message)
+                    }
+                case .success(.deadLetter(let message)):
+                    self._dropAsDeadLetter(message)
 
-            case .failure(let error):
-                let metadata: Logger.Metadata = [
-                    "recipient": "\(self.path)",
-                    "message/expected/type": "\(String(reflecting: Message.self))",
-                    "message/manifest": "\(manifest)",
-                ]
+                case .failure(let error):
+                    let metadata: Logger.Metadata = [
+                        "recipient": "\(self.path)",
+                        "message/expected/type": "\(String(reflecting: Message.self))",
+                        "message/manifest": "\(manifest)",
+                    ]
 
-                if let system = self._system {
-                    system.log.warning("Failed to deserialize/deliver message to \(self.path), error: \(error)", metadata: metadata)
-                } else {
-                    // TODO: last resort, print error (system could be going down)
-                    print("Failed to deserialize/delivery message to \(self.path). Metadata: \(metadata)")
+                    if let system = self._system {
+                        system.log.warning("Failed to deserialize/deliver message to \(self.path), error: \(error)", metadata: metadata)
+                    } else {
+                        // TODO: last resort, print error (system could be going down)
+                        print("Failed to deserialize/delivery message to \(self.path). Metadata: \(metadata)")
+                    }
                 }
             }
-        })
+        )
     }
 
     public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {

@@ -94,19 +94,25 @@ final class ActorAskTests: ActorSystemTestBase {
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let greeter: ActorRef<AnswerMePlease> = try system.spawn("greeterAskReply", .receiveMessage { message in
-            message.replyTo.tell("Hello there")
-            return .stop
-        })
-
-        let _: ActorRef<Never> = try system.spawn("awaitOnAskResult", .setup { context in
-            let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
-
-            return context.awaitResultThrowing(of: askResult, timeout: .seconds(1)) { greeting in
-                p.tell(greeting)
+        let greeter: ActorRef<AnswerMePlease> = try system.spawn(
+            "greeterAskReply",
+            .receiveMessage { message in
+                message.replyTo.tell("Hello there")
                 return .stop
             }
-        })
+        )
+
+        let _: ActorRef<Never> = try system.spawn(
+            "awaitOnAskResult",
+            .setup { context in
+                let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
+
+                return context.awaitResultThrowing(of: askResult, timeout: .seconds(1)) { greeting in
+                    p.tell(greeting)
+                    return .stop
+                }
+            }
+        )
 
         try p.expectMessage("Hello there")
     }
@@ -122,20 +128,23 @@ final class ActorAskTests: ActorSystemTestBase {
             }
         )
 
-        let _: ActorRef<Never> = try system.spawn("askingAndOnResultAsyncThrowing", .setup { context in
-            let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in
-                AnswerMePlease(replyTo: replyTo)
-            }
+        let _: ActorRef<Never> = try system.spawn(
+            "askingAndOnResultAsyncThrowing",
+            .setup { context in
+                let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in
+                    AnswerMePlease(replyTo: replyTo)
+                }
 
-            context.onResultAsyncThrowing(of: askResult, timeout: timeout) { greeting in
-                p.tell(greeting)
-                return .same
-            }
+                context.onResultAsyncThrowing(of: askResult, timeout: timeout) { greeting in
+                    p.tell(greeting)
+                    return .same
+                }
 
-            // TODO: cannot become .ignore since that results in "become .same in .setup"
-            // See also issue #746
-            return .receiveMessage { _ in .same }
-        })
+                // TODO: cannot become .ignore since that results in "become .same in .setup"
+                // See also issue #746
+                return .receiveMessage { _ in .same }
+            }
+        )
 
         try p.expectMessage("Hello there", within: .seconds(3))
     }
@@ -153,20 +162,23 @@ final class ActorAskTests: ActorSystemTestBase {
 
         let void: ActorRef<AnswerMePlease> = try system.spawn("theVoid", (.receiveMessage { _ in .same }))
 
-        let _: ActorRef<Never> = try system.spawn("onResultAsync", .setup { context in
-            let askResult = void
-                .ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
+        let _: ActorRef<Never> = try system.spawn(
+            "onResultAsync",
+            .setup { context in
+                let askResult = void
+                    .ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
 
-            return context.awaitResult(of: askResult, timeout: .milliseconds(100)) { greeting in
-                switch greeting {
-                case .failure(let err):
-                    p.tell("\(err)")
-                case .success:
-                    p.tell("no timeout...")
+                return context.awaitResult(of: askResult, timeout: .milliseconds(100)) { greeting in
+                    switch greeting {
+                    case .failure(let err):
+                        p.tell("\(err)")
+                    case .success:
+                        p.tell("no timeout...")
+                    }
+                    return .stop
                 }
-                return .stop
             }
-        })
+        )
 
         var msg = "timedOut(DistributedActors.TimeoutError("
         msg += "message: \"AskResponse<String> timed out after 100ms\", "
@@ -193,10 +205,14 @@ final class ActorAskTests: ActorSystemTestBase {
     func test_ask_withTerminatedSystem_shouldNotCauseCrash() throws {
         let system = ActorSystem("AskCrashSystem")
 
-        let ref = try system.spawn(.unique("responder"), of: TestMessage.self, .receiveMessage { message in
-            message.replyTo.tell("test")
-            return .same
-        })
+        let ref = try system.spawn(
+            .unique("responder"),
+            of: TestMessage.self,
+            .receiveMessage { message in
+                message.replyTo.tell("test")
+                return .same
+            }
+        )
 
         system.shutdown().wait()
 

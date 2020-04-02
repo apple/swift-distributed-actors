@@ -580,28 +580,30 @@ class ConcurrencyHelpersTests: XCTestCase {
         weak var weakSomeInstance1: SomeClass?
         weak var weakSomeInstance2: SomeClass?
         weak var weakSomeInstance3: SomeClass?
-        ({
-            let someInstance1 = SomeClass()
-            let someInstance2 = SomeClass()
-            weakSomeInstance1 = someInstance1
+        (
+            {
+                let someInstance1 = SomeClass()
+                let someInstance2 = SomeClass()
+                weakSomeInstance1 = someInstance1
 
-            let atomic = AtomicBox(value: someInstance1)
-            var loadedFromAtomic = atomic.load()
-            XCTAssert(someInstance1 === loadedFromAtomic)
-            weakSomeInstance2 = loadedFromAtomic
+                let atomic = AtomicBox(value: someInstance1)
+                var loadedFromAtomic = atomic.load()
+                XCTAssert(someInstance1 === loadedFromAtomic)
+                weakSomeInstance2 = loadedFromAtomic
 
-            XCTAssertTrue(atomic.compareAndExchange(expected: loadedFromAtomic, desired: someInstance2))
+                XCTAssertTrue(atomic.compareAndExchange(expected: loadedFromAtomic, desired: someInstance2))
 
-            loadedFromAtomic = atomic.load()
-            weakSomeInstance3 = loadedFromAtomic
-            XCTAssert(someInstance1 !== loadedFromAtomic)
-            XCTAssert(someInstance2 === loadedFromAtomic)
+                loadedFromAtomic = atomic.load()
+                weakSomeInstance3 = loadedFromAtomic
+                XCTAssert(someInstance1 !== loadedFromAtomic)
+                XCTAssert(someInstance2 === loadedFromAtomic)
 
-            XCTAssertNotNil(weakSomeInstance1)
-            XCTAssertNotNil(weakSomeInstance2)
-            XCTAssertNotNil(weakSomeInstance3)
-            XCTAssert(weakSomeInstance1 === weakSomeInstance2 && weakSomeInstance2 !== weakSomeInstance3)
-        })()
+                XCTAssertNotNil(weakSomeInstance1)
+                XCTAssertNotNil(weakSomeInstance2)
+                XCTAssertNotNil(weakSomeInstance3)
+                XCTAssert(weakSomeInstance1 === weakSomeInstance2 && weakSomeInstance2 !== weakSomeInstance3)
+            }
+        )()
         XCTAssertNil(weakSomeInstance1)
         XCTAssertNil(weakSomeInstance2)
         XCTAssertNil(weakSomeInstance3)
@@ -612,29 +614,31 @@ class ConcurrencyHelpersTests: XCTestCase {
         weak var weakSomeInstance1: SomeClass?
         weak var weakSomeInstance2: SomeClass?
         weak var weakSomeInstance3: SomeClass?
-        ({
-            let someInstance1 = SomeClass()
-            let someInstance2 = SomeClass()
-            weakSomeInstance1 = someInstance1
+        (
+            {
+                let someInstance1 = SomeClass()
+                let someInstance2 = SomeClass()
+                weakSomeInstance1 = someInstance1
 
-            let atomic = AtomicBox(value: someInstance1)
-            var loadedFromAtomic = atomic.load()
-            XCTAssert(someInstance1 === loadedFromAtomic)
-            weakSomeInstance2 = loadedFromAtomic
+                let atomic = AtomicBox(value: someInstance1)
+                var loadedFromAtomic = atomic.load()
+                XCTAssert(someInstance1 === loadedFromAtomic)
+                weakSomeInstance2 = loadedFromAtomic
 
-            XCTAssertFalse(atomic.compareAndExchange(expected: someInstance2, desired: someInstance2))
-            XCTAssertFalse(atomic.compareAndExchange(expected: SomeClass(), desired: someInstance2))
-            XCTAssertTrue(atomic.load() === someInstance1)
+                XCTAssertFalse(atomic.compareAndExchange(expected: someInstance2, desired: someInstance2))
+                XCTAssertFalse(atomic.compareAndExchange(expected: SomeClass(), desired: someInstance2))
+                XCTAssertTrue(atomic.load() === someInstance1)
 
-            loadedFromAtomic = atomic.load()
-            weakSomeInstance3 = someInstance2
-            XCTAssert(someInstance1 === loadedFromAtomic)
-            XCTAssert(someInstance2 !== loadedFromAtomic)
+                loadedFromAtomic = atomic.load()
+                weakSomeInstance3 = someInstance2
+                XCTAssert(someInstance1 === loadedFromAtomic)
+                XCTAssert(someInstance2 !== loadedFromAtomic)
 
-            XCTAssertNotNil(weakSomeInstance1)
-            XCTAssertNotNil(weakSomeInstance2)
-            XCTAssertNotNil(weakSomeInstance3)
-        })()
+                XCTAssertNotNil(weakSomeInstance1)
+                XCTAssertNotNil(weakSomeInstance2)
+                XCTAssertNotNil(weakSomeInstance3)
+            }
+        )()
         XCTAssertNil(weakSomeInstance1)
         XCTAssertNil(weakSomeInstance2)
         XCTAssertNil(weakSomeInstance3)
@@ -678,27 +682,29 @@ class ConcurrencyHelpersTests: XCTestCase {
         let sem2 = DispatchSemaphore(value: 0)
         class SomeClass {}
         weak var weakInstance: SomeClass?
-        ({
-            let instance = SomeClass()
-            weakInstance = instance
+        (
+            {
+                let instance = SomeClass()
+                weakInstance = instance
 
-            let atomic = AtomicBox(value: instance)
-            q.async(group: g) {
-                sem1.signal()
-                sem2.wait()
+                let atomic = AtomicBox(value: instance)
+                q.async(group: g) {
+                    sem1.signal()
+                    sem2.wait()
+                    for _ in 0 ..< 1000 {
+                        XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: instance))
+                    }
+                }
+                sem2.signal()
+                sem1.wait()
                 for _ in 0 ..< 1000 {
                     XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: instance))
                 }
+                g.wait()
+                let v = atomic.load()
+                XCTAssert(v === instance)
             }
-            sem2.signal()
-            sem1.wait()
-            for _ in 0 ..< 1000 {
-                XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: instance))
-            }
-            g.wait()
-            let v = atomic.load()
-            XCTAssert(v === instance)
-        })()
+        )()
         XCTAssertNil(weakInstance)
     }
 

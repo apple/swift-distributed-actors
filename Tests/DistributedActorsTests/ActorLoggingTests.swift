@@ -34,21 +34,24 @@ final class ActorLoggingTests: ActorSystemTestBase {
         let p = self.testKit.spawnTestProbe("p", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
-            // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
-            context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
-                r.ref.tell(.instance)
-                return self.exampleSenderPath.description
-            }
-            // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
+        let ref: ActorRef<String> = try system.spawn(
+            "myName",
+            .setup { context in
+                // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
+                context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
+                    r.ref.tell(.instance)
+                    return self.exampleSenderPath.description
+                }
+                // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
 
-            return .receiveMessage { message in
-                context.log.info("I got \(message)")
+                return .receiveMessage { message in
+                    context.log.info("I got \(message)")
 
-                p.ref.tell("Got: \(message)")
-                return .same
+                    p.ref.tell("Got: \(message)")
+                    return .same
+                }
             }
-        })
+        )
 
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")
@@ -59,22 +62,25 @@ final class ActorLoggingTests: ActorSystemTestBase {
         let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
-            // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
-            context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
-                r.ref.tell(.instance)
-                return self.exampleSenderPath.description
-            }
-            // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
+        let ref: ActorRef<String> = try system.spawn(
+            "myName",
+            .setup { context in
+                // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
+                context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
+                    r.ref.tell(.instance)
+                    return self.exampleSenderPath.description
+                }
+                // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
 
-            return .receiveMessage { message in
-                context.log.logLevel = .warning
-                context.log.info("I got \(message)") // thus should not render any metadata
+                return .receiveMessage { message in
+                    context.log.logLevel = .warning
+                    context.log.info("I got \(message)") // thus should not render any metadata
 
-                p.ref.tell("Got: \(message)")
-                return .same
+                    p.ref.tell("Got: \(message)")
+                    return .same
+                }
             }
-        })
+        )
 
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")
@@ -85,22 +91,25 @@ final class ActorLoggingTests: ActorSystemTestBase {
         let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
-            // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
-            context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
-                r.ref.tell(.instance)
-                return self.exampleSenderPath.description
-            }
-            // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
+        let ref: ActorRef<String> = try system.spawn(
+            "myName",
+            .setup { context in
+                // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
+                context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
+                    r.ref.tell(.instance)
+                    return self.exampleSenderPath.description
+                }
+                // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
 
-            return .receiveMessage { message in
-                // overwrite the metadata with a local one:
-                context.log.info("I got \(message)", metadata: ["senderPath": .string("/user/sender/pre-rendered")])
+                return .receiveMessage { message in
+                    // overwrite the metadata with a local one:
+                    context.log.info("I got \(message)", metadata: ["senderPath": .string("/user/sender/pre-rendered")])
 
-                p.ref.tell("Got: \(message)")
-                return .same
+                    p.ref.tell("Got: \(message)")
+                    return .same
+                }
             }
-        })
+        )
 
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")

@@ -273,10 +273,13 @@ extension ClusterShellState {
             """)
             if tieBreakWinner {
                 if self.abortOutgoingHandshake(with: offer.from.node) != nil {
-                    self.log.debug("Aborted handshake, as concurrently negotiating another one with same node already", metadata: [
-                        "handshake/status": "abort-incoming,offer",
-                        "handshake/from": "\(offer.from)",
-                    ])
+                    self.log.debug(
+                        "Aborted handshake, as concurrently negotiating another one with same node already",
+                        metadata: [
+                            "handshake/status": "abort-incoming,offer",
+                            "handshake/from": "\(offer.from)",
+                        ]
+                    )
                 }
 
                 self.log.debug("Proceed to negotiate handshake offer.")

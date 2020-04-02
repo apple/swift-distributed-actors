@@ -90,14 +90,17 @@ extension ActorRef: ReceivesQuestions {
 
         do {
             // TODO: implement special actor ref instead of using real actor
-            let askRef = try system.spawn(.ask, AskActor.behavior(
-                promise,
-                ref: self,
-                timeout: timeout,
-                file: file,
-                function: function,
-                line: line
-            ))
+            let askRef = try system.spawn(
+                .ask,
+                AskActor.behavior(
+                    promise,
+                    ref: self,
+                    timeout: timeout,
+                    file: file,
+                    function: function,
+                    line: line
+                )
+            )
 
             let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)

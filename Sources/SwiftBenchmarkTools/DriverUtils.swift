@@ -127,7 +127,8 @@ struct TestConfig {
             Set(
                 try tags.split(separator: ",").map(String.init).map {
                     try checked({ BenchmarkCategory(rawValue: $0) }, $0)
-            })
+                }
+            )
         }
         func finiteDouble(value: String) -> Double? {
             Double(value).flatMap { $0.isFinite ? $0 : nil }
@@ -639,8 +640,10 @@ final class TestRunner {
         }
         return (
             ["#", "TEST", "SAMPLES"] +
-                (c.quantile.map(quantiles)
-                    ?? ["MIN", "MAX", "MEAN", "SD", "MEDIAN"].map(withUnit)) +
+                (
+                    c.quantile.map(quantiles)
+                        ?? ["MIN", "MAX", "MEAN", "SD", "MEDIAN"].map(withUnit)
+                ) +
                 (c.logMemory ? ["MAX_RSS(B)"] : [])
         ).joined(separator: c.delim)
     }
@@ -660,8 +663,10 @@ final class TestRunner {
                 }
                 return (
                     [r.sampleCount] +
-                        (c.quantile.map(quantiles)
-                            ?? [r.min, r.max, r.mean, r.sd, r.median]) +
+                        (
+                            c.quantile.map(quantiles)
+                                ?? [r.min, r.max, r.mean, r.sd, r.median]
+                        ) +
                         [r.maxRSS].compactMap { $0 }
                 ).map { (c.delta && $0 == 0) ? "" : String($0) } // drop 0s in deltas
             }

@@ -130,19 +130,23 @@ public struct ActorOriginLogHandler: LogHandler {
     }
 
     public init<T>(_ context: ActorContext<T>) {
-        self.init(LoggingContext(
-            identifier: context.path.description,
-            useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
-            dispatcher: { () in context.props.dispatcher.name }
-        ))
+        self.init(
+            LoggingContext(
+                identifier: context.path.description,
+                useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
+                dispatcher: { () in context.props.dispatcher.name }
+            )
+        )
     }
 
     public init(_ system: ActorSystem, identifier: String? = nil) {
-        self.init(LoggingContext(
-            identifier: identifier ?? system.name,
-            useBuiltInFormatter: system.settings.logging.useBuiltInFormatter,
-            dispatcher: { () in _hackyPThreadThreadId() }
-        ))
+        self.init(
+            LoggingContext(
+                identifier: identifier ?? system.name,
+                useBuiltInFormatter: system.settings.logging.useBuiltInFormatter,
+                dispatcher: { () in _hackyPThreadThreadId() }
+            )
+        )
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {

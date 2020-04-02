@@ -29,10 +29,13 @@ final class BehaviorTests: ActorSystemTestBase {
         let p = self.testKit.spawnTestProbe("testActor-1", expecting: String.self)
 
         let message = "EHLO"
-        let _: ActorRef<String> = try system.spawn(.anonymous, .setup { _ in
-            p.tell(message)
-            return .stop
-        })
+        let _: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .setup { _ in
+                p.tell(message)
+                return .stop
+            }
+        )
 
         try p.expectMessage(message)
     }
@@ -56,10 +59,13 @@ final class BehaviorTests: ActorSystemTestBase {
         var counter = 0
 
         let echoPayload: ActorRef<TestMessage> =
-            try system.spawn(.anonymous, .receiveMessage { message in
-                p.tell(message.message)
-                return .same
-            })
+            try system.spawn(
+                .anonymous,
+                .receiveMessage { message in
+                    p.tell(message.message)
+                    return .same
+                }
+            )
 
         for _ in 0 ... 10 {
             counter += 1
@@ -200,14 +206,17 @@ final class BehaviorTests: ActorSystemTestBase {
 
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
         let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe("probe-specificSignal-1")
-        let _: ActorRef<String> = try system.spawn(.anonymous, .setup { context in
-            let _: ActorRef<Never> = try context.spawnWatch(.anonymous, .stop)
+        let _: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .setup { context in
+                let _: ActorRef<Never> = try context.spawnWatch(.anonymous, .stop)
 
-            return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                p.tell(terminated)
-                return .stop
+                return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                    p.tell(terminated)
+                    return .stop
+                }
             }
-        })
+        )
 
         _ = try p.expectMessage()
         // receiveSignalType was invoked successfully
@@ -215,12 +224,15 @@ final class BehaviorTests: ActorSystemTestBase {
 
     func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("probe-specificSignal-2")
-        let ref: ActorRef<String> = try system.spawn(.anonymous, Behavior<String>.receiveMessage { _ in
-            .stop
-        }.receiveSpecificSignal(Signals.PostStop.self) { _, postStop in
-            p.tell("got:\(postStop)")
-            return .stop
-        })
+        let ref: ActorRef<String> = try system.spawn(
+            .anonymous,
+            Behavior<String>.receiveMessage { _ in
+                .stop
+            }.receiveSpecificSignal(Signals.PostStop.self) { _, postStop in
+                p.tell("got:\(postStop)")
+                return .stop
+            }
+        )
         ref.tell("please stop")
 
         try p.expectMessage("got:PostStop()")
@@ -312,9 +324,12 @@ final class BehaviorTests: ActorSystemTestBase {
     func test_orElse_shouldProperlyApplyTerminatedToSecondBehaviorBeforeCausingDeathPactError() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let first: Behavior<Never> = .setup { context in
-            let child: ActorRef<String> = try context.spawnWatch("child", .receiveMessage { _ in
-                throw TestError("Boom")
-            })
+            let child: ActorRef<String> = try context.spawnWatch(
+                "child",
+                .receiveMessage { _ in
+                    throw TestError("Boom")
+                }
+            )
             child.tell("Please throw now.")
 
             return .receiveSignal { _, signal in
@@ -384,10 +399,12 @@ final class BehaviorTests: ActorSystemTestBase {
     func test_stoppedWithPostStopThrows_shouldTerminate() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let behavior: Behavior<Never> = .stop(postStop: .signalHandling(handleMessage: .ignore) { _, _ in
-            p.tell("postStop")
-            throw TestError("Boom")
-        })
+        let behavior: Behavior<Never> = .stop(
+            postStop: .signalHandling(handleMessage: .ignore) { _, _ in
+                p.tell("postStop")
+                throw TestError("Boom")
+            }
+        )
 
         let ref = try system.spawn(.anonymous, behavior)
 

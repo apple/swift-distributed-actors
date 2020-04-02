@@ -60,29 +60,44 @@ class ActorLifecycleTests: ActorSystemTestBase {
             "\(err)".shouldEqual(expectedError)
         }
 
-        try check(illegalName: "hello world", expectedError: """
-        illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
-        """)
+        try check(
+            illegalName: "hello world",
+            expectedError: """
+            illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
+            """
+        )
 
-        try check(illegalName: "he//o", expectedError: """
-        illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
-        """)
-        try check(illegalName: "ążŻŌżąć", expectedError: """
-        illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
-        """)
-        try check(illegalName: "カピバラ", expectedError: """
-        illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
-        """) // ka-pi-ba-ra
+        try check(
+            illegalName: "he//o",
+            expectedError: """
+            illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
+            """
+        )
+        try check(
+            illegalName: "ążŻŌżąć",
+            expectedError: """
+            illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
+            """
+        )
+        try check(
+            illegalName: "カピバラ",
+            expectedError: """
+            illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
+            """
+        ) // ka-pi-ba-ra
     }
 
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let spawner: Behavior<String> = .receive { context, name in
             let fromName = context.path
-            let _: ActorRef<Never> = try context.system.spawn("\(name)", .setup { context in
-                p.tell("me:\(context.path) spawned from \(fromName)")
-                return .receiveMessage { _ in .stop } // keep ignoring
-            })
+            let _: ActorRef<Never> = try context.system.spawn(
+                "\(name)",
+                .setup { context in
+                    p.tell("me:\(context.path) spawned from \(fromName)")
+                    return .receiveMessage { _ in .stop } // keep ignoring
+                }
+            )
             return .stop
         }
         try system.spawn("a", spawner).tell("charlie")
