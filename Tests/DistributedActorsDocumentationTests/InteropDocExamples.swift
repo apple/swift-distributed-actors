@@ -197,6 +197,7 @@ class InteropDocExamples: XCTestCase {
             }
         }
         // end::asyncOp_awaitResult[]
+        _ = behavior // avoids warning: unused variable
     }
 
     func example_asyncOp_awaitResultThrowing() throws {

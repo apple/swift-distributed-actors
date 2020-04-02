@@ -142,7 +142,6 @@ final class WorkerPoolTests: ActorSystemTestBase {
     func test_workerPool_ask() throws {
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
-        let pW: ActorTestProbe<WorkerPoolQuestion> = self.testKit.spawnTestProbe("pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<WorkerPoolQuestion> {
             .receive { context, work in
