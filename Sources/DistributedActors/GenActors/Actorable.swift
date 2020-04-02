@@ -111,13 +111,15 @@ extension Actorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reply
 
-public enum Reply<Value>: NotTransportableActorMessage {
+/// Represents a (local) result of an actorable "call".
+/// A reply is like a future, and may not yet be completed // TODO: I'd like it to BE a future..
+public enum Reply<Value> {
     case completed(Result<Value, ErrorEnvelope>)
     case nioFuture(EventLoopFuture<Value>)
 }
 
 extension Reply {
-    public static func from<AskReplyValue>(askResponse: AskResponse<AskReplyValue>) -> Reply<Value> {
+    public static func from<Answer>(askResponse: AskResponse<Answer>) -> Reply<Value> {
         switch askResponse {
         case .completed(let result as Result<Value, Error>):
             switch result {
@@ -138,12 +140,21 @@ extension Reply {
                     }
                 }
             )
+        case .nioFuture(let nioFuture as EventLoopFuture<Result<Value, ErrorEnvelope>>):
+            return .nioFuture(
+                nioFuture.flatMapThrowing { result in
+                    switch result {
+                    case .success(let res): return res
+                    case .failure(let err): throw err
+                    }
+                }
+            )
         default:
             let errorMessage = """
-            Received unexpected ask reply of type [\(AskReplyValue.self)] which cannot be converted to reply type [\(Value.self)]. \
+            Received unexpected ask reply [\(askResponse)]:\(type(of: askResponse as Any)) which cannot be converted to reply type [\(Value.self)]. \
             This is a bug, please report this on the issue tracker.
             """
-            fatalError(errorMessage)
+            return fatalErrorBacktrace(errorMessage)
         }
     }
 

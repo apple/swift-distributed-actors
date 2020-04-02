@@ -59,7 +59,14 @@ extension InvokeFuncs {
  
                 case .doThingsAsync(let _replyTo):
                     instance.doThingsAsync()
- 
+                        ._onComplete { res in
+                            switch res {
+                            case .success(let value):
+                                _replyTo.tell(.success(value))
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        } 
                 case .internalTask(let _replyTo):
                     let result = instance.internalTask()
                     _replyTo.tell(result)

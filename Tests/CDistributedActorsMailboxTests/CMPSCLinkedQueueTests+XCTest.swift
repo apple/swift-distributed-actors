@@ -22,7 +22,7 @@ import XCTest
 
 extension CMPSCLinkedQueueTests {
     static var allTests: [(String, (CMPSCLinkedQueueTests) -> () throws -> Void)] {
-        return [
+        [
             ("testDequeueWhenEmpty", testDequeueWhenEmpty),
             ("testEnqueueDequeue", testEnqueueDequeue),
             ("testDestroy", testDestroy),
