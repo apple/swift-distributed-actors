@@ -494,3 +494,33 @@ extension ActorTestKit {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: AskResponse
+
+extension AskResponse {
+    /// Blocks and waits until there is a response or fails with an error.
+    public func wait() throws -> Value {
+        switch self {
+        case .completed(let result):
+            return try result.get()
+        case .nioFuture(let nioFuture):
+            return try nioFuture.wait()
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ResultReply
+
+extension ResultReply {
+    /// Blocks and waits until there is a reply or fails with an error.
+    public func wait() throws -> Value {
+        switch self {
+        case .completed(let result):
+            return try result.get()
+        case .nioFuture(let nioFuture):
+            return try nioFuture.wait()
+        }
+    }
+}
