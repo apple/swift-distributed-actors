@@ -536,7 +536,7 @@ extension AskResponse {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ResultReply
 
-extension ResultReply {
+extension Reply {
     /// Blocks and waits until there is a reply or fails with an error.
     public func wait() throws -> Value {
         switch self {
