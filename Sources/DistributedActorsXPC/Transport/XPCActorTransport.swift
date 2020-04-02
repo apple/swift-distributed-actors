@@ -200,7 +200,7 @@ final class XPCMaster {
     }
 
     var behavior: Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             context.log.info("XPC transport initialized.")
 
             return .receiveMessage { message in

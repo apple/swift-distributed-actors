@@ -163,7 +163,7 @@ extension Reply {
 extension Reply: AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         switch self {
-        case .completed(.success((let value))):
+        case .completed(.success(let value)):
             callback(.success(value))
         case .completed(.failure(let error)):
             callback(.failure(error))

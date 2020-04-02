@@ -34,7 +34,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         func someComputation() -> String {
-            return "test"
+            "test"
         }
 
         // tag::asyncOp_sendResult_dispatch[]
@@ -61,7 +61,7 @@ class InteropDocExamples: XCTestCase {
         defer { system.shutdown().wait() }
 
         func someComputation() -> String {
-            return "test"
+            "test"
         }
 
         func fetchDataAsync(_: (String) -> Void) {}
@@ -97,7 +97,7 @@ class InteropDocExamples: XCTestCase {
             init(cacheDuration: DistributedActors.TimeAmount) {}
 
             func lookup(_: Key) -> Value? {
-                return nil
+                nil
             }
 
             mutating func insert(_: Key, _: Value) {}
@@ -120,7 +120,7 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchUser(_: String) -> EventLoopFuture<User?> {
-            return eventLoop.makeSucceededFuture(nil)
+            eventLoop.makeSucceededFuture(nil)
         }
 
         // tag::asyncOp_onResultAsync[]
@@ -171,7 +171,7 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {
-            return eventLoop.makeSucceededFuture("success")
+            eventLoop.makeSucceededFuture("success")
         }
 
         // tag::asyncOp_awaitResult[]
@@ -188,7 +188,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         func prefixer(prefix: String) -> Behavior<Message> {
-            return .receiveMessage {
+            .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
                     recipient.tell("\(prefix): \(string)")
@@ -209,11 +209,11 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {
-            return eventLoop.makeSucceededFuture("success")
+            eventLoop.makeSucceededFuture("success")
         }
 
         func prefixer(prefix: String) -> Behavior<Message> {
-            return .receiveMessage {
+            .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
                     recipient.tell("\(prefix): \(string)")

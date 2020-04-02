@@ -573,7 +573,7 @@ extension SWIMShell {
 
 extension ActorAddress {
     internal static func _swim(on node: UniqueNode) -> ActorAddress {
-        return .init(node: node, path: ActorPath._swim, incarnation: .wellKnown)
+        .init(node: node, path: ActorPath._swim, incarnation: .wellKnown)
     }
 }
 

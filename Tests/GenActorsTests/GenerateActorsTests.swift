@@ -20,10 +20,9 @@ import GenActors
 import XCTest
 
 final class GenerateActorsTests: XCTestCase {
-    
     // The Tests/GenActorsTests/ directory
     let testFolder: Folder = try! File(path: #file).parent!.parent!.subfolder(at: "GenActorsTests")
-    
+
     var system: ActorSystem!
     var testKit: ActorTestKit!
 

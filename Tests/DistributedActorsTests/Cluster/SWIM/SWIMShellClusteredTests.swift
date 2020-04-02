@@ -19,7 +19,6 @@ import Foundation
 import XCTest
 
 final class SWIMShellClusteredTests: ClusteredNodesTestBase {
-
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
@@ -181,7 +180,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         let p = self.testKit(second).spawnTestProbe(expecting: String.self)
 
         func behavior(postFix: String) -> Behavior<SWIM.Message> {
-            return .receive { context, message in
+            .receive { context, message in
                 switch message {
                 case .remote(.ping(_, let replyTo, _)):
                     replyTo.tell(.ack(target: context.myself, incarnation: 0, payload: .none))
@@ -870,7 +869,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
     }
 
     func forwardingSWIMBehavior(forwardTo ref: ActorRef<ForwardedSWIMMessage>) -> Behavior<SWIM.Message> {
-        return .receive { context, message in
+        .receive { context, message in
             ref.tell(.init(message: message, recipient: context.myself))
             return .same
         }
@@ -953,7 +952,7 @@ extension SWIMShell {
 
     static func swimBehavior(members: [ActorRef<SWIM.Message>], clusterRef: ClusterShell.Ref, configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in
     }) -> Behavior<SWIM.Message> {
-        return .setup { context in
+        .setup { context in
             let swim = self.makeSWIM(for: context.address, members: members, context: context, configuredWith: configure)
             return SWIM.Shell.ready(shell: SWIMShell(swim, clusterRef: clusterRef))
         }
@@ -969,7 +968,7 @@ class TestTimeSource {
     }
 
     func now() -> Int64 {
-        return self.currentTime.load()
+        self.currentTime.load()
     }
 
     func tick() {

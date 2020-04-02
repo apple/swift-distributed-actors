@@ -120,7 +120,7 @@ extension ActorRef: ReceivesQuestions {
     }
 }
 
-//extension ActorRef: ReceivesQuestions {
+// extension ActorRef: ReceivesQuestions {
 //    public typealias Question = Message
 //
 //    public func ask<Answer: Codable>(
@@ -191,7 +191,7 @@ extension ActorRef: ReceivesQuestions {
 //
 //        return .nioFuture(promise.futureResult)
 //    }
-//}
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: AskResponse
@@ -314,7 +314,7 @@ internal enum AskActor {
     ) -> Behavior<ResponseType> {
         // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
         // but make dead letters tell us back that our ask will never reply?
-        return .setup { context in
+        .setup { context in
             var scheduledTimeout: Scheduled<Void>?
             if !timeout.isEffectivelyInfinite {
                 let timeoutSub = context.subReceive(Event.self) { event in

@@ -114,7 +114,7 @@ public enum GuardianFailureHandling {
 extension ActorSystemSettings {
     public struct ActorSettings {
         public static var `default`: ActorSettings {
-            return .init()
+            .init()
         }
 
         // arbitrarily selected, we protect start() using it; we may lift this restriction if needed

@@ -55,7 +55,7 @@ public class Children {
     }
 
     public func hasChild(identifiedBy path: ActorPath) -> Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             switch self.container[path.name] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages.address.path == path
@@ -68,11 +68,11 @@ public class Children {
     }
 
     public func hasChild(identifiedBy address: ActorAddress) -> Bool {
-        return self.hasChild(identifiedBy: address.path)
+        self.hasChild(identifiedBy: address.path)
     }
 
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             switch self.container[name] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages as? ActorRef<T>
@@ -101,7 +101,7 @@ public class Children {
     ///
     /// - SeeAlso: `contains(identifiedBy:)`
     internal func contains(name: String) -> Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             self.container.keys.contains(name)
         }
     }
@@ -111,7 +111,7 @@ public class Children {
     ///
     /// - SeeAlso: `contains(name:)`
     internal func contains(identifiedBy address: ActorAddress) -> Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             switch self.container[address.name] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages.address == address
@@ -128,7 +128,7 @@ public class Children {
     @usableFromInline
     @discardableResult
     internal func removeChild(identifiedBy address: ActorAddress) -> Bool {
-        return self.rwLock.withWriterLock {
+        self.rwLock.withWriterLock {
             switch self.container[address.name] {
             case .some(.cell(let child)) where child.receivesSystemMessages.address.incarnation == address.incarnation:
                 return self.container.removeValue(forKey: address.name) != nil
@@ -148,7 +148,7 @@ public class Children {
     @usableFromInline
     @discardableResult
     internal func markAsStoppingChild(identifiedBy address: ActorAddress) -> Bool {
-        return self.rwLock.withWriterLock {
+        self.rwLock.withWriterLock {
             self._markAsStoppingChild(identifiedBy: address)
         }
     }
@@ -172,7 +172,7 @@ public class Children {
 
     @usableFromInline
     internal func forEach(_ body: (AddressableActorRef) throws -> Void) rethrows {
-        return try self.rwLock.withReaderLock {
+        try self.rwLock.withReaderLock {
             try self.container.values.forEach {
                 switch $0 {
                 case .cell(let child): try body(child.asAddressable)
@@ -184,14 +184,14 @@ public class Children {
 
     @usableFromInline
     internal var isEmpty: Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             self.container.isEmpty && self.stopping.isEmpty
         }
     }
 
     @inlinable
     internal var nonEmpty: Bool {
-        return !self.isEmpty
+        !self.isEmpty
     }
 }
 
@@ -285,7 +285,7 @@ extension Children {
     ///
     /// Returns: `true` if the child was stopped by this invocation, `false` otherwise
     func stop(named name: String) -> Bool {
-        return self.rwLock.withWriterLock {
+        self.rwLock.withWriterLock {
             self._stop(named: name, includeAdapters: true)
         }
     }

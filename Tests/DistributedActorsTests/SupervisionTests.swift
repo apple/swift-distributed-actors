@@ -58,7 +58,7 @@ final class SupervisionTests: ActorSystemTestBase {
     }
 
     func faulty(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessage> {
-        return .setup { context in
+        .setup { context in
             probe?.tell(.setupRunning(ref: context.myself))
 
             return .receiveMessage {

@@ -370,7 +370,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         // FIXME: Enable test_writeDelta_shouldFailIfNotDeltaCRDT again
         pinfo("SKIPPED: test_writeDelta_shouldFailIfNotDeltaCRDT FIXME!!!")
         return
-        
+
 //        let replicator = CRDT.Replicator.Instance(.default)
 //
 //        let id = CRDT.Identity("lwwreg-1")

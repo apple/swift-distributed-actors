@@ -60,7 +60,7 @@ class SupervisionDocExamples {
         }
 
         func greeterBehavior(friends: [String]) -> Behavior<String> {
-            return .receive { context, name in
+            .receive { context, name in
                 guard friends.contains(name) else {
                     context.log.warning("Overreacting to \(name)... Letting it crash!")
                     throw GreeterError.doesNotLike(name: name)
@@ -97,7 +97,7 @@ class SupervisionDocExamples {
         typealias LikedFruit = String
 
         func favouriteFruitBehavior(_ whoLikesWhat: [Name: LikedFruit]) -> Behavior<String> {
-            return .receive { context, name in
+            .receive { context, name in
                 let likedFruit = whoLikesWhat[name]! // 😱 Oh, no! This force unwrap is a terrible idea!
 
                 context.log.info("\(name) likes [\(likedFruit)]!")

@@ -323,7 +323,7 @@ extension ClusterShell {
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 

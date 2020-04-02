@@ -103,7 +103,7 @@ public struct TestActorable: Actorable {
     // MARK: Become
 
     func becomeStopped() -> Behavior<TestActorable.Message> {
-        return .stop
+        .stop
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

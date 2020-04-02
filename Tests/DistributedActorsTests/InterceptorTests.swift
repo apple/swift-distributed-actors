@@ -30,7 +30,7 @@ final class ShoutingInterceptor: Interceptor<String> {
     }
 
     override func isSame(as other: Interceptor<String>) -> Bool {
-        return false
+        false
     }
 }
 

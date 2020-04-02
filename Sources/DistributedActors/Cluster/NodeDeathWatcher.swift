@@ -130,7 +130,7 @@ enum NodeDeathWatcherShell {
 
     // FIXME: death watcher is incomplete, should handle snapshot!!
     static func behavior(clusterEvents: EventStream<Cluster.Event>) -> Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.cluster.uniqueBindNode)
 
             context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
@@ -147,7 +147,7 @@ enum NodeDeathWatcherShell {
     }
 
     static func behavior(_ instance: NodeDeathWatcherInstance) -> Behavior<Message> {
-        return .receiveMessage { message in
+        .receiveMessage { message in
 
             let lastMembership: Cluster.Membership = .empty // TODO: To be mutated based on membership changes
 

@@ -110,7 +110,7 @@ internal final class DefersContainer {
 
     @usableFromInline
     var shouldInvokeAfterReceived: Bool {
-        return self._wasPushedDuringReduction
+        self._wasPushedDuringReduction
     }
 
     // TODO: optimize, no need to always scan entire thing; can keep index around "after which there definitely are no more .received defers"
