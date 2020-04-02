@@ -191,10 +191,15 @@ public enum Receptionist {
     }
 
     /// Response to `Lookup` and `Subscribe` requests
-    public struct Listing<Message: ActorMessage>: NotTransportableActorMessage, Equatable, CustomStringConvertible {
+    /// // TODO: can be made Codable
+    public struct Listing<Message: ActorMessage>: ActorMessage, Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
         public var description: String {
             "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
+        }
+
+        var first: ActorRef<Message>? {
+            self.refs.first
         }
     }
 

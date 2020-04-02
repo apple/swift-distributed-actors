@@ -27,6 +27,7 @@ extension OwnerOfThings {
     public enum Message: ActorMessage { 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
         case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>>) 
+        case performAskLookup(_replyTo: ActorRef<Result<Receptionist.Listing<OwnerOfThings.Message>, ErrorEnvelope>>) 
         case performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) 
     }
     
@@ -52,7 +53,24 @@ extension OwnerOfThings {
  
                 case .performLookup(let _replyTo):
                     instance.performLookup()
- 
+                        ._onComplete { res in
+                            switch res {
+                            case .success(let value):
+                                _replyTo.tell(.success(value))
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        } 
+                case .performAskLookup(let _replyTo):
+                    instance.performAskLookup()
+                        ._onComplete { res in
+                            switch res {
+                            case .success(let value):
+                                _replyTo.tell(.success(value))
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        } 
                 case .performSubscribe(let p):
                     instance.performSubscribe(p: p)
  
@@ -102,6 +120,15 @@ extension Actor where A.Message == OwnerOfThings.Message {
         Reply.from(askResponse: 
             self.ref.ask(for: Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.performLookup(_replyTo: _replyTo)}
+        )
+    }
+ 
+
+     func performAskLookup() -> Reply<Receptionist.Listing<OwnerOfThings.Message>> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: Result<Receptionist.Listing<OwnerOfThings.Message>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.performAskLookup(_replyTo: _replyTo)}
         )
     }
  

@@ -33,7 +33,7 @@ final class ActorAskTests: ActorSystemTestBase {
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
-        let result = try response.nioFuture.wait()
+        let result = try response.wait()
 
         result.shouldEqual("received")
     }
