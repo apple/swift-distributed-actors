@@ -158,6 +158,7 @@ class UsingAllInOneMachine {
         printAnyDiagnostics(diagnostics: machine) // <3>
 
         // end::compose_protocols_2[]
+        _ = coffee // avoids warning: unused variable
     }
 }
 

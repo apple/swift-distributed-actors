@@ -44,7 +44,6 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
     func shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: NodeStopMethod, stopNode: StopNodeSelection, _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) throws {
         let (first, second) = self.setUpPair(modifySettings)
         let thirdNeverDownSystem = self.setUpNode("third", modifySettings)
-        let thirdNeverDownNode = thirdNeverDownSystem.cluster.node
 
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
         try self.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
