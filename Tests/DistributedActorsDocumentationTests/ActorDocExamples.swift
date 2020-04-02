@@ -284,9 +284,8 @@ class ActorDocExamples: XCTestCase {
             Hello(name: "Anne", replyTo: replyTo) // <2>
         }
 
-        let result = try response.wait() // <3>
+        response._onComplete { result in _ = result } // <3>
         // end::ask_outside[]
-        _ = result
     }
 
     func example_ask_inside() throws {

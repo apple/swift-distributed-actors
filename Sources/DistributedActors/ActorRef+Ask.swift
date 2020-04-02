@@ -198,18 +198,6 @@ extension AskResponse {
             return .nioFuture(nioFuture.map { callback($0) })
         }
     }
-
-    /// Blocks and waits until there is a response or fails with an error.
-    ///
-    /// - Warning: This is blocking and should be avoided in production code. Use asynchronous callbacks instead.
-    public func wait() throws -> Value {
-        switch self {
-        case .completed(let result):
-            return try result.get()
-        case .nioFuture(let nioFuture):
-            return try nioFuture.wait()
-        }
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
