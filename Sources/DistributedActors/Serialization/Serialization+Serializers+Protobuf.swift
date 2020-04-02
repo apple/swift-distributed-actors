@@ -51,12 +51,12 @@ open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Messag
 
     // To be implemented by subclass
     open func toProto(_ message: Message, context: Serialization.Context) throws -> ProtobufMessage {
-        return undefined()
+        undefined()
     }
 
     // To be implemented by subclass
     open func fromProto(_ proto: ProtobufMessage, context: Serialization.Context) throws -> Message {
-        return undefined()
+        undefined()
     }
 
     open override func setSerializationContext(_ context: Serialization.Context) {
@@ -67,21 +67,21 @@ open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Messag
 /// Protobuf serializer for user-defined protobuf messages.
 public final class ProtobufSerializer<T: ProtobufRepresentable>: BaseProtobufSerializer<T, T.ProtobufRepresentation> {
     public override func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
-        return try message.toProto(context: self.serializationContext)
+        try message.toProto(context: self.serializationContext)
     }
 
     public override func fromProto(_ proto: T.ProtobufRepresentation, context: Serialization.Context) throws -> T {
-        return try T(fromProto: proto, context: self.serializationContext)
+        try T(fromProto: proto, context: self.serializationContext)
     }
 }
 
 /// Protobuf serializer for internal protobuf messages only.
 internal final class InternalProtobufSerializer<T: InternalProtobufRepresentable>: BaseProtobufSerializer<T, T.ProtobufRepresentation> {
     public override func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
-        return try message.toProto(context: self.serializationContext)
+        try message.toProto(context: self.serializationContext)
     }
 
     public override func fromProto(_ proto: T.ProtobufRepresentation, context: Serialization.Context) throws -> T {
-        return try T(fromProto: proto, context: self.serializationContext)
+        try T(fromProto: proto, context: self.serializationContext)
     }
 }

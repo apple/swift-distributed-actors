@@ -18,7 +18,6 @@ import Foundation
 import XCTest
 
 final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
-    
     // TODO: This will start failing once we implement _mangledTypeName manifests
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() throws {
         let local = self.setUpNode("local") { settings in
@@ -319,6 +318,6 @@ struct Boom: Error {
 
 extension SerializationTestMessage: CustomStringConvertible {
     var description: String {
-        return "SerializationTestMessage"
+        "SerializationTestMessage"
     }
 }

@@ -71,19 +71,19 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages {
-        return self.myself
+        self.myself
     }
 
     @usableFromInline
     var asAddressable: AddressableActorRef {
-        return self.myself.asAddressable()
+        self.myself.asAddressable()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 
     public override var timers: Timers<Message> {
-        return self._timers
+        self._timers
     }
 
     lazy var _timers: Timers<Message> = Timers(context: self)
@@ -367,7 +367,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
         guard let adapter = maybeAdapter?.closure else {
             self.log.warning("Received adapted message [\(carry.message)]:\(type(of: carry.message as Any)) for which no adapter was registered.", metadata: [
-                "actorRef/adapters": "\(self.messageAdapters)"
+                "actorRef/adapters": "\(self.messageAdapters)",
             ])
             try self.becomeNext(behavior: .ignore) // TODO: make .drop once implemented
             return self.runState
@@ -418,7 +418,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     internal var isSuspended: Bool {
-        return self.behavior.isSuspended
+        self.behavior.isSuspended
     }
 
     /// Fails the actor using the passed in error.
@@ -717,7 +717,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
-        return self.subReceives[identifier]?.0
+        self.subReceives[identifier]?.0
     }
 
     public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>

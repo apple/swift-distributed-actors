@@ -24,22 +24,22 @@ public func blackHole<T>(_: T) {}
 // Return the passed argument without letting the optimizer know that.
 @inline(never)
 public func identity<T>(_ x: T) -> T {
-    return x
+    x
 }
 
 // Return the passed argument without letting the optimizer know that.
 // It's important that this function is in another module than the tests
 // which are using it.
 @inline(never)
-public func getInt(_ x: Int) -> Int { return x }
+public func getInt(_ x: Int) -> Int { x }
 
 // The same for String.
 @inline(never)
-public func getString(_ s: String) -> String { return s }
+public func getString(_ s: String) -> String { s }
 
 // The same for Substring.
 @inline(never)
-public func getSubstring(_ s: Substring) -> Substring { return s }
+public func getSubstring(_ s: Substring) -> Substring { s }
 
 func withAutoReleasePool<T>(_ execute: () throws -> T) rethrows -> T {
     #if os(Linux)

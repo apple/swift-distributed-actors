@@ -162,7 +162,7 @@ internal final class BlockingReceptacle<Value> {
     }
 
     func wait() -> Value {
-        return self.lock.synchronized { () -> Value in
+        self.lock.synchronized { () -> Value in
             while true {
                 if let v = self._value {
                     return v

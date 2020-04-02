@@ -605,7 +605,7 @@ extension ActorableMessageDecl.ReturnType {
         case .behavior:
             return ""
         case .result(let t, let errT):
-            return " -> ResultReply<\(t), \(errT)>" 
+            return " -> ResultReply<\(t), \(errT)>"
         case .nioEventLoopFuture(let t):
             return " -> Reply<\(t)>"
         case .actorReply(let t):

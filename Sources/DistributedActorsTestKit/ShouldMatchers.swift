@@ -160,7 +160,7 @@ public extension TestMatchers where T == String {
 
     /// Asserts that `it` does NOT contain the `subString`.
     func toNotContain(_ subString: String) {
-        return self.toContain(subString, negate: true)
+        self.toContain(subString, negate: true)
     }
 }
 
@@ -257,11 +257,11 @@ extension Bool {
     }
 
     public func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        return self.shouldBe(false, file: file, line: line, column: column)
+        self.shouldBe(false, file: file, line: line, column: column)
     }
 
     public func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        return self.shouldBe(true, file: file, line: line, column: column)
+        self.shouldBe(true, file: file, line: line, column: column)
     }
 }
 

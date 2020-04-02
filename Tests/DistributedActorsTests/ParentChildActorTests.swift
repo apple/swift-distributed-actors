@@ -51,7 +51,7 @@ final class ParentChildActorTests: ActorSystemTestBase {
     }
 
     func parentBehavior(probe: ParentChildProbeRef, notifyWhenChildStops: Bool = false) -> Behavior<ParentProtocol> {
-        return Behavior<ParentProtocol>.receive { context, message in
+        Behavior<ParentProtocol>.receive { context, message in
             switch message {
             case .stop:
                 return .stop
@@ -107,7 +107,7 @@ final class ParentChildActorTests: ActorSystemTestBase {
     }
 
     func childBehavior(probe: ParentChildProbeRef, notifyWhenChildStops: Bool = false) -> Behavior<ChildProtocol> {
-        return .setup { context in
+        .setup { context in
             context.log.debug("Hello...")
 
             return .receiveMessage { message in

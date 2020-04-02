@@ -119,7 +119,7 @@ internal enum POSIXProcessUtils {
 
     /// Get PID of parent process.
     internal static func getParentPID() -> Int {
-        return Int(getppid())
+        Int(getppid())
     }
 
     /// Exits the current process.

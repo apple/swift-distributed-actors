@@ -37,7 +37,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemTestBase {
     }
 
     func faultyWorkerBehavior(probe pw: ActorRef<Int>) -> Behavior<FaultyWorkerMessage> {
-        return .receive { context, message in
+        .receive { context, message in
             context.log.info("Working on: \(message)")
             switch message {
             case .work(let n, let divideBy): // Fault handling is not implemented
@@ -52,7 +52,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemTestBase {
 
     let spawnFaultyWorkerCommand = "spawnFaultyWorker"
     func healthyMasterBehavior(pm: ActorRef<SimpleProbeMessage>, pw: ActorRef<Int>) -> Behavior<String> {
-        return .receive { context, message in
+        .receive { context, message in
             switch message {
             case self.spawnFaultyWorkerCommand:
                 let worker = try context.spawn("faultyWorker", self.faultyWorkerBehavior(probe: pw))

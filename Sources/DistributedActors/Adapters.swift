@@ -65,7 +65,7 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     }
 
     var system: ActorSystem? {
-        return self.target._system
+        self.target._system
     }
 
     func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
@@ -244,7 +244,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
     private let lock = _Mutex()
 
     var address: ActorAddress {
-        return self.adapterAddress
+        self.adapterAddress
     }
 
     let deadLetters: ActorRef<DeadLetter>
@@ -262,11 +262,11 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
     }
 
     private var myself: ActorRef<Message> {
-        return ActorRef(.adapter(self))
+        ActorRef(.adapter(self))
     }
 
     var system: ActorSystem? {
-        return self.target._system
+        self.target._system
     }
 
     func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {

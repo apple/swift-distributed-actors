@@ -160,7 +160,7 @@ public enum Signals {
 
 extension Signals.Terminated: Equatable, Hashable {
     public static func == (lhs: Signals.Terminated, rhs: Signals.Terminated) -> Bool {
-        return lhs.address == rhs.address &&
+        lhs.address == rhs.address &&
             lhs.existenceConfirmed == rhs.existenceConfirmed
     }
 

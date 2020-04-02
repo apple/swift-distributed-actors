@@ -110,7 +110,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     }
 
     func association(with node: Node) -> Association.State? {
-        return self._associations[node]
+        self._associations[node]
     }
 
     func associatedNodes() -> Set<UniqueNode> {
@@ -127,7 +127,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     }
 
     func handshakes() -> [HandshakeStateMachine.State] {
-        return self._handshakes.values.map { hsm -> HandshakeStateMachine.State in
+        self._handshakes.values.map { hsm -> HandshakeStateMachine.State in
             hsm
         }
     }
@@ -194,7 +194,7 @@ extension ClusterShellState {
     }
 
     func handshakeInProgress(with node: Node) -> HandshakeStateMachine.State? {
-        return self._handshakes[node]
+        self._handshakes[node]
     }
 
     /// Abort a handshake, clearing any of its state as well as closing the passed in channel

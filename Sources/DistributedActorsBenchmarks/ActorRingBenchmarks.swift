@@ -82,7 +82,7 @@ private struct Token: ActorMessage {
 private let mutex = _Mutex()
 
 private func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
-    return .receive { _, msg in
+    .receive { _, msg in
         switch msg.payload {
         case 1:
             ringStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())

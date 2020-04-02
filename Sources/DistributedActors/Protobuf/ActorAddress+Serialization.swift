@@ -93,7 +93,7 @@ extension ActorRef: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoActorAddress
 
     public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {
-        return try self.address.toProto(context: context)
+        try self.address.toProto(context: context)
     }
 
     public init(fromProto proto: ProtoActorAddress, context: Serialization.Context) throws {

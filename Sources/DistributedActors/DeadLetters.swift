@@ -88,7 +88,7 @@ extension ActorSystem {
 
     /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
     public var deadLetters: ActorRef<DeadLetter> {
-        return self._deadLetters
+        self._deadLetters
     }
 }
 
@@ -152,17 +152,17 @@ public final class DeadLetterOffice {
 
     @usableFromInline
     var address: ActorAddress {
-        return self._address
+        self._address
     }
 
     @usableFromInline
     var path: ActorPath {
-        return self._address.path
+        self._address.path
     }
 
     @usableFromInline
     var ref: ActorRef<DeadLetter> {
-        return .init(.deadLetters(self))
+        .init(.deadLetters(self))
     }
 
     func deliver(_ message: Any, file: String = #file, line: UInt = #line) {

@@ -36,7 +36,7 @@ public final class ActorSystem {
     internal var _namingContext = ActorNamingContext()
     internal let namingLock = Lock()
     internal func withNamingContext<T>(_ block: (inout ActorNamingContext) throws -> T) rethrows -> T {
-        return try self.namingLock.withLock {
+        try self.namingLock.withLock {
             try block(&self._namingContext)
         }
     }
@@ -76,7 +76,7 @@ public final class ActorSystem {
     // TODO: Use "set once" atomic structure
     private var _receptionist: ActorRef<Receptionist.Message>!
     public var receptionist: ActorRef<Receptionist.Message> {
-        return self._receptionist
+        self._receptionist
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ public final class ActorSystem {
     // TODO: Use "set once" atomic structure
     private var _replicator: ActorRef<CRDT.Replicator.Message>!
     internal var replicator: ActorRef<CRDT.Replicator.Message> {
-        return self._replicator
+        self._replicator
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ public final class ActorSystem {
     // TODO: Use "set once" atomic structure
     private lazy var _metrics: ActorSystemMetrics = ActorSystemMetrics(self.settings.metrics)
     internal var metrics: ActorSystemMetrics {
-        return self._metrics
+        self._metrics
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

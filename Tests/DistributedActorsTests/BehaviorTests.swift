@@ -112,7 +112,7 @@ final class BehaviorTests: ActorSystemTestBase {
         }
 
         func thxFor(_ m: String) -> String {
-            return "Thanks for: <\(m)>"
+            "Thanks for: <\(m)>"
         }
     }
 
@@ -128,7 +128,7 @@ final class BehaviorTests: ActorSystemTestBase {
         }
 
         func thxFor(_ m: String) -> String {
-            return "Thanks for: <\(m)>"
+            "Thanks for: <\(m)>"
         }
 
         // separately see if we got the expected replies in the right order.
@@ -234,7 +234,7 @@ final class BehaviorTests: ActorSystemTestBase {
     }
 
     func firstBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
-        return .receiveMessage { message in
+        .receiveMessage { message in
             switch message {
             case .first:
                 probe.tell(.first)
@@ -248,14 +248,14 @@ final class BehaviorTests: ActorSystemTestBase {
     }
 
     func secondBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
-        return .receiveMessage { message in
+        .receiveMessage { message in
             probe.tell(message)
             return .same
         }
     }
 
     func combinedBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
-        return self.firstBehavior(probe).orElse(self.secondBehavior(probe))
+        self.firstBehavior(probe).orElse(self.secondBehavior(probe))
     }
 
     func test_orElse_shouldExecuteFirstBehavior() throws {
@@ -598,7 +598,7 @@ final class BehaviorTests: ActorSystemTestBase {
     }
 
     private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, Error>>? = nil) -> Behavior<String> {
-        return .receive { context, message in
+        .receive { context, message in
             switch message {
             case "suspend":
                 return context.awaitResult(of: future, timeout: timeout) {
@@ -613,7 +613,7 @@ final class BehaviorTests: ActorSystemTestBase {
     }
 
     private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> Behavior<String> {
-        return .receive { context, message in
+        .receive { context, message in
             switch message {
             case "suspend":
                 return context.awaitResultThrowing(of: future, timeout: timeout) {

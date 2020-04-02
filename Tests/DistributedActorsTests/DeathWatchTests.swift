@@ -27,7 +27,7 @@ final class DeathWatchTests: ActorSystemTestBase {
     // MARK: stopping actors
 
     private func stopOnAnyMessage(probe: ActorRef<String>?) -> Behavior<StoppableRefMessage> {
-        return .receive { context, message in
+        .receive { context, message in
             switch message {
             case .stop:
                 probe?.tell("I (\(context.path.name)) will now stop")

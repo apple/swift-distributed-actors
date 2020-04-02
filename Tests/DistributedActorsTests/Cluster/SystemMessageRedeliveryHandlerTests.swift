@@ -32,6 +32,7 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
         pinfo("")
     }
 }
+
 //    var redeliveryHandler: SystemMessageRedeliveryHandler!
 //
 //    let printLossyNetworkTestLogs = true
@@ -209,9 +210,9 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 //            throw self.testKit.fail(file: file, line: line)
 //        }
 //    }
-//}
+// }
 //
-//extension XCTestCase {
+// extension XCTestCase {
 //    /// Have two `EmbeddedChannel` objects send and receive data from each other until they make no forward progress.
 //    ///
 //    /// Copied from: https://github.com/apple/swift-nio-http2/blob/0d153b56a43d183dcd9a86108457bec53ec9a9a6/Tests/NIOHTTP2Tests/TestUtilities.swift#L35-L62
@@ -236,9 +237,9 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 //            }
 //        } while operated
 //    }
-//}
+// }
 //
-//final class ReadRecorder: ChannelInboundHandler {
+// final class ReadRecorder: ChannelInboundHandler {
 //    typealias InboundIn = Wire.Envelope
 //    typealias InboundOut = Wire.Envelope
 //
@@ -251,9 +252,9 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 //
 //        context.fireChannelRead(self.wrapInboundOut(inbound))
 //    }
-//}
+// }
 //
-//final class WriteRecorder: ChannelOutboundHandler {
+// final class WriteRecorder: ChannelOutboundHandler {
 //    typealias OutboundIn = TransportEnvelope
 //    typealias OutboundOut = Wire.Envelope // pretend we've put it on the network (for in memory interacting with another channel)
 //
@@ -275,4 +276,4 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
 //
 //        context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
 //    }
-//}
+// }

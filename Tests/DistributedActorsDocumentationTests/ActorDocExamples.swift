@@ -312,7 +312,7 @@ class ActorDocExamples: XCTestCase {
                 }
 
             func greeted() -> Behavior<Never> {
-                return .stop
+                .stop
             }
 
             return context.awaitResultThrowing(of: response, timeout: timeout) { (greeting: String) in // <2>

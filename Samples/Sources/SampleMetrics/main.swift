@@ -44,7 +44,7 @@ struct Talker {
     }
 
     static func talkTo(another talker: ActorRef<Message>?) -> Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             context.log.info("Started \(context.myself.path)")
             context.timers.startPeriodic(key: "next-chat", message: .hello(1, replyTo: talker), interval: .milliseconds(200))
 
@@ -74,7 +74,7 @@ struct DieAfterSomeTime {
 
 struct MetricPrinter {
     static var behavior: Behavior<String> {
-        return .setup { context in
+        .setup { context in
             context.log.info("Started \(context.myself.path)")
             context.timers.startPeriodic(key: "print-metrics", message: "print", interval: .seconds(2))
 

@@ -22,17 +22,17 @@ import Logging
 public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
-        return undefined()
+        undefined()
     }
 
     /// Uniquely identifies this actor in the cluster.
     public var address: ActorAddress {
-        return undefined()
+        undefined()
     }
 
     /// Local path under which this actor resides within the actor tree.
     public var path: ActorPath {
-        return undefined()
+        undefined()
     }
 
     /// Name of this actor.
@@ -44,7 +44,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
     // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
     public var name: String {
-        return undefined()
+        undefined()
     }
 
     /// The actor reference to _this_ actor.
@@ -56,13 +56,13 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
     // to get developers into the right mindset.
     public var myself: ActorRef<Message> {
-        return undefined()
+        undefined()
     }
 
     /// Provides context metadata aware `Logger`
     public var log: Logger {
         get {
-            return undefined()
+            undefined()
         }
         set { // has to become settable
             fatalError()
@@ -71,7 +71,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
 
     /// `Props` which were used when spawning this actor.
     public var props: Props {
-        return undefined()
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
 
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
     public var timers: Timers<Message> {
-        return undefined()
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
         file: String = #file, line: UInt = #line,
         _ closure: @escaping () -> Void
     ) {
-        return undefined()
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     }
 
     internal func watch(_ watchee: AddressableActorRef, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) {
-        return undefined()
+        undefined()
     }
 
     /// Reverts the watching of an previously watched actor.
@@ -210,7 +210,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     }
 
     internal func unwatch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
-        return undefined()
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -247,7 +247,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// since looking up actors by name has an inherent seek cost associated with it.
     public var children: Children {
         get {
-            return undefined()
+            undefined()
         }
         set {
             fatalError()
@@ -283,7 +283,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
     internal func makeAsynchronousCallback<T>(file: String = #file, line: UInt = #line, _ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
-        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
+        AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure(file: file, line: line, $0)
         }
     }
@@ -300,7 +300,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
     internal func makeAsynchronousCallback<T>(for type: T.Type, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
-        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
+        AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure($0)
         }
     }
@@ -350,7 +350,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
         timeout: TimeAmount,
         _ continuation: @escaping (AR.Value) throws -> Behavior<Message>
     ) -> Behavior<Message> {
-        return self.awaitResult(of: asyncResult, timeout: timeout) { result in
+        self.awaitResult(of: asyncResult, timeout: timeout) { result in
             switch result {
             case .success(let res): return try continuation(res)
             case .failure(let error): throw error
@@ -468,12 +468,12 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
-        return self.subReceive(SubReceiveId(type), type, closure)
+        self.subReceive(SubReceiveId(type), type, closure)
     }
 
     @usableFromInline
     func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
-        return undefined()
+        undefined()
     }
 }
 

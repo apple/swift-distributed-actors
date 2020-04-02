@@ -50,16 +50,16 @@ public extension TimeSpec {
     }
 
     func toNanos() -> Int {
-        return self.tv_nsec + (self.tv_sec * NANOS)
+        self.tv_nsec + (self.tv_sec * NANOS)
     }
 }
 
 extension TimeSpec: Comparable {
     public static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
-        return lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
+        lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
     }
 
     public static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
-        return lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
+        lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
     }
 }

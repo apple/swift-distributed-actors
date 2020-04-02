@@ -26,7 +26,7 @@ public struct AwaitingActorable: Actorable {
     }
 
     func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) -> Behavior<Myself.Message> {
-        return context.awaitResult(of: f, timeout: .effectivelyInfinite) {
+        context.awaitResult(of: f, timeout: .effectivelyInfinite) {
             replyTo.tell($0)
         }
     }

@@ -72,7 +72,7 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
 
 extension RemoteActorRefProvider {
     var rootAddress: ActorAddress {
-        return self.localProvider.rootAddress
+        self.localProvider.rootAddress
     }
 
     func spawn<Message>(
@@ -87,11 +87,11 @@ extension RemoteActorRefProvider {
     }
 
     func stopAll() {
-        return self.localProvider.stopAll()
+        self.localProvider.stopAll()
     }
 
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
-        return self.localProvider._traverse(context: context, visit)
+        self.localProvider._traverse(context: context, visit)
     }
 }
 
@@ -121,7 +121,7 @@ extension RemoteActorRefProvider {
     }
 
     internal func _resolveAsRemoteRef<Message>(_ context: ResolveContext<Message>, remoteAddress address: ActorAddress) -> ActorRef<Message> {
-        return ActorRef(.remote(.init(shell: self.cluster, address: address, system: context.system)))
+        ActorRef(.remote(.init(shell: self.cluster, address: address, system: context.system)))
     }
 }
 
@@ -307,7 +307,7 @@ public struct TraversalContext<T> {
     }
 
     var deeper: TraversalContext<T> {
-        return self.deeper(by: 1)
+        self.deeper(by: 1)
     }
 
     /// Returns copy of traversal context yet "one level deeper"

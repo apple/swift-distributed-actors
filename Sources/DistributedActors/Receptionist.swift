@@ -65,7 +65,7 @@ public enum Receptionist {
         }
 
         internal override var asAnyRegistrationKey: AnyRegistrationKey {
-            return AnyRegistrationKey(from: self)
+            AnyRegistrationKey(from: self)
         }
 
         public var description: String {
@@ -91,11 +91,11 @@ public enum Receptionist {
         }
 
         internal override var _addressableActorRef: AddressableActorRef {
-            return AddressableActorRef(self.ref)
+            AddressableActorRef(self.ref)
         }
 
         internal override var _key: _RegistrationKey {
-            return self.key
+            self.key
         }
 
         internal override func replyRegistered() {
@@ -236,6 +236,7 @@ public enum Receptionist {
                 self._registeredKeysByNode[node, default: []].insert(key)
             }
         }
+
         private func removeSingleRegistrationNodeRelation(key: AnyRegistrationKey, node: UniqueNode?) {
             // FIXME: Implement me (!), we need to make the storage a counter
             // and decrement here by one; once the counter reaches zero we know there is no more relationship
@@ -405,7 +406,7 @@ public class _Register: ReceptionistMessage, NotTransportableActorMessage, Custo
     var _key: _RegistrationKey { undefined() }
 
     func replyRegistered() {
-        return undefined()
+        undefined()
     }
 
     public var description: String {
@@ -428,11 +429,11 @@ public class _Lookup: ReceptionistMessage, NotTransportableActorMessage {
     }
 
     func replyWith(_ refs: Set<AddressableActorRef>) {
-        return undefined()
+        undefined()
     }
 
     func replyWith(_ refs: [AddressableActorRef]) {
-        return undefined()
+        undefined()
     }
 }
 
@@ -447,13 +448,13 @@ public class _RegistrationKey {
     }
 
     var asAnyRegistrationKey: AnyRegistrationKey {
-        return undefined()
+        undefined()
     }
 
     // `resolve` has to be here, because the key is the only thing that knows which
     // type is requested. See implementation in `RegistrationKey`
     func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
-        return undefined()
+        undefined()
     }
 }
 
@@ -489,11 +490,11 @@ internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable {
     override func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
-        return system.personalDeadLetters(type: Never.self, recipient: address).asAddressable()
+        system.personalDeadLetters(type: Never.self, recipient: address).asAddressable()
     }
 
     override var asAnyRegistrationKey: AnyRegistrationKey {
-        return self
+        self
     }
 
     func hash(into hasher: inout Hasher) {
@@ -520,15 +521,15 @@ internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable {
 
 public class _Subscribe: ReceptionistMessage, NotTransportableActorMessage {
     var _key: _RegistrationKey {
-        return fatalErrorBacktrace("failed \(#function)")
+        fatalErrorBacktrace("failed \(#function)")
     }
 
     var _boxed: AnySubscribe {
-        return fatalErrorBacktrace("failed \(#function)")
+        fatalErrorBacktrace("failed \(#function)")
     }
 
     var _addressableActorRef: AddressableActorRef {
-        return fatalErrorBacktrace("failed \(#function)")
+        fatalErrorBacktrace("failed \(#function)")
     }
 
     public override init() {

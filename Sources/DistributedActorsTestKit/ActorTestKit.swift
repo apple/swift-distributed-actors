@@ -139,7 +139,7 @@ public final class ActorableTestProbe<A: Actorable>: ActorTestProbe<A.Message> {
     /// `Actor` reference to the underlying test probe actor.
     /// All message sends invoked on this Actor will result in messages in the probe available to be `expect`-ed.
     public var actor: Actor<A> {
-        return Actor(ref: self.ref)
+        Actor(ref: self.ref)
     }
 }
 
@@ -304,19 +304,19 @@ public extension ActorTestKit {
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
     func makeFakeContext<M: ActorMessage>(forType: M.Type = M.self) -> ActorContext<M> {
-        return MockActorContext(self.system)
+        MockActorContext(self.system)
     }
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
     func makeFakeContext<M: ActorMessage>(for: Behavior<M>) -> ActorContext<M> {
-        return self.makeFakeContext(forType: M.self)
+        self.makeFakeContext(forType: M.self)
     }
 }
 
 struct MockActorContextError: Error, CustomStringConvertible {
     var description: String {
-        return "MockActorContextError(" +
+        "MockActorContextError(" +
             "A mock context can not be used to perform any real actions! " +
             "If you find yourself needing to perform assertions on an actor context please file a ticket." + // this would be "EffectfulContext"
             ")"
@@ -331,25 +331,25 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
     }
 
     override var system: ActorSystem {
-        return self._system
+        self._system
     }
 
     override var path: ActorPath {
-        return super.path
+        super.path
     }
 
     override var name: String {
-        return "MockActorContext<\(Message.self)>"
+        "MockActorContext<\(Message.self)>"
     }
 
     override var myself: ActorRef<Message> {
-        return self.system.deadLetters.adapted()
+        self.system.deadLetters.adapted()
     }
 
     private lazy var _log: Logger = Logger(label: "\(type(of: self))")
     override var log: Logger {
         get {
-            return self._log
+            self._log
         }
         set {
             self._log = newValue
@@ -357,11 +357,11 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
     }
 
     public override var props: Props {
-        return .init() // mock impl
+        .init() // mock impl
     }
 
     override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        return super.watch(watchee, with: terminationMessage, file: file, line: line)
+        super.watch(watchee, with: terminationMessage, file: file, line: line)
     }
 
     override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
@@ -465,7 +465,7 @@ internal extension ActorTestKit {
     // to avoid failing the test on the first iteration in e.g. an
     // `ActorTestKit.eventually` block.
     static func isInRepeatableContext() -> Bool {
-        return self.currentRepeatableContextDepth > 0
+        self.currentRepeatableContextDepth > 0
     }
 
     // Returns the current depth of nested repeatable context calls.

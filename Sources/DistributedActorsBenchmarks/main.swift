@@ -25,7 +25,7 @@ assert({
 
 var _system: ActorSystem?
 var system: ActorSystem {
-    return _system!
+    _system!
 }
 
 @inline(__always)

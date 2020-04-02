@@ -291,7 +291,7 @@ private class Mid: Top, Hashable {
     }
 
     var path: ActorPath {
-        return self._path
+        self._path
     }
 
     func hash(into hasher: inout Hasher) {
@@ -299,7 +299,7 @@ private class Mid: Top, Hashable {
     }
 
     static func == (lhs: Mid, rhs: Mid) -> Bool {
-        return lhs.path == rhs.path
+        lhs.path == rhs.path
     }
 }
 

@@ -281,19 +281,19 @@ final class SystemMessagesRedeliveryTests: ActorSystemTestBase {
     private func msg(seqNr: Int) -> SystemMessageEnvelope {
         // Note: in reality .start would NEVER be sent around and we do not define any serialization for it on purpose
         // but it is a nice simple message to use as our payload for tests here; the queues don't mind.
-        return .init(sequenceNr: seqNr, message: .start)
+        .init(sequenceNr: seqNr, message: .start)
     }
 
     private func ack(_ seqNr: Int) -> _SystemMessage.ACK {
-        return _SystemMessage.ACK(sequenceNr: seqNr)
+        _SystemMessage.ACK(sequenceNr: seqNr)
     }
 
     private func nack(_ seqNr: Int) -> _SystemMessage.NACK {
-        return _SystemMessage.NACK(sequenceNr: seqNr)
+        _SystemMessage.NACK(sequenceNr: seqNr)
     }
 
     private func seqNr(_ i: Int) -> SystemMessageEnvelope.SequenceNr {
-        return SystemMessageEnvelope.SequenceNr(i)
+        SystemMessageEnvelope.SequenceNr(i)
     }
 }
 

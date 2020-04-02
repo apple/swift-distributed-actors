@@ -51,7 +51,7 @@ open class Serializer<Message> {
 
 extension Serializer: AnySerializer {
     public func _asSerializerOf<M>(_: M.Type) -> Serializer<M> {
-        return self as! Serializer<M>
+        self as! Serializer<M>
     }
 
     public func trySerialize(_ message: Any) throws -> ByteBuffer {

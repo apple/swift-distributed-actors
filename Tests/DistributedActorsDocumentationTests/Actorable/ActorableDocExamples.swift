@@ -172,7 +172,7 @@ struct LifecycleReacting: Actorable {
     }
 
     func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective { // <4>
-        return .ignore
+        .ignore
     }
 
     func something() {

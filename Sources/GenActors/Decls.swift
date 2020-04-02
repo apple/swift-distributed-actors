@@ -152,7 +152,7 @@ struct ActorableMessageDecl {
         case .nioEventLoopFuture(let valueType):
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         case .actorReply(let valueType):
-            // FIXME carry the return type raw in the reply enum
+            // FIXME: carry the return type raw in the reply enum
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         }
 

@@ -165,13 +165,13 @@ extension ActorAddress {
 
     @inlinable
     internal var isRemote: Bool {
-        return !self.isLocal
+        !self.isLocal
     }
 }
 
 extension ActorAddress: PathRelationships {
     public var segments: [ActorPathSegment] {
-        return self.path.segments
+        self.path.segments
     }
 
     func makeChildAddress(name: String, incarnation: ActorIncarnation) throws -> ActorAddress {
@@ -196,7 +196,7 @@ extension ActorAddress: PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorAddress: Comparable {
     public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
-        return lhs.node < rhs.node ||
+        lhs.node < rhs.node ||
             (lhs.node == rhs.node && lhs.path < rhs.path) ||
             (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
     }
@@ -410,7 +410,7 @@ public struct ActorPathSegment: Hashable {
 
         // TODO: benchmark
         func isValidASCII(_ scalar: Unicode.Scalar) -> Bool {
-            return (scalar >= ValidActorPathSymbols.a && scalar <= ValidActorPathSymbols.z) ||
+            (scalar >= ValidActorPathSymbols.a && scalar <= ValidActorPathSymbols.z) ||
                 (scalar >= ValidActorPathSymbols.A && scalar <= ValidActorPathSymbols.Z) ||
                 (scalar >= ValidActorPathSymbols.zero && scalar <= ValidActorPathSymbols.nine) ||
                 ValidActorPathSymbols.extraSymbols.contains(scalar)
@@ -439,11 +439,11 @@ extension ActorPathSegment {
 
 extension ActorPathSegment: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "\(self.value)"
+        "\(self.value)"
     }
 
     public var debugDescription: String {
-        return "\(self.value)"
+        "\(self.value)"
     }
 }
 
@@ -529,7 +529,7 @@ internal extension ActorIncarnation {
 
 extension ActorIncarnation: Comparable {
     public static func < (lhs: ActorIncarnation, rhs: ActorIncarnation) -> Bool {
-        return lhs.value < rhs.value
+        lhs.value < rhs.value
     }
 }
 
@@ -686,19 +686,19 @@ public struct NodeID: Hashable {
 
 extension NodeID: Comparable {
     public static func < (lhs: NodeID, rhs: NodeID) -> Bool {
-        return lhs.value < rhs.value
+        lhs.value < rhs.value
     }
 }
 
 extension NodeID: CustomStringConvertible {
     public var description: String {
-        return "\(self.value)"
+        "\(self.value)"
     }
 }
 
 public extension NodeID {
     static func random() -> NodeID {
-        return NodeID(UInt32.random(in: 1 ... .max))
+        NodeID(UInt32.random(in: 1 ... .max))
     }
 }
 
