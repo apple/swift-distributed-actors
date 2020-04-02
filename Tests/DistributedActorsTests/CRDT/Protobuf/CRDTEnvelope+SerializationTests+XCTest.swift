@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTEnvelopeSerializationTests {
     static var allTests: [(String, (CRDTEnvelopeSerializationTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_serializationOf_CRDTEnvelope_DeltaCRDTBox_GCounter", test_serializationOf_CRDTEnvelope_DeltaCRDTBox_GCounter),
         ]
     }

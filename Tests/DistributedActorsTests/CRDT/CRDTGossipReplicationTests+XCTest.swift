@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTGossipReplicationTests {
     static var allTests: [(String, (CRDTGossipReplicationTests) -> () throws -> Void)] {
-        return [
+        [
         ]
     }
 }

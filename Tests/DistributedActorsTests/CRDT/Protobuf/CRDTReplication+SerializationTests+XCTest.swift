@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTReplicationSerializationTests {
     static var allTests: [(String, (CRDTReplicationSerializationTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_serializationOf_RemoteCommand_write_GCounter", test_serializationOf_RemoteCommand_write_GCounter),
             ("test_serializationOf_RemoteCommand_write_ORSet", test_serializationOf_RemoteCommand_write_ORSet),
             ("test_serializationOf_RemoteCommand_writeDelta_GCounter", test_serializationOf_RemoteCommand_writeDelta_GCounter),

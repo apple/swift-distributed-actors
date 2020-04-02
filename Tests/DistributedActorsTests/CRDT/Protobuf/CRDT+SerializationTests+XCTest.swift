@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTSerializationTests {
     static var allTests: [(String, (CRDTSerializationTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_serializationOf_Identity", test_serializationOf_Identity),
             ("test_serializationOf_VersionContext", test_serializationOf_VersionContext),
             ("test_serializationOf_VersionContext_empty", test_serializationOf_VersionContext_empty),

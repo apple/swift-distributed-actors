@@ -22,7 +22,7 @@ import XCTest
 
 extension ConcurrencyHelpersTests {
     static var allTests: [(String, (ConcurrencyHelpersTests) -> () throws -> Void)] {
-        return [
+        [
             ("testLargeContendedAtomicSum", testLargeContendedAtomicSum),
             ("testCompareAndExchangeBool", testCompareAndExchangeBool),
             ("testCompareAndExchangeWeakBool", testCompareAndExchangeWeakBool),

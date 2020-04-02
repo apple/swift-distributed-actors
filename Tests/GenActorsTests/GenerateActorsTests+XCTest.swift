@@ -22,7 +22,7 @@ import XCTest
 
 extension GenerateActorsTests {
     static var allTests: [(String, (GenerateActorsTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_TestActorable_greet", test_TestActorable_greet),
             ("test_TestActorable_greet_underscoreParam", test_TestActorable_greet_underscoreParam),
             ("test_TestActorable_greet2", test_TestActorable_greet2),

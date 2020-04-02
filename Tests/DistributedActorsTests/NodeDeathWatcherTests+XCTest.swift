@@ -22,7 +22,7 @@ import XCTest
 
 extension NodeDeathWatcherTests {
     static var allTests: [(String, (NodeDeathWatcherTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_nodeDeath_shouldFailAllRefsOnSpecificAddress", test_nodeDeath_shouldFailAllRefsOnSpecificAddress),
         ]
     }

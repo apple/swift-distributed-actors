@@ -22,7 +22,7 @@ import XCTest
 
 extension EventStreamTests {
     static var allTests: [(String, (EventStreamTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_eventStream_shouldPublishEventsToAllSubscribers", test_eventStream_shouldPublishEventsToAllSubscribers),
             ("test_eventStream_shouldNotPublishEventsToActorsAfterTheyUnsubscribed", test_eventStream_shouldNotPublishEventsToActorsAfterTheyUnsubscribed),
             ("test_eventStream_shouldUnsubscribeActorsOnTermination", test_eventStream_shouldUnsubscribeActorsOnTermination),

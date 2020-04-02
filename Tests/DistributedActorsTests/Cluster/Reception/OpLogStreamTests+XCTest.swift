@@ -22,7 +22,7 @@ import XCTest
 
 extension OpLogStreamTests {
     static var allTests: [(String, (OpLogStreamTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_ops_replay", test_ops_replay),
             ("test_ops_replay_beyondEnd", test_ops_replay_beyondEnd),
             ("test_ops_replay_confirm_replay", test_ops_replay_confirm_replay),

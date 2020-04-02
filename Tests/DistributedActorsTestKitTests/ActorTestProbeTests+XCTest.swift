@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorTestProbeTests {
     static var allTests: [(String, (ActorTestProbeTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_maybeExpectMessage_shouldReturnTheReceivedMessage", test_maybeExpectMessage_shouldReturnTheReceivedMessage),
             ("test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded", test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded),
             ("test_expectNoMessage", test_expectNoMessage),

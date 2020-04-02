@@ -22,7 +22,7 @@ import XCTest
 
 extension MPSCLinkedQueueTests {
     static var allTests: [(String, (MPSCLinkedQueueTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_dequeueWhenEmpty", test_dequeueWhenEmpty),
             ("test_enqueueDequeue", test_enqueueDequeue),
             ("test_concurrentEnqueueDequeue", test_concurrentEnqueueDequeue),

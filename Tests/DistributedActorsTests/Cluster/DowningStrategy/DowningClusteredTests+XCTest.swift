@@ -22,7 +22,7 @@ import XCTest
 
 extension DowningClusteredTests {
     static var allTests: [(String, (DowningClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_stopLeader_by_leaveSelfNode_shouldPropagateToOtherNodes", test_stopLeader_by_leaveSelfNode_shouldPropagateToOtherNodes),
             ("test_stopMember_by_leaveSelfNode_shouldPropagateToOtherNodes", test_stopMember_by_leaveSelfNode_shouldPropagateToOtherNodes),
             ("test_stopLeader_by_downSelf_shouldPropagateToOtherNodes", test_stopLeader_by_downSelf_shouldPropagateToOtherNodes),

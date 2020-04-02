@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTVersioningTests {
     static var allTests: [(String, (CRDTVersioningTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_VersionContext_add_then_compact", test_VersionContext_add_then_compact),
             ("test_VersionContext_merge_then_compact", test_VersionContext_merge_then_compact),
             ("test_VersionedContainer_add_remove_shouldModifyDelta", test_VersionedContainer_add_remove_shouldModifyDelta),

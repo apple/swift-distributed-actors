@@ -22,7 +22,7 @@ import XCTest
 
 extension ClusterOnDownActionTests {
     static var allTests: [(String, (ClusterOnDownActionTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_onNodeDowned_performShutdown", test_onNodeDowned_performShutdown),
             ("test_onNodeDowned_configuredNoop_doNothing", test_onNodeDowned_configuredNoop_doNothing),
         ]

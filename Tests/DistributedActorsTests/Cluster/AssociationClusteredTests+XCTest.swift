@@ -22,7 +22,7 @@ import XCTest
 
 extension ClusterAssociationTests {
     static var allTests: [(String, (ClusterAssociationTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_boundServer_shouldAcceptAssociate", test_boundServer_shouldAcceptAssociate),
             ("test_handshake_shouldNotifyOnSuccess", test_handshake_shouldNotifyOnSuccess),
             ("test_handshake_shouldNotifySuccessWhenAlreadyConnected", test_handshake_shouldNotifySuccessWhenAlreadyConnected),

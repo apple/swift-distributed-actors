@@ -22,7 +22,7 @@ import XCTest
 
 extension SWIMSerializationTests {
     static var allTests: [(String, (SWIMSerializationTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_serializationOf_ping", test_serializationOf_ping),
             ("test_serializationOf_pingReq", test_serializationOf_pingReq),
             ("test_serializationOf_Ack", test_serializationOf_Ack),

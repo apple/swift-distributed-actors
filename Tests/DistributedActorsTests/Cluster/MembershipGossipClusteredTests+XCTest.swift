@@ -22,7 +22,7 @@ import XCTest
 
 extension MembershipGossipClusteredTests {
     static var allTests: [(String, (MembershipGossipClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_down_beGossipedToOtherNodes", test_down_beGossipedToOtherNodes),
             ("test_join_swimDiscovered_thirdNode", test_join_swimDiscovered_thirdNode),
         ]

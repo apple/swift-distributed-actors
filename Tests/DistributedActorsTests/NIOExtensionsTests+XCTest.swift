@@ -22,7 +22,7 @@ import XCTest
 
 extension NIOExtensionTests {
     static var allTests: [(String, (NIOExtensionTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_ByteBuf_formatHexDump_shouldPrettyPrintAsExpected", test_ByteBuf_formatHexDump_shouldPrettyPrintAsExpected),
             ("test_ByteBuf_formatHexDump_truncating_shouldPrettyPrintAsExpected", test_ByteBuf_formatHexDump_truncating_shouldPrettyPrintAsExpected),
         ]

@@ -37,7 +37,7 @@ let reply = xpcGreetingsActor.greet(name: "Capybara")
 // : Reply<String>
 
 // await reply
-reply.withTimeout(after: .seconds(3))._nioFuture.whenComplete {
+reply.withTimeout(after: .seconds(3))._onComplete {
     system.log.info("Reply from service.greet(Capybara) = \($0)")
 }
 

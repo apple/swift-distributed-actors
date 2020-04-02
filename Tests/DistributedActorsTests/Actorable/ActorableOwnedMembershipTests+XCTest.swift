@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorableOwnedMembershipTests {
     static var allTests: [(String, (ActorableOwnedMembershipTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_autoUpdatedMembership_updatesAutomatically", test_autoUpdatedMembership_updatesAutomatically),
         ]
     }

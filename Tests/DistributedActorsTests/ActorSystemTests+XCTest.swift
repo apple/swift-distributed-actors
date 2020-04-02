@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorSystemTests {
     static var allTests: [(String, (ActorSystemTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_system_spawn_shouldThrowOnDuplicateName", test_system_spawn_shouldThrowOnDuplicateName),
             ("test_system_spawn_shouldNotThrowOnNameReUse", test_system_spawn_shouldNotThrowOnNameReUse),
             ("test_shutdown_shouldStopAllActors", test_shutdown_shouldStopAllActors),

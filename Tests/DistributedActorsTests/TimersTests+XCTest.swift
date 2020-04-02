@@ -22,7 +22,7 @@ import XCTest
 
 extension TimersTests {
     static var allTests: [(String, (TimersTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_timerKey_shouldPrintNicely", test_timerKey_shouldPrintNicely),
             ("test_startSingleTimer_shouldSendSingleMessage", test_startSingleTimer_shouldSendSingleMessage),
             ("test_startPeriodicTimer_shouldSendPeriodicMessage", test_startPeriodicTimer_shouldSendPeriodicMessage),

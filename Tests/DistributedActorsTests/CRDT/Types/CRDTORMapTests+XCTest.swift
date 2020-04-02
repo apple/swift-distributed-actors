@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTORMapTests {
     static var allTests: [(String, (CRDTORMapTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_ORMap_GCounter_basicOperations", test_ORMap_GCounter_basicOperations),
             ("test_ORMap_GCounter_update_remove_shouldUpdateDelta", test_ORMap_GCounter_update_remove_shouldUpdateDelta),
             ("test_ORMap_GCounter_merge_shouldMutate", test_ORMap_GCounter_merge_shouldMutate),
