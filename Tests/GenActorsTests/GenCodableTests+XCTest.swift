@@ -22,7 +22,7 @@ import XCTest
 
 extension GenCodableTests {
     static var allTests: [(String, (GenCodableTests) -> () throws -> Void)] {
-        return [
+        [
         ]
     }
 }

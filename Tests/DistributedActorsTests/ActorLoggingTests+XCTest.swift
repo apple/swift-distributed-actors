@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorLoggingTests {
     static var allTests: [(String, (ActorLoggingTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_actorLogger_shouldIncludeActorPath", test_actorLogger_shouldIncludeActorPath),
             ("test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel", test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel),
             ("test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata", test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata),

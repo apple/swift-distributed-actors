@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTOperationExecutionTests {
     static var allTests: [(String, (CRDTOperationExecutionTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_OperationExecution_consistency_local", test_OperationExecution_consistency_local),
             ("test_OperationExecution_consistency_local_throwIfLocalNotConfirmed", test_OperationExecution_consistency_local_throwIfLocalNotConfirmed),
             ("test_OperationExecution_consistency_atLeast", test_OperationExecution_consistency_atLeast),

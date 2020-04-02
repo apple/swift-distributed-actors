@@ -22,7 +22,7 @@ import XCTest
 
 extension BehaviorCanonicalizeTests {
     static var allTests: [(String, (BehaviorCanonicalizeTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_canonicalize_nestedSetupBehaviors", test_canonicalize_nestedSetupBehaviors),
             ("test_canonicalize_doesSurviveDeeplyNestedSetups", test_canonicalize_doesSurviveDeeplyNestedSetups),
             ("test_canonicalize_unwrapInterceptBehaviors", test_canonicalize_unwrapInterceptBehaviors),

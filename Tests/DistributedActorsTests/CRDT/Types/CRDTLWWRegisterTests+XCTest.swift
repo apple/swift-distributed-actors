@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTLWWRegisterTests {
     static var allTests: [(String, (CRDTLWWRegisterTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_LWWRegister_assign_shouldSetValueAndTimestamp", test_LWWRegister_assign_shouldSetValueAndTimestamp),
             ("test_LWWRegister_merge_shouldMutateIfMoreRecentTimestamp", test_LWWRegister_merge_shouldMutateIfMoreRecentTimestamp),
             ("test_LWWRegister_merge_shouldNotMutateIfOlderTimestamp", test_LWWRegister_merge_shouldNotMutateIfOlderTimestamp),

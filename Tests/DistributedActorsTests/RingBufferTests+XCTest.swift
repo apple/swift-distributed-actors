@@ -22,7 +22,7 @@ import XCTest
 
 extension RingBufferTests {
     static var allTests: [(String, (RingBufferTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_isEmpty_empty", test_isEmpty_empty),
             ("test_isEmpty_non_empty", test_isEmpty_non_empty),
             ("test_isEmpty_after_wrap", test_isEmpty_after_wrap),

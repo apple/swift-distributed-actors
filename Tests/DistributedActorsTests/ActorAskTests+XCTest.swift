@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorAskTests {
     static var allTests: [(String, (ActorAskTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_ask_forSimpleType", test_ask_forSimpleType),
             ("test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout", test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout),
             ("test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout", test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout),

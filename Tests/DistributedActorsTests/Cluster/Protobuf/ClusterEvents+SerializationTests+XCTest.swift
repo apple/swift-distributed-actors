@@ -22,7 +22,7 @@ import XCTest
 
 extension ClusterEventsSerializationTests {
     static var allTests: [(String, (ClusterEventsSerializationTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_serializationOf_membershipChange", test_serializationOf_membershipChange),
             ("test_serializationOf_leadershipChange", test_serializationOf_leadershipChange),
         ]

@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorDeferTests {
     static var allTests: [(String, (ActorDeferTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_defer_untilReceived_shouldExecute_whenStayingSame", test_defer_untilReceived_shouldExecute_whenStayingSame),
             ("test_defer_untilReceived_shouldExecute_afterNoError_whenStopping", test_defer_untilReceived_shouldExecute_afterNoError_whenStopping),
             ("test_defer_untilReceived_shouldExecute_afterError", test_defer_untilReceived_shouldExecute_afterError),

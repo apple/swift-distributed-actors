@@ -22,7 +22,7 @@ import XCTest
 
 extension RemoteHandshakeStateMachineTests {
     static var allTests: [(String, (RemoteHandshakeStateMachineTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_handshake_happyPath", test_handshake_happyPath),
             ("test_negotiate_server_shouldAcceptClient_newerPatch", test_negotiate_server_shouldAcceptClient_newerPatch),
             ("test_negotiate_server_shouldRejectClient_newerMajor", test_negotiate_server_shouldRejectClient_newerMajor),

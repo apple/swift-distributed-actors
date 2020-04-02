@@ -22,7 +22,7 @@ import XCTest
 
 extension TimeSpecTests {
     static var allTests: [(String, (TimeSpecTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_timeSpecShouldBeCreatedProperlyFromTimeAmount", test_timeSpecShouldBeCreatedProperlyFromTimeAmount),
             ("test_timeSpecAdd", test_timeSpecAdd),
             ("test_lessThan", test_lessThan),

@@ -22,7 +22,7 @@ import XCTest
 
 extension WorkerPoolTests {
     static var allTests: [(String, (WorkerPoolTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_workerPool_registerNewlyStartedActors", test_workerPool_registerNewlyStartedActors),
             ("test_workerPool_dynamic_removeDeadActors", test_workerPool_dynamic_removeDeadActors),
             ("test_workerPool_ask", test_workerPool_ask),

@@ -22,7 +22,7 @@ import XCTest
 
 extension CRDTORSetTests {
     static var allTests: [(String, (CRDTORSetTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_ORSet_basicOperations", test_ORSet_basicOperations),
             ("test_ORSet_add_remove_shouldUpdateDelta", test_ORSet_add_remove_shouldUpdateDelta),
             ("test_ORSet_merge_shouldMutate", test_ORSet_merge_shouldMutate),

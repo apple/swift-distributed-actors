@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorLifecycleTests {
     static var allTests: [(String, (ActorLifecycleTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_spawn_shouldNotAllowStartingWith_Same", test_spawn_shouldNotAllowStartingWith_Same),
             ("test_spawn_shouldNotAllowStartingWith_Unhandled", test_spawn_shouldNotAllowStartingWith_Unhandled),
             ("test_spawn_shouldNotAllowIllegalActorNames", test_spawn_shouldNotAllowIllegalActorNames),

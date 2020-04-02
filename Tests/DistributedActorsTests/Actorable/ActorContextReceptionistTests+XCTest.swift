@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorContextReceptionTests {
     static var allTests: [(String, (ActorContextReceptionTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_autoUpdatedListing_updatesAutomatically", test_autoUpdatedListing_updatesAutomatically),
             ("test_autoUpdatedListing_invokesOnUpdate", test_autoUpdatedListing_invokesOnUpdate),
             ("test_lookup_ofGenericType", test_lookup_ofGenericType),

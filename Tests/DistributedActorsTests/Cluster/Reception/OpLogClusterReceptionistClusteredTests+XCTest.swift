@@ -22,7 +22,7 @@ import XCTest
 
 extension OpLogClusterReceptionistClusteredTests {
     static var allTests: [(String, (OpLogClusterReceptionistClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_opLogClusterReceptionist_shouldReplicateRegistrations", test_opLogClusterReceptionist_shouldReplicateRegistrations),
             ("test_opLogClusterReceptionist_shouldSyncPeriodically", test_opLogClusterReceptionist_shouldSyncPeriodically),
             ("test_opLogClusterReceptionist_shouldMergeEntriesOnSync", test_opLogClusterReceptionist_shouldMergeEntriesOnSync),

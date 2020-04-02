@@ -22,7 +22,7 @@ import XCTest
 
 extension SystemMessageRedeliveryHandlerTests {
     static var allTests: [(String, (SystemMessageRedeliveryHandlerTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_FIXME_FIXME_FIXME_FIXME_FIXME_FIXME_FIXME_FIXME", test_FIXME_FIXME_FIXME_FIXME_FIXME_FIXME_FIXME_FIXME),
         ]
     }

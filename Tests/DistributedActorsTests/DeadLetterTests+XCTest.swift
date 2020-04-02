@@ -22,7 +22,7 @@ import XCTest
 
 extension DeadLetterTests {
     static var allTests: [(String, (DeadLetterTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_deadLetters_logWithSourcePosition", test_deadLetters_logWithSourcePosition),
             ("test_sendingToTerminatedActor_shouldResultInDeadLetter", test_sendingToTerminatedActor_shouldResultInDeadLetter),
             ("test_askingTerminatedActor_shouldResultInDeadLetter", test_askingTerminatedActor_shouldResultInDeadLetter),

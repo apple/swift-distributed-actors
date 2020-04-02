@@ -22,7 +22,7 @@ import XCTest
 
 extension MembershipGossipTests {
     static var allTests: [(String, (MembershipGossipTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_mergeForward_incomingGossip_firstGossipFromOtherNode", test_mergeForward_incomingGossip_firstGossipFromOtherNode),
             ("test_mergeForward_incomingGossip_firstGossipFromOtherNodes", test_mergeForward_incomingGossip_firstGossipFromOtherNodes),
             ("test_mergeForward_incomingGossip_sameVersions", test_mergeForward_incomingGossip_sameVersions),

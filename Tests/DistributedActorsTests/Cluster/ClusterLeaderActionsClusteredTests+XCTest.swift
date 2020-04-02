@@ -22,7 +22,7 @@ import XCTest
 
 extension ClusterLeaderActionsClusteredTests {
     static var allTests: [(String, (ClusterLeaderActionsClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_singleLeader", test_singleLeader),
             ("test_joining_to_up_decisionByLeader", test_joining_to_up_decisionByLeader),
             ("test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus", test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus),

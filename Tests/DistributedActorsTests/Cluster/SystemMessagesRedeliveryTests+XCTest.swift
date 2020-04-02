@@ -22,7 +22,7 @@ import XCTest
 
 extension SystemMessagesRedeliveryTests {
     static var allTests: [(String, (SystemMessagesRedeliveryTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_sysMsg_outbound_passThroughWhenNoGapsReported", test_sysMsg_outbound_passThroughWhenNoGapsReported),
             ("test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge", test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge),
             ("test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK", test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK),

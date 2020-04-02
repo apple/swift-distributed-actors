@@ -22,7 +22,7 @@ import XCTest
 
 extension VersionVectorTests {
     static var allTests: [(String, (VersionVectorTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_VersionVector_init_default_canModify", test_VersionVector_init_default_canModify),
             ("test_VersionVector_init_fromVersionVector_canModify", test_VersionVector_init_fromVersionVector_canModify),
             ("test_VersionVector_init_fromArrayOfReplicaVersionTuples_canModify", test_VersionVector_init_fromArrayOfReplicaVersionTuples_canModify),

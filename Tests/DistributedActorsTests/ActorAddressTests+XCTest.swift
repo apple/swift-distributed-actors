@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorAddressTests {
     static var allTests: [(String, (ActorAddressTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_shouldNotAllow_illegalCharacters", test_shouldNotAllow_illegalCharacters),
             ("test_pathsWithSameSegments_shouldBeEqual", test_pathsWithSameSegments_shouldBeEqual),
             ("test_pathsWithSameSegments_shouldHaveSameHasCode", test_pathsWithSameSegments_shouldHaveSameHasCode),

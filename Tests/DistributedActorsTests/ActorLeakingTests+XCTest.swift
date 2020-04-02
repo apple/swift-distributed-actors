@@ -22,7 +22,7 @@ import XCTest
 
 extension ActorLeakingTests {
     static var allTests: [(String, (ActorLeakingTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_spawn_stop_shouldNotLeakActors", test_spawn_stop_shouldNotLeakActors),
             ("test_spawn_stop_shouldNotLeakActorThatCloseOverContext", test_spawn_stop_shouldNotLeakActorThatCloseOverContext),
             ("test_spawn_stop_shouldNotLeakMailbox", test_spawn_stop_shouldNotLeakMailbox),

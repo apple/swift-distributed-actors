@@ -22,7 +22,7 @@ import XCTest
 
 extension RemoteMessagingClusteredTests {
     static var allTests: [(String, (RemoteMessagingClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide", test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide),
             ("test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide", test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide),
             ("test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide", test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide),

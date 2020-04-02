@@ -22,7 +22,7 @@ import XCTest
 
 extension GossipSeenTableTests {
     static var allTests: [(String, (GossipSeenTableTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_seenTable_compare_concurrent_eachOtherDontKnown", test_seenTable_compare_concurrent_eachOtherDontKnown),
             ("test_incrementVersion", test_incrementVersion),
             ("test_seenTable_merge_notYetSeenInformation", test_seenTable_merge_notYetSeenInformation),

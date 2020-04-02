@@ -22,7 +22,7 @@ import XCTest
 
 extension SupervisionTests {
     static var allTests: [(String, (SupervisionTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_stopSupervised_throws_shouldStop", test_stopSupervised_throws_shouldStop),
             ("test_stopSupervised_throwsInAwaitResult_shouldStop", test_stopSupervised_throwsInAwaitResult_shouldStop),
             ("test_restartSupervised_throws_shouldRestart", test_restartSupervised_throws_shouldRestart),

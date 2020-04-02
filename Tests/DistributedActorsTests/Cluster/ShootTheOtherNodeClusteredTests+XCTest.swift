@@ -22,7 +22,7 @@ import XCTest
 
 extension ShootTheOtherNodeClusteredTests {
     static var allTests: [(String, (ShootTheOtherNodeClusteredTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_shootOtherNodeShouldTerminateIt", test_shootOtherNodeShouldTerminateIt),
         ]
     }

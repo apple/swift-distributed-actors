@@ -22,7 +22,7 @@ import XCTest
 
 extension MailboxTests {
     static var allTests: [(String, (MailboxTests) -> () throws -> Void)] {
-        return [
+        [
             ("test_sendMessage_shouldDropMessagesWhenFull", test_sendMessage_shouldDropMessagesWhenFull),
         ]
     }
