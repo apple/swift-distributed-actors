@@ -68,7 +68,7 @@ class SerializationTests: ActorSystemTestBase {
             _ = try encoder.encode(address)
         }
 
-        "\(err)".shouldStartWith(prefix: "missingSerializationContext(DistributedActors.ActorAddress,")
+        "\(err)".shouldStartWith(prefix: "missingSerializationContext(DistributedActors.ActorAddress")
     }
 
     func test_serialize_actorAddress_usingContext() throws {
