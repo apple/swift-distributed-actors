@@ -471,7 +471,7 @@ final class BehaviorTests: ActorSystemTestBase {
         try capture.shouldContain(message: "*BehaviorTests.swift:\(mockLine)*")
     }
 
-    enum ContextClosureMessage: NotTransportableActorMessage {
+    enum ContextClosureMessage: NonTransportableActorMessage {
         case context(() -> ActorRef<String>)
     }
 

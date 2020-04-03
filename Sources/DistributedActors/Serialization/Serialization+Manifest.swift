@@ -27,7 +27,7 @@ extension Serialization {
     /// Serialization manifests are used to carry enough information along a serialized payload,
     /// such that the payload may be safely deserialized into the right type on the recipient system.
     ///
-    /// They carry information what serializer was used to serialize the payload (e.g. `JSONEncoder`, protocol buffers,
+    /// They carry information about what serializer was used to serialize the payload (e.g. `JSONEncoder`, protocol buffers,
     /// or something else entirely), as well as a type hint for the selected serializer to be able to deserialize the
     /// payload into the "right" type. Some serializers may not need hints, e.g. if the serializer is specialized to a
     /// specific type already -- in those situations not carrying the type `hint` is recommended as it may save precious
@@ -106,25 +106,30 @@ extension Serialization {
     public func outboundManifest(_ type: Any.Type) throws -> Manifest {
         assert(type != Any.self, "Any.Type was passed in to outboundManifest, this cannot be right.")
 
-        if let manifest = self.settings.type2ManifestRegistry[SerializerTypeKey(any: type)] {
+        if let manifest = self.settings.typeToManifestRegistry[SerializerTypeKey(any: type)] {
             return manifest
         }
 
-        // TODO: vvv use mangled name instead !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         let hint: String
-        switch _typeName(type) {
-        case "DistributedActors.Cluster.Gossip":
-            hint = "s17DistributedActors7ClusterO6GossipV9"
-        case _:
-            hint = _typeName(type)
-        }
-        // TODO: ^^^ use mangled name instead !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #if swift(>=5.3)
+        // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
+        // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
+        // to be deserialized (thus, we can disallow decoding random messages for security).
+        //
+        // We would eventually want "codingTypeName" or something similar
+        hint = _mangledTypeName(type)
+        #else
+        // This is a workaround more or less, however it enables us to get a "stable-ish" name for messages,
+        // and as long as both sides of a cluster register the same type this manifest will allow us to locate
+        // and summon the type - in order to invoke decoding on it.
+        hint = _typeName(type)
+        #endif
 
         let manifest: Manifest?
         if type is Codable.Type {
             let defaultCodableSerializerID = self.settings.defaultSerializerID
             manifest = Manifest(serializerID: defaultCodableSerializerID, hint: hint)
-        } else if type is NotTransportableActorMessage.Type {
+        } else if type is NonTransportableActorMessage.Type {
             manifest = Manifest(serializerID: .doNotSerialize, hint: nil)
         } else {
             manifest = nil

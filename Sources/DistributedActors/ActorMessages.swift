@@ -18,40 +18,16 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Message
 
-#if !SACT_ACTOR_MESSAGE_AS_TYPE
+/// An Actor message is simply a Codable type.
+///
 /// Any Codable it able to be sent as an actor message.
 ///
 /// You can customize which coder/decoder should be used by registering specialized manifests for the message type,
 /// or having the type conform to one of the special `...Representable` (e.g. `ProtobufRepresentable`) protocols.
 public typealias ActorMessage = Codable
 
-#else
-
-/// Marks a type as intended to be used for Actor messaging, including over the network.
-public protocol ActorMessage: Codable {}
-
-extension String: ActorMessage {}
-extension Int: ActorMessage {}
-extension UInt: ActorMessage {}
-extension UInt8: ActorMessage {}
-extension Int8: ActorMessage {}
-extension Int16: ActorMessage {}
-extension UInt16: ActorMessage {}
-extension Int32: ActorMessage {}
-extension UInt32: ActorMessage {}
-extension Int64: ActorMessage {}
-extension UInt64: ActorMessage {}
-extension Float: ActorMessage {}
-extension Double: ActorMessage {}
-extension Optional: ActorMessage where Wrapped: Codable {}
-extension Array: ActorMessage where Element: Codable {}
-extension Set: ActorMessage where Element: Codable {}
-extension Dictionary: ActorMessage where Key: Codable, Value: Codable {}
-
-#endif
-
 /// A `Never` can never be sent as message, even more so over the wire.
-extension Never: NotTransportableActorMessage {}
+extension Never: NonTransportableActorMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Common utility messages
@@ -104,6 +80,7 @@ extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then
 }
 
 /// Generic transportable Error type, can be used to wrap error types and represent them as best as possible for transporting.
+/// FIXME: Needs better impl: https://github.com/apple/swift-distributed-actors/issues/512
 public struct ErrorEnvelope: Error, ActorMessage {
     public let error: Error
 
@@ -146,14 +123,13 @@ public struct ErrorEnvelope: Error, ActorMessage {
 //        } else {
 //            throw SerializationError.unableToDeserialize(hint: "Unable to summon Codable type for \(manifest)")
 //        }
-        let error = try container.decode(BestEffortStringError.self, forKey: .error)
-        self.error = error
+        self.error = try container.decode(BestEffortStringError.self, forKey: .error)
     }
 
     // FIXME: this likely fails in some cases
     public func encode(to encoder: Encoder) throws {
         guard let context: Serialization.Context = encoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(ErrorEnvelope.self, details: "While encoding [\(ErrorEnvelope.self)], using [\(encoder)]")
+            throw SerializationError.missingSerializationContext(encoder, self)
         }
 
         var container = encoder.container(keyedBy: CodingKeys.self)
@@ -178,7 +154,7 @@ public struct BestEffortStringError: Error, Codable, CustomStringConvertible {
 }
 
 /// Useful error wrapper which performs an best effort Error serialization as configured by the actor system.
-public struct NotTransportableAnyError: Error, NotTransportableActorMessage {
+public struct NotTransportableAnyError: Error, NonTransportableActorMessage {
     public let failure: Error
 
     public init<Failure: Error>(_ failure: Failure) {
@@ -201,7 +177,7 @@ public struct NotTransportableAnyError: Error, NotTransportableActorMessage {
 /// No serializer is expected to be registered for such types.
 ///
 /// - Warning: Attempting to send such message over the network will fail at runtime (and log an error or warning).
-public protocol NotTransportableActorMessage: ActorMessage {
+public protocol NonTransportableActorMessage: ActorMessage {
     // Really what this would like to express is:
     //
     //     func deepCopy(): Self
@@ -212,20 +188,20 @@ public protocol NotTransportableActorMessage: ActorMessage {
     // OR if a reference type is known to be read-only / immutable, it could get away with sharing self as well perhaps?
 }
 
-extension NotTransportableActorMessage {
+extension NonTransportableActorMessage {
     public init(from decoder: Swift.Decoder) throws {
-        fatalError("Attempted to decode NotTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to decode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 
     public func encode(to encoder: Encoder) throws {
-        fatalError("Attempted to encode NotTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to encode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 
     public init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
-        fatalError("Attempted to deserialize NotTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to deserialize NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 
     public func serialize(context: Serialization.Context, to bytes: inout ByteBuffer) throws {
-        fatalError("Attempted to serialize NotTransportableActorMessage message: \(Self.self)! This should never happen.")
+        fatalError("Attempted to serialize NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 }

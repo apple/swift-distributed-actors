@@ -21,7 +21,7 @@ import XCTest
 class InteropDocExamples: XCTestCase {
     func example_asyncOp_sendResult_dispatch() throws {
         // tag::message_greetings[]
-        enum Messages: NotTransportableActorMessage {
+        enum Messages: NonTransportableActorMessage {
             case string(String)
         }
         // end::message_greetings[]
@@ -51,7 +51,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_sendResult_insideActor() throws {
         // tag::asyncOp_sendResult_insideActor_enum_Messages[]
-        enum Messages: NotTransportableActorMessage {
+        enum Messages: NonTransportableActorMessage {
             case fetchData
             case result(String)
         }
@@ -104,11 +104,11 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_onResultAsync_enum_Messages[]
-        enum Messages: NotTransportableActorMessage {
+        enum Messages: NonTransportableActorMessage {
             case lookupUser(name: String, recipient: ActorRef<LookupResponse>)
         }
 
-        enum LookupResponse: NotTransportableActorMessage {
+        enum LookupResponse: NonTransportableActorMessage {
             case user(User)
             case unknownUser(name: String)
             case lookupFailed(Error)
@@ -161,7 +161,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_awaitResult() throws {
         // tag::asyncOp_awaitResult_enum_Messages[]
-        enum Message: NotTransportableActorMessage {
+        enum Message: NonTransportableActorMessage {
             case addPrefix(string: String, recipient: ActorRef<String>)
         }
         // end::asyncOp_awaitResult_enum_Messages[]
@@ -201,7 +201,7 @@ class InteropDocExamples: XCTestCase {
     }
 
     func example_asyncOp_awaitResultThrowing() throws {
-        enum Message: NotTransportableActorMessage {
+        enum Message: NonTransportableActorMessage {
             case addPrefix(string: String, recipient: ActorRef<String>)
         }
 

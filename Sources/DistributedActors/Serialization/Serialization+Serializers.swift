@@ -94,10 +94,8 @@ internal class NotTransportableSerializer<Message>: Serializer<Message> {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serializers: AnySerializer
 
+// TODO: We may be able to remove the Serializer infrastructure and rely on Coders if we're able to generalize them
 public protocol AnySerializer {
-    // FIXME: remove this
-    func _asSerializerOf<M>(_ type: M.Type) throws -> Serializer<M>
-
     func trySerialize(_ message: Any) throws -> ByteBuffer
 
     // TODO: tryDeserialize(as: from) // !!!!!!
@@ -112,14 +110,6 @@ internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
 
     init<Serializer: AnySerializer>(_ serializer: Serializer) {
         self.serializer = serializer
-    }
-
-    func _asSerializerOf<M>(_: M.Type) throws -> Serializer<M> {
-        if let wellTypedSerializer = self.serializer as? Serializer<M> {
-            return wellTypedSerializer
-        } else {
-            throw SerializationError.wrongSerializer(hint: "Cannot cast \(self.serializer) to \(String(reflecting: Serializer<M>.self))")
-        }
     }
 
     func setSerializationContext(_ context: Serialization.Context) {

@@ -20,12 +20,12 @@ import struct NIO.ByteBuffer
 
 extension CRDT {
     internal enum Replication {
-        // Replicator works with type-erased CRDTs (i.e., `AnyCvRDT`, `DeltaCRDTBox`) because protocols `CvRDT` and
+        // Replicator works with type-erased CRDTs (i.e., `AnyCvRDT`, `AnyDeltaCRDT`) because protocols `CvRDT` and
         // `DeltaCRDT` can be used as generic constraint only due to `Self` or associated type requirements.
         typealias Data = StateBasedCRDT
 
         // Messages from replicator to CRDT instance owner
-        internal enum DataOwnerMessage: NotTransportableActorMessage {
+        internal enum DataOwnerMessage: NonTransportableActorMessage {
             /// Sent when the CRDT instance has been updated. The update could have been issued locally by the same or
             /// another owner, or remotely then synchronized to this replicator.
             case updated(StateBasedCRDT)
@@ -52,7 +52,7 @@ extension CRDT {
             case remoteCommand(RemoteCommand)
         }
 
-        enum LocalCommand: NotTransportableActorMessage {
+        enum LocalCommand: NonTransportableActorMessage {
             // Register owner for CRDT instance
             case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: StateBasedCRDT, replyTo: ActorRef<RegisterResult>?)
 
@@ -64,44 +64,44 @@ extension CRDT {
             // Perform delete to at least `consistency` members
             case delete(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<DeleteResult>)
 
-            enum RegisterResult: NotTransportableActorMessage {
+            enum RegisterResult: NonTransportableActorMessage {
                 case success
                 case failure(RegisterError)
             }
 
-            enum RegisterError: Error, NotTransportableActorMessage {
+            enum RegisterError: Error, NonTransportableActorMessage {
                 case inputAndStoredDataTypeMismatch(CRDT.MergeError)
                 case unsupportedCRDT
             }
 
-            enum WriteResult: NotTransportableActorMessage {
+            enum WriteResult: NonTransportableActorMessage {
                 case success
                 case failure(WriteError)
             }
 
-            enum WriteError: Error, NotTransportableActorMessage {
+            enum WriteError: Error, NonTransportableActorMessage {
                 case inputAndStoredDataTypeMismatch(CRDT.MergeError)
                 case unsupportedCRDT
                 case consistencyError(CRDT.OperationConsistency.Error)
             }
 
-            enum ReadResult: NotTransportableActorMessage {
+            enum ReadResult: NonTransportableActorMessage {
                 // Returns the underlying CRDT
                 case success(StateBasedCRDT)
                 case failure(ReadError)
             }
 
-            enum ReadError: Error, NotTransportableActorMessage {
+            enum ReadError: Error, NonTransportableActorMessage {
                 case notFound
                 case consistencyError(CRDT.OperationConsistency.Error)
             }
 
-            enum DeleteResult: NotTransportableActorMessage {
+            enum DeleteResult: NonTransportableActorMessage {
                 case success
                 case failure(DeleteError)
             }
 
-            enum DeleteError: Error, NotTransportableActorMessage {
+            enum DeleteError: Error, NonTransportableActorMessage {
                 case consistencyError(CRDT.OperationConsistency.Error)
             }
         }

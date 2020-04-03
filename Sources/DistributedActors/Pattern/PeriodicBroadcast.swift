@@ -44,7 +44,7 @@ extension ActorNaming {
 }
 
 internal class PeriodicBroadcastShell<Payload: ActorMessage> {
-    enum Message: NotTransportableActorMessage, SilentDeadLetter {
+    enum Message: NonTransportableActorMessage, SilentDeadLetter {
         case set(Payload)
         case introduce(peer: ActorRef<Payload>)
         case tick

@@ -21,7 +21,7 @@ internal struct ProcessCommander {
     public static let name: String = "processCommander"
     public static let naming: ActorNaming = .unique(name)
 
-    internal enum Command: NotTransportableActorMessage {
+    internal enum Command: NonTransportableActorMessage {
         case requestSpawnServant(ServantProcessSupervisionStrategy, args: [String])
         case requestRespawnServant(ServantProcess, delay: TimeAmount?)
     }

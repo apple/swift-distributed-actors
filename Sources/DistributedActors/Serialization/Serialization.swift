@@ -163,7 +163,7 @@ public class Serialization {
         settings.registerManifest(CRDT.GCounterDelta.self, serializer: .protobufRepresentable)
         settings.registerManifest(CRDT.ORSet<String>.self, serializer: .protobufRepresentable)
         settings.registerManifest(CRDT.ORSet<Int>.self, serializer: .protobufRepresentable)
-        // settings.registerManifest(DeltaCRDTBox.self, serializer: ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDT.Envelope+SerializationTests
+        // settings.registerManifest(AnyDeltaCRDT.self, serializer: ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDT.Envelope+SerializationTests
 
         self.settings = settings
         self.metrics = system.metrics
@@ -219,7 +219,7 @@ extension Serialization {
     /// to not carry type hints in their manifests, and just ride on the serializer IDs).
     private func _ensureAllRegisteredSerializers() throws {
         // all non-codable types are specialized types; register specific serializer instances for them early
-        for typeKey in self.settings.type2ManifestRegistry.keys {
+        for typeKey in self.settings.typeToManifestRegistry.keys {
             self.log.trace("Ensure serializer eagerly: \(typeKey)")
             try typeKey._ensureSerializer(self)
         }
@@ -234,74 +234,42 @@ extension Serialization {
     }
 
     public func _ensureSerializer<Message: ActorMessage>(_ type: Message.Type, file: String = #file, line: UInt = #line) throws {
-        func _ensureSerializer0<Message: ActorMessage>(_ type: Message.Type, makeSerializer: (Manifest) throws -> AnySerializer) throws {
-            let oid = ObjectIdentifier(type)
+        let oid = ObjectIdentifier(type)
 
-            // 1. check if this type already has a serializer registered, bail out quickly if so
-            self._serializersLock.withReaderLock {
-                if self._serializers[oid] != nil {
-                    return
-                }
-            }
-
-            // 2. seems this type was not registered yet, so we need to store the appropriate serializer for it
-            try self._serializersLock.withWriterLock {
-                // 2.1. check again, in case someone had just stored a serializer while we were waiting for the writer lock
-                if self._serializers[oid] != nil {
-                    return
-                }
-
-                // 2.2. obtain the manifest that we would use for this type, as it carries the right serializerID
-                let manifest = try self.outboundManifest(type)
-
-                // 2.3. create and store the appropriate serializer
-                do {
-                    self._serializers[oid] = try makeSerializer(manifest)
-                } catch SerializationError.noNeedToEnsureSerializer {
-                    // some types are specifically marked as "do not serialize" and we should ignore failures
-                    // to create serializers for them. E.g. this cna happen for a "top level protocol"
-                    // which by itself is never sent/serialized, but subclasses of it might.
-                    return
-                } catch {
-                    // all other errors are real and should be escalated
-                    throw error
-                }
+        // 1. check if this type already has a serializer registered, bail out quickly if so
+        self._serializersLock.withReaderLock {
+            if self._serializers[oid] != nil {
+                return
             }
         }
 
-        try _ensureSerializer0(type) { manifest in
-            traceLog_Serialization("Registered [\(manifest)] for [\(String(reflecting: type))]")
-            return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
+        // 2. seems this type was not registered yet, so we need to store the appropriate serializer for it
+        try self._serializersLock.withWriterLock {
+            // 2.1. check again, in case someone had just stored a serializer while we were waiting for the writer lock
+            if self._serializers[oid] != nil {
+                return
+            }
 
-//            if type is AnyPublicProtobufRepresentable.Type {
-//                return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
-//            } else if type is AnyProtobufRepresentable.Type {
-//                return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
-//            } else if type is NotTransportableActorMessage.Type {
-//                return NotTransportableSerializer<Message>().asAnySerializer
-//            } else {
-//                return try self.makeCodableSerializer(type, manifest: manifest).asAnySerializer
-//            }
+            // 2.2. obtain the manifest that we would use for this type, as it carries the right serializerID
+            let manifest = try self.outboundManifest(type)
+
+            // 2.3. create and store the appropriate serializer
+            do {
+                traceLog_Serialization("Registered [\(manifest)] for [\(reflecting: type)]")
+                self._serializers[oid] = try self.makeCodableSerializer(type, manifest: manifest)
+            } catch SerializationError.noNeedToEnsureSerializer {
+                // some types are specifically marked as "do not serialize" and we should ignore failures
+                // to create serializers for them. E.g. this cna happen for a "top level protocol"
+                // which by itself is never sent/serialized, but subclasses of it might.
+                return
+            } catch {
+                // all other errors are real and should be escalated
+                throw error
+            }
         }
     }
 
-//    internal func makeSerializer<Message>(_ type: Message.Type, manifest: Manifest) throws -> Serializer<Message> {
-//        guard manifest.serializerID != .doNotSerialize else {
-//            throw SerializationError.noNeedToEnsureSerializer
-//        }
-//
-//        pprint("self.settings.specializedSerializerMakers = \(self.settings.specializedSerializerMakers)")
-//
-//        guard let make = self.settings.specializedSerializerMakers[manifest] else {
-//            throw SerializationError.unableToMakeSerializer(hint: "Type: \(String(reflecting: type)), Manifest: \(manifest)")
-//        }
-//
-//        let serializer = make(self.allocator)
-//        serializer.setSerializationContext(self.context)
-//        return try serializer._asSerializerOf(Message.self)
-//    }
-
-    internal func makeCodableSerializer<Message: Codable>(_ type: Message.Type, manifest: Manifest) throws -> Serializer<Message> {
+    internal func makeCodableSerializer<Message: Codable>(_ type: Message.Type, manifest: Manifest) throws -> AnySerializer {
         switch manifest.serializerID {
         case .doNotSerialize:
             throw SerializationError.noNeedToEnsureSerializer
@@ -313,7 +281,7 @@ extension Serialization {
 
             let serializer = make(self.allocator)
             serializer.setSerializationContext(self.context)
-            return try serializer._asSerializerOf(Message.self)
+            return try serializer
 
         case Serialization.SerializerID.foundationJSON:
             let serializer = JSONCodableSerializer<Message>(allocator: self.allocator)
@@ -363,9 +331,7 @@ extension Serialization {
             let messageType = type(of: message as Any) // `as Any` on purpose (!), see above.
             assert(messageType != Any.self, "Underlying message type resolved as Any.Type. This should never happen, please file a bug. Was: \(message)")
 
-//            pprint("OUT: serialize(\(message)) :::: \(String(reflecting: messageType))")
             let manifest = try self.outboundManifest(messageType)
-//            pprint("OUT: serialize(\(message)) ::: \(manifest) ::: \(String(reflecting: messageType))")
 
             traceLog_Serialization("serialize(\(message), manifest: \(manifest))")
 
@@ -436,14 +402,14 @@ extension Serialization {
             return fatalErrorBacktrace("ATTEMPT TO DESERIALIZE FROM DEAD LETTERS? payload: \(bytes)")
         }
 
-        let value = try self.deserializeAny(from: &bytes, using: manifest, file: file, line: line)
-
-        if let wellTypedValue = value as? T {
-            return wellTypedValue
+        let deserializedAny = try self.deserializeAny(from: &bytes, using: manifest, file: file, line: line)
+        if let deserialized = deserializedAny as? T {
+            return deserialized
         } else {
             throw SerializationError.serializationError(
-                SerializationError.unableToDeserialize(hint: "Deserialized value is NOT an instance of \(String(reflecting: T.self)), was: \(value)"),
-                file: file, line: line
+                SerializationError.unableToDeserialize(hint: "Deserialized value is NOT an instance of \(String(reflecting: T.self)), was: \(deserializedAny)"),
+                file: file,
+                line: line
             )
         }
     }
@@ -504,7 +470,6 @@ extension Serialization {
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(manifestMessageType), manifest: \(manifest)")
                 }
             } else {
-                // FIXME: should this be first?
                 // TODO: Do we really need to store them at all?
                 guard let serializer: AnySerializer = (self._serializersLock.withReaderLock {
                     self._serializers[manifestMessageTypeID]
@@ -528,13 +493,13 @@ extension Serialization {
     /// Messages marked with `SkipSerializationVerification` are except from this verification.
     public func verifySerializable<Message: ActorMessage>(message: Message) throws {
         switch message {
-        case is NotTransportableActorMessage:
+        case is NonTransportableActorMessage:
             return // skip
         default:
             var (manifest, bytes) = try self.serialize(message)
             do {
                 _ = try self.deserialize(as: Message.self, from: &bytes, using: manifest)
-                pprint("PASSED serialization check, type: [\(type(of: message))]") // TODO: should be info log
+                self.log.debug("Serialization verification passed for: [\(type(of: message as Any))]")
                 // checking if the deserialized is equal to the passed in is a bit tricky,
                 // so we only check if the round trip invocation was possible at all or not.
             } catch {
@@ -694,6 +659,8 @@ public enum SerializationError: Error {
     /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
     /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
     case missingSerializationContext(Any.Type, details: String, file: String, line: UInt)
+
+    // --- Manifest errors ---
     case missingManifest(hint: String)
     case unableToCreateManifest(hint: String)
     case unableToSummonTypeFromManifest(Serialization.Manifest)
@@ -701,7 +668,6 @@ public enum SerializationError: Error {
     // --- format errors ---
     case missingField(String, type: String)
     case emptyRepeatedField(String)
-
     case unknownEnumValue(Int)
 
     // --- illegal errors ---
@@ -714,11 +680,30 @@ public enum SerializationError: Error {
     /// Thrown and to be handled internally by the Serialization system when a serializer should NOT be ensured.
     case noNeedToEnsureSerializer
 
-    static func missingSerializationContext(_ type: Any.Type, details: String, _file: String = #file, _line: UInt = #line) -> SerializationError {
-        .missingSerializationContext(type, details: details, file: _file, line: _line)
+    public static func missingSerializationContext(_ coder: Swift.Decoder, _ _type: Any.Type, file: String = #file, line: UInt = #line) -> SerializationError {
+        SerializationError.missingSerializationContext(
+            _type,
+            details:
+            """
+            \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: coder))).userInfo, \
+            but is necessary decode message of type: \(String(reflecting: _type))
+            """,
+            file: file,
+            line: line
+        )
     }
 
-    static func alreadyDefined<T>(type: T.Type, serializerID: Serialization.SerializerID, serializer: AnySerializer?) -> SerializationError {
-        .alreadyDefined(hint: String(reflecting: type), serializerID: serializerID, serializer: serializer)
+    public static func missingSerializationContext(_ coder: Swift.Encoder, _ message: Any, file: String = #file, line: UInt = #line) -> SerializationError {
+        SerializationError.missingSerializationContext(
+            type(of: message),
+            details:
+            """
+            \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: coder))).userInfo, \
+            but is necessary encode message: [\(message)]:\(String(reflecting: type(of: message)))
+            """,
+            file: file,
+            line: line
+        )
     }
+
 }

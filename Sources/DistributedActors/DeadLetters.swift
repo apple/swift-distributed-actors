@@ -33,7 +33,7 @@ import Logging
 /// The term dead letters, or rather "dead letter office" originates from the postal system, where undeliverable
 /// mail would be called such, and shipped to one specific place to deal with these letters.
 /// See also [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
-public struct DeadLetter: NotTransportableActorMessage { // TODO: make it also remote
+public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also remote
     let message: Any
     let recipient: ActorAddress?
 
@@ -55,7 +55,7 @@ public struct DeadLetter: NotTransportableActorMessage { // TODO: make it also r
 /// // This type is used by serialization to notice that a message shall be delivered as dead letter
 /// // (rather than attempting to cast the deserialized payload to the "found type" (which would be `Never` or `MessageForDeadRecipient`).
 // @usableFromInline
-// internal protocol MessageForDeadRecipient: NotTransportableActorMessage {}
+// internal protocol MessageForDeadRecipient: NonTransportableActorMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSystem.deadLetters

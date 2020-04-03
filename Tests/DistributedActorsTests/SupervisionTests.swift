@@ -25,27 +25,27 @@ import Glibc
 #endif
 
 final class SupervisionTests: ActorSystemTestBase {
-    enum FaultyError: Error, NotTransportableActorMessage {
+    enum FaultyError: Error, NonTransportableActorMessage {
         case boom(message: String)
     }
 
-    enum FaultyMessage: NotTransportableActorMessage {
+    enum FaultyMessage: NonTransportableActorMessage {
         case pleaseThrow(error: Error)
         case echo(message: String, replyTo: ActorRef<WorkerMessages>)
         case pleaseFailAwaiting(message: String)
     }
 
-    enum SimpleProbeMessages: Equatable, NotTransportableActorMessage {
+    enum SimpleProbeMessages: Equatable, NonTransportableActorMessage {
         case spawned(child: ActorRef<FaultyMessage>)
         case echoing(message: String)
     }
 
-    enum WorkerMessages: Equatable, NotTransportableActorMessage {
+    enum WorkerMessages: Equatable, NonTransportableActorMessage {
         case setupRunning(ref: ActorRef<FaultyMessage>)
         case echo(message: String)
     }
 
-    enum FailureMode: NotTransportableActorMessage {
+    enum FailureMode: NonTransportableActorMessage {
         case throwing
         // case faulting // Not implemented
 

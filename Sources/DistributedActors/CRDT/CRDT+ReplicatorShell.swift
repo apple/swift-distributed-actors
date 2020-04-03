@@ -245,7 +245,7 @@ extension CRDT.Replicator {
 //            switch data {
 //            case let data as AnyCvRDT:
 //                remoteCommand = .write(id, data, replyTo: replyTo)
-//            case let data as DeltaCRDTBox:
+//            case let data as AnyDeltaCRDT:
 //                if isNewIdLocally {
 //                    // Send full CRDT because remote replicator probably doesn't know about this CRDT
 //                    // either and sending just the delta would not work.
@@ -260,7 +260,7 @@ extension CRDT.Replicator {
 //                        remoteCommand = .write(id, data, replyTo: replyTo)
 //                    }
 //                }
-//            default: // neither AnyCvRDT nor DeltaCRDTBox
+//            default: // neither AnyCvRDT nor AnyDeltaCRDT
 //                fatalError("Cannot replicate to remote nodes. Unknown data type: \(data)")
 //            }
 

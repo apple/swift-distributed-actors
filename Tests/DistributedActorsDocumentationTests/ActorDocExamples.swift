@@ -23,7 +23,7 @@ import XCTest
 
 class ActorDocExamples: XCTestCase {
     // tag::message_greetings[]
-    enum Greetings: NotTransportableActorMessage {
+    enum Greetings: NonTransportableActorMessage {
         case greet(name: String)
         case greeting(String)
     }

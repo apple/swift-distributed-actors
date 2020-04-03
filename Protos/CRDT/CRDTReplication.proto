@@ -24,15 +24,6 @@ import "Serialization/Serialization.proto";
 // ==== Wire envelope for CRDT types -----------------------------------------------------------------------------------
 
 message CRDTEnvelope {
-//    enum Boxed {
-//        UNSPECIFIED = 0;
-//        /// Box as `AnyCvRDT` when deserializing
-//        ANY_CVRDT = 1;
-//        /// Box as `AnyDeltaCRDT` when deserializing
-//        ANY_DELTA_CRDT = 2;
-//    } // FIXME: will bocing still be needed
-//
-//    Boxed boxed = 1;
     Manifest manifest = 1;
     bytes payload     = 2;
 }

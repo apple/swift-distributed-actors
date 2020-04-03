@@ -260,10 +260,10 @@ extension CRDT.LWWRegister: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoCRDTLWWRegistry
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
-        fatalError("TODO: Serialization of LWWRegistry is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
+        fatalError("TODO: Serialization of LWWRegister is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
     }
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        fatalError("TODO: Serialization of LWWRegistry is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
+        fatalError("TODO: Serialization of LWWRegister is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
     }
 }

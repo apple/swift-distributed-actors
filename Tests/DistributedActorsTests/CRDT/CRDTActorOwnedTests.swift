@@ -27,7 +27,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor-owned GCounter tests
 
-    private enum GCounterCommand: NotTransportableActorMessage {
+    private enum GCounterCommand: NonTransportableActorMessage {
         case increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
         case delete(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Done>)
@@ -203,7 +203,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor-owned ORSet tests
 
-    private enum ORSetCommand: NotTransportableActorMessage {
+    private enum ORSetCommand: NonTransportableActorMessage {
         case add(_ element: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
         case remove(_ element: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
@@ -328,7 +328,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor-owned ORMap tests
 
-    private enum ORMapCommand: NotTransportableActorMessage {
+    private enum ORMapCommand: NonTransportableActorMessage {
         case increment(key: String, amount: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
         case removeValue(key: String, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)

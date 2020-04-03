@@ -62,11 +62,11 @@ public enum SWIM {
         case nack(target: ActorRef<Message>)
     }
 
-    internal struct MembershipState: NotTransportableActorMessage {
+    internal struct MembershipState: NonTransportableActorMessage {
         let membershipState: [ActorRef<SWIM.Message>: Status]
     }
 
-    internal enum LocalMessage: NotTransportableActorMessage {
+    internal enum LocalMessage: NonTransportableActorMessage {
         /// Periodic message used to wake up SWIM and perform a random ping probe among its members.
         case pingRandomMember
 
@@ -110,7 +110,7 @@ public enum SWIM {
         case confirmDead(UniqueNode)
     }
 
-    internal enum TestingMessage: NotTransportableActorMessage {
+    internal enum TestingMessage: NonTransportableActorMessage {
         /// FOR TESTING: Expose the entire membership state
         case getMembershipState(replyTo: ActorRef<MembershipState>)
     }

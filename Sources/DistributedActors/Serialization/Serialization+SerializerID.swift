@@ -86,14 +86,6 @@ extension Serialization {
     /// Those messages are usually serialized using specialized serializers rather than the generic catch all Codable infrastructure,
     /// in order to allow fine grained evolution and payload size savings.
     internal enum ReservedID {
-        /// Range of serialization IDs reserved for the actor system's internal messages.
-        public static let range: Range<SerializerID.IntegerLiteralType> =
-            SerializerID.IntegerLiteralType(0) ..< SerializerID.IntegerLiteralType(1000)
-
-        // TODO: The IDs we'll need to actually become manifests perhaps?
-        // TODO: or rather, those IDs should say "json / proto" rather than be type specific
-
-        // TODO: readjust the numbers we use
         internal static let SystemMessage: SerializerID = .doNotSerialize
         internal static let SystemMessageACK: SerializerID = .checkProtobufRepresentable(_SystemMessage.ACK.self)
         internal static let SystemMessageNACK: SerializerID = .checkProtobufRepresentable(_SystemMessage.NACK.self)

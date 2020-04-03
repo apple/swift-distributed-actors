@@ -229,6 +229,6 @@ public struct DontConformMessageToCodable: Actorable {
 }
 
 // can provide a conformance manually, rather than relying on the built in Codable generated one
-extension DontConformMessageToCodable.Message: NotTransportableActorMessage {}
+extension DontConformMessageToCodable.Message: NonTransportableActorMessage {}
 
 // end::disable_codable_gen[]

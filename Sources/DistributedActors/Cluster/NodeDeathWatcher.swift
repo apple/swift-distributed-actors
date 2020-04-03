@@ -122,7 +122,7 @@ enum NodeDeathWatcherShell {
     /// Message protocol for interacting with the failure detector.
     /// By default, the `FailureDetectorShell` handles these messages by interpreting them with an underlying `FailureDetector`,
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
-    internal enum Message: NotTransportableActorMessage {
+    internal enum Message: NonTransportableActorMessage {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
         case membershipSnapshot(Cluster.Membership)
         case membershipChange(Cluster.MembershipChange)

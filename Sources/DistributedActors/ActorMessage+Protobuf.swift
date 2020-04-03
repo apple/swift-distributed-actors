@@ -44,13 +44,7 @@ public protocol ProtobufRepresentable: AnyPublicProtobufRepresentable {
 extension ProtobufRepresentable {
     public init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(
-                Self.self,
-                details: """
-                \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: decoder))).userInfo, \
-                but is necessary deserialize the ProtobufRepresentable codable message [\(Self.self)]!
-                """
-            )
+            throw SerializationError.missingSerializationContext(decoder, Self.self)
         }
 
         let container = try decoder.singleValueContainer()
@@ -63,13 +57,7 @@ extension ProtobufRepresentable {
 
     public func encode(to encoder: Encoder) throws {
         guard let context = encoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(
-                Self.self,
-                details: """
-                \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: encoder))).userInfo, \
-                but is necessary deserialize the ProtobufRepresentable codable message [\(Self.self)]!
-                """
-            )
+            throw SerializationError.missingSerializationContext(encoder, self)
         }
 
         var container = encoder.singleValueContainer()
@@ -100,13 +88,7 @@ internal protocol InternalProtobufRepresentable: AnyProtobufRepresentable {
 extension InternalProtobufRepresentable {
     init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(
-                Self.self,
-                details: """
-                \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: decoder))).userInfo, \
-                but is necessary deserialize the InternalProtobufRepresentable codable message [\(Self.self)]!
-                """
-            )
+            throw SerializationError.missingSerializationContext(decoder, Self.self)
         }
 
         let container = try decoder.singleValueContainer()
@@ -119,13 +101,7 @@ extension InternalProtobufRepresentable {
 
     func encode(to encoder: Encoder) throws {
         guard let context = encoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(
-                Self.self,
-                details: """
-                \(String(reflecting: Serialization.Context.self)) not available in \(String(reflecting: type(of: encoder))).userInfo, \
-                but is necessary deserialize the InternalProtobufRepresentable codable message [\(Self.self)]!
-                """
-            )
+            throw SerializationError.missingSerializationContext(encoder, self)
         }
 
         var container = encoder.singleValueContainer()

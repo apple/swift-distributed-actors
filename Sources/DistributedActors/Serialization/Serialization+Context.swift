@@ -25,8 +25,6 @@ extension Serialization {
     ///
     /// Context MAY be accessed concurrently be encoders/decoders.
     public struct Context {
-        typealias MetaTypeKey = AnyHashable // TODO: remove?
-
         public let log: Logger
         public let system: ActorSystem
 
@@ -36,13 +34,6 @@ extension Serialization {
 
         /// Shared among serializers allocator for purposes of (de-)serializing messages.
         public let allocator: NIO.ByteBufferAllocator
-
-//        public var encoder: TopLevelDataEncoder {
-//            fatalError(" NOT IMPLEMENTED: TopLevelDataEncoder")
-//        }
-//        public var decoder: TopLevelDataDecoder {
-//            fatalError("NOT IMPLEMENTED: TopLevelDataDecoder")
-//        }
 
         /// Address to be included in serialized actor refs if they are local references.
         public var localNode: UniqueNode {
@@ -73,9 +64,8 @@ extension Serialization {
             return self.system._resolve(context: context)
         }
 
-        // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
-        /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
-        internal func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
+        /// Similar to `resolveActorRef` but for an untyped `AddressableActorRef`.
+        public func resolveAddressableActorRef(identifiedBy address: ActorAddress, userInfo: [CodingUserInfoKey: Any] = [:]) -> AddressableActorRef {
             let context = ResolveContext<Never>(address: address, system: self.system, userInfo: userInfo)
             return self.system._resolveUntyped(context: context)
         }
@@ -110,9 +100,15 @@ public protocol CodableSerializationContext {
     ///
     /// ```
     ///    guard let serializationContext = decoder.actorSerializationContext else {
-    //         throw SerializationError.missingSerializationContext(MyMessage.self, details: "While decoding [\(MyMessage.self)], using [\(decoder)]")
-    //     }
+    ///        throw SerializationError.missingSerializationContext(decoder, MyMessage.self)
+    ///    }
     /// ```
+    ///
+    /// ```
+    ///    guard let serializationContext = decoder.actorSerializationContext else {
+    ///        throw SerializationError.missingSerializationContext(encoder, value)
+    ///    }
+    //// ```
     var actorSerializationContext: Serialization.Context? { get }
 }
 

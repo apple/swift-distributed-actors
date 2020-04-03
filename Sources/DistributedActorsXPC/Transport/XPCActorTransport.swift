@@ -189,7 +189,7 @@ final class XPCMaster {
 
     // private var serviceTombstones: [xpc_connection_t] = [] // TODO: Think if we need tombstones, or can rely on XPC doing the right thing
 
-    enum Message: NotTransportableActorMessage {
+    enum Message: NonTransportableActorMessage {
         case xpcRegisterService(xpc_connection_t, AddressableActorRef)
         case xpcConnectionInvalidated(AddressableActorRef)
         case xpcConnectionInterrupted(AddressableActorRef)

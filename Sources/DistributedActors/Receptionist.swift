@@ -108,7 +108,7 @@ public enum Receptionist {
     }
 
     /// Response to a `Register` message
-    public class Registered<Message: ActorMessage>: NotTransportableActorMessage, CustomStringConvertible {
+    public class Registered<Message: ActorMessage>: NonTransportableActorMessage, CustomStringConvertible {
         public let ref: ActorRef<Message>
         public let key: RegistrationKey<Message>
 
@@ -406,7 +406,7 @@ public class ReceptionistMessage: ActorMessage {}
 internal typealias FullyQualifiedTypeName = String
 
 // TODO: Receptionist._Register
-public class _Register: ReceptionistMessage, NotTransportableActorMessage, CustomStringConvertible {
+public class _Register: ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
     var _addressableActorRef: AddressableActorRef { undefined() }
     var _key: _RegistrationKey { undefined() }
 
@@ -421,7 +421,7 @@ public class _Register: ReceptionistMessage, NotTransportableActorMessage, Custo
 
 // TODO: Receptionist._Lookup
 // TODO: or rather move to not classes here: https://github.com/apple/swift-distributed-actors/issues/510
-public class _Lookup: ReceptionistMessage, NotTransportableActorMessage {
+public class _Lookup: ReceptionistMessage, NonTransportableActorMessage {
     let _key: _RegistrationKey
 
     init(_key: _RegistrationKey) {
@@ -524,7 +524,7 @@ internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable {
     }
 }
 
-public class _Subscribe: ReceptionistMessage, NotTransportableActorMessage {
+public class _Subscribe: ReceptionistMessage, NonTransportableActorMessage {
     var _key: _RegistrationKey {
         fatalErrorBacktrace("failed \(#function)")
     }
@@ -583,223 +583,3 @@ internal protocol ListingRequest {
 
     func replyWith(_ refs: Set<AddressableActorRef>)
 }
-
-// TODO: uncomment if you like compiler crashes
-//
-// Assertion failed: (!isInvalid()), function getRequirement, file /Users/buildnode/jenkins/workspace/oss-swift-5.1-package-osx/swift/lib/AST/ProtocolConformance.cpp, line 77.
-// Stack dump:
-// 0.	Program arguments: /Library/Developer/Toolchains/swift-5.1.4-RELEASE.xctoolchain/usr/bin/swift -frontend -c -filelist /var/folders/wh/s6r_3sk96596_wztm8w1pgfw0000gn/T/sources-7fc66e -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterSettings.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/HandshakeStateMachine.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Leadership.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/NodeDeathWatcher.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/ClusterReceptionistSettings.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist+Serialization.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIM.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/TransportPipelines.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/DeadLetters.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessIsolated.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Receptionist.swift -primary-file /Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization.swift -supplementary-output-file-map /var/folders/wh/s6r_3sk96596_wztm8w1pgfw0000gn/T/supplementaryOutputs-c137ef -target x86_64-apple-macosx10.10 -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk -I /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug -I /Users/ktoso/code/actors/.build/checkouts/swift-backtrace/Sources/CBacktrace/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio-ssl/Sources/CNIOBoringSSLShims/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio-ssl/Sources/CNIOBoringSSL/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIOSHA1/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIOAtomics/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIODarwin/include -I /Users/ktoso/code/actors/.build/checkouts/swift-nio/Sources/CNIOLinux/include -I /Users/ktoso/code/actors/Sources/CDistributedActorsMailbox/include -I /Users/ktoso/code/actors/Sources/CDistributedActorsAtomics/include -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -enable-testing -g -module-cache-path /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/ModuleCache -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -color-diagnostics -enable-anonymous-context-mangled-names -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CBacktrace.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOBoringSSLShims.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOBoringSSL.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOSHA1.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOAtomics.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIODarwin.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CNIOLinux.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CDistributedActorsMailbox.build/module.modulemap -Xcc -fmodule-map-file=/Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/CDistributedActorsAtomics.build/module.modulemap -parse-as-library -module-name DistributedActors -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/ClusterSettings.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/ClusterShell.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/HandshakeStateMachine.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Leadership.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/NodeDeathWatcher.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Reception/ClusterReceptionistSettings.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Reception/OperationLogClusterReceptionist+Serialization.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Reception/OperationLogClusterReceptionist.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/SWIM/SWIM.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Cluster/Transport/TransportPipelines.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/DeadLetters.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/ProcessIsolated/ProcessIsolated.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Receptionist.swift.o -o /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/DistributedActors.build/Serialization/Serialization.swift.o -index-store-path /Users/ktoso/code/actors/.build/x86_64-apple-macosx/debug/index/store -index-system-modules
-// 1.	Contents of /var/folders/wh/s6r_3sk96596_wztm8w1pgfw0000gn/T/sources-7fc66e:
-// ---
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorAddress.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorContext.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorLogging.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorMessage+Protobuf.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorMessage.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorNaming.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorRef+Ask.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorRefProvider.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorShell+Children.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorShell+Defer.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorShell.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorSystem.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorSystemSettings.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ActorTransport.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Adapters.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/AffinityThreadPool.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/AsyncResult.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Await.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Backoff.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Behaviors.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+Logging.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+Replication.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+ReplicatorInstance.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT+ReplicatorShell.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/CRDT.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDT.Envelope+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTReplication+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Protobuf/CRDTReplication.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+Any.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+GCounter.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+LWWMap.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+LWWRegister.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+ORMap.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+ORMultiMap.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+ORSet.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+StateBased.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CRDT/Types/CRDT+Versioning.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Clocks/LamportClock.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Clocks/Protobuf/VersionVector+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Clocks/Protobuf/VersionVector.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Clocks/VersionVector.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Association.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Chaos/LossyMessagesHandler.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Event.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Gossip.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Member.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Cluster+Membership.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterControl.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterEventStream.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterSettings.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell+LeaderActions.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell+Logging.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShell.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/ClusterShellState.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Downing/DowningSettings.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Downing/DowningStrategy.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Downing/TimeoutBasedDowningStrategy.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/HandshakeStateMachine.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Leadership.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/NodeDeathWatcher.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Cluster+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Cluster.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/ClusterEvents+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/ClusterEvents.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Membership+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Protobuf/Membership.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/ClusterReceptionistSettings.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLog.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Reception/OperationLogClusterReceptionist.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/Protobuf/SWIM+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/Protobuf/SWIM.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIM.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMInstance+Logging.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMInstance.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMSettings.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SWIM/SWIMShell.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/SystemMessages+Redelivery.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/ActorRef+RemotePersonality.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/TransportPipelines.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Cluster/Transport/WireMessages.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Condition.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CountDownLatch.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/CustomStringInterpolations.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/DeadLetters.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/DeathWatch.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Dispatchers.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/EventStream.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/FixedThreadPool.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor+Codable.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor+Context+Receptionist.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor+Context.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actor.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actorable+ActorContext.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actorable+ActorSystem.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/Actorable.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/ActorableOwned.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/GenActors/ClusterControl+ActorableOwnedMembership.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Heap.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/ActorInstrumentation.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/ActorMailboxInstrumentation.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/ActorTransportInstrumentation.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/os_signpost/ActorInstrumentation+os_signpost.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/os_signpost/ActorTransportInstrumentation+os_signpost.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Instrumentation/os_signpost/InstrumentationProvider+os_signpost.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/LinkedBlockingQueue.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/MPSCLinkedQueue.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Mailbox.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Metrics/ActorSystem+Metrics.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Metrics/ActorSystemSettings+Metrics.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Metrics/CoreMetrics+MetricsPNCounter.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/NIO+Extensions.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Pattern/ConvergentGossip+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Pattern/ConvergentGossip.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Pattern/PeriodicBroadcast.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Pattern/WorkerPool.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Plugins/ActorSystem+Plugins.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Plugins/ActorSystemSettings+Plugins.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/POSIXProcessUtils.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/PollingParentMonitoringFailureDetector.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessCommander.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessIsolated+Supervision.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/ProcessIsolated/ProcessIsolated.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Props.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/ActorAddress+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/ActorAddress.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/ProtobufMessage+Extensions.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/SystemMessages+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/SystemMessages.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/WireProtocol+Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Protobuf/WireProtocol.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Receptionist+Local.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Receptionist.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Refs+any.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Refs.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/RingBuffer.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Scheduler.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Protobuf/Serialization.pb.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+BuiltIn.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Codable.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Context.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+SerializerID.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Serializers+Codable.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Serializers+Protobuf.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Serializers.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization+Settings.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/Serialization.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Serialization/SerializationPool.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Signals.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/StashBuffer.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Supervision.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/SystemMessages.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Thread.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Time.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/TimeSpec.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Timers.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/Version.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/locks.swift
-/// Users/ktoso/code/actors/Sources/DistributedActors/utils.swift
-// ---
-// 2.	While emitting IR SIL function "@$s17DistributedActors12ReceptionistO9SubscribeCy_qd__GAA14ListingRequestA2aGP4_keyAA16_RegistrationKeyCvgTW".
-// for getter for _key (at /Users/ktoso/code/actors/Sources/DistributedActors/Receptionist.swift:490:9)
-// 0  swift                    0x000000010c667ff5 llvm::sys::PrintStackTrace(llvm::raw_ostream&) + 37
-// 1  swift                    0x000000010c6672e5 llvm::sys::RunSignalHandlers() + 85
-// 2  swift                    0x000000010c6685d8 SignalHandler(int) + 264
-// 3  libsystem_platform.dylib 0x00007fff6824e5fd _sigtramp + 29
-// 4  libdyld.dylib            0x00007fff6805478f dyldGlobalLockRelease() + 0
-// 5  libsystem_c.dylib        0x00007fff68124808 abort + 120
-// 6  libsystem_c.dylib        0x00007fff68123ac6 err + 0
-// 7  swift                    0x000000010cac7e71 swift::ProtocolConformanceRef::getRequirement() const (.cold.1) + 33
-// 8  swift                    0x0000000109b81da6 swift::ProtocolConformanceRef::getRequirement() const + 38
-// 9  swift                    0x0000000108e65d32 void llvm::function_ref<void (unsigned int, swift::CanType, llvm::Optional<swift::ProtocolConformanceRef>)>::callback_fn<swift::irgen::FulfillmentMap::searchNominalTypeMetadata(swift::irgen::IRGenModule&, swift::CanType, swift::MetadataState, unsigned int, swift::irgen::MetadataPath&&, swift::irgen::FulfillmentMap::InterestingKeysCallback const&)::$_1>(long, unsigned int, swift::CanType, llvm::Optional<swift::ProtocolConformanceRef>) + 1138
-// 10 swift                    0x0000000108f31870 swift::irgen::GenericTypeRequirements::enumerateFulfillments(swift::irgen::IRGenModule&, swift::SubstitutionMap, llvm::function_ref<void (unsigned int, swift::CanType, llvm::Optional<swift::ProtocolConformanceRef>)>) + 240
-// 11 swift                    0x0000000108e64f45 swift::irgen::FulfillmentMap::searchNominalTypeMetadata(swift::irgen::IRGenModule&, swift::CanType, swift::MetadataState, unsigned int, swift::irgen::MetadataPath&&, swift::irgen::FulfillmentMap::InterestingKeysCallback const&) + 245
-// 12 swift                    0x0000000108e64cf8 swift::irgen::FulfillmentMap::searchTypeMetadata(swift::irgen::IRGenModule&, swift::CanType, swift::irgen::IsExact_t, swift::MetadataState, unsigned int, swift::irgen::MetadataPath&&, swift::irgen::FulfillmentMap::InterestingKeysCallback const&) + 840
-// 13 swift                    0x0000000108fc0442 swift::irgen::LocalTypeDataCache::addAbstractForTypeMetadata(swift::irgen::IRGenFunction&, swift::CanType, swift::irgen::IsExact_t, swift::irgen::MetadataResponse) + 114
-// 14 swift                    0x0000000108fc03b5 swift::irgen::IRGenFunction::bindLocalTypeDataFromTypeMetadata(swift::CanType, swift::irgen::IsExact_t, llvm::Value*, swift::MetadataState) + 277
-// 15 swift                    0x0000000108f30334 swift::irgen::emitPolymorphicParameters(swift::irgen::IRGenFunction&, swift::SILFunction&, swift::irgen::Explosion&, swift::irgen::WitnessMetadata*, llvm::function_ref<llvm::Value* (unsigned int)> const&) + 820
-// 16 swift                    0x0000000108f8c1a0 swift::irgen::IRGenModule::emitSILFunction(swift::SILFunction*) + 5952
-// 17 swift                    0x0000000108ea942b swift::irgen::IRGenerator::emitLazyDefinitions() + 1243
-// 18 swift                    0x0000000108f676b5 performIRGeneration(swift::IRGenOptions&, swift::ModuleDecl*, std::__1::unique_ptr<swift::SILModule, std::__1::default_delete<swift::SILModule> >, llvm::StringRef, swift::PrimarySpecificPaths const&, llvm::LLVMContext&, swift::SourceFile*, llvm::GlobalVariable**) + 1477
-// 19 swift                    0x0000000108f67ae2 swift::performIRGeneration(swift::IRGenOptions&, swift::SourceFile&, std::__1::unique_ptr<swift::SILModule, std::__1::default_delete<swift::SILModule> >, llvm::StringRef, swift::PrimarySpecificPaths const&, llvm::LLVMContext&, llvm::GlobalVariable**) + 82
-// 20 swift                    0x0000000108e15827 performCompile(swift::CompilerInstance&, swift::CompilerInvocation&, llvm::ArrayRef<char const*>, int&, swift::FrontendObserver*, swift::UnifiedStatsReporter*) + 13975
-// 21 swift                    0x0000000108e1126a swift::performFrontend(llvm::ArrayRef<char const*>, char const*, void*, swift::FrontendObserver*) + 3002
-// 22 swift                    0x0000000108db9d18 main + 696
-// 23 libdyld.dylib            0x00007fff68055cc9 start + 1
-// 24 libdyld.dylib            0x000000000000007f start + 2549785527
-//
-// internal extension ListingRequest {
-//
-/// /    func replyWith(_ refs: Set<AddressableActorRef>) {
-/// /        let typedRefs = refs.map { ref in
-/// /            key._unsafeAsActorRef(ref)
-/// /        }
-/// /
-/// /        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
-/// /    }
-//
-//    func replyWith(_ refs: [AddressableActorRef]) {
-//        let typedRefs = refs.map {
-//            key._unsafeAsActorRef($0)
-//        }
-//
-//        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
-//    }
-//
-//    var _key: _RegistrationKey {
-//        return self.key
-//    }
-// }

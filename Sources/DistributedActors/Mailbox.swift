@@ -117,7 +117,7 @@ internal final class Mailbox<Message: ActorMessage> {
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
-                    "Make sure this type has either a serializer registered OR is marked as `NotTransportableActorMessage`. " +
+                    "Make sure this type has either a serializer registered OR is marked as `NonTransportableActorMessage`. " +
                     "This check was performed since `settings.serialization.allMessages` was enabled.")
             }
         }
@@ -639,7 +639,7 @@ internal enum WrappedMessage {
     case subMessage(SubMessageCarry)
 }
 
-extension WrappedMessage: NotTransportableActorMessage {}
+extension WrappedMessage: NonTransportableActorMessage {}
 
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
 internal struct Envelope {

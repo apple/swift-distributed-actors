@@ -39,7 +39,7 @@ extension ActorRef {
         let address = try container.decode(ActorAddress.self)
 
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
+            throw SerializationError.missingSerializationContext(decoder, ActorRef<Message>.self)
         }
 
         // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in
@@ -98,7 +98,7 @@ extension _ReceivesSystemMessages {
 internal struct ReceivesSystemMessagesDecoder {
     public static func decode(from decoder: Decoder) throws -> _ReceivesSystemMessages {
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(_ReceivesSystemMessages.self, details: "While decoding ReceivesSystemMessages from [\(decoder)]")
+            throw SerializationError.missingSerializationContext(decoder, _ReceivesSystemMessages.self)
         }
 
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
@@ -118,7 +118,7 @@ extension ActorAddress: Codable {
             try container.encode(node, forKey: ActorCoding.CodingKeys.node)
         } else {
             guard let context = encoder.actorSerializationContext else {
-                throw SerializationError.missingSerializationContext(ActorAddress.self, details: "While encoding [\(self)] from [\(encoder)]")
+                throw SerializationError.missingSerializationContext(encoder, ActorAddress.self)
             }
 
             try container.encode(context.localNode, forKey: ActorCoding.CodingKeys.node)

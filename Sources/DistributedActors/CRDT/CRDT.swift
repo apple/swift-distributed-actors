@@ -455,7 +455,7 @@ extension CRDT {
         let incomingType: Any.Type
 
         public var description: String {
-            "MergeError(Unable to merge \(self.storedType) with other \(self.incomingType))"
+            "MergeError(Unable to merge \(reflecting: self.storedType) with incoming \(reflecting: self.incomingType)"
         }
 
         public static func == (lhs: MergeError, rhs: MergeError) -> Bool {

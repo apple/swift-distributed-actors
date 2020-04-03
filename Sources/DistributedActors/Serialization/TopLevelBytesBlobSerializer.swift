@@ -49,7 +49,4 @@ public class TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message> 
         return try Message._decode(from: &_bytes, using: decoder)
     }
 
-    public override func setSerializationContext(_ context: Serialization.Context) {}
-
-    public override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {}
 }

@@ -71,7 +71,7 @@ internal class ActorSingletonManager<Message: ActorMessage> {
         try context.stop(child: singleton)
     }
 
-    internal enum Directive: NotTransportableActorMessage {
+    internal enum Directive: NonTransportableActorMessage {
         case takeOver(from: UniqueNode?, replyTo: ActorRef<ActorRef<Message>?>)
         case handOver(to: UniqueNode?)
         case stop

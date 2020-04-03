@@ -258,7 +258,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
 // }
 
 @usableFromInline
-internal enum WorkerPoolMessage<Message: ActorMessage>: NotTransportableActorMessage {
+internal enum WorkerPoolMessage<Message: ActorMessage>: NonTransportableActorMessage {
     case forward(Message)
     case listing(Receptionist.Listing<Message>)
 }

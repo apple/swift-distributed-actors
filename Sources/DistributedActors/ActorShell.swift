@@ -1037,7 +1037,6 @@ extension AbstractActor {
         return self.children._resolve(context: context)
     }
 
-    // TODO: can we reuse __resolve?
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check

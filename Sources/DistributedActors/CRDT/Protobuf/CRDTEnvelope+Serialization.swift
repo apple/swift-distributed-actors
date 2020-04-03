@@ -15,10 +15,10 @@
 import NIO
 
 extension CRDT {
-    /// An envelope representing `AnyStateBasedCRDT` type such as `AnyCvRDT`, `DeltaCRDTBox`.
+    /// An envelope representing `AnyStateBasedCRDT` type such as `AnyCvRDT`, `AnyDeltaCRDT`.
     ///
     /// Due to Swift language restriction, `CvRDT` and `DeltaCRDT` types can only be used as generic constraints. As a
-    /// result the type-erasing `AnyCvRDT` and `DeltaCRDTBox` were introduced and used in CRDT replication and gossiping.
+    /// result the type-erasing `AnyCvRDT` and `AnyDeltaCRDT` were introduced and used in CRDT replication and gossiping.
     /// We have to distinguish between CvRDT and delta-CRDT in order to take advantage of optimizations offered by the
     /// latter (i.e., replicate partial state or delta instead of full state).
     ///
@@ -61,7 +61,7 @@ extension CRDT.Envelope: InternalProtobufRepresentable {
         let deserialized = try context.serialization.deserializeAny(from: &bytes, using: manifest)
 
         switch deserialized {
-//        case let delta as DeltaCRDTBox:
+//        case let delta as AnyDeltaCRDT:
 //            self._boxed = .DeltaCRDT(delta)
 //        case let data as AnyCvRDT:
 //            self._boxed = .CvRDT(data)
@@ -86,12 +86,12 @@ extension CRDT.Envelope: InternalProtobufRepresentable {
 
 //        if let Type = PayloadType as? _DeltaCRDT.Type {
 //            let payload = try context.serialization.deserialize(as: Type, from: &bytes, using: manifest)
-//            let boxed = DeltaCRDTBox(payload)
+//            let boxed = AnyDeltaCRDT(payload)
 //            self._boxed = .DeltaCRDT(boxed)
-        /// /            if let DeltaCRDTBox = context.box(payload, ofKnownType: type(of: payload), as: DeltaCRDTBox.self) {
-        /// /                self._boxed = .DeltaCRDT(DeltaCRDTBox)
+        /// /            if let AnyDeltaCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
+        /// /                self._boxed = .DeltaCRDT(AnyDeltaCRDT)
         /// /            } else {
-        /// /                fatalError("Unable to box [\(payload)] to [\(DeltaCRDTBox.self)]")
+        /// /                fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
 //        } else if let Type = PayloadType as? AnyStateBasedCRDT.Type {
 //            let payload = try context.serialization.deserialize(as: Type, from: &bytes, using: manifest)
 //            let boxed = AnyCvRDT(payload)

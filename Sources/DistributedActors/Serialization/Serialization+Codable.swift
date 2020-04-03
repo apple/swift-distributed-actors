@@ -20,8 +20,7 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Decodable + _decode(bytes:using:SomeDecoder) extensions
 
-// TODO: once we can abstract over Coders all these could go away most likely (and accept a generic TopLevelCoder
-
+// TODO: once we can abstract over Coders all these could go away most likely (and accept a generic TopLevelCoder)
 extension Decodable {
     static func _decode(from buffer: inout NIO.ByteBuffer, using decoder: JSONDecoder) throws -> Self {
         let readableBytes = buffer.readableBytes

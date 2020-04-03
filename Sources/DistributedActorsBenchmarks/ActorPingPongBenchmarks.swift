@@ -98,7 +98,7 @@ private func tearDown() {
 }
 
 // === -----------------------------------------------------------------------------------------------------------------
-private enum PingPongCommand: NotTransportableActorMessage {
+private enum PingPongCommand: NonTransportableActorMessage {
     case startPingPong(
         messagesPerPair: Int,
         numActors: Int,

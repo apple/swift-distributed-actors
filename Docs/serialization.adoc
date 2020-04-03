@@ -291,5 +291,5 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=configure_seria
 This will cause the _sending_ actor (or process, in case of sending messages from outside of an actor) to crash with a fault, similar to the following:
 
      Fatal error: Serialization check failed for message [NotSerializable()]:NotSerializable.
-     Make sure this type has either a serializer registered OR is marked as `NotTransportableActorMessageNeeded`.
+     Make sure this type has either a serializer registered OR is marked as `NonTransportableActorMessageNeeded`.
      This check was performed since `settings.serialization.allMessages` was enabled.: file Mailbox.swift, line 260

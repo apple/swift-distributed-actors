@@ -34,7 +34,7 @@ extension Serialization {
             .init()
         }
 
-        /// Serialize all messages, also when passed only locally between actors.
+        /// Serializes all messages, also when passed only locally between actors.
         ///
         /// Use this option to test that all messages you expected to
         public var allMessages: Bool = false
@@ -68,7 +68,7 @@ extension Serialization {
         internal var specializedSerializerMakers: [Manifest: SerializerMaker] = [:]
         typealias SerializerMaker = (NIO.ByteBufferAllocator) -> AnySerializer
 
-        internal var type2ManifestRegistry: [SerializerTypeKey: Serialization.Manifest] = [:]
+        internal var typeToManifestRegistry: [SerializerTypeKey: Serialization.Manifest] = [:]
         internal var manifest2TypeRegistry: [Manifest: Any.Type] = [:]
 
         /// Allocator to be used by the serialization infrastructure.
@@ -115,13 +115,13 @@ extension Serialization.Settings {
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
 
-        self.type2ManifestRegistry[.init(type)] = manifest
+        self.typeToManifestRegistry[.init(type)] = manifest
         self.manifest2TypeRegistry[manifest] = type
 
         return manifest
     }
 
-    /// Store additional manifest that is known may be incoming, yet resolves to a specific type.
+    /// Stores additional manifest that is known may be incoming, yet resolves to a specific type.
     ///
     /// This manifest will NOT be used when _sending_ messages of the `Message` type.
     @discardableResult
@@ -157,7 +157,7 @@ extension Serialization.Settings {
         let serializerID = serializerOverride ?? self.defaultSerializerID
         let manifest = Manifest(serializerID: serializerID, hint: hint)
 
-        self.type2ManifestRegistry[.init(type)] = manifest
+        self.typeToManifestRegistry[.init(type)] = manifest
         self.manifest2TypeRegistry[manifest] = type
     }
 }
@@ -180,7 +180,7 @@ extension Serialization.Settings {
 
         // 2. register manifest pointing to that specialized serializer
         let manifest = self.getSpecializedOrRegisterManifest(type, serializerID: .protobufRepresentable)
-        self.type2ManifestRegistry[.init(type)] = manifest
+        self.typeToManifestRegistry[.init(type)] = manifest
         self.manifest2TypeRegistry[manifest] = type
     }
 
@@ -195,7 +195,7 @@ extension Serialization.Settings {
 
         // 2. register manifest pointing to that specialized serializer
         let manifest = self.getSpecializedOrRegisterManifest(type, serializerID: .protobufRepresentable)
-        self.type2ManifestRegistry[.init(type)] = manifest
+        self.typeToManifestRegistry[.init(type)] = manifest
         self.manifest2TypeRegistry[manifest] = type
     }
 
@@ -219,7 +219,7 @@ extension Serialization.Settings {
         _ type: Message.Type,
         serializerID: Serialization.SerializerID
     ) -> Serialization.Manifest {
-        self.type2ManifestRegistry[.init(type)] ??
+        self.typeToManifestRegistry[.init(type)] ??
             self.registerManifest(type, serializer: serializerID)
     }
 }

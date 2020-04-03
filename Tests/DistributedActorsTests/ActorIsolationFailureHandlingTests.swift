@@ -22,12 +22,12 @@ final class ActorIsolationFailureHandlingTests: ActorSystemTestBase {
         case simpleError(reason: String)
     }
 
-    enum SimpleProbeMessage: Equatable, NotTransportableActorMessage {
+    enum SimpleProbeMessage: Equatable, NonTransportableActorMessage {
         case spawned(child: ActorRef<FaultyWorkerMessage>)
         case echoing(message: String)
     }
 
-    enum FaultyWorkerMessage: NotTransportableActorMessage {
+    enum FaultyWorkerMessage: NonTransportableActorMessage {
         case work(n: Int, divideBy: Int)
         case throwError(error: Error)
     }

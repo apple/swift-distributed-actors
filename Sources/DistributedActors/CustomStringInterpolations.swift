@@ -30,6 +30,9 @@ internal extension String.StringInterpolation {
     mutating func appendInterpolation(reflecting subject: CustomDebugStringConvertible) {
         self.appendLiteral("[\(String(reflecting: subject))]")
     }
+    mutating func appendInterpolation(reflecting subject: Any.Type) {
+        self.appendLiteral("[\(String(reflecting: subject))]")
+    }
 }
 
 internal extension String.StringInterpolation {

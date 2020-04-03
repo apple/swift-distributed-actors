@@ -38,15 +38,6 @@ struct ProtoCRDTEnvelope {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  ///    enum Boxed {
-  ///        UNSPECIFIED = 0;
-  ///        /// Box as `AnyCvRDT` when deserializing
-  ///        ANY_CVRDT = 1;
-  ///        /// Box as `AnyDeltaCRDT` when deserializing
-  ///        ANY_DELTA_CRDT = 2;
-  ///    } // FIXME: will bocing still be needed
-  ///
-  ///    Boxed boxed = 1;
   var manifest: ProtoManifest {
     get {return _storage._manifest ?? ProtoManifest()}
     set {_uniqueStorage()._manifest = newValue}
@@ -583,7 +574,7 @@ extension ProtoCRDTDeleteResult.TypeEnum: CaseIterable {
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "CRDT.Envelope"
+  static let protoMessageName: String = "CRDTEnvelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "manifest"),
     2: .same(proto: "payload"),

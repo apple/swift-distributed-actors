@@ -259,7 +259,7 @@ internal class ClusterShell {
     }
 
     // this is basically our API internally for this system
-    enum CommandMessage: NotTransportableActorMessage, SilentDeadLetter {
+    enum CommandMessage: NonTransportableActorMessage, SilentDeadLetter {
         /// Initiate the joining procedure for the given `Node`, this will result in attempting a handshake,
         /// as well as notifying the underlying failure detector (e.g. SWIM) about the node once shook hands with it.
         case initJoin(Node)
@@ -279,7 +279,7 @@ internal class ClusterShell {
         case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
     }
 
-    enum QueryMessage: NotTransportableActorMessage {
+    enum QueryMessage: NonTransportableActorMessage {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO: better type here
         case currentMembership(ActorRef<Cluster.Membership>)
     }
@@ -298,7 +298,7 @@ internal class ClusterShell {
     }
 
     // TODO: reformulate as Wire.accept / reject?
-    internal enum HandshakeResult: Equatable, NotTransportableActorMessage {
+    internal enum HandshakeResult: Equatable, NonTransportableActorMessage {
         case success(UniqueNode)
         case failure(HandshakeConnectionError)
     }

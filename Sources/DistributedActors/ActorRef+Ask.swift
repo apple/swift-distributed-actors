@@ -291,7 +291,7 @@ extension AskResponse {
 ///
 // TODO: replace with a special minimal `ActorRef` that does not require spawning or scheduling.
 internal enum AskActor {
-    enum Event: NotTransportableActorMessage {
+    enum Event: NonTransportableActorMessage {
         case timeout
     }
 

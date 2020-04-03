@@ -263,7 +263,6 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
 
         self.serializationPool.serialize(
             message: transportEnvelope.underlyingMessage,
-            // metaType: transportEnvelope.underlyingMessageMetaType,
             recipientPath: transportEnvelope.recipient.path,
             promise: serializationPromise
         )

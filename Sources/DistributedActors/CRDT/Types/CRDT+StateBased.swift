@@ -126,11 +126,11 @@ extension DeltaCRDT {
 
 // extension DeltaCRDT {
 //    internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-//        self.asDeltaCRDTBox
+//        self.asAnyDeltaCRDT
 //    }
 //
-//    internal var asDeltaCRDTBox: DeltaCRDTBox {
-//        DeltaCRDTBox(self)
+//    internal var asAnyDeltaCRDT: AnyDeltaCRDT {
+//        AnyDeltaCRDT(self)
 //    }
 // }
 

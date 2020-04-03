@@ -18,9 +18,9 @@ import DistributedActors
 
 // end::imports[]
 
-private struct WorkRequest: NotTransportableActorMessage {}
+private struct WorkRequest: NonTransportableActorMessage {}
 
-private struct Requests: NotTransportableActorMessage {}
+private struct Requests: NonTransportableActorMessage {}
 
 class ProcessIsolatedDocExamples {
     func x() throws {

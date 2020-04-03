@@ -89,7 +89,7 @@ extension CRDT.Replicator {
 //
 //                // Delta should always be incorporated into CRDT state and therefore not required.
 //                // Reset delta to ensure clean slate.
-//                if var deltaCRDT = data as? DeltaCRDTBox {
+//                if var deltaCRDT = data as? AnyDeltaCRDT {
 //                    deltaCRDT.resetDelta()
 //                    data = deltaCRDT
 //                }
@@ -116,8 +116,8 @@ extension CRDT.Replicator {
 //                    self.dataStore[id] = stored
 //
 //                    return .applied(stored, isNew: false)
-//                case var stored as DeltaCRDTBox:
-//                    guard let input = data as? DeltaCRDTBox, input.metaType.is(stored.metaType) else {
+//                case var stored as AnyDeltaCRDT:
+//                    guard let input = data as? AnyDeltaCRDT, input.metaType.is(stored.metaType) else {
 //                        return .inputAndStoredDataTypeMismatch(stored.metaType)
 //                    }
 //
@@ -157,13 +157,13 @@ extension CRDT.Replicator {
                 }
 
 //                switch stored {
-//                case var stored as DeltaCRDTBox:
+//                case var stored as AnyDeltaCRDT:
 //                    // Existing CRDT in store better be delta-CRDT
 //                    guard let delta = delta as? _DeltaCRDT, type(of: delta) == stored.deltaMetaType.underlying else {
 //                        return .incorrectDeltaType(expected: stored.deltaMetaType)
 //                    }
 //
-//                    stored.mergeDelta(delta as! DeltaCRDTBox.Delta) // FIXME: THIS IS A HAAAAACK!!!!!!
+//                    stored.mergeDelta(delta as! AnyDeltaCRDT.Delta) // FIXME: THIS IS A HAAAAACK!!!!!!
 //                    self.dataStore[id] = stored
 //
 //                    return .applied(stored)
