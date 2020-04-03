@@ -17,12 +17,12 @@
 #else
 internal final class PollingParentMonitoringFailureDetector {
     public static let name: ActorNaming = "processFailureDetector"
-    public enum Message {
+    public enum Message: NonTransportableActorMessage {
         case checkOnParent
     }
 
     private var timerKey: TimerKey {
-        return "monitor-parent-pid-\(self.parentPID)"
+        "monitor-parent-pid-\(self.parentPID)"
     }
 
     // Parent:
@@ -35,7 +35,7 @@ internal final class PollingParentMonitoringFailureDetector {
     }
 
     var behavior: Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             let interval = TimeAmount.seconds(1) // TODO: settings
             context.timers.startPeriodic(key: self.timerKey, message: .checkOnParent, interval: interval)
             return self.monitoring
@@ -43,7 +43,7 @@ internal final class PollingParentMonitoringFailureDetector {
     }
 
     internal var monitoring: Behavior<Message> {
-        return .receive { context, message in
+        .receive { context, message in
             switch message {
             case .checkOnParent:
                 guard self.parentPID == POSIXProcessUtils.getParentPID() else {

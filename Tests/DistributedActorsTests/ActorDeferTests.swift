@@ -25,7 +25,7 @@ final class ActorDeferTests: ActorSystemTestBase {
     }
 
     func receiveDeferBehavior(_ probe: ActorRef<String>, deferUntil: DeferUntilWhen, whenActor reaction: ReductionReaction) -> Behavior<String> {
-        return .receive { context, message in
+        .receive { context, message in
             probe.tell("message:\(message)")
             context.defer(until: deferUntil) {
                 probe.tell("defer:\(deferUntil)-1")

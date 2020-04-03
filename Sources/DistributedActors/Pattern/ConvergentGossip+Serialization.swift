@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension ConvergentGossip.Message: Codable {
+extension ConvergentGossip.Message {
     public enum DiscriminatorKeys: String, Codable {
         case gossip
     }
@@ -39,7 +39,7 @@ extension ConvergentGossip.Message: Codable {
             try container.encode(DiscriminatorKeys.gossip, forKey: ._case)
             try container.encode(envelope, forKey: .gossip_envelope)
         default:
-            throw SerializationError.mayNeverBeSerialized(type: "\(self)")
+            throw SerializationError.notTransportableMessage(type: "\(self)")
         }
     }
 }

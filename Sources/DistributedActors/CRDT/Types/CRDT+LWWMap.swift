@@ -22,10 +22,10 @@ extension CRDT {
     /// - SeeAlso: Akka's [`LWWMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/LWWMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
     /// - SeeAlso: `CRDT.LWWRegister`
-    public struct LWWMap<Key: Hashable, Value>: NamedDeltaCRDT, LWWMapOperations {
+    public struct LWWMap<Key: Codable & Hashable, Value: ActorMessage>: NamedDeltaCRDT, LWWMapOperations {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         /// Underlying ORMap for storing key-value entries and managing causal history and delta
         var state: ORMap<Key, LWWRegister<Value>>
@@ -54,7 +54,7 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId, defaultValue: Value) {
+        init(replicaId: ReplicaID, defaultValue: Value) {
             self.replicaId = replicaId
             self.state = .init(replicaId: replicaId) {
                 // This is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self` and therefore we
@@ -96,6 +96,20 @@ extension CRDT {
 
         public mutating func resetAllValues() {
             self.state.resetAllValues()
+        }
+
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else if let wellTypedOtherDelta = other as? Self.Delta {
+                // TODO: what if we simplify and compute deltas...?
+                self.mergeDelta(wellTypedOtherDelta)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
         }
 
         public mutating func merge(other: LWWMap<Key, Value>) {

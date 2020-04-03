@@ -81,22 +81,22 @@ final class RingBuffer<A> {
 
     @inlinable
     public var count: Int {
-        return self.writeCounter - self.readCounter
+        self.writeCounter - self.readCounter
     }
 
     @inlinable
     public var isEmpty: Bool {
-        return self.readCounter == self.writeCounter
+        self.readCounter == self.writeCounter
     }
 
     @inlinable
     public var isFull: Bool {
-        return (self.writeCounter - self.readCounter) == self.capacity
+        (self.writeCounter - self.readCounter) == self.capacity
     }
 
     @inlinable
     public var iterator: RingBufferIterator<A> {
-        return RingBufferIterator(buffer: self, count: self.count)
+        RingBufferIterator(buffer: self, count: self.count)
     }
 }
 
@@ -127,6 +127,6 @@ class RingBufferIterator<Element>: IteratorProtocol {
 
     @inlinable
     func take(_ count: Int) -> RingBufferIterator {
-        return RingBufferIterator(buffer: self.buffer, count: min(self.count, count))
+        RingBufferIterator(buffer: self.buffer, count: min(self.count, count))
     }
 }

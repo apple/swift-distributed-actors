@@ -51,22 +51,26 @@ public enum OnDownActionStrategySettings {
 
         case .gracefulShutdown(let shutdownDelay):
             return { system in
-                _ = try system.spawn("leaver", of: String.self, .setup { context in
-                    guard .milliseconds(0) < shutdownDelay else {
-                        context.log.warning("This node was marked as [.down], delay is immediate. Shutting down the system immediately!")
-                        system.shutdown()
-                        return .stop
-                    }
+                _ = try system.spawn(
+                    "leaver",
+                    of: String.self,
+                    .setup { context in
+                        guard .milliseconds(0) < shutdownDelay else {
+                            context.log.warning("This node was marked as [.down], delay is immediate. Shutting down the system immediately!")
+                            system.shutdown()
+                            return .stop
+                        }
 
-                    context.timers.startSingle(key: "shutdown-delay", message: "shutdown", delay: shutdownDelay)
-                    system.log.warning("This node was marked as [.down], performing OnDownAction as configured: shutting down the system, in \(shutdownDelay)")
+                        context.timers.startSingle(key: "shutdown-delay", message: "shutdown", delay: shutdownDelay)
+                        system.log.warning("This node was marked as [.down], performing OnDownAction as configured: shutting down the system, in \(shutdownDelay)")
 
-                    return .receiveMessage { _ in
-                        system.log.warning("Shutting down...")
-                        system.shutdown()
-                        return .stop
+                        return .receiveMessage { _ in
+                            system.log.warning("Shutting down...")
+                            system.shutdown()
+                            return .stop
+                        }
                     }
-                })
+                )
             }
         }
     }

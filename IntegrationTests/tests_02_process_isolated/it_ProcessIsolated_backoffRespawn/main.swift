@@ -21,7 +21,7 @@ import Glibc
 import DistributedActors
 
 let isolated = ProcessIsolated { boot in
-    boot.settings.defaultLogLevel = .info
+    boot.settings.logging.defaultLevel = .info
     boot.runOn(role: .servant) {
         boot.settings.failure.onGuardianFailure = .systemExit(-1)
     }
@@ -50,7 +50,9 @@ try isolated.run(on: .servant) {
     isolated.system.log.info("ISOLATED RUNNING: \(CommandLine.arguments)")
 
     // swiftformat:disable indent unusedArguments wrapArguments
-    _ = try isolated.system.spawn("failed", of: String.self,
+    _ = try isolated.system.spawn(
+        "failed",
+        of: String.self,
         props: Props().supervision(strategy: .escalate),
         .setup { context in
             context.log.info("Spawned \(context.path) on servant node it will fail soon...")
@@ -61,7 +63,8 @@ try isolated.run(on: .servant) {
                 // crashes process since we do not isolate faults
                 fatalError("FATAL ERROR ON PURPOSE")
             }
-        })
+        }
+    )
 }
 
 // finally, once prepared, you have to invoke the following:

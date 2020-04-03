@@ -24,7 +24,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated StructActorable messages
 extension StructActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(_replyTo: ActorRef<String>) 
     }
     
@@ -39,7 +39,7 @@ extension StructActorable {
             let context = Actor<StructActorable>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -84,7 +84,7 @@ extension Actor where A.Message == StructActorable.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .hello(_replyTo: _replyTo)}
+                Self.Message.hello(_replyTo: _replyTo)}
         )
     }
  

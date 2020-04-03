@@ -22,7 +22,7 @@ import DistributedActors
 // MARK: DO NOT EDIT: Codable conformance for TestActorableNamespace.TestActorableNamespaceInExtension.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension TestActorableNamespace.TestActorableNamespaceInExtension.Message: Codable {
+extension TestActorableNamespace.TestActorableNamespaceInExtension.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case echo

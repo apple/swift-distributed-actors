@@ -51,7 +51,7 @@ internal enum MailboxBitMasks {
     //                           = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001_1101
 }
 
-internal final class Mailbox<Message> {
+internal final class Mailbox<Message: ActorMessage> {
     weak var shell: ActorShell<Message>?
     let _status: Atomic<UInt64> = Atomic(value: 0)
     let userMessages: MPSCLinkedQueue<Envelope>
@@ -117,7 +117,7 @@ internal final class Mailbox<Message> {
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
-                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerification`. " +
+                    "Make sure this type has either a serializer registered OR is marked as `NonTransportableActorMessage`. " +
                     "This check was performed since `settings.serialization.allMessages` was enabled.")
             }
         }
@@ -464,7 +464,7 @@ internal final class Mailbox<Message> {
             }
         } else if runResult == .shouldSuspend {
             traceLog_Mailbox(shell.path, "MAILBOX SUSPENDED, SKIPPING USER MESSAGE PROCESSING")
-        } else /* we are terminating and need to drain messages */ {
+        } else { /* we are terminating and need to drain messages */
             while let message = self.userMessages.dequeue() {
                 self.deadLetters.tell(DeadLetter(message, recipient: self.address))
                 processedActivations += MailboxBitMasks.singleUserMessage
@@ -541,52 +541,52 @@ internal final class Mailbox<Message> {
         }
 
         var messageCount: UInt64 {
-            return self.activations >> 2
+            self.activations >> 2
         }
 
         var hasSystemMessages: Bool {
-            return (self._status & MailboxBitMasks.hasSystemMessages) != 0
+            (self._status & MailboxBitMasks.hasSystemMessages) != 0
         }
 
         var isProcessingSystemMessages: Bool {
-            return (self._status & MailboxBitMasks.processingSystemMessages) != 0
+            (self._status & MailboxBitMasks.processingSystemMessages) != 0
         }
 
         var activations: UInt64 {
-            return (self._status & MailboxBitMasks.activations)
+            (self._status & MailboxBitMasks.activations)
         }
 
         var isSuspended: Bool {
-            return (self._status & MailboxBitMasks.suspended) != 0
+            (self._status & MailboxBitMasks.suspended) != 0
         }
 
         var isTerminating: Bool {
-            return (self._status & MailboxBitMasks.terminating) != 0
+            (self._status & MailboxBitMasks.terminating) != 0
         }
 
         var isClosed: Bool {
-            return (self._status & MailboxBitMasks.closed) != 0
+            (self._status & MailboxBitMasks.closed) != 0
         }
     }
 
     func incrementMessageCount() -> Status {
-        return Status(self._status.add(MailboxBitMasks.singleUserMessage))
+        Status(self._status.add(MailboxBitMasks.singleUserMessage))
     }
 
     func decrementMessageCount() -> Status {
-        return Status(self._status.sub(MailboxBitMasks.singleUserMessage))
+        Status(self._status.sub(MailboxBitMasks.singleUserMessage))
     }
 
     func decrementActivations(by count: UInt64) -> Status {
-        return Status(self._status.sub(count))
+        Status(self._status.sub(count))
     }
 
     var status: Status {
-        return Status(self._status.load())
+        Status(self._status.load())
     }
 
     func setHasSystemMessages() -> Status {
-        return Status(self._status.or(MailboxBitMasks.hasSystemMessages))
+        Status(self._status.or(MailboxBitMasks.hasSystemMessages))
     }
 
     // Checks if the 'has system messages' bit is set and if it is, unsets it and
@@ -604,27 +604,27 @@ internal final class Mailbox<Message> {
 
     @discardableResult
     func setTerminating() -> Status {
-        return Status(self._status.or(MailboxBitMasks.terminating))
+        Status(self._status.or(MailboxBitMasks.terminating))
     }
 
     @discardableResult
     func setFailed() -> Status {
-        return self.setTerminating()
+        self.setTerminating()
     }
 
     @discardableResult
     func setClosed() -> Status {
-        return Status(self._status.or(MailboxBitMasks.closed))
+        Status(self._status.or(MailboxBitMasks.closed))
     }
 
     @discardableResult
     func setStatusSuspended() -> Status {
-        return Status(self._status.or(MailboxBitMasks.suspended))
+        Status(self._status.or(MailboxBitMasks.suspended))
     }
 
     @discardableResult
     func resetStatusSuspended() -> Status {
-        return Status(self._status.and(MailboxBitMasks.unsuspend))
+        Status(self._status.and(MailboxBitMasks.unsuspend))
     }
 }
 
@@ -639,7 +639,7 @@ internal enum WrappedMessage {
     case subMessage(SubMessageCarry)
 }
 
-extension WrappedMessage: NoSerializationVerification {}
+extension WrappedMessage: NonTransportableActorMessage {}
 
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
 internal struct Envelope {

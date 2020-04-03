@@ -31,9 +31,9 @@ import XCTest
 /// DO NOT EDIT: Generated InvokeFuncs messages
 extension InvokeFuncs {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case doThingsAndRunTask(_replyTo: ActorRef<Int>) 
-        case doThingsAsync(_replyTo: ActorRef<Reply<Int>>) 
+        case doThingsAsync(_replyTo: ActorRef<Result<Int, ErrorEnvelope>>) 
         case internalTask(_replyTo: ActorRef<Int>) 
     }
     
@@ -48,7 +48,7 @@ extension InvokeFuncs {
             let context = Actor<InvokeFuncs>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -58,9 +58,15 @@ extension InvokeFuncs {
                     _replyTo.tell(result)
  
                 case .doThingsAsync(let _replyTo):
-                    let result = instance.doThingsAsync()
-                    _replyTo.tell(result)
- 
+                    instance.doThingsAsync()
+                        ._onComplete { res in
+                            switch res {
+                            case .success(let value):
+                                _replyTo.tell(.success(value))
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        } 
                 case .internalTask(let _replyTo):
                     let result = instance.internalTask()
                     _replyTo.tell(result)
@@ -101,16 +107,16 @@ extension Actor where A.Message == InvokeFuncs.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
-                .doThingsAndRunTask(_replyTo: _replyTo)}
+                Self.Message.doThingsAndRunTask(_replyTo: _replyTo)}
         )
     }
  
 
-    public func doThingsAsync() -> Reply<Reply<Int>> {
+    public func doThingsAsync() -> Reply<Int> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Reply<Int>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .doThingsAsync(_replyTo: _replyTo)}
+            self.ref.ask(for: Result<Int, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.doThingsAsync(_replyTo: _replyTo)}
         )
     }
  
@@ -119,7 +125,7 @@ extension Actor where A.Message == InvokeFuncs.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
-                .internalTask(_replyTo: _replyTo)}
+                Self.Message.internalTask(_replyTo: _replyTo)}
         )
     }
  

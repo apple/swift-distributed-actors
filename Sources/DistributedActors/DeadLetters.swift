@@ -33,7 +33,7 @@ import Logging
 /// The term dead letters, or rather "dead letter office" originates from the postal system, where undeliverable
 /// mail would be called such, and shipped to one specific place to deal with these letters.
 /// See also [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
-public struct DeadLetter {
+public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also remote
     let message: Any
     let recipient: ActorAddress?
 
@@ -51,12 +51,18 @@ public struct DeadLetter {
     }
 }
 
+/// // Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.
+/// // This type is used by serialization to notice that a message shall be delivered as dead letter
+/// // (rather than attempting to cast the deserialized payload to the "found type" (which would be `Never` or `MessageForDeadRecipient`).
+// @usableFromInline
+// internal protocol MessageForDeadRecipient: NonTransportableActorMessage {}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSystem.deadLetters
 
 extension ActorSystem {
     /// Dead letters reference dedicated to a specific address.
-    public func personalDeadLetters<Message>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
+    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.node == nil || recipient.node == self.settings.cluster.uniqueBindNode else {
@@ -82,7 +88,7 @@ extension ActorSystem {
 
     /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
     public var deadLetters: ActorRef<DeadLetter> {
-        return self._deadLetters
+        self._deadLetters
     }
 }
 
@@ -146,17 +152,17 @@ public final class DeadLetterOffice {
 
     @usableFromInline
     var address: ActorAddress {
-        return self._address
+        self._address
     }
 
     @usableFromInline
     var path: ActorPath {
-        return self._address.path
+        self._address.path
     }
 
     @usableFromInline
     var ref: ActorRef<DeadLetter> {
-        return .init(.deadLetters(self))
+        .init(.deadLetters(self))
     }
 
     func deliver(_ message: Any, file: String = #file, line: UInt = #line) {
@@ -212,10 +218,15 @@ public final class DeadLetterOffice {
 
         // in all other cases, we want to log the dead letter:
         // TODO: more metadata (from Envelope)
-        self.log.info("""
-        Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
-        \(recipientString).
-        """, metadata: metadata, file: file, line: line)
+        self.log.info(
+            """
+            Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
+            \(recipientString).
+            """,
+            metadata: metadata,
+            file: file,
+            line: line
+        )
     }
 
     private func specialHandled(_ message: _SystemMessage, recipient: ActorAddress?) -> Bool {
@@ -235,12 +246,13 @@ public final class DeadLetterOffice {
             // are inherently racy in the during actor system shutdown:
             let ignored = recipient == ActorAddress._clusterShell
             return ignored
-//        case .terminated, .childTerminated:
-//            // we ignore terminated messages in dead letter logging, as those are often harmless side effects of "everyone is shutting down"
-//            return true
         default:
-            // ignore other messages, no special handling needed
-            return false
+            if let system = self.system {
+                // ignore other messages if we are shutting down, there will be many dead letters now
+                return system.isShuttingDown
+            } else {
+                return false
+            }
         }
     }
 }

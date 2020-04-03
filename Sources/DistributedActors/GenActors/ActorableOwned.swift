@@ -19,7 +19,7 @@ import Foundation
 ///
 /// - ***Warning**: Be careful to read which functions are safe to be invoked on any thread, and which must be called from within the actor's context.
 // TODO: Consider if a ReadOnly version is needed or not
-public final class ActorableOwned<T> {
+public final class ActorableOwned<T: ActorMessage> {
     private struct ValueCell {
         let value: T
         let updatedAt: Date

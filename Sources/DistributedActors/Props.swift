@@ -139,7 +139,7 @@ public enum MailboxProps {
     case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
 
     public static func `default`(capacity: UInt32 = UInt32.max) -> MailboxProps {
-        return .default(capacity: capacity, onOverflow: .crash)
+        .default(capacity: capacity, onOverflow: .crash)
     }
 
     var capacity: UInt32 {
@@ -188,7 +188,7 @@ public struct MetricsProps {
     let dimensions: [(String, String)]
 
     public static var `default`: MetricsProps {
-        return .init(group: nil, dimensions: [])
+        .init(group: nil, dimensions: [])
     }
 
     public init(group: String?, dimensions: [(String, String)]) {

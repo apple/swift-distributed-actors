@@ -15,11 +15,18 @@
 import Dispatch
 import NIO
 
-protocol ChildActorRefFactory: ActorRefFactory {
+internal protocol ChildActorRefFactory: ActorRefFactory {
     var children: Children { get set } // lock-protected
 
-    func spawn<Message>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
-    func stop<M>(child ref: ActorRef<M>) throws
+    func spawn<Message>(
+        _ naming: ActorNaming, of messageType: Message.Type, props: Props,
+        file: String, line: UInt,
+        _ behavior: Behavior<Message>
+    ) throws -> ActorRef<Message>
+        where Message: ActorMessage
+
+    func stop<Message>(child ref: ActorRef<Message>) throws
+        where Message: ActorMessage
 }
 
 internal enum Child {
@@ -48,7 +55,7 @@ public class Children {
     }
 
     public func hasChild(identifiedBy path: ActorPath) -> Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             switch self.container[path.name] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages.address.path == path
@@ -61,11 +68,11 @@ public class Children {
     }
 
     public func hasChild(identifiedBy address: ActorAddress) -> Bool {
-        return self.hasChild(identifiedBy: address.path)
+        self.hasChild(identifiedBy: address.path)
     }
 
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             switch self.container[name] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages as? ActorRef<T>
@@ -94,7 +101,7 @@ public class Children {
     ///
     /// - SeeAlso: `contains(identifiedBy:)`
     internal func contains(name: String) -> Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             self.container.keys.contains(name)
         }
     }
@@ -104,7 +111,7 @@ public class Children {
     ///
     /// - SeeAlso: `contains(name:)`
     internal func contains(identifiedBy address: ActorAddress) -> Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             switch self.container[address.name] {
             case .some(.cell(let child)):
                 return child.receivesSystemMessages.address == address
@@ -121,7 +128,7 @@ public class Children {
     @usableFromInline
     @discardableResult
     internal func removeChild(identifiedBy address: ActorAddress) -> Bool {
-        return self.rwLock.withWriterLock {
+        self.rwLock.withWriterLock {
             switch self.container[address.name] {
             case .some(.cell(let child)) where child.receivesSystemMessages.address.incarnation == address.incarnation:
                 return self.container.removeValue(forKey: address.name) != nil
@@ -141,7 +148,7 @@ public class Children {
     @usableFromInline
     @discardableResult
     internal func markAsStoppingChild(identifiedBy address: ActorAddress) -> Bool {
-        return self.rwLock.withWriterLock {
+        self.rwLock.withWriterLock {
             self._markAsStoppingChild(identifiedBy: address)
         }
     }
@@ -165,7 +172,7 @@ public class Children {
 
     @usableFromInline
     internal func forEach(_ body: (AddressableActorRef) throws -> Void) rethrows {
-        return try self.rwLock.withReaderLock {
+        try self.rwLock.withReaderLock {
             try self.container.values.forEach {
                 switch $0 {
                 case .cell(let child): try body(child.asAddressable)
@@ -177,14 +184,14 @@ public class Children {
 
     @usableFromInline
     internal var isEmpty: Bool {
-        return self.rwLock.withReaderLock {
+        self.rwLock.withReaderLock {
             self.container.isEmpty && self.stopping.isEmpty
         }
     }
 
     @inlinable
     internal var nonEmpty: Bool {
-        return !self.isEmpty
+        !self.isEmpty
     }
 }
 
@@ -248,7 +255,7 @@ extension Children: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -278,7 +285,7 @@ extension Children {
     ///
     /// Returns: `true` if the child was stopped by this invocation, `false` otherwise
     func stop(named name: String) -> Bool {
-        return self.rwLock.withWriterLock {
+        self.rwLock.withWriterLock {
             self._stop(named: name, includeAdapters: true)
         }
     }

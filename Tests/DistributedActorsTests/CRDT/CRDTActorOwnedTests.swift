@@ -17,7 +17,9 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTActorOwnedTests: ActorSystemTestBase {
-    private enum OwnerEventProbeMessage {
+    private struct Done: ActorMessage {}
+
+    private enum OwnerEventProbeMessage: String, ActorMessage {
         case ownerDefinedOnUpdate
         case ownerDefinedOnDelete
     }
@@ -25,17 +27,17 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor-owned GCounter tests
 
-    private enum GCounterCommand {
+    private enum GCounterCommand: NonTransportableActorMessage {
         case increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
-        case delete(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Void>)
+        case delete(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Done>)
 
         case lastObservedValue(replyTo: ActorRef<Int>)
         case status(replyTo: ActorRef<CRDT.Status>)
     }
 
     private func actorOwnedGCounterBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<GCounterCommand> {
-        return .setup { context in
+        .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: id)
             g.onUpdate { id, gg in
                 context.log.trace("GCounter \(id) updated with new value: \(gg.value)", metadata: gg.metadata(context))
@@ -70,7 +72,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
                     g.deleteFromCluster(consistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success:
-                            replyTo.tell(())
+                            replyTo.tell(Done())
                         case .failure(let error):
                             fatalError("delete error \(error)")
                         }
@@ -170,7 +172,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
         // g1 has two owners
         let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
-        let g1Owner1VoidP = self.testKit.spawnTestProbe(expecting: Void.self)
+        let g1Owner1VoidP = self.testKit.spawnTestProbe(expecting: Done.self)
         let g1Owner1StatusP = self.testKit.spawnTestProbe(expecting: CRDT.Status.self)
 
         let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
@@ -201,7 +203,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor-owned ORSet tests
 
-    private enum ORSetCommand {
+    private enum ORSetCommand: NonTransportableActorMessage {
         case add(_ element: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
         case remove(_ element: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
@@ -210,7 +212,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     }
 
     private func actorOwnedORSetBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORSetCommand> {
-        return .setup { context in
+        .setup { context in
             let s = CRDT.ORSet<Int>.owned(by: context, id: id)
             s.onUpdate { id, ss in
                 context.log.trace("ORSet \(id) updated with new value: \(ss.elements)")
@@ -326,7 +328,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor-owned ORMap tests
 
-    private enum ORMapCommand {
+    private enum ORMapCommand: NonTransportableActorMessage {
         case increment(key: String, amount: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
         case removeValue(key: String, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
@@ -335,7 +337,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     }
 
     private func actorOwnedORMapBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORMapCommand> {
-        return .setup { context in
+        .setup { context in
             let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, valueInitializer: { CRDT.GCounter(replicaId: .actorAddress(context.address)) })
             m.onUpdate { id, mm in
                 context.log.trace("ORMap \(id) updated with new value: \(mm.underlying)")

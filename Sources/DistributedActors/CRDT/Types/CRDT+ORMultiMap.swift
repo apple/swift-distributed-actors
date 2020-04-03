@@ -21,10 +21,10 @@ extension CRDT {
     /// - SeeAlso: Akka's [`ORMultiMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/ORMultiMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
     /// - SeeAlso: `CRDT.ORSet`
-    public struct ORMultiMap<Key: Hashable, Value: Hashable>: NamedDeltaCRDT, ORMultiMapOperations {
+    public struct ORMultiMap<Key: Codable & Hashable, Value: Codable & Hashable>: NamedDeltaCRDT, ORMultiMapOperations {
         public typealias Delta = ORMapDelta<Key, ORSet<Value>>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         /// Underlying ORMap for storing pairs of key and its set of values and managing causal history and delta
         var state: ORMap<Key, ORSet<Value>>
@@ -53,7 +53,7 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId) {
+        init(replicaId: ReplicaID) {
             self.replicaId = replicaId
             self.state = .init(replicaId: replicaId) {
                 ORSet<Value>(replicaId: replicaId)
@@ -92,6 +92,20 @@ extension CRDT {
 
         public mutating func unsafeRemoveAllValues() {
             self.state.unsafeRemoveAllValues()
+        }
+
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else if let wellTypedOtherDelta = other as? Self.Delta {
+                // TODO: what if we simplify and compute deltas...?
+                self.mergeDelta(wellTypedOtherDelta)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
         }
 
         public mutating func merge(other: ORMultiMap<Key, Value>) {

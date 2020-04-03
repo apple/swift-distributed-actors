@@ -96,7 +96,7 @@ open class ClusteredNodesTestBase: XCTestCase {
     }
 
     open override func tearDown() {
-        let testsFailed = self.testRun?.failureCount ?? 0 > 0
+        let testsFailed = self.testRun?.totalFailureCount ?? 0 > 0
         if self.captureLogs, self.alwaysPrintCaptureLogs || testsFailed {
             self.printAllCapturedLogs()
         }
@@ -171,12 +171,16 @@ extension ClusteredNodesTestBase {
 
         p.stop()
 
-        pinfo("""
-        \n
-        MEMBERSHIP === -------------------------------------------------------------------------------------
-        \(info)
-        END OF MEMBERSHIP === ------------------------------------------------------------------------------ 
-        """, file: file, line: line)
+        pinfo(
+            """
+            \n
+            MEMBERSHIP === -------------------------------------------------------------------------------------
+            \(info)
+            END OF MEMBERSHIP === ------------------------------------------------------------------------------ 
+            """,
+            file: file,
+            line: line
+        )
     }
 }
 
@@ -331,10 +335,14 @@ extension ClusteredNodesTestBase {
         }
 
         if foundMember.status != expectedStatus {
-            throw testKit.error("""
-            Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
-            to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
-            """, file: file, line: line)
+            throw testKit.error(
+                """
+                Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
+                to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
+                """,
+                file: file,
+                line: line
+            )
         }
     }
 

@@ -28,11 +28,11 @@ extension CRDT {
     /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf)
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct ORSet<Element: Hashable>: NamedDeltaCRDT, ORSetOperations {
+    public struct ORSet<Element: Codable & Hashable>: NamedDeltaCRDT, ORSetOperations {
         public typealias ORSetDelta = VersionedContainerDelta<Element>
         public typealias Delta = ORSetDelta
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         // State is a `VersionedContainer` which does most of the heavy-lifting, which includes tracking delta
         var state: VersionedContainer<Element>
@@ -53,7 +53,7 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaId) {
+        init(replicaId: ReplicaID) {
             self.replicaId = replicaId
             self.state = VersionedContainer(replicaId: replicaId)
         }
@@ -81,6 +81,20 @@ extension CRDT {
             self.state.removeAll()
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else if let wellTypedOtherDelta = other as? Self.Delta {
+                // TODO: what if we simplify and compute deltas...?
+                self.mergeDelta(wellTypedOtherDelta)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+        }
+
         public mutating func merge(other: ORSet<Element>) {
             self.state.merge(other: other.state)
             self.compact()
@@ -96,7 +110,7 @@ extension CRDT {
             if self.state.elementByBirthDot.count > 1 {
                 // Sort birth dots in descending order. i.e., newest version to oldest version by replica
                 let sortedBirthDots = self.state.elementByBirthDot.keys.sorted(by: >)
-                var replica: ReplicaId = sortedBirthDots[0].replicaId
+                var replica: ReplicaID = sortedBirthDots[0].replicaId
                 var seenReplicaElements: Set<Element> = []
 
                 // Birth dots of duplicate elements within a replica.

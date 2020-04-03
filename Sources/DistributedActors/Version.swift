@@ -29,6 +29,6 @@ public struct Version: Equatable, CustomStringConvertible {
     }
 
     public var description: String {
-        return "Version(\(self.major).\(self.minor).\(self.patch), reserved:\(self.reserved))"
+        "Version(\(self.major).\(self.minor).\(self.patch), reserved:\(self.reserved))"
     }
 }

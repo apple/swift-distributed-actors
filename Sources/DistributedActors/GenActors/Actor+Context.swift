@@ -98,9 +98,13 @@ extension Actor.Context {
 
 extension Actor.Context {
     public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
-        let ref = try self._underlying.spawn(naming, of: Child.Message.self, Behavior<Child.Message>.setup { context in
-            Child.makeBehavior(instance: makeActorable(.init(underlying: context)))
-        })
+        let ref = try self._underlying.spawn(
+            naming,
+            of: Child.Message.self,
+            Behavior<Child.Message>.setup { context in
+                Child.makeBehavior(instance: makeActorable(.init(underlying: context)))
+            }
+        )
         return Actor<Child>(ref: ref)
     }
 
@@ -231,10 +235,12 @@ extension Actor.Context {
             myCell?.sendSystemMessage(.resume(result.map { $0 }))
         }
 
-        return Behavior<Myself.Message>.suspend(handler: { (res: Result<AR.Value, Error>) in
-            try continuation(res)
-            return .same
-        })
+        return Behavior<Myself.Message>.suspend(
+            handler: { (res: Result<AR.Value, Error>) in
+                try continuation(res)
+                return .same
+            }
+        )
     }
 
     /// ***CAUTION***: This functionality should be used with extreme caution, as it will

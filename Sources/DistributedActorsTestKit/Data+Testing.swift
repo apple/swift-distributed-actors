@@ -23,6 +23,6 @@ private let testOnlyAllocator = ByteBufferAllocator()
 extension Data {
     /// For easier testing, as we want all our assertions etc on ByteBuffers
     public func copyToNewByteBuffer() -> ByteBuffer {
-        return self._copyToByteBuffer(allocator: testOnlyAllocator)
+        self._copyToByteBuffer(allocator: testOnlyAllocator)
     }
 }

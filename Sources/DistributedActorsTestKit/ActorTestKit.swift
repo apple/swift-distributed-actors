@@ -65,7 +65,11 @@ public struct ActorTestKitSettings {
 
 extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    public func spawnTestProbe<M>(_ naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
+    public func spawnTestProbe<Message: ActorMessage>(
+        _ naming: ActorNaming? = nil,
+        expecting type: Message.Type = Message.self,
+        file: StaticString = #file, line: UInt = #line
+    ) -> ActorTestProbe<Message> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
         // we want to use our own sequence number for the naming here, so we make it here rather than let the
@@ -74,24 +78,30 @@ extension ActorTestKit {
         if let naming = naming {
             name = naming.makeName(&self._namingContext)
         } else {
-            name = ActorTestProbe<M>.naming.makeName(&self._namingContext)
+            name = ActorTestProbe<Message>.naming.makeName(&self._namingContext)
         }
 
-        return ActorTestProbe(spawn: { probeBehavior in
+        return ActorTestProbe(
+            spawn: { probeBehavior in
 
-            // TODO: allow configuring dispatcher for the probe or always use the calling thread one
-            var testProbeProps = Props()
-            #if SACT_PROBE_CALLING_THREAD
-            testProbeProps.dispatcher = .callingThread
-            #endif
+                // TODO: allow configuring dispatcher for the probe or always use the calling thread one
+                var testProbeProps = Props()
+                #if SACT_PROBE_CALLING_THREAD
+                testProbeProps.dispatcher = .callingThread
+                #endif
 
-            return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
-        }, settings: self.settings)
+                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+            },
+            settings: self.settings
+        )
     }
 
     /// Spawn `ActorableTestProbe` which offers various assertions for actor messaging interactions.
-    public func spawnActorableTestProbe<A: Actorable>(_ naming: ActorNaming? = nil, of actorable: A.Type = A.self, file: StaticString = #file, line: UInt = #line)
-        -> ActorableTestProbe<A> {
+    public func spawnActorableTestProbe<A: Actorable>(
+        _ naming: ActorNaming? = nil,
+        of actorable: A.Type = A.self,
+        file: StaticString = #file, line: UInt = #line
+    ) -> ActorableTestProbe<A> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
         // we want to use our own sequence number for the naming here, so we make it here rather than let the
@@ -103,22 +113,25 @@ extension ActorTestKit {
             name = ActorTestProbe<A.Message>.naming.makeName(&self._namingContext)
         }
 
-        return ActorableTestProbe(spawn: { probeBehavior in
+        return ActorableTestProbe(
+            spawn: { probeBehavior in
 
-            // TODO: allow configuring dispatcher for the probe or always use the calling thread one
-            var testProbeProps = Props()
-            #if SACT_PROBE_CALLING_THREAD
-            testProbeProps.dispatcher = .callingThread
-            #endif
+                // TODO: allow configuring dispatcher for the probe or always use the calling thread one
+                var testProbeProps = Props()
+                #if SACT_PROBE_CALLING_THREAD
+                testProbeProps.dispatcher = .callingThread
+                #endif
 
-            return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
-        }, settings: self.settings)
+                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+            },
+            settings: self.settings
+        )
     }
 
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnTestProbe<Event>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
+    public func spawnEventStreamTestProbe<Event: ActorMessage>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
         let p = self.spawnTestProbe(.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
         eventStream.subscribe(p.ref)
         return p
@@ -132,7 +145,7 @@ public final class ActorableTestProbe<A: Actorable>: ActorTestProbe<A.Message> {
     /// `Actor` reference to the underlying test probe actor.
     /// All message sends invoked on this Actor will result in messages in the probe available to be `expect`-ed.
     public var actor: Actor<A> {
-        return Actor(ref: self.ref)
+        Actor(ref: self.ref)
     }
 }
 
@@ -296,27 +309,27 @@ extension ActorTestKit {
 public extension ActorTestKit {
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
-        return MockActorContext(self.system)
+    func makeFakeContext<M: ActorMessage>(forType: M.Type = M.self) -> ActorContext<M> {
+        MockActorContext(self.system)
     }
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M>(for: Behavior<M>) -> ActorContext<M> {
-        return self.makeFakeContext(forType: M.self)
+    func makeFakeContext<M: ActorMessage>(for: Behavior<M>) -> ActorContext<M> {
+        self.makeFakeContext(forType: M.self)
     }
 }
 
 struct MockActorContextError: Error, CustomStringConvertible {
     var description: String {
-        return "MockActorContextError(" +
+        "MockActorContextError(" +
             "A mock context can not be used to perform any real actions! " +
             "If you find yourself needing to perform assertions on an actor context please file a ticket." + // this would be "EffectfulContext"
             ")"
     }
 }
 
-final class MockActorContext<Message>: ActorContext<Message> {
+final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
     private let _system: ActorSystem
 
     init(_ system: ActorSystem) {
@@ -324,25 +337,25 @@ final class MockActorContext<Message>: ActorContext<Message> {
     }
 
     override var system: ActorSystem {
-        return self._system
+        self._system
     }
 
     override var path: ActorPath {
-        return super.path
+        super.path
     }
 
     override var name: String {
-        return "MockActorContext<\(Message.self)>"
+        "MockActorContext<\(Message.self)>"
     }
 
     override var myself: ActorRef<Message> {
-        return self.system.deadLetters.adapted()
+        self.system.deadLetters.adapted()
     }
 
     private lazy var _log: Logger = Logger(label: "\(type(of: self))")
     override var log: Logger {
         get {
-            return self._log
+            self._log
         }
         set {
             self._log = newValue
@@ -350,11 +363,11 @@ final class MockActorContext<Message>: ActorContext<Message> {
     }
 
     public override var props: Props {
-        return .init() // mock impl
+        .init() // mock impl
     }
 
     override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        return super.watch(watchee, with: terminationMessage, file: file, line: line)
+        super.watch(watchee, with: terminationMessage, file: file, line: line)
     }
 
     override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
@@ -365,11 +378,21 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    override func spawn<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    override func spawnWatch<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         fatalError("Failed: \(MockActorContextError())")
     }
 
@@ -448,7 +471,7 @@ internal extension ActorTestKit {
     // to avoid failing the test on the first iteration in e.g. an
     // `ActorTestKit.eventually` block.
     static func isInRepeatableContext() -> Bool {
-        return self.currentRepeatableContextDepth > 0
+        self.currentRepeatableContextDepth > 0
     }
 
     // Returns the current depth of nested repeatable context calls.
@@ -513,7 +536,7 @@ extension AskResponse {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ResultReply
 
-extension ResultReply {
+extension Reply {
     /// Blocks and waits until there is a reply or fails with an error.
     public func wait() throws -> Value {
         switch self {

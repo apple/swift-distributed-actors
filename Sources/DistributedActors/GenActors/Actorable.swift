@@ -29,8 +29,13 @@ import NIO
 /// invoking `ActorSystem.spawn(name:actorable:)` are automatically translated in safe message dispatches.
 ///
 /// ***NOTE:*** It is our hope to replace the code generation needed here with language features in Swift itself.
+///
+/// ## Current Limitation: Only Codable messages
+/// Today only `Codable` message types are supported by Actorables. This is fine as the `Actor.Message` type is automatically
+/// generated and conformed to Codable by the GenActors source generator. In general however we may want to look into the future
+/// and consider if we want to allow not only Codable messages here.
 public protocol Actorable {
-    associatedtype Message
+    associatedtype Message: ActorMessage // TODO: Lift this restriction as even Actorables may want to use some specialized serializer?
 
     /// Represents a handle to this actor (`myself`), that is safe to pass to other actors, threads, and even nodes.
     typealias Myself = Actor<Self>
@@ -106,18 +111,24 @@ extension Actorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reply
 
-public typealias Reply<Value> = ResultReply<Value, Error>
-
-public enum ResultReply<Value, ErrorType: Error> {
-    case completed(Result<Value, Error>)
+/// Represents a (local) result of an actorable "call".
+/// A reply is like a future, and may not yet be completed // TODO: I'd like it to BE a future..
+public enum Reply<Value> {
+    case completed(Result<Value, ErrorEnvelope>)
     case nioFuture(EventLoopFuture<Value>)
 }
 
-extension ResultReply {
-    public static func from<AskReplyValue>(askResponse: AskResponse<AskReplyValue>) -> ResultReply<Value, Error> {
+extension Reply {
+    public static func from<Answer>(askResponse: AskResponse<Answer>) -> Reply<Value> {
         switch askResponse {
         case .completed(let result as Result<Value, Error>):
-            return .completed(result)
+            switch result {
+            case .success(let value):
+                return .completed(.success(value))
+            case .failure(let error):
+                return .completed(.failure(ErrorEnvelope(error)))
+            }
+
         case .nioFuture(let nioFuture as EventLoopFuture<Value>):
             return .nioFuture(nioFuture)
         case .nioFuture(let nioFuture as EventLoopFuture<Result<Value, Error>>):
@@ -129,21 +140,32 @@ extension ResultReply {
                     }
                 }
             )
+        case .nioFuture(let nioFuture as EventLoopFuture<Result<Value, ErrorEnvelope>>):
+            return .nioFuture(
+                nioFuture.flatMapThrowing { result in
+                    switch result {
+                    case .success(let res): return res
+                    case .failure(let err): throw err
+                    }
+                }
+            )
         default:
             let errorMessage = """
-            Received unexpected ask reply of type [\(AskReplyValue.self)] which cannot be converted to reply type [\(Value.self)]. \
+            Received unexpected ask reply [\(askResponse)]:\(type(of: askResponse as Any)) which cannot be converted to reply type [\(Value.self)]. \
             This is a bug, please report this on the issue tracker.
             """
-            fatalError(errorMessage)
+            return fatalErrorBacktrace(errorMessage)
         }
     }
 }
 
-extension ResultReply: AsyncResult {
+extension Reply: AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         switch self {
-        case .completed(let result):
-            callback(result)
+        case .completed(.success(let value)):
+            callback(.success(value))
+        case .completed(.failure(let error)):
+            callback(.failure(error))
         case .nioFuture(let nioFuture):
             nioFuture.whenComplete { callback($0) }
         }

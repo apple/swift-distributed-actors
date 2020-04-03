@@ -236,12 +236,15 @@ internal struct SWIMShell {
         switch result {
         case .failure(let err):
             if let timeoutError = err as? TimeoutError {
-                context.log.warning("""
-                Did not receive ack from \(reflecting: pingedMember.address) within [\(timeoutError.timeout.prettyDescription)]. \
-                Sending ping requests to other members.
-                """, metadata: [
-                    "swim/target": "\(self.swim.member(for: pingedMember), orElse: "nil")",
-                ])
+                context.log.warning(
+                    """
+                    Did not receive ack from \(reflecting: pingedMember.address) within [\(timeoutError.timeout.prettyDescription)]. \
+                    Sending ping requests to other members.
+                    """,
+                    metadata: [
+                        "swim/target": "\(self.swim.member(for: pingedMember), orElse: "nil")",
+                    ]
+                )
             } else {
                 context.log.warning("\(err) Did not receive ack from \(reflecting: pingedMember.address) within configured timeout. Sending ping requests to other members.")
             }
@@ -333,15 +336,21 @@ internal struct SWIMShell {
             switch self.swim.mark(member.ref, as: .dead) {
             case .applied(let .some(previousState), _):
                 if previousState.isSuspect || previousState.isUnreachable {
-                    context.log.warning("Marked [\(member)] as [.dead]. Was marked \(previousState) in protocol period [\(member.protocolPeriod)]", metadata: [
-                        "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-                        "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
-                    ])
+                    context.log.warning(
+                        "Marked [\(member)] as [.dead]. Was marked \(previousState) in protocol period [\(member.protocolPeriod)]",
+                        metadata: [
+                            "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
+                            "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
+                        ]
+                    )
                 } else {
-                    context.log.warning("Marked [\(member)] as [.dead]. Node was previously [.alive], and now forced [.dead].", metadata: [
-                        "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-                        "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
-                    ])
+                    context.log.warning(
+                        "Marked [\(member)] as [.dead]. Node was previously [.alive], and now forced [.dead].",
+                        metadata: [
+                            "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
+                            "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
+                        ]
+                    )
                 }
             case .applied(nil, _):
                 // TODO: marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
@@ -360,21 +369,27 @@ internal struct SWIMShell {
     }
 
     func checkSuspicionTimeouts(context: ActorContext<SWIM.Message>) {
-        context.log.trace("Checking suspicion timeouts...", metadata: [
-            "swim/suspects": "\(self.swim.suspects)",
-            "swim/all": "\(self.swim._allMembersDict)",
-            "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-        ])
+        context.log.trace(
+            "Checking suspicion timeouts...",
+            metadata: [
+                "swim/suspects": "\(self.swim.suspects)",
+                "swim/all": "\(self.swim._allMembersDict)",
+                "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
+            ]
+        )
 
         for suspect in self.swim.suspects {
             if case .suspect(_, let suspectedBy) = suspect.status {
                 // TODO: push more of logic into SWIM instance, the calculating
                 let suspicionTimeout = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
-                context.log.trace("Checking suspicion timeout for: \(suspect)...", metadata: [
-                    "swim/suspect": "\(suspect)",
-                    "swim/suspectedBy": "\(suspectedBy.count)",
-                    "swim/suspicionTimeout": "\(suspicionTimeout)",
-                ])
+                context.log.trace(
+                    "Checking suspicion timeout for: \(suspect)...",
+                    metadata: [
+                        "swim/suspect": "\(suspect)",
+                        "swim/suspectedBy": "\(suspectedBy.count)",
+                        "swim/suspicionTimeout": "\(suspicionTimeout)",
+                    ]
+                )
 
                 // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
                 // We don't use Deadline because tests can override TimeSource
@@ -399,10 +414,13 @@ internal struct SWIMShell {
     private func markMember(_ context: ActorContext<SWIM.Message>, latest: SWIM.Member) {
         switch self.swim.mark(latest.ref, as: latest.status) {
         case .applied(let previousStatus, _):
-            context.log.trace("Marked \(latest.node) as \(latest.status), announcing reachability change", metadata: [
-                "swim/member": "\(latest)",
-                "swim/previousStatus": "\(previousStatus, orElse: "nil")",
-            ])
+            context.log.trace(
+                "Marked \(latest.node) as \(latest.status), announcing reachability change",
+                metadata: [
+                    "swim/member": "\(latest)",
+                    "swim/previousStatus": "\(previousStatus, orElse: "nil")",
+                ]
+            )
             let statusChange = SWIM.Instance.MemberStatusChange(fromStatus: previousStatus, member: latest)
             self.tryAnnounceMemberReachability(context, change: statusChange)
         case .ignoredDueToOlderStatus:
@@ -472,9 +490,12 @@ internal struct SWIMShell {
                 ]
             )
         default:
-            context.log.info("Node \(change.member.node) determined [.\(change.toStatus)] (was [\(change.fromStatus, orElse: "nil")].", metadata: [
-                "swim/member": "\(change.member)",
-            ])
+            context.log.info(
+                "Node \(change.member.node) determined [.\(change.toStatus)] (was [\(change.fromStatus, orElse: "nil")].",
+                metadata: [
+                    "swim/member": "\(change.member)",
+                ]
+            )
         }
 
         let reachability: Cluster.MemberReachability
@@ -573,7 +594,7 @@ extension SWIMShell {
 
 extension ActorAddress {
     internal static func _swim(on node: UniqueNode) -> ActorAddress {
-        return .init(node: node, path: ActorPath._swim, incarnation: .wellKnown)
+        .init(node: node, path: ActorPath._swim, incarnation: .wellKnown)
     }
 }
 

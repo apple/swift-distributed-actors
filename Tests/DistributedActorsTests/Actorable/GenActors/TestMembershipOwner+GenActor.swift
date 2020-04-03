@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -26,7 +26,7 @@ import XCTest
 /// DO NOT EDIT: Generated TestMembershipOwner messages
 extension TestMembershipOwner {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case replyMembership(_replyTo: ActorRef<Cluster.Membership?>) 
     }
     
@@ -41,7 +41,7 @@ extension TestMembershipOwner {
             let context = Actor<TestMembershipOwner>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -86,7 +86,7 @@ extension Actor where A.Message == TestMembershipOwner.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Cluster.Membership?.self, timeout: .effectivelyInfinite) { _replyTo in
-                .replyMembership(_replyTo: _replyTo)}
+                Self.Message.replyMembership(_replyTo: _replyTo)}
         )
     }
  

@@ -25,20 +25,20 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated JackOfAllTrades messages
 extension JackOfAllTrades {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(replyTo: ActorRef<String>) 
-        case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 
         case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
+        case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 
     }
-    
-    /// Performs boxing of GeneratedActor.Messages.Parking messages such that they can be received by Actor<JackOfAllTrades>
-    public static func _boxParking(_ message: GeneratedActor.Messages.Parking) -> JackOfAllTrades.Message {
-        .parking(message)
-    } 
     
     /// Performs boxing of GeneratedActor.Messages.Ticketing messages such that they can be received by Actor<JackOfAllTrades>
     public static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> JackOfAllTrades.Message {
         .ticketing(message)
+    } 
+    
+    /// Performs boxing of GeneratedActor.Messages.Parking messages such that they can be received by Actor<JackOfAllTrades>
+    public static func _boxParking(_ message: GeneratedActor.Messages.Parking) -> JackOfAllTrades.Message {
+        .parking(message)
     } 
     
 }
@@ -52,7 +52,7 @@ extension JackOfAllTrades {
             let context = Actor<JackOfAllTrades>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -61,11 +61,11 @@ extension JackOfAllTrades {
                     instance.hello(replyTo: replyTo)
  
                 
-                case .parking(.park):
-                    instance.park()
- 
                 case .ticketing(.makeTicket):
                     instance.makeTicket()
+ 
+                case .parking(.park):
+                    instance.park()
  
                 }
                 return .same
@@ -99,7 +99,7 @@ extension JackOfAllTrades {
 extension Actor where A.Message == JackOfAllTrades.Message {
 
     public func hello(replyTo: ActorRef<String>) {
-        self.ref.tell(.hello(replyTo: replyTo))
+        self.ref.tell(Self.Message.hello(replyTo: replyTo))
     }
  
 

@@ -42,11 +42,20 @@ extension SwiftProtobuf.Message {
         return buffer
     }
 
+    // FIXME: Avoid the copying, needs SwiftProtobuf changes
+    func writeSerializedBytes(to buffer: inout NIO.ByteBuffer, partial: Bool = false) throws {
+        let data = try self.serializedData(partial: partial)
+        // let data = try self.jsonString().data(using: .utf8)! // TODO allow a "debug mode with json payloads?"
+
+        buffer.reserveCapacity(data.count)
+        buffer.writeBytes(data)
+    }
+
     /// Initializes the message from a `ByteBuffer` while trying to avoid copying its contents
-    init(bytes: inout ByteBuffer) throws {
+    init(buffer: inout ByteBuffer) throws {
         self.init()
-        let bytesCount = bytes.readableBytes
-        try bytes.withUnsafeMutableReadableBytes {
+        let bytesCount = buffer.readableBytes
+        try buffer.withUnsafeMutableReadableBytes {
             // we are getting the pointer from a ByteBuffer, so it should be valid and force unwrap should be fine
             try self.merge(serializedData: Data(bytesNoCopy: $0.baseAddress!, count: bytesCount, deallocator: .none))
         }

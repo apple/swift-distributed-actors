@@ -23,7 +23,7 @@ import class NIO.EventLoopFuture
 // MARK: DO NOT EDIT: Generated Ticketing messages 
 
 extension GeneratedActor.Messages {
-    public enum Ticketing { 
+    public enum Ticketing: ActorMessage { 
         case makeTicket  
     }
 }

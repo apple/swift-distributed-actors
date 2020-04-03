@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-internal final class ConvergentGossip<Payload: Codable> {
+internal final class ConvergentGossip<Payload: ActorMessage> {
     typealias GossipPeerRef = ActorRef<Message>
 
     let settings: Settings
@@ -72,10 +72,13 @@ internal final class ConvergentGossip<Payload: Codable> {
 
     private func onIntroducePeer(_ context: ActorContext<Message>, peer: GossipPeerRef) {
         if self.peers.insert(context.watch(peer)).inserted {
-            context.log.trace("Got introduced to peer [\(peer)], pushing initial gossip immediately", metadata: [
-                "gossip/peerCount": "\(self.peers.count)",
-                "gossip/peers": "\(self.peers.map { $0.address })",
-            ])
+            context.log.trace(
+                "Got introduced to peer [\(peer)], pushing initial gossip immediately",
+                metadata: [
+                    "gossip/peerCount": "\(self.peers.count)",
+                    "gossip/peers": "\(self.peers.map { $0.address })",
+                ]
+            )
 
             // TODO: implement this rather as "high priority peer to gossip to"
             self.sendGossip(context, to: peer)
@@ -85,20 +88,26 @@ internal final class ConvergentGossip<Payload: Codable> {
     }
 
     private func receiveGossip(_ context: ActorContext<ConvergentGossip.Message>, envelope: ConvergentGossip.GossipEnvelope) {
-        context.log.trace("Received gossip: \(envelope)", metadata: [
-            "gossip/current": "\(String(reflecting: self.payload))",
-            "gossip/incoming": "\(envelope)",
-        ])
+        context.log.trace(
+            "Received gossip: \(envelope)",
+            metadata: [
+                "gossip/current": "\(String(reflecting: self.payload))",
+                "gossip/incoming": "\(envelope)",
+            ]
+        )
 
         // send to recipient which may then update() the payload we are gossiping
         self.notifyOnGossipRef.tell(envelope.payload) // could be good as request/reply here
     }
 
     private func onLocalPayloadUpdate(_ context: ActorContext<Message>, payload: Payload) {
-        context.log.trace("Gossip payload updated: \(payload)", metadata: [
-            "actor/message": "\(payload)",
-            "gossip/previousPayload": "\(self.payload, orElse: "nil")",
-        ])
+        context.log.trace(
+            "Gossip payload updated: \(payload)",
+            metadata: [
+                "actor/message": "\(payload)",
+                "gossip/previousPayload": "\(self.payload, orElse: "nil")",
+            ]
+        )
         self.payload = payload
         // TODO: bump local version vector; once it is in the envelope
     }
@@ -113,9 +122,12 @@ internal final class ConvergentGossip<Payload: Codable> {
 
     private func sendGossip(_ context: ActorContext<Message>, to target: GossipPeerRef) {
         guard let payload = self.payload else {
-            context.log.trace("No payload set, skipping gossip round", metadata: [
-                "gossip/target": "\(target)",
-            ])
+            context.log.trace(
+                "No payload set, skipping gossip round",
+                metadata: [
+                    "gossip/target": "\(target)",
+                ]
+            )
             return
         }
 
@@ -123,12 +135,15 @@ internal final class ConvergentGossip<Payload: Codable> {
         let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
 
         // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
-        context.log.trace("Sending gossip to \(target)", metadata: [
-            "gossip/target": "\(target.address)",
-            "gossip/peerCount": "\(self.peers.count)",
-            "gossip/peers": "\(self.peers.map { $0.address })",
-            "actor/message": "\(envelope)",
-        ])
+        context.log.trace(
+            "Sending gossip to \(target)",
+            metadata: [
+                "gossip/target": "\(target.address)",
+                "gossip/peerCount": "\(self.peers.count)",
+                "gossip/peers": "\(self.peers.map { $0.address })",
+                "actor/message": "\(envelope)",
+            ]
+        )
 
         target.tell(.gossip(envelope))
     }
@@ -142,7 +157,7 @@ internal final class ConvergentGossip<Payload: Codable> {
 }
 
 extension ConvergentGossip {
-    enum Message {
+    enum Message: ActorMessage {
         // gossip
         case gossip(GossipEnvelope)
 
@@ -176,7 +191,7 @@ extension ConvergentGossip {
     }
 }
 
-internal struct ConvergentGossipControl<Payload: Codable> {
+internal struct ConvergentGossipControl<Payload: ActorMessage> {
     // TODO: rather let's hide it trough methods
     private let ref: ConvergentGossip<Payload>.Ref
 

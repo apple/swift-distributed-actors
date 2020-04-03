@@ -104,10 +104,13 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         let (local, remote) = self.setUpPair()
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let refOnRemoteSystem: ActorRef<String> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<String> = try remote.spawn(
+            "remoteAcquaintance",
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 

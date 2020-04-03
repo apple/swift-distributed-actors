@@ -29,7 +29,7 @@ public class LoggingContext {
 
     public var metadata: Logger.Metadata {
         get {
-            return self._storage
+            self._storage
         }
         set {
             self._storage = newValue
@@ -47,7 +47,7 @@ public class LoggingContext {
     @inlinable
     public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
-            return self._storage[metadataKey]
+            self._storage[metadataKey]
         }
         set {
             self._storage[metadataKey] = newValue
@@ -82,7 +82,7 @@ public struct ActorLogger {
         }
 
         var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
-        log.logLevel = context.system.settings.defaultLogLevel
+        log.logLevel = context.system.settings.logging.defaultLevel
         return log
     }
 
@@ -103,7 +103,7 @@ public struct ActorLogger {
         }
 
         var log = Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
-        log.logLevel = system.settings.defaultLogLevel
+        log.logLevel = system.settings.logging.defaultLevel
         return log
     }
 }
@@ -130,19 +130,23 @@ public struct ActorOriginLogHandler: LogHandler {
     }
 
     public init<T>(_ context: ActorContext<T>) {
-        self.init(LoggingContext(
-            identifier: context.path.description,
-            useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
-            dispatcher: { () in context.props.dispatcher.name }
-        ))
+        self.init(
+            LoggingContext(
+                identifier: context.path.description,
+                useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
+                dispatcher: { () in context.props.dispatcher.name }
+            )
+        )
     }
 
     public init(_ system: ActorSystem, identifier: String? = nil) {
-        self.init(LoggingContext(
-            identifier: identifier ?? system.name,
-            useBuiltInFormatter: system.settings.logging.useBuiltInFormatter,
-            dispatcher: { () in _hackyPThreadThreadId() }
-        ))
+        self.init(
+            LoggingContext(
+                identifier: identifier ?? system.name,
+                useBuiltInFormatter: system.settings.logging.useBuiltInFormatter,
+                dispatcher: { () in _hackyPThreadThreadId() }
+            )
+        )
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
@@ -225,7 +229,7 @@ public struct ActorOriginLogHandler: LogHandler {
     // TODO: hope to remove this one
     public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
-            return self.context[metadataKey: metadataKey]
+            self.context[metadataKey: metadataKey]
         }
         set {
             self.context[metadataKey: metadataKey] = newValue
@@ -236,7 +240,7 @@ public struct ActorOriginLogHandler: LogHandler {
 
     public var logLevel: Logger.Level {
         get {
-            return self._logLevel
+            self._logLevel
         }
         set {
             self._logLevel = newValue
@@ -247,7 +251,7 @@ public struct ActorOriginLogHandler: LogHandler {
     // TODO: This seems worse to implement since I can't pass through my "reads of lazy cause rendering"
     public var metadata: Logger.Metadata {
         get {
-            return self.context.metadata
+            self.context.metadata
         }
         set {
             self.context.metadata = newValue
@@ -290,11 +294,11 @@ public struct LogMessage {
 extension Optional where Wrapped == Logger.MetadataValue {
     /// Delays rendering of value by boxing it in a `LazyMetadataBox`
     public static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
-        return .stringConvertible(LazyMetadataBox { makeValue() })
+        .stringConvertible(LazyMetadataBox { makeValue() })
     }
 
     public static func lazyString(_ makeValue: @escaping () -> String) -> Logger.Metadata.Value {
-        return self.lazyStringConvertible(makeValue)
+        self.lazyStringConvertible(makeValue)
     }
 }
 
@@ -322,7 +326,7 @@ internal class LazyMetadataBox: CustomStringConvertible {
     }
 
     public var description: String {
-        return "\(self.value)"
+        "\(self.value)"
     }
 }
 

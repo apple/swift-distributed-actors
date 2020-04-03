@@ -74,23 +74,29 @@ extension ClusterShell {
         }
 
         guard previousState.latestGossip.converged() else {
-            previousState.log.warning("SKIPPING LEADER ACTIONS, NOT CONVERGED", metadata: [
-                "tag": "leader-action",
-                "leader/actions": "\(leaderActions)",
-                "gossip/current": "\(previousState.latestGossip)",
-                "leader/interpret/location": "\(file):\(line)",
-            ])
+            previousState.log.warning(
+                "SKIPPING LEADER ACTIONS, NOT CONVERGED",
+                metadata: [
+                    "tag": "leader-action",
+                    "leader/actions": "\(leaderActions)",
+                    "gossip/current": "\(previousState.latestGossip)",
+                    "leader/interpret/location": "\(file):\(line)",
+                ]
+            )
             return previousState
         }
 
         var state = previousState
-        state.log.trace("Performing leader actions: \(leaderActions)", metadata: [
-            "tag": "leader-action",
-            "leader/actions": "\(leaderActions)",
-            "gossip/converged": "\(state.latestGossip.converged())",
-            "gossip/current": "\(state.latestGossip)",
-            "leader/interpret/location": "\(file):\(line)",
-        ])
+        state.log.trace(
+            "Performing leader actions: \(leaderActions)",
+            metadata: [
+                "tag": "leader-action",
+                "leader/actions": "\(leaderActions)",
+                "gossip/converged": "\(state.latestGossip.converged())",
+                "gossip/current": "\(state.latestGossip)",
+                "leader/interpret/location": "\(file):\(line)",
+            ]
+        )
 
         for leaderAction in leaderActions {
             switch leaderAction {
@@ -102,12 +108,15 @@ extension ClusterShell {
             }
         }
 
-        previousState.log.trace("Membership state after leader actions: \(state.membership)", metadata: [
-            "tag": "leader-action",
-            "leader/interpret/location": "\(file):\(line)",
-            "gossip/current": "\(state.latestGossip)",
-            "gossip/before": "\(previousState.latestGossip)",
-        ])
+        previousState.log.trace(
+            "Membership state after leader actions: \(state.membership)",
+            metadata: [
+                "tag": "leader-action",
+                "leader/interpret/location": "\(file):\(line)",
+                "gossip/current": "\(state.latestGossip)",
+                "gossip/before": "\(previousState.latestGossip)",
+            ]
+        )
 
         return state
     }
@@ -118,15 +127,21 @@ extension ClusterShell {
         }
 
         if let downReplacedNodeChange = change.replacementDownPreviousNodeChange {
-            state.log.info("Downing replaced member: \(change)", metadata: [
-                "tag": "leader-action",
-            ])
+            state.log.info(
+                "Downing replaced member: \(change)",
+                metadata: [
+                    "tag": "leader-action",
+                ]
+            )
             state.events.publish(.membershipChange(downReplacedNodeChange))
         }
 
-        state.log.info("Leader moved member: \(change)", metadata: [
-            "tag": "leader-action",
-        ])
+        state.log.info(
+            "Leader moved member: \(change)",
+            metadata: [
+                "tag": "leader-action",
+            ]
+        )
 
         state.events.publish(.membershipChange(change))
     }
@@ -160,11 +175,14 @@ extension ClusterShell {
             }
         }
 
-        state.log.info("Leader removed member: \(memberToRemove), all nodes are certain to have seen it as [.down] before", metadata: [
-            "tag": "leader-action",
-            "gossip/current": "\(state.latestGossip)",
-            "gossip/before": "\(previousGossip)",
-        ])
+        state.log.info(
+            "Leader removed member: \(memberToRemove), all nodes are certain to have seen it as [.down] before",
+            metadata: [
+                "tag": "leader-action",
+                "gossip/current": "\(state.latestGossip)",
+                "gossip/before": "\(previousGossip)",
+            ]
+        )
 
         // TODO: will this "just work" as we removed from membership, so gossip will tell others...?
         // or do we need to push a round of gossip with .removed anyway?

@@ -48,10 +48,6 @@ struct TestMembershipOwner: Actorable {
     let context: Myself.Context
     let membership: ActorableOwned<Cluster.Membership>
 
-    static var generateCodableConformance: Bool {
-        false
-    }
-
     init(context: Myself.Context) {
         self.context = context
         self.membership = context.system.cluster.autoUpdatedMembership(context)

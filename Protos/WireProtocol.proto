@@ -19,6 +19,7 @@ option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
+import "Serialization/Serialization.proto";
 
 // ==== Handshake ------------------------------------------------------------------------------------------------------
 
@@ -60,18 +61,18 @@ message HandshakeReject {
 message Envelope {
     ActorAddress recipient = 1;
 
-    uint32 serializerId    = 2;
-    bytes payload          = 3;
+    Manifest manifest = 2;
+    bytes payload     = 3;
 }
 
 // System messages have to be reliable, therefore they need to be acknowledged
 // by the receiving node.
 message SystemEnvelope {
-    uint64 sequenceNr       = 1;
-    UniqueNode from         = 2;
+    uint64 sequenceNr = 1;
+    UniqueNode from   = 2;
 
-    uint32 serializerId     = 3;
-    bytes payload           = 4;
+    Manifest manifest = 3;
+    bytes payload     = 4;
 }
 
 message SystemAck {

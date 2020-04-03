@@ -110,7 +110,7 @@ extension Leadership {
         }
 
         var behavior: Behavior<Cluster.Event> {
-            return .setup { context in
+            .setup { context in
                 context.log.trace("Spawned \(context.path) to run \(self.election)")
                 context.system.cluster.events.subscribe(context.myself)
 
@@ -121,7 +121,7 @@ extension Leadership {
         }
 
         private var ready: Behavior<Cluster.Event> {
-            return .receive { context, event in
+            .receive { context, event in
                 switch event {
                 case .snapshot(let membership):
                     self.membership = membership
@@ -296,9 +296,12 @@ extension Leadership {
                 .first
 
             if let change = try! membership.applyLeadershipChange(to: leader) { // try! safe, as we KNOW this member is part of membership
-                context.log.debug("Selected new leader: [\(oldLeader, orElse: "nil") -> \(leader, orElse: "nil")]", metadata: [
-                    "membership": "\(membership)",
-                ])
+                context.log.debug(
+                    "Selected new leader: [\(oldLeader, orElse: "nil") -> \(leader, orElse: "nil")]",
+                    metadata: [
+                        "membership": "\(membership)",
+                    ]
+                )
                 return .init(context.loop.next().makeSucceededFuture(change))
             } else {
                 return .init(context.loop.next().makeSucceededFuture(nil)) // no change, e.g. the new/old leader are the same

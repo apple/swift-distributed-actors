@@ -10,7 +10,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated Fork messages
 extension Fork {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case take(_replyTo: ActorRef<Bool>) 
         case putBack 
     }
@@ -26,7 +26,7 @@ extension Fork {
             let context = Actor<Fork>.Context(underlying: _context)
             var instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -74,13 +74,13 @@ extension Actor where A.Message == Fork.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Bool.self, timeout: .effectivelyInfinite) { _replyTo in
-                .take(_replyTo: _replyTo)}
+                Self.Message.take(_replyTo: _replyTo)}
         )
     }
  
 
      func putBack() {
-        self.ref.tell(.putBack)
+        self.ref.tell(Self.Message.putBack)
     }
  
 

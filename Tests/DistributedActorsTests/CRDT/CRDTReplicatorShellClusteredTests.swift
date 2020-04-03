@@ -64,7 +64,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 1)
 
         // Register the owner
-        _ = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1.asAnyStateBasedCRDT)
+        _ = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1)
 
         // We can read g1 now because part of `register` command is writing g1 to local data store
         self.localSystem.replicator.tell(.localCommand(.read(id, consistency: .local, timeout: self.timeout, replyTo: readP.ref)))
@@ -88,13 +88,13 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
-        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1.asAnyStateBasedCRDT)
+        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1)
 
         // Mutate g1
         g1.increment(by: 10)
 
         // Tell replicator to write the updated g1
-        self.localSystem.replicator.tell(.localCommand(.write(id, g1.asAnyStateBasedCRDT, consistency: .local, timeout: self.timeout, replyTo: writeP.ref)))
+        self.localSystem.replicator.tell(.localCommand(.write(id, g1, consistency: .local, timeout: self.timeout, replyTo: writeP.ref)))
         guard case .success = try writeP.expectMessage() else { throw writeP.error() }
 
         // replicator's g1 should be updated
@@ -129,7 +129,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 changes
-        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1.asAnyStateBasedCRDT)
+        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1)
 
         // Ensure g1 exists (it was written as part of `register`)
         self.localSystem.replicator.tell(.localCommand(.read(id, consistency: .local, timeout: self.timeout, replyTo: readP.ref)))
@@ -164,12 +164,12 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
-        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1.asAnyStateBasedCRDT)
+        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1)
 
         g1.increment(by: 10)
 
         // Tell replicator to write the updated g1
-        self.localSystem.replicator.tell(.remoteCommand(.write(id, g1.asAnyStateBasedCRDT, replyTo: writeP.ref)))
+        self.localSystem.replicator.tell(.remoteCommand(.write(id, g1, replyTo: writeP.ref)))
         guard case .success = try writeP.expectMessage() else { throw writeP.error() }
 
         // replicator's g1 should be updated
@@ -177,7 +177,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         guard case .success(let data) = try readP.expectMessage() else { throw readP.error() }
 
         // `read` returns type-erased CRDT
-        guard let gg1 = data.underlying as? CRDT.GCounter else {
+        guard let gg1 = data as? CRDT.GCounter else {
             throw self.localTestKit.fail("Should be a GCounter")
         }
         gg1.value.shouldEqual(g1.value)
@@ -204,12 +204,12 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
-        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1.asAnyStateBasedCRDT)
+        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1)
 
         g1.increment(by: 10)
 
         // Tell replicator to write g1.delta
-        self.localSystem.replicator.tell(.remoteCommand(.writeDelta(id, delta: g1.delta!.asAnyStateBasedCRDT, replyTo: writeP.ref))) // ! safe because `increment` should set `delta`
+        self.localSystem.replicator.tell(.remoteCommand(.writeDelta(id, delta: g1.delta!, replyTo: writeP.ref))) // ! safe because `increment` should set `delta`
         guard case .success = try writeP.expectMessage() else { throw writeP.error() }
 
         // replicator's g1 should be updated
@@ -217,7 +217,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         guard case .success(let data) = try readP.expectMessage() else { throw readP.error() }
 
         // `read` returns type-erased CRDT
-        guard let gg1 = data.underlying as? CRDT.GCounter else {
+        guard let gg1 = data as? CRDT.GCounter else {
             throw self.localTestKit.fail("Should be a GCounter")
         }
         gg1.value.shouldEqual(g1.value)
@@ -244,7 +244,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 changes
-        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1.asAnyStateBasedCRDT)
+        let ownerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1)
 
         // Ensure g1 exists (it was written as part of `register`)
         self.localSystem.replicator.tell(.remoteCommand(.read(id, replyTo: readP.ref)))
@@ -286,10 +286,10 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1Remote.increment(by: 3)
 
         // Register owner so replicator will notify it on g1 updates
-        let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
+        let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote)
 
         // Tell local replicator to write g1. The `increment(by: 1)` change should be replicated to remote.
-        self.localSystem.replicator.tell(.localCommand(.write(id, g1Local.asAnyStateBasedCRDT, consistency: .all, timeout: self.timeout, replyTo: writeP.ref)))
+        self.localSystem.replicator.tell(.localCommand(.write(id, g1Local, consistency: .all, timeout: self.timeout, replyTo: writeP.ref)))
         guard case .success = try writeP.expectMessage() else { throw writeP.error() }
 
         // Remote g1 should have the `increment(by: 1)` change
@@ -332,8 +332,8 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1Remote.increment(by: 3)
 
         // Register owner so replicator has a copy of g1 and will notify the owner on g1 updates
-        let localOwnerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1Local.asAnyStateBasedCRDT)
-        _ = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
+        let localOwnerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1Local)
+        _ = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote)
 
         // Tell local replicator to read g1 with .all consistency. Remote copies of g1 should be merged with local.
         self.localSystem.replicator.tell(.localCommand(.read(id, consistency: .all, timeout: self.timeout, replyTo: readP.ref)))
@@ -373,7 +373,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1Remote.increment(by: 3)
 
         // Register owner so replicator has a copy of g1 and will notify the owner on g1 updates
-        _ = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
+        _ = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote)
 
         // Tell local replicator to read g1 with .atLeast(1) consistency. Local doesn't have it but can be fulfilled
         // by remote instead. Remote copies of g1 should be merged with local.
@@ -408,8 +408,8 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         g1Remote.increment(by: 3)
 
         // Register owner so replicator will notify it on g1 updates
-        _ = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1Local.asAnyStateBasedCRDT)
-        let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
+        _ = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1Local)
+        let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote)
 
         // Tell local replicator to delete g1
         self.localSystem.replicator.tell(.localCommand(.delete(id, consistency: .all, timeout: self.timeout, replyTo: deleteP.ref)))
@@ -650,7 +650,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Test utilities
 
-    private func makeCRDTOwnerTestProbe(system: ActorSystem, testKit: ActorTestKit, id: CRDT.Identity, data: AnyStateBasedCRDT) throws -> ActorTestProbe<OwnerMessage> {
+    private func makeCRDTOwnerTestProbe(system: ActorSystem, testKit: ActorTestKit, id: CRDT.Identity, data: StateBasedCRDT) throws -> ActorTestProbe<OwnerMessage> {
         let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
 

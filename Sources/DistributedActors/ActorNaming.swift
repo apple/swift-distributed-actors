@@ -42,7 +42,7 @@ extension ActorNaming {
 
     /// Shorthand for defining "anonymous" actor names, which carry
     public static var anonymous: ActorNaming {
-        return .init(unchecked: .prefixed(prefix: "$anonymous", suffixScheme: .letters))
+        .init(unchecked: .prefixed(prefix: "$anonymous", suffixScheme: .letters))
     }
 
     /// Performs some initial name validation, like user provided names not being allowed to start with $ etc.

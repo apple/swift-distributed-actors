@@ -282,7 +282,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             second.shutdown()
 
             // it should be removed from all listings; on both nodes, for all keys
-            try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(3))
+            try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5))
         }
     }
 

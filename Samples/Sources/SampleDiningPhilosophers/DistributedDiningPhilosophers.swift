@@ -15,37 +15,18 @@
 import DistributedActors
 
 struct DistributedDiningPhilosophers {
-    /// Register the types of messages we will be sending over the network,
-    /// such that the networking layer can handle their serialization automatically for us.
-    ///
-    /// It is important that the IDs of serializers are equal (marking "the same" type),
-    /// on all nodes, as otherwise a wrong serializer would be used for incoming messages.
-    private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
-        // TODO: change the `registerCodable` API such that the IDs are easier to align (1st param),
-        // which helps spotting mistakes if an ID was accidentally reused etc.
-        settings.serialization.registerCodable(for: Philosopher.Message.self, underId: 1001)
-        settings.serialization.registerCodable(for: Fork.Reply.self, underId: 1002)
-        settings.serialization.registerCodable(for: Fork.Message.self, underId: 1003)
-    }
-
-    /// Enable networking on this node, and select which port it should bind to.
-    private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
-        settings.cluster.enabled = true
-        settings.cluster.bindPort = port
-    }
-
     func run(for time: TimeAmount) throws {
         let systemA = ActorSystem("DistributedPhilosophers") { settings in
-            self.configureMessageSerializers(&settings)
-            self.configureClustering(&settings, port: 1111)
+            settings.cluster.enabled = true
+            settings.cluster.bindPort = 1111
         }
         let systemB = ActorSystem("DistributedPhilosophers") { settings in
-            self.configureMessageSerializers(&settings)
-            self.configureClustering(&settings, port: 2222)
+            settings.cluster.enabled = true
+            settings.cluster.bindPort = 2222
         }
         let systemC = ActorSystem("DistributedPhilosophers") { settings in
-            self.configureMessageSerializers(&settings)
-            self.configureClustering(&settings, port: 3333)
+            settings.cluster.enabled = true
+            settings.cluster.bindPort = 3333
         }
 
         print("~~~~~~~ started 3 actor systems ~~~~~~~")
@@ -60,11 +41,11 @@ struct DistributedDiningPhilosophers {
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
-        let fork1: Fork.Ref = try systemA.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork2: Fork.Ref = try systemB.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork3: Fork.Ref = try systemB.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork4: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork5: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
+        let fork1: Fork.Ref = try systemA.spawn("fork-1", Fork.behavior)
+        let fork2: Fork.Ref = try systemB.spawn("fork-2", Fork.behavior)
+        let fork3: Fork.Ref = try systemB.spawn("fork-3", Fork.behavior)
+        let fork4: Fork.Ref = try systemC.spawn("fork-4", Fork.behavior)
+        let fork5: Fork.Ref = try systemC.spawn("fork-5", Fork.behavior)
 
         // 5 philosophers, sitting in a circle, with the forks between them:
         _ = try systemA.spawn("Konrad", Philosopher(left: fork5, right: fork1).behavior)

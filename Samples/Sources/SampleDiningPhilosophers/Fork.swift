@@ -34,11 +34,11 @@ public final class Fork {
     }
 
     public static var behavior: SelfBehavior {
-        return available()
+        available()
     }
 
     private static func available() -> SelfBehavior {
-        return .receive { context, message in
+        .receive { context, message in
             switch message {
             case .take(let who):
                 who.tell(.pickedUp(fork: context.myself))
@@ -51,7 +51,7 @@ public final class Fork {
     }
 
     private static func taken(_ context: ActorContext<Fork.Message>, by owner: ActorRef<Fork.Reply>) -> SelfBehavior {
-        return .receiveMessage { message in
+        .receiveMessage { message in
             switch message {
             case .putBack(let who) where owner.address == owner.address:
                 context.log.info("\(uniquePath: who) is putting back the fork \(uniquePath: context.myself)...")

@@ -12,12 +12,12 @@ import NIO
 // MARK: DO NOT EDIT: Generated GreetingsService messages 
 
 extension GeneratedActor.Messages {
-    public enum GreetingsService { 
+    public enum GreetingsService: ActorMessage { 
         case logGreeting(name: String) 
-        case greet(name: String, _replyTo: ActorRef<Result<String, Error>>) 
+        case greet(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
         case fatalCrash 
         case greetDirect(who: ActorRef<String>) 
-        case greetFuture(name: String, _replyTo: ActorRef<Result<String, Error>>)  
+        case greetFuture(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>)  
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ extension Actor where A: GreetingsService {
     public func greet(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Result<String, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
                 A._boxGreetingsService(.greet(name: name, _replyTo: _replyTo))
             }
         )
@@ -53,7 +53,7 @@ extension Actor where A: GreetingsService {
     public func greetFuture(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Result<String, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
                 A._boxGreetingsService(.greetFuture(name: name, _replyTo: _replyTo))
             }
         )

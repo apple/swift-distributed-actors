@@ -31,20 +31,20 @@ import XCTest
 /// DO NOT EDIT: Generated AllInOneMachine messages
 extension AllInOneMachine {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case clean 
-        case coffeeMachine(/*TODO: MODULE.*/GeneratedActor.Messages.CoffeeMachine) 
         case diagnostics(/*TODO: MODULE.*/GeneratedActor.Messages.Diagnostics) 
+        case coffeeMachine(/*TODO: MODULE.*/GeneratedActor.Messages.CoffeeMachine) 
     }
-    
-    /// Performs boxing of GeneratedActor.Messages.CoffeeMachine messages such that they can be received by Actor<AllInOneMachine>
-    public static func _boxCoffeeMachine(_ message: GeneratedActor.Messages.CoffeeMachine) -> AllInOneMachine.Message {
-        .coffeeMachine(message)
-    } 
     
     /// Performs boxing of GeneratedActor.Messages.Diagnostics messages such that they can be received by Actor<AllInOneMachine>
     public static func _boxDiagnostics(_ message: GeneratedActor.Messages.Diagnostics) -> AllInOneMachine.Message {
         .diagnostics(message)
+    } 
+    
+    /// Performs boxing of GeneratedActor.Messages.CoffeeMachine messages such that they can be received by Actor<AllInOneMachine>
+    public static func _boxCoffeeMachine(_ message: GeneratedActor.Messages.CoffeeMachine) -> AllInOneMachine.Message {
+        .coffeeMachine(message)
     } 
     
 }
@@ -58,7 +58,7 @@ extension AllInOneMachine {
             let context = Actor<AllInOneMachine>.Context(underlying: _context)
             var instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -67,12 +67,12 @@ extension AllInOneMachine {
                     instance.clean()
  
                 
+                case .diagnostics(.printDiagnostics):
+                    instance.printDiagnostics()
+ 
                 case .coffeeMachine(.makeCoffee(let _replyTo)):
                     let result = instance.makeCoffee()
                     _replyTo.tell(result)
- 
-                case .diagnostics(.printDiagnostics):
-                    instance.printDiagnostics()
  
                 }
                 return .same
@@ -106,7 +106,7 @@ extension AllInOneMachine {
 extension Actor where A.Message == AllInOneMachine.Message {
 
      func clean() {
-        self.ref.tell(.clean)
+        self.ref.tell(Self.Message.clean)
     }
  
 

@@ -14,14 +14,19 @@
 
 import DistributedActorsConcurrencyHelpers
 
-enum AffinityThreadPoolError: Error {
+@usableFromInline
+internal enum AffinityThreadPoolError: Error {
     case unknownWorker(workerNumber: Int)
 }
 
 /// Allows work to be dispatched onto a specific thread
+@usableFromInline
 internal final class AffinityThreadPool {
+    @usableFromInline
     internal let workers: [Worker]
+    @usableFromInline
     internal let workerCount: Int
+    @usableFromInline
     internal let stopped: Atomic<Bool>
 
     internal init(workerCount: Int) throws {
@@ -59,9 +64,11 @@ internal final class AffinityThreadPool {
         self.stopped.store(true, order: .release)
     }
 
+    @usableFromInline
     internal struct Worker {
+        @usableFromInline
         internal let taskQueue: LinkedBlockingQueue<() -> Void>
-        internal let thread: Thread
+        private let thread: Thread
 
         internal init(stopped: Atomic<Bool>) throws {
             let queue: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()

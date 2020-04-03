@@ -45,17 +45,17 @@ internal struct Heap<T: Equatable> {
 
     // named `PARENT` in CLRS
     private func parentIndex(_ i: Int) -> Int {
-        return (i - 1) / 2
+        (i - 1) / 2
     }
 
     // named `LEFT` in CLRS
     private func leftIndex(_ i: Int) -> Int {
-        return 2 * i + 1
+        2 * i + 1
     }
 
     // named `RIGHT` in CLRS
     private func rightIndex(_ i: Int) -> Int {
-        return 2 * i + 2
+        2 * i + 2
     }
 
     // named `MAX-HEAPIFY` in CLRS
@@ -105,7 +105,7 @@ internal struct Heap<T: Equatable> {
 
     @discardableResult
     public mutating func removeRoot() -> T? {
-        return self.remove(index: 0)
+        self.remove(index: 0)
     }
 
     @discardableResult
@@ -216,7 +216,7 @@ extension Heap: CustomDebugStringConvertible {
             all += String(repeating: " ", count: rightWidth)
 
             func height(index: Int) -> Int {
-                return Int(log2(Double(index + 1)))
+                Int(log2(Double(index + 1)))
             }
             let myHeight = height(index: index)
             let nextHeight = height(index: index + 1)
@@ -241,35 +241,35 @@ struct HeapIterator<T: Equatable>: IteratorProtocol {
     }
 
     mutating func next() -> T? {
-        return self.heap.removeRoot()
+        self.heap.removeRoot()
     }
 }
 
 extension Heap: Sequence {
     typealias Element = T
 
-    var startIndex: Int { return self.storage.startIndex }
-    var endIndex: Int { return self.storage.endIndex }
+    var startIndex: Int { self.storage.startIndex }
+    var endIndex: Int { self.storage.endIndex }
 
     var underestimatedCount: Int {
-        return self.storage.count
+        self.storage.count
     }
 
     func makeIterator() -> HeapIterator<T> {
-        return HeapIterator(heap: self)
+        HeapIterator(heap: self)
     }
 
     subscript(position: Int) -> T {
-        return self.storage[position]
+        self.storage[position]
     }
 
     func index(after i: Int) -> Int {
-        return i + 1
+        i + 1
     }
 
     // TODO: document if cheap (AFAICS yes)
     var count: Int {
-        return self.storage.count
+        self.storage.count
     }
 }
 

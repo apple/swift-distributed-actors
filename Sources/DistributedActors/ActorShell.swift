@@ -27,7 +27,7 @@ import NIO
 /// all actor interactions with messages, user code, and the mailbox itself happen.
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
-public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
+public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractActor {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -71,19 +71,19 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     @usableFromInline
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages {
-        return self.myself
+        self.myself
     }
 
     @usableFromInline
     var asAddressable: AddressableActorRef {
-        return self.myself.asAddressable()
+        self.myself.asAddressable()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 
     public override var timers: Timers<Message> {
-        return self._timers
+        self._timers
     }
 
     lazy var _timers: Timers<Message> = Timers(context: self)
@@ -211,12 +211,6 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             defer { self._childrenLock.unlock() }
             return self._children
         }
-    }
-
-    func dropMessage(_ message: Message) {
-        // TODO: implement support for logging dropped messages; those are different than deadLetters
-        pprint("[dropped] Message [\(message)]:\(type(of: message)) was not delivered.")
-        // system.deadLetters.tell(Dropped(message)) // TODO metadata
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -372,7 +366,12 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         })
 
         guard let adapter = maybeAdapter?.closure else {
-            self.log.warning("Received adapted message [\(carry.message)]:\(type(of: carry.message)) for which no adapter was registered.")
+            self.log.warning(
+                "Received adapted message [\(carry.message)]:\(type(of: carry.message as Any)) for which no adapter was registered.",
+                metadata: [
+                    "actorRef/adapters": "\(self.messageAdapters)",
+                ]
+            )
             try self.becomeNext(behavior: .ignore) // TODO: make .drop once implemented
             return self.runState
         }
@@ -422,7 +421,7 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     @usableFromInline
     internal var isSuspended: Bool {
-        return self.behavior.isSuspended
+        self.behavior.isSuspended
     }
 
     /// Fails the actor using the passed in error.
@@ -651,15 +650,45 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spawn implementations
 
-    public override func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        try self._spawn(naming, props: props, behavior)
+    public override func spawn<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
+        try self.system.serialization._ensureSerializer(type, file: file, line: line)
+        return try self._spawn(naming, props: props, behavior)
     }
 
-    public override func spawnWatch<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+//    public override func spawn<M>(
+//        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+//        file: String = #file, line: UInt = #line,
+//        _ behavior: Behavior<M>
+//    ) throws -> ActorRef<M>
+//    where M: ActorMessage {
+//        try self.system.serialization._ensureCodableSerializer(type, file: file, line: line)
+//        return try self._spawn(naming, props: props, behavior)
+//    }
+
+    public override func spawnWatch<Message>(
+        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props,
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<Message>
+    ) throws -> ActorRef<Message>
+        where Message: ActorMessage {
         self.watch(try self.spawn(naming, props: props, behavior))
     }
 
-    public override func stop<Message>(child ref: ActorRef<Message>) throws {
+//    public override func spawnWatch<Message>(
+//        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props,
+//        file: String = #file, line: UInt = #line,
+//        _ behavior: Behavior<Message>
+//    ) throws -> ActorRef<Message>
+//        where Message: ActorMessage {
+//        self.watch(try self.spawn(naming, props: props, behavior))
+//    }
+
+    public override func stop<Message: ActorMessage>(child ref: ActorRef<Message>) throws {
         try self._stop(child: ref)
     }
 
@@ -691,10 +720,11 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     @usableFromInline
     override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
-        return self.subReceives[identifier]?.0
+        self.subReceives[identifier]?.0
     }
 
-    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
+        where SubMessage: ActorMessage {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
@@ -735,15 +765,18 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapter
 
-    private var messageAdapterRef: ActorRefAdapter<Message>?
+    private var messageAdapter: ActorRefAdapter<Message>?
+    private var messageAdapters: [MessageAdapterClosure] = []
     struct MessageAdapterClosure {
+        /// The metatype of the expected incoming parameter; it will be cast and handled by the erased closure.
+        ///
+        /// We need to store the metatype, because we need `is` relationship to support adapters over classes
         let metaType: AnyMetaType
         let closure: (Any) -> Message?
     }
 
-    private var messageAdapters: [MessageAdapterClosure] = []
-
-    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
+        where From: ActorMessage {
         do {
             let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
@@ -758,19 +791,19 @@ public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             self.messageAdapters.removeAll(where: { adapter in
                 adapter.metaType.is(metaType)
             })
-
             self.messageAdapters.insert(MessageAdapterClosure(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
 
-            guard let adapterRef = self.messageAdapterRef else {
+            if let adapter: ActorRefAdapter<Message> = self.messageAdapter {
+                return .init(.adapter(adapter))
+            } else {
                 let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
-                let ref = ActorRefAdapter(self.myself, address: adaptedAddress)
-                self.messageAdapterRef = ref
+                let adapter = ActorRefAdapter(fromType: fromType, to: self.myself, address: adaptedAddress)
 
-                self._children.insert(ref) // TODO: separate adapters collection?
-                return .init(.adapter(ref))
+                self.messageAdapter = adapter
+                self._children.insert(adapter) // TODO: separate adapters collection?
+
+                return .init(.adapter(adapter))
             }
-
-            return .init(.adapter(adapterRef))
         } catch {
             fatalError("""
             Failed while creating message adapter. This should never happen, since message adapters have a unique name.
@@ -909,17 +942,21 @@ extension ActorShell {
                     // causing a chain reaction of crashing until someone handles or the guardian receives it and shuts down the system.
                     self.log.warning("Failure escalated by [\(terminatedRef.path)] reached non-watching, non-signal handling parent, escalation will continue! Failure was: \(failure)")
 
-                    next = try self.supervisor.interpretSupervised(target: .signalHandling(
-                        handleMessage: self.behavior,
-                        handleSignal: { _, _ in
-                            switch failure {
-                            case .error(let error):
-                                throw error
-                            case .fault(let errorRepr):
-                                throw errorRepr
+                    next = try self.supervisor.interpretSupervised(
+                        target: .signalHandling(
+                            handleMessage: self.behavior,
+                            handleSignal: { _, _ in
+                                switch failure {
+                                case .error(let error):
+                                    throw error
+                                case .fault(let errorRepr):
+                                    throw errorRepr
+                                }
                             }
-                        }
-                    ), context: self, signal: terminated)
+                        ),
+                        context: self,
+                        signal: terminated
+                    )
 
                 case .none:
                     // the child actor has stopped without providing us with a reason // FIXME; does this need to carry manual stop as a reason?
@@ -971,8 +1008,16 @@ extension AbstractActor {
         }
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
+        where Message: ActorMessage {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
+
+        do {
+            try context.system.serialization._ensureSerializer(Message.self)
+        } catch {
+            context.system.log.warning("Failed to ensure serializer for \(String(reflecting: Message.self))")
+            return context.personalDeadLetters
+        }
 
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
@@ -992,7 +1037,7 @@ extension AbstractActor {
         return self.children._resolve(context: context)
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if self._myselfReceivesSystemMessages.address.incarnation == context.address.incarnation {

@@ -17,7 +17,7 @@ import NIO
 
 /// Namespace for CRDT types.
 public enum CRDT {
-    public enum Status {
+    public enum Status: String, ActorMessage {
         case active
         case deleted
     }
@@ -59,7 +59,7 @@ extension CRDT {
         typealias ReadResult = CRDT.Replicator.LocalCommand.ReadResult
         typealias DeleteResult = CRDT.Replicator.LocalCommand.DeleteResult
 
-        public init<Message>(ownerContext: ActorContext<Message>, id: CRDT.Identity, data: DataType, delegate: ActorOwnedDelegate<DataType> = ActorOwnedDelegate<DataType>()) {
+        public init<Message: ActorMessage>(ownerContext: ActorContext<Message>, id: CRDT.Identity, data: DataType, delegate: ActorOwnedDelegate<DataType> = ActorOwnedDelegate<DataType>()) {
             self.id = id
             self.data = data
             self.delegate = delegate
@@ -78,7 +78,7 @@ extension CRDT {
 
             let replicator = ownerContext.system.replicator
 
-            func continueAskResponseOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) {
+            func continueAskResponseOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) where Res: ActorMessage {
                 ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
                     continuation(res)
                     return .same
@@ -90,7 +90,7 @@ extension CRDT {
                     return .same
                 }
             }
-            self._owner = ActorOwnedContext(
+            self._owner = ActorOwnedContext<DataType>(
                 ownerContext,
                 subReceive: subReceive,
                 replicator: replicator,
@@ -102,7 +102,7 @@ extension CRDT {
             )
 
             // Register as owner of the CRDT instance with local replicator
-            replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: nil)))
+            replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data, replyTo: nil)))
         }
 
         // TODO: handle error instead of throw? convert replicator error to something else?
@@ -113,7 +113,7 @@ extension CRDT {
 
             // TODO: think more about timeouts: https://github.com/apple/swift-distributed-actors/issues/137
             let writeResponse = self.owner.replicator.ask(for: WriteResult.self, timeout: .effectivelyInfinite) { replyTo in
-                .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, timeout: timeout, replyTo: replyTo))
+                .localCommand(.write(id, data, consistency: consistency, timeout: timeout, replyTo: replyTo))
             }
 
             return self.owner.onWriteComplete(writeResponse) {
@@ -207,8 +207,8 @@ extension CRDT {
             private let _onDataOperationResultComplete: (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void
             private let _onVoidOperationResultComplete: (EventLoopFuture<Void>, @escaping (Result<Void, Swift.Error>) -> Void) -> Void
 
-            init<M>(
-                _ ownerContext: ActorContext<M>,
+            init<OwnerMessage: ActorMessage>(
+                _ ownerContext: ActorContext<OwnerMessage>,
                 subReceive: ActorRef<Replication.DataOwnerMessage>,
                 replicator: ActorRef<Replicator.Message>,
                 onWriteComplete: @escaping (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, Swift.Error>) -> Void) -> Void,
@@ -445,6 +445,22 @@ extension CRDT.OperationConsistency.Error: Equatable {
             return true
         default:
             return false
+        }
+    }
+}
+
+extension CRDT {
+    public struct MergeError: Error, CustomStringConvertible, Equatable {
+        let storedType: Any.Type
+        let incomingType: Any.Type
+
+        public var description: String {
+            "MergeError(Unable to merge \(reflecting: self.storedType) with incoming \(reflecting: self.incomingType)"
+        }
+
+        public static func == (lhs: MergeError, rhs: MergeError) -> Bool {
+            ObjectIdentifier(lhs.storedType) == ObjectIdentifier(rhs.storedType) &&
+                ObjectIdentifier(lhs.incomingType) == ObjectIdentifier(rhs.incomingType)
         }
     }
 }

@@ -30,12 +30,12 @@ private final class Worker {
 
     @inlinable
     func tryLock() -> Bool {
-        return self._lock.tryLock()
+        self._lock.tryLock()
     }
 
     @inlinable
     func unlock() {
-        return self._lock.unlock()
+        self._lock.unlock()
     }
 }
 

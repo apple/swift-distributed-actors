@@ -21,31 +21,24 @@ public struct ActorSystemSettings {
         .init()
     }
 
-    public var actor: ActorSettings = .default
-    public var serialization: SerializationSettings = .default
-    public var plugins: PluginsSettings = .default
-    public var metrics: MetricsSettings = .default(rootName: nil)
-    public var failure: FailureSettings = .default
-    public var logging: LoggingSettings = .default
-    public var instrumentation: InstrumentationSettings = .default
-
     public typealias ProtocolName = String
+
+    public var actor: ActorSettings = .default
+    public var failure: FailureSettings = .default
+
+    public var plugins: PluginsSettings = .default
     public var transports: [ActorTransport] = []
+
+    public var serialization: Serialization.Settings = .default
     public var cluster: ClusterSettings = .default {
         didSet {
             self.serialization.localNode = self.cluster.uniqueBindNode
         }
     }
 
-    /// See `logging.defaultLevel`
-    public var defaultLogLevel: Logger.Level {
-        get {
-            logging.defaultLevel
-        }
-        set {
-            logging.defaultLevel = newValue
-        }
-    }
+    public var logging: LoggingSettings = .default
+    public var metrics: MetricsSettings = .default(rootName: nil)
+    public var instrumentation: InstrumentationSettings = .default
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
     public var installSwiftBacktrace: Bool = true
@@ -121,7 +114,7 @@ public enum GuardianFailureHandling {
 extension ActorSystemSettings {
     public struct ActorSettings {
         public static var `default`: ActorSettings {
-            return .init()
+            .init()
         }
 
         // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
