@@ -25,7 +25,7 @@ import class NIO.EventLoopFuture
 /// DO NOT EDIT: Generated SkipCodableActorable messages
 extension SkipCodableActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case echo(text: String, _replyTo: ActorRef<String>) 
     }
     
@@ -40,7 +40,7 @@ extension SkipCodableActorable {
             let context = Actor<SkipCodableActorable>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -85,7 +85,7 @@ extension Actor where A.Message == SkipCodableActorable.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .echo(text: text, _replyTo: _replyTo)}
+                Self.Message.echo(text: text, _replyTo: _replyTo)}
         )
     }
  

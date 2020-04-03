@@ -554,10 +554,12 @@ final class MembershipTests: XCTestCase {
         let changes = membership.mergeFrom(incoming: ahead, myself: nil)
 
         changes.count.shouldEqual(1)
-        changes.shouldEqual([
-            Cluster.MembershipChange(node: self.nodeA, fromStatus: .up, toStatus: .down),
-            // we do not ADD .down members to our view
-        ])
+        changes.shouldEqual(
+            [
+                Cluster.MembershipChange(node: self.nodeA, fromStatus: .up, toStatus: .down),
+                // we do not ADD .down members to our view
+            ]
+        )
         var expected = membership
         _ = expected.mark(self.nodeA, as: .down)
         membership.shouldEqual(expected)

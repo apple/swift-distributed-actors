@@ -16,6 +16,8 @@
 ///
 // TODO: can this instead be a CellDelegate?
 public protocol AbstractAdapter: _ActorTreeTraversable {
+    var fromType: Any.Type { get }
+
     var address: ActorAddress { get }
     var deadLetters: ActorRef<DeadLetter> { get }
 
@@ -38,21 +40,19 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class ActorRefAdapter<To>: AbstractAdapter {
+internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
+    public let fromType: Any.Type
     private let target: ActorRef<To>
-    private let adapterAddress: ActorAddress
+    let address: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = _Mutex()
 
-    var address: ActorAddress {
-        return self.adapterAddress
-    }
-
     let deadLetters: ActorRef<DeadLetter>
 
-    init(_ ref: ActorRef<To>, address: ActorAddress) {
+    init<From>(fromType: From.Type, to ref: ActorRef<To>, address: ActorAddress) {
+        self.fromType = fromType
         self.target = ref
-        self.adapterAddress = address
+        self.address = address
         self.watchers = []
 
         // since we are an adapter, we must be attached to some "real" actor ref (be it local, remote or dead),
@@ -60,12 +60,12 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
         self.deadLetters = self.target._deadLetters
     }
 
-    private var myself: ActorRef<Any> {
-        return ActorRef(.adapter(self))
+    private var myselfAddressable: AddressableActorRef {
+        ActorRef<Never>(.adapter(self)).asAddressable()
     }
 
     var system: ActorSystem? {
-        return self.target._system
+        self.target._system
     }
 
     func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
@@ -75,7 +75,7 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
         case .unwatch(let watchee, let watcher):
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
-            self.removeWatcher(watchee: self.myself.asAddressable(), watcher: ref) // note: this was nice, always is correct after all now
+            self.removeWatcher(watchee: self.myselfAddressable, watcher: ref) // note: this was nice, always is correct after all now
         case .carrySignal, .nodeTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
             () // ignore all other messages // TODO: why?
         }
@@ -87,7 +87,7 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
     }
 
     private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.address == self.address && watcher.address != self.address, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -105,7 +105,7 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
     }
 
     private func removeWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.address == self.address && watcher.address != self.address, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -117,15 +117,15 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
     }
 
     private func watch(_ watchee: AddressableActorRef) {
-        watchee._sendSystemMessage(.watch(watchee: watchee, watcher: self.myself.asAddressable()))
+        watchee._sendSystemMessage(.watch(watchee: watchee, watcher: self.myselfAddressable))
     }
 
     private func unwatch(_ watchee: AddressableActorRef) {
-        watchee._sendSystemMessage(.unwatch(watchee: watchee, watcher: self.myself.asAddressable()))
+        watchee._sendSystemMessage(.unwatch(watchee: watchee, watcher: self.myselfAddressable))
     }
 
     private func sendTerminated(_ ref: AddressableActorRef) {
-        ref._sendSystemMessage(.terminated(ref: self.myself.asAddressable(), existenceConfirmed: true, addressTerminated: false))
+        ref._sendSystemMessage(.terminated(ref: self.myselfAddressable, existenceConfirmed: true, addressTerminated: false))
     }
 
     func stop() {
@@ -149,7 +149,7 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
 extension ActorRefAdapter {
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
-        switch visit(context, self.myself.asAddressable()) {
+        switch visit(context, self.myselfAddressable) {
         case .continue:
             ()
         case .accumulateSingle(let t):
@@ -172,12 +172,12 @@ extension ActorRefAdapter {
         return .init(.adapter(self))
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable()
         }
 
-        return self.myself.asAddressable()
+        return self.myselfAddressable
     }
 }
 
@@ -188,6 +188,8 @@ extension ActorRefAdapter {
 ///
 /// Wraps the `DeadLettersActorRef` to get properly typed deadLetters refs.
 internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
+    public let fromType: Any.Type = Never.self
+
     let deadLetters: ActorRef<DeadLetter>
     let deadRecipient: ActorAddress
 
@@ -224,7 +226,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
         self.deadLetters.adapted()
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         self.deadLetters.asAddressable()
     }
 }
@@ -232,7 +234,9 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SubReceiveAdapter
 
-internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
+internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: ActorMessage>: AbstractAdapter {
+    internal let fromType: Any.Type
+
     private let target: ActorRef<OwnerMessage>
     private let identifier: AnySubReceiveId
     private let adapterAddress: ActorAddress
@@ -240,12 +244,13 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
     private let lock = _Mutex()
 
     var address: ActorAddress {
-        return self.adapterAddress
+        self.adapterAddress
     }
 
     let deadLetters: ActorRef<DeadLetter>
 
     init(_ type: Message.Type, owner ref: ActorRef<OwnerMessage>, address: ActorAddress, identifier: AnySubReceiveId) {
+        self.fromType = Message.self
         self.target = ref
         self.adapterAddress = address
         self.identifier = identifier
@@ -257,11 +262,11 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
     }
 
     private var myself: ActorRef<Message> {
-        return ActorRef(.adapter(self))
+        ActorRef(.adapter(self))
     }
 
     var system: ActorSystem? {
-        return self.target._system
+        self.target._system
     }
 
     func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
@@ -388,7 +393,7 @@ extension SubReceiveAdapter {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable()
         }

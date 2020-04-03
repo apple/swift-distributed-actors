@@ -34,46 +34,11 @@ public let SerializationProtobufBenchmarks: [BenchmarkInfo] = [
     ),
 ]
 
-enum ProtoSerializerError: Error {
-    case x
-}
-
-final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: Serializer<M> {
-    let allocator: ByteBufferAllocator
-
-    init(allocator: ByteBufferAllocator) {
-        self.allocator = allocator
-        super.init()
-    }
-
-    override func deserialize(bytes: ByteBuffer) throws -> M {
-        guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-            throw ProtoSerializerError.x
-        }
-        return try M(serializedData: data)
-    }
-
-    override func serialize(message: M) throws -> ByteBuffer {
-        let data = try message.serializedData()
-        var buffer = self.allocator.buffer(capacity: data.count)
-        buffer.writeBytes(data)
-        return buffer
-    }
-
-    override func setSerializationContext(_: ActorSerializationContext) {
-        return
-    }
-}
-
-private func protoSerializer<M: SwiftProtobuf.Message>(allocator: ByteBufferAllocator) -> Serializer<M> {
-    return ProtoMessageSerializer(allocator: allocator)
-}
-
-private func setUp(and postSetUp: () -> Void = { () in () }) {
+private func setUp(and postSetUp: () -> Void = { () in
+    ()
+}) {
     _system = ActorSystem("SerializationProtobufBenchmarks") { settings in
-        settings.serialization.register(protoSerializer, for: ProtoSmallMessage.self, underId: 1001)
-        settings.serialization.register(protoSerializer, for: ProtoMediumMessage.self, underId: 1002)
-        settings.defaultLogLevel = .error
+        settings.logging.defaultLevel = .error
     }
 
     protoSmallMessage.number = 1337
@@ -113,8 +78,8 @@ private func tearDown() {
 var protoSmallMessage = ProtoSmallMessage()
 
 func bench_protobuf_roundTrip_message_small(n: Int) {
-    let bytes = try! system.serialization.serialize(message: protoSmallMessage)
-    _ = try! system.serialization.deserialize(ProtoSmallMessage.self, from: bytes)
+    var (manifest, bytes) = try! system.serialization.serialize(protoSmallMessage)
+    _ = try! system.serialization.deserialize(as: ProtoSmallMessage.self, from: &bytes, using: manifest)
 }
 
 // -------
@@ -122,6 +87,6 @@ func bench_protobuf_roundTrip_message_small(n: Int) {
 var protoMediumMessage = ProtoMediumMessage()
 
 func bench_protobuf_roundTrip_message_medium(n: Int) {
-    let bytes = try! system.serialization.serialize(message: protoMediumMessage)
-    _ = try! system.serialization.deserialize(ProtoMediumMessage.self, from: bytes)
+    var (manifest, bytes) = try! system.serialization.serialize(protoMediumMessage)
+    _ = try! system.serialization.deserialize(as: ProtoMediumMessage.self, from: &bytes, using: manifest)
 }

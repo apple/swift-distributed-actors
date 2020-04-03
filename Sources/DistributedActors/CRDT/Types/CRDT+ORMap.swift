@@ -51,10 +51,10 @@ extension CRDT {
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
     /// - SeeAlso: `CRDT.ORSet`
-    public struct ORMap<Key: Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
+    public struct ORMap<Key: Codable & Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         /// Creates a new `Value` instance. e.g., zero counter, empty set, etc.
         /// The initializer should not close over mutable state as no strong guarantees are provided about
@@ -99,7 +99,7 @@ extension CRDT {
             self._values.isEmpty
         }
 
-        init(replicaId: ReplicaId, valueInitializer: @escaping () -> Value) {
+        init(replicaId: ReplicaID, valueInitializer: @escaping () -> Value) {
             self.replicaId = replicaId
             self.valueInitializer = valueInitializer
             self._keys = ORSet(replicaId: replicaId)
@@ -140,6 +140,19 @@ extension CRDT {
             self._values[key]
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            guard let wellTypedOther = other as? Self else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+
+            // TODO: check if delta merge or normal
+            // TODO: what if we simplify and compute deltas...?
+
+            self.merge(other: wellTypedOther)
+            return nil
+        }
+
         public mutating func merge(other: ORMap<Key, Value>) {
             self._keys.merge(other: other._keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
@@ -158,14 +171,23 @@ extension CRDT {
             self._keys.resetDelta()
             self.updatedValues.removeAll()
         }
+
+        public init(from decoder: Decoder) throws {
+            fatalError("TODO: implement serialization of ORMap") // FIXME: crdt serialization
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            fatalError("TODO: implement serialization of ORMap") // FIXME: crdt serialization
+        }
     }
 
-    public struct ORMapDelta<Key: Hashable, Value: CvRDT>: CvRDT {
+    public struct ORMapDelta<Key: Codable & Hashable, Value: CvRDT>: CvRDT {
         var keys: ORSet<Key>.Delta
         // TODO: potential optimization: send only the delta if Value is DeltaCRDT. i.e., instead of Value here we would use Value.Delta
         // TODO: `merge` defined in the Dictionary extension below should use `mergeDelta` when Value is DeltaCRDT
         var values: [Key: Value]
 
+        // FIXME: this is not serializable -- need to pick something rather than depend on the fn?
         private let valueInitializer: () -> Value
 
         init(keys: ORSet<Key>.Delta, values: [Key: Value], valueInitializer: @escaping () -> Value) {
@@ -174,12 +196,30 @@ extension CRDT {
             self.valueInitializer = valueInitializer
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+        }
+
         public mutating func merge(other: ORMapDelta<Key, Value>) {
             // Merge `keys` first--keys that have been deleted will be gone
             self.keys.merge(other: other.keys)
             // Use the updated `keys` to merge `values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
             self.values.merge(keys: self.keys.elements, other: other.values, valueInitializer: self.valueInitializer)
+        }
+
+        public init(from decoder: Decoder) throws {
+            fatalError("TODO: implement serialization of ORMapDelta") // FIXME: crdt serialization
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            fatalError("TODO: implement serialization of ORMapDelta") // FIXME: crdt serialization
         }
     }
 }

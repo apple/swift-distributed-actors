@@ -27,7 +27,7 @@ import NIO
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline
-internal struct DeathWatch<Message> {
+internal struct DeathWatch<Message: ActorMessage> {
     private var watching: [AddressableActorRef: OnTerminationMessage] = [:]
     private var watchedBy: Set<AddressableActorRef> = []
 

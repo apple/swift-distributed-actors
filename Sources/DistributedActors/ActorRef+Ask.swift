@@ -64,7 +64,7 @@ extension ActorRef: ReceivesQuestions {
     public typealias Question = Message
 
     public func ask<Answer>(
-        for type: Answer.Type = Answer.self,
+        for answerType: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
         _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
@@ -77,21 +77,30 @@ extension ActorRef: ReceivesQuestions {
             return .completed(.failure(AskError.systemAlreadyShutDown))
         }
 
-        let promise = system._eventLoopGroup.next().makePromise(of: type)
+        do {
+            try system.serialization._ensureSerializer(answerType)
+        } catch {
+            return AskResponse.completed(.failure(error))
+        }
+
+        let promise = system._eventLoopGroup.next().makePromise(of: answerType)
 
         // TODO: maybe a specialized one... for ask?
         let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
 
         do {
             // TODO: implement special actor ref instead of using real actor
-            let askRef = try system.spawn(.ask, AskActor.behavior(
-                promise,
-                ref: self,
-                timeout: timeout,
-                file: file,
-                function: function,
-                line: line
-            ))
+            let askRef = try system.spawn(
+                .ask,
+                AskActor.behavior(
+                    promise,
+                    ref: self,
+                    timeout: timeout,
+                    file: file,
+                    function: function,
+                    line: line
+                )
+            )
 
             let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)
@@ -113,6 +122,79 @@ extension ActorRef: ReceivesQuestions {
         return .nioFuture(promise.futureResult)
     }
 }
+
+// extension ActorRef: ReceivesQuestions {
+//    public typealias Question = Message
+//
+//    public func ask<Answer: Codable>(
+//        for answerType: Answer.Type = Answer.self,
+//        timeout: TimeAmount,
+//        file: String = #file, function: String = #function, line: UInt = #line,
+//        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+//    ) -> AskResponse<Answer> {
+//        guard let system = self._system else {
+//            // TODO: this can be improved if we change AskResponse a little
+//            fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
+//        }
+//
+//        if system.isShuttingDown {
+//            return .completed(.failure(AskError.systemAlreadyShutDown))
+//        }
+//
+//        if let serialization = system.serialization {
+//            do {
+//                try serialization._ensureSerializer(answerType)
+//            } catch {
+//                return AskResponse(nioFuture: system._eventLoopGroup.next().makeFailedFuture(error))
+//            }
+//        }
+//        return self._ask(system, for: answerType, timeout: timeout, file: file, function: function, line: line, makeQuestion)
+//
+//    }
+//
+//    private func _ask<Answer>(_ system: ActorSystem,
+//        for answerType: Answer.Type,
+//        timeout: TimeAmount,
+//        file: String = #file, function: String = #function, line: UInt = #line,
+//        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+//    ) -> AskResponse<Answer> {
+//
+//        let promise = system._eventLoopGroup.next().makePromise(of: answerType)
+//
+//        // TODO: maybe a specialized one... for ask?
+//        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
+//
+//        do {
+//            // TODO: implement special actor ref instead of using real actor
+//            let askRef = try system.spawn(.ask, AskActor.behavior(
+//                promise,
+//                ref: self,
+//                timeout: timeout,
+//                file: file,
+//                function: function,
+//                line: line
+//            ))
+//
+//            let message = makeQuestion(askRef)
+//            self.tell(message, file: file, line: line)
+//
+//            instrumentation.actorAsked(message: message, from: askRef.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
+//            promise.futureResult.whenComplete {
+//                switch $0 {
+//                case .success(let answer):
+//                    instrumentation.actorAskReplied(reply: answer, error: nil)
+//                case .failure(let error):
+//                    instrumentation.actorAskReplied(reply: nil, error: error)
+//                }
+//            }
+//        } catch {
+//            instrumentation.actorAskReplied(reply: nil, error: error)
+//            promise.fail(error)
+//        }
+//
+//        return .nioFuture(promise.futureResult)
+//    }
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: AskResponse
@@ -185,7 +267,7 @@ extension AskResponse: AsyncResult {
 
 extension AskResponse {
     /// Transforms successful response of `Value` type to `NewValue` type.
-    public func map<NewValue>(_ callback: @escaping (Value) -> (NewValue)) -> AskResponse<NewValue> {
+    public func map<NewValue>(_ callback: @escaping (Value) -> NewValue) -> AskResponse<NewValue> {
         switch self {
         case .completed(let result):
             switch result {
@@ -209,7 +291,7 @@ extension AskResponse {
 ///
 // TODO: replace with a special minimal `ActorRef` that does not require spawning or scheduling.
 internal enum AskActor {
-    enum Event {
+    enum Event: NonTransportableActorMessage {
         case timeout
     }
 
@@ -223,7 +305,7 @@ internal enum AskActor {
     ) -> Behavior<ResponseType> {
         // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
         // but make dead letters tell us back that our ask will never reply?
-        return .setup { context in
+        .setup { context in
             var scheduledTimeout: Scheduled<Void>?
             if !timeout.isEffectivelyInfinite {
                 let timeoutSub = context.subReceive(Event.self) { event in

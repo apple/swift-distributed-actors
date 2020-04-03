@@ -18,8 +18,10 @@ import Foundation
 import XCTest
 
 final class ReceptionistTests: ActorSystemTestBase {
+    let LocalReceptionist = OperationLogClusterReceptionist(settings: .default)
+
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
-        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let receptionist = try system.spawn("receptionist", self.LocalReceptionist.behavior)
         let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
@@ -56,7 +58,7 @@ final class ReceptionistTests: ActorSystemTestBase {
     }
 
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
-        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let receptionist = try system.spawn("receptionist", self.LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
@@ -79,7 +81,7 @@ final class ReceptionistTests: ActorSystemTestBase {
     }
 
     func test_receptionist_shouldNotRegisterTheSameRefTwice() throws {
-        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let receptionist = try system.spawn("receptionist", self.LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
@@ -102,7 +104,7 @@ final class ReceptionistTests: ActorSystemTestBase {
     }
 
     func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
-        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let receptionist = try system.spawn("receptionist", self.LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
         let old: ActorRef<String> = try system.spawn(
@@ -136,7 +138,7 @@ final class ReceptionistTests: ActorSystemTestBase {
     }
 
     func test_receptionist_shouldReplyWithRegistered() throws {
-        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let receptionist = try system.spawn("receptionist", self.LocalReceptionist.behavior)
         let probe: ActorTestProbe<Receptionist.Registered<String>> = self.testKit.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
@@ -157,7 +159,7 @@ final class ReceptionistTests: ActorSystemTestBase {
     }
 
     func test_receptionist_shouldUnregisterTerminatedRefs() throws {
-        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let receptionist = try system.spawn("receptionist", self.LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
@@ -185,7 +187,7 @@ final class ReceptionistTests: ActorSystemTestBase {
     }
 
     func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
-        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let receptionist = try system.spawn("receptionist", self.LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
         let refA: ActorRef<String> = try system.spawn(

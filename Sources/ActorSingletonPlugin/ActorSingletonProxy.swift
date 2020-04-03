@@ -31,7 +31,7 @@ import Logging
 /// singleton runs on. If the singleton falls on *this* node, the proxy will spawn a `ActorSingletonManager`,
 /// which manages the actual singleton actor, and obtain the ref from it. The proxy instructs the
 /// `ActorSingletonManager` to hand over the singleton whenever the node changes.
-internal class ActorSingletonProxy<Message> {
+internal class ActorSingletonProxy<Message: ActorMessage> {
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 
@@ -69,9 +69,11 @@ internal class ActorSingletonProxy<Message> {
         .setup { context in
             if context.system.settings.cluster.enabled {
                 // Subscribe to `Cluster.Event` in order to update `targetNode`
-                context.system.cluster.events.subscribe(context.subReceive(SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
-                    try self.receiveClusterEvent(context, event)
-                })
+                context.system.cluster.events.subscribe(
+                    context.subReceive(SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
+                        try self.receiveClusterEvent(context, event)
+                    }
+                )
             } else {
                 // Run singleton on this node if clustering is not enabled
                 context.log.debug("Clustering not enabled. Taking over singleton.")

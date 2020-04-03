@@ -22,7 +22,7 @@ import Logging
 /// dynamically, e.g. if a node joins or removes itself from the cluster.
 ///
 // TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
-public class WorkerPool<Message> {
+public class WorkerPool<Message: ActorMessage> { // TODO: really has to be Codable?
     typealias Ref = WorkerPoolRef<Message>
 
     /// A selector defines how actors should be selected to participate in the pool.
@@ -52,7 +52,7 @@ public class WorkerPool<Message> {
 
     var settings: WorkerPoolSettings<Message>
     var selector: Selector {
-        return self.settings.selector
+        self.settings.selector
     }
 
     init(settings: WorkerPoolSettings<Message>) {
@@ -64,12 +64,16 @@ public class WorkerPool<Message> {
 
     // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?
     // TODO: round robin or what strategy?
-    public static func spawn(_ factory: ActorRefFactory, _ naming: ActorNaming, select selector: WorkerPool<Message>.Selector) throws -> WorkerPoolRef<Message> {
+    public static func spawn(
+        _ factory: ActorRefFactory, _ naming: ActorNaming, props: Props = Props(),
+        select selector: WorkerPool<Message>.Selector,
+        file: String = #file, line: UInt = #line
+    ) throws -> WorkerPoolRef<Message> {
         // TODO: pass in settings rather than create them here
         let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
 
         let pool: WorkerPool<Message> = WorkerPool(settings: settings)
-        let ref = try factory.spawn(naming, props: Props(), pool.initial())
+        let ref = try factory.spawn(naming, of: WorkerPoolMessage<Message>.self, props: props, file: file, line: line, pool.initial())
         return .init(ref: ref)
     }
 }
@@ -82,7 +86,7 @@ internal extension WorkerPool {
 
     /// Register with receptionist under `selector.key` and become `awaitingWorkers`.
     func initial() -> PoolBehavior {
-        return .setup { context in
+        .setup { context in
             switch self.selector {
             case .dynamic(let key):
                 context.system.receptionist.subscribe(
@@ -101,7 +105,7 @@ internal extension WorkerPool {
     }
 
     func awaitingWorkers() -> PoolBehavior {
-        return .setup { context in
+        .setup { context in
             let stash = StashBuffer(owner: context, capacity: self.settings.noWorkersAvailableStashCapacity)
 
             return .receive { context, message in
@@ -131,7 +135,7 @@ internal extension WorkerPool {
 
     // TODO: abstract how we keep them, for round robin / random etc
     func forwarding(to workers: [ActorRef<Message>]) -> PoolBehavior {
-        return .setup { context in
+        .setup { context in
             // TODO: would be some actual logic, that we can plug and play
             var _roundRobinPos = 0
 
@@ -173,20 +177,20 @@ internal extension WorkerPool {
 
             let eagerlyRemoteTerminatedWorkers: Behavior<WorkerPoolMessage<Message>> =
                 .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                    var remainingWorkers = workers
-                    remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version
+                        var remainingWorkers = workers
+                        remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version
 
-                    if remainingWorkers.count > 0 {
-                        return self.forwarding(to: remainingWorkers)
-                    } else {
-                        switch self.settings.whenAllWorkersTerminated {
-                        case .awaitNewWorkers:
-                            return self.awaitingWorkers()
-                        case .crash(let error):
-                            throw error
+                        if remainingWorkers.count > 0 {
+                            return self.forwarding(to: remainingWorkers)
+                        } else {
+                            switch self.settings.whenAllWorkersTerminated {
+                            case .awaitNewWorkers:
+                                return self.awaitingWorkers()
+                            case .crash(let error):
+                                throw error
+                            }
                         }
                     }
-                }
 
             return _forwarding.orElse(eagerlyRemoteTerminatedWorkers)
         }
@@ -205,7 +209,7 @@ internal extension WorkerPool {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Worker Pool Ref
 
-public struct WorkerPoolRef<Message>: ReceivesMessages {
+public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
     @usableFromInline
     internal let _ref: ActorRef<WorkerPoolMessage<Message>>
 
@@ -218,32 +222,43 @@ public struct WorkerPoolRef<Message>: ReceivesMessages {
         self._ref.tell(.forward(message), file: file, line: line)
     }
 
-    public var address: ActorAddress {
-        return self._ref.address
-    }
-
-    public var path: ActorPath {
-        return self.address.path
-    }
-}
-
-extension WorkerPoolRef: ReceivesQuestions {
-    public typealias Question = Message
-
-    public func ask<Answer>(
-        for type: Answer.Type,
+    public func ask<Answer: ActorMessage>(
+        for type: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Message
     ) -> AskResponse<Answer> {
-        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
+        self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
             .forward(makeQuestion(replyTo))
         }
     }
+
+    public var address: ActorAddress {
+        self._ref.address
+    }
+
+    public var path: ActorPath {
+        self.address.path
+    }
 }
 
+// extension WorkerPoolRef: ReceivesQuestions {
+//    public typealias Question = Message
+//
+//    public func ask<Answer: ActorMessage>(
+//        for type: Answer.Type = Answer.self,
+//        timeout: TimeAmount,
+//        file: String = #file, function: String = #function, line: UInt = #line,
+//        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+//    ) -> AskResponse<Answer> {
+//        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
+//            .forward(makeQuestion(replyTo))
+//        }
+//    }
+// }
+
 @usableFromInline
-internal enum WorkerPoolMessage<Message> {
+internal enum WorkerPoolMessage<Message: ActorMessage>: NonTransportableActorMessage {
     case forward(Message)
     case listing(Receptionist.Listing<Message>)
 }
@@ -264,7 +279,7 @@ public enum WorkerPoolError: Error {
 // MARK: WorkerPool Settings
 
 /// Used to configure a `WorkerPool`.
-public struct WorkerPoolSettings<Message> {
+public struct WorkerPoolSettings<Message: ActorMessage> { // TODO: need the Codable?
     /// Log level at which the worker pool will log its internal messages.
     /// Usually not interesting unless debugging the workings of a worker pool and workers joining/leaving it.
     var logLevel: Logger.Level = .trace

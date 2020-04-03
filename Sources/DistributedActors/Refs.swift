@@ -14,6 +14,7 @@
 
 import CDistributedActorsMailbox
 import Logging
+import struct NIO.ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Public API
@@ -22,7 +23,7 @@ import Logging
 ///
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message>: ReceivesMessages, _ReceivesSystemMessages {
+public struct ActorRef<Message: ActorMessage>: ReceivesMessages, _ReceivesSystemMessages {
     /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -108,7 +109,7 @@ extension ActorRef: Hashable {
     }
 
     public static func == (lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
-        return lhs.address == rhs.address
+        lhs.address == rhs.address
     }
 }
 
@@ -137,7 +138,7 @@ extension ActorRef.Personality {
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 public protocol ReceivesMessages: Codable {
-    associatedtype Message
+    associatedtype Message: ActorMessage
     /// Send message to actor referred to by this `ActorRef`.
     ///
     /// The symbolic version of "tell" is `!` and should also be pronounced as "tell".
@@ -160,9 +161,22 @@ public protocol _ReceivesSystemMessages: Codable {
     func _sendSystemMessage(_ message: _SystemMessage, file: String, line: UInt)
 
     /// :nodoc: INTERNAL API: This way remoting sends messages
-    func _tellOrDeadLetter(_ message: Any, file: String, line: UInt)
+    ///
+    /// - Reminder: DO NOT use this to deliver messages from the network, deserialization and delivery,
+    ///   must be performed in "one go" by `_deserializeDeliver`.
+    func _tellOrDeadLetter(_ message: Any, file: String, line: UInt) // TODO: This must die?
 
-    func _unsafeGetRemotePersonality() -> RemotePersonality<Any>
+    func _dropAsDeadLetter(_ message: Any, file: String, line: UInt)
+
+    /// :nodoc: INTERNAL API: This way remoting sends messages
+    func _deserializeDeliver(
+        _ messageBytes: NIO.ByteBuffer, using manifest: Serialization.Manifest,
+        on pool: SerializationPool,
+        file: String, line: UInt
+    )
+
+    /// :nodoc: INTERNAL API
+    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> RemotePersonality<M>
 }
 
 extension _ReceivesSystemMessages {
@@ -209,21 +223,64 @@ extension ActorRef {
         }
     }
 
-    /// Used internally by remoting layer, to send message when known it should be "fine"
+    // FIXME: can this be removed?
     public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
-            self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
+            traceLog_Mailbox(self.path, "_tellOrDeadLetter: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
+            self._dropAsDeadLetter(message, file: file, line: line)
             return // TODO: "drop" the message rather than dead letter it?
         }
 
         self.tell(_message, file: file, line: line)
     }
 
-    public func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
+    public func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
+    }
+
+    public func _deserializeDeliver(
+        _ messageBytes: NIO.ByteBuffer, using manifest: Serialization.Manifest,
+        on pool: SerializationPool,
+        file: String = #file, line: UInt = #line
+    ) {
+        pool.deserializeAny(
+            from: messageBytes,
+            using: manifest,
+            recipientPath: self.path,
+            callback: .init {
+                switch $0 {
+                case .success(.message(let message)):
+                    switch self.personality {
+                    case .adapter(let adapter):
+                        adapter.trySendUserMessage(message, file: #file, line: #line)
+                    default:
+                        self._tellOrDeadLetter(message)
+                    }
+                case .success(.deadLetter(let message)):
+                    self._dropAsDeadLetter(message)
+
+                case .failure(let error):
+                    let metadata: Logger.Metadata = [
+                        "recipient": "\(self.path)",
+                        "message/expected/type": "\(String(reflecting: Message.self))",
+                        "message/manifest": "\(manifest)",
+                    ]
+
+                    if let system = self._system {
+                        system.log.warning("Failed to deserialize/deliver message to \(self.path), error: \(error)", metadata: metadata)
+                    } else {
+                        // TODO: last resort, print error (system could be going down)
+                        print("Failed to deserialize/delivery message to \(self.path). Metadata: \(metadata)")
+                    }
+                }
+            }
+        )
+    }
+
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
         switch self.personality {
-        case .remote(let remote):
-            return remote as! RemotePersonality<Any>
+        case .remote(let personality):
+            return personality._unsafeAssumeCast(to: type)
         default:
             fatalError("Wrongly assumed personality of \(self) to be [remote]!")
         }
@@ -260,7 +317,7 @@ extension ActorRef {
 /// and are such that a stopped actor can be released as soon as possible (shell), yet the cell remains
 /// active while anyone still holds references to it. The mailbox class on the other hand, is kept alive by
 /// by the cell, as it may result in message sends to dead letters which the mailbox handles
-public final class ActorCell<Message> {
+public final class ActorCell<Message: ActorMessage> {
     let mailbox: Mailbox<Message>
 
     weak var actor: ActorShell<Message>?
@@ -273,15 +330,15 @@ public final class ActorCell<Message> {
     }
 
     var system: ActorSystem? {
-        return self._system
+        self._system
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return self.mailbox.deadLetters
+        self.mailbox.deadLetters
     }
 
     var address: ActorAddress {
-        return self.mailbox.address
+        self.mailbox.address
     }
 
     @usableFromInline
@@ -320,7 +377,7 @@ public final class ActorCell<Message> {
 
 extension ActorCell: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "ActorCell(\(self.address), mailbox: \(self.mailbox), actor: \(String(describing: self.actor)))"
+        "ActorCell(\(self.address), mailbox: \(self.mailbox), actor: \(String(describing: self.actor)))"
     }
 }
 
@@ -336,7 +393,7 @@ public extension ActorRef where Message == DeadLetter {
 
     /// Simplified `adapt` method for dead letters, which can be used in contexts where the adapted type can be inferred from context
     func adapted<IncomingMessage>() -> ActorRef<IncomingMessage> {
-        return self.adapt(from: IncomingMessage.self)
+        self.adapt(from: IncomingMessage.self)
     }
 }
 
@@ -349,7 +406,7 @@ public extension ActorRef where Message == DeadLetter {
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
 // TODO: we could use this to make TestProbes more "real" rather than wrappers
-open class CellDelegate<Message> {
+open class CellDelegate<Message: ActorMessage> {
     public init() {
         // nothing
     }
@@ -397,24 +454,40 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     let address: ActorAddress = ._localRoot
 
     @usableFromInline
-    func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
+    internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
 
     @usableFromInline
-    func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    internal func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+    }
+
+    @usableFromInline
+    internal func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        CDistributedActorsMailbox.sact_dump_backtrace()
+        fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+    }
+
+    @usableFromInline
+    internal func _deserializeDeliver(
+        _ messageBytes: ByteBuffer, using manifest: Serialization.Manifest,
+        on pool: SerializationPool,
+        file: String = #file, line: UInt = #line
+    ) {
+        CDistributedActorsMailbox.sact_dump_backtrace()
+        fatalError("The \(self.address) actor MUST NOT receive any messages, yet attempted \(#function); Sent at \(file):\(line)")
     }
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(self.address)
+        AnyHashable(self.address)
     }
 
     @usableFromInline
-    func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
+    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT be interacted with directly!")
     }
@@ -422,11 +495,11 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
 
 extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "/"
+        "/"
     }
 
     public var debugDescription: String {
-        return "TheOneWhoHasNoParentActorRef(path: \"/\")"
+        "TheOneWhoHasNoParentActorRef(path: \"/\")"
     }
 }
 
@@ -438,11 +511,11 @@ public class Guardian {
     @usableFromInline
     let _address: ActorAddress
     var address: ActorAddress {
-        return self._address
+        self._address
     }
 
     var path: ActorPath {
-        return self.address.path
+        self.address.path
     }
 
     let name: String
@@ -451,7 +524,7 @@ public class Guardian {
     private var _children: Children
     private let _childrenLock: _Mutex = _Mutex()
     private var children: Children {
-        return self._childrenLock.synchronized { () in
+        self._childrenLock.synchronized { () in
             _children
         }
     }
@@ -538,11 +611,11 @@ public class Guardian {
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(self.address)
+        AnyHashable(self.address)
     }
 
     func makeChild<Message>(path: ActorPath, spawn: () throws -> ActorShell<Message>) throws -> ActorRef<Message> {
-        return try self._childrenLock.synchronized {
+        try self._childrenLock.synchronized {
             if self.stopping {
                 throw ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
             }
@@ -559,7 +632,7 @@ public class Guardian {
     }
 
     func stopChild(_ childRef: AddressableActorRef) throws {
-        return try self._childrenLock.synchronized {
+        try self._childrenLock.synchronized {
             guard self._children.contains(identifiedBy: childRef.address) else {
                 throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
             }
@@ -597,7 +670,7 @@ public class Guardian {
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.address))"), address: self.address, system: self.system)))
+        ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.address))"), address: self.address, system: self.system)))
     }
 }
 
@@ -632,7 +705,7 @@ extension Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }
@@ -647,6 +720,6 @@ extension Guardian: _ActorTreeTraversable {
 
 extension Guardian: CustomStringConvertible {
     public var description: String {
-        return "Guardian(\(self.address.path))"
+        "Guardian(\(self.address.path))"
     }
 }

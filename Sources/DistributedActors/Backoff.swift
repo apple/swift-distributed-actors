@@ -47,7 +47,7 @@ public enum Backoff {
     ///
     /// See `ConstantBackoffStrategy` for details
     public static func constant(_ backoff: TimeAmount) -> ConstantBackoffStrategy {
-        return .init(timeAmount: backoff)
+        .init(timeAmount: backoff)
     }
 
     /// Creates a strategy implementing the exponential backoff pattern.
@@ -92,7 +92,7 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
     }
 
     public func next() -> TimeAmount? {
-        return self.timeAmount
+        self.timeAmount
     }
 
     public func reset() {

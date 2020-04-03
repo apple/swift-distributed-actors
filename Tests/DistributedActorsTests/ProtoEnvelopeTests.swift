@@ -23,14 +23,13 @@ class ProtoEnvelopeTests: XCTestCase {
         var proto = ProtoEnvelope()
         proto.payload = Data([1, 2, 3])
         proto.recipient = ProtoActorAddress(ActorAddress(path: ._user, incarnation: .wellKnown))
-        proto.serializerID = 5
         let allocator = ByteBufferAllocator()
 
         var envelope_deserialized: ProtoEnvelope
 
         do {
             var envelopeBytes = try proto.serializedByteBuffer(allocator: allocator)
-            envelope_deserialized = try ProtoEnvelope(bytes: &envelopeBytes)
+            envelope_deserialized = try ProtoEnvelope(buffer: &envelopeBytes)
         }
 
         envelope_deserialized.shouldEqual(proto)

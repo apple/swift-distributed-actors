@@ -85,7 +85,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     ///     match the current value and so no exchange occurred.
     @inlinable
     public func compareAndExchange(expected: T, desired: T, succ: MemoryOrder = .seq_cst, fail: MemoryOrder = .seq_cst) -> Bool {
-        return T.atomic_compare_and_exchange(self.value, expected, desired, succ.to_C_memory_order, fail.to_C_memory_order)
+        T.atomic_compare_and_exchange(self.value, expected, desired, succ.to_C_memory_order, fail.to_C_memory_order)
     }
 
     /// Atomically compares the value against `expected` and, if they are equal,
@@ -107,7 +107,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     ///     match the current value and so no exchange occurred.
     @inlinable
     public func compareAndExchangeWeak(expected: T, desired: T, succ: MemoryOrder = .seq_cst, fail: MemoryOrder = .seq_cst) -> Bool {
-        return T.atomic_compare_and_exchange_weak(self.value, expected, desired, succ.to_C_memory_order, fail.to_C_memory_order)
+        T.atomic_compare_and_exchange_weak(self.value, expected, desired, succ.to_C_memory_order, fail.to_C_memory_order)
     }
 
     /// Atomically adds `rhs` to this object.
@@ -118,7 +118,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the addition occurred.
     @inlinable
     public func add(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return T.atomic_add(self.value, rhs, order.to_C_memory_order)
+        T.atomic_add(self.value, rhs, order.to_C_memory_order)
     }
 
     /// Atomically subtracts `rhs` from this object.
@@ -129,7 +129,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the subtraction occurred.
     @inlinable
     public func sub(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return T.atomic_sub(self.value, rhs, order.to_C_memory_order)
+        T.atomic_sub(self.value, rhs, order.to_C_memory_order)
     }
 
     /// Atomically execute a bitwise `and` with `rhs` on this object.
@@ -140,7 +140,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the `and` occurred.
     @inlinable
     public func and(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return T.atomic_and(self.value, rhs, order.to_C_memory_order)
+        T.atomic_and(self.value, rhs, order.to_C_memory_order)
     }
 
     /// Atomically execute a bitwise `or` with `rhs` on this object.
@@ -151,7 +151,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the `or` occurred.
     @inlinable
     public func or(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return T.atomic_or(self.value, rhs, order.to_C_memory_order)
+        T.atomic_or(self.value, rhs, order.to_C_memory_order)
     }
 
     /// Atomically execute a bitwise `xor` with `rhs` on this object.
@@ -160,7 +160,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the `xor` occurred.
     @inlinable
     public func xor(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return T.atomic_xor(self.value, rhs, order.to_C_memory_order)
+        T.atomic_xor(self.value, rhs, order.to_C_memory_order)
     }
 
     /// Atomically exchanges `value` for the current value of this object.
@@ -171,7 +171,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     /// - Returns: The value previously held by this object.
     @inlinable
     public func exchange(with value: T, order: MemoryOrder = .seq_cst) -> T {
-        return T.atomic_exchange(self.value, value, order.to_C_memory_order)
+        T.atomic_exchange(self.value, value, order.to_C_memory_order)
     }
 
     /// Atomically loads and returns the value of this object.
@@ -180,7 +180,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     /// - Returns: The value of this object
     @inlinable
     public func load(order: MemoryOrder = .seq_cst) -> T {
-        return T.atomic_load(self.value, order.to_C_memory_order)
+        T.atomic_load(self.value, order.to_C_memory_order)
     }
 
     /// Atomically replaces the value of this object with `value`.
@@ -248,7 +248,7 @@ public final class Atomic<T: AtomicPrimitive> {
     ///     match the current value and so no exchange occurred.
     @inlinable
     public func compareAndExchange(expected: T, desired: T, succ: MemoryOrder = .seq_cst, fail: MemoryOrder = .seq_cst) -> Bool {
-        return self.embedded.compareAndExchange(expected: expected, desired: desired, succ: succ, fail: fail)
+        self.embedded.compareAndExchange(expected: expected, desired: desired, succ: succ, fail: fail)
     }
 
     /// Atomically compares the value against `expected` and, if they are equal,
@@ -269,7 +269,7 @@ public final class Atomic<T: AtomicPrimitive> {
     ///     match the current value and so no exchange occurred.
     @inlinable
     public func compareAndExchangeWeak(expected: T, desired: T, succ: MemoryOrder = .seq_cst, fail: MemoryOrder = .seq_cst) -> Bool {
-        return self.embedded.compareAndExchangeWeak(expected: expected, desired: desired, succ: succ, fail: fail)
+        self.embedded.compareAndExchangeWeak(expected: expected, desired: desired, succ: succ, fail: fail)
     }
 
     /// Atomically adds `rhs` to this object.
@@ -280,7 +280,7 @@ public final class Atomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the addition occurred.
     @inlinable
     public func add(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return self.embedded.add(rhs, order: order)
+        self.embedded.add(rhs, order: order)
     }
 
     /// Atomically subtracts `rhs` from this object.
@@ -291,7 +291,7 @@ public final class Atomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the subtraction occurred.
     @inlinable
     public func sub(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return self.embedded.sub(rhs, order: order)
+        self.embedded.sub(rhs, order: order)
     }
 
     /// Atomically execute a bitwise `and` with `rhs` on this object.
@@ -302,7 +302,7 @@ public final class Atomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the `and` occurred.
     @inlinable
     public func and(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return self.embedded.and(rhs, order: order)
+        self.embedded.and(rhs, order: order)
     }
 
     /// Atomically execute a bitwise `or` with `rhs` on this object.
@@ -313,7 +313,7 @@ public final class Atomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the `or` occurred.
     @inlinable
     public func or(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return self.embedded.or(rhs, order: order)
+        self.embedded.or(rhs, order: order)
     }
 
     /// Atomically execute a bitwise `xor` with `rhs` on this object.
@@ -322,7 +322,7 @@ public final class Atomic<T: AtomicPrimitive> {
     /// - Returns: The previous value of this object, before the `xor` occurred.
     @inlinable
     public func xor(_ rhs: T, order: MemoryOrder = .seq_cst) -> T {
-        return self.embedded.xor(rhs, order: order)
+        self.embedded.xor(rhs, order: order)
     }
 
     /// Atomically exchanges `value` for the current value of this object.
@@ -333,7 +333,7 @@ public final class Atomic<T: AtomicPrimitive> {
     /// - Returns: The value previously held by this object.
     @inlinable
     public func exchange(with value: T, order: MemoryOrder = .seq_cst) -> T {
-        return self.embedded.exchange(with: value, order: order)
+        self.embedded.exchange(with: value, order: order)
     }
 
     /// Atomically loads and returns the value of this object.
@@ -342,7 +342,7 @@ public final class Atomic<T: AtomicPrimitive> {
     /// - Returns: The value of this object
     @inlinable
     public func load(order: MemoryOrder = .seq_cst) -> T {
-        return self.embedded.load(order: order)
+        self.embedded.load(order: order)
     }
 
     /// Atomically replaces the value of this object with `value`.
@@ -589,7 +589,7 @@ public class AtomicBox<T: AnyObject> {
     ///     match the current value and so no exchange occurred.
     @inlinable
     public func compareAndExchange(expected expectedOpt: T?, desired desiredOpt: T?, succ: MemoryOrder = .seq_cst, fail: MemoryOrder = .seq_cst) -> Bool {
-        return withExtendedLifetime(desiredOpt) {
+        withExtendedLifetime(desiredOpt) {
             let expectedPtr = expectedOpt.map(Unmanaged<T>.passUnretained)
             let desiredPtr = desiredOpt.map(Unmanaged<T>.passUnretained)
             let expectedBitPtr: UInt = expectedPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
@@ -629,7 +629,7 @@ public class AtomicBox<T: AnyObject> {
     ///     match the current value and so no exchange occurred.
     @inlinable
     public func compareAndExchangeWeak(expectedOpt: T?, desiredOpt: T?, succ: MemoryOrder = .seq_cst, fail: MemoryOrder = .seq_cst) -> Bool {
-        return withExtendedLifetime(desiredOpt) {
+        withExtendedLifetime(desiredOpt) {
             let expectedPtr = expectedOpt.map(Unmanaged<T>.passUnretained)
             let desiredPtr = desiredOpt.map(Unmanaged<T>.passUnretained)
             let expectedBitPtr: UInt = expectedPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0

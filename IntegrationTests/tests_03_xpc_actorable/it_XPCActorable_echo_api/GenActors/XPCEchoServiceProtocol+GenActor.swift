@@ -23,7 +23,7 @@ import DistributedActorsXPC
 // MARK: DO NOT EDIT: Generated XPCEchoServiceProtocol messages 
 
 extension GeneratedActor.Messages {
-    public enum XPCEchoServiceProtocol { 
+    public enum XPCEchoServiceProtocol: ActorMessage { 
         case echo(string: String, _replyTo: ActorRef<String>) 
         case letItCrash  
     }

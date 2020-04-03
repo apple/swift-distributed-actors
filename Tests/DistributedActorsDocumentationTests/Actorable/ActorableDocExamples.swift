@@ -138,9 +138,9 @@ struct AllInOneMachine: Actorable, CoffeeMachine, Diagnostics { // <5>
 }
 
 // end::compose_protocols_1[]
-public struct Tea {}
+public struct Tea: ActorMessage {}
 
-public struct Coffee {}
+public struct Coffee: ActorMessage {}
 
 class UsingAllInOneMachine {
     func run() throws {
@@ -158,6 +158,7 @@ class UsingAllInOneMachine {
         printAnyDiagnostics(diagnostics: machine) // <3>
 
         // end::compose_protocols_2[]
+        _ = coffee // avoids warning: unused variable
     }
 }
 
@@ -172,7 +173,7 @@ struct LifecycleReacting: Actorable {
     }
 
     func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective { // <4>
-        return .ignore
+        .ignore
     }
 
     func something() {
@@ -226,5 +227,8 @@ public struct DontConformMessageToCodable: Actorable {
         text
     }
 }
+
+// can provide a conformance manually, rather than relying on the built in Codable generated one
+extension DontConformMessageToCodable.Message: NonTransportableActorMessage {}
 
 // end::disable_codable_gen[]

@@ -27,7 +27,7 @@ import it_XPCActorable_echo_api
 /// DO NOT EDIT: Generated ActorableWatcher messages
 extension ActorableWatcher {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case noop 
     }
     
@@ -42,7 +42,7 @@ extension ActorableWatcher {
             let context = Actor<ActorableWatcher>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 

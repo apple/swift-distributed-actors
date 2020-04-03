@@ -15,10 +15,10 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ReplicaId
 
-extension ReplicaId: ProtobufRepresentable {
+extension ReplicaID: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionReplicaId
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionReplicaId {
+    public func toProto(context: Serialization.Context) throws -> ProtoVersionReplicaId {
         var proto = ProtoVersionReplicaId()
         switch self {
         case .actorAddress(let actorAddress):
@@ -29,9 +29,9 @@ extension ReplicaId: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionReplicaId, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoVersionReplicaId, context: Serialization.Context) throws {
         guard let value = proto.value else {
-            throw SerializationError.missingField("value", type: String(describing: ReplicaId.self))
+            throw SerializationError.missingField("value", type: String(describing: ReplicaID.self))
         }
 
         switch value {
@@ -51,7 +51,7 @@ extension ReplicaId: ProtobufRepresentable {
 extension VersionVector: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionVector
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionVector {
+    public func toProto(context: Serialization.Context) throws -> ProtoVersionVector {
         var proto = ProtoVersionVector()
 
         let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaId, version in
@@ -65,7 +65,7 @@ extension VersionVector: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionVector, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoVersionVector, context: Serialization.Context) throws {
         // `state` defaults to [:]
         self.state.reserveCapacity(proto.state.count)
 
@@ -73,7 +73,7 @@ extension VersionVector: ProtobufRepresentable {
             guard replicaVersion.hasReplicaID else {
                 throw SerializationError.missingField("replicaID", type: String(describing: ReplicaVersion.self))
             }
-            let replicaId = try ReplicaId(fromProto: replicaVersion.replicaID, context: context)
+            let replicaId = try ReplicaID(fromProto: replicaVersion.replicaID, context: context)
             state[replicaId] = replicaVersion.version
         }
     }
@@ -85,18 +85,18 @@ extension VersionVector: ProtobufRepresentable {
 extension VersionDot: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionDot
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionDot {
+    public func toProto(context: Serialization.Context) throws -> ProtoVersionDot {
         var proto = ProtoVersionDot()
         proto.replicaID = try self.replicaId.toProto(context: context)
         proto.version = UInt64(self.version)
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionDot, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoVersionDot, context: Serialization.Context) throws {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: VersionDot.self))
         }
-        self.replicaId = try ReplicaId(fromProto: proto.replicaID, context: context)
+        self.replicaId = try ReplicaID(fromProto: proto.replicaID, context: context)
         self.version = proto.version
     }
 }

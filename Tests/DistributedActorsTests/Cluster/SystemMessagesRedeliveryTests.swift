@@ -262,8 +262,8 @@ final class SystemMessagesRedeliveryTests: ActorSystemTestBase {
 
         func validateRoundTrip<T: Equatable>(_ value: T) throws {
             try shouldNotThrow {
-                let bytes = try system.serialization.serialize(message: value)
-                let back = try system.serialization.deserialize(T.self, from: bytes)
+                var (manifest, bytes) = try system.serialization.serialize(value)
+                let back = try system.serialization.deserialize(as: T.self, from: &bytes, using: manifest)
 
                 back.shouldEqual(value)
             }
@@ -281,19 +281,19 @@ final class SystemMessagesRedeliveryTests: ActorSystemTestBase {
     private func msg(seqNr: Int) -> SystemMessageEnvelope {
         // Note: in reality .start would NEVER be sent around and we do not define any serialization for it on purpose
         // but it is a nice simple message to use as our payload for tests here; the queues don't mind.
-        return .init(sequenceNr: seqNr, message: .start)
+        .init(sequenceNr: seqNr, message: .start)
     }
 
     private func ack(_ seqNr: Int) -> _SystemMessage.ACK {
-        return _SystemMessage.ACK(sequenceNr: seqNr)
+        _SystemMessage.ACK(sequenceNr: seqNr)
     }
 
     private func nack(_ seqNr: Int) -> _SystemMessage.NACK {
-        return _SystemMessage.NACK(sequenceNr: seqNr)
+        _SystemMessage.NACK(sequenceNr: seqNr)
     }
 
     private func seqNr(_ i: Int) -> SystemMessageEnvelope.SequenceNr {
-        return SystemMessageEnvelope.SequenceNr(i)
+        SystemMessageEnvelope.SequenceNr(i)
     }
 }
 

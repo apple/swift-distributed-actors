@@ -23,7 +23,7 @@ import class NIO.EventLoopFuture
 // MARK: DO NOT EDIT: Codable conformance for TestActorable.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension TestActorable.Message: Codable {
+extension TestActorable.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case ping
@@ -105,11 +105,11 @@ extension TestActorable.Message: Codable {
             self = .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)
         case .greetReplyToReturnStrictThrowing:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing__replyTo)
             self = .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)
         case .greetReplyToReturnNIOFuture:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnNIOFuture_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetReplyToReturnNIOFuture__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetReplyToReturnNIOFuture__replyTo)
             self = .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)
         case .becomeStopped:
             self = .becomeStopped

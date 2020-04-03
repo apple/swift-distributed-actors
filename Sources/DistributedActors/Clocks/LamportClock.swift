@@ -37,7 +37,7 @@ public struct LamportClock: Codable, ExpressibleByIntegerLiteral {
     }
 
     public var time: LamportTime {
-        return self._time
+        self._time
     }
 
     public mutating func increment() {

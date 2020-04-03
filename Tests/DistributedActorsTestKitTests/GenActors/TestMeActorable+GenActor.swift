@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -26,7 +26,7 @@ import XCTest
 /// DO NOT EDIT: Generated TestMeActorable messages
 extension TestMeActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(_replyTo: ActorRef<String>) 
     }
     
@@ -41,7 +41,7 @@ extension TestMeActorable {
             let context = Actor<TestMeActorable>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -86,7 +86,7 @@ extension Actor where A.Message == TestMeActorable.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .hello(_replyTo: _replyTo)}
+                Self.Message.hello(_replyTo: _replyTo)}
         )
     }
  

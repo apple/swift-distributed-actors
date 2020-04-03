@@ -40,19 +40,22 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
 
             // --- prepare actor on [first], which watches remote actors ---
 
-            _ = try first.spawn("watcher1", Behavior<String>.setup { context in
-                context.watch(refOnFirstToRemote1)
-                context.watch(refOnFirstToRemote2)
+            _ = try first.spawn(
+                "watcher1",
+                Behavior<String>.setup { context in
+                    context.watch(refOnFirstToRemote1)
+                    context.watch(refOnFirstToRemote2)
 
-                let recv: Behavior<String> = .receiveMessage { _ in
-                    .same
-                }
+                    let recv: Behavior<String> = .receiveMessage { _ in
+                        .same
+                    }
 
-                return recv.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                    p.ref.tell(terminated)
-                    return .same
+                    return recv.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                        p.ref.tell(terminated)
+                        return .same
+                    }
                 }
-            })
+            )
 
             try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
             first.cluster.down(node: second.cluster.node.node)

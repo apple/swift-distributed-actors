@@ -17,11 +17,11 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension Cluster.Membership: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoClusterMembership
+extension Cluster.Membership: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoClusterMembership
 
-    func toProto(context: ActorSerializationContext) throws -> ProtoClusterMembership {
-        var proto = InternalProtobufRepresentation()
+    public func toProto(context: Serialization.Context) throws -> ProtoClusterMembership {
+        var proto = ProtobufRepresentation()
         proto.members = try self._members.values.map {
             try $0.toProto(context: context)
         }
@@ -31,7 +31,7 @@ extension Cluster.Membership: InternalProtobufRepresentable {
         return proto
     }
 
-    init(fromProto proto: ProtoClusterMembership, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoClusterMembership, context: Serialization.Context) throws {
         self._members = [:]
         self._members.reserveCapacity(proto.members.count)
         for protoMember in proto.members {
@@ -46,11 +46,11 @@ extension Cluster.Membership: InternalProtobufRepresentable {
     }
 }
 
-extension Cluster.Member: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoClusterMember
+extension Cluster.Member: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoClusterMember
 
-    func toProto(context: ActorSerializationContext) throws -> ProtoClusterMember {
-        var proto = InternalProtobufRepresentation()
+    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
+        var proto = ProtobufRepresentation()
         proto.node = try self.node.toProto(context: context)
         proto.status = self.status.toProto(context: context)
         proto.reachability = try self.reachability.toProto(context: context)
@@ -60,9 +60,9 @@ extension Cluster.Member: InternalProtobufRepresentable {
         return proto
     }
 
-    init(fromProto proto: ProtoClusterMember, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.hasNode else {
-            throw SerializationError.missingField("node", type: "\(InternalProtobufRepresentation.self)")
+            throw SerializationError.missingField("node", type: "\(ProtobufRepresentation.self)")
         }
         self.node = try .init(fromProto: proto.node, context: context)
         self.status = try .init(fromProto: proto.status, context: context)
@@ -73,7 +73,7 @@ extension Cluster.Member: InternalProtobufRepresentable {
 
 // not conforming to InternalProtobufRepresentable since it is a raw `enum` not a Message
 extension Cluster.MemberReachability {
-    func toProto(context: ActorSerializationContext) throws -> ProtoClusterMemberReachability {
+    func toProto(context: Serialization.Context) throws -> ProtoClusterMemberReachability {
         switch self {
         case .reachable:
             return .reachable
@@ -82,7 +82,7 @@ extension Cluster.MemberReachability {
         }
     }
 
-    init(fromProto proto: ProtoClusterMemberReachability, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoClusterMemberReachability, context: Serialization.Context) throws {
         switch proto {
         case .unspecified:
             throw SerializationError.missingField("reachability", type: "\(ProtoClusterMemberReachability.self)")
@@ -98,7 +98,7 @@ extension Cluster.MemberReachability {
 
 // not conforming to InternalProtobufRepresentable since this is a raw `enum` not a Message
 extension Cluster.MemberStatus {
-    func toProto(context: ActorSerializationContext) -> ProtoClusterMemberStatus {
+    func toProto(context: Serialization.Context) -> ProtoClusterMemberStatus {
         var proto = ProtoClusterMemberStatus()
         switch self {
         case .joining:
@@ -115,7 +115,7 @@ extension Cluster.MemberStatus {
         return proto
     }
 
-    init(fromProto proto: ProtoClusterMemberStatus, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoClusterMemberStatus, context: Serialization.Context) throws {
         switch proto {
         case .unspecified:
             throw SerializationError.missingField("status", type: "\(ProtoClusterMemberStatus.self)")

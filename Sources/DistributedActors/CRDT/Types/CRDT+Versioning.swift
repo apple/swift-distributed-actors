@@ -58,6 +58,16 @@ extension CRDT {
             self.gaps.insert(dot)
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+        }
+
         /// Merge another `VersionContext` into this. This `VersionContext` is mutated while `other` is not.
         ///
         /// - Parameter other: The `VersionContext` to merge.
@@ -113,10 +123,10 @@ extension CRDT {
     /// Important: Each replica must be associated with a single `VersionedContainer` instance only to ensure version is incremented properly.
     ///
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
-    public struct VersionedContainer<Element: Hashable>: NamedDeltaCRDT {
+    public struct VersionedContainer<Element: Codable & Hashable>: NamedDeltaCRDT {
         public typealias Delta = VersionedContainerDelta<Element>
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         // Version context of the container
         internal var versionContext: VersionContext
@@ -141,7 +151,7 @@ extension CRDT {
             self.elementByBirthDot.isEmpty
         }
 
-        public init(replicaId: ReplicaId, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
+        public init(replicaId: ReplicaID, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
             self.replicaId = replicaId
             self.versionContext = versionContext
             self.elementByBirthDot = elementByBirthDot
@@ -150,9 +160,12 @@ extension CRDT {
         public mutating func add(_ element: Element) {
             // The assumption here is that a replica is always up-to-date with its updates (i.e., `versionContext.gaps`
             // should not contain dots for the current replica), so we can generate next dot using `versionContext.vv` only.
-            precondition(self.versionContext.gaps.filter { dot in
-                dot.replicaId == self.replicaId
-            }.isEmpty, "There must not be gaps in replica \(self.replicaId)'s version context")
+            precondition(
+                self.versionContext.gaps.filter { dot in
+                    dot.replicaId == self.replicaId
+                }.isEmpty,
+                "There must not be gaps in replica \(self.replicaId)'s version context"
+            )
 
             // Increment version vector and create a birth dot with the new version
             let nextVersion = self.versionContext.vv.increment(at: self.replicaId)
@@ -222,6 +235,20 @@ extension CRDT {
             self.elementByBirthDot = [:]
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else if let wellTypedOtherDelta = other as? Self.Delta {
+                // TODO: what if we simplify and compute deltas...?
+                self.mergeDelta(wellTypedOtherDelta)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+        }
+
         public mutating func merge(other: VersionedContainer<Element>) {
             let merged = VersionContextAndElements(self.versionContext, self.elementByBirthDot)
                 .merging(other: VersionContextAndElements(other.versionContext, other.elementByBirthDot))
@@ -241,7 +268,7 @@ extension CRDT {
         }
     }
 
-    public struct VersionedContainerDelta<Element: Hashable>: CvRDT {
+    public struct VersionedContainerDelta<Element: Codable & Hashable>: CvRDT {
         // Version context of the delta, containing new versions/dots associated with updates captured in this delta.
         internal var versionContext: VersionContext = VersionContext()
 
@@ -253,6 +280,16 @@ extension CRDT {
         }
 
         init() {}
+
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+        }
 
         public mutating func merge(other: VersionedContainerDelta) {
             let merged = VersionContextAndElements(self.versionContext, self.elementByBirthDot)

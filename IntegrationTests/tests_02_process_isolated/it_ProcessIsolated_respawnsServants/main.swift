@@ -22,7 +22,7 @@ import DistributedActors
 
 let isolated = ProcessIsolated { boot in
     // create a new actor system (for each process this will run a new since this is the beginning of the program)
-    boot.settings.defaultLogLevel = .info
+    boot.settings.logging.defaultLevel = .info
     return ActorSystem(settings: boot.settings)
 }
 
@@ -37,16 +37,18 @@ let workersKey = Receptionist.RegistrationKey(String.self, id: "workers")
 try isolated.run(on: .master) {
     let pool = try WorkerPool.spawn(isolated.system, "workerPool", select: .dynamic(workersKey))
 
-    let _: ActorRef<String> = try isolated.system.spawn("pingSource", .setup { context in
+    let _: ActorRef<String> = try isolated.system.spawn(
+        "pingSource",
+        .setup { context in
 
-        context.timers.startPeriodic(key: TimerKey("ping"), message: "ping", interval: .seconds(1))
+            context.timers.startPeriodic(key: TimerKey("ping"), message: "ping", interval: .seconds(1))
 
-        return .receiveMessage { ping in
-            pool.tell("periodic:\(ping)")
-            return .same
+            return .receiveMessage { ping in
+                pool.tell("periodic:\(ping)")
+                return .same
+            }
         }
-
-    })
+    )
 
     // should we allow anyone to issue this, or only on master? we could `runOnMaster { control` etc
     isolated.spawnServantProcess(supervision: .respawn(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
@@ -57,15 +59,18 @@ try isolated.run(on: .master) {
 // We only spawn workers on the servant nodes
 try isolated.run(on: .servant) {
     for _ in 1 ... 5 {
-        let _: ActorRef<String> = try isolated.system.spawn(.prefixed(with: "worker"), .setup { context in
-            context.log.info("Spawned \(context.path) on servant node, registering with receptionist.")
-            context.system.receptionist.register(context.myself, key: workersKey)
+        let _: ActorRef<String> = try isolated.system.spawn(
+            .prefixed(with: "worker"),
+            .setup { context in
+                context.log.info("Spawned \(context.path) on servant node, registering with receptionist.")
+                context.system.receptionist.register(context.myself, key: workersKey)
 
-            return .receiveMessage { message in
-                context.log.info("Handled: \(message)")
-                return .same
+                return .receiveMessage { message in
+                    context.log.info("Handled: \(message)")
+                    return .same
+                }
             }
-        })
+        )
     }
 }
 

@@ -44,7 +44,7 @@ public struct ClusterSettings {
             self.node.host = newValue
         }
         get {
-            return self.node.host
+            self.node.host
         }
     }
 
@@ -54,7 +54,7 @@ public struct ClusterSettings {
             self.node.port = newValue
         }
         get {
-            return self.node.port
+            self.node.port
         }
     }
 

@@ -52,7 +52,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Test utilities
 
-    private func makeCRDTOwnerTestProbe(system: ActorSystem, testKit: ActorTestKit, id: CRDT.Identity, data: AnyStateBasedCRDT) throws -> ActorTestProbe<OwnerMessage> {
+    private func makeCRDTOwnerTestProbe(system: ActorSystem, testKit: ActorTestKit, id: CRDT.Identity, data: StateBasedCRDT) throws -> ActorTestProbe<OwnerMessage> {
         let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
 

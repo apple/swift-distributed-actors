@@ -46,9 +46,12 @@ internal enum POSIXProcessUtils {
 
         let nenv = env.count
         let envp = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1 + nenv)
-        envp.initialize(from: env.map {
-            strdup("\($0)=\($1)")
-        }, count: nenv)
+        envp.initialize(
+            from: env.map {
+                strdup("\($0)=\($1)")
+            },
+            count: nenv
+        )
         envp[env.count] = nil
 
         defer {
@@ -119,7 +122,7 @@ internal enum POSIXProcessUtils {
 
     /// Get PID of parent process.
     internal static func getParentPID() -> Int {
-        return Int(getppid())
+        Int(getppid())
     }
 
     /// Exits the current process.

@@ -30,12 +30,14 @@ final class OpLogStreamTests: XCTestCase {
         stream.add(.add(id: "three"))
 
         let replayer = stream.replay(from: .beginning)
-        Array(replayer.nextOpsChunk()).shouldEqual([
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(1), op: TestOp.add(id: "one")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(2), op: TestOp.add(id: "two")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
-        ])
+        Array(replayer.nextOpsChunk()).shouldEqual(
+            [
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(1), op: TestOp.add(id: "one")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(2), op: TestOp.add(id: "two")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
+            ]
+        )
     }
 
     func test_ops_replay_beyondEnd() {
@@ -46,12 +48,14 @@ final class OpLogStreamTests: XCTestCase {
         stream.add(.add(id: "three"))
 
         var replayer = stream.replay(from: .beginning)
-        Array(replayer.nextOpsChunk()).shouldEqual([
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(1), op: TestOp.add(id: "one")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(2), op: TestOp.add(id: "two")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
-        ])
+        Array(replayer.nextOpsChunk()).shouldEqual(
+            [
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(1), op: TestOp.add(id: "one")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(2), op: TestOp.add(id: "two")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
+            ]
+        )
         replayer.confirm(until: 4)
         replayer.nextOpsChunk().shouldBeEmpty()
         replayer.nextOpsChunk().shouldBeEmpty()
@@ -67,17 +71,21 @@ final class OpLogStreamTests: XCTestCase {
 
         var replayer = stream.replay(from: .beginning)
 
-        Array(replayer.nextOpsChunk()).shouldEqual([
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(1), op: TestOp.add(id: "one")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(2), op: TestOp.add(id: "two")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
-        ])
+        Array(replayer.nextOpsChunk()).shouldEqual(
+            [
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(1), op: TestOp.add(id: "one")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(2), op: TestOp.add(id: "two")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
+            ]
+        )
 
         replayer.confirm(until: 2)
-        Array(replayer.nextOpsChunk()).shouldEqual([
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
-            OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
-        ])
+        Array(replayer.nextOpsChunk()).shouldEqual(
+            [
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(3), op: TestOp.rm(id: "one")),
+                OpLog<TestOp>.SequencedOp(sequenceRange: .single(4), op: TestOp.add(id: "three")),
+            ]
+        )
     }
 }

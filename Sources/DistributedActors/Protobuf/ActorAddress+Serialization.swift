@@ -16,7 +16,7 @@
 // MARK: ProtoActorAddress
 
 extension ActorAddress {
-    init(_ proto: ProtoActorAddress) throws {
+    init(fromProto proto: ProtoActorAddress) throws {
         let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
         let incarnation = ActorIncarnation(Int(proto.incarnation))
 
@@ -42,7 +42,7 @@ extension ProtoActorAddress {
 extension ActorAddress: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoActorAddress
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoActorAddress {
+    public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {
         var address = ProtoActorAddress()
         let node = self.node ?? context.localNode
         address.node = try node.toProto(context: context)
@@ -53,7 +53,7 @@ extension ActorAddress: ProtobufRepresentable {
         return address
     }
 
-    public init(fromProto proto: ProtoActorAddress, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoActorAddress, context: Serialization.Context) throws {
         let uniqueNode: UniqueNode = try .init(fromProto: proto.node, context: context)
 
         // TODO: make Error
@@ -66,7 +66,7 @@ extension ActorAddress: ProtobufRepresentable {
 extension UniqueNode: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoUniqueNode
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoUniqueNode {
+    public func toProto(context: Serialization.Context) throws -> ProtoUniqueNode {
         var proto = ProtoUniqueNode()
         proto.nid = self.nid.value
         proto.node.protocol = self.node.protocol
@@ -77,7 +77,7 @@ extension UniqueNode: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoUniqueNode, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoUniqueNode, context: Serialization.Context) throws {
         let node = Node(
             protocol: proto.node.protocol,
             systemName: proto.node.system,
@@ -92,11 +92,11 @@ extension UniqueNode: ProtobufRepresentable {
 extension ActorRef: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoActorAddress
 
-    public func toProto(context: ActorSerializationContext) throws -> ProtoActorAddress {
-        return try self.address.toProto(context: context)
+    public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {
+        try self.address.toProto(context: context)
     }
 
-    public init(fromProto proto: ProtoActorAddress, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoActorAddress, context: Serialization.Context) throws {
         self = context.resolveActorRef(Message.self, identifiedBy: try ActorAddress(fromProto: proto, context: context))
     }
 }

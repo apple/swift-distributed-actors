@@ -19,7 +19,11 @@ import NIO
 import XCTest
 
 final class MembershipSerializationTests: ActorSystemTestBase {
-    lazy var context: ActorSerializationContext! = ActorSerializationContext(log: system.log, localNode: system.cluster.node, system: system, allocator: system.settings.serialization.allocator)
+    lazy var context: Serialization.Context! = Serialization.Context(
+        log: system.log,
+        system: system,
+        allocator: system.settings.serialization.allocator
+    )
 
     override func tearDown() {
         super.tearDown()

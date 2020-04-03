@@ -27,20 +27,20 @@ extension CRDT {
     ///
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
     public struct LWWRegister<Value>: CvRDT, LWWRegisterOperations {
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         let defaultClock: () -> Clock
         let initialValue: Value
 
         public private(set) var value: Value
         private(set) var clock: Clock
-        private(set) var updatedBy: ReplicaId
+        private(set) var updatedBy: ReplicaID
 
-        init(replicaId: ReplicaId, initialValue: Value, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
+        init(replicaId: ReplicaID, initialValue: Value, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
             self.init(replicaId: replicaId, initialValue: initialValue, clock: defaultClock(), defaultClock: defaultClock)
         }
 
-        init(replicaId: ReplicaId, initialValue: Value, clock: Clock, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
+        init(replicaId: ReplicaID, initialValue: Value, clock: Clock, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
             self.replicaId = replicaId
             self.defaultClock = defaultClock
             self.initialValue = initialValue
@@ -56,6 +56,16 @@ extension CRDT {
             self.updatedBy = self.replicaId
         }
 
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+        }
+
         public mutating func merge(other: LWWRegister<Value>) {
             // The greater timestamp wins
             if self.clock < other.clock {
@@ -68,7 +78,7 @@ extension CRDT {
 }
 
 extension CRDT.LWWRegister where Value: ExpressibleByNilLiteral {
-    init(replicaId: ReplicaId) {
+    init(replicaId: ReplicaID) {
         self.init(replicaId: replicaId, initialValue: nil)
     }
 }

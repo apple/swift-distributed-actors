@@ -69,7 +69,7 @@ public final class LinkedBlockingQueue<A> {
     /// - Returns: The item at the head of the queue
     @inlinable
     public func dequeue() -> A {
-        return self.lock.synchronized { () -> A in
+        self.lock.synchronized { () -> A in
             while true {
                 if let elem = self.take() {
                     return elem
@@ -99,7 +99,7 @@ public final class LinkedBlockingQueue<A> {
     /// - Returns: The head of the queue or nil, when the timeout is exceeded.
     @inlinable
     public func poll(_ timeout: TimeAmount) -> A? {
-        return self.lock.synchronized { () -> A? in
+        self.lock.synchronized { () -> A? in
             if let item = self.take() {
                 return item
             }
@@ -134,7 +134,7 @@ public final class LinkedBlockingQueue<A> {
     }
 
     public func size() -> Int {
-        return self.lock.synchronized {
+        self.lock.synchronized {
             self.count
         }
     }

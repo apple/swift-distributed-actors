@@ -24,7 +24,7 @@ import XCTest
 // MARK: DO NOT EDIT: Codable conformance for GreetMeGreeter.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension GreetMeGreeter.Message: Codable {
+extension GreetMeGreeter.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case greet

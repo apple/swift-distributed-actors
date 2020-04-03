@@ -23,6 +23,7 @@ public enum ActorableXPCMessageField: String {
     case message = "M"
     case messageLength = "ML"
 
+    case manifestHint = "H"
     case serializerId = "S"
 
     case recipientLength = "RL"

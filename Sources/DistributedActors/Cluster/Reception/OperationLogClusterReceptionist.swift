@@ -225,9 +225,11 @@ public class OperationLogClusterReceptionist {
             context.log.info("Initialized cluster receptionist")
 
             // === listen to cluster events ------------------
-            context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
-                try self.onClusterEvent(context, event: event)
-            })
+            context.system.cluster.events.subscribe(
+                context.subReceive(Cluster.Event.self) { event in
+                    try self.onClusterEvent(context, event: event)
+                }
+            )
 
             // === timers ------------------
             // periodically gossip to other receptionists with the last seqNr we've seen,
@@ -238,7 +240,7 @@ public class OperationLogClusterReceptionist {
             )
 
             // === behavior -----------
-            return Behavior<Message>.receiveMessage {
+            return Behavior<Receptionist.Message>.receiveMessage {
                 self.tracelog(context, .receive, message: $0)
                 switch $0 {
                 case let push as PushOps:
@@ -259,7 +261,7 @@ public class OperationLogClusterReceptionist {
                     try self.onSubscribe(context: context, message: message)
 
                 default:
-                    context.log.warning("Received unexpected message: \($0)")
+                    context.log.warning("Received unexpected message: \(String(reflecting: $0)), \(type(of: $0))")
                 }
                 return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
@@ -274,21 +276,6 @@ public class OperationLogClusterReceptionist {
                 }
                 return .same
             }
-        }
-    }
-
-    // TODO: Serialization rework to remove the need for this
-    private func _sendWithSerializerSubclassWorkaround<T: Message>(_ message: T, to: ActorRef<Message>, typeForSerialization: T.Type) {
-        switch to.personality {
-        case .remote(let remote):
-            remote.sendUserMessage(
-                message,
-                messageTypeForSerialization: typeForSerialization
-            )
-        case .cell(let cell):
-            cell.sendMessage(message)
-        default:
-            fatalError("Receptionist ref MUST be to a remote or local ref, was \(to.personality)")
         }
     }
 }
@@ -308,11 +295,11 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onLookup(context: ActorContext<Message>, message: _Lookup) throws {
-        message.replyWith(self.storage.registrations(forKey: message._key.boxed) ?? [])
+        message.replyWith(self.storage.registrations(forKey: message._key.asAnyRegistrationKey) ?? [])
     }
 
     private func onRegister(context: ActorContext<Message>, message: _Register) throws {
-        let key = message._key.boxed
+        let key = message._key.asAnyRegistrationKey
         let ref = message._addressableActorRef
 
         guard ref.address.isLocal || (ref.address.node == context.system.cluster.node) else {
@@ -331,11 +318,14 @@ extension OperationLogClusterReceptionist {
 
             self.addOperation(context, .register(key: key, address: addressWithNode))
 
-            context.log.debug("Registered [\(ref.address)] for key [\(key)]", metadata: [
-                "receptionist/key": "\(key)",
-                "receptionist/registered": "\(ref)",
-                "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
-            ])
+            context.log.debug(
+                "Registered [\(ref.address)] for key [\(key)]",
+                metadata: [
+                    "receptionist/key": "\(key)",
+                    "receptionist/registered": "\(ref)",
+                    "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
+                ]
+            )
 
             if let subscribed = self.storage.subscriptions(forKey: key) {
                 let registrations = self.storage.registrations(forKey: key) ?? []
@@ -383,7 +373,7 @@ extension OperationLogClusterReceptionist {
         let peer = push.peer
 
         // 1.1) apply the pushed ops to our state
-        let peerReplicaId: ReplicaId = .actorAddress(push.peer.address)
+        let peerReplicaId: ReplicaID = .actorAddress(push.peer.address)
         let lastAppliedSeqNrAtPeer = self.appliedSequenceNrs[peerReplicaId]
 
         // De-duplicate
@@ -393,11 +383,14 @@ extension OperationLogClusterReceptionist {
             op.sequenceRange.max <= lastAppliedSeqNrAtPeer
         })
 
-        context.log.trace("Received \(push.sequencedOps.count) ops", metadata: [
-            "receptionist/peer": "\(push.peer.address)",
-            "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
-            "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
-        ])
+        context.log.trace(
+            "Received \(push.sequencedOps.count) ops",
+            metadata: [
+                "receptionist/peer": "\(push.peer.address)",
+                "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
+                "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
+            ]
+        )
 
         /// Collect which keys have been updated during this push, so we can publish updated listings for them.
         var keysToPublish: Set<AnyRegistrationKey> = []
@@ -414,7 +407,7 @@ extension OperationLogClusterReceptionist {
         // 2) check for all peers if we are "behind", and should pull information from them
         //    if this message indicated "end" of the push, then we assume we are up to date with it
         //    and will only pull again from it on the SlowACK
-        let myselfReplicaId: ReplicaId = .actorAddress(context.myself.address)
+        let myselfReplicaId: ReplicaID = .actorAddress(context.myself.address)
         // Note that we purposefully also skip replying to the peer (sender) to the sender of this push yet,
         // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
         for replica in push.observedSeqNrs.replicaIds
@@ -511,7 +504,7 @@ extension OperationLogClusterReceptionist {
         )
 
         tracelog(context, .push(to: peerReceptionistRef), message: ack)
-        self._sendWithSerializerSubclassWorkaround(ack, to: peerReceptionistRef, typeForSerialization: AckOps.self)
+        peerReceptionistRef.tell(ack)
     }
 
     /// Listings have changed for this key, thus we need to publish them to all subscribers
@@ -522,11 +515,14 @@ extension OperationLogClusterReceptionist {
 
         let registrations = self.storage.registrations(forKey: key) ?? []
 
-        context.log.trace("Publishing listing [\(key)]", metadata: [
-            "receptionist/key": "\(key.id)",
-            "receptionist/registrations": "\(registrations.count)",
-            "receptionist/subscribers": "\(subscribers.count)",
-        ])
+        context.log.trace(
+            "Publishing listing [\(key)]",
+            metadata: [
+                "receptionist/key": "\(key.id)",
+                "receptionist/registrations": "\(registrations.count)",
+                "receptionist/subscribers": "\(subscribers.count)",
+            ]
+        )
 
         for subscriber: AnySubscribe in subscribers {
             subscriber._replyWith(registrations)
@@ -585,11 +581,14 @@ extension OperationLogClusterReceptionist {
             return // nothing to stream, done
         }
 
-        context.log.debug("Streaming \(sequencedOps.count) ops: from [\(replayer.atSeqNr)]", metadata: [
-            "receptionist/peer": "\(peer.address)",
-            "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
-            "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
-        ]) // TODO: metadata pattern
+        context.log.debug(
+            "Streaming \(sequencedOps.count) ops: from [\(replayer.atSeqNr)]",
+            metadata: [
+                "receptionist/peer": "\(peer.address)",
+                "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
+                "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
+            ]
+        ) // TODO: metadata pattern
 
         let pushOps = PushOps(
             peer: context.myself,
@@ -601,7 +600,7 @@ extension OperationLogClusterReceptionist {
         /// hack in order ro override the Message.self being used to find the serializer
         switch peer.personality {
         case .remote(let remote):
-            remote.sendUserMessage(pushOps, messageTypeForSerialization: PushOps.self)
+            remote.sendUserMessage(pushOps)
         default:
             fatalError("Remote receptionists MUST be of .remote personality, was: \(peer.personality), \(peer.address)")
         }
@@ -613,23 +612,27 @@ extension OperationLogClusterReceptionist {
 
 extension OperationLogClusterReceptionist {
     private func onReceptionistTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
-        /// This is a sneaky trick to allow calling removeValue(ActorRef<Message>) directly rather than doing a full scan of the collection.
-        /// ActorRef equality is performed ONLY by `ActorAddress`, which means that we can "make up" this reference and it'd compare
-        /// correctly with a stored actor reference for this address if we had such.
-        let equalityHackRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminated.address, system: nil)))
-        if let removedReplayer = self.peerReceptionistReplayers.removeValue(forKey: equalityHackRef) {
-            context.log.trace("Removed peer receptionist [\(terminated.address)], was ops until: \(removedReplayer.atSeqNr)")
+        if let node = terminated.address.node {
+            self.pruneClusterMember(context, removedNode: node)
+        } else {
+            context.log.warning("Receptionist [\(terminated.address)] terminated however has no `node` set, this is highly suspect. It would mean this is 'us', but that cannot be.")
         }
     }
 
     private func onActorTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
-        let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log, address: terminated.address, system: nil)))
+        self.onActorTerminated(context, address: terminated.address)
+    }
+
+    private func onActorTerminated(_ context: ActorContext<Message>, address: ActorAddress) {
+        let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log, address: address, system: nil)))
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAddressable())
 
         for key in wasRegisteredWithKeys {
-            self.addOperation(context, .remove(key: key, address: terminated.address))
+            self.addOperation(context, .remove(key: key, address: address))
             self.publishListings(context, forKey: key)
         }
+
+        context.log.trace("Actor terminated \(address), and removed from receptionist.")
     }
 }
 
@@ -644,9 +647,12 @@ extension OperationLogClusterReceptionist {
             guard !diff.changes.isEmpty else {
                 return // empty changes, nothing to act on
             }
-            context.log.debug("Changes from initial snapshot, applying one by one", metadata: [
-                "membership/changes": "\(diff.changes)",
-            ])
+            context.log.debug(
+                "Changes from initial snapshot, applying one by one",
+                metadata: [
+                    "membership/changes": "\(diff.changes)",
+                ]
+            )
             try diff.changes.forEach { change in
                 try self.onClusterEvent(context, event: .membershipChange(change))
             }
@@ -661,7 +667,7 @@ extension OperationLogClusterReceptionist {
                 self.onNewClusterMember(context, change: effectiveChange)
             } else if effectiveChange.toStatus.isAtLeastDown {
                 // a member was removed, we should prune it from our observations
-                self.pruneClusterMember(context, removalChange: effectiveChange)
+                self.pruneClusterMember(context, removedNode: effectiveChange.node)
             }
 
         case .leadershipChange, .reachabilityChange:
@@ -694,19 +700,25 @@ extension OperationLogClusterReceptionist {
         self.replicateOpsBatch(context, to: remoteReceptionist)
     }
 
-    private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removalChange: Cluster.MembershipChange) {
-        // TODO: we could do this on the peer Receptionist dying, this way no need to invent the ref but get it from Terminated
-        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removalChange.node)
+    private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
+        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode)
         let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
 
-        _ = self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef)
+        guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {
+            // we already removed it, so no need to keep scanning for it.
+            // this could be because we received a receptionist termination before a node down or vice versa.
+            //
+            // although this should not happen and may indicate we got a Terminated for an address twice?
+            return
+        }
 
-        // clear observations
+        // clear observations; we only get them directly from the origin node, so since it has been downed
+        // we will never receive more observations from it.
         _ = self.observedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
         _ = self.appliedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
 
-        // clear state // FIXME: !!!!!!
-        context.log.warning("FIXME: !!!Should remove all registrations of actors on \(removalChange.node) but not implemented yet!!!")
+        // clear state any registrations still lingering about the now-known-to-be-down node
+        self.storage.pruneNode(removedNode)
     }
 }
 
@@ -716,7 +728,7 @@ extension OperationLogClusterReceptionist {
 extension OperationLogClusterReceptionist {
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
-    struct PushOps: Receptionist.Message, Codable {
+    class PushOps: Receptionist.Message {
         // the "sender" of the push
         let peer: ActorRef<Receptionist.Message>
 
@@ -730,15 +742,44 @@ extension OperationLogClusterReceptionist {
 
         let sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]
 
+        init(peer: ActorRef<Receptionist.Message>, observedSeqNrs: VersionVector, sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]) {
+            self.peer = peer
+            self.observedSeqNrs = observedSeqNrs
+            self.sequencedOps = sequencedOps
+            super.init()
+        }
+
         // the passed ops cover the range until the following sequenceNr
         func findMaxSequenceNr() -> UInt64 {
             self.sequencedOps.lazy.map { $0.sequenceRange.max }.max() ?? 0
+        }
+
+        public enum CodingKeys: CodingKey {
+            case peer
+            case observedSeqNrs
+            case sequencedOps
+        }
+
+        // TODO: annoyance; init MUST be defined here rather than in extension since it is required
+        public required init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.peer = try container.decode(ActorRef<Receptionist.Message>.self, forKey: .peer)
+            self.observedSeqNrs = try container.decode(VersionVector.self, forKey: .observedSeqNrs)
+            self.sequencedOps = try container.decode([OpLog<ReceptionistOp>.SequencedOp].self, forKey: .sequencedOps)
+            super.init()
+        }
+
+        public override func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.peer, forKey: .peer)
+            try container.encode(self.observedSeqNrs, forKey: .observedSeqNrs)
+            try container.encode(self.sequencedOps, forKey: .sequencedOps)
         }
     }
 
     /// Confirms that the remote peer receptionist has received Ops up until the given element,
     /// allows us to push more elements
-    struct AckOps: Receptionist.Message, Codable {
+    class AckOps: Receptionist.Message, CustomStringConvertible {
         /// Cumulative ACK of all ops until (and including) this one.
         ///
         /// If a recipient has more ops than the `confirmedUntil` confirms seeing, it shall offer
@@ -755,12 +796,67 @@ extension OperationLogClusterReceptionist {
             self.until = appliedUntil
             self.otherObservedSeqNrs = observedSeqNrs
             self.peer = peer
+            super.init()
+        }
+
+        public enum CodingKeys: CodingKey {
+            case until
+            case otherObservedSeqNrs
+            case peer
+        }
+
+        // TODO: annoyance; init MUST be defined here rather than in extension since it is required
+        public required init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let until = try container.decode(UInt64.self, forKey: .until)
+            let otherObservedSeqNrs = try container.decode(VersionVector.self, forKey: .otherObservedSeqNrs)
+            let peer = try container.decode(ActorRef<Receptionist.Message>.self, forKey: .peer)
+
+            self.until = until
+            self.otherObservedSeqNrs = otherObservedSeqNrs
+            self.peer = peer
+            super.init()
+        }
+
+        public override func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.until, forKey: .until)
+            try container.encode(self.otherObservedSeqNrs, forKey: .otherObservedSeqNrs)
+            try container.encode(self.peer, forKey: .peer)
+        }
+
+        var description: String {
+            "Receptionist.AckOps(until: \(self.until), otherObservedSeqNrs: \(self.otherObservedSeqNrs), peer: \(self.peer))"
         }
     }
 
-    internal struct PeriodicAckTick: Receptionist.Message {}
+    internal class PeriodicAckTick: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
+        override init() {
+            super.init()
+        }
 
-    internal struct PublishLocalListingsTrigger: Receptionist.Message {}
+        public required init(from decoder: Decoder) throws {
+            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+        }
+
+        var description: String {
+            "Receptionist.PeriodicAckTick()"
+        }
+    }
+
+    internal class PublishLocalListingsTrigger: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
+        override init() {
+            super.init()
+        }
+
+        public required init(from decoder: Decoder) throws {
+            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+        }
+
+        var description: String {
+            "Receptionist.PublishLocalListingsTrigger()"
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

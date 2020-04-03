@@ -65,7 +65,7 @@ internal struct HandshakeStateMachine {
         let settings: ClusterSettings
 
         var protocolVersion: DistributedActors.Version {
-            return self.settings.protocolVersion
+            self.settings.protocolVersion
         }
 
         let remoteNode: Node
@@ -94,7 +94,7 @@ internal struct HandshakeStateMachine {
 
         func makeOffer() -> Wire.HandshakeOffer {
             // TODO: maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
-            return Wire.HandshakeOffer(version: self.protocolVersion, from: self.localNode, to: self.remoteNode)
+            Wire.HandshakeOffer(version: self.protocolVersion, from: self.localNode, to: self.remoteNode)
         }
 
         mutating func onHandshakeTimeout() -> HandshakeStateMachine.RetryDirective {
@@ -142,11 +142,11 @@ internal struct HandshakeStateMachine {
 
         let offer: Wire.HandshakeOffer
         var boundAddress: UniqueNode {
-            return self.state.myselfNode
+            self.state.myselfNode
         }
 
         var protocolVersion: DistributedActors.Version {
-            return self.state.settings.protocolVersion
+            self.state.settings.protocolVersion
         }
 
         let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
@@ -240,7 +240,7 @@ internal struct HandshakeStateMachine {
         }
 
         func makeAccept() -> Wire.HandshakeAccept {
-            return .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode)
+            .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode)
         }
     }
 
@@ -258,7 +258,7 @@ internal struct HandshakeStateMachine {
         }
 
         func makeReject() -> Wire.HandshakeReject {
-            return .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode, reason: "\(self.error)")
+            .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode, reason: "\(self.error)")
         }
     }
 

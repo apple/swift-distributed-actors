@@ -26,7 +26,7 @@ import XCTest
 /// DO NOT EDIT: Generated GreetMe messages
 extension GreetMe {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(greeting: String) 
     }
     
@@ -41,7 +41,7 @@ extension GreetMe {
             let context = Actor<GreetMe>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -82,7 +82,7 @@ extension GreetMe {
 extension Actor where A.Message == GreetMe.Message {
 
      func hello(greeting: String) {
-        self.ref.tell(.hello(greeting: greeting))
+        self.ref.tell(Self.Message.hello(greeting: greeting))
     }
  
 

@@ -59,10 +59,14 @@ if let joinAddress = joinAddress {
 // end::cluster-sample[]
 
 // tag::cluster-sample-event-listener[]
-let eventsListener = try system.spawn("eventsListener", of: Cluster.Event.self, .receive { context, event in
-    context.log.info("Cluster Event: \(event)")
-    return .same
-}) // <1>
+let eventsListener = try system.spawn(
+    "eventsListener",
+    of: Cluster.Event.self,
+    .receive { context, event in
+        context.log.info("Cluster Event: \(event)")
+        return .same
+    }
+) // <1>
 
 system.cluster.events.subscribe(eventsListener) // <2>
 // end::cluster-sample-event-listener[]
@@ -73,24 +77,31 @@ system.cluster.events.subscribe(eventsListener) // <2>
 //    case text(String, from: ActorRef<ChatMessage>)
 // }
 // tag::cluster-sample-actors-discover-and-chat[]
-let chatter: ActorRef<String> = try system.spawn("chatter", .receive { context, text in
-    context.log.info("Received: \(text)")
-    return .same
-})
+let chatter: ActorRef<String> = try system.spawn(
+    "chatter",
+    .receive { context, text in
+        context.log.info("Received: \(text)")
+        return .same
+    }
+)
 let chatRoomId = "chat-room"
 system.receptionist.register(chatter, key: chatRoomId) // <1>
 
 if system.cluster.node.port == 7337 { // <2>
-    let greeter = try system.spawn("greeter", of: Receptionist.Listing<String>.self, .setup { context in // <3>
-        context.system.receptionist.subscribe(key: Receptionist.RegistrationKey(String.self, id: chatRoomId), subscriber: context.myself)
+    let greeter = try system.spawn(
+        "greeter",
+        of: Receptionist.Listing<String>.self,
+        .setup { context in // <3>
+            context.system.receptionist.subscribe(key: Receptionist.RegistrationKey(String.self, id: chatRoomId), subscriber: context.myself)
 
-        return .receiveMessage { chattersListing in // <4>
-            for chatter in chattersListing.refs {
-                chatter.tell("Welcome to [chat-room]! chatters online: \(chattersListing.refs.count)")
+            return .receiveMessage { chattersListing in // <4>
+                for chatter in chattersListing.refs {
+                    chatter.tell("Welcome to [chat-room]! chatters online: \(chattersListing.refs.count)")
+                }
+                return .same
             }
-            return .same
         }
-    })
+    )
 }
 
 // end::cluster-sample-actors-discover-and-chat[]

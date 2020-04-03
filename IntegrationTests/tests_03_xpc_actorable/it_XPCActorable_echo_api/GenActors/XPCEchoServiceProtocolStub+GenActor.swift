@@ -29,7 +29,7 @@ import DistributedActorsXPC
 /// DO NOT EDIT: Generated XPCEchoServiceProtocolStub messages
 extension XPCEchoServiceProtocolStub {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case xPCEchoServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCEchoServiceProtocol) 
     }
     

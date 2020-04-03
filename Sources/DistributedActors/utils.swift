@@ -42,19 +42,24 @@ import Foundation
  * Originally from: Johannes Weiss (MIT licensed) https://github.com/weissi/swift-undefined
  */
 // TODO: make those internal again
-public func undefined<T>(hint: String = "", file: StaticString = #file, line: UInt = #line) -> T {
+public func undefined<T>(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
     let message = hint == "" ? "" : ": \(hint)"
-    fatalError("undefined \(T.self)\(message)", file: file, line: line)
+    fatalError("undefined \(function) -> \(T.self)\(message)", file: file, line: line)
+}
+
+public func undefined(hint: String = "", function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> Never {
+    let message = hint == "" ? "" : ": \(hint)"
+    fatalError("undefined \(function) -> Never \(message)", file: file, line: line)
 }
 
 // TODO: make those internal again
-public func TODO<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
-    return undefined(hint: "TODO: \(hint)", file: file, line: line)
+public func TODO<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+    fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 
 // TODO: make those internal again
-public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
-    return undefined(hint: "FIXME: \(hint)", file: file, line: line)
+public func FIXME<T>(_ hint: String, function: StaticString = #function, file: StaticString = #file, line: UInt = #line) -> T {
+    fatalError("TODO(\(function)): \(hint)", file: file, line: line)
 }
 
 // TODO: Remove this once we're happy with swift-backtrace always printing backtrace (also on macos)
@@ -164,29 +169,29 @@ func traceLog_Remote(_ node: UniqueNode, _ message: @autoclosure () -> String, f
 
 @inlinable
 internal func _identity<T>(_ param: T) -> T {
-    return param
+    param
 }
 
 @inlinable
 internal func _right<L, R>(left: L, right: R) -> R {
-    return right
+    right
 }
 
 @inlinable
 internal func _left<L, R>(left: L, right: R) -> L {
-    return left
+    left
 }
 
 // MARK: Minor printing/formatting helpers
 
 internal extension BinaryInteger {
     var hexString: String {
-        return "0x\(String(self, radix: 16, uppercase: true))"
+        "0x\(String(self, radix: 16, uppercase: true))"
     }
 }
 
 internal extension Array where Array.Element == UInt8 {
     var hexString: String {
-        return "0x\(self.map { $0.hexString }.joined(separator: ""))"
+        "0x\(self.map { $0.hexString }.joined(separator: ""))"
     }
 }

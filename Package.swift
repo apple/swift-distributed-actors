@@ -215,33 +215,35 @@ var targets: [PackageDescription.Target] = [
 ]
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-targets.append(contentsOf: [
-    /* --- XPC Integration Tests --- */
-    .target(
-        name: "it_XPCActorable_echo",
-        dependencies: [
-            "DistributedActorsXPC",
-            "it_XPCActorable_echo_api",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_api",
-        dependencies: [
-            "DistributedActorsXPC",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_service",
-        dependencies: [
-            "DistributedActorsXPC",
-            "it_XPCActorable_echo_api",
-            "Files",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
-    ),
-])
+targets.append(
+    contentsOf: [
+        /* --- XPC Integration Tests --- */
+        .target(
+            name: "it_XPCActorable_echo",
+            dependencies: [
+                "DistributedActorsXPC",
+                "it_XPCActorable_echo_api",
+            ],
+            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
+        ),
+        .target(
+            name: "it_XPCActorable_echo_api",
+            dependencies: [
+                "DistributedActorsXPC",
+            ],
+            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
+        ),
+        .target(
+            name: "it_XPCActorable_echo_service",
+            dependencies: [
+                "DistributedActorsXPC",
+                "it_XPCActorable_echo_api",
+                "Files",
+            ],
+            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
+        ),
+    ]
+)
 #endif
 
 var dependencies: [Package.Dependency] = [
@@ -267,13 +269,17 @@ var dependencies: [Package.Dependency] = [
 ]
 
 #if swift(>=5.1)
-dependencies.append(contentsOf: [
-    .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
-])
+dependencies.append(
+    contentsOf: [
+        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
+    ]
+)
 #elseif swift(>=5.0)
-dependencies.append(contentsOf: [
-    .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50000.0")),
-])
+dependencies.append(
+    contentsOf: [
+        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50000.0")),
+    ]
+)
 #else
 fatalError("Currently only Swift 5.1 is supported. 5.0 could be supported, if you need Swift 5.0 support please reach out to to the team.")
 #endif

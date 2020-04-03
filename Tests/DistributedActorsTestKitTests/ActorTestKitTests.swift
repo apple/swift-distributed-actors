@@ -95,12 +95,14 @@ final class ActorTestKitTests: XCTestCase {
             }
         }
 
-        messages.shouldEqual([
-            "yes-1",
-            "yes-2",
-            "yes-3",
-            "yes-end",
-        ])
+        messages.shouldEqual(
+            [
+                "yes-1",
+                "yes-2",
+                "yes-3",
+                "yes-end",
+            ]
+        )
     }
 
     func test_fishForTransformed() throws {
@@ -123,12 +125,14 @@ final class ActorTestKitTests: XCTestCase {
             }
         }
 
-        messages.shouldEqual([
-            "yes-1!!!",
-            "yes-2!!!",
-            "yes-3!!!",
-            "yes-end!!!",
-        ])
+        messages.shouldEqual(
+            [
+                "yes-1!!!",
+                "yes-2!!!",
+                "yes-3!!!",
+                "yes-end!!!",
+            ]
+        )
     }
 
     func test_fishFor_canThrow() throws {

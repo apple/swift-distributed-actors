@@ -71,7 +71,7 @@ private let ringStop = Atomic<UInt64>(value: 0)
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-private struct Token {
+private struct Token: ActorMessage {
     let payload: Int
 
     init(_ payload: Int) {
@@ -82,7 +82,7 @@ private struct Token {
 private let mutex = _Mutex()
 
 private func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
-    return .receive { _, msg in
+    .receive { _, msg in
         switch msg.payload {
         case 1:
             ringStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
@@ -100,29 +100,32 @@ private func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<
 private var loopEntryPoint: ActorRef<Token>!
 
 private func initLoop(m messages: Int, n actors: Int) {
-    loopEntryPoint = try! system.spawn("a0", .setup { context in
-        // TIME spawning
-        // pprint("START SPAWN... \(SwiftBenchmarkTools.Timer().getTimeAsInt())")
-        spawnStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
+    loopEntryPoint = try! system.spawn(
+        "a0",
+        .setup { context in
+            // TIME spawning
+            // pprint("START SPAWN... \(SwiftBenchmarkTools.Timer().getTimeAsInt())")
+            spawnStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
 
-        var loopRef = context.myself
-        for i in (1 ... actors).reversed() {
-            loopRef = try context.spawn("a\(actors - i)", loopMember(id: i, next: loopRef, msg: Token(messages)))
-            // context.log.info("SPAWNed \(loopRef.path.name)...")
+            var loopRef = context.myself
+            for i in (1 ... actors).reversed() {
+                loopRef = try context.spawn("a\(actors - i)", loopMember(id: i, next: loopRef, msg: Token(messages)))
+                // context.log.info("SPAWNed \(loopRef.path.name)...")
+            }
+            // pprint("DONE SPAWN... \(SwiftBenchmarkTools.Timer().getTime())")
+            spawnStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
+
+            return .receiveMessage { m in
+                // pprint("START RING SEND... \(SwiftBenchmarkTools.Timer().getTime())")
+
+                // context.log.info("Send \(m) \(context.myself.path.name) >>> \(loopRef.path.name)")
+                loopRef.tell(m)
+
+                // END TIME spawning
+                return loopMember(id: 1, next: loopRef, msg: m)
+            }
         }
-        // pprint("DONE SPAWN... \(SwiftBenchmarkTools.Timer().getTime())")
-        spawnStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
-
-        return .receiveMessage { m in
-            // pprint("START RING SEND... \(SwiftBenchmarkTools.Timer().getTime())")
-
-            // context.log.info("Send \(m) \(context.myself.path.name) >>> \(loopRef.path.name)")
-            loopRef.tell(m)
-
-            // END TIME spawning
-            return loopMember(id: 1, next: loopRef, msg: m)
-        }
-    })
+    )
 }
 
 // === -----------------------------------------------------------------------------------------------------------------

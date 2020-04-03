@@ -22,6 +22,12 @@ var targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActors"],
         path: "Sources/SampleCluster"
     ),
+    // Example app showcasing the use of CRDTs to build a distributed "leader board" and "high score" system
+    .target(
+        name: "SampleDistributedCRDTLeaderboard",
+        dependencies: ["DistributedActors"],
+        path: "Sources/SampleDistributedCRDTLeaderboard"
+    ),
     .target(
         name: "SampleMetrics",
         dependencies: [
@@ -62,30 +68,32 @@ var targets: [PackageDescription.Target] = [
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: XPCActorable Examples (only available on Apple platforms)
 
-targets.append(contentsOf: [
-    .target(
-        name: "XPCActorServiceAPI",
-        dependencies: [
-            "DistributedActorsXPC",
-        ],
-        path: "Sources/XPCActorServiceAPI"
-    ),
-    .target(
-        name: "XPCActorServiceProvider",
-        dependencies: [
-            "XPCActorServiceAPI",
-        ],
-        path: "Sources/XPCActorServiceProvider"
-    ),
-    .target(
-        name: "XPCActorCaller", // this is "main"
-        dependencies: [
-            "XPCActorServiceAPI",
-            "Files",
-        ],
-        path: "Sources/XPCActorCaller"
-    ),
-])
+targets.append(
+    contentsOf: [
+        .target(
+            name: "XPCActorServiceAPI",
+            dependencies: [
+                "DistributedActorsXPC",
+            ],
+            path: "Sources/XPCActorServiceAPI"
+        ),
+        .target(
+            name: "XPCActorServiceProvider",
+            dependencies: [
+                "XPCActorServiceAPI",
+            ],
+            path: "Sources/XPCActorServiceProvider"
+        ),
+        .target(
+            name: "XPCActorCaller", // this is "main"
+            dependencies: [
+                "XPCActorServiceAPI",
+                "Files",
+            ],
+            path: "Sources/XPCActorCaller"
+        ),
+    ]
+)
 
 #endif
 
@@ -96,7 +104,7 @@ var dependencies: [Package.Dependency] = [
     // ~~~~~~~ only for samples ~~~~~~~
 
     // for metrics examples:
-    .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master")),
+    .package(url: "https://github.com/MrLotU/SwiftPrometheus", from: "1.0.0-alpha.5"), // Apache v2 license
 
     // for mocking logging via files in XPC examples
     .package(url: "https://github.com/JohnSundell/Files", from: "4.0.0"), // MIT license

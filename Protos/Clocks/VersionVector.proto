@@ -19,6 +19,7 @@ option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
+import "Serialization/Serialization.proto";
 
 // ==== Replica ID -----------------------------------------------------------------------------------------------------
 
@@ -53,6 +54,6 @@ message VersionDottedElementEnvelope {
     VersionDot dot = 1;
 
     // ~~ element ~~
-    uint32 serializerId = 2;
-    bytes payload = 3;
+    Manifest manifest = 2;
+    bytes payload     = 3;
 }

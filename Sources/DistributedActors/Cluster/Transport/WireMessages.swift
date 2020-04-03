@@ -33,8 +33,8 @@ internal enum Wire {
         // TODO: metadata
         // TODO: "flags" incl. isSystemMessage
 
-        var serializerId: UInt32
         var payload: ByteBuffer
+        var manifest: Serialization.Manifest
     }
 
     // TODO: such messages should go over a priority lane

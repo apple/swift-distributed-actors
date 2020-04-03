@@ -20,7 +20,7 @@ import Logging
 extension CRDT.ActorOwned {
     func metadata() -> Logger.Metadata {
         [
-            "crdt/id": "\(self.id)",
+            "crdt/id": "\(self.id.id)",
             "crdt/status": "\(self.status)",
         ]
     }

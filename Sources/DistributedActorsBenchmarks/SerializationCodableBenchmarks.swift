@@ -41,10 +41,7 @@ public let SerializationCodableBenchmarks: [BenchmarkInfo] = [
 
 private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("SerializationCodableBenchmarks") { settings in
-        settings.serialization.registerCodable(for: SmallMessage.self, underId: 1001)
-        settings.serialization.registerCodable(for: MessageWithRef.self, underId: 1002)
-        settings.serialization.registerCodable(for: MediumMessage.self, underId: 1003)
-        settings.defaultLogLevel = .error
+        settings.logging.defaultLevel = .error
     }
     postSetUp()
 }
@@ -56,7 +53,7 @@ private func tearDown() {
 
 // -------
 
-struct SmallMessage: Codable {
+struct SmallMessage: ActorMessage {
     let number: Int
     let name: String
 }
@@ -64,13 +61,13 @@ struct SmallMessage: Codable {
 let message_small = SmallMessage(number: 1337, name: "kappa")
 
 func bench_codable_roundTrip_message_small(n: Int) {
-    let bytes = try! system.serialization.serialize(message: message_small)
-    _ = try! system.serialization.deserialize(SmallMessage.self, from: bytes)
+    var (manifest, bytes) = try! system.serialization.serialize(message_small)
+    _ = try! system.serialization.deserialize(as: SmallMessage.self, from: &bytes, using: manifest)
 }
 
 // -------
 
-struct MessageWithRef: Codable {
+struct MessageWithRef: ActorMessage {
     let number: Int
     let name: String
     let reference: ActorRef<String>
@@ -84,13 +81,13 @@ private func setUpActorRef() {
 }
 
 func bench_codable_roundTrip_message_withRef(n: Int) {
-    let bytes = try! system.serialization.serialize(message: message_withRef!)
-    _ = try! system.serialization.deserialize(MessageWithRef.self, from: bytes)
+    var (manifest, bytes) = try! system.serialization.serialize(message_withRef!)
+    _ = try! system.serialization.deserialize(as: MessageWithRef.self, from: &bytes, using: manifest)
 }
 
 // -------
 
-struct MediumMessage: Codable {
+struct MediumMessage: ActorMessage {
     struct NestedMessage: Codable {
         let field1: String
         let field2: Int32
@@ -141,6 +138,6 @@ let message_medium = MediumMessage(
 )
 
 func bench_codable_roundTrip_message_medium(n: Int) {
-    let bytes = try! system.serialization.serialize(message: message_medium)
-    _ = try! system.serialization.deserialize(MediumMessage.self, from: bytes)
+    var (manifest, bytes) = try! system.serialization.serialize(message_medium)
+    _ = try! system.serialization.deserialize(as: MediumMessage.self, from: &bytes, using: manifest)
 }

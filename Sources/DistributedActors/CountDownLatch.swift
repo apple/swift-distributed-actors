@@ -28,7 +28,7 @@ internal class CountDownLatch {
 
     /// Returns previous value before the decrement was issued.
     func countDown() {
-        return self.lock.synchronized {
+        self.lock.synchronized {
             self.counter -= 1
 
             if self.counter == 0 {
@@ -38,7 +38,7 @@ internal class CountDownLatch {
     }
 
     var count: Int {
-        return self.lock.synchronized {
+        self.lock.synchronized {
             self.counter
         }
     }
@@ -62,6 +62,6 @@ internal class CountDownLatch {
 
 extension CountDownLatch: CustomStringConvertible {
     public var description: String {
-        return "CountDownLatch(remaining:\(self.count)"
+        "CountDownLatch(remaining:\(self.count)"
     }
 }

@@ -60,12 +60,12 @@ public final class XPCServiceActorTransport: ActorTransport {
         return delegate
     }
 
-    public override func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef? {
+    public override func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef? {
         guard let xpcConnection = context.userInfo.xpcConnection else {
             return nil
         }
 
-        let delegate = ActorRef<Any>(
+        let delegate = ActorRef<Never>(
             .delegate(XPCProxiedRefDelegate(system: context.system, origin: xpcConnection, address: context.address))
         ).asAddressable()
         try! _file.append("\(#file):\(#line) DELEGATE: \(delegate)\n")
@@ -79,7 +79,7 @@ public final class XPCServiceActorTransport: ActorTransport {
     /// Obtain `DispatchQueue` to be used to drive the xpc connection with this service.
     internal func makeServiceQueue(serviceName: String) -> DispatchQueue {
         // similar to NSXPCConnection
-        DispatchQueue(label: "com.apple.distributedactors.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
+        DispatchQueue(label: "com.apple.actors.xpc.\(serviceName)", target: DispatchQueue.global(qos: .default))
     }
 }
 

@@ -23,13 +23,13 @@ extension CRDT {
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct GCounter: NamedDeltaCRDT {
+    public struct GCounter: NamedDeltaCRDT, Codable {
         public typealias Delta = GCounterDelta
 
-        public let replicaId: ReplicaId
+        public let replicaId: ReplicaID
 
         // State is a dictionary of replicas and the counter values they've observed.
-        var state: [ReplicaId: Int]
+        var state: [ReplicaID: Int]
 
         public var delta: Delta?
 
@@ -37,11 +37,12 @@ extension CRDT {
             self.state.values.reduce(0, +)
         }
 
-        init(replicaId: ReplicaId) {
+        init(replicaId: ReplicaID) {
             self.replicaId = replicaId
             self.state = [:]
         }
 
+        /// - Faults: on overflow // TODO perhaps just saturate?
         mutating func increment(by amount: Int) {
             precondition(amount > 0, "Amount must be greater than 0")
 
@@ -68,6 +69,21 @@ extension CRDT {
             }
         }
 
+        // TODO: define on DeltaCRDT only once? alg seems generic
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else if let wellTypedOtherDelta = other as? Self.Delta {
+                // TODO: what if we simplify and compute deltas...?
+                self.mergeDelta(wellTypedOtherDelta)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
+        }
+
         // To merge delta into state, call `mergeDelta`.
         public mutating func merge(other: GCounter) {
             self.state.merge(other.state, uniquingKeysWith: max)
@@ -84,10 +100,20 @@ extension CRDT {
 
     public struct GCounterDelta: CvRDT {
         // State is a dictionary of replicas and their counter values.
-        var state: [ReplicaId: Int]
+        var state: [ReplicaID: Int]
 
-        init(state: [ReplicaId: Int] = [:]) {
+        init(state: [ReplicaID: Int] = [:]) {
             self.state = state
+        }
+
+        public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            let OtherType = type(of: other as Any)
+            if let wellTypedOther = other as? Self {
+                self.merge(other: wellTypedOther)
+                return nil
+            } else {
+                return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
+            }
         }
 
         public mutating func merge(other: GCounterDelta) {

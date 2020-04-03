@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.apple.distributedactors.HelloXPCService</string>
+	<string>com.apple.actors.HelloXPCService</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>XPCService</key>
