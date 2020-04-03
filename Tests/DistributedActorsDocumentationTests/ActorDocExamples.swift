@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,7 +23,7 @@ import XCTest
 
 class ActorDocExamples: XCTestCase {
     // tag::message_greetings[]
-    enum Greetings {
+    enum Greetings: NonTransportableActorMessage {
         case greet(name: String)
         case greeting(String)
     }
@@ -206,9 +206,11 @@ class ActorDocExamples: XCTestCase {
             Receptionist.Lookup(key: key, replyTo: $0)
         }
 
-        result.nioFuture.whenSuccess { listing in
-            for ref in listing.refs {
-                ref.tell("Hello")
+        result._onComplete { result in
+            if case .success(let listing) = result {
+                for ref in listing.refs {
+                    ref.tell("Hello")
+                }
             }
         }
 
@@ -266,7 +268,7 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::ask_outside[]
-        struct Hello {
+        struct Hello: ActorMessage {
             let name: String
             let replyTo: ActorRef<String>
         }
@@ -282,16 +284,15 @@ class ActorDocExamples: XCTestCase {
             Hello(name: "Anne", replyTo: replyTo) // <2>
         }
 
-        let result = try response.nioFuture.wait() // <3>
+        response._onComplete { result in _ = result } // <3>
         // end::ask_outside[]
-        _ = result
     }
 
     func example_ask_inside() throws {
         let system = ActorSystem("ExampleSystem")
 
         // tag::ask_inside[]
-        struct Hello {
+        struct Hello: ActorMessage {
             let name: String
             let replyTo: ActorRef<String>
         }
@@ -311,7 +312,7 @@ class ActorDocExamples: XCTestCase {
                 }
 
             func greeted() -> Behavior<Never> {
-                return .stop
+                .stop
             }
 
             return context.awaitResultThrowing(of: response, timeout: timeout) { (greeting: String) in // <2>
@@ -330,7 +331,7 @@ class ActorDocExamples: XCTestCase {
         let ref: ActorRef<Event>! = nil
 
         // tag::eventStream[]
-        enum Event {
+        enum Event: String, ActorMessage {
             case eventOne
             case eventTwo
         }
@@ -361,7 +362,7 @@ struct ExampleWorker {
     internal static var props: Props = Props().dispatcher(.pinnedThread)
 }
 
-enum WorkerMessages {
+enum WorkerMessages: String, ActorMessage {
     case something
 }
 

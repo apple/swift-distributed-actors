@@ -29,7 +29,7 @@ import XCTest
 // MARK: DO NOT EDIT: Generated CoffeeMachine messages 
 
 extension GeneratedActor.Messages {
-    public enum CoffeeMachine { 
+    public enum CoffeeMachine: ActorMessage { 
         case makeCoffee(_replyTo: ActorRef<Coffee>)  
     }
 }
@@ -40,10 +40,10 @@ extension Actor where A: CoffeeMachine {
 
     public func makeCoffee() -> Reply<Coffee> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: Coffee.self, timeout: .effectivelyInfinite) { _replyTo in
                 A._boxCoffeeMachine(.makeCoffee(_replyTo: _replyTo))
-            }.nioFuture
+            }
         )
     }
  

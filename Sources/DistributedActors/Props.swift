@@ -88,6 +88,7 @@ public enum DispatcherProps {
     /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
     // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
     case pinnedThread // TODO: implement pinned thread dispatcher
+    // TODO: CPU Affinity when pinning
 
     /// WARNING: Use with Caution!
     ///
@@ -103,6 +104,15 @@ public enum DispatcherProps {
     ///
     /// Dispatcher which hijacks the calling thread to schedule execution.
     case callingThread
+
+    public var name: String {
+        switch self {
+        case .default: return "default"
+        case .pinnedThread: return "pinnedThread"
+        case .nio: return "nioEventLoopGroup"
+        case .callingThread: return "callingThread"
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -129,7 +139,7 @@ public enum MailboxProps {
     case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
 
     public static func `default`(capacity: UInt32 = UInt32.max) -> MailboxProps {
-        return .default(capacity: capacity, onOverflow: .crash)
+        .default(capacity: capacity, onOverflow: .crash)
     }
 
     var capacity: UInt32 {
@@ -178,7 +188,7 @@ public struct MetricsProps {
     let dimensions: [(String, String)]
 
     public static var `default`: MetricsProps {
-        return .init(group: nil, dimensions: [])
+        .init(group: nil, dimensions: [])
     }
 
     public init(group: String?, dimensions: [(String, String)]) {

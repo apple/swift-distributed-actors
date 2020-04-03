@@ -63,7 +63,7 @@ public extension Props {
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
     static func supervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        return self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+        self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Creates a new `Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
@@ -87,7 +87,7 @@ public extension Props {
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
     func supervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        return self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+        self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Adds another supervisor for the selected `Error` type to the chain of existing supervisors in this `Props`.
@@ -238,7 +238,7 @@ public extension SupervisionStrategy {
     ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
     static func restart(atMost: Int, within: TimeAmount?) -> SupervisionStrategy {
-        return .restart(atMost: atMost, within: within, backoff: nil)
+        .restart(atMost: atMost, within: within, backoff: nil)
     }
 }
 
@@ -384,7 +384,7 @@ internal enum ProcessingType {
 }
 
 @usableFromInline
-internal enum ProcessingAction<Message> {
+internal enum ProcessingAction<Message: ActorMessage> {
     case start
     case message(Message)
     case signal(Signal)
@@ -411,7 +411,7 @@ extension ProcessingAction {
 ///
 /// Currently not for user extension.
 @usableFromInline
-internal class Supervisor<Message> {
+internal class Supervisor<Message: ActorMessage> {
     @usableFromInline
     typealias Directive = SupervisionDirective<Message>
 
@@ -454,7 +454,7 @@ internal class Supervisor<Message> {
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
     @inlinable
     final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> Behavior<Message> {
-        return try self.interpretSupervised0(target: target, context: context, processingAction: processingAction, nFoldFailureDepth: 1) // 1 since we already have "one failure"
+        try self.interpretSupervised0(target: target, context: context, processingAction: processingAction, nFoldFailureDepth: 1) // 1 since we already have "one failure"
     }
 
     @inlinable
@@ -552,14 +552,14 @@ internal class Supervisor<Message> {
     ///
     /// The returned `SupervisionDirective` will be interpreted appropriately.
     open func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
-        return undefined()
+        undefined()
     }
 
     /// Implement and return `true` if this supervisor can handle the failure or not.
     /// If `false` is returned and other supervisors are present, they will be tied in order, until a supervisor which
     /// can handle the failure is found, or if no such supervisor exists the failure will cause the actor to crash (as expected).
     open func canHandle(failure: Supervision.Failure) -> Bool {
-        return undefined()
+        undefined()
     }
 
     /// Invoked when wrapping (with this `Supervisor`) a `Behavior` that already is supervised.
@@ -567,18 +567,18 @@ internal class Supervisor<Message> {
     /// The method is always invoked _on_ the existing supervisor with the "new" supervisor.
     /// If this method returns `true` the new supervisor will be dropped and no wrapping will be performed.
     func isSame(as other: Supervisor<Message>) -> Bool {
-        return undefined()
+        undefined()
     }
 
     var descriptionForLogs: String {
-        return "\(type(of: self))"
+        "\(type(of: self))"
     }
 }
 
 /// Supervisor equivalent to not having supervision enabled, since stopping is the default behavior of failing actors.
 /// At the same time, it may be useful to sometimes explicitly specify that for some type of error we want to stop
 /// (e.g. when used with composite supervisors, which restart for all failures, yet should not do so for some specific type of error).
-final class StoppingSupervisor<Message>: Supervisor<Message> {
+final class StoppingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal init(failureType: Error.Type) {
@@ -603,16 +603,16 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
-        return failure.shouldBeHandled(bySupervisorHandling: self.failureType)
+        failure.shouldBeHandled(bySupervisorHandling: self.failureType)
     }
 
     override var descriptionForLogs: String {
-        return "[.stop] supervision strategy"
+        "[.stop] supervision strategy"
     }
 }
 
 /// Escalates failure to parent, while failing the current actor.
-final class EscalatingSupervisor<Message>: Supervisor<Message> {
+final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal init(failureType: Error.Type) {
@@ -636,11 +636,11 @@ final class EscalatingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
-        return failure.shouldBeHandled(bySupervisorHandling: self.failureType)
+        failure.shouldBeHandled(bySupervisorHandling: self.failureType)
     }
 
     override var descriptionForLogs: String {
-        return "[.escalate<\(self.failureType)>] supervision strategy"
+        "[.escalate<\(self.failureType)>] supervision strategy"
     }
 }
 
@@ -649,7 +649,7 @@ final class EscalatingSupervisor<Message>: Supervisor<Message> {
 //
 // The scan also makes implementing the "catch" all types `Supervision.AllFailures` etc simpler rather than having to search
 // the underlying map for the catch all handlers as well as the specific error.
-final class CompositeSupervisor<Message>: Supervisor<Message> {
+final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
     private let supervisors: [Supervisor<Message>]
 
     init(supervisors: [Supervisor<Message>]) {
@@ -668,7 +668,7 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
-        return self.supervisors.contains {
+        self.supervisors.contains {
             $0.canHandle(failure: failure)
         }
     }
@@ -678,7 +678,7 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
 ///
 /// - SeeAlso: `Supervisor.handleFailure`
 @usableFromInline
-internal enum SupervisionDirective<Message> {
+internal enum SupervisionDirective<Message: ActorMessage> {
     /// Directs mailbox to directly stop processing.
     case stop
     /// Directs mailbox to prepare AND complete a restart immediately.
@@ -757,11 +757,11 @@ internal struct RestartDecisionLogic {
     }
 
     private var periodHasTimeLeft: Bool {
-        return self.restartsPeriodDeadline.hasTimeLeft(until: .now())
+        self.restartsPeriodDeadline.hasTimeLeft(until: .now())
     }
 
     private var isWithinMaxRestarts: Bool {
-        return self.restartsWithinCurrentPeriod <= self.maxRestarts
+        self.restartsWithinCurrentPeriod <= self.maxRestarts
     }
 
     /// Human readable description of how the status of the restart supervision strategy
@@ -774,7 +774,7 @@ internal struct RestartDecisionLogic {
     }
 }
 
-final class RestartingSupervisor<Message>: Supervisor<Message> {
+final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     internal let failureType: Error.Type
 
     internal let initialBehavior: Behavior<Message>
@@ -822,28 +822,28 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
-        return failure.shouldBeHandled(bySupervisorHandling: self.failureType)
+        failure.shouldBeHandled(bySupervisorHandling: self.failureType)
     }
 
     // TODO: complete impl
     public override func isSame(as other: Supervisor<Message>) -> Bool {
-        return other is RestartingSupervisor<Message>
+        other is RestartingSupervisor<Message>
     }
 
     override var descriptionForLogs: String {
-        return "[.restart(\(self.restartDecider))] supervision strategy"
+        "[.restart(\(self.restartDecider))] supervision strategy"
     }
 }
 
 /// Behavior used to suspend after a `restartPrepare` has been issued by an `restartDelayed`.
 @usableFromInline
-internal enum SupervisionRestartDelayedBehavior<Message> {
+internal enum SupervisionRestartDelayedBehavior<Message: ActorMessage> {
     @usableFromInline
     internal struct WakeUp {}
 
     @usableFromInline
     static func after(delay: TimeAmount, with replacement: Behavior<Message>) -> Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             context.timers._startResumeTimer(key: TimerKey("restartBackoff", isSystemTimer: true), delay: delay, resumeWith: WakeUp())
 
             return .suspend { (result: Result<WakeUp, Error>) in
@@ -864,7 +864,7 @@ internal enum SupervisionRestartDelayedBehavior<Message> {
 extension RestartingSupervisor: CustomStringConvertible {
     public var description: String {
         // TODO: don't forget to include config in string repr once we do it
-        return "RestartingSupervisor(initialBehavior: \(self.initialBehavior), strategy: \(self.restartDecider), canHandle: \(self.failureType))"
+        "RestartingSupervisor(initialBehavior: \(self.initialBehavior), strategy: \(self.restartDecider), canHandle: \(self.failureType))"
     }
 }
 

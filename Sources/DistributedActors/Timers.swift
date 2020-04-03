@@ -78,7 +78,7 @@ extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation
     }
 }
 
-public class Timers<Message> {
+public class Timers<Message: ActorMessage> {
     @usableFromInline
     internal var timerGen: Int = 0
 
@@ -115,7 +115,9 @@ public class Timers<Message> {
     @inlinable
     public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
-            self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
+            if context.system.settings.logging.verboseTimers {
+                self.context.log.trace("Cancel timer [\(key)] with generation [\(timer.generation)]", metadata: self.metadata)
+            }
             timer.handle.cancel()
         }
     }
@@ -160,7 +162,9 @@ public class Timers<Message> {
             }
         }
 
-        self.context.log.trace("Started timer [\(key)] with generation [\(generation)]", metadata: self.metadata)
+        if context.system.settings.logging.verboseTimers {
+            self.context.log.trace("Started timer [\(key)] with generation [\(generation)]", metadata: self.metadata)
+        }
         self.installedTimers[key] = Timer(key: key, message: message, repeated: repeated, generation: generation, handle: handle)
     }
 
@@ -171,28 +175,28 @@ public class Timers<Message> {
 
     internal lazy var timerCallback: AsynchronousCallback<TimerEvent> =
         self.context.makeAsynchronousCallback { [weak context = self.context] timerEvent in
-            if let context = context {
-                if timerEvent.owner.path != context.path {
-                    context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.", metadata: self.metadata)
-                    return
-                }
-
-                if let timer = self.installedTimers[timerEvent.key] {
-                    if timer.generation != timerEvent.generation {
-                        context.log.warning("Received timer event for old generation [\(timerEvent.generation)], expected [\(timer.generation)]. Will ignore and continue.", metadata: self.metadata)
+                if let context = context {
+                    if timerEvent.owner.path != context.path {
+                        context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.", metadata: self.metadata)
                         return
                     }
 
-                    if let message = timer.message {
-                        context.myself.tell(message)
-                    }
+                    if let timer = self.installedTimers[timerEvent.key] {
+                        if timer.generation != timerEvent.generation {
+                            context.log.warning("Received timer event for old generation [\(timerEvent.generation)], expected [\(timer.generation)]. Will ignore and continue.", metadata: self.metadata)
+                            return
+                        }
 
-                    if !timer.repeated {
-                        self.cancel(for: timer.key)
+                        if let message = timer.message {
+                            context.myself.tell(message)
+                        }
+
+                        if !timer.repeated {
+                            self.cancel(for: timer.key)
+                        }
                     }
                 }
             }
-        }
 }
 
 extension Timers {

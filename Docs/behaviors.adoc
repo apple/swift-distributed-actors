@@ -164,7 +164,7 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask_outside]
 ----
 <1> `replyTo` is an actor ref of the type specified with the `for` parameter of ask and is used to receive the response
 <2> Create the message that will be sent to the ref that `ask` is called on
-<3> Retrieve the result from the `api:AskResponse[struct]`. *In production code the blocking `wait` should be avoided and asynchronous callbacks should be used instead.
+<3> Retrieve the result from the `api:AskResponse[struct]`.
 
 WARNING: _Never_ invoke any kind of blocking operation such as `future.wait()` inside of an actor!
          Same as blocking an event loop, blocking inside actors will cause starvation for other actors sharing the same dispatcher.

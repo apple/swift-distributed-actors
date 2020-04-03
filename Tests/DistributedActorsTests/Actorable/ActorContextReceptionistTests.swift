@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -23,8 +23,8 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         }
 
         let listing: Reception.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(1)) {
-            let readFuture = owner.readLastObservedValue()
-            guard let listing = try readFuture._nioFuture.wait() else {
+            let readReply = owner.readLastObservedValue()
+            guard let listing = try readReply.wait() else {
                 throw self.testKit.error()
             }
             return listing
@@ -46,13 +46,23 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
     }
 
     func test_lookup_ofGenericType() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let notUsed = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
-            OwnerOfThings(context: $0, probe: p.ref)
+            OwnerOfThings(context: $0, probe: notUsed.ref)
         }
 
         let reply = owner.performLookup()
-        try reply._nioFuture.wait().first.shouldEqual(owner)
+        try reply.wait().first.shouldEqual(owner)
+    }
+
+    func test_lookup_ofGenericType_exposedAskResponse_stillIsAReply() throws {
+        let notUsed = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
+            OwnerOfThings(context: $0, probe: notUsed.ref)
+        }
+
+        let reply: Reply<Receptionist.Listing<OwnerOfThings.Message>> = owner.performAskLookup()
+        try reply.wait().refs.first.shouldEqual(owner.ref)
     }
 
     func test_subscribe_genericType() throws {
@@ -78,17 +88,24 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         let n = 3000
 
         _ = try! self.system.spawn("owner") {
-            OwnerOfThings(context: $0, probe: p.ref, onListingUpdated: { probe, newValue in
-                if newValue.actors.count == n {
-                    probe.tell(newValue)
+            OwnerOfThings(
+                context: $0,
+                probe: p.ref,
+                onListingUpdated: { probe, newValue in
+                    if newValue.actors.count == n {
+                        probe.tell(newValue)
+                    }
                 }
-            })
+            )
         }
 
         for _ in 1 ... n {
-            let ref: ActorRef<OwnerOfThings.Message> = try! self.system.spawn(.prefixed(with: "owner"), .receive { _, _ in
-                .same
-            })
+            let ref: ActorRef<OwnerOfThings.Message> = try! self.system.spawn(
+                .prefixed(with: "owner"),
+                .receive { _, _ in
+                    .same
+                }
+            )
             self.system.receptionist.register(ref, key: .init(OwnerOfThings.Message.self, id: "owners-of-things"))
         }
 

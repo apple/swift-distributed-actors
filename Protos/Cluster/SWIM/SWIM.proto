@@ -20,7 +20,7 @@ option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
 
-message SWIMMessage {
+message SWIMRemoteMessage {
     oneof request {
         SWIMPing ping = 1;
         SWIMPingRequest pingRequest = 2;

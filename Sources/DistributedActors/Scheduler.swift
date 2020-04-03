@@ -44,14 +44,14 @@ class FlagCancelable: Cancelable {
 
     @usableFromInline
     var isCanceled: Bool {
-        return self.flag.load()
+        self.flag.load()
     }
 }
 
 extension DispatchWorkItem: Cancelable {
     @usableFromInline
     var isCanceled: Bool {
-        return self.isCancelled
+        self.isCancelled
     }
 }
 
@@ -64,7 +64,7 @@ extension DispatchQueue: Scheduler {
     }
 
     func scheduleOnce<Message>(delay: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
-        return self.scheduleOnce(delay: delay) {
+        self.scheduleOnce(delay: delay) {
             receiver.tell(message)
         }
     }
@@ -86,7 +86,7 @@ extension DispatchQueue: Scheduler {
     }
 
     func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
-        return self.schedule(initialDelay: initialDelay, interval: interval) {
+        self.schedule(initialDelay: initialDelay, interval: interval) {
             receiver.tell(message)
         }
     }

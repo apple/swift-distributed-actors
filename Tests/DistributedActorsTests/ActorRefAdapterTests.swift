@@ -140,7 +140,7 @@ class ActorRefAdapterTests: ActorSystemTestBase {
         try pAdapted.expectNoMessage(for: .milliseconds(10))
     }
 
-    enum LifecycleTestMessage {
+    enum LifecycleTestMessage: NonTransportableActorMessage {
         case createAdapter(replyTo: ActorRef<ActorRef<String>>)
         case crash
         case stop
@@ -235,7 +235,7 @@ class ActorRefAdapterTests: ActorSystemTestBase {
     func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() throws {
         let logCaptureHandler = LogCapture()
         let system = ActorSystem("\(type(of: self))-2") { settings in
-            settings.overrideLoggerFactory = logCaptureHandler.loggerFactory(captureLabel: settings.cluster.node.systemName)
+            settings.logging.overrideLoggerFactory = logCaptureHandler.loggerFactory(captureLabel: settings.cluster.node.systemName)
         }
         defer { system.shutdown().wait() }
 
@@ -275,7 +275,7 @@ class ActorRefAdapterTests: ActorSystemTestBase {
     }
 
     func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
-        class TopExample {}
+        class TopExample: NonTransportableActorMessage {}
         class BottomExample: TopExample {}
 
         let probe = self.testKit.spawnTestProbe(expecting: String.self)

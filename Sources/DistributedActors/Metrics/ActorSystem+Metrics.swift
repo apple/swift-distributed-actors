@@ -26,7 +26,8 @@ import Metrics
 /// are reported in to actual metrics backends; Most often the segments are separated by `.`, `/`, or `_`.
 ///
 /// - SeeAlso: [SwiftMetrics](https://github.com/apple/swift-metrics) for compatible backend implementations.
-internal class ActorSystemMetrics {
+@usableFromInline
+final class ActorSystemMetrics {
     let settings: MetricsSettings
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -215,6 +216,16 @@ internal class ActorSystemMetrics {
     let _system_msg_redelivery_buffer: Gauge
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Receptionist
+    /// Total number of actors registered with receptionist
+    let _receptionist_keys: Gauge
+    /// Total number of actors registered with receptionist
+    let _receptionist_registrations: MetricsPNCounter
+
+    /// Size of the op-log in the `OpLogClusterReceptionist`
+    let _receptionist_oplog_size: Gauge
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialization Metrics
 
     let _serialization_system_outbound_msg_size: Recorder
@@ -223,6 +234,7 @@ internal class ActorSystemMetrics {
     let _serialization_user_outbound_msg_size: Recorder
     let _serialization_user_inbound_msg_size: Recorder
 
+    @usableFromInline
     func recordSerializationMessageOutbound(_ path: ActorPath, _ bytes: Int) {
         if path.starts(with: ._user) {
             self._serialization_user_outbound_msg_size.record(bytes)
@@ -231,6 +243,7 @@ internal class ActorSystemMetrics {
         }
     }
 
+    @usableFromInline
     func recordSerializationMessageInbound(_ path: ActorPath, _ bytes: Int) {
         if path.starts(with: ._user) {
             self._serialization_user_inbound_msg_size.record(bytes)
@@ -301,6 +314,11 @@ internal class ActorSystemMetrics {
         self._serialization_user_outbound_msg_size = .init(label: serializationLabel, dimensions: [rootUser, dimOutbound])
         self._serialization_user_inbound_msg_size = .init(label: serializationLabel, dimensions: [rootUser, dimInbound])
         // TODO: record message types by type
+
+        // ==== Receptionist ----------------------------------------
+        self._receptionist_keys = .init(label: settings.makeLabel("receptionist", "keys"))
+        self._receptionist_registrations = .init(label: settings.makeLabel("receptionist", "actors"), positive: [("type", "registered")], negative: [("type", "removed")])
+        self._receptionist_oplog_size = .init(label: settings.makeLabel("receptionist", "oplog", "size"))
 
         // ==== CRDTs -----------------------------------------------
 

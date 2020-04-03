@@ -18,14 +18,14 @@ import DistributedActors
 import DistributedActorsXPC
 import XPCActorServiceAPI
 
-let serviceName = "com.apple.sakkana.xpc.GreetingsService"
+let serviceName = "com.apple.actors.xpc.GreetingsService"
 
 let system = ActorSystem("XPCActorCaller") { settings in
     settings.transports += .xpc
 
-    settings.serialization.registerCodable(for: GeneratedActor.Messages.GreetingsService.self, underId: 10001)
-    settings.serialization.registerCodable(for: GreetingsServiceStub.Message.self, underId: 10002)
-    settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
+//    settings.serialization.registerCodable(GeneratedActor.Messages.GreetingsService.self)
+//    settings.serialization.registerCodable(GreetingsServiceStub.Message.self)
+//    settings.serialization.registerCodable(Result<String, Error>.self)
 }
 
 // TODO: we currently need a ref to the real GreetingsService... since we cannot put a Protocol.self in there...
@@ -37,7 +37,7 @@ let reply = xpcGreetingsActor.greet(name: "Capybara")
 // : Reply<String>
 
 // await reply
-reply.withTimeout(after: .seconds(3))._nioFuture.whenComplete {
+reply.withTimeout(after: .seconds(3))._onComplete {
     system.log.info("Reply from service.greet(Capybara) = \($0)")
 }
 

@@ -62,7 +62,7 @@ public final class LogCapture {
     }
 
     public func awaitLogContaining(_ testKit: ActorTestKit, text: String, within: TimeAmount = .seconds(3), file: StaticString = #file, line: UInt = #line) throws {
-        return try testKit.eventually(within: within, file: file, line: line) {
+        try testKit.eventually(within: within, file: file, line: line) {
             let logs = self.logs
             if !logs.contains(where: { log in
                 "\(log)".contains(text)
@@ -78,7 +78,7 @@ extension LogCapture {
         public var minimumLogLevel: Logger.Level = .trace
 
         /// Filter and capture logs only from actors with the following path prefix
-        public var filterActorPaths: Set<String> = ["/"]
+        public var filterActorPaths: Set<String> = [""]
         /// Do not capture log messages which include the following strings.
         public var excludeActorPaths: Set<String> = []
 

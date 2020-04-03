@@ -18,7 +18,7 @@ import NIO
 /// DO NOT EDIT: Generated GreetingsServiceStub messages
 extension GreetingsServiceStub {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case logGreeting(name: String) 
         case greet(name: String, _replyTo: ActorRef<String>) 
         case greetingsService(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsService) 

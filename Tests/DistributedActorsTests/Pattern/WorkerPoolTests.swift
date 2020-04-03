@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -27,7 +27,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
-            return .setup { context in
+            .setup { context in
                 context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
@@ -72,7 +72,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
-            return .setup { context in
+            .setup { context in
                 context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
@@ -142,10 +142,9 @@ final class WorkerPoolTests: ActorSystemTestBase {
     func test_workerPool_ask() throws {
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
-        let pW: ActorTestProbe<WorkerPoolQuestion> = self.testKit.spawnTestProbe("pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<WorkerPoolQuestion> {
-            return .receive { context, work in
+            .receive { context, work in
                 p.tell("work:\(work.id) at \(context.path.name)")
                 return .same
             }
@@ -161,12 +160,12 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let answerB: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "BBB", replyTo: $0) }
 
         try self.testKit.eventually(within: .seconds(1)) {
-            answerA.nioFuture._onComplete { res in
+            answerA._onComplete { res in
                 pA.tell("\(res)")
             }
         }
         try self.testKit.eventually(within: .seconds(1)) {
-            answerB.nioFuture._onComplete { res in
+            answerB._onComplete { res in
                 pB.tell("\(res)")
             }
         }
@@ -175,7 +174,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         try pB.expectMessage("work:BBB at \(workerB.path.name)")
     }
 
-    struct WorkerPoolQuestion {
+    struct WorkerPoolQuestion: ActorMessage {
         let id: String
         let replyTo: ActorRef<String>
     }
@@ -187,7 +186,7 @@ final class WorkerPoolTests: ActorSystemTestBase {
         let pW: ActorTestProbe<String> = self.testKit.spawnTestProbe("pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
-            return .receive { context, work in
+            .receive { context, work in
                 if work == "stop" {
                     return .stop
                 }

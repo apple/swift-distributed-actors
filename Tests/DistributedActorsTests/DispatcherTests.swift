@@ -20,6 +20,7 @@ import NIO
 import XCTest
 
 final class DispatcherTests: ActorSystemTestBase {
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Running "on NIO" for fun and profit
 
     func test_runOn_nioEventLoop() throws {
@@ -27,7 +28,7 @@ final class DispatcherTests: ActorSystemTestBase {
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
-            p.tell("Dispatcher: \(context.dispatcher.name)")
+            p.tell("Dispatcher: \((context as! ActorShell<String>)._dispatcher.name)")
             return .same
         }
 
@@ -46,7 +47,7 @@ final class DispatcherTests: ActorSystemTestBase {
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
-            p.tell("Dispatcher: \(context.dispatcher.name)")
+            p.tell("Dispatcher: \((context as! ActorShell<String>)._dispatcher.name)")
             return .same
         }
 

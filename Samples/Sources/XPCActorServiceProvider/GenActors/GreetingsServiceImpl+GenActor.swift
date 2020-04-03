@@ -5,8 +5,8 @@
 
 
 import DistributedActors
-import XPCActorServiceAPI
 import NIO
+import XPCActorServiceAPI
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated GreetingsServiceImpl messages 
@@ -14,7 +14,7 @@ import NIO
 /// DO NOT EDIT: Generated GreetingsServiceImpl messages
 extension GreetingsServiceImpl {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case greetingsService(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsService) 
     }
     
@@ -34,7 +34,7 @@ extension GreetingsServiceImpl {
             let context = Actor<GreetingsServiceImpl>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -49,7 +49,7 @@ extension GreetingsServiceImpl {
                     _replyTo.tell(.success(result))
                     } catch {
                         context.log.warning("Error thrown while handling [\(message)], error: \(error)")
-                        _replyTo.tell(.failure(error))
+                        _replyTo.tell(.failure(ErrorEnvelope(error)))
                     }
  
                 case .greetingsService(.fatalCrash):
@@ -60,7 +60,14 @@ extension GreetingsServiceImpl {
  
                 case .greetingsService(.greetFuture(let name, let _replyTo)):
                     instance.greetFuture(name: name)
-                                    .whenComplete { res in _replyTo.tell(res) } 
+                        .whenComplete { res in
+                            switch res {
+                            case .success(let value):
+                                _replyTo.tell(.success(value))
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        } 
                 }
                 return .same
             }.receiveSignal { _context, signal in 

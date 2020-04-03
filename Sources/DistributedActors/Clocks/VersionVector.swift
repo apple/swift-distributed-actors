@@ -34,14 +34,15 @@
 public struct VersionVector {
     // TODO: should we disallow mixing ReplicaId types somehow?
 
-    public typealias ReplicaVersion = (replicaId: ReplicaId, version: Int) // TODO: struct? // TODO: UInt?
+    public typealias Version = UInt64
+    public typealias ReplicaVersion = (replicaId: ReplicaID, version: Version) // TODO: struct?
 
     // Internal state is a dictionary of replicas and their corresponding version
-    internal var state: [ReplicaId: Int] = [:]
+    internal var state: [ReplicaID: Version] = [:]
 
     public static let empty: VersionVector = .init()
 
-    public static func first(at replicaId: ReplicaId) -> Self {
+    public static func first(at replicaId: ReplicaID) -> Self {
         .init((replicaId, 1))
     }
 
@@ -53,6 +54,10 @@ public struct VersionVector {
 
     public init(_ replicaVersion: ReplicaVersion) {
         self.init([replicaVersion])
+    }
+
+    public init(_ version: Version, at replicaId: ReplicaID) {
+        self.init([(replicaId, version)])
     }
 
     public init(_ replicaVersions: [ReplicaVersion]) {
@@ -75,7 +80,7 @@ public struct VersionVector {
     /// - Parameter replicaId: The replica whose version is to be incremented.
     /// - Returns: The replica's version after the increment.
     @discardableResult
-    public mutating func increment(at replicaId: ReplicaId) -> Int {
+    public mutating func increment(at replicaId: ReplicaID) -> Version {
         if let current = self.state[replicaId] {
             let nextVersion = current + 1
             self.state[replicaId] = nextVersion
@@ -92,7 +97,7 @@ public struct VersionVector {
     }
 
     /// Prune any trace of the passed in replica id.
-    public func pruneReplica(_ replicaId: ReplicaId) -> Self {
+    public func pruneReplica(_ replicaId: ReplicaID) -> Self {
         var s = self
         s.state.removeValue(forKey: replicaId)
         return s
@@ -102,8 +107,13 @@ public struct VersionVector {
     ///
     /// - Parameter replicaId: The replica whose version is being queried.
     /// - Returns: The replica's version or 0 if replica is unknown.
-    public subscript(replicaId: ReplicaId) -> Int {
-        return self.state[replicaId] ?? 0
+    public subscript(replicaId: ReplicaID) -> Version {
+        self.state[replicaId] ?? 0
+    }
+
+    /// Lists all replica ids that this version vector contains.
+    public var replicaIds: Dictionary<ReplicaID, Version>.Keys {
+        self.state.keys
     }
 
     /// Determine if this `VersionVector` contains a specific version at the given replica.
@@ -111,7 +121,7 @@ public struct VersionVector {
     /// - Parameter replicaId: The replica of interest
     /// - Parameter version: The version of interest
     /// - Returns: True if the replica's version in the `VersionVector` is greater than or equal to `version`. False otherwise.
-    public func contains(_ replicaId: ReplicaId, _ version: Int) -> Bool {
+    public func contains(_ replicaId: ReplicaID, _ version: Version) -> Bool {
         self[replicaId] >= version
     }
 
@@ -191,10 +201,11 @@ extension VersionVector: Codable {
 /// `VersionDot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Version` needs
 /// to be `Hashable` we have to define a type.
 public struct VersionDot {
-    public let replicaId: ReplicaId
-    public let version: Int // TODO: UInt?
+    public let replicaId: ReplicaID
+    public let version: Version
+    public typealias Version = UInt64
 
-    init(_ replicaId: ReplicaId, _ version: Int) {
+    init(_ replicaId: ReplicaID, _ version: Version) {
         self.replicaId = replicaId
         self.version = version
     }
@@ -226,12 +237,12 @@ extension VersionDot: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Replica ID
 
-public enum ReplicaId: Hashable {
+public enum ReplicaID: Hashable {
     case actorAddress(ActorAddress)
     case uniqueNode(UniqueNode)
 }
 
-extension ReplicaId: CustomStringConvertible {
+extension ReplicaID: CustomStringConvertible {
     public var description: String {
         switch self {
         case .actorAddress(let address):
@@ -242,8 +253,8 @@ extension ReplicaId: CustomStringConvertible {
     }
 }
 
-extension ReplicaId: Comparable {
-    public static func < (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
+extension ReplicaID: Comparable {
+    public static func < (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
         switch (lhs, rhs) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l < r
@@ -254,7 +265,7 @@ extension ReplicaId: Comparable {
         }
     }
 
-    public static func == (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
+    public static func == (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
         switch (lhs, rhs) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l == r
@@ -266,7 +277,7 @@ extension ReplicaId: Comparable {
     }
 }
 
-extension ReplicaId: Codable {
+extension ReplicaID: Codable {
     public enum DiscriminatorKeys: String, Codable {
         case actorAddress
         case uniqueNode

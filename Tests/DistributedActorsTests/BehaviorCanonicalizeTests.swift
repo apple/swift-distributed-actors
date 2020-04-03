@@ -49,7 +49,7 @@ final class BehaviorCanonicalizeTests: ActorSystemTestBase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe2")
 
         func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
-            return .setup { _ in
+            .setup { _ in
                 if depth < limit {
                     // add another "setup layer"
                     return deepSetupRabbitHole(currentDepth: depth + 1, stopAt: limit)
@@ -74,16 +74,19 @@ final class BehaviorCanonicalizeTests: ActorSystemTestBase {
     func test_canonicalize_unwrapInterceptBehaviors() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe3")
 
-        let b: Behavior<String> = .intercept(behavior: .setup { _ in
-            p.tell("outer-1")
-            return .setup { _ in
-                p.tell("inner-2")
-                return .receiveMessage { m in
-                    p.tell("received:\(m)")
-                    return .same
+        let b: Behavior<String> = .intercept(
+            behavior: .setup { _ in
+                p.tell("outer-1")
+                return .setup { _ in
+                    p.tell("inner-2")
+                    return .receiveMessage { m in
+                        p.tell("received:\(m)")
+                        return .same
+                    }
                 }
-            }
-        }, with: ProbeInterceptor(probe: p))
+            },
+            with: ProbeInterceptor(probe: p)
+        )
 
         let ref = try system.spawn("nestedSetups", b)
 
@@ -121,31 +124,34 @@ final class BehaviorCanonicalizeTests: ActorSystemTestBase {
     func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn("orElseCanonicalizeNestedSetups", .receiveMessage { msg in
-            let onlyA = Behavior<String>.setup { _ in
-                p.ref.tell("setup:onlyA")
-                return .receiveMessage { msg in
-                    switch msg {
-                    case "A":
-                        p.ref.tell("got:A")
-                        return .same
-                    default: return .unhandled
+        let ref: ActorRef<String> = try system.spawn(
+            "orElseCanonicalizeNestedSetups",
+            .receiveMessage { msg in
+                let onlyA = Behavior<String>.setup { _ in
+                    p.ref.tell("setup:onlyA")
+                    return .receiveMessage { msg in
+                        switch msg {
+                        case "A":
+                            p.ref.tell("got:A")
+                            return .same
+                        default: return .unhandled
+                        }
                     }
                 }
-            }
-            let onlyB = Behavior<String>.setup { _ in
-                p.ref.tell("setup:onlyB")
-                return .receiveMessage { msg in
-                    switch msg {
-                    case "B":
-                        p.ref.tell("got:B")
-                        return .same
-                    default: return .unhandled
+                let onlyB = Behavior<String>.setup { _ in
+                    p.ref.tell("setup:onlyB")
+                    return .receiveMessage { msg in
+                        switch msg {
+                        case "B":
+                            p.ref.tell("got:B")
+                            return .same
+                        default: return .unhandled
+                        }
                     }
                 }
+                return onlyA.orElse(onlyB)
             }
-            return onlyA.orElse(onlyB)
-        })
+        )
 
         ref.tell("run the setups")
 
@@ -162,7 +168,7 @@ final class BehaviorCanonicalizeTests: ActorSystemTestBase {
 
         /// Creates an infinitely nested setup behavior -- it is used to see that we detect this and abort executing eagerly
         func setupDaDoRunRunRunDaDoRunRun(depth: Int = 0) -> Behavior<String> {
-            return .setup { _ in
+            .setup { _ in
                 p.tell("at:\(depth)")
                 return setupDaDoRunRunRunDaDoRunRun(depth: depth + 1)
             }

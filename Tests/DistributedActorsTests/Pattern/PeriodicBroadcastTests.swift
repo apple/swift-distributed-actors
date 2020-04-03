@@ -24,16 +24,20 @@ final class PeriodicBroadcastTests: ActorSystemTestBase {
         let p1 = self.testKit.spawnTestProbe(expecting: String.self)
         let p2 = self.testKit.spawnTestProbe(expecting: String.self)
 
-        _ = try self.system.spawn(.anonymous, of: Never.self, .setup { context in
-            let bcast: PeriodicBroadcastControl<String> = try PeriodicBroadcast.start(context)
+        _ = try self.system.spawn(
+            .anonymous,
+            of: Never.self,
+            .setup { context in
+                let bcast: PeriodicBroadcastControl<String> = try PeriodicBroadcast.start(context)
 
-            bcast.ref.tell(.introduce(peer: p1.ref))
-            bcast.ref.tell(.introduce(peer: p2.ref))
+                bcast.ref.tell(.introduce(peer: p1.ref))
+                bcast.ref.tell(.introduce(peer: p2.ref))
 
-            bcast.ref.tell(.set("Hello"))
+                bcast.ref.tell(.set("Hello"))
 
-            return .receiveMessage { _ in .same }
-        })
+                return .receiveMessage { _ in .same }
+            }
+        )
 
         try p1.expectMessage("Hello")
         try p2.expectMessage("Hello")

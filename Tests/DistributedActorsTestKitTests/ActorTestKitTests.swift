@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -95,12 +95,14 @@ final class ActorTestKitTests: XCTestCase {
             }
         }
 
-        messages.shouldEqual([
-            "yes-1",
-            "yes-2",
-            "yes-3",
-            "yes-end",
-        ])
+        messages.shouldEqual(
+            [
+                "yes-1",
+                "yes-2",
+                "yes-3",
+                "yes-end",
+            ]
+        )
     }
 
     func test_fishForTransformed() throws {
@@ -123,12 +125,14 @@ final class ActorTestKitTests: XCTestCase {
             }
         }
 
-        messages.shouldEqual([
-            "yes-1!!!",
-            "yes-2!!!",
-            "yes-3!!!",
-            "yes-end!!!",
-        ])
+        messages.shouldEqual(
+            [
+                "yes-1!!!",
+                "yes-2!!!",
+                "yes-3!!!",
+                "yes-end!!!",
+            ]
+        )
     }
 
     func test_fishFor_canThrow() throws {
@@ -161,7 +165,7 @@ final class ActorTestKitTests: XCTestCase {
         replyTo.tell("Mock Hello!")
 
         // the reply should get the hello
-        try reply._nioFuture.wait().shouldEqual("Mock Hello!")
+        try reply.wait().shouldEqual("Mock Hello!")
     }
 }
 

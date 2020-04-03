@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -19,7 +19,7 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-class SerializationPoolTests: XCTestCase {
+final class SerializationPoolTests: XCTestCase {
     struct Test1: Codable {
         // These locks are used to validate the different ordering guarantees
         // we give in the serialization pool. The locks are used to block
@@ -63,11 +63,14 @@ class SerializationPoolTests: XCTestCase {
 
         init(from decoder: Decoder) throws {
             Test2.deserializerLock.lock()
-            defer { Test2.deserializerLock.unlock() }
+            Test2.deserializerLock.unlock()
         }
 
         init() {}
     }
+
+    let manifest1 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: String(reflecting: Test1.self))
+    let manifest2 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: String(reflecting: Test2.self))
 
     var system: ActorSystem!
     var testKit: ActorTestKit!
@@ -79,10 +82,21 @@ class SerializationPoolTests: XCTestCase {
     var el: EventLoop!
     let allocator = ByteBufferAllocator()
 
+    private func completePromise<T>(_: T.Type, _ promise: EventLoopPromise<T>) -> DeserializationCallback {
+        DeserializationCallback {
+            switch $0 {
+            case .success(.message(let message as T)): promise.succeed(message)
+            case .success(.message(let message)): promise.fail(TestError("Could not treat [\(message)]:\(type(of: message as Any)) as \(T.self)"))
+            case .success(.deadLetter(let deadLetter)): promise.fail(TestError("Got unexpected dead letter: \(deadLetter)"))
+            case .failure(let error): promise.fail(error)
+            }
+        }
+    }
+
     override func setUp() {
         self.system = ActorSystem("SerializationTests") { settings in
-            settings.serialization.registerCodable(for: Test1.self, underId: 1001)
-            settings.serialization.registerCodable(for: Test2.self, underId: 1002)
+            settings.serialization.registerCodable(Test1.self)
+            settings.serialization.registerCodable(Test2.self)
         }
         self.testKit = ActorTestKit(self.system)
         self.elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -108,7 +122,7 @@ class SerializationPoolTests: XCTestCase {
         let test1 = Test1()
         test1.lock.lock()
         defer { test1.lock.unlock() }
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: NIO.EventLoopPromise<(Serialization.Manifest, NIO.ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -116,19 +130,19 @@ class SerializationPoolTests: XCTestCase {
         let test2 = Test1()
         test2.lock.lock()
         defer { test2.lock.unlock() }
-        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
         serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.serialize(message: test2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
         try p.expectMessage("p2")
     }
 
     func test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
+        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
@@ -139,14 +153,14 @@ class SerializationPoolTests: XCTestCase {
         // wait on the `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -163,7 +177,7 @@ class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
+        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
@@ -174,14 +188,14 @@ class SerializationPoolTests: XCTestCase {
         // when unlocking `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -197,7 +211,7 @@ class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
-        let serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
+        let serializationPool = try SerializationPool(settings: .default, serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let json = "{}"
@@ -227,14 +241,14 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
         try p.expectMessage("p1")
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
         try p.expectMessage("p2")
     }
 
     func test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
+        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let json = "{}"
@@ -262,8 +276,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
 
         Test2.deserializerLock.unlock()
 
@@ -275,7 +289,7 @@ class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
+        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
@@ -302,8 +316,8 @@ class SerializationPoolTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath2, promise: promise2)
+        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -313,7 +327,7 @@ class SerializationPoolTests: XCTestCase {
     }
 
     func test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools() throws {
-        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: system.serialization)
+        let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
@@ -322,7 +336,7 @@ class SerializationPoolTests: XCTestCase {
         // on different, separate threads, than the objects being deserialized
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
+        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -338,7 +352,7 @@ class SerializationPoolTests: XCTestCase {
         promise1.futureResult.whenFailure { print("\($0)") }
 
         serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserialize(Test1.self, from: buffer, recipientPath: self.actorPath1, promise: promise2)
+        serializationPool.deserializeAny(from: buffer, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise2))
 
         try p.expectNoMessage(for: .milliseconds(20))
 

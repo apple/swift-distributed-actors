@@ -97,7 +97,7 @@ extension Cluster {
 
         /// More efficient than using `members(withStatus:)` followed by a `.count`
         public func count(withStatus status: Cluster.MemberStatus) -> Int {
-            return self._members.values
+            self._members.values
                 .lazy
                 .filter { member in status == member.status }
                 .count
@@ -185,6 +185,10 @@ extension Cluster {
         /// Checks if passed in node is the leader (given the current view of the cluster state by this Membership).
         public func isLeader(_ member: Cluster.Member) -> Bool {
             self.isLeader(member.node)
+        }
+
+        func contains(_ uniqueNode: UniqueNode) -> Bool {
+            self._members[uniqueNode] != nil
         }
     }
 }
@@ -514,22 +518,24 @@ extension Cluster.Membership {
         }
 
         // 2) if any nodes we know about locally, were not included in the `ahead` membership
-        changes.append(contentsOf: downNodesToRemove.compactMap { nodeToRemove in
-            if nodeToRemove == myself {
-                // we do NOT remove ourselves completely from our own membership, we remain .removed however
-                return self.mark(nodeToRemove, as: .removed)
-            } else {
-                // This is safe since we KNOW the node used to be .down before,
-                // and removals are only performed on convergent cluster state.
-                // Thus all members in the cluster have seen the node as down, or already removed it.
-                // Removal also causes the unique node to be tombstoned in cluster and connections severed,
-                // such that it shall never be contacted again.
-                //
-                // Even if received "old" concurrent gossips with the node still present, we know it would be at-least
-                // down, and thus we'd NOT add it to the membership again, due to the `<none> + .down = .<none>` merge rule.
-                return self.removeCompletely(nodeToRemove)
+        changes.append(
+            contentsOf: downNodesToRemove.compactMap { nodeToRemove in
+                if nodeToRemove == myself {
+                    // we do NOT remove ourselves completely from our own membership, we remain .removed however
+                    return self.mark(nodeToRemove, as: .removed)
+                } else {
+                    // This is safe since we KNOW the node used to be .down before,
+                    // and removals are only performed on convergent cluster state.
+                    // Thus all members in the cluster have seen the node as down, or already removed it.
+                    // Removal also causes the unique node to be tombstoned in cluster and connections severed,
+                    // such that it shall never be contacted again.
+                    //
+                    // Even if received "old" concurrent gossips with the node still present, we know it would be at-least
+                    // down, and thus we'd NOT add it to the membership again, due to the `<none> + .down = .<none>` merge rule.
+                    return self.removeCompletely(nodeToRemove)
+                }
             }
-        })
+        )
 
         return changes
     }

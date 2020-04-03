@@ -75,7 +75,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
 
     private func initiateHandshake(context: ChannelHandlerContext) {
         let proto = ProtoHandshakeOffer(self.handshakeOffer)
-        self.log.debug("Offering handshake [\(proto)]")
+        self.log.trace("Offering handshake [\(proto)]")
 
         do {
             // TODO: allow allocating into existing buffer
@@ -229,7 +229,7 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
         var bytes = self.unwrapInboundIn(data)
 
         do {
-            let protoEnvelope = try ProtoEnvelope(bytes: &bytes)
+            let protoEnvelope = try ProtoEnvelope(buffer: &bytes)
             bytes.discardReadBytes()
             let envelope = try Wire.Envelope(protoEnvelope, allocator: context.channel.allocator)
             context.fireChannelRead(self.wrapInboundOut(envelope))
@@ -239,14 +239,14 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
     }
 }
 
-private final class SerializationHandler: ChannelDuplexHandler {
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Outbound Message handler
+
+final class OutboundSerializationHandler: ChannelOutboundHandler {
     typealias OutboundIn = TransportEnvelope
     typealias OutboundOut = Wire.Envelope
-    typealias InboundIn = Wire.Envelope
-    typealias InboundOut = TransportEnvelope
 
     let log: Logger
-
     let serializationPool: SerializationPool
 
     init(log: Logger, serializationPool: SerializationPool) {
@@ -255,27 +255,34 @@ private final class SerializationHandler: ChannelDuplexHandler {
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let transportEnvelope: TransportEnvelope = self.unwrapOutboundIn(data)
-        let serializationPromise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)> = context.eventLoop.makePromise()
+        self.serializeThenWrite(context, envelope: self.unwrapOutboundIn(data), promise: promise)
+    }
+
+    private func serializeThenWrite(_ context: ChannelHandlerContext, envelope transportEnvelope: TransportEnvelope, promise: EventLoopPromise<Void>?) {
+        let serializationPromise: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = context.eventLoop.makePromise()
 
         self.serializationPool.serialize(
-            message: transportEnvelope.underlyingMessage, metaType: transportEnvelope.underlyingMessageMetaType,
+            message: transportEnvelope.underlyingMessage,
             recipientPath: transportEnvelope.recipient.path,
             promise: serializationPromise
         )
 
         serializationPromise.futureResult.whenComplete {
             switch $0 {
-            case .success((let serializerId, let bytes)):
+            case .success((let manifest, let bytes)):
                 // force unwrapping here is safe because we read exactly the amount of readable bytes
-                let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, serializerId: serializerId, payload: bytes)
+                let wireEnvelope = Wire.Envelope(
+                    recipient: transportEnvelope.recipient,
+                    payload: bytes,
+                    manifest: manifest
+                )
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
+
             case .failure(let error):
                 self.log.error(
                     "Serialization of outgoing message failed: \(error)",
                     metadata: [
                         "recipient": "\(transportEnvelope.recipient)",
-                        "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")",
                     ]
                 )
                 // TODO: drop message when it fails to be serialized?
@@ -283,53 +290,28 @@ private final class SerializationHandler: ChannelDuplexHandler {
             }
         }
     }
-
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let wireEnvelope = self.unwrapInboundIn(data)
-
-        let deserializationPromise: EventLoopPromise<Any> = context.eventLoop.makePromise()
-        serializationPool.deserialize(
-            serializerId: wireEnvelope.serializerId,
-            from: wireEnvelope.payload, recipientPath: wireEnvelope.recipient.path,
-            promise: deserializationPromise
-        )
-
-        // TODO: ensure message ordering. See comment in `write`.
-        deserializationPromise.futureResult.whenComplete { deserializedResult in
-            switch deserializedResult {
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageEnvelope:
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessageEnvelope: message as! SystemMessageEnvelope, recipient: wireEnvelope.recipient)))
-
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageACK:
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(ack: message as! _SystemMessage.ACK, recipient: wireEnvelope.recipient)))
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageNACK:
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(nack: message as! _SystemMessage.NACK, recipient: wireEnvelope.recipient)))
-
-            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessage:
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: message as! _SystemMessage, recipient: wireEnvelope.recipient)))
-
-            case .success(let message):
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(message: message, recipient: wireEnvelope.recipient)))
-
-            case .failure(let error):
-                self.log.error("Deserialization error: \(error)", metadata: ["recipient": "\(wireEnvelope.recipient)"])
-            }
-        }
-    }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: System Message Redelivery
 
 /// Handles `SystemMessage` re-delivery, by exchanging sequence numbered envelopes and (N)ACKs.
 ///
 /// It follows the "Shell" pattern, all actual logic is implemented in the `OutboundSystemMessageRedelivery`
 /// and `InboundSystemMessages`
 internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
+    // we largely pass-through messages, however if they are system messages we keep them buffered for potential re-delivery
     typealias OutboundIn = TransportEnvelope
     typealias OutboundOut = TransportEnvelope
-    typealias InboundIn = TransportEnvelope
-    typealias InboundOut = TransportEnvelope
+
+    typealias InboundIn = Wire.Envelope // we handle deserialization in case it is about a system message (since message == system message envelope)
+    typealias InboundOut = Wire.Envelope // we pass along user messages; all system messages are handled in-place here (ack, nack), or delivered directly to the recipient from this handler
 
     private let log: Logger
+    private let system: ActorSystem
     private let clusterShell: ClusterShell.Ref
+
+    private let serializationPool: SerializationPool
 
     internal let outboundSystemMessages: OutboundSystemMessageRedelivery
     internal let inboundSystemMessages: InboundSystemMessages
@@ -337,9 +319,18 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     struct RedeliveryTick {}
     private var redeliveryScheduled: Scheduled<RedeliveryTick>?
 
-    init(log: Logger, cluster: ClusterShell.Ref, outbound: OutboundSystemMessageRedelivery, inbound: InboundSystemMessages) {
+    init(
+        log: Logger,
+        system: ActorSystem,
+        cluster: ClusterShell.Ref,
+        serializationPool: SerializationPool,
+        outbound: OutboundSystemMessageRedelivery,
+        inbound: InboundSystemMessages
+    ) {
         self.log = log
+        self.system = system
         self.clusterShell = cluster
+        self.serializationPool = serializationPool
 
         self.outboundSystemMessages = outbound
         self.inboundSystemMessages = inbound
@@ -348,7 +339,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Outbound
+    // MARK: Outbound: Store System messages for re-delivery, pass along all other ones
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let transportEnvelope: TransportEnvelope = self.unwrapOutboundIn(data)
@@ -367,6 +358,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
             self.tracelog(.outbound, message: redeliveryEnvelope)
             context.writeAndFlush(self.wrapOutboundOut(redeliveryEnvelope), promise: promise)
+
         case .bufferOverflowMustAbortAssociation:
             self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).")
             if let node = transportEnvelope.recipient.node {
@@ -376,37 +368,64 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Inbound
+    // MARK: Inbound: If the message is definitely a system message (we know thanks to the manifests serializerID) decode and handle it
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let transportEnvelope: TransportEnvelope = self.unwrapInboundIn(data)
-        switch transportEnvelope.storage {
-        case .message:
-            // pass through, the happy path for all user messages
-            context.fireChannelRead(self.wrapInboundOut(transportEnvelope))
+        let wireEnvelope = self.unwrapInboundIn(data)
 
-        case .systemMessageEnvelope(let systemMessageEnvelope):
-            self.tracelog(.inbound, message: transportEnvelope)
-            self.onInboundSystemMessage(context, systemEnvelope: systemMessageEnvelope, recipient: transportEnvelope.recipient)
-
-        case .systemMessageDelivery(.ack(let ack)):
-            self.tracelog(.inbound, message: transportEnvelope)
-            self.onInboundACK(ack: ack)
-
-        case .systemMessageDelivery(.nack(let nack)):
-            self.tracelog(.inbound, message: transportEnvelope)
-            self.onInboundNACK(context, nack: nack)
-
-        case .systemMessage(let message):
-            fatalError("\(self) should only receive system messages wrapped in SystemMessage envelope from the wire! This is a bug. Got: \(message)")
+        // TODO: optimize by carrying ID in envelope of if we need to special handle this as system message
+        let Type = try? self.serializationPool.serialization.summonType(from: wireEnvelope.manifest)
+        if Type == SystemMessageEnvelope.self {
+            self.deserializeThenHandle(type: SystemMessageEnvelope.self, wireEnvelope: wireEnvelope) { envelope in
+                self.onInboundSystemMessage(context, systemEnvelope: envelope, wireEnvelope: wireEnvelope)
+            }
+        } else if Type == _SystemMessage.ACK.self {
+            self.deserializeThenHandle(type: _SystemMessage.ACK.self, wireEnvelope: wireEnvelope) { ack in
+                self.onInboundACK(ack: ack)
+            }
+        } else if Type == _SystemMessage.NACK.self {
+            self.deserializeThenHandle(type: _SystemMessage.NACK.self, wireEnvelope: wireEnvelope) { nack in
+                self.onInboundNACK(context, nack: nack)
+            }
+        } else if Type == _SystemMessage.self {
+            log.error("""
+            Received _SystemMessage manifest! This should never happen, as system messages should ALWAYS travel in `SystemMessageEnvelope`s. \
+            Remote: \(reflecting: context.remoteAddress), manifest: \(wireEnvelope.manifest)
+            """)
+        } else {
+            // it's a normal message, so we should directly pass it along
+            context.fireChannelRead(self.wrapInboundOut(wireEnvelope))
         }
     }
 
-    private func onInboundSystemMessage(_ context: ChannelHandlerContext, systemEnvelope: SystemMessageEnvelope, recipient: ActorAddress) {
+    private func deserializeThenHandle<T>(type: T.Type, wireEnvelope: Wire.Envelope, callback: @escaping (T) -> Void) {
+        self.serializationPool.deserializeAny(
+            from: wireEnvelope.payload, using: wireEnvelope.manifest,
+            recipientPath: wireEnvelope.recipient.path, // TODO: use addresses
+            callback: .init { result in
+                self.tracelog(.inbound, message: wireEnvelope)
+                switch result {
+                case .success(.message(let message as T)):
+                    callback(message)
+                case .success(.message(let message)):
+                    self.log.error("Unable to cast system message \(message) as \(T.self)!")
+                case .success(.deadLetter(let message)):
+                    self.log.error("Deserialized as system message dead letter, this is highly suspect; Type \(type), wireEnvelope: \(wireEnvelope), message: \(message)")
+                case .failure(let error):
+                    self.log.error("Failed to deserialize \(type), wireEnvelope: \(wireEnvelope), error: \(error)")
+                }
+            }
+        )
+    }
+
+    private func onInboundSystemMessage(_ context: ChannelHandlerContext, systemEnvelope: SystemMessageEnvelope, wireEnvelope: Wire.Envelope) {
+        let recipient = wireEnvelope.recipient
+
         switch self.inboundSystemMessages.onDelivery(systemEnvelope) {
         case .accept(let ack):
-            // we unwrap the system envelope, as the ActorDelivery handler does not need to care about any sequence numbers anymore
-            context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: systemEnvelope.message, recipient: recipient)))
+            // unwrap and immediately deliver the message; we do not need to forward it to the user-message handler
+            let ref = self.system._resolveUntyped(context: .init(address: wireEnvelope.recipient, system: self.system))
+            ref._sendSystemMessage(systemEnvelope.message)
 
             // TODO: potential for coalescing some ACKs here; schedule "lets write back in 300ms"
             let ackEnvelope = TransportEnvelope(ack: ack, recipient: recipient)
@@ -491,9 +510,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: tracelog: System Redelivery [tracelog:sys-msg-redelivery]
-
 extension SystemMessageRedeliveryHandler {
     /// Optional "dump all messages" logging.
     private func tracelog(
@@ -535,45 +551,53 @@ extension SystemMessageRedeliveryHandler {
     }
 }
 
-private final class ActorDeliveryHandler: ChannelInboundHandler {
-    typealias InboundIn = TransportEnvelope
+/// Deserializes and delivers user messages (i.e. anything that is not a system message).
+private final class UserMessageHandler: ChannelInboundHandler {
+    typealias InboundIn = Wire.Envelope
     typealias InboundOut = Never // we terminate here, by sending messages off to local actors
 
     let log: Logger
-    let system: ActorSystem
 
-    init(system: ActorSystem) {
-        self.log = ActorLogger.make(system: system, identifier: "message-delivery")
+    let system: ActorSystem
+    let serializationPool: SerializationPool
+
+    init(log: Logger, system: ActorSystem, serializationPool: SerializationPool) {
+        self.log = log
         self.system = system
+        self.serializationPool = serializationPool
     }
 
+    /// This ends the processing chain for incoming messages.
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let transportEnvelope: TransportEnvelope = self.unwrapInboundIn(data)
+        self.deserializeThenDeliver(context, wireEnvelope: self.unwrapInboundIn(data))
+    }
 
-        let resolveContext = ResolveContext<Any>(address: transportEnvelope.recipient, system: self.system)
-        let ref = self.system._resolveUntyped(context: resolveContext)
+    private func deserializeThenDeliver(_ context: ChannelHandlerContext, wireEnvelope: Wire.Envelope) {
+        // It is OF CRUCIAL IMPORTANCE that we do not accidentally attempt to deserialize an `Any.Type`.
+        // We must ensure that we deserialize using the actual type that was expected by the destination actor.
+        // This can be done by obtaining the serializer that is bound to a specific type by using the Manifest.
+        //
+        // Since we are receiving a message:
+        // 1. We must have spawned an actor of this type -- it must have ensured a serializer for this manifest
+        // 2. We have ensured a serializer for it otherwise
+        // X. We never spawned or registered the serializer and the message shall be dropped
 
-        switch transportEnvelope.storage {
-        case .message(let message):
-            ref._tellOrDeadLetter(message)
-        case .systemMessage(let message):
-            ref._sendSystemMessage(message)
-        case .systemMessageEnvelope(let systemMessageEnvelope):
-            fatalError("""
-            .systemMessageEnvelope should not be allowed through to the \(self) handler! \
-            The \(SystemMessageRedeliveryHandler.self) should have peeled off the system envelope. \
-            This is a bug in pipeline construction! Was: \(systemMessageEnvelope)
-            """)
-        case .systemMessageDelivery(let delivery):
-            fatalError("""
-            .systemMessageDelivery should not be allowed through to the \(self) handler! 
-            The \(SystemMessageRedeliveryHandler.self) should have stopped the propagation of delivery confirmations. \
-            This is a bug in pipeline construction! Was: \(delivery)
-            """)
-        }
+        // 1. Resolve the actor, it MUST be local and MUST contain the actual Message type it expects
+        let ref = self.system._resolveUntyped(
+            context: .init(address: wireEnvelope.recipient, system: self.system)
+        )
+        // We resolved "untyped" meaning that we did not take into account the Type of the actor when looking for it.
+        // However, the actor ref "inside" has strict knowledge about what specific Message type it is about (!).
+
+        // all other messages are "normal" and should be delivered to the target actor normally
+        ref._deserializeDeliver(
+            wireEnvelope.payload, using: wireEnvelope.manifest,
+            on: self.serializationPool
+        )
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf read... implementations
 
 extension InitiatingHandshakeHandler {
@@ -596,10 +620,6 @@ extension ReceivingHandshakeHandler {
         let proto = try ProtoHandshakeOffer(serializedData: data)
         return try Wire.HandshakeOffer(fromProto: proto)
     }
-}
-
-enum WireFormatError: Error {
-    case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
 }
 
 private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
@@ -665,7 +685,7 @@ extension ClusterShell {
                     }
                 }
 
-                let log = ActorLogger.make(system: system, identifier: "server")
+                let log = ActorLogger.make(system: system, identifier: "/system/transport.server")
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS! // TODO: tests about killing connections the hard way
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
@@ -680,9 +700,9 @@ extension ClusterShell {
                     ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localNode: bindAddress)),
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME only include for debug -DSACT_TRACE_NIO things?
                     ("wire envelope handler", WireEnvelopeHandler(log: log)),
-                    ("serialization handler", SerializationHandler(log: log, serializationPool: serializationPool)),
-                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, cluster: shell, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
-                    ("message delivery", ActorDeliveryHandler(system: system)),
+                    ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
+                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
+                    ("actor message handler", UserMessageHandler(log: log, system: system, serializationPool: serializationPool)),
                     // writes go this way: ^^^
                 ]
 
@@ -728,7 +748,7 @@ extension ClusterShell {
                     }
                 }
 
-                let log = ActorLogger.make(system: system, identifier: "client")
+                let log = ActorLogger.make(system: system, identifier: "/system/transport.client")
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
@@ -743,9 +763,9 @@ extension ClusterShell {
                     ("initiating handshake handler", InitiatingHandshakeHandler(log: log, handshakeOffer: handshakeOffer, cluster: shell)),
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)), // FIXME make available via compilation flag
                     ("envelope handler", WireEnvelopeHandler(log: log)),
-                    ("serialization handler", SerializationHandler(log: log, serializationPool: serializationPool)),
-                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, cluster: shell, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
-                    ("message delivery", ActorDeliveryHandler(system: system)),
+                    ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
+                    ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
+                    ("actor message handler", UserMessageHandler(log: log, system: system, serializationPool: serializationPool)),
                     // writes go this way: ^^^
                 ]
 
@@ -822,11 +842,10 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
 
     let recipient: ActorAddress
 
-    let underlyingMessageMetaType: AnyMetaType
-
     // TODO: carry same data as Envelope -- baggage etc
 
-    init<UnderlyingMessage>(envelope: Envelope, underlyingMessageType: UnderlyingMessage.Type, recipient: ActorAddress) {
+    init(envelope: Envelope, recipient: ActorAddress) {
+        assert(recipient.node != nil, "Attempted to send remote message, though recipient is local! Was envelope: \(envelope), recipient: \(recipient)")
         switch envelope.payload {
         case .message(let message):
             self.storage = .message(message)
@@ -838,7 +857,6 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
             fatalError("Attempted to send .subMessage to remote actor, this is illegal and can not be made to work. Envelope: \(envelope), recipient: \(recipient)")
         }
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(underlyingMessageType)
         // TODO: carry metadata from Envelope
     }
 
@@ -846,31 +864,26 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         // assert(Message.self != Any.self)
         self.storage = .message(message)
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(Message.self)
     }
 
     init(systemMessage: _SystemMessage, recipient: ActorAddress) {
         self.storage = .systemMessage(systemMessage)
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(_SystemMessage.self)
     }
 
     init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorAddress) {
         self.storage = .systemMessageEnvelope(systemMessageEnvelope)
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(SystemMessageEnvelope.self)
     }
 
     init(ack: _SystemMessage.ACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.ack(ack))
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(_SystemMessage.ACK.self)
     }
 
     init(nack: _SystemMessage.NACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.nack(nack))
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(_SystemMessage.NACK.self)
     }
 
     /// Unwraps *ONE* layer of envelope
@@ -893,10 +906,17 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
     }
 
     var description: String {
-        return "TransportEnvelope(\(storage), recipient: \(recipient), messageMetaType: \(underlyingMessageMetaType))"
+        "TransportEnvelope(\(storage), recipient: \(String(reflecting: recipient)))"
     }
 
     var debugDescription: String {
-        return "TransportEnvelope(_storage: \(storage), recipient: \(recipient), messageMetaType: \(underlyingMessageMetaType))"
+        "TransportEnvelope(_storage: \(storage), recipient: \(String(reflecting: recipient)))"
     }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Errors
+
+enum WireFormatError: Error {
+    case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
 }

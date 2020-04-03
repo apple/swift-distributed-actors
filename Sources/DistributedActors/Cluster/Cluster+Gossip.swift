@@ -19,8 +19,7 @@ extension Cluster {
     /// Gossip payload about members in the cluster.
     ///
     /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
-    struct Gossip: Equatable {
-        // TODO: can be moved to generic envelope ---------
+    struct Gossip: ActorMessage, Equatable {
         let owner: UniqueNode
         /// A table maintaining our perception of other nodes views on the version of membership.
         /// Each row in the table represents what versionVector we know the given node has observed recently.
@@ -31,8 +30,6 @@ extension Cluster {
         var version: VersionVector {
             self.seen.underlying[self.owner]! // !-safe, since we _always_ know our own world view
         }
-
-        // TODO: end of can be moved to generic envelope ---------
 
         // Would be Payload of the generic envelope.
         /// IMPORTANT: Whenever the membership is updated with an effective change, we MUST move the version forward (!)
@@ -161,9 +158,9 @@ extension Cluster {
     }
 }
 
-extension Cluster.Gossip: Codable {
-    // Codable: synthesized conformance
-}
+// extension Cluster.Gossip: Codable {
+//    // Codable: synthesized conformance
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.Gossip.SeenTable
@@ -271,7 +268,7 @@ extension Cluster.Gossip {
         /// must be taken on the cluster layer, by using and checking for tombstones. // TODO: make a nasty test for this, a simple one we got; See MembershipGossipSeenTableTests
         mutating func prune(_ nodeToPrune: UniqueNode) {
             _ = self.underlying.removeValue(forKey: nodeToPrune)
-            let replicaToPrune: ReplicaId = .uniqueNode(nodeToPrune)
+            let replicaToPrune: ReplicaID = .uniqueNode(nodeToPrune)
 
             for (key, version) in self.underlying where version.contains(replicaToPrune, 0) {
                 self.underlying[key] = version.pruneReplica(replicaToPrune)

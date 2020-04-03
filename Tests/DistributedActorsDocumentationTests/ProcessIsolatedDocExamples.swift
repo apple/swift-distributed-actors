@@ -18,9 +18,9 @@ import DistributedActors
 
 // end::imports[]
 
-private struct WorkRequest {}
+private struct WorkRequest: NonTransportableActorMessage {}
 
-private struct Requests {}
+private struct Requests: NonTransportableActorMessage {}
 
 class ProcessIsolatedDocExamples {
     func x() throws {
@@ -31,7 +31,7 @@ class ProcessIsolatedDocExamples {
         let isolated = ProcessIsolated { boot in // <1>
 
             // optionally configure nodes by changing the provided settings
-            boot.settings.defaultLogLevel = .info
+            boot.settings.logging.defaultLevel = .info
 
             // always create the actor system based on the provided boot settings, customized if needed
             return ActorSystem(settings: boot.settings)
@@ -52,10 +52,14 @@ class ProcessIsolatedDocExamples {
             )
 
             // spawn the an actor on the master node <6>
-            _ = try isolated.system.spawn("bruce", of: WorkRequest.self, .receiveMessage { _ in
-                // do something with the `work`
-                .same
-            })
+            _ = try isolated.system.spawn(
+                "bruce",
+                of: WorkRequest.self,
+                .receiveMessage { _ in
+                    // do something with the `work`
+                    .same
+                }
+            )
         }
         // end of executes only on .master process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -29,18 +29,22 @@ final class ClusterMembershipSnapshotTests: ClusteredNodesTestBase {
         let (first, second) = self.setUpPair()
         try self.joinNodes(node: first, with: second)
 
+        let third = self.setUpNode("third")
+        try self.joinNodes(node: first, with: third)
+
         let testKit: ActorTestKit = self.testKit(first)
         try testKit.eventually(within: .seconds(5)) {
             let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
 
             // either joining or up is fine, though we want to see that they're not in down or worse states
-            guard (snapshot.count(withStatus: .joining) + snapshot.count(withStatus: .up)) == 2 else {
+            guard (snapshot.count(withStatus: .joining) + snapshot.count(withStatus: .up)) == 3 else {
                 throw testKit.error(line: #line - 1)
             }
 
             let nodes: [UniqueNode] = snapshot.members(atMost: .up).map { $0.node }
             nodes.shouldContain(first.cluster.node)
             nodes.shouldContain(second.cluster.node)
+            nodes.shouldContain(third.cluster.node)
         }
     }
 }

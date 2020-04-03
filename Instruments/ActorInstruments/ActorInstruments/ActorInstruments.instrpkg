@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <package>
     <id>com.apple.actors.ActorInstruments</id>
-    <version>0.4.0</version>
+    <version>0.4.1</version>
     <title>Actors</title>
     <owner>
         <name>Konrad 'ktoso' Malawski</name>
@@ -22,24 +22,58 @@
     <os-signpost-interval-schema>
         <id>actor-lifecycle-interval</id>
         <title>Actor Lifecycle</title>
-
+        
+        <attribute>
+            <name>include-system-actors</name>
+             <required>false</required>
+             <note>Specifies if the table should limit the data to ALL or a specific pid</note>
+             <value-pattern>true|false</value-pattern>
+         </attribute>
+        
         <subsystem>"com.apple.actors"</subsystem>
         <category>"Lifecycle"</category>
         <name>"Actor Lifecycle"</name>
-
+        
         <start-pattern>
-            <message>"spawned,address:" ?address</message>
+            <message>"spawned,node:" ?node ",path:" ?path</message>
         </start-pattern>
         <end-pattern>
             <message>"stopped,reason:" ?reason</message>
         </end-pattern>
-
+        
+        <column>
+            <mnemonic>actor-node</mnemonic>
+            <title>Actor Node</title>
+            <type>string</type>
+            <expression>?node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-path</mnemonic>
+            <title>Actor Path</title>
+            <type>string</type>
+            <expression>?path</expression>
+        </column>
         <column>
             <mnemonic>actor-address</mnemonic>
             <title>Actor Address</title>
             <type>string</type>
-            <expression>?address</expression>
+            <expression>(str-cat ?node ?path)</expression>
         </column>
+      
+      <!--
+        <column>
+            <mnemonic>actor-is-system</mnemonic>
+            <title>Is System Actor</title>
+            <type>boolean</type>
+            <expression>(if (eq (str-index "/system/" ?actor-path) 1) then true else false)</expression>
+        </column>
+        <column>
+            <mnemonic>actor-is-user</mnemonic>
+            <title>Is User Actor</title>
+            <type>boolean</type>
+            <expression>(if (eq (str-index "/user/" ?actor-path) 1) then true else false)</expression>
+        </column>
+      -->
 
         <column>
             <mnemonic>actor-stop-reason</mnemonic>
@@ -64,14 +98,26 @@
         <name>"Actor Lifecycle"</name>
 
         <pattern>
-            <message>"spawned,address:" ?address</message>
+            <message>"spawned,node:" ?node ",path:" ?path</message>
         </pattern>
 
+        <column>
+            <mnemonic>actor-node</mnemonic>
+            <title>Actor Node</title>
+            <type>string</type>
+            <expression>?node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-path</mnemonic>
+            <title>Actor Path</title>
+            <type>string</type>
+            <expression>?path</expression>
+        </column>
         <column>
             <mnemonic>actor-address</mnemonic>
             <title>Actor Address</title>
             <type>string</type>
-            <expression>?address</expression>
+            <expression>(str-cat ?node ?path)</expression>
         </column>
     </os-signpost-point-schema>
 
@@ -82,25 +128,57 @@
         <id>actor-message-received</id>
         <title>Actor Messages</title>
 
+        <attribute>
+            <name>target-recipient</name>
+            <required>true</required>
+            <note>Specifies if the table should limit the data to ALL or a specific recipient</note>
+            <value-pattern>ALL|([/_-a-zA-Z0-9])+</value-pattern>
+        </attribute>
+
         <subsystem>"com.apple.actors"</subsystem>
         <category>"Messages"</category>
         <name>"Actor Message (Received)"</name>
 
         <pattern>
-            <message>"actor-message-received,recipient:" ?recipient ",sender:" ?sender ",message:" ?message ",type:" ?type </message>
+            <message>"actor-message-received,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",sender-node:" ?sender-node ",sender-path:" ?sender-path ",message:" ?message ",type:" ?type</message>
         </pattern>
 
         <column>
-            <mnemonic>actor-recipient</mnemonic>
-            <title>Recipient</title>
+            <mnemonic>actor-recipient-node</mnemonic>
+            <title>Recipient Node</title>
             <type>string</type>
-            <expression>?recipient</expression>
+            <expression>?recipient-node</expression>
         </column>
         <column>
-            <mnemonic>actor-sender</mnemonic>
-            <title>Sender</title>
+            <mnemonic>actor-recipient-path</mnemonic>
+            <title>Recipient Path</title>
             <type>string</type>
-            <expression>?sender</expression>
+            <expression>?recipient-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-address</mnemonic>
+            <title>Recipient Address</title>
+            <type>string</type>
+            <expression>(str-cat ?recipient-node ?recipient-path)</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-sender-node</mnemonic>
+            <title>Sender Node</title>
+            <type>string</type>
+            <expression>?sender-node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-sender-path</mnemonic>
+            <title>Sender Path</title>
+            <type>string</type>
+            <expression>?sender-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-sender-address</mnemonic>
+            <title>Sender Address</title>
+            <type>string</type>
+            <expression>(str-cat ?sender-node ?sender-path)</expression>
         </column>
 
         <column>
@@ -127,35 +205,45 @@
         <name>"Actor Message (Tell)"</name>
 
         <pattern>
-            <message>"actor-message-told,recipient:" ?recipient ",sender:" ?sender ",type:" ?type ",message:" ?message
-            </message>
+            <message>"actor-message-told,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",sender-node:" ?sender-node ",sender-path:" ?sender-path ",message:" ?message ",type:" ?type</message>
         </pattern>
 
         <column>
-            <mnemonic>actor-recipient</mnemonic>
-            <title>Recipient</title>
+            <mnemonic>actor-recipient-node</mnemonic>
+            <title>Recipient Node</title>
             <type>string</type>
-            <expression>?recipient</expression>
+            <expression>?recipient-node</expression>
         </column>
-<!--        <column>-->
-<!--            <mnemonic>actor-recipient-path0</mnemonic>-->
-<!--            <title>Recipient Path[0]</title>-->
-<!--            <type>string</type>-->
-<!--        TODO: harder since the thing is the entire address -->
-<!--            <expression>(if (eq (str-index "/system" ?recipient) 1) then "/system" else "/user")</expression>-->
-<!--        </column>-->
         <column>
-            <mnemonic>actor-sender</mnemonic>
-            <title>Sender</title>
+            <mnemonic>actor-recipient-path</mnemonic>
+            <title>Recipient Path</title>
             <type>string</type>
-            <expression>?sender</expression>
+            <expression>?recipient-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-address</mnemonic>
+            <title>Recipient Address</title>
+            <type>string</type>
+            <expression>(str-cat ?recipient-node ?recipient-path)</expression>
         </column>
 
         <column>
-            <mnemonic>actor-message-type</mnemonic>
-            <title>Message Type</title>
+            <mnemonic>actor-sender-node</mnemonic>
+            <title>Sender Node</title>
             <type>string</type>
-            <expression>?type</expression>
+            <expression>?sender-node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-sender-path</mnemonic>
+            <title>Sender Path</title>
+            <type>string</type>
+            <expression>?sender-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-sender-address</mnemonic>
+            <title>Sender Address</title>
+            <type>string</type>
+            <expression>(str-cat ?sender-node ?sender-path)</expression>
         </column>
 
         <column>
@@ -163,6 +251,13 @@
             <title>Message</title>
             <type>string</type>
             <expression>?message</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-message-type</mnemonic>
+            <title>Message Type</title>
+            <type>string</type>
+            <expression>?type</expression>
         </column>
     </os-signpost-point-schema>
 
@@ -175,24 +270,49 @@
         <name>"Actor Message (Ask)"</name>
 
         <start-pattern>
-            <message>"actor-message-asked,recipient:" ?recipient ",sender:" ?sender ",question:" ?question ",type:" ?question-type</message>
+            <message>"actor-message-asked,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",sender-node:" ?sender-node ",sender-path:" ?sender-path ",question:" ?question ",type:" ?question-type</message>
         </start-pattern>
         <end-pattern>
             <message>"actor-message-ask-answered,answer:" ?answer ",type:" ?answer-type ",error:" ?error ",type:" ?error-type</message>
         </end-pattern>
 
         <column>
-             <mnemonic>actor-recipient</mnemonic>
-             <title>Recipient</title>
-             <type>string</type>
-             <expression>?recipient</expression>
-         </column>
-         <column>
-             <mnemonic>actor-sender</mnemonic>
-             <title>Sender</title>
-             <type>string</type>
-             <expression>?sender</expression>
-         </column>
+            <mnemonic>actor-recipient-node</mnemonic>
+            <title>Recipient Node</title>
+            <type>string</type>
+            <expression>?recipient-node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-path</mnemonic>
+            <title>Recipient Path</title>
+            <type>string</type>
+            <expression>?recipient-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-address</mnemonic>
+            <title>Recipient Address</title>
+            <type>string</type>
+            <expression>(str-cat ?recipient-node ?recipient-path)</expression>
+        </column>
+
+        <column>
+            <mnemonic>actor-sender-node</mnemonic>
+            <title>Sender Node</title>
+            <type>string</type>
+            <expression>?sender-node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-sender-path</mnemonic>
+            <title>Sender Path</title>
+            <type>string</type>
+            <expression>?sender-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-sender-address</mnemonic>
+            <title>Sender Address</title>
+            <type>string</type>
+            <expression>(str-cat ?sender-node ?sender-path)</expression>
+        </column>
 
          <column>
              <mnemonic>actor-ask-question</mnemonic>
@@ -246,17 +366,29 @@
         <name>"Actor Transport (Serialization)"</name>
 
         <start-pattern>
-            <message>"serialize,recipient:" ?recipient ",type:" ?type ",message:" ?message</message>
+            <message>"serialize,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",type:" ?type ",message:" ?message</message>
         </start-pattern>
         <end-pattern>
             <message>"serialized,bytes:" ?bytes</message>
         </end-pattern>
 
         <column>
-            <mnemonic>actor-recipient</mnemonic>
-            <title>Actor Recipient</title>
+            <mnemonic>actor-recipient-node</mnemonic>
+            <title>Recipient Node</title>
             <type>string</type>
-            <expression>?recipient</expression>
+            <expression>?recipient-node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-path</mnemonic>
+            <title>Recipient Path</title>
+            <type>string</type>
+            <expression>?recipient-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-address</mnemonic>
+            <title>Recipient Address</title>
+            <type>string</type>
+            <expression>(str-cat ?recipient-node ?recipient-path)</expression>
         </column>
 
         <column>
@@ -298,17 +430,29 @@
         <name>"Actor Transport (Deserialization)"</name>
 
         <start-pattern>
-            <message>"deserialize,recipient:" ?recipient ",bytes:" ?bytes</message>
+            <message>"deserialize,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",bytes:" ?bytes</message>
         </start-pattern>
         <end-pattern>
             <message>"deserialized,message:" ?message ",type:" ?type</message>
         </end-pattern>
 
         <column>
-            <mnemonic>actor-recipient</mnemonic>
-            <title>Actor Recipient</title>
+            <mnemonic>actor-recipient-node</mnemonic>
+            <title>Recipient Node</title>
             <type>string</type>
-            <expression>?recipient</expression>
+            <expression>?recipient-node</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-path</mnemonic>
+            <title>Recipient Path</title>
+            <type>string</type>
+            <expression>?recipient-path</expression>
+        </column>
+        <column>
+            <mnemonic>actor-recipient-address</mnemonic>
+            <title>Recipient Address</title>
+            <type>string</type>
+            <expression>(str-cat ?recipient-node ?recipient-path)</expression>
         </column>
 
         <column>
@@ -352,6 +496,102 @@
     <!-- Any number of 'instrument' elements can be defined; each instrument should provide a cohesive graph and detail experience. -->
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- MARK: Instrument: Lifecycles -->
+    <instrument>
+        <id>com.apple.actors.instrument.lifecycles</id>
+        <title>Actor Lifecycle</title>
+        <category>Behavior</category>
+        <purpose>Monitor lifecycle of actors (start, stop, fail, restart etc.)</purpose>
+        <icon>Activity Monitor</icon>
+
+        <!--
+        <create-parameter>
+            <name>?includeSystemActors</name>
+            <boolean-value>
+                <true-choice>Show /system Actors</true-choice>
+            </boolean-value>
+        </create-parameter>
+        -->
+        
+        <create-table>
+            <id>actor-lifecycle-intervals</id>
+            <schema-ref>actor-lifecycle-interval</schema-ref>
+            <!--
+            <attribute>
+                <name>include-system-actors</name>
+                <parameter-ref>?includeSystemActors</parameter-ref>
+            </attribute>
+            -->
+        </create-table>
+        <create-table>
+            <id>actor-lifecycle-spawns</id>
+            <schema-ref>actor-lifecycle-spawn</schema-ref>
+        </create-table>
+
+        <graph>
+            <title>Lifecycles</title>
+
+            <lane>
+                <title>Spawns Lane</title>
+                <table-ref>actor-lifecycle-spawns</table-ref>
+
+                <plot-template>
+                    <instance-by>actor-path</instance-by>
+                    <label-format>%s</label-format>
+                    <value-from>actor-path</value-from>
+                    <label-from>actor-path</label-from>
+                </plot-template>
+            </lane>
+
+            <lane>
+                <title>Lifetimes Lane</title>
+                <table-ref>actor-lifecycle-intervals</table-ref>
+
+                <plot-template>
+                    <instance-by>actor-path</instance-by>
+                    <label-format>%s</label-format>
+                    <value-from>actor-path</value-from>
+                    <color-from>actor-stop-reason-impact</color-from>
+                    <label-from>actor-path</label-from>
+                </plot-template>
+            </lane>
+        </graph>
+
+        <list>
+            <title>Spawns</title>
+            <table-ref>actor-lifecycle-spawns</table-ref>
+            <column>timestamp</column>
+            <column>actor-node</column>
+            <column>actor-path</column>
+        </list>
+
+        <list>
+            <title>Lifetimes</title>
+            <table-ref>actor-lifecycle-intervals</table-ref>
+            <column>start</column>
+            <column>duration</column>
+            <column>actor-node</column>
+            <column>actor-path</column>
+        </list>
+        
+        <!--
+        <engineering-type-track>
+            <table-ref>actor-lifecycle-spawns</table-ref>
+            <hierarchy>
+                <level>
+                    <column>actor-node</column>
+                </level>
+                <level>
+                    <column>actor-path</column>
+                </level>
+            </hierarchy>
+        </engineering-type-track>
+        -->
+
+    </instrument>
+
+    
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- MARK: Instrument: Messages -->
     <instrument>
         <id>com.apple.actors.instrument.messages.received</id>
@@ -360,9 +600,26 @@
         <purpose>Marks points in time where messages are received</purpose>
         <icon>Network</icon>
 
+        <!-- TODO: would want to slice based on the name regex people give
+        <slice-type-hierarchy>
+            <level>
+                <slice-type>process</slice-type>
+            </level>
+        </slice-type-hierarchy>
+        -->
+        
+        <import-parameter>
+            <from-scope>trace</from-scope>
+            <name>?target-pid</name>
+        </import-parameter>
+        
         <create-table>
             <id>messages-received</id>
             <schema-ref>actor-message-received</schema-ref>
+            <attribute>
+                <name>target-recipient</name>
+                <parameter-ref>?target-pid</parameter-ref>
+            </attribute>
         </create-table>
 
         <graph>
@@ -370,24 +627,29 @@
             <lane>
                 <title>Received</title>
                 <table-ref>messages-received</table-ref>
-
+                
                 <plot-template>
-                    <instance-by>actor-recipient</instance-by>
+                    <instance-by>actor-recipient-path</instance-by>
+                    <label-format>%s</label-format>
                     <value-from>actor-message-type</value-from>
+                    <label-from>actor-recipient-path</label-from>
                 </plot-template>
             </lane>
         </graph>
-
-
+        
         <list>
             <title>List: Messages (Received)</title>
             <table-ref>messages-received</table-ref>
 
-            <column>actor-sender</column>
-            <column>actor-recipient</column>
+            <column>timestamp</column>
+            <column>actor-sender-node</column>
+            <column>actor-sender-path</column>
+            <column>actor-recipient-node</column>
+            <column>actor-recipient-path</column>
             <column>actor-message</column>
             <column>actor-message-type</column>
         </list>
+    
     </instrument>
 
     <instrument>
@@ -396,7 +658,6 @@
         <category>Behavior</category>
         <purpose>Points in time where actor messages are told (sent)</purpose>
         <icon>Network</icon>
-
 
         <create-table>
             <id>messages-told</id>
@@ -410,9 +671,20 @@
                  <table-ref>messages-told</table-ref>
 
                  <plot-template>
-                     <instance-by>actor-recipient</instance-by>
+                     <instance-by>actor-recipient-path</instance-by>
+                     <label-format>%s</label-format>
                      <value-from>actor-message-type</value-from>
+                     <label-from>actor-recipient-path</label-from>
                  </plot-template>
+                 
+                 <!-- TODO: we dont have sender paths yet, needs context propagtion
+                 <plot-template>
+                     <instance-by>actor-sender-path</instance-by>
+                     <label-format>%s</label-format>
+                     <value-from>actor-message-type</value-from>
+                     <label-from>actor-sender-path</label-from>
+                 </plot-template>
+                 -->
              </lane>
          </graph>
 
@@ -421,8 +693,11 @@
             <title>List: Messages (Told)</title>
             <table-ref>messages-told</table-ref>
 
-            <column>actor-sender</column>
-            <column>actor-recipient</column>
+            <column>timestamp</column>
+            <column>actor-sender-node</column>
+            <column>actor-sender-path</column>
+            <column>actor-recipient-node</column>
+            <column>actor-recipient-path</column>
             <column>actor-message</column>
             <column>actor-message-type</column>
         </list>
@@ -460,77 +735,45 @@
             <title>List: Messages (Asked)</title>
             <table-ref>messages-asked</table-ref>
 
+            <column>start</column>
             <column>duration</column>
-            <column>actor-sender</column>
-            <column>actor-recipient</column>
+            <column>actor-sender-node</column>
+            <column>actor-sender-path</column>
+            <column>actor-recipient-node</column>
+            <column>actor-recipient-path</column>
             <column>actor-ask-question-type</column>
             <column>actor-ask-question</column>
             <column>actor-ask-answer</column>
             <column>actor-ask-error</column>
         </list>
-    </instrument>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- MARK: Instrument: Lifecycles -->
-    <instrument>
-        <id>com.apple.actors.instrument.lifecycles</id>
-        <title>Actor Lifecycle</title>
-        <category>Behavior</category>
-        <purpose>Monitor lifecycle of actors (start, stop, fail, restart etc.)</purpose>
-        <icon>Activity Monitor</icon>
-
-        <create-table>
-            <id>actor-lifecycle-intervals</id>
-            <schema-ref>actor-lifecycle-interval</schema-ref>
-        </create-table>
-        <create-table>
-            <id>actor-lifecycle-spawns</id>
-            <schema-ref>actor-lifecycle-spawn</schema-ref>
-        </create-table>
-
-        <graph>
-            <title>Lifecycles</title>
-
-            <lane>
-                <title>Spawns</title>
-                <table-ref>actor-lifecycle-spawns</table-ref>
-
-                <plot-template>
-                    <instance-by>actor-address</instance-by>
-                    <label-format>Spawned: %s</label-format>
-                    <value-from>actor-address</value-from>
-                    <label-from>actor-address</label-from>
-                </plot-template>
-            </lane>
-
-            <lane>
-                <title>Lifetimes</title>
-                <table-ref>actor-lifecycle-intervals</table-ref>
-
-                <plot-template>
-                    <instance-by>actor-address</instance-by>
-                    <label-format>Actor: %s</label-format>
-                    <value-from>actor-address</value-from>
-                    <color-from>actor-stop-reason-impact</color-from>
-                    <label-from>actor-address</label-from>
-                </plot-template>
-            </lane>
-        </graph>
-
-
-        <list>
-            <title>Spawns</title>
-            <table-ref>actor-lifecycle-spawns</table-ref>
-            <column>timestamp</column>
-            <column>actor-address</column>
-        </list>
-
-        <list>
-            <title>Lifetimes</title>
-            <table-ref>actor-lifecycle-intervals</table-ref>
-            <column>actor-address</column>
-            <column>duration</column>
-        </list>
+        
+        <aggregation>
+            <title>Summary: By Type</title>
+            <table-ref>messages-asked</table-ref>
+            <hierarchy>
+                <level>
+                    <column>actor-ask-question-type</column>
+                </level>
+            </hierarchy>
+            
+            <visit-on-focus>List: Messages (Asked)</visit-on-focus>
+            
+            <column>
+                <count>actor-sender-node</count>
+            </column>
+        </aggregation>
+        
+        <engineering-type-track>
+            <table-ref>messages-asked</table-ref>
+            <hierarchy>
+                <level>
+                    <column>actor-recipient-node</column>
+                </level>
+                <level>
+                    <column>actor-recipient-path</column>
+                </level>
+            </hierarchy>
+        </engineering-type-track>
     </instrument>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
@@ -573,7 +816,8 @@
             <table-ref>actor-transport-serialization-intervals</table-ref>
             <column>start</column>
             <column>duration</column>
-            <column>actor-recipient</column>
+            <column>actor-recipient-node</column>
+            <column>actor-recipient-path</column>
             <column>actor-message-type</column>
             <column>transport-message-serialized-bytes</column>
         </list>
@@ -584,8 +828,11 @@
 
             <hierarchy>
                 <level>
-                    <column>actor-recipient</column>
+                    <column>actor-recipient-node</column>
                     <!-- TODO: could group on path elements (!!!!!) -->
+                </level>
+                <level>
+                    <column>actor-recipient-path</column>
                 </level>
             </hierarchy>
 
@@ -635,7 +882,8 @@
             <table-ref>actor-transport-deserialization-intervals</table-ref>
             <column>start</column>
             <column>duration</column>
-            <column>actor-recipient</column>
+            <column>actor-recipient-node</column>
+            <column>actor-recipient-path</column>
             <column>actor-message-type</column>
             <column>transport-message-serialized-bytes</column>
         </list>
@@ -646,7 +894,7 @@
 
             <hierarchy>
                 <level>
-                    <column>actor-recipient</column>
+                    <column>actor-recipient-path</column>
                     <!-- TODO: could group on path elements (!!!!!) -->
                 </level>
             </hierarchy>
@@ -668,7 +916,7 @@
     <!-- MARK: Embed Templates -->
     <!-- Templates may be included and represent a collection of tools configured for a specific tracing workflow -->
     <!-- Each 'template' element specifies the relative path to a .tracetemplate file in the project -->
-    <!-- To create a template: start with a blank document, configure with instruments desired, and choose "File -> Save as Template" -->
+    <!-- To create a template: start with a com.apple.actors.augmentation.slice-lifecyclenk document, configure with instruments desired, and choose "File -> Save as Template" -->
     <template>
         <import-from-file>ActorInstruments.tracetemplate</import-from-file>
     </template>

@@ -26,7 +26,7 @@ guard args.count >= 1 else {
 }
 
 let system = ActorSystem("System") { settings in
-    settings.defaultLogLevel = .info
+    settings.logging.defaultLevel = .info
 
     settings.cluster.enabled = true
     settings.cluster.bindPort = Int(args[0])!
@@ -40,10 +40,14 @@ let system = ActorSystem("System") { settings in
     settings.cluster.downingStrategy = .none
 }
 
-let ref = try system.spawn("streamWatcher", of: Cluster.Event.self, .receive { context, event in
-    context.log.info("Event: \(event)")
-    return .same
-})
+let ref = try system.spawn(
+    "streamWatcher",
+    of: Cluster.Event.self,
+    .receive { context, event in
+        context.log.info("Event: \(event)")
+        return .same
+    }
+)
 system.cluster.events.subscribe(ref)
 
 if args.count >= 3 {

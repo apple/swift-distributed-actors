@@ -21,7 +21,7 @@ internal struct ProcessCommander {
     public static let name: String = "processCommander"
     public static let naming: ActorNaming = .unique(name)
 
-    internal enum Command {
+    internal enum Command: NonTransportableActorMessage {
         case requestSpawnServant(ServantProcessSupervisionStrategy, args: [String])
         case requestRespawnServant(ServantProcess, delay: TimeAmount?)
     }
@@ -43,7 +43,7 @@ internal struct ProcessCommander {
     private var _servants: [Int: ServantProcess] = [:]
 
     var behavior: Behavior<Command> {
-        return .setup { context in
+        .setup { context in
             context.log.info("Process commander initialized, ready to accept commands.")
 
             // let interval = TimeAmount.milliseconds(400)
@@ -54,7 +54,7 @@ internal struct ProcessCommander {
     }
 
     var running: Behavior<Command> {
-        return .setup { context in
+        .setup { context in
             var _spawnServantTimerId = 0
             func nextSpawnServantTimerKey() -> TimerKey {
                 _spawnServantTimerId += 1
@@ -86,7 +86,7 @@ internal struct ProcessCommander {
 
 extension ActorAddress {
     static func ofProcessMaster(on node: UniqueNode) -> ActorAddress {
-        return try! .init(node: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .wellKnown)
+        try! .init(node: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .wellKnown)
     }
 }
 #endif

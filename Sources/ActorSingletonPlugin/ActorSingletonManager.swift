@@ -20,7 +20,7 @@ import Logging
 
 /// Spawned as a system actor on the node where the singleton is supposed to run, `ActorSingletonManager` manages
 /// the singleton's lifecycle and stops itself after handing over the singleton.
-internal class ActorSingletonManager<Message> {
+internal class ActorSingletonManager<Message: ActorMessage> {
     /// Settings for the `ActorSingleton`
     private let settings: ActorSingletonSettings
 
@@ -71,7 +71,7 @@ internal class ActorSingletonManager<Message> {
         try context.stop(child: singleton)
     }
 
-    internal enum Directive {
+    internal enum Directive: NonTransportableActorMessage {
         case takeOver(from: UniqueNode?, replyTo: ActorRef<ActorRef<Message>?>)
         case handOver(to: UniqueNode?)
         case stop

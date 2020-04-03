@@ -13,7 +13,7 @@ int main(int argc, const char* argv[]) {
 
     printf("[CLIENT C] SENDING HELLO\n");
 
-    xpc_connection_t c = xpc_connection_create("com.apple.sakkana.XPCLibService", dispatch_get_main_queue());
+    xpc_connection_t c = xpc_connection_create("com.apple.actors.XPCLibService", dispatch_get_main_queue());
     xpc_connection_set_event_handler(c, ^(xpc_object_t event) {
         printf("[CLIENT C] I GOT A REPLY: %s", event);
 

@@ -10,7 +10,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated Philosopher messages
 extension Philosopher {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case attemptToTakeForks 
         case stopEating 
     }
@@ -26,7 +26,7 @@ extension Philosopher {
             let context = Actor<Philosopher>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -70,12 +70,12 @@ extension Philosopher {
 extension Actor where A.Message == Philosopher.Message {
 
      func attemptToTakeForks() {
-        self.ref.tell(.attemptToTakeForks)
+        self.ref.tell(Self.Message.attemptToTakeForks)
     }
  
 
      func stopEating() {
-        self.ref.tell(.stopEating)
+        self.ref.tell(Self.Message.stopEating)
     }
  
 

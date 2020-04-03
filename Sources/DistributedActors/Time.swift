@@ -40,11 +40,11 @@ public struct TimeAmount {
     ///     - amount: the amount of nanoseconds this `TimeAmount` represents.
     /// - returns: the `TimeAmount` for the given amount.
     public static func nanoseconds(_ amount: Value) -> TimeAmount {
-        return TimeAmount(amount)
+        TimeAmount(amount)
     }
 
     public static func nanoseconds(_ amount: Int) -> TimeAmount {
-        return self.nanoseconds(Value(amount))
+        self.nanoseconds(Value(amount))
     }
 
     /// Creates a new `TimeAmount` for the given amount of microseconds.
@@ -53,11 +53,11 @@ public struct TimeAmount {
     ///     - amount: the amount of microseconds this `TimeAmount` represents.
     /// - returns: the `TimeAmount` for the given amount.
     public static func microseconds(_ amount: Value) -> TimeAmount {
-        return TimeAmount(amount * 1000)
+        TimeAmount(amount * 1000)
     }
 
     public static func microseconds(_ amount: Int) -> TimeAmount {
-        return self.microseconds(Value(amount))
+        self.microseconds(Value(amount))
     }
 
     /// Creates a new `TimeAmount` for the given amount of milliseconds.
@@ -66,11 +66,11 @@ public struct TimeAmount {
     ///     - amount: the amount of milliseconds this `TimeAmount` represents.
     /// - returns: the `TimeAmount` for the given amount.
     public static func milliseconds(_ amount: Value) -> TimeAmount {
-        return TimeAmount(amount * 1000 * 1000)
+        TimeAmount(amount * 1000 * 1000)
     }
 
     public static func milliseconds(_ amount: Int) -> TimeAmount {
-        return self.milliseconds(Value(amount))
+        self.milliseconds(Value(amount))
     }
 
     /// Creates a new `TimeAmount` for the given amount of seconds.
@@ -79,11 +79,11 @@ public struct TimeAmount {
     ///     - amount: the amount of seconds this `TimeAmount` represents.
     /// - returns: the `TimeAmount` for the given amount.
     public static func seconds(_ amount: Value) -> TimeAmount {
-        return TimeAmount(amount * 1000 * 1000 * 1000)
+        TimeAmount(amount * 1000 * 1000 * 1000)
     }
 
     public static func seconds(_ amount: Int) -> TimeAmount {
-        return self.seconds(Value(amount))
+        self.seconds(Value(amount))
     }
 
     /// Creates a new `TimeAmount` for the given amount of minutes.
@@ -92,11 +92,11 @@ public struct TimeAmount {
     ///     - amount: the amount of minutes this `TimeAmount` represents.
     /// - returns: the `TimeAmount` for the given amount.
     public static func minutes(_ amount: Value) -> TimeAmount {
-        return TimeAmount(amount * 1000 * 1000 * 1000 * 60)
+        TimeAmount(amount * 1000 * 1000 * 1000 * 60)
     }
 
     public static func minutes(_ amount: Int) -> TimeAmount {
-        return self.minutes(Value(amount))
+        self.minutes(Value(amount))
     }
 
     /// Creates a new `TimeAmount` for the given amount of hours.
@@ -105,32 +105,32 @@ public struct TimeAmount {
     ///     - amount: the amount of hours this `TimeAmount` represents.
     /// - returns: the `TimeAmount` for the given amount.
     public static func hours(_ amount: Value) -> TimeAmount {
-        return TimeAmount(amount * 1000 * 1000 * 1000 * 60 * 60)
+        TimeAmount(amount * 1000 * 1000 * 1000 * 60 * 60)
     }
 
     public static func hours(_ amount: Int) -> TimeAmount {
-        return self.hours(Value(amount))
+        self.hours(Value(amount))
     }
 }
 
 extension TimeAmount: Comparable {
     public static func < (lhs: TimeAmount, rhs: TimeAmount) -> Bool {
-        return lhs.nanoseconds < rhs.nanoseconds
+        lhs.nanoseconds < rhs.nanoseconds
     }
 
     public static func == (lhs: TimeAmount, rhs: TimeAmount) -> Bool {
-        return lhs.nanoseconds == rhs.nanoseconds
+        lhs.nanoseconds == rhs.nanoseconds
     }
 }
 
 /// "Pretty" time amount rendering, useful for human readable durations in tests
 extension TimeAmount: CustomStringConvertible {
     public var description: String {
-        return "TimeAmount(\(self.prettyDescription), nanoseconds: \(self.nanoseconds))"
+        "TimeAmount(\(self.prettyDescription), nanoseconds: \(self.nanoseconds))"
     }
 
     public var prettyDescription: String {
-        return self.prettyDescription()
+        self.prettyDescription()
     }
 
     public func prettyDescription(precision: Int = 2) -> String {
@@ -224,44 +224,44 @@ extension TimeAmount: CustomStringConvertible {
     }
 
     public var toNIO: NIO.TimeAmount {
-        return NIO.TimeAmount.nanoseconds(Int64(self.nanoseconds))
+        NIO.TimeAmount.nanoseconds(Int64(self.nanoseconds))
     }
 }
 
 public extension TimeAmount {
     /// The microseconds representation of the `TimeAmount`.
     var microseconds: Int64 {
-        return self.nanoseconds / TimeAmount.TimeUnit.microseconds.rawValue
+        self.nanoseconds / TimeAmount.TimeUnit.microseconds.rawValue
     }
 
     /// The milliseconds representation of the `TimeAmount`.
     var milliseconds: Int64 {
-        return self.nanoseconds / TimeAmount.TimeUnit.milliseconds.rawValue
+        self.nanoseconds / TimeAmount.TimeUnit.milliseconds.rawValue
     }
 
     /// The seconds representation of the `TimeAmount`.
     var seconds: Int64 {
-        return self.nanoseconds / TimeAmount.TimeUnit.seconds.rawValue
+        self.nanoseconds / TimeAmount.TimeUnit.seconds.rawValue
     }
 
     /// The minutes representation of the `TimeAmount`.
     var minutes: Int64 {
-        return self.nanoseconds / TimeAmount.TimeUnit.minutes.rawValue
+        self.nanoseconds / TimeAmount.TimeUnit.minutes.rawValue
     }
 
     /// The hours representation of the `TimeAmount`.
     var hours: Int64 {
-        return self.nanoseconds / TimeAmount.TimeUnit.hours.rawValue
+        self.nanoseconds / TimeAmount.TimeUnit.hours.rawValue
     }
 
     /// The days representation of the `TimeAmount`.
     var days: Int64 {
-        return self.nanoseconds / TimeAmount.TimeUnit.days.rawValue
+        self.nanoseconds / TimeAmount.TimeUnit.days.rawValue
     }
 
     /// Returns true if the time amount is "effectively infinite" (equal to `TimeAmount.effectivelyInfinite`)
     var isEffectivelyInfinite: Bool {
-        return self == TimeAmount.effectivelyInfinite
+        self == TimeAmount.effectivelyInfinite
     }
 }
 
@@ -269,38 +269,38 @@ public extension TimeAmount {
     /// Largest time amount expressible using this type.
     /// Roughly equivalent to 292 years, which for the intents and purposes of this type can serve as "infinite".
     static var effectivelyInfinite: TimeAmount {
-        return TimeAmount(Value.max)
+        TimeAmount(Value.max)
     }
 
     /// Smallest non-negative time amount.
     static var zero: TimeAmount {
-        return TimeAmount(0)
+        TimeAmount(0)
     }
 }
 
 public extension TimeAmount {
     static func + (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
-        return .nanoseconds(lhs.nanoseconds + rhs.nanoseconds)
+        .nanoseconds(lhs.nanoseconds + rhs.nanoseconds)
     }
 
     static func - (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
-        return .nanoseconds(lhs.nanoseconds - rhs.nanoseconds)
+        .nanoseconds(lhs.nanoseconds - rhs.nanoseconds)
     }
 
     static func * (lhs: TimeAmount, rhs: Int) -> TimeAmount {
-        return TimeAmount(lhs.nanoseconds * Value(rhs))
+        TimeAmount(lhs.nanoseconds * Value(rhs))
     }
 
     static func * (lhs: TimeAmount, rhs: Double) -> TimeAmount {
-        return TimeAmount(Int64(Double(lhs.nanoseconds) * rhs))
+        TimeAmount(Int64(Double(lhs.nanoseconds) * rhs))
     }
 
     static func / (lhs: TimeAmount, rhs: Int) -> TimeAmount {
-        return TimeAmount(lhs.nanoseconds / Value(rhs))
+        TimeAmount(lhs.nanoseconds / Value(rhs))
     }
 
     static func / (lhs: TimeAmount, rhs: Double) -> TimeAmount {
-        return TimeAmount(Int64(Double(lhs.nanoseconds) / rhs))
+        TimeAmount(Int64(Double(lhs.nanoseconds) / rhs))
     }
 }
 
@@ -340,33 +340,33 @@ public struct Deadline: Equatable, Hashable {
     public static let distantFuture = Deadline(Value.max)
 
     public static func now() -> Deadline {
-        return uptimeNanoseconds(Deadline.Value(DispatchTime.now().uptimeNanoseconds))
+        uptimeNanoseconds(Deadline.Value(DispatchTime.now().uptimeNanoseconds))
     }
 
     public static func uptimeNanoseconds(_ nanoseconds: Value) -> Deadline {
-        return Deadline(nanoseconds)
+        Deadline(nanoseconds)
     }
 }
 
 extension Deadline: Comparable {
     public static func < (lhs: Deadline, rhs: Deadline) -> Bool {
-        return lhs.uptimeNanoseconds < rhs.uptimeNanoseconds
+        lhs.uptimeNanoseconds < rhs.uptimeNanoseconds
     }
 
     public static func > (lhs: Deadline, rhs: Deadline) -> Bool {
-        return lhs.uptimeNanoseconds > rhs.uptimeNanoseconds
+        lhs.uptimeNanoseconds > rhs.uptimeNanoseconds
     }
 }
 
 extension Deadline: CustomStringConvertible {
     public var description: String {
-        return self.uptimeNanoseconds.description
+        self.uptimeNanoseconds.description
     }
 }
 
 extension Deadline {
     public static func - (lhs: Deadline, rhs: Deadline) -> TimeAmount {
-        return .nanoseconds(TimeAmount.Value(lhs.uptimeNanoseconds) - TimeAmount.Value(rhs.uptimeNanoseconds))
+        .nanoseconds(TimeAmount.Value(lhs.uptimeNanoseconds) - TimeAmount.Value(rhs.uptimeNanoseconds))
     }
 
     public static func + (lhs: Deadline, rhs: TimeAmount) -> Deadline {
@@ -388,29 +388,29 @@ extension Deadline {
 
 public extension Deadline {
     static func fromNow(_ amount: TimeAmount) -> Deadline {
-        return .now() + amount
+        .now() + amount
     }
 
     /// - Returns: true if the deadline is still pending with respect to the passed in `now` time instant
     func hasTimeLeft() -> Bool {
-        return self.hasTimeLeft(until: .now())
+        self.hasTimeLeft(until: .now())
     }
 
     func hasTimeLeft(until: Deadline) -> Bool {
-        return !self.isBefore(until)
+        !self.isBefore(until)
     }
 
     /// - Returns: true if the deadline is overdue with respect to the passed in `now` time instant
     func isOverdue() -> Bool {
-        return self.isBefore(.now())
+        self.isBefore(.now())
     }
 
     func isBefore(_ until: Deadline) -> Bool {
-        return self.uptimeNanoseconds < until.uptimeNanoseconds
+        self.uptimeNanoseconds < until.uptimeNanoseconds
     }
 
     var timeLeft: TimeAmount {
-        return .nanoseconds(self.uptimeNanoseconds - Deadline.now().uptimeNanoseconds)
+        .nanoseconds(self.uptimeNanoseconds - Deadline.now().uptimeNanoseconds)
     }
 }
 
@@ -422,7 +422,7 @@ public enum Clock {
     case wallTime(WallTimeClock)
 
     public static func wallTimeNow() -> Clock {
-        return .wallTime(WallTimeClock())
+        .wallTime(WallTimeClock())
     }
 }
 
@@ -466,14 +466,14 @@ public struct WallTimeClock: CustomStringConvertible {
     }
 
     public static func < (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
-        return lhs.timestamp < rhs.timestamp
+        lhs.timestamp < rhs.timestamp
     }
 
     public static func == (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
-        return lhs.timestamp == rhs.timestamp
+        lhs.timestamp == rhs.timestamp
     }
 
     public var description: String {
-        return "\(self.timestamp.description)"
+        "\(self.timestamp.description)"
     }
 }

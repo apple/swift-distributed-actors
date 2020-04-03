@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import NIO
 import Stencil
 import SwiftSyntax
 
@@ -44,7 +45,7 @@ extension Rendering {
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
 
-                {{messageAccess}} enum Message { {% for case in funcCases %}
+                {{messageAccess}} enum Message: ActorMessage { {% for case in funcCases %}
                     {{case}} {% endfor %}
                 }
                 {%for tell in boxFuncs %}
@@ -61,7 +62,7 @@ extension Rendering {
             // MARK: DO NOT EDIT: Generated {{baseName}} messages 
 
             extension GeneratedActor.Messages {
-                {{messageAccess}} enum {{baseName}} { {% for case in funcCases %}
+                {{messageAccess}} enum {{baseName}}: ActorMessage { {% for case in funcCases %}
                     {{case}} {% endfor %} 
                 }
             }
@@ -97,7 +98,7 @@ extension Rendering {
                         let context = Actor<{{baseName}}>.Context(underlying: _context)
                         {{varLetInstance}} instance = instance
 
-                        /* await */ instance.preStart(context: context)
+                        instance.preStart(context: context)
 
                         return Behavior<Message>.receiveMessage { message in
                             switch message { 
@@ -521,17 +522,24 @@ extension ActorableMessageDecl {
         case .nioEventLoopFuture(let futureValueType):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
-            printer.print("Reply(nioFuture:")
+            printer.print("Reply.from(askResponse: ")
             printer.indent()
-            printer.print("self.ref.ask(for: Result<\(futureValueType), Error>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.print("self.ref.ask(for: Result<\(futureValueType), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.indent()
+        case .actorReply(let replyValueType), .askResponse(let replyValueType):
+            isAsk = true
+            printer.print("// TODO: FIXME perhaps timeout should be taken from context")
+            printer.print("Reply.from(askResponse: ")
+            printer.indent()
+            printer.print("self.ref.ask(for: Result<\(replyValueType), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
             printer.indent()
         case .type(let t):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
-            printer.print("Reply(nioFuture:")
+            printer.print("Reply.from(askResponse: ")
             printer.indent()
             if self.throwing {
-                printer.print("self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in")
+                printer.print("self.ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
                 printer.indent()
             } else {
                 printer.print("self.ref.ask(for: \(t).self, timeout: .effectivelyInfinite) { _replyTo in")
@@ -540,7 +548,7 @@ extension ActorableMessageDecl {
         case .result(let t, let errType):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
-            printer.print("Reply(nioFuture:")
+            printer.print("Reply.from(askResponse: ")
             printer.indent()
             printer.print("self.ref.ask(for: Result<\(t), \(errType)>.self, timeout: .effectivelyInfinite) { _replyTo in")
             printer.indent()
@@ -555,22 +563,7 @@ extension ActorableMessageDecl {
         if isAsk {
             self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
             printer.outdent()
-            if self.throwing || self.returnType.isFutureReturn {
-                printer.print("}", skipNewline: true)
-                printer.print(".nioFuture.flatMapThrowing { result in")
-                printer.indent()
-
-                printer.print("switch result {")
-                printer.print("case .success(let res): return res")
-                printer.print("case .failure(let err): throw err")
-                printer.print("}")
-                printer.outdent()
-
-                printer.print("}")
-            } else {
-                printer.print("}", skipNewline: true)
-                printer.print(".nioFuture")
-            }
+            printer.print("}")
             printer.outdent()
             printer.print(")")
         } else {
@@ -585,8 +578,10 @@ extension ActorableMessageDecl {
             printer.print("A.", skipNewline: true)
             printer.print(boxName, skipNewline: true)
             printer.print("(", skipNewline: true)
+            printer.print(".\(self.name)", skipNewline: true)
+        } else {
+            printer.print("Self.Message.\(self.name)", skipNewline: true)
         }
-        printer.print(".\(self.name)", skipNewline: true)
 
         self.passEffectiveParamsWithBraces(printer: &printer)
 
@@ -610,11 +605,13 @@ extension ActorableMessageDecl.ReturnType {
         case .behavior:
             return ""
         case .result(let t, let errT):
-            return " -> ResultReply<\(t), \(errT)>" // TODO: Reply type; ResultReply<T, Reason>
-        case .nioEventLoopFuture(let t):
-            return " -> Reply<\(t)>" // TODO: Reply type; Reply<T>
+            return " -> ResultReply<\(t), \(errT)>"
+        case .nioEventLoopFuture(let t),
+             .actorReply(let t),
+             .askResponse(let t):
+            return " -> Reply<\(t)>"
         case .type(let t):
-            return " -> Reply<\(t)>" // TODO: Reply type; Reply<T>
+            return " -> Reply<\(t)>"
         }
     }
 
@@ -628,6 +625,10 @@ extension ActorableMessageDecl.ReturnType {
             return " -> Result<\(t), \(errT)>"
         case .nioEventLoopFuture(let t):
             return " -> EventLoopFuture<\(t)>"
+        case .actorReply(let t):
+            return " -> Reply<\(t)>"
+        case .askResponse(let t):
+            return " -> AskResponse<\(t)>"
         case .type(let t):
             return " -> \(t)"
         }
@@ -653,7 +654,7 @@ extension ActorableMessageDecl.ReturnType {
         switch self {
         case .void, .behavior:
             return false
-        case .type, .result, .nioEventLoopFuture:
+        case .type, .result, .nioEventLoopFuture, .actorReply, .askResponse:
             return true
         }
     }
@@ -723,9 +724,30 @@ extension ActorFuncDecl {
             "                    {{storeIfTypeReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}"
         ).render(context))
 
-        if case .nioEventLoopFuture = self.message.returnType {
-            ret.append("\n                                    .whenComplete { res in _replyTo.tell(res) }")
-        } else {
+        switch self.message.returnType {
+        case .nioEventLoopFuture:
+            // FIXME: replace with code printer
+            let pad = "                        "
+            ret.append("\n\(pad).whenComplete { res in")
+            ret.append("\n\(pad)    switch res {")
+            ret.append("\n\(pad)    case .success(let value):")
+            ret.append("\n\(pad)        _replyTo.tell(.success(value))")
+            ret.append("\n\(pad)    case .failure(let error):")
+            ret.append("\n\(pad)        _replyTo.tell(.failure(ErrorEnvelope(error)))")
+            ret.append("\n\(pad)    }")
+            ret.append("\n\(pad)}")
+        case .actorReply, .askResponse:
+            // FIXME: replace with code printer
+            let pad = "                        "
+            ret.append("\n\(pad)._onComplete { res in")
+            ret.append("\n\(pad)    switch res {")
+            ret.append("\n\(pad)    case .success(let value):")
+            ret.append("\n\(pad)        _replyTo.tell(.success(value))")
+            ret.append("\n\(pad)    case .failure(let error):")
+            ret.append("\n\(pad)        _replyTo.tell(.failure(ErrorEnvelope(error)))")
+            ret.append("\n\(pad)    }")
+            ret.append("\n\(pad)}")
+        default:
             ret.append("\n")
         }
 
@@ -733,7 +755,7 @@ extension ActorFuncDecl {
             let pad = "                    " // FIXME: replace with code printer
             ret.append("\(pad)} catch {\n")
             ret.append("\(pad)    context.log.warning(\"Error thrown while handling [\\(message)], error: \\(error)\")\n")
-            ret.append("\(pad)    _replyTo.tell(.failure(error))\n")
+            ret.append("\(pad)    _replyTo.tell(.failure(ErrorEnvelope(error)))\n")
             ret.append("\(pad)}\n")
         }
 

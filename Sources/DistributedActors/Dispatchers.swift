@@ -40,7 +40,7 @@ internal protocol InternalMessageDispatcher: MessageDispatcher {
 
 extension FixedThreadPool: InternalMessageDispatcher {
     public var name: String {
-        return _hackyPThreadThreadId()
+        _hackyPThreadThreadId()
     }
 
     @inlinable
@@ -56,7 +56,7 @@ extension FixedThreadPool: InternalMessageDispatcher {
 /// Can cause severe and bad interactions with supervision.
 internal struct CallingThreadDispatcher: MessageDispatcher {
     public var name: String {
-        return "callingThread:\(_hackyPThreadThreadId())"
+        "callingThread:\(_hackyPThreadThreadId())"
     }
 
     @inlinable
@@ -75,7 +75,7 @@ internal struct NIOEventLoopGroupDispatcher: MessageDispatcher {
     }
 
     public var name: String {
-        return "nio:\(_hackyPThreadThreadId())"
+        "nio:\(_hackyPThreadThreadId())"
     }
 
     func execute(_ f: @escaping () -> Void) {

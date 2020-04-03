@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.apple.sakkana.XPCLibService</string>
+	<string>com.apple.actors.XPCLibService</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>XPCService</key>

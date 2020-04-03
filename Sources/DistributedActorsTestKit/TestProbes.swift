@@ -25,13 +25,13 @@ internal enum ActorTestProbeCommand<M> {
     case realMessage(message: M)
 }
 
-extension ActorTestProbeCommand: NoSerializationVerification {}
+extension ActorTestProbeCommand: NonTransportableActorMessage {}
 
 /// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
 /// which make testing asynchronous actor interactions simpler.
 ///
 /// - SeeAlso: `ActorableTestProbe` which is the equivalent API for `Actorable`s.
-public class ActorTestProbe<Message> {
+public class ActorTestProbe<Message: ActorMessage> {
     /// Name of the test probe (and underlying actor).
     public let name: String
 
@@ -99,7 +99,7 @@ public class ActorTestProbe<Message> {
         signalQueue: LinkedBlockingQueue<_SystemMessage>, // TODO: maybe we don't need this one
         terminationsQueue: LinkedBlockingQueue<Signals.Terminated>
     ) -> Behavior<ProbeCommands> {
-        return Behavior<ProbeCommands>.receive { context, message in
+        Behavior<ProbeCommands>.receive { context, message in
             guard let cell = context.myself._unsafeUnwrapCell.actor else {
                 throw TestProbeInitializationError.failedToObtainUnderlyingCell
             }
@@ -165,7 +165,7 @@ extension ActorTestProbe {
     ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or a message is received by the actor.
     public func expectMessage(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
-        return try self.expectMessage(within: self.expectationTimeout, file: file, line: line, column: column)
+        try self.expectMessage(within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
     /// Expects a message to arrive at the TestProbe and returns it for further assertions.
@@ -228,6 +228,10 @@ extension ActorTestProbe {
             }
         }
 
+        if caughtMessages.isEmpty {
+            throw self.error("No messages \(String(reflecting: type)) caught within \(timeout.prettyDescription)!", file: file, line: line, column: column)
+        }
+
         return caughtMessages
     }
 
@@ -236,6 +240,10 @@ extension ActorTestProbe {
         case catchComplete(CaughtMessage)
         case ignore
         case complete
+    }
+
+    public enum MessageFishingError: Error {
+        case noMessagesCaught
     }
 
     /// Allows for "fishing out" certain messages from the stream of incoming messages to this probe.
@@ -332,7 +340,7 @@ extension ActorTestProbe where Message: Equatable {
     ///     error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue
     ///
     public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        return try self.expectMessage(message, within: self.expectationTimeout, file: file, line: line, column: column)
+        try self.expectMessage(message, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
     public func expectMessage(_ message: Message, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -350,7 +358,7 @@ extension ActorTestProbe where Message: Equatable {
     }
 
     public func expectMessageType<T>(_ type: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        return try self.expectMessageType(type, within: self.expectationTimeout, file: file, line: line, column: column)
+        try self.expectMessageType(type, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
     public func expectMessageType<T>(_ type: T.Type, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -373,7 +381,7 @@ extension ActorTestProbe {
     ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
     public func expectMessages(count: Int, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
-        return try self.expectMessages(count: count, within: self.expectationTimeout, file: file, line: line, column: column)
+        try self.expectMessages(count: count, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
     /// Expects multiple messages to arrive at the TestProbe and returns it for further assertions.
@@ -416,7 +424,7 @@ extension ActorTestProbe {
 
 extension ActorTestProbe where Message: Equatable {
     public func expectMessagesInAnyOrder(_ _messages: [Message], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        return try self.expectMessagesInAnyOrder(_messages, within: self.expectationTimeout, file: file, line: line, column: column)
+        try self.expectMessagesInAnyOrder(_messages, within: self.expectationTimeout, file: file, line: line, column: column)
     }
 
     public func expectMessagesInAnyOrder(_ _messages: [Message], within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -466,7 +474,7 @@ extension ActorTestProbe {
 
 extension ActorTestProbe: ReceivesMessages {
     public var address: ActorAddress {
-        return self.exposedRef.address
+        self.exposedRef.address
     }
 
     public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
@@ -487,7 +495,7 @@ public extension ActorTestProbe {
 }
 
 /// Allows intercepting messages
-public final class ProbeInterceptor<Message>: Interceptor<Message> {
+public final class ProbeInterceptor<Message: ActorMessage>: Interceptor<Message> {
     let probe: ActorTestProbe<Message>
 
     public init(probe: ActorTestProbe<Message>) {

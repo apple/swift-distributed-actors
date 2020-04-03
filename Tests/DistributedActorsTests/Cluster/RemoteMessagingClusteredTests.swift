@@ -17,57 +17,35 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class RemoteMessagingTests: ClusteredNodesTestBase {
-    func test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide() throws {
-        let local = setUpNode("local")
-
-        let remote = setUpNode("remote") {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
-        }
-
-        let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn("remoteAcquaintance1", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
-
-        let codableRefOnRemoteSystem: ActorRef<String> = try remote.spawn("remoteAcquaintance2", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
-
-        local.cluster.join(node: remote.cluster.node.node)
-
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
-
-        let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address, on: remote)
-        nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
-
-        try probeOnRemote.expectNoMessage(for: .milliseconds(100))
-
-        let codableResolvedRef = self.resolveRef(local, type: String.self, address: codableRefOnRemoteSystem.address, on: remote)
-        codableResolvedRef.tell("HELLO")
-
-        try probeOnRemote.expectMessage("forwarded:HELLO")
-    }
-
+final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
+    // TODO: This will start failing once we implement _mangledTypeName manifests
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() throws {
-        let local = self.setUpNode("local") {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+        let local = self.setUpNode("local") { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
-        let remote = setUpNode("remote")
+        let remote = setUpNode("remote") { settings in
+            // do not register SerializationTestMessage on purpose, we want it to fail when receiving
+            settings.serialization.registerCodable(EchoTestMessage.self)
+        }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn("remoteAcquaintance1", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+            "remoteAcquaintance1",
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
-        let codableRefOnRemoteSystem: ActorRef<String> = try remote.spawn("remoteAcquaintance2", .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let codableRefOnRemoteSystem: ActorRef<String> = try remote.spawn(
+            "remoteAcquaintance2",
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -76,7 +54,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
         let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address, on: remote)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
 
-        try probeOnRemote.expectNoMessage(for: .milliseconds(100))
+        try probeOnRemote.expectNoMessage(for: .milliseconds(500))
 
         let codableResolvedRef = self.resolveRef(local, type: String.self, address: codableRefOnRemoteSystem.address, on: remote)
         codableResolvedRef.tell("HELLO")
@@ -85,15 +63,19 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.anonymous, .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+            .anonymous,
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -109,15 +91,19 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.anonymous, .receiveMessage { message in
-            probeOnRemote.tell("forwarded:\(message)")
-            return .same
-        })
+        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+            .anonymous,
+            .receiveMessage { message in
+                probeOnRemote.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -133,16 +119,20 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() throws {
-        let local = self.setUpNode("local") {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+        let local = self.setUpNode("local") { settings in
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let testKit = ActorTestKit(local)
         let probe = testKit.spawnTestProbe(expecting: String.self)
-        let localRef: ActorRef<String> = try local.spawn("local", .receiveMessage { message in
-            probe.tell("received:\(message)")
-            return .same
-        })
+        let localRef: ActorRef<String> = try local.spawn(
+            "local",
+            .receiveMessage { message in
+                probe.tell("received:\(message)")
+                return .same
+            }
+        )
 
         let localResolvedRefWithLocalAddress =
             self.resolveRef(local, type: String.self, address: localRef.address, on: local)
@@ -152,21 +142,29 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_remoteActors_echo() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(EchoTestMessage.self)
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let localRef: ActorRef<String> = try local.spawn("localRef", .receiveMessage { message in
-            probe.tell("response:\(message)")
-            return .same
-        })
+        let localRef: ActorRef<String> = try local.spawn(
+            "localRef",
+            .receiveMessage { message in
+                probe.tell("response:\(message)")
+                return .same
+            }
+        )
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
-            message.respondTo.tell("echo:\(message.string)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+            "remoteAcquaintance",
+            .receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -179,16 +177,21 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
     }
 
     func test_sendingToNonTopLevelRemoteRef_shouldWork() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(EchoTestMessage.self)
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
-            message.respondTo.tell("echo:\(message.string)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+            "remoteAcquaintance",
+            .receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -196,31 +199,42 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
-        let _: ActorRef<Never> = try local.spawn("localRef", .setup { context in
-            let child: ActorRef<String> = try context.spawn(.anonymous, .receiveMessage { message in
-                probe.tell("response:\(message)")
-                return .same
-            })
+        let _: ActorRef<Never> = try local.spawn(
+            "localRef",
+            .setup { context in
+                let child: ActorRef<String> = try context.spawn(
+                    .anonymous,
+                    .receiveMessage { message in
+                        probe.tell("response:\(message)")
+                        return .same
+                    }
+                )
 
-            remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
+                remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
 
-            return .receiveMessage { _ in .same }
-        })
+                return .receiveMessage { _ in .same }
+            }
+        )
 
         try probe.expectMessage("response:echo:test")
     }
 
     func test_sendingToRemoteAdaptedRef_shouldWork() throws {
-        let (local, remote) = setUpPair {
-            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        let (local, remote) = setUpPair { settings in
+            settings.serialization.registerCodable(EchoTestMessage.self)
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
-            message.respondTo.tell("echo:\(message.string)")
-            return .same
-        })
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+            "remoteAcquaintance",
+            .receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }
+        )
 
         local.cluster.join(node: remote.cluster.node.node)
 
@@ -228,87 +242,87 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
-        let _: ActorRef<WrappedString> = try local.spawn("localRef", .setup { context in
-            let adaptedRef = context.messageAdapter(from: String.self) { WrappedString(string: $0) }
-            remoteRef.tell(EchoTestMessage(string: "test", respondTo: adaptedRef))
-            return .receiveMessage { message in
-                probe.tell("response:\(message.string)")
-                return .same
+        let _: ActorRef<WrappedString> = try local.spawn(
+            "localRef",
+            .setup { context in
+                let adaptedRef = context.messageAdapter(from: String.self) { WrappedString(string: $0) }
+                remoteRef.tell(EchoTestMessage(string: "test", respondTo: adaptedRef))
+                return .receiveMessage { message in
+                    probe.tell("response:\(message.string)")
+                    return .same
+                }
             }
-        })
+        )
 
         try probe.expectMessage("response:echo:test")
     }
 
     func test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages() throws {
         let (local, remote) = setUpPair { settings in
-            settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+            settings.serialization.registerCodable(SerializationTestMessage.self)
+            settings.serialization.registerCodable(EchoTestMessage.self)
         }
         remote.cluster.join(node: local.cluster.node.node)
 
-        try assertAssociated(local, withExactly: remote.cluster.node)
+        try shouldNotThrow {
+            try assertAssociated(local, withExactly: remote.cluster.node)
 
-        let thirdSystem = self.setUpNode("ClusterAssociationTests") { settings in
-            settings.cluster.bindPort = 9119
-            settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+            let thirdSystem = self.setUpNode("ClusterAssociationTests") { settings in
+                settings.cluster.bindPort = 9119
+                settings.serialization.registerCodable(SerializationTestMessage.self)
+                settings.serialization.registerCodable(EchoTestMessage.self)
+            }
+            defer { thirdSystem.shutdown().wait() }
+
+            thirdSystem.cluster.join(node: local.cluster.node.node)
+            thirdSystem.cluster.join(node: remote.cluster.node.node)
+            try assertAssociated(thirdSystem, withExactly: [local.cluster.node, remote.cluster.node])
+            let thirdTestKit = ActorTestKit(thirdSystem)
+
+            let localRef: ActorRef<EchoTestMessage> = try local.spawn(
+                "Local",
+                .receiveMessage { message in
+                    message.respondTo.tell("local:\(message.string)")
+                    return .stop
+                }
+            )
+
+            let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
+
+            let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn(
+                "Remote",
+                .receiveMessage { message in
+                    localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
+                    return .stop
+                }
+            )
+
+            let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)
+
+            let probeThird = thirdTestKit.spawnTestProbe(expecting: String.self)
+
+            remoteRefThird.tell(EchoTestMessage(string: "test", respondTo: probeThird.ref))
+
+            try probeThird.expectMessage().shouldEqual("local:remote:test")
         }
-        defer { thirdSystem.shutdown().wait() }
-
-        thirdSystem.cluster.join(node: local.cluster.node.node)
-        thirdSystem.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(thirdSystem, withExactly: [local.cluster.node, remote.cluster.node])
-        let thirdTestKit = ActorTestKit(thirdSystem)
-
-        let localRef: ActorRef<EchoTestMessage> = try local.spawn("Local", .receiveMessage { message in
-            message.respondTo.tell("local:\(message.string)")
-            return .stop
-        })
-
-        let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
-
-        let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn("Remote", .receiveMessage { message in
-            localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
-            return .stop
-        })
-
-        let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)
-
-        let probeThird = thirdTestKit.spawnTestProbe(expecting: String.self)
-
-        remoteRefThird.tell(EchoTestMessage(string: "test", respondTo: probeThird.ref))
-
-        try probeThird.expectMessage().shouldEqual("local:remote:test")
     }
 }
 
-struct WrappedString {
+struct WrappedString: ActorMessage {
     let string: String
 }
 
-private enum SerializationBehavior {
+private enum SerializationBehavior: String, ActorMessage {
     case succeed
     case failEncoding
     case failDecoding
 }
 
-private struct SerializationTestMessage {
+private struct SerializationTestMessage: ActorMessage {
     let serializationBehavior: SerializationBehavior
 }
 
-private struct EchoTestMessage: Codable {
-    let string: String
-    let respondTo: ActorRef<String>
-}
-
-struct Boom: Error {
-    let message: String
-
-    init(_ message: String = "") {
-        self.message = message
-    }
-}
-
-extension SerializationTestMessage: Codable {
+extension SerializationTestMessage {
     enum CodingKeys: String, CodingKey {
         case fails
     }
@@ -331,8 +345,21 @@ extension SerializationTestMessage: Codable {
     }
 }
 
+private struct EchoTestMessage: ActorMessage {
+    let string: String
+    let respondTo: ActorRef<String>
+}
+
+struct Boom: Error {
+    let message: String
+
+    init(_ message: String = "") {
+        self.message = message
+    }
+}
+
 extension SerializationTestMessage: CustomStringConvertible {
     var description: String {
-        return "SerializationTestMessage"
+        "SerializationTestMessage"
     }
 }

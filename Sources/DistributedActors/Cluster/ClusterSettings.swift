@@ -44,7 +44,7 @@ public struct ClusterSettings {
             self.node.host = newValue
         }
         get {
-            return self.node.host
+            self.node.host
         }
     }
 
@@ -54,7 +54,7 @@ public struct ClusterSettings {
             self.node.port = newValue
         }
         get {
-            return self.node.port
+            self.node.port
         }
     }
 
@@ -133,9 +133,7 @@ public struct ClusterSettings {
         MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
     }
 
-    // TODO: Can be removed once we have an implementation based on CRDTs with more robust replication
-    /// Interval with which the receptionists will sync their state with the other nodes.
-    public var receptionistSyncInterval: TimeAmount = .seconds(5)
+    public var receptionist: ClusterReceptionist.Settings = .default
 
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()

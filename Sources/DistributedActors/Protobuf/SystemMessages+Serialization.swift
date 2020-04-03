@@ -20,29 +20,29 @@ import SwiftProtobuf
 // MARK: ACK / NACK
 
 extension _SystemMessage.ACK: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoSystemMessageACK
+    typealias ProtobufRepresentation = ProtoSystemMessageACK
 
-    func toProto(context: ActorSerializationContext) -> ProtoSystemMessageACK {
+    func toProto(context: Serialization.Context) -> ProtoSystemMessageACK {
         var proto = ProtoSystemMessageACK()
         proto.sequenceNr = self.sequenceNr
         return proto
     }
 
-    init(fromProto proto: ProtoSystemMessageACK, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoSystemMessageACK, context: Serialization.Context) throws {
         self.sequenceNr = proto.sequenceNr
     }
 }
 
 extension _SystemMessage.NACK: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoSystemMessageNACK
+    typealias ProtobufRepresentation = ProtoSystemMessageNACK
 
-    func toProto(context: ActorSerializationContext) -> ProtoSystemMessageNACK {
+    func toProto(context: Serialization.Context) -> ProtoSystemMessageNACK {
         var proto = ProtoSystemMessageNACK()
         proto.sequenceNr = self.sequenceNr
         return proto
     }
 
-    init(fromProto proto: ProtoSystemMessageNACK, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoSystemMessageNACK, context: Serialization.Context) throws {
         self.sequenceNr = proto.sequenceNr
     }
 }
@@ -51,16 +51,16 @@ extension _SystemMessage.NACK: InternalProtobufRepresentable {
 // MARK: SystemMessageEnvelope
 
 extension SystemMessageEnvelope: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoSystemMessageEnvelope
+    typealias ProtobufRepresentation = ProtoSystemMessageEnvelope
 
-    func toProto(context: ActorSerializationContext) throws -> ProtoSystemMessageEnvelope {
+    func toProto(context: Serialization.Context) throws -> ProtoSystemMessageEnvelope {
         var proto = ProtoSystemMessageEnvelope()
         proto.sequenceNr = self.sequenceNr
         proto.message = try self.message.toProto(context: context)
         return proto
     }
 
-    init(fromProto proto: ProtoSystemMessageEnvelope, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoSystemMessageEnvelope, context: Serialization.Context) throws {
         self.sequenceNr = proto.sequenceNr
         self.message = try .init(fromProto: proto.message, context: context)
     }
@@ -69,10 +69,10 @@ extension SystemMessageEnvelope: InternalProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SystemMessage
 
-extension _SystemMessage: InternalProtobufRepresentable {
-    typealias InternalProtobufRepresentation = ProtoSystemMessage
+extension _SystemMessage: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoSystemMessage
 
-    func toProto(context: ActorSerializationContext) throws -> ProtoSystemMessage {
+    public func toProto(context: Serialization.Context) throws -> ProtoSystemMessage {
         var proto = ProtoSystemMessage()
         switch self {
         case .watch(let watchee, let watcher):
@@ -95,24 +95,24 @@ extension _SystemMessage: InternalProtobufRepresentable {
             proto.payload = .terminated(terminated)
 
         case .carrySignal(let signal):
-            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.carrySignal(\(signal))")
+            throw SerializationError.notTransportableMessage(type: "SystemMessage.carrySignal(\(signal))")
         case .start:
-            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.start")
+            throw SerializationError.notTransportableMessage(type: "SystemMessage.start")
         case .nodeTerminated:
-            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.addressTerminated")
+            throw SerializationError.notTransportableMessage(type: "SystemMessage.addressTerminated")
         case .childTerminated:
-            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.childTerminated")
+            throw SerializationError.notTransportableMessage(type: "SystemMessage.childTerminated")
         case .resume:
-            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.resume")
+            throw SerializationError.notTransportableMessage(type: "SystemMessage.resume")
         case .stop:
-            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.stop")
+            throw SerializationError.notTransportableMessage(type: "SystemMessage.stop")
         case .tombstone:
-            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.tombstone")
+            throw SerializationError.notTransportableMessage(type: "SystemMessage.tombstone")
         }
         return proto
     }
 
-    init(fromProto proto: ProtoSystemMessage, context: ActorSerializationContext) throws {
+    public init(fromProto proto: ProtoSystemMessage, context: Serialization.Context) throws {
         guard let payload = proto.payload else {
             throw SerializationError.missingField("payload", type: String(describing: _SystemMessage.self))
         }

@@ -13,14 +13,14 @@ class Philosopher: Actorable {
     }
 
     func preStart(context: Actor<Philosopher>.Context) {
-        context.watch(leftFork)
-        context.watch(rightFork)
+        context.watch(self.leftFork)
+        context.watch(self.rightFork)
         context.log.info("\(context.address.name) joined the table!")
-        think()
+        self.think()
     }
 
     private func think() {
-        if case let .takingForks(leftIsTaken, rightIsTaken) = state {
+        if case .takingForks(let leftIsTaken, let rightIsTaken) = self.state {
             if leftIsTaken {
                 leftFork.putBack()
                 context.log.info("\(context.address.name) put back their left fork!")
@@ -32,25 +32,25 @@ class Philosopher: Actorable {
             }
         }
 
-        state = .thinking
-        context.timers.startSingle(key: TimerKey("think"), message: .attemptToTakeForks, delay: .seconds(1))
-        context.log.info("\(context.address.name) is thinking...")
+        self.state = .thinking
+        self.context.timers.startSingle(key: TimerKey("think"), message: .attemptToTakeForks, delay: .seconds(1))
+        self.context.log.info("\(self.context.address.name) is thinking...")
     }
 
     func attemptToTakeForks() {
-        guard state == .thinking else {
-            context.log.error("\(context.address.name) tried to take a fork but was not in the thinking state!")
+        guard self.state == .thinking else {
+            self.context.log.error("\(self.context.address.name) tried to take a fork but was not in the thinking state!")
             return
         }
 
-        state = .takingForks(leftTaken: false, rightTaken: false)
+        self.state = .takingForks(leftTaken: false, rightTaken: false)
 
         func attemptToTake(fork: Actor<Fork>) {
-            context.onResultAsync(of: fork.take(), timeout: .seconds(5)) { result in
+            self.context.onResultAsync(of: fork.take(), timeout: .seconds(5)) { result in
                 switch result {
-                case let .failure(error):
+                case .failure(let error):
                     self.context.log.warning("Failed to reach for fork! Error: \(error)")
-                case let .success(didTakeFork):
+                case .success(let didTakeFork):
                     if didTakeFork {
                         self.forkTaken(fork)
                     } else {
@@ -61,49 +61,49 @@ class Philosopher: Actorable {
             }
         }
 
-        attemptToTake(fork: leftFork)
-        attemptToTake(fork: rightFork)
+        attemptToTake(fork: self.leftFork)
+        attemptToTake(fork: self.rightFork)
     }
 
     private func forkTaken(_ fork: Actor<Fork>) {
-        if state == .thinking { // We couldn't get the first fork and have already gone back to thinking.
+        if self.state == .thinking { // We couldn't get the first fork and have already gone back to thinking.
             fork.putBack()
             return
         }
 
-        guard case let .takingForks(leftForkIsTaken, rightForkIsTaken) = state else {
-            context.log.error("Received fork \(fork) but was not in .takingForks state. State was \(self.state)! Ignoring...")
+        guard case .takingForks(let leftForkIsTaken, let rightForkIsTaken) = self.state else {
+            self.context.log.error("Received fork \(fork) but was not in .takingForks state. State was \(self.state)! Ignoring...")
             fork.putBack()
             return
         }
 
         switch fork {
-        case leftFork:
+        case self.leftFork:
             self.context.log.info("\(self.context.address.name) received their left fork!")
-            state = .takingForks(leftTaken: true, rightTaken: rightForkIsTaken)
-        case rightFork:
+            self.state = .takingForks(leftTaken: true, rightTaken: rightForkIsTaken)
+        case self.rightFork:
             self.context.log.info("\(self.context.address.name) received their right fork!")
-            state = .takingForks(leftTaken: leftForkIsTaken, rightTaken: true)
+            self.state = .takingForks(leftTaken: leftForkIsTaken, rightTaken: true)
         default:
-            context.log.error("Received unknown fork! Got: \(fork). Known forks: \(leftFork), \(rightFork)")
+            self.context.log.error("Received unknown fork! Got: \(fork). Known forks: \(self.leftFork), \(self.rightFork)")
         }
 
-        if case .takingForks(true, true) = state {
+        if case .takingForks(true, true) = self.state {
             becomeEating()
         }
     }
 
     private func becomeEating() {
-        state = .eating
-        context.log.info("\(context.address.name) began eating!")
-        context.timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
+        self.state = .eating
+        self.context.log.info("\(self.context.address.name) began eating!")
+        self.context.timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
     }
 
     func stopEating() {
-        leftFork.putBack()
-        rightFork.putBack()
-        context.log.info("\(context.address.name) is done eating and replaced both forks!")
-        think()
+        self.leftFork.putBack()
+        self.rightFork.putBack()
+        self.context.log.info("\(self.context.address.name) is done eating and replaced both forks!")
+        self.think()
     }
 }
 

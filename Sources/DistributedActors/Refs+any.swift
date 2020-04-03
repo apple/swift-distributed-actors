@@ -12,12 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+import struct NIO.ByteBuffer
+import protocol NIO.EventLoop
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Addressable (but not tell-able) ActorRef
 
 /// Type erased form of `AddressableActorRef` in order to be used as existential type.
 /// This form allows us to check for "is this the same actor?" yet not send messages to it.
-// TODO: rename to AddressableRef -- actor ref implies we can send things to it, but we can not to this one
 public struct AddressableActorRef: Hashable {
     @usableFromInline
     enum RefType {
@@ -84,22 +86,32 @@ extension AddressableActorRef {
     }
 
     public static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
-        return lhs.address == rhs.address
+        lhs.address == rhs.address
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Internal unsafe methods
+// MARK: Internal or unsafe methods
 
 extension AddressableActorRef: _ReceivesSystemMessages {
-    /// :nodoc: INTERNAL API
     public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
-        return self.ref._tellOrDeadLetter(message, file: file, line: line)
+        self.ref._tellOrDeadLetter(message, file: file, line: line)
     }
 
-    /// :nodoc: INTERNAL API
-    public func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
-        self.ref._unsafeGetRemotePersonality()
+    public func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        self.ref._dropAsDeadLetter(message, file: file, line: line)
+    }
+
+    public func _deserializeDeliver(
+        _ messageBytes: ByteBuffer, using manifest: Serialization.Manifest,
+        on pool: SerializationPool,
+        file: String = #file, line: UInt = #line
+    ) {
+        self.ref._deserializeDeliver(messageBytes, using: manifest, on: pool, file: file, line: line)
+    }
+
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
+        self.ref._unsafeGetRemotePersonality(M.self)
     }
 }
 

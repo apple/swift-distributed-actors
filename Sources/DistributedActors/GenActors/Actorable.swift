@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -29,8 +29,13 @@ import NIO
 /// invoking `ActorSystem.spawn(name:actorable:)` are automatically translated in safe message dispatches.
 ///
 /// ***NOTE:*** It is our hope to replace the code generation needed here with language features in Swift itself.
+///
+/// ## Current Limitation: Only Codable messages
+/// Today only `Codable` message types are supported by Actorables. This is fine as the `Actor.Message` type is automatically
+/// generated and conformed to Codable by the GenActors source generator. In general however we may want to look into the future
+/// and consider if we want to allow not only Codable messages here.
 public protocol Actorable {
-    associatedtype Message
+    associatedtype Message: ActorMessage // TODO: Lift this restriction as even Actorables may want to use some specialized serializer?
 
     /// Represents a handle to this actor (`myself`), that is safe to pass to other actors, threads, and even nodes.
     typealias Myself = Actor<Self>
@@ -106,21 +111,73 @@ extension Actorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reply
 
-public typealias Reply<Value> = ResultReply<Value, Error>
+/// Represents a (local) result of an actorable "call".
+/// A reply is like a future, and may not yet be completed // TODO: I'd like it to BE a future..
+public enum Reply<Value> {
+    case completed(Result<Value, ErrorEnvelope>)
+    case nioFuture(EventLoopFuture<Value>)
+}
 
-public struct ResultReply<Value, ErrorType: Error>: AsyncResult {
-    public let _nioFuture: EventLoopFuture<Value>
+extension Reply {
+    public static func from<Answer>(askResponse: AskResponse<Answer>) -> Reply<Value> {
+        switch askResponse {
+        case .completed(let result as Result<Value, Error>):
+            switch result {
+            case .success(let value):
+                return .completed(.success(value))
+            case .failure(let error):
+                return .completed(.failure(ErrorEnvelope(error)))
+            }
 
-    public init(nioFuture: EventLoopFuture<Value>) {
-        self._nioFuture = nioFuture
+        case .nioFuture(let nioFuture as EventLoopFuture<Value>):
+            return .nioFuture(nioFuture)
+        case .nioFuture(let nioFuture as EventLoopFuture<Result<Value, Error>>):
+            return .nioFuture(
+                nioFuture.flatMapThrowing { result in
+                    switch result {
+                    case .success(let res): return res
+                    case .failure(let err): throw err
+                    }
+                }
+            )
+        case .nioFuture(let nioFuture as EventLoopFuture<Result<Value, ErrorEnvelope>>):
+            return .nioFuture(
+                nioFuture.flatMapThrowing { result in
+                    switch result {
+                    case .success(let res): return res
+                    case .failure(let err): throw err
+                    }
+                }
+            )
+        default:
+            let errorMessage = """
+            Received unexpected ask reply [\(askResponse)]:\(type(of: askResponse as Any)) which cannot be converted to reply type [\(Value.self)]. \
+            This is a bug, please report this on the issue tracker.
+            """
+            return fatalErrorBacktrace(errorMessage)
+        }
     }
+}
 
+extension Reply: AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
-        self._nioFuture.whenComplete { callback($0) }
+        switch self {
+        case .completed(.success(let value)):
+            callback(.success(value))
+        case .completed(.failure(let error)):
+            callback(.failure(error))
+        case .nioFuture(let nioFuture):
+            nioFuture.whenComplete { callback($0) }
+        }
     }
 
     public func withTimeout(after timeout: TimeAmount) -> Self {
-        ResultReply(nioFuture: self._nioFuture.withTimeout(after: timeout))
+        switch self {
+        case .completed:
+            return self
+        case .nioFuture(let nioFuture):
+            return .nioFuture(nioFuture.withTimeout(after: timeout))
+        }
     }
 }
 

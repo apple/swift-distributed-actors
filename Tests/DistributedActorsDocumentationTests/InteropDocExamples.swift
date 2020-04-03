@@ -21,7 +21,7 @@ import XCTest
 class InteropDocExamples: XCTestCase {
     func example_asyncOp_sendResult_dispatch() throws {
         // tag::message_greetings[]
-        enum Messages {
+        enum Messages: NonTransportableActorMessage {
             case string(String)
         }
         // end::message_greetings[]
@@ -34,7 +34,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         func someComputation() -> String {
-            return "test"
+            "test"
         }
 
         // tag::asyncOp_sendResult_dispatch[]
@@ -51,7 +51,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_sendResult_insideActor() throws {
         // tag::asyncOp_sendResult_insideActor_enum_Messages[]
-        enum Messages {
+        enum Messages: NonTransportableActorMessage {
             case fetchData
             case result(String)
         }
@@ -61,7 +61,7 @@ class InteropDocExamples: XCTestCase {
         defer { system.shutdown().wait() }
 
         func someComputation() -> String {
-            return "test"
+            "test"
         }
 
         func fetchDataAsync(_: (String) -> Void) {}
@@ -97,18 +97,18 @@ class InteropDocExamples: XCTestCase {
             init(cacheDuration: DistributedActors.TimeAmount) {}
 
             func lookup(_: Key) -> Value? {
-                return nil
+                nil
             }
 
             mutating func insert(_: Key, _: Value) {}
         }
 
         // tag::asyncOp_onResultAsync_enum_Messages[]
-        enum Messages {
+        enum Messages: NonTransportableActorMessage {
             case lookupUser(name: String, recipient: ActorRef<LookupResponse>)
         }
 
-        enum LookupResponse {
+        enum LookupResponse: NonTransportableActorMessage {
             case user(User)
             case unknownUser(name: String)
             case lookupFailed(Error)
@@ -120,7 +120,7 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchUser(_: String) -> EventLoopFuture<User?> {
-            return eventLoop.makeSucceededFuture(nil)
+            eventLoop.makeSucceededFuture(nil)
         }
 
         // tag::asyncOp_onResultAsync[]
@@ -161,7 +161,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_awaitResult() throws {
         // tag::asyncOp_awaitResult_enum_Messages[]
-        enum Messages {
+        enum Message: NonTransportableActorMessage {
             case addPrefix(string: String, recipient: ActorRef<String>)
         }
         // end::asyncOp_awaitResult_enum_Messages[]
@@ -171,11 +171,11 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {
-            return eventLoop.makeSucceededFuture("success")
+            eventLoop.makeSucceededFuture("success")
         }
 
         // tag::asyncOp_awaitResult[]
-        let behavior: Behavior<Messages> = .setup { context in
+        let behavior: Behavior<Message> = .setup { context in
             let future: EventLoopFuture<String> = fetchDataAsync() // <1>
             return context.awaitResult(of: future, timeout: .milliseconds(100)) { // <2>
                 switch $0 {
@@ -187,8 +187,8 @@ class InteropDocExamples: XCTestCase {
             }
         }
 
-        func prefixer(prefix: String) -> Behavior<Messages> {
-            return .receiveMessage {
+        func prefixer(prefix: String) -> Behavior<Message> {
+            .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
                     recipient.tell("\(prefix): \(string)")
@@ -197,10 +197,11 @@ class InteropDocExamples: XCTestCase {
             }
         }
         // end::asyncOp_awaitResult[]
+        _ = behavior // avoids warning: unused variable
     }
 
     func example_asyncOp_awaitResultThrowing() throws {
-        enum Messages {
+        enum Message: NonTransportableActorMessage {
             case addPrefix(string: String, recipient: ActorRef<String>)
         }
 
@@ -209,11 +210,11 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {
-            return eventLoop.makeSucceededFuture("success")
+            eventLoop.makeSucceededFuture("success")
         }
 
-        func prefixer(prefix: String) -> Behavior<Messages> {
-            return .receiveMessage {
+        func prefixer(prefix: String) -> Behavior<Message> {
+            .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
                     recipient.tell("\(prefix): \(string)")
@@ -223,7 +224,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_awaitResultThrowing[]
-        let behavior: Behavior<Messages> = .setup { context in
+        let behavior: Behavior<Message> = .setup { context in
             let future: EventLoopFuture<String> = fetchDataAsync() // <1>
             return context.awaitResultThrowing(of: future, timeout: .milliseconds(100)) { // <2>
                 prefixer(prefix: $0)

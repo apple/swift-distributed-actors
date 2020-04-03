@@ -15,111 +15,12 @@
 import Logging
 import NIO
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Core CRDT protocols
-
-/// Root type for all state-based CRDTs.
-public protocol StateBasedCRDT {
-    // State-based CRDT and CvRDT mean the same thing literally. This protocol is not necessary if the restriction of
-    // the `CvRDT` protocol being used as a generic constraint only is lifted.
-}
-
-/// State-based CRDT aka Convergent Replicated Data Type (CvRDT).
-///
-/// The entire state is disseminated to replicas then merged, leading to convergence.
-public protocol CvRDT: StateBasedCRDT {
-    /// Merges the state of the given data type instance into this data type instance.
-    ///
-    /// `Self` type should be registered and (de-)serializable using the Actor serialization infrastructure.
-    ///
-    /// - SeeAlso: The library's documentation on serialization for more information.
-    ///
-    /// - Parameter other: A data type instance to merge.
-    mutating func merge(other: Self)
-}
-
-extension CvRDT {
-    /// Creates a data type instance by merging the state of the given with this data type instance.
-    ///
-    /// `Self` type should be registered and (de-)serializable using the Actor serialization infrastructure.
-    ///
-    /// - SeeAlso: The library's documentation on serialization for more information.
-    ///
-    /// - Parameter other: A data type instance to merge.
-    /// - Returns: A new data type instance with the merged state of this data type instance and `other`.
-    func merging(other: Self) -> Self {
-        var result = self
-        result.merge(other: other)
-        return result
+/// Namespace for CRDT types.
+public enum CRDT {
+    public enum Status: String, ActorMessage {
+        case active
+        case deleted
     }
-}
-
-extension CvRDT {
-    internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-        self.asAnyCvRDT
-    }
-
-    internal var asAnyCvRDT: AnyCvRDT {
-        AnyCvRDT(self)
-    }
-}
-
-/// Delta State CRDT (ẟ-CRDT), a kind of state-based CRDT.
-///
-/// Incremental state (delta) rather than the entire state is disseminated as an optimization.
-///
-/// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
-/// - SeeAlso: [Efficient Synchronization of State-based CRDTs](https://arxiv.org/pdf/1803.02750.pdf)
-public protocol DeltaCRDT: CvRDT {
-    /// `Delta` type should be registered and (de-)serializable using the Actor serialization infrastructure.
-    ///
-    /// - SeeAlso: The library's documentation on serialization for more information.
-    associatedtype Delta: CvRDT
-
-    var delta: Delta? { get }
-
-    /// Merges the given delta into the state of this data type instance.
-    ///
-    /// - Parameter delta: The incremental, partial state to merge.
-    mutating func mergeDelta(_ delta: Delta)
-
-    // TODO: explain when this gets called
-    /// Resets the delta of this data type instance.
-    mutating func resetDelta()
-}
-
-extension DeltaCRDT {
-    /// Creates a data type instance by merging the given delta with the state of this data type instance.
-    ///
-    /// - Parameter delta: The incremental, partial state to merge.
-    /// - Returns: A new data type instance with the merged state of this data type instance and `delta`.
-    func mergingDelta(_ delta: Delta) -> Self {
-        var result = self
-        result.mergeDelta(delta)
-        return result
-    }
-}
-
-extension DeltaCRDT {
-    internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-        self.asAnyDeltaCRDT
-    }
-
-    internal var asAnyDeltaCRDT: AnyDeltaCRDT {
-        AnyDeltaCRDT(self)
-    }
-}
-
-/// Named ẟ-CRDT makes use of an identifier (e.g., replica ID) to change a specific part of the state.
-///
-/// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
-public protocol NamedDeltaCRDT: DeltaCRDT {
-    var replicaId: ReplicaId { get }
-}
-
-/// CRDT that can be reset to "zero" value. e.g., zero counter, empty set, etc.
-public protocol ResettableCRDT {
-    mutating func reset()
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -135,12 +36,7 @@ public protocol ResettableCRDT {
 //    owned-CRDTs by sending them notifications. This means an owned-CRDT should always have an up-to-date copy of the
 //    pure CRDT automatically ("active" owned-CRDT).
 
-public enum CRDT {
-    public enum Status {
-        case active
-        case deleted
-    }
-
+extension CRDT {
     /// Wrap around a `CvRDT` instance to associate it with an owning actor.
     public class ActorOwned<DataType: CvRDT> {
         let id: CRDT.Identity
@@ -163,7 +59,7 @@ public enum CRDT {
         typealias ReadResult = CRDT.Replicator.LocalCommand.ReadResult
         typealias DeleteResult = CRDT.Replicator.LocalCommand.DeleteResult
 
-        public init<Message>(ownerContext: ActorContext<Message>, id: CRDT.Identity, data: DataType, delegate: ActorOwnedDelegate<DataType> = ActorOwnedDelegate<DataType>()) {
+        public init<Message: ActorMessage>(ownerContext: ActorContext<Message>, id: CRDT.Identity, data: DataType, delegate: ActorOwnedDelegate<DataType> = ActorOwnedDelegate<DataType>()) {
             self.id = id
             self.data = data
             self.delegate = delegate
@@ -182,7 +78,7 @@ public enum CRDT {
 
             let replicator = ownerContext.system.replicator
 
-            func continueAskResponseOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) {
+            func continueAskResponseOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) where Res: ActorMessage {
                 ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
                     continuation(res)
                     return .same
@@ -194,7 +90,7 @@ public enum CRDT {
                     return .same
                 }
             }
-            self._owner = ActorOwnedContext(
+            self._owner = ActorOwnedContext<DataType>(
                 ownerContext,
                 subReceive: subReceive,
                 replicator: replicator,
@@ -206,7 +102,7 @@ public enum CRDT {
             )
 
             // Register as owner of the CRDT instance with local replicator
-            replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: nil)))
+            replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data, replyTo: nil)))
         }
 
         // TODO: handle error instead of throw? convert replicator error to something else?
@@ -217,7 +113,7 @@ public enum CRDT {
 
             // TODO: think more about timeouts: https://github.com/apple/swift-distributed-actors/issues/137
             let writeResponse = self.owner.replicator.ask(for: WriteResult.self, timeout: .effectivelyInfinite) { replyTo in
-                .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, timeout: timeout, replyTo: replyTo))
+                .localCommand(.write(id, data, consistency: consistency, timeout: timeout, replyTo: replyTo))
             }
 
             return self.owner.onWriteComplete(writeResponse) {
@@ -311,8 +207,8 @@ public enum CRDT {
             private let _onDataOperationResultComplete: (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void
             private let _onVoidOperationResultComplete: (EventLoopFuture<Void>, @escaping (Result<Void, Swift.Error>) -> Void) -> Void
 
-            init<M>(
-                _ ownerContext: ActorContext<M>,
+            init<OwnerMessage: ActorMessage>(
+                _ ownerContext: ActorContext<OwnerMessage>,
                 subReceive: ActorRef<Replication.DataOwnerMessage>,
                 replicator: ActorRef<Replicator.Message>,
                 onWriteComplete: @escaping (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, Swift.Error>) -> Void) -> Void,
@@ -549,6 +445,22 @@ extension CRDT.OperationConsistency.Error: Equatable {
             return true
         default:
             return false
+        }
+    }
+}
+
+extension CRDT {
+    public struct MergeError: Error, CustomStringConvertible, Equatable {
+        let storedType: Any.Type
+        let incomingType: Any.Type
+
+        public var description: String {
+            "MergeError(Unable to merge \(reflecting: self.storedType) with incoming \(reflecting: self.incomingType)"
+        }
+
+        public static func == (lhs: MergeError, rhs: MergeError) -> Bool {
+            ObjectIdentifier(lhs.storedType) == ObjectIdentifier(rhs.storedType) &&
+                ObjectIdentifier(lhs.incomingType) == ObjectIdentifier(rhs.incomingType)
         }
     }
 }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,6 +20,9 @@ import GenActors
 import XCTest
 
 final class GenerateActorsTests: XCTestCase {
+    // The Tests/GenActorsTests/ directory
+    let testFolder: Folder = try! File(path: #file).parent!.parent!.subfolder(at: "GenActorsTests")
+
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
@@ -93,7 +96,7 @@ final class GenerateActorsTests: XCTestCase {
         let name = "Caplin"
         let futureString: Reply<String> = actor.greetReplyToReturnStrict(name: name)
 
-        try futureString._nioFuture.wait().shouldEqual("Hello strict \(name)!")
+        try futureString.wait().shouldEqual("Hello strict \(name)!")
     }
 
     func test_TestActorable_greetReplyToReturnStrictThrowing() throws {
@@ -102,7 +105,7 @@ final class GenerateActorsTests: XCTestCase {
         let name = "Caplin"
         let futureString: Reply<String> = actor.greetReplyToReturnStrictThrowing(name: name)
 
-        try futureString._nioFuture.wait().shouldEqual("Hello strict \(name)!")
+        try futureString.wait().shouldEqual("Hello strict \(name)!")
     }
 
     func test_TestActorable_greetReplyToReturnNIOFuture() throws {
@@ -111,14 +114,14 @@ final class GenerateActorsTests: XCTestCase {
         let name = "Caplin"
         let futureString: Reply<String> = actor.greetReplyToReturnNIOFuture(name: name)
 
-        try futureString._nioFuture.wait().shouldEqual("Hello NIO \(name)!")
+        try futureString.wait().shouldEqual("Hello NIO \(name)!")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Imports
 
     func test_imports_shouldBe_carriedToGenActorFile() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldContain("import DistributedActors")
@@ -126,7 +129,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_imports_shouldBe_carriedToGenCodableFile() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenCodable.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "TestActorable/GenActors").file(named: "TestActorable+GenCodable.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldContain("import DistributedActors")
@@ -137,7 +140,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Storing instance in right type of reference
 
     func test_ClassActorableInstance() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case __skipMe")
@@ -163,7 +166,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Ignoring certain methods from exposing
 
     func test_LifecycleActor_doesNotContainUnderscorePrefixedMessage() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case __skipMe")
@@ -171,7 +174,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case preStart")
@@ -180,7 +183,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_TestActorable_doesNotContainGenerated_privateFuncs() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorPath = try self.testFolder.subfolder(at: "TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case privateFunc")
@@ -264,11 +267,13 @@ final class GenerateActorsTests: XCTestCase {
 
         try p.expectMessage("preStart(context:):/user/watcher")
         try p.expectMessage("preStart(context:):/user/watcher/child")
-        try p.expectMessagesInAnyOrder([
-            // these signals are sent concurrently -- the child is stopping in one thread, and the notification in parent is processed in another
-            "postStop(context:):/user/watcher/child",
-            "terminated:ChildTerminated(/user/watcher/child)",
-        ])
+        try p.expectMessagesInAnyOrder(
+            [
+                // these signals are sent concurrently -- the child is stopping in one thread, and the notification in parent is processed in another
+                "postStop(context:):/user/watcher/child",
+                "terminated:ChildTerminated(/user/watcher/child)",
+            ]
+        )
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -319,7 +324,7 @@ final class GenerateActorsTests: XCTestCase {
         }
 
         let reply = nestedActor.echo("Hi!")
-        try reply._nioFuture.wait().shouldEqual("Hi!")
+        try reply.wait().shouldEqual("Hi!")
     }
 
     func test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly() throws {
@@ -328,7 +333,7 @@ final class GenerateActorsTests: XCTestCase {
         }
 
         let reply = nestedActor.echo("Hi!")
-        try reply._nioFuture.wait().shouldEqual("Hi!")
+        try reply.wait().shouldEqual("Hi!")
     }
 
     func test_TestActorableNamespaceExtensionEnumDirectly_shouldHaveBeenGeneratedProperly() throws {
@@ -337,6 +342,6 @@ final class GenerateActorsTests: XCTestCase {
         }
 
         let reply = nestedActor.echo("Hi!")
-        try reply._nioFuture.wait().shouldEqual("Hi!")
+        try reply.wait().shouldEqual("Hi!")
     }
 }

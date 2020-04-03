@@ -4,6 +4,11 @@
 *.orig
 *.app
 
+Instruments/ActorInstruments/ActorInstruments.xcodeproj/xcuserdata
+Instruments/ActorInstruments/ActorInstruments.xcodeproj/project.xcworkspace/xcuserdata
+
+Samples/swift-distributed-actors-samples.xcodeproj
+
 /.build
 /Samples/.build
 /.SourceKitten

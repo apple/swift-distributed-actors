@@ -87,7 +87,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
 
 private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("ActorPingPongBenchmarks") { settings in
-        settings.defaultLogLevel = .error
+        settings.logging.defaultLevel = .error
     }
     postSetUp()
 }
@@ -98,7 +98,7 @@ private func tearDown() {
 }
 
 // === -----------------------------------------------------------------------------------------------------------------
-private enum PingPongCommand {
+private enum PingPongCommand: NonTransportableActorMessage {
     case startPingPong(
         messagesPerPair: Int,
         numActors: Int,
@@ -120,7 +120,7 @@ private let mutex = _Mutex()
 private var supervisor: ActorRef<PingPongCommand>!
 
 private func supervisorBehavior() -> Behavior<PingPongCommand> {
-    return .receive { context, message in
+    .receive { context, message in
         switch message {
         case .startPingPong(let numMessagesPerActorPair, let numActors, let throughput, _, let replyTo):
             let numPairs = numActors / 2
@@ -186,7 +186,7 @@ private func startPingPongActorPairs(
     return actors
 }
 
-private struct EchoMessage: CustomStringConvertible {
+private struct EchoMessage: ActorMessage, CustomStringConvertible {
     var seqNr: Int
     let replyTo: ActorRef<EchoMessage>
 
@@ -201,12 +201,12 @@ private struct EchoMessage: CustomStringConvertible {
     }
 
     var description: String {
-        return "EchoMessage(\(seqNr) replyTo: \(replyTo.address.name))"
+        "EchoMessage(\(seqNr) replyTo: \(replyTo.address.name))"
     }
 }
 
 private func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch) -> Behavior<EchoMessage> {
-    return .setup { context in
+    .setup { context in
         var left = messagesPerPair / 2
 
         return .receiveMessage { message in
@@ -228,7 +228,7 @@ private func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch) ->
 // === -----------------------------------------------------------------------------------------------------------------
 
 private func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
-    return { _ in
+    { _ in
         let numMessagesPerActorPair = 2_000_000
         // let totalMessages = numMessagesPerActorPair * numActors / 2
 

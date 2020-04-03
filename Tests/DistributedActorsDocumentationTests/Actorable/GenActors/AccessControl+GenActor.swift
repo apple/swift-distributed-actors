@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated AccessControl messages
 extension AccessControl {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case greetPublicly 
         case greetInternal 
     }
@@ -47,7 +47,7 @@ extension AccessControl {
             let context = Actor<AccessControl>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -91,12 +91,12 @@ extension AccessControl {
 extension Actor where A.Message == AccessControl.Message {
 
     public func greetPublicly() {
-        self.ref.tell(.greetPublicly)
+        self.ref.tell(Self.Message.greetPublicly)
     }
  
 
     internal func greetInternal() {
-        self.ref.tell(.greetInternal)
+        self.ref.tell(Self.Message.greetInternal)
     }
  
 

@@ -64,11 +64,11 @@ final class ActorSubReceiveTests: ActorSystemTestBase {
         let p = self.testKit.spawnTestProbe(expecting: Int.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<IncrementAndGet>.self)
 
-        struct GetState {
+        struct GetState: ActorMessage {
             let replyTo: ActorRef<Int>
         }
 
-        struct IncrementAndGet {
+        struct IncrementAndGet: ActorMessage {
             let replyTo: ActorRef<Int>
         }
 
@@ -180,7 +180,7 @@ final class ActorSubReceiveTests: ActorSystemTestBase {
     }
 
     func test_subReceive_shouldBeReplacedIfRegisteredAgainUnderSameKey() throws {
-        struct TestMessage {
+        struct TestMessage: ActorMessage {
             let replyTo: ActorRef<String>
             let message: String
         }

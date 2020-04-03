@@ -151,7 +151,7 @@ public class ProcessIsolated {
     }
 
     public var roles: [Role] {
-        return self.control.roles
+        self.control.roles
     }
 
     public func run<T>(on role: Role, _ block: () throws -> T) rethrows -> T? {
@@ -212,7 +212,7 @@ public class ProcessIsolated {
     /// ### Thread safety
     /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
     internal func removeServant(pid: Int) -> ServantProcess? {
-        return self.lock.withLock {
+        self.lock.withLock {
             self._servants.removeValue(forKey: pid)
         }
     }
@@ -232,15 +232,15 @@ extension ProcessIsolated {
         }
 
         public func `is`(_ name: String) -> Bool {
-            return self.name == name
+            self.name == name
         }
 
         public func `is`(_ role: Role) -> Bool {
-            return self == role
+            self == role
         }
 
         public var description: String {
-            return "Role(\(self.name))"
+            "Role(\(self.name))"
         }
     }
 }
@@ -272,7 +272,7 @@ internal struct ServantProcess {
     }
 
     var command: String {
-        return self.args.first! // TODO: or safer somehow?
+        self.args.first! // TODO: or safer somehow?
     }
 
     /// Record a failure of the servant process, and decide if we should restart (spawn a replacement) it or not.
@@ -390,15 +390,15 @@ enum KnownServantParameters {
     }
 
     func render(value: String) -> String {
-        return "\(self.prefix)\(value)"
+        "\(self.prefix)\(value)"
     }
 
     func extractFirst(_ arguments: [String]) -> String? {
-        return arguments.first { $0.starts(with: self.prefix) }.flatMap { self.parse(parameter: $0) }
+        arguments.first { $0.starts(with: self.prefix) }.flatMap { self.parse(parameter: $0) }
     }
 
     func collect(_ arguments: [String]) -> [String] {
-        return arguments.filter { $0.starts(with: self.prefix) }.compactMap { self.parse(parameter: $0) }
+        arguments.filter { $0.starts(with: self.prefix) }.compactMap { self.parse(parameter: $0) }
     }
 }
 
@@ -425,7 +425,7 @@ public final class BootSettings {
     }
 
     public func hasRole(_ role: ProcessIsolated.Role) -> Bool {
-        return self.roles.contains(role)
+        self.roles.contains(role)
     }
 
     private var _settings: ActorSystemSettings?
@@ -474,17 +474,17 @@ public final class IsolatedControl {
     }
 
     public func hasRole(_ role: ProcessIsolated.Role) -> Bool {
-        return self.roles.contains(role)
+        self.roles.contains(role)
     }
 }
 
 extension ProcessIsolated.Role {
     public static var master: ProcessIsolated.Role {
-        return .init("master")
+        .init("master")
     }
 
     public static var servant: ProcessIsolated.Role {
-        return .init("servant")
+        .init("servant")
     }
 }
 

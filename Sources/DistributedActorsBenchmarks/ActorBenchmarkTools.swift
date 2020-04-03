@@ -18,7 +18,7 @@ import SwiftBenchmarkTools
 
 /// `ActorRef` which acts like a "latch" which can await the receipt of exactly one message;
 @usableFromInline
-internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly hack to inject a personality into an actor ref
+internal class BenchmarkLatchGuardian<Message: ActorMessage>: Guardian { // This is an ugly hack to inject a personality into an actor ref
     let startTime = Atomic<UInt64>(value: 0)
     let receptacle = BlockingReceptacle<Message>()
 

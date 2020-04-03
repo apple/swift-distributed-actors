@@ -1,8 +1,8 @@
 // swift-tools-version:5.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
-import PackageDescription
 import class Foundation.ProcessInfo
+import PackageDescription
 
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
@@ -12,7 +12,7 @@ let globalSwiftSettings: [SwiftSetting]
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
     print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
     globalSwiftSettings = [
-        SwiftSetting.unsafeFlags(["-warnings-as-errors"])
+        SwiftSetting.unsafeFlags(["-warnings-as-errors"]),
     ]
 } else {
     globalSwiftSettings = []
@@ -53,14 +53,14 @@ var targets: [PackageDescription.Target] = [
             "ArgumentParser",
         ]
     ),
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Plugins
-    
+
     .target(
-         name: "ActorSingletonPlugin",
-         dependencies: ["DistributedActors"]
-     ),
+        name: "ActorSingletonPlugin",
+        dependencies: ["DistributedActors"]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: XPC
@@ -94,10 +94,10 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "DistributedActorsDocumentationTests",
         dependencies: [
-            "DistributedActors", 
-            "DistributedActorsXPC", 
+            "DistributedActors",
+            "DistributedActorsXPC",
             "ActorSingletonPlugin",
-            "DistributedActorsTestKit"
+            "DistributedActorsTestKit",
         ]
     ),
 
@@ -108,7 +108,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
     ),
-    
+
     .testTarget(
         name: "DistributedActorsTestKitTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
@@ -131,15 +131,15 @@ var targets: [PackageDescription.Target] = [
             "DistributedActorsTestKit",
         ]
     ),
-    
+
     .testTarget(
-         name: "ActorSingletonPluginTests",
-         dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
-     ),
+        name: "ActorSingletonPluginTests",
+        dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
-    
+
     .target(
         name: "it_ProcessIsolated_escalatingWorkers",
         dependencies: [
@@ -215,33 +215,35 @@ var targets: [PackageDescription.Target] = [
 ]
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-targets.append(contentsOf: [
-    /* --- XPC Integration Tests --- */
-    .target(
-        name: "it_XPCActorable_echo",
-        dependencies: [
-            "DistributedActorsXPC",
-            "it_XPCActorable_echo_api",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_api",
-        dependencies: [
-            "DistributedActorsXPC"
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
-    ),
-    .target(
-        name: "it_XPCActorable_echo_service",
-        dependencies: [
-            "DistributedActorsXPC",
-            "it_XPCActorable_echo_api",
-            "Files",
-        ],
-        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
-    ),
-])
+targets.append(
+    contentsOf: [
+        /* --- XPC Integration Tests --- */
+        .target(
+            name: "it_XPCActorable_echo",
+            dependencies: [
+                "DistributedActorsXPC",
+                "it_XPCActorable_echo_api",
+            ],
+            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
+        ),
+        .target(
+            name: "it_XPCActorable_echo_api",
+            dependencies: [
+                "DistributedActorsXPC",
+            ],
+            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
+        ),
+        .target(
+            name: "it_XPCActorable_echo_service",
+            dependencies: [
+                "DistributedActorsXPC",
+                "it_XPCActorable_echo_api",
+                "Files",
+            ],
+            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
+        ),
+    ]
+)
 #endif
 
 var dependencies: [Package.Dependency] = [
@@ -252,11 +254,12 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
     // ~~~ workaround for backtraces ~~~
-    .package(url: "https://github.com/ianpartridge/swift-backtrace.git", from: "1.1.1"),
+    .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
 
     // ~~~ SSWG APIs ~~~
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
-    .package(url: "https://github.com/apple/swift-metrics.git", from: "1.0.0"),
+    // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
+    .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
 
     // ~~~ only for GenActors ~~~
     // swift-syntax is Swift version dependent, and added  as such below
@@ -266,13 +269,17 @@ var dependencies: [Package.Dependency] = [
 ]
 
 #if swift(>=5.1)
-dependencies.append(contentsOf: [
-    .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
-])
+dependencies.append(
+    contentsOf: [
+        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
+    ]
+)
 #elseif swift(>=5.0)
-dependencies.append(contentsOf: [
-    .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50000.0")),
-])
+dependencies.append(
+    contentsOf: [
+        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50000.0")),
+    ]
+)
 #else
 fatalError("Currently only Swift 5.1 is supported. 5.0 could be supported, if you need Swift 5.0 support please reach out to to the team.")
 #endif

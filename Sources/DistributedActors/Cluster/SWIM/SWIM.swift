@@ -37,13 +37,13 @@ public enum SWIM {
     typealias Members = [SWIMMember]
     internal typealias MembersValues = Dictionary<ActorRef<SWIM.Message>, SWIM.Member>.Values
 
-    internal enum Message {
+    internal enum Message: ActorMessage {
         case remote(RemoteMessage)
         case local(LocalMessage)
         case _testing(TestingMessage)
     }
 
-    internal enum RemoteMessage {
+    internal enum RemoteMessage: ActorMessage {
         case ping(lastKnownStatus: Status, replyTo: ActorRef<PingResponse>, payload: Payload)
 
         /// "Ping Request" requests a SWIM probe.
@@ -57,16 +57,16 @@ public enum SWIM {
     ///
     /// - parameter target: always contains the ref of the member that was the target of the `ping`.
 
-    internal enum PingResponse {
+    internal enum PingResponse: ActorMessage {
         case ack(target: ActorRef<Message>, incarnation: Incarnation, payload: Payload)
         case nack(target: ActorRef<Message>)
     }
 
-    internal struct MembershipState {
+    internal struct MembershipState: NonTransportableActorMessage {
         let membershipState: [ActorRef<SWIM.Message>: Status]
     }
 
-    internal enum LocalMessage: NoSerializationVerification {
+    internal enum LocalMessage: NonTransportableActorMessage {
         /// Periodic message used to wake up SWIM and perform a random ping probe among its members.
         case pingRandomMember
 
@@ -110,7 +110,7 @@ public enum SWIM {
         case confirmDead(UniqueNode)
     }
 
-    internal enum TestingMessage: NoSerializationVerification {
+    internal enum TestingMessage: NonTransportableActorMessage {
         /// FOR TESTING: Expose the entire membership state
         case getMembershipState(replyTo: ActorRef<MembershipState>)
     }
@@ -233,7 +233,7 @@ extension SWIM.Status {
     /// - Returns `true` if `self` is greater than or equal to `other` based on the
     ///   following ordering: `alive(N)` < `suspect(N)` < `alive(N+1)` < `suspect(N+1)` < `dead`
     func supersedes(_ other: SWIM.Status) -> Bool {
-        return self >= other
+        self >= other
     }
 }
 
@@ -242,7 +242,7 @@ extension SWIM.Status {
 
 internal struct SWIMMember {
     var node: UniqueNode {
-        return self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
+        self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
     }
 
     /// Each (SWIM) cluster member is running a `probe` actor which we interact with when gossiping the SWIM messages.
@@ -285,7 +285,7 @@ internal struct SWIMMember {
 /// Manual Hashable conformance since we ommit suspicionStartedAt from identity
 extension SWIMMember: Hashable, Equatable {
     static func == (lhs: SWIMMember, rhs: SWIMMember) -> Bool {
-        return lhs.ref == rhs.ref && lhs.protocolPeriod == rhs.protocolPeriod && lhs.status == rhs.status
+        lhs.ref == rhs.ref && lhs.protocolPeriod == rhs.protocolPeriod && lhs.status == rhs.status
     }
 
     func hash(into hasher: inout Hasher) {

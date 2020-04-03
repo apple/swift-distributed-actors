@@ -66,10 +66,10 @@ final class MembershipTests: XCTestCase {
 
     func test_age_ordering() {
         let ms = [
-            Cluster.Member(node: memberA.node, status: .joining),
-            Cluster.Member(node: memberA.node, status: .up, upNumber: 1),
-            Cluster.Member(node: memberA.node, status: .down, upNumber: 4),
-            Cluster.Member(node: memberA.node, status: .up, upNumber: 2),
+            Cluster.Member(node: self.memberA.node, status: .joining),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberA.node, status: .down, upNumber: 4),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 2),
         ]
         let ns = ms.sorted(by: Cluster.Member.ageOrdering).map { $0._upNumber }
         ns.shouldEqual([nil, 1, 2, 4])
@@ -83,14 +83,14 @@ final class MembershipTests: XCTestCase {
 
     func test_membership_equality() {
         let left: Cluster.Membership = [
-            Cluster.Member(node: memberA.node, status: .up, upNumber: 1),
-            Cluster.Member(node: memberB.node, status: .up, upNumber: 1),
-            Cluster.Member(node: memberC.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberB.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberC.node, status: .up, upNumber: 1),
         ]
         let right: Cluster.Membership = [
-            Cluster.Member(node: memberA.node, status: .up, upNumber: 1),
-            Cluster.Member(node: memberB.node, status: .down, upNumber: 1),
-            Cluster.Member(node: memberC.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberA.node, status: .up, upNumber: 1),
+            Cluster.Member(node: self.memberB.node, status: .down, upNumber: 1),
+            Cluster.Member(node: self.memberC.node, status: .up, upNumber: 1),
         ]
 
         left.shouldNotEqual(right)
@@ -121,7 +121,7 @@ final class MembershipTests: XCTestCase {
     // MARK: Member lookups
 
     func test_member_replacement_shouldOfferChange() {
-        var membership: Cluster.Membership = [memberA, memberB]
+        var membership: Cluster.Membership = [self.memberA, self.memberB]
         let secondReplacement = Cluster.Member(
             node: UniqueNode(node: Node(systemName: self.nodeB.node.systemName, host: self.nodeB.node.host, port: self.nodeB.node.port), nid: .random()), status: .up
         )
@@ -554,10 +554,12 @@ final class MembershipTests: XCTestCase {
         let changes = membership.mergeFrom(incoming: ahead, myself: nil)
 
         changes.count.shouldEqual(1)
-        changes.shouldEqual([
-            Cluster.MembershipChange(node: self.nodeA, fromStatus: .up, toStatus: .down),
-            // we do not ADD .down members to our view
-        ])
+        changes.shouldEqual(
+            [
+                Cluster.MembershipChange(node: self.nodeA, fromStatus: .up, toStatus: .down),
+                // we do not ADD .down members to our view
+            ]
+        )
         var expected = membership
         _ = expected.mark(self.nodeA, as: .down)
         membership.shouldEqual(expected)

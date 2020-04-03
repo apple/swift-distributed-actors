@@ -29,7 +29,7 @@ import XCTest
 // MARK: DO NOT EDIT: Codable conformance for InvokeFuncs.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension InvokeFuncs.Message: Codable {
+extension InvokeFuncs.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case doThingsAndRunTask
@@ -53,7 +53,7 @@ extension InvokeFuncs.Message: Codable {
             let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.doThingsAndRunTask__replyTo)
             self = .doThingsAndRunTask(_replyTo: _replyTo)
         case .doThingsAsync:
-            let _replyTo = try container.decode(ActorRef<Reply<Int>>.self, forKey: CodingKeys.doThingsAsync__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<Int, ErrorEnvelope>>.self, forKey: CodingKeys.doThingsAsync__replyTo)
             self = .doThingsAsync(_replyTo: _replyTo)
         case .internalTask:
             let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.internalTask__replyTo)

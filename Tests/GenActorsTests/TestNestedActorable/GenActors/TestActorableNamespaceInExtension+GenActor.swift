@@ -24,7 +24,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated TestActorableNamespace.TestActorableNamespaceInExtension messages
 extension TestActorableNamespace.TestActorableNamespaceInExtension {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case echo(String, _replyTo: ActorRef<String>) 
     }
     
@@ -39,7 +39,7 @@ extension TestActorableNamespace.TestActorableNamespaceInExtension {
             let context = Actor<TestActorableNamespace.TestActorableNamespaceInExtension>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -82,9 +82,9 @@ extension Actor where A.Message == TestActorableNamespace.TestActorableNamespace
 
      func echo(_ string: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .echo(string, _replyTo: _replyTo)}.nioFuture
+                Self.Message.echo(string, _replyTo: _replyTo)}
         )
     }
  

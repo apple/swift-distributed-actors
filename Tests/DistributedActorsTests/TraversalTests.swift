@@ -20,12 +20,9 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-class TraversalTests: ActorSystemTestBase {
-    struct ActorReady {
+final class TraversalTests: ActorSystemTestBase {
+    struct ActorReady: ActorMessage {
         let name: String
-        init(_ name: String) {
-            self.name = name
-        }
     }
 
     override func setUp() {
@@ -34,24 +31,30 @@ class TraversalTests: ActorSystemTestBase {
         // we use the probe to make sure all actors are started before we start asserting on the tree
         let probe = self.testKit.spawnTestProbe(expecting: ActorReady.self)
 
-        let tellProbeWhenReady: Behavior<Void> = .setup { context in
-            probe.tell(ActorReady(context.name))
+        let tellProbeWhenReady: Behavior<Never> = .setup { context in
+            probe.tell(ActorReady(name: context.name))
             return .receiveMessage { _ in .same }
         }
 
-        let _: ActorRef<String> = try! self.system.spawn("hello", .setup { context in
-            probe.tell(ActorReady(context.name))
-            let _: ActorRef<Void> = try context.spawn("world", tellProbeWhenReady)
-            return .receiveMessage { _ in .same }
-        })
+        let _: ActorRef<String> = try! self.system.spawn(
+            "hello",
+            .setup { context in
+                probe.tell(ActorReady(name: context.name))
+                let _: ActorRef<Never> = try context.spawn("world", tellProbeWhenReady)
+                return .receiveMessage { _ in .same }
+            }
+        )
 
-        let _: ActorRef<String> = try! self.system.spawn("other", .setup { context in
-            probe.tell(ActorReady(context.name))
-            let _: ActorRef<Void> = try context.spawn("inner-1", tellProbeWhenReady)
-            let _: ActorRef<Void> = try context.spawn("inner-2", tellProbeWhenReady)
-            let _: ActorRef<Void> = try context.spawn("inner-3", tellProbeWhenReady)
-            return .receiveMessage { _ in .same }
-        })
+        let _: ActorRef<String> = try! self.system.spawn(
+            "other",
+            .setup { context in
+                probe.tell(ActorReady(name: context.name))
+                let _: ActorRef<Never> = try context.spawn("inner-1", tellProbeWhenReady)
+                let _: ActorRef<Never> = try context.spawn("inner-2", tellProbeWhenReady)
+                let _: ActorRef<Never> = try context.spawn("inner-3", tellProbeWhenReady)
+                return .receiveMessage { _ in .same }
+            }
+        )
 
         // once we get all ready messages here, we know the tree is "ready" and the tests which perform assertions on it can run
         _ = try! probe.expectMessages(count: 6)
@@ -74,18 +77,20 @@ class TraversalTests: ActorSystemTestBase {
             return .continue
         }
 
-        seen.shouldEqual([
-            "system",
-            "receptionist",
-            "replicator",
-            "user",
-            "other",
-            "inner-1",
-            "inner-2",
-            "inner-3",
-            "hello",
-            "world",
-        ])
+        seen.shouldEqual(
+            [
+                "system",
+                "receptionist",
+                "replicator",
+                "user",
+                "other",
+                "inner-1",
+                "inner-2",
+                "inner-3",
+                "hello",
+                "world",
+            ]
+        )
     }
 
     func test_traverse_shouldAllowImplementingCollect() {

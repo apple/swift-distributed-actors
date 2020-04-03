@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,10 +14,10 @@
 
 import DistributedActors
 import DistributedActorsXPC
-import it_XPCActorable_echo_api
 import Files
+import it_XPCActorable_echo_api
 
-fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
+private let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
 try! _file.append("service starting...\n")
 
@@ -26,9 +26,9 @@ let system = ActorSystem("it_XPCActorable_echo_service") { settings in
 
     settings.cluster.swim.failureDetector.pingTimeout = .seconds(3)
 
-    settings.serialization.registerCodable(for: GeneratedActor.Messages.XPCEchoServiceProtocol.self, underId: 10001)
-    settings.serialization.registerCodable(for: XPCEchoService.Message.self, underId: 10002)
-    settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
+//    settings.serialization.registerCodable(GeneratedActor.Messages.XPCEchoServiceProtocol.self, underId: 10001)
+//    settings.serialization.registerCodable(XPCEchoService.Message.self, underId: 10002)
+//    settings.serialization.registerCodable(Result<String, Error>.self, underId: 10003)
 }
 
 try! _file.append("service booted...\n")
@@ -36,5 +36,5 @@ try! _file.append("service booted...\n")
 let service = try XPCActorableService(system, XPCEchoService.init)
 
 service.park()
-system.park() // TODO system park should invoke the service park, we only need to park once for XPC to kickoff dispatch_main
+system.park() // TODO: system park should invoke the service park, we only need to park once for XPC to kickoff dispatch_main
 // unreachable, park never exits

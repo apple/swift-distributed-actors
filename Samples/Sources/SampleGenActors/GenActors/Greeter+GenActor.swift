@@ -24,7 +24,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated Greeter messages
 extension Greeter {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case greet(name: String) 
     }
     
@@ -39,7 +39,7 @@ extension Greeter {
             let context = Actor<Greeter>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -80,7 +80,7 @@ extension Greeter {
 extension Actor where A.Message == Greeter.Message {
 
      func greet(name: String) {
-        self.ref.tell(.greet(name: name))
+        self.ref.tell(Self.Message.greet(name: name))
     }
  
 

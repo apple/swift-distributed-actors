@@ -114,15 +114,12 @@ extension Actor.Context {
         /// - Parameters:
         ///   - key: selects which actors we are interested in.
         public func lookup<Act: Actorable>(_ key: Reception.Key<Act>, timeout: TimeAmount) -> Reply<Reception.Listing<Act>> {
-            let listingReply: AskResponse<SystemReceptionist.Listing<Act.Message>> = self.underlying.system.receptionist.ask(timeout: timeout) {
+            let listingReply: AskResponse<Reception.Listing<Act>> = self.underlying.system.receptionist.ask(timeout: timeout) {
                 SystemReceptionist.Lookup(key: key.underlying, replyTo: $0)
-            }
-
-            let actorListing: EventLoopFuture<Reception.Listing<Act>> = listingReply.nioFuture.map { listing in
+            }.map { listing in
                 Reception.Listing(refs: listing.refs)
             }
-
-            return Reply(nioFuture: actorListing)
+            return Reply.from(askResponse: listingReply)
         }
     }
 }
@@ -152,24 +149,24 @@ extension Reception {
     /// A listing MAY be empty.
     ///
     /// This is the `Actorable` version of `SystemReceptionist.Listing`, allowing location of `Actor` instances.
-    public struct Listing<A: Actorable>: Equatable {
-        public let refs: Set<ActorRef<A.Message>>
+    public struct Listing<Act: Actorable>: ActorMessage, Equatable {
+        public let refs: Set<ActorRef<Act.Message>>
 
         public var isEmpty: Bool {
             self.actors.isEmpty
         }
 
         /// - Complexity: O(n)
-        public var actors: Set<Actor<A>> {
-            Set(self.refs.map { Actor<A>(ref: $0) })
+        public var actors: Set<Actor<Act>> {
+            Set(self.refs.map { Actor<Act>(ref: $0) })
         }
 
-        public func actor(named name: String) -> Actor<A>? {
-            self.refs.first { $0.address.name == name }.map { Actor<A>(ref: $0) }
+        public func actor(named name: String) -> Actor<Act>? {
+            self.refs.first { $0.address.name == name }.map { Actor<Act>(ref: $0) }
         }
 
-        public var first: Actor<A>? {
-            self.refs.first.map { Actor<A>(ref: $0) }
+        public var first: Actor<Act>? {
+            self.refs.first.map { Actor<Act>(ref: $0) }
         }
     }
 }

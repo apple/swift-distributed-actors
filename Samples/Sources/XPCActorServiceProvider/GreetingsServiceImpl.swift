@@ -15,12 +15,11 @@
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 import DistributedActors
-import XPCActorServiceAPI
 import NIO
+import XPCActorServiceAPI
 
 // tag::xpc_example[]
 public struct GreetingsServiceImpl: GreetingsService, Actorable {
-
     // TODO: allow for manually writing the Message enum, for fine control over what to expose as messages?
 
     let context: Myself.Context
@@ -31,7 +30,6 @@ public struct GreetingsServiceImpl: GreetingsService, Actorable {
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor message handlers
-
 
     public func logGreeting(name: String) throws {
         self.context.log.info("[actor service:\(self.context.system.name)][\(self.context.path)] Received .greet(\(name))")
@@ -54,7 +52,7 @@ public struct GreetingsServiceImpl: GreetingsService, Actorable {
     public func greetFuture(name: String) -> EventLoopFuture<String> {
         self.context.system._eventLoopGroup.next().makeSucceededFuture("Hello \(name)")
     }
-
 }
+
 // end::xpc_example[]
 #endif

@@ -125,9 +125,12 @@ internal class ClusterShell {
         // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
         if state.membership.mark(remoteNode, as: .down) == nil {
             // it was already removed, nothing to do
-            state.log.trace("Finish association with \(remoteNode), yet node not in membership already?", metadata: [
-                "cluster/membership": "\(state.membership)",
-            ])
+            state.log.trace(
+                "Finish association with \(remoteNode), yet node not in membership already?",
+                metadata: [
+                    "cluster/membership": "\(state.membership)",
+                ]
+            )
         } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
 
         // The lat thing we attempt to do with the other node is to shoot it, in case it's a "zombie" that still may
@@ -153,7 +156,6 @@ internal class ClusterShell {
 
         let ripMessage = Envelope(payload: .message(ClusterShell.Message.inbound(.restInPeace(remoteNode, from: system.cluster.node))))
         targetNodeRemoteControl.sendUserMessage(
-            type: ClusterShell.Message.self,
             envelope: ripMessage,
             recipient: ._clusterShell(on: remoteNode),
             promise: shootTheOtherNodePromise
@@ -236,7 +238,7 @@ internal class ClusterShell {
     }
 
     // Due to lack of Union Types, we have to emulate them
-    enum Message: NoSerializationVerification {
+    enum Message: ActorMessage {
         // The external API, exposed to users of the ClusterShell
         case command(CommandMessage)
         // The external API, exposed to users of the ClusterShell to query for state
@@ -257,7 +259,7 @@ internal class ClusterShell {
     }
 
     // this is basically our API internally for this system
-    enum CommandMessage: NoSerializationVerification, SilentDeadLetter {
+    enum CommandMessage: NonTransportableActorMessage, SilentDeadLetter {
         /// Initiate the joining procedure for the given `Node`, this will result in attempting a handshake,
         /// as well as notifying the underlying failure detector (e.g. SWIM) about the node once shook hands with it.
         case initJoin(Node)
@@ -270,14 +272,14 @@ internal class ClusterShell {
         case failureDetectorReachabilityChanged(UniqueNode, Cluster.MemberReachability)
 
         /// Used to signal a "down was issued" either by the user, or another part of the system.
-        case downCommand(Node)
+        case downCommand(Node) // TODO: add reason
         /// Used to signal a "down was issued" either by the user, or another part of the system.
         case downCommandMember(Cluster.Member)
 
         case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
     }
 
-    enum QueryMessage: NoSerializationVerification {
+    enum QueryMessage: NonTransportableActorMessage {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO: better type here
         case currentMembership(ActorRef<Cluster.Membership>)
     }
@@ -296,7 +298,7 @@ internal class ClusterShell {
     }
 
     // TODO: reformulate as Wire.accept / reject?
-    internal enum HandshakeResult: Equatable {
+    internal enum HandshakeResult: Equatable, NonTransportableActorMessage {
         case success(UniqueNode)
         case failure(HandshakeConnectionError)
     }
@@ -312,8 +314,8 @@ internal class ClusterShell {
 
     private let props: Props =
         Props()
-        .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
-        ._asWellKnown
+            .supervision(strategy: .escalate) // always escalate failures, if this actor fails we're in big trouble -> terminate the system
+            ._asWellKnown
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -324,7 +326,7 @@ extension ClusterShell {
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Message> {
-        return .setup { context in
+        .setup { context in
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 
@@ -384,6 +386,7 @@ extension ClusterShell {
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
                 var firstGossip = Cluster.Gossip(ownerNode: state.myselfNode)
                 _ = firstGossip.membership.join(state.myselfNode) // change will be put into effect by receiving the "self gossip"
+                context.system.cluster.updateMembershipSnapshot(state.membership)
                 firstGossip.incrementOwnerVersion()
                 context.myself.tell(.gossipFromGossiper(firstGossip))
                 // TODO: are we ok if we received another gossip first, not our own initial? should be just fine IMHO
@@ -505,13 +508,16 @@ extension ClusterShell {
             let beforeGossipMerge = state.latestGossip
 
             let mergeDirective = state.latestGossip.mergeForward(incoming: gossip) // mutates the gossip
-            context.log.trace("Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.", metadata: [
-                "tag": "membership",
-                "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
-                "gossip/incoming": "\(gossip)",
-                "gossip/before": "\(beforeGossipMerge)",
-                "gossip/now": "\(state.latestGossip)",
-            ])
+            context.log.trace(
+                "Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.",
+                metadata: [
+                    "tag": "membership",
+                    "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
+                    "gossip/incoming": "\(gossip)",
+                    "gossip/before": "\(beforeGossipMerge)",
+                    "gossip/now": "\(state.latestGossip)",
+                ]
+            )
 
             mergeDirective.effectiveChanges.forEach { effectiveChange in
                 // a change COULD have also been a replacement, in which case we need to publish it as well
@@ -525,11 +531,16 @@ extension ClusterShell {
 
             let leaderActions = state.collectLeaderActions()
             if !leaderActions.isEmpty {
-                state.log.trace("Leadership actions upon gossip: \(leaderActions)", metadata: [
-                    "tag": "membership",
-                ])
+                state.log.trace(
+                    "Leadership actions upon gossip: \(leaderActions)",
+                    metadata: [
+                        "tag": "membership",
+                    ]
+                )
             }
+
             state = self.interpretLeaderActions(context.system, state, leaderActions)
+            context.system.cluster.updateMembershipSnapshot(state.membership)
 
             return self.ready(state: state)
         }
@@ -852,23 +863,32 @@ extension ClusterShell {
         let myselfNode = state.myselfNode
 
         guard myselfNode == myselfNode else {
-            state.log.warning("Received stray .restInPeace message! Was intended for \(reflecting: intendedNode), ignoring.", metadata: [
-                "cluster/node": "\(String(reflecting: myselfNode))",
-                "sender/node": "\(String(reflecting: fromNode))",
-            ])
+            state.log.warning(
+                "Received stray .restInPeace message! Was intended for \(reflecting: intendedNode), ignoring.",
+                metadata: [
+                    "cluster/node": "\(String(reflecting: myselfNode))",
+                    "sender/node": "\(String(reflecting: fromNode))",
+                ]
+            )
             return .same
         }
         guard !context.system.isShuttingDown else {
             // we are already shutting down thus other nodes declaring us as down is expected
-            state.log.trace("Already shutting down, received .restInPeace from [\(fromNode)], this is expected, other nodes may sever their connections with this node while we terminate.", metadata: [
-                "sender/node": "\(String(reflecting: fromNode))",
-            ])
+            state.log.trace(
+                "Already shutting down, received .restInPeace from [\(fromNode)], this is expected, other nodes may sever their connections with this node while we terminate.",
+                metadata: [
+                    "sender/node": "\(String(reflecting: fromNode))",
+                ]
+            )
             return .same
         }
 
-        state.log.warning("Received .restInPeace from \(fromNode), meaning this node is known to be .down or worse, and should terminate. Initiating self .down-ing.", metadata: [
-            "sender/node": "\(String(reflecting: fromNode))",
-        ])
+        state.log.warning(
+            "Received .restInPeace from \(fromNode), meaning this node is known to be .down or worse, and should terminate. Initiating self .down-ing.",
+            metadata: [
+                "sender/node": "\(String(reflecting: fromNode))",
+            ]
+        )
 
         guard let myselfMember = state.membership.uniqueMember(myselfNode) else {
             state.log.error("Unable to find Cluster.Member for \(myselfNode) self node! This should not happen, please file an issue.")
@@ -953,6 +973,7 @@ extension ClusterShell {
 
         // TODO: make sure we don't end up infinitely spamming reachability events
         if state.membership.applyReachabilityChange(change) != nil {
+            context.system.cluster.updateMembershipSnapshot(state.membership)
             self.clusterEvents.publish(.reachabilityChange(change))
             self.recordMetrics(context.system.metrics, membership: state.membership)
             return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot
@@ -967,6 +988,7 @@ extension ClusterShell {
         var state = state
 
         if let change = state.membership.applyMembershipChange(.init(member: memberToDown, toStatus: .down)) {
+            context.system.cluster.updateMembershipSnapshot(state.membership)
             self.clusterEvents.publish(.membershipChange(change))
 
             if let logChangeLevel = state.settings.logMembershipChanges {
@@ -977,9 +999,12 @@ extension ClusterShell {
         guard memberToDown.node != state.myselfNode else {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
-            context.log.warning("Self node was marked [.down]!", metadata: [ // TODO: carry reason why -- was it gossip, manual or other
-                "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
-            ])
+            context.log.warning(
+                "Self node was marked [.down]!",
+                metadata: [ // TODO: carry reason why -- was it gossip, manual or other
+                    "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
+                ]
+            )
 
             self._swimRef?.tell(.local(.confirmDead(memberToDown.node)))
 

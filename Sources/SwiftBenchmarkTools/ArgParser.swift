@@ -62,7 +62,7 @@ func checked<T>(
 class ArgumentParser<U> {
     private var result: U
     private var validOptions: [String] {
-        return self.arguments.compactMap { $0.name }
+        self.arguments.compactMap { $0.name }
     }
 
     private var arguments: [Argument] = []
@@ -96,7 +96,7 @@ class ArgumentParser<U> {
         self.arguments += [
             Argument(
                 name: "--help", help: "show this help message and exit",
-                apply: printUsage
+                apply: self.printUsage
             ),
         ]
     }
@@ -205,8 +205,10 @@ class ArgumentParser<U> {
         help: String? = nil,
         parser: @escaping (String) throws -> T? = { _ in nil }
     ) {
-        self.arguments.append(Argument(name: name, help: help)
-            { try self.parseArgument(name, property, defaultValue, parser) })
+        self.arguments.append(
+            Argument(name: name, help: help)
+            { try self.parseArgument(name, property, defaultValue, parser) }
+        )
     }
 
     /// Process the specified command line argument.

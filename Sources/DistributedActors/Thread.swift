@@ -121,7 +121,7 @@ public class Thread {
     #endif
 
     static var runnerCallback: CRunnerCallback {
-        return { arg in
+        { arg in
             let unmanaged: Unmanaged<BoxedClosure>
             #if os(Linux)
             unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg!)

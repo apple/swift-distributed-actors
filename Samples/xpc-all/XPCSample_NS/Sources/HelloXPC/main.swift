@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,23 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 import Cocoa
-import SwiftUI
 import Dispatch
+import Foundation
 import HelloXPCProtocol
-
+import SwiftUI
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: UI
 
 if #available(macOS 10.15, *) {
-
     class AppDelegate: NSObject, NSApplicationDelegate {
-
         func applicationDidFinishLaunching(_ aNotification: Notification) {
-
-            let connection = NSXPCConnection(serviceName: "com.apple.sakkana.HelloXPCService")
+            let connection = NSXPCConnection(serviceName: "com.apple.actors.HelloXPCService")
             connection.remoteObjectInterface = NSXPCInterface(with: HelloXPCServiceProtocol.self)
             connection.resume()
 
@@ -36,14 +32,14 @@ if #available(macOS 10.15, *) {
                 print("Received error:", error)
             } as? HelloXPCServiceProtocol
 
-            service!.hello() { (greeting) in
+            service!.hello { greeting in
                 print("Greeted 0: \(greeting)")
             }
-            service!.hello() { (greeting) in
+            service!.hello { greeting in
                 print("Greeted 1: \(greeting)")
             }
 
-            service!.hello() { (greeting) in
+            service!.hello { greeting in
                 print("Greeted 3: \(greeting)")
             }
         }
@@ -51,12 +47,10 @@ if #available(macOS 10.15, *) {
         func applicationWillTerminate(_ aNotification: Notification) {
             // Insert code here to tear down your application
         }
-
-
     }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Using
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Using
 
     let delegate = AppDelegate()
     NSApplication.shared.delegate = delegate

@@ -31,9 +31,9 @@ let package = Package(
         .executable(
             name: "XPCServiceProvider",
             targets: [
-                "XPCServiceProvider"
+                "XPCServiceProvider",
             ]
-        )
+        ),
 
     ],
 

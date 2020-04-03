@@ -83,7 +83,7 @@ final class SWIMInstance {
     }
 
     func makeSuspicion(incarnation: SWIM.Incarnation) -> SWIM.Status {
-        return .suspect(incarnation: incarnation, suspectedBy: [self.myNode])
+        .suspect(incarnation: incarnation, suspectedBy: [self.myNode])
     }
 
     func mergeSuspicions(suspectedBy: Set<UniqueNode>, previouslySuspectedBy: Set<UniqueNode>) -> Set<UniqueNode> {
@@ -123,9 +123,12 @@ final class SWIMInstance {
 
     private let myNode: UniqueNode
 
-    private var _messagesToGossip = Heap(of: SWIM.Gossip.self, comparator: {
-        $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
-    })
+    private var _messagesToGossip = Heap(
+        of: SWIM.Gossip.self,
+        comparator: {
+            $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
+        }
+    )
 
     init(_ settings: SWIM.Settings, myShellMyself: ActorRef<SWIM.Message>, myNode: UniqueNode) {
         self.settings = settings
@@ -198,10 +201,10 @@ final class SWIMInstance {
     /// Selects `settings.failureDetector.indirectProbeCount` members to send a `ping-req` to.
     func membersToPingRequest(target: ActorRef<SWIM.Message>) -> ArraySlice<SWIM.Member> {
         func notTarget(_ ref: ActorRef<SWIM.Message>) -> Bool {
-            return ref.address != target.address
+            ref.address != target.address
         }
         func isReachable(_ status: SWIM.Status) -> Bool {
-            return status.isAlive || status.isSuspect
+            status.isAlive || status.isSuspect
         }
         let candidates = self.members
             .values
@@ -212,23 +215,23 @@ final class SWIMInstance {
     }
 
     func notMyself(_ member: SWIM.Member) -> Bool {
-        return self.notMyself(member.ref)
+        self.notMyself(member.ref)
     }
 
     func notMyself(_ ref: ActorRef<SWIM.Message>) -> Bool {
-        return self.notMyself(ref.address)
+        self.notMyself(ref.address)
     }
 
     func notMyself(_ memberAddress: ActorAddress) -> Bool {
-        return !self.isMyself(memberAddress)
+        !self.isMyself(memberAddress)
     }
 
     func isMyself(_ member: SWIM.Member) -> Bool {
-        return self.isMyself(member.ref.address)
+        self.isMyself(member.ref.address)
     }
 
     func isMyself(_ memberAddress: ActorAddress) -> Bool {
-        return self.myShellAddress == memberAddress
+        self.myShellAddress == memberAddress
     }
 
     @discardableResult
@@ -388,7 +391,7 @@ final class SWIMInstance {
         // the ref could be either:
         // - "us" (i.e. the actor which hosts this SWIM instance, or
         // - a "known member"
-        return ref.address == self.myShellAddress || self.members[ref] != nil
+        ref.address == self.myShellAddress || self.members[ref] != nil
     }
 
     func makeGossipPayload() -> SWIM.Payload {
@@ -604,14 +607,17 @@ extension SWIM.Instance {
                 )
             }
         } else if let remoteMemberNode = member.ref.address.node {
-            return .connect(node: remoteMemberNode, onceConnected: {
-                switch $0 {
-                case .success:
-                    self.addMember(member.ref, status: member.status)
-                case .failure:
-                    self.addMember(member.ref, status: self.makeSuspicion(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)
+            return .connect(
+                node: remoteMemberNode,
+                onceConnected: {
+                    switch $0 {
+                    case .success:
+                        self.addMember(member.ref, status: member.status)
+                    case .failure:
+                        self.addMember(member.ref, status: self.makeSuspicion(incarnation: 0)) // connecting failed, so we immediately mark it as suspect (!)
+                    }
                 }
-            })
+            )
         } else {
             return .ignored(
                 level: .warning,
@@ -703,7 +709,7 @@ extension SWIMInstance.OnGossipPayloadDirective {
 extension SWIM.Instance: CustomDebugStringConvertible {
     public var debugDescription: String {
         // multi-line on purpose
-        return """
+        """
         SWIMInstance(
             settings: \(settings),
             

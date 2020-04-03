@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated Greeter messages
 extension Greeter {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case greet(name: String, _replyTo: ActorRef<String>) 
     }
     
@@ -46,7 +46,7 @@ extension Greeter {
             let context = Actor<Greeter>.Context(underlying: _context)
             let instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -89,9 +89,9 @@ extension Actor where A.Message == Greeter.Message {
 
      func greet(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greet(name: name, _replyTo: _replyTo)}.nioFuture
+                Self.Message.greet(name: name, _replyTo: _replyTo)}
         )
     }
  

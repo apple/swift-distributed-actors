@@ -24,9 +24,16 @@ pushd $proto_path >> /dev/null
 
 declare -a public_protos
 public_protos=(
-    -name 'ActorAddress.proto'
-    -or -name 'CRDT.proto'
+    -name 'Serialization.proto'
+    -or -name 'ActorAddress.proto'
+    -or -name 'SystemMessages.proto'
+
+    -or -name 'Cluster.proto'
+    -or -name 'Membership.proto'
+    -or -name 'ClusterEvents.proto'
+
     -or -name 'VersionVector.proto'
+    -or -name 'CRDT.proto'
 )
 
 # There are two visibility options: Public, Internal (default)

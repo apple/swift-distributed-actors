@@ -19,20 +19,20 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message>: ActorRefFactory {
+public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
-        return undefined()
+        undefined()
     }
 
     /// Uniquely identifies this actor in the cluster.
     public var address: ActorAddress {
-        return undefined()
+        undefined()
     }
 
     /// Local path under which this actor resides within the actor tree.
     public var path: ActorPath {
-        return undefined()
+        undefined()
     }
 
     /// Name of this actor.
@@ -44,7 +44,7 @@ public class ActorContext<Message>: ActorRefFactory {
     // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
     // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
     public var name: String {
-        return undefined()
+        undefined()
     }
 
     /// The actor reference to _this_ actor.
@@ -56,22 +56,22 @@ public class ActorContext<Message>: ActorRefFactory {
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
     // to get developers into the right mindset.
     public var myself: ActorRef<Message> {
-        return undefined()
+        undefined()
     }
 
     /// Provides context metadata aware `Logger`
     public var log: Logger {
         get {
-            return undefined()
+            undefined()
         }
         set { // has to become settable
             fatalError()
         }
     }
 
-    /// Dispatcher on which this actor is executing
-    public var dispatcher: MessageDispatcher {
-        return undefined()
+    /// `Props` which were used when spawning this actor.
+    public var props: Props {
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ public class ActorContext<Message>: ActorRefFactory {
 
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
     public var timers: Timers<Message> {
-        return undefined()
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ public class ActorContext<Message>: ActorRefFactory {
         file: String = #file, line: UInt = #line,
         _ closure: @escaping () -> Void
     ) {
-        return undefined()
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -180,12 +180,13 @@ public class ActorContext<Message>: ActorRefFactory {
     /// #### Concurrency:
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
-    public func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+    public func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M>
+        where M: ActorMessage {
         return undefined()
     }
 
     internal func watch(_ watchee: AddressableActorRef, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) {
-        return undefined()
+        undefined()
     }
 
     /// Reverts the watching of an previously watched actor.
@@ -203,14 +204,24 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     @discardableResult
-    public func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+    public func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M>
+        where M: ActorMessage {
         return undefined()
+    }
+
+    internal func unwatch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+        undefined()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 
-    public func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    public func spawn<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         return undefined()
     }
 
@@ -220,7 +231,12 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// - SeeAlso: `spawn`
     /// - SeeAlso: `watch`
-    public func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    public func spawnWatch<M>(
+        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        file: String = #file, line: UInt = #line,
+        _ behavior: Behavior<M>
+    ) throws -> ActorRef<M>
+        where M: ActorMessage {
         return undefined()
     }
 
@@ -231,7 +247,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// since looking up actors by name has an inherent seek cost associated with it.
     public var children: Children {
         get {
-            return undefined()
+            undefined()
         }
         set {
             fatalError()
@@ -248,7 +264,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
-    public func stop<M>(child ref: ActorRef<M>) throws {
+    public func stop<M>(child ref: ActorRef<M>) throws where M: ActorMessage {
         return undefined()
     }
 
@@ -267,7 +283,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
     internal func makeAsynchronousCallback<T>(file: String = #file, line: UInt = #line, _ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
-        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
+        AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure(file: file, line: line, $0)
         }
     }
@@ -284,7 +300,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
     internal func makeAsynchronousCallback<T>(for type: T.Type, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
-        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
+        AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure($0)
         }
     }
@@ -334,7 +350,7 @@ public class ActorContext<Message>: ActorRefFactory {
         timeout: TimeAmount,
         _ continuation: @escaping (AR.Value) throws -> Behavior<Message>
     ) -> Behavior<Message> {
-        return self.awaitResult(of: asyncResult, timeout: timeout) { result in
+        self.awaitResult(of: asyncResult, timeout: timeout) { result in
             switch result {
             case .success(let res): return try continuation(res)
             case .failure(let error): throw error
@@ -352,8 +368,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
     ///   - timeout: time after which the asyncResult will be failed if it does not complete
-    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
-    ///                   and modify actor state from here.
+    ///   - continuation: continuation to run after `AsyncResult` completes.
+    ///     It is safe to access and modify actor state from here.
     public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self) {
             let nextBehavior = try continuation($0)
@@ -405,7 +421,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
-    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From>
+        where From: ActorMessage {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
@@ -420,7 +437,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
-    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
+        where From: ActorMessage {
         return undefined()
     }
 
@@ -434,7 +452,8 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
+        where SubMessage: ActorMessage {
         return undefined()
     }
 
@@ -449,12 +468,12 @@ public class ActorContext<Message>: ActorRefFactory {
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
-        return self.subReceive(SubReceiveId(type), type, closure)
+        self.subReceive(SubReceiveId(type), type, closure)
     }
 
     @usableFromInline
     func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
-        return undefined()
+        undefined()
     }
 }
 

@@ -20,26 +20,27 @@ import SwiftProtobuf
 // MARK: ProtoEnvelope
 
 enum WireEnvelopeError: Error {
-    case unsetSerializerId(UInt32)
+    case missingManifest
     case emptyRecipient
 }
 
+// TODO: ProtobufRepresentable?
+
 extension Wire.Envelope {
     init(_ proto: ProtoEnvelope, allocator: ByteBufferAllocator) throws {
-        guard proto.serializerID != 0 else {
-            throw WireEnvelopeError.unsetSerializerId(proto.serializerID)
-        }
-
         guard proto.hasRecipient else {
             throw WireEnvelopeError.emptyRecipient
         }
+        guard proto.hasManifest else {
+            throw WireEnvelopeError.missingManifest
+        }
 
-        self.recipient = try ActorAddress(proto.recipient)
+        self.recipient = try ActorAddress(fromProto: proto.recipient)
 
-        self.serializerId = proto.serializerID
         var payloadBuffer = allocator.buffer(capacity: proto.payload.count)
         payloadBuffer.writeBytes(proto.payload)
         self.payload = payloadBuffer
+        self.manifest = .init(fromProto: proto.manifest)
     }
 }
 
@@ -47,7 +48,12 @@ extension ProtoEnvelope {
     init(_ envelope: Wire.Envelope) {
         self.recipient = ProtoActorAddress(envelope.recipient)
 
-        self.serializerID = envelope.serializerId
+        self.manifest = .init()
+        if let hint = envelope.manifest.hint {
+            self.manifest.hint = hint
+        }
+        self.manifest.serializerID = envelope.manifest.serializerID.value
+
         var payloadBuffer = envelope.payload
         self.payload = payloadBuffer.readData(length: payloadBuffer.readableBytes)! // !-safe because we read exactly the number of readable bytes
     }

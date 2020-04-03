@@ -29,9 +29,6 @@ internal enum POSIXProcessUtils {
     /// - SeeAlso: https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/posix_spawn.2.html
     /// - SeeAlso: https://github.com/apple/swift-corelibs-foundation/blob/master/Foundation/Process.swift
     public static func spawn(command: String, args argv: [String]) throws -> Int {
-        // what to launch
-        let launchPath = argv[0] // TODO: should be equal to command?
-
         // pid
         var pid = pid_t()
 
@@ -49,9 +46,12 @@ internal enum POSIXProcessUtils {
 
         let nenv = env.count
         let envp = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1 + nenv)
-        envp.initialize(from: env.map {
-            strdup("\($0)=\($1)")
-        }, count: nenv)
+        envp.initialize(
+            from: env.map {
+                strdup("\($0)=\($1)")
+            },
+            count: nenv
+        )
         envp[env.count] = nil
 
         defer {
@@ -122,7 +122,7 @@ internal enum POSIXProcessUtils {
 
     /// Get PID of parent process.
     internal static func getParentPID() -> Int {
-        return Int(getppid())
+        Int(getppid())
     }
 
     /// Exits the current process.

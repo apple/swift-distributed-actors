@@ -24,10 +24,10 @@ final class GenCodableTests: XCTestCase {
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self))) { settings in
-            settings.serialization.registerCodable(for: JackOfAllTrades.Message.self, underId: 10001)
-            settings.serialization.registerCodable(for: GeneratedActor.Messages.Parking.self, underId: 10002)
-            settings.serialization.registerCodable(for: GeneratedActor.Messages.Ticketing.self, underId: 10003)
+        self.system = ActorSystem(String(describing: type(of: self))) { _ in
+//            settings.serialization.registerCodable(JackOfAllTrades.Message.self)
+//            settings.serialization.registerCodable(GeneratedActor.Messages.Parking.self)
+//            settings.serialization.registerCodable(GeneratedActor.Messages.Ticketing.self)
         }
         self.testKit = ActorTestKit(self.system)
     }

@@ -12,7 +12,7 @@ import NIO
 // MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.GreetingsService
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension GeneratedActor.Messages.GreetingsService: Codable {
+extension GeneratedActor.Messages.GreetingsService {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case logGreeting
@@ -42,7 +42,7 @@ extension GeneratedActor.Messages.GreetingsService: Codable {
             self = .logGreeting(name: name)
         case .greet:
             let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greet__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greet__replyTo)
             self = .greet(name: name, _replyTo: _replyTo)
         case .fatalCrash:
             self = .fatalCrash
@@ -51,7 +51,7 @@ extension GeneratedActor.Messages.GreetingsService: Codable {
             self = .greetDirect(who: who)
         case .greetFuture:
             let name = try container.decode(String.self, forKey: CodingKeys.greetFuture_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetFuture__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetFuture__replyTo)
             self = .greetFuture(name: name, _replyTo: _replyTo)
 
         }

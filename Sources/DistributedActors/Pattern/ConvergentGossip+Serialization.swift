@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension ConvergentGossip.Message: Codable {
+extension ConvergentGossip.Message {
     public enum DiscriminatorKeys: String, Codable {
         case gossip
     }
@@ -22,22 +22,6 @@ extension ConvergentGossip.Message: Codable {
 
         case gossip_envelope
     }
-
-    /*
-     keyNotFound(
-     CodingKeys(stringValue: "_case", intValue: nil),
-     Swift.DecodingError.Context(codingPath: [
-         CodingKeys(stringValue: "gossip_envelope", intValue: nil),
-         CodingKeys(stringValue: "payload", intValue: nil),
-         CodingKeys(stringValue: "seen", intValue: nil),
-         CodingKeys(stringValue: "table", intValue: nil),
-          _JSONKey(stringValue: "Index 1", intValue: 1),
-          CodingKeys(stringValue: "state", intValue: nil),
-          _JSONKey(stringValue: "Index 0", intValue: 0)
-      ],
-      debugDescription: "No value associated with key CodingKeys(stringValue: "_case", intValue: nil) ("_case").", underlyingError: nil))
-
-     */
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -55,7 +39,7 @@ extension ConvergentGossip.Message: Codable {
             try container.encode(DiscriminatorKeys.gossip, forKey: ._case)
             try container.encode(envelope, forKey: .gossip_envelope)
         default:
-            throw SerializationError.mayNeverBeSerialized(type: "\(self)")
+            throw SerializationError.notTransportableMessage(type: "\(self)")
         }
     }
 }

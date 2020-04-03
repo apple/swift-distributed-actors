@@ -18,29 +18,12 @@ import XCTest
 
 final class VersionVectorSerializationTests: ActorSystemTestBase {
     override func setUp() {
-        _ = self.setUpNode(String(describing: type(of: self))) { settings in
-            settings.serialization.registerProtobufRepresentable(for: ReplicaId.self, underId: 1001)
-            settings.serialization.registerProtobufRepresentable(for: VersionVector.self, underId: 1002)
-            settings.serialization.registerProtobufRepresentable(for: VersionDot.self, underId: 1003)
+        _ = self.setUpNode(String(describing: type(of: self))) { _ in
         }
     }
 
     let actorA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .wellKnown)
     let actorB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .wellKnown)
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: ReplicaId
-
-    func test_serializationOf_ReplicaId_actorAddress() throws {
-        try shouldNotThrow {
-            let r = ReplicaId.actorAddress(self.actorA)
-
-            let bytes = try system.serialization.serialize(message: r)
-            let deserialized = try system.serialization.deserialize(ReplicaId.self, from: bytes)
-
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A")
-        }
-    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector
@@ -49,8 +32,8 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let vv = VersionVector([(.actorAddress(self.actorA), 2), (.actorAddress(self.actorB), 5)])
 
-            let bytes = try system.serialization.serialize(message: vv)
-            let deserialized = try system.serialization.deserialize(VersionVector.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(vv)
+            let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: &bytes, using: manifest)
 
             deserialized.state.count.shouldEqual(2) // replicas A and B
             "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A: 2")
@@ -62,8 +45,8 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let vv = VersionVector()
 
-            let bytes = try system.serialization.serialize(message: vv)
-            let deserialized = try system.serialization.deserialize(VersionVector.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(vv)
+            let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: &bytes, using: manifest)
 
             deserialized.isEmpty.shouldBeTrue()
         }
@@ -76,8 +59,8 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let dot = VersionDot(.actorAddress(self.actorA), 2)
 
-            let bytes = try system.serialization.serialize(message: dot)
-            let deserialized = try system.serialization.deserialize(VersionDot.self, from: bytes)
+            var (manifest, bytes) = try system.serialization.serialize(dot)
+            let deserialized = try system.serialization.deserialize(as: VersionDot.self, from: &bytes, using: manifest)
 
             "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A")
             deserialized.version.shouldEqual(2)

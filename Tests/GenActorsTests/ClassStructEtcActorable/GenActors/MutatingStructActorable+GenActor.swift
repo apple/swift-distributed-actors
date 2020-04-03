@@ -24,7 +24,7 @@ import DistributedActors
 /// DO NOT EDIT: Generated MutatingStructActorable messages
 extension MutatingStructActorable {
 
-    public enum Message { 
+    public enum Message: ActorMessage { 
         case hello(_replyTo: ActorRef<String>) 
     }
     
@@ -39,7 +39,7 @@ extension MutatingStructActorable {
             let context = Actor<MutatingStructActorable>.Context(underlying: _context)
             var instance = instance
 
-            /* await */ instance.preStart(context: context)
+            instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -82,9 +82,9 @@ extension Actor where A.Message == MutatingStructActorable.Message {
 
      func hello() -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
+        Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .hello(_replyTo: _replyTo)}.nioFuture
+                Self.Message.hello(_replyTo: _replyTo)}
         )
     }
  

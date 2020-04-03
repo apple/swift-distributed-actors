@@ -109,17 +109,17 @@ public enum TerminationCircumstances {
 internal extension _SystemMessage {
     @inlinable
     static func terminated(ref: AddressableActorRef) -> _SystemMessage {
-        return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: false)
+        .terminated(ref: ref, existenceConfirmed: false, addressTerminated: false)
     }
 
     @inlinable
     static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> _SystemMessage {
-        return .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: false)
+        .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: false)
     }
 
     @inlinable
     static func terminated(ref: AddressableActorRef, addressTerminated: Bool) -> _SystemMessage {
-        return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: addressTerminated)
+        .terminated(ref: ref, existenceConfirmed: false, addressTerminated: addressTerminated)
     }
 }
 

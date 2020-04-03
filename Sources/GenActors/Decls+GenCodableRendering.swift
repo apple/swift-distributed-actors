@@ -28,7 +28,7 @@ extension Rendering {
             // MARK: DO NOT EDIT: Codable conformance for {{baseName}}
             // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-            extension {{baseName}}: Codable {
+            extension {{baseName}} {
                 // TODO: Check with Swift team which style of discriminator to aim for
                 public enum DiscriminatorKeys: String, Decodable {
                     {{ discriminatorCases }}
@@ -166,13 +166,15 @@ extension Rendering {
                 encodeCases.outdent()
             }
 
-            return try Self.messageCodableConformanceTemplate.render([
-                "baseName": baseName,
-                "discriminatorCases": discriminatorCases.content,
-                "codingKeys": codingKeys.content,
-                "decodeCases": decodeCases.content,
-                "encodeCases": encodeCases.content,
-            ])
+            return try Self.messageCodableConformanceTemplate.render(
+                [
+                    "baseName": baseName,
+                    "discriminatorCases": discriminatorCases.content,
+                    "codingKeys": codingKeys.content,
+                    "decodeCases": decodeCases.content,
+                    "encodeCases": encodeCases.content,
+                ]
+            )
         }
     }
 }
