@@ -111,7 +111,7 @@ extension Serialization {
         }
 
         let hint: String
-        #if swift(>=5.3)
+        #if compiler(>=5.3)
         // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
         // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
         // to be deserialized (thus, we can disallow decoding random messages for security).
