@@ -281,7 +281,7 @@ extension Serialization {
 
             let serializer = make(self.allocator)
             serializer.setSerializationContext(self.context)
-            return try serializer
+            return serializer
 
         case Serialization.SerializerID.foundationJSON:
             let serializer = JSONCodableSerializer<Message>(allocator: self.allocator)
