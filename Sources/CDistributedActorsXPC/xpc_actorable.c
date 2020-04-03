@@ -38,7 +38,7 @@ xpc_connection_t sact_xpc_get_connection() {
 //        fp = fopen("/tmp/xpc.txt", "a+");
 //        fprintf(fp, "[CLIENT, pid:%d] Received: %s: echo=%s    [event: %s]\n",
 //                pid,
-////                threadId,
+// //                threadId,
 //                (xpc_type_get_name(xpc_get_type(event))),
 //                xpc_dictionary_get_string(event, "echo"),
 //                xpc_dictionary_get_string(event, _xpc_error_key_description)

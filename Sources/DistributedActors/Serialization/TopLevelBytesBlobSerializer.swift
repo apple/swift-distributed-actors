@@ -48,5 +48,4 @@ public class TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message> 
         var _bytes = bytes
         return try Message._decode(from: &_bytes, using: decoder)
     }
-
 }

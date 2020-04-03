@@ -108,7 +108,7 @@ public protocol CodableSerializationContext {
     ///    guard let serializationContext = decoder.actorSerializationContext else {
     ///        throw SerializationError.missingSerializationContext(encoder, value)
     ///    }
-    //// ```
+    /// ```
     var actorSerializationContext: Serialization.Context? { get }
 }
 

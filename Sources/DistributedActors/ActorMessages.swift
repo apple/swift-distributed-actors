@@ -80,7 +80,7 @@ extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then
 }
 
 /// Generic transportable Error type, can be used to wrap error types and represent them as best as possible for transporting.
-/// FIXME: Needs better impl: https://github.com/apple/swift-distributed-actors/issues/512
+// FIXME: Needs better impl: https://github.com/apple/swift-distributed-actors/issues/512
 public struct ErrorEnvelope: Error, ActorMessage {
     public let error: Error
 

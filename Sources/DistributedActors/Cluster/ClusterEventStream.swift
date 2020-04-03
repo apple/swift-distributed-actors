@@ -62,7 +62,7 @@ internal enum ClusterEventStream {
                             metadata: [
                                 "eventStream/subscribers": Logger.MetadataValue.array(subscribers.map {
                                     Logger.MetadataValue.stringConvertible($0.key)
-                            }),
+                                }),
                             ]
                         )
                     }

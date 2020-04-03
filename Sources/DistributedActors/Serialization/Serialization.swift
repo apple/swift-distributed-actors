@@ -705,5 +705,4 @@ public enum SerializationError: Error {
             line: line
         )
     }
-
 }
