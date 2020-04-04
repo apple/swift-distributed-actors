@@ -1,0 +1,34 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-distributed-actors:16.04-5.2
+    build:
+      args:
+        ubuntu_version: "xenial"
+        swift_version: "5.2"
+
+  unit-tests:
+    image: swift-distributed-actors:16.04-5.2
+
+  unit-tests-until-failure:
+    image: swift-distributed-actors:16.04-5.2
+
+  integration-tests:
+    image: swift-distributed-actors:16.04-5.2
+
+  test:
+    image: swift-distributed-actors:16.04-5.2
+
+  bench:
+    image: swift-distributed-actors:16.04-5.2
+
+  shell:
+    image: swift-distributed-actors:16.04-5.2
+
+  sample-crash:
+    image: swift-distributed-actors:16.04-5.2
+
+  sample-crash-actor:
+    image: swift-distributed-actors:16.04-5.2
