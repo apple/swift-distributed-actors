@@ -103,40 +103,45 @@ extension Serialization {
     ///
     /// Manifests only represent names of types, and do not carry versioning information,
     /// as such it may be necessary to carry additional information in order to version APIs more resiliently.
-    public func outboundManifest(_ type: Any.Type) throws -> Manifest {
-        assert(type != Any.self, "Any.Type was passed in to outboundManifest, this cannot be right.")
+    public func outboundManifest(_ messageType: Any.Type) throws -> Manifest {
+        assert(messageType != Any.self, "Any.Type was passed in to outboundManifest, this cannot be right.")
 
-        if let manifest = self.settings.typeToManifestRegistry[SerializerTypeKey(any: type)] {
+        if let manifest = self.settings.typeToManifestRegistry[SerializerTypeKey(any: messageType)] {
             return manifest
         }
 
-        let hint: String
         #if compiler(>=5.3)
         // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
         // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
         // to be deserialized (thus, we can disallow decoding random messages for security).
         //
         // We would eventually want "codingTypeName" or something similar
-        hint = _mangledTypeName(type)
+        let hint: String
+        let (ptr, count) = _getMangledTypeName(messageType)
+        if count > 0 {
+            hint = String(cString: ptr)
+        } else {
+            hint = _typeName(messageType)
+        }
         #else
         // This is a workaround more or less, however it enables us to get a "stable-ish" name for messages,
         // and as long as both sides of a cluster register the same type this manifest will allow us to locate
         // and summon the type - in order to invoke decoding on it.
-        hint = _typeName(type)
+        let hint: String = _typeName(messageType)
         #endif
 
         let manifest: Manifest?
-        if type is Codable.Type {
+        if messageType is Codable.Type {
             let defaultCodableSerializerID = self.settings.defaultSerializerID
             manifest = Manifest(serializerID: defaultCodableSerializerID, hint: hint)
-        } else if type is NonTransportableActorMessage.Type {
+        } else if messageType is NonTransportableActorMessage.Type {
             manifest = Manifest(serializerID: .doNotSerialize, hint: nil)
         } else {
             manifest = nil
         }
 
         guard let selectedManifest = manifest else {
-            throw SerializationError.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: type))]")
+            throw SerializationError.unableToCreateManifest(hint: "Cannot create manifest for type [\(String(reflecting: messageType))]")
         }
 
         return selectedManifest

@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import class Foundation.ProcessInfo
@@ -25,34 +25,33 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "DistributedActors",
         dependencies: [
-            "NIO",
-            "NIOSSL",
-            "NIOExtras",
-            "NIOFoundationCompat",
-
-            "SwiftProtobuf",
-
-            "Logging", "Metrics",
-            "Backtrace",
-
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOFoundationCompat", package: "swift-nio"),
+            .product(name: "NIOSSL", package: "swift-nio-ssl"),
+            .product(name: "NIOExtras", package: "swift-nio-extras"),
+            .product(name: "SwiftProtobuf", package: "SwiftProtobuf"),
+            .product(name: "Logging", package: "swift-log"),
+            .product(name: "Metrics", package: "swift-metrics"),
+            .product(name: "Backtrace", package: "swift-backtrace"),
         ]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GenActors
 
-    .target(
-        name: "GenActors",
-        dependencies: [
-            "DistributedActors",
-            "SwiftSyntax",
-            "Stencil",
-            "Files",
-            "ArgumentParser",
-        ]
-    ),
+    // FIXME: restore once we migrate code to new version of SwiftSyntax
+    /* .target(
+            name: "GenActors",
+            dependencies: [
+                "DistributedActors",
+                .product(name: "SwiftSyntax", package: "SwiftSyntax"),
+                .product(name: "Stencil", package: "Stencil"),
+                .product(name: "Files", package: "Files"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ]
+        ), */
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Plugins
@@ -67,15 +66,14 @@ var targets: [PackageDescription.Target] = [
 
     .target(
         name: "CDistributedActorsXPC",
-        dependencies: [
-        ]
+        dependencies: []
     ),
     .target(
         name: "DistributedActorsXPC",
         dependencies: [
             "DistributedActors",
             "CDistributedActorsXPC",
-            "Files",
+            .product(name: "Files", package: "Files"),
         ]
     ),
 
@@ -124,13 +122,14 @@ var targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActorsConcurrencyHelpers"]
     ),
 
-    .testTarget(
-        name: "GenActorsTests",
-        dependencies: [
-            "GenActors",
-            "DistributedActorsTestKit",
-        ]
-    ),
+    // FIXME: restore once we migrate code to new version of SwiftSyntax
+    /* .testTarget(
+            name: "GenActorsTests",
+            dependencies: [
+                "GenActors",
+                "DistributedActorsTestKit",
+            ]
+        ), */
 
     .testTarget(
         name: "ActorSingletonPluginTests",
@@ -251,7 +250,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
 
-    .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
+    .package(name: "SwiftProtobuf", url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
     // ~~~ workaround for backtraces ~~~
     .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
@@ -268,20 +267,12 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-argument-parser", .exact("0.0.1")), // not API stable, Apache v2
 ]
 
-#if swift(>=5.1)
+#if swift(>=5.2)
 dependencies.append(
-    contentsOf: [
-        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
-    ]
-)
-#elseif swift(>=5.0)
-dependencies.append(
-    contentsOf: [
-        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50000.0")),
-    ]
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50200.0"))
 )
 #else
-fatalError("Currently only Swift 5.1 is supported. 5.0 could be supported, if you need Swift 5.0 support please reach out to to the team.")
+fatalError("Currently only Swift 5.2 is supported, if you need earlier Swift support please reach out to to the team.")
 #endif
 
 let products: [PackageDescription.Product] = [
@@ -296,10 +287,11 @@ let products: [PackageDescription.Product] = [
 
     /* --- GenActors --- */
 
-    .executable(
-        name: "GenActors",
-        targets: ["GenActors"]
-    ),
+    // FIXME: restore once we migrate code to new version of SwiftSyntax
+    /* .executable(
+            name: "GenActors",
+            targets: ["GenActors"]
+        ), */
 
     /* --- Plugins --- */
 

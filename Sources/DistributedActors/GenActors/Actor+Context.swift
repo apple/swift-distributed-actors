@@ -183,7 +183,7 @@ extension Actor.Context {
     }
 
     internal func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
-        _ = self._underlying.watch(watchee, file: file, line: line)
+        self._underlying.watch(watchee, file: file, line: line)
     }
 
     /// Reverts the watching of an previously watched actor.

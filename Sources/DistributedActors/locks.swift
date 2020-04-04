@@ -169,7 +169,7 @@ internal final class BlockingReceptacle<Value> {
                 if let v = self._value {
                     return v
                 }
-                _ = self.notEmpty.wait(self.lock)
+                self.notEmpty.wait(self.lock)
             }
         }
     }

@@ -153,17 +153,17 @@ enum NodeDeathWatcherShell {
 
             switch message {
             case .remoteActorWatched(let watcher, let remoteNode):
-                _ = instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
+                instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
 
             case .membershipSnapshot(let membership):
                 let diff = Cluster.Membership._diff(from: lastMembership, to: membership)
 
                 for change in diff.changes {
-                    _ = instance.onMembershipChanged(change) // TODO: return and interpret directives
+                    instance.onMembershipChanged(change) // TODO: return and interpret directives
                 }
 
             case .membershipChange(let change):
-                _ = instance.onMembershipChanged(change) // TODO: return and interpret directives
+                instance.onMembershipChanged(change) // TODO: return and interpret directives
             }
             return .same
         }

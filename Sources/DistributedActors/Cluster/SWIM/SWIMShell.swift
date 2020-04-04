@@ -404,7 +404,7 @@ internal struct SWIMShell {
 
                 var unreachableSuspect = suspect
                 unreachableSuspect.status = .unreachable(incarnation: incarnation)
-                _ = self.markMember(context, latest: unreachableSuspect)
+                self.markMember(context, latest: unreachableSuspect)
             }
         }
 
