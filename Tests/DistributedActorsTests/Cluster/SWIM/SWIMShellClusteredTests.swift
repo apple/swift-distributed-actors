@@ -134,7 +134,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
 
         ref.tell(.remote(.pingReq(target: dummyProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: .none)))
         try self.expectPing(on: dummyProbe, reply: false)
-        try _ = ackProbe.expectNoMessage(for: .seconds(2))
+        try ackProbe.expectNoMessage(for: .seconds(2))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
