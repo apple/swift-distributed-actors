@@ -18,9 +18,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ActorLeakingTests: ActorSystemTestBase {
-    // MARK: starting actors
-
+final class ActorLeakingTests: ActorSystemTestBase {
     struct NotEnoughActorsAlive: Error {
         let expected: Int
         let current: Int
@@ -32,8 +30,9 @@ class ActorLeakingTests: ActorSystemTestBase {
     }
 
     func test_spawn_stop_shouldNotLeakActors() throws {
-        #if SACT_TESTS_LEAKS
-
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
         let stopsOnAnyMessage: Behavior<String> = .receiveMessage { _ in
             .stop
         }
@@ -63,16 +62,13 @@ class ActorLeakingTests: ActorSystemTestBase {
 
         afterStartActorCount.shouldEqual(1)
         afterStopActorCount.shouldEqual(0)
-
-        #else
-        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
-        return ()
         #endif
     }
 
     func test_spawn_stop_shouldNotLeakActorThatCloseOverContext() throws {
-        #if SACT_TESTS_LEAKS
-
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
         let stopsOnAnyMessage: Behavior<String> = .setup { context in
             .receiveMessage { _ in
                 context.log.debug("just so we actually close over context ;)")
@@ -105,15 +101,13 @@ class ActorLeakingTests: ActorSystemTestBase {
 
         afterStartActorCount.shouldEqual(1)
         afterStopActorCount.shouldEqual(0)
-
-        #else
-        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
-        return ()
         #endif
     }
 
     func test_spawn_stop_shouldNotLeakMailbox() throws {
-        #if SACT_TESTS_LEAKS
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
         let stopsOnAnyMessage: Behavior<String> = .receiveMessage { _ in
             .stop
         }
@@ -144,15 +138,13 @@ class ActorLeakingTests: ActorSystemTestBase {
         afterStartMailboxCount.shouldEqual(1)
         afterStopMailboxCount.shouldEqual(0)
 
-        #else
-        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
-        return ()
         #endif
     }
 
     func test_parentWithChildrenStopping_shouldNotLeakActors() throws {
-        #if SACT_TESTS_LEAKS
-
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
         let spawnsNChildren: Behavior<Int> = .receive { context, childCount in
             if childCount == 0 {
                 return .stop
@@ -196,10 +188,6 @@ class ActorLeakingTests: ActorSystemTestBase {
 
         afterStartActorCount.shouldEqual(expectedActorCount)
         afterStopActorCount.shouldEqual(0)
-
-        #else
-        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
-        return ()
         #endif
     }
 
@@ -216,7 +204,9 @@ class ActorLeakingTests: ActorSystemTestBase {
     }
 
     func test_droppedMessages_shouldNotLeak() throws {
-        #if SACT_TESTS_LEAKS
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
         let lock = _Mutex()
         lock.lock()
         let behavior: Behavior<LeakTestMessage> = .receiveMessage { _ in
@@ -236,21 +226,23 @@ class ActorLeakingTests: ActorSystemTestBase {
         #endif // SACT_TESTS_LEAKS
     }
 
-    // FIXME: this is failing for a while now, please retore once fixed
-    func FIXME_test_actorSystem_shouldNotLeak() {
-        #if SACT_TESTS_LEAKS
+    func test_actorSystem_shouldNotLeak() {
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
 
-        for _ in 1 ... 5 {
-            let system = ActorSystem("Test")
+        for n in 1 ... 5 {
+            let system = ActorSystem("Test-\(n)")
             system.shutdown().wait()
         }
 
         ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
-        #else
-        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
-        return ()
-        #endif
+        #endif // SACT_TESTS_LEAKS
+    }
+
+    private func skipLeakTests(function: String = #function) {
+        pnote("Skipping leak test \(function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
     }
 }
 

@@ -91,14 +91,6 @@ extension Serialization {
         internal static let SystemMessageNACK: SerializerID = .checkProtobufRepresentable(_SystemMessage.NACK.self)
         internal static let SystemMessageEnvelope: SerializerID = .checkProtobufRepresentable(DistributedActors.SystemMessageEnvelope.self)
 
-        internal static let Int: SerializerID = 100
-        internal static let UInt: SerializerID = 101
-        internal static let Int32: SerializerID = 102
-        internal static let UInt32: SerializerID = 103
-        internal static let Int64: SerializerID = 104
-        internal static let UInt64: SerializerID = 105
-        internal static let String: SerializerID = 106
-
         internal static let ActorAddress: SerializerID = .checkProtobufRepresentable(DistributedActors.ActorAddress.self)
 
         internal static let ClusterShellMessage: SerializerID = .checkProtobufRepresentable(ClusterShell.Message.self)
