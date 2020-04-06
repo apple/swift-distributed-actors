@@ -110,25 +110,25 @@ extension Serialization {
             return manifest
         }
 
-        #if compiler(>=5.3)
-        // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
-        // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
-        // to be deserialized (thus, we can disallow decoding random messages for security).
-        //
-        // We would eventually want "codingTypeName" or something similar
-        let hint: String
-        let (ptr, count) = _getMangledTypeName(messageType)
-        if count > 0 {
-            hint = String(cString: ptr)
-        } else {
-            hint = _typeName(messageType)
-        }
-        #else
+//        #if compiler(>=5.3)
+//        // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
+//        // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
+//        // to be deserialized (thus, we can disallow decoding random messages for security).
+//        //
+//        // We would eventually want "codingTypeName" or something similar
+//        let hint: String
+//        let (ptr, count) = _getMangledTypeName(messageType)
+//        if count > 0 {
+//            hint = String(cString: ptr)
+//        } else {
+//            hint = _typeName(messageType)
+//        }
+//        #else
         // This is a workaround more or less, however it enables us to get a "stable-ish" name for messages,
         // and as long as both sides of a cluster register the same type this manifest will allow us to locate
         // and summon the type - in order to invoke decoding on it.
         let hint: String = _typeName(messageType)
-        #endif
+//        #endif
 
         let manifest: Manifest?
         if messageType is Codable.Type {

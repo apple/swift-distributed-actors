@@ -41,17 +41,16 @@ var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GenActors
 
-    // FIXME: restore once we migrate code to new version of SwiftSyntax
-    /* .target(
-            name: "GenActors",
-            dependencies: [
-                "DistributedActors",
-                .product(name: "SwiftSyntax", package: "SwiftSyntax"),
-                .product(name: "Stencil", package: "Stencil"),
-                .product(name: "Files", package: "Files"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ]
-        ), */
+    .target(
+        name: "GenActors",
+        dependencies: [
+            "DistributedActors",
+            .product(name: "SwiftSyntax", package: "SwiftSyntax"),
+            .product(name: "Stencil", package: "Stencil"),
+            .product(name: "Files", package: "Files"),
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Plugins
@@ -122,14 +121,13 @@ var targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActorsConcurrencyHelpers"]
     ),
 
-    // FIXME: restore once we migrate code to new version of SwiftSyntax
-    /* .testTarget(
-            name: "GenActorsTests",
-            dependencies: [
-                "GenActors",
-                "DistributedActorsTestKit",
-            ]
-        ), */
+    .testTarget(
+        name: "GenActorsTests",
+        dependencies: [
+            "GenActors",
+            "DistributedActorsTestKit",
+        ]
+    ),
 
     .testTarget(
         name: "ActorSingletonPluginTests",
@@ -287,11 +285,10 @@ let products: [PackageDescription.Product] = [
 
     /* --- GenActors --- */
 
-    // FIXME: restore once we migrate code to new version of SwiftSyntax
-    /* .executable(
-            name: "GenActors",
-            targets: ["GenActors"]
-        ), */
+    .executable(
+        name: "GenActors",
+        targets: ["GenActors"]
+    ),
 
     /* --- Plugins --- */
 

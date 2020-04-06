@@ -154,8 +154,9 @@ extension GenerateActors {
         let sourceFile = try SyntaxParser.parse(url)
 
         let path = try File(path: url.path)
-        var gather = GatherActorables(path, self.command)
-        sourceFile.walk(&gather)
+        let gather = GatherActorables(path, self.command)
+//        sourceFile.walk(&gather)
+        gather.walk(sourceFile)
 
         // perform a resolve within the file
         let rawActorables = gather.actorables

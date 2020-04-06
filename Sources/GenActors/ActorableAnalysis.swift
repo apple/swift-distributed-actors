@@ -20,7 +20,7 @@ import SwiftSyntax
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Find Actorables
 
-struct GatherActorables: SyntaxVisitor {
+final class GatherActorables: SyntaxVisitor {
     let path: File
     let settings: GenerateActorsCommand
 
@@ -40,7 +40,7 @@ struct GatherActorables: SyntaxVisitor {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: imports
 
-    mutating func visit(_ node: ImportDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: ImportDeclSyntax) -> SyntaxVisitorContinueKind {
         // we store the imports outside the actorable, since we don't know _yet_ if there will be an actorable or not
         self.imports.append("\(node)") // TODO: more special type, since cross module etc
         return .visitChildren
@@ -49,7 +49,7 @@ struct GatherActorables: SyntaxVisitor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: types
 
-    mutating func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntax, name: String) -> SyntaxVisitorContinueKind {
+    func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntaxProtocol, name: String) -> SyntaxVisitorContinueKind {
         guard node.isActorable() else {
             self.nestingStack.append("\(name)")
             return .visitChildren
@@ -75,7 +75,7 @@ struct GatherActorables: SyntaxVisitor {
         return .visitChildren
     }
 
-    mutating func visitPostDecl(_ nodeName: String) {
+    func visitPostDecl(_ nodeName: String) {
         self.nestingStack = Array(self.nestingStack.reversed().drop(while: { $0 == nodeName })).reversed()
 
         guard self.wipActorable != nil else {
@@ -85,7 +85,7 @@ struct GatherActorables: SyntaxVisitor {
         self.wipActorable = nil
     }
 
-    mutating func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
         switch self.visit(.protocol, node: node, name: node.identifier.text) {
         case .skipChildren:
             return .skipChildren
@@ -94,7 +94,10 @@ struct GatherActorables: SyntaxVisitor {
                 return .visitChildren
             }
 
-            guard node.isActorable() else {
+            let isActorableVisitor = IsActorableVisitor()
+            _ = isActorableVisitor.visit(node)
+            // guard node.isActorable() else {
+            guard isActorableVisitor.actorable else {
                 return .visitChildren
             }
 
@@ -116,36 +119,36 @@ struct GatherActorables: SyntaxVisitor {
         }
     }
 
-    mutating func visitPost(_ node: ProtocolDeclSyntax) {
+    override func visitPost(_ node: ProtocolDeclSyntax) {
         self.visitPostDecl(node.identifier.text)
     }
 
-    mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visit(.class, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_ node: ClassDeclSyntax) {
+    override func visitPost(_ node: ClassDeclSyntax) {
         self.visitPostDecl(node.identifier.text)
     }
 
-    mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visit(.struct, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_ node: StructDeclSyntax) {
+    override func visitPost(_ node: StructDeclSyntax) {
         self.visitPostDecl(node.identifier.text)
     }
 
-    mutating func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "\(node.extendedType.description)".trim(character: " ")
         return self.visit(.extension, node: node, name: name)
     }
 
-    mutating func visitPost(_ node: ExtensionDeclSyntax) {
+    override func visitPost(_ node: ExtensionDeclSyntax) {
         self.visitPostDecl(node.extendedType.description.trim(character: " "))
     }
 
-    mutating func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "\(node.identifier.text)"
 
         guard node.isActorable() else {
@@ -157,14 +160,14 @@ struct GatherActorables: SyntaxVisitor {
         fatalError("Enums cannot (currently) be Actorable, define [\(name)] (in \(self.path)) as a struct instead. Offending node: \(node)")
     }
 
-    mutating func visitPost(_ node: EnumDeclSyntax) {
+    override func visitPost(_ node: EnumDeclSyntax) {
         self.visitPostDecl(node.identifier.text)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: inherited types, incl. potentially actorable protocols
 
-    mutating func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
         guard self.wipActorable != nil else {
             return .skipChildren
         }
@@ -174,7 +177,7 @@ struct GatherActorables: SyntaxVisitor {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: GenActors configuration: static lets
-    mutating func visit(_ node: VariableDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: VariableDeclSyntax) -> SyntaxVisitorContinueKind {
         // we only care about static ones that we use to configure the source gen
         guard node.modifiers?.contains(where: { $0.name.tokenKind == .staticKeyword }) ?? false else {
             return .skipChildren
@@ -204,7 +207,7 @@ struct GatherActorables: SyntaxVisitor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: functions
 
-    mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         guard self.wipActorable != nil else {
             // likely a top-level function, we skip those always
             return .skipChildren
@@ -315,11 +318,11 @@ extension GatherActorables {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Gather parameters of function declarations
 
-struct GatherParameters: SyntaxVisitor {
+final class GatherParameters: SyntaxVisitor {
     typealias Output = [(String?, String, String)]
     var params: Output = []
 
-    mutating func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
         let firstName = node.firstName?.text
         guard let secondName = node.secondName?.text ?? firstName else {
             fatalError("No `secondName` or `firstName` available at: \(node)")
@@ -335,8 +338,9 @@ struct GatherParameters: SyntaxVisitor {
 
 extension FunctionSignatureSyntax {
     func gatherParams() -> GatherParameters.Output {
-        var gather = GatherParameters()
-        self.walk(&gather)
+        let gather = GatherParameters()
+        _ = gather.visit(self)
+        // self.walk(&gather)
         return gather.params
     }
 }
@@ -420,19 +424,34 @@ struct ResolveActorables {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Check type is Actorable
 
-extension DeclSyntax {
+// extension InheritedTypeListSyntax {
+// extension DeclSyntax {
+//    func isActorable() -> Bool {
+//        let isActorable = IsActorableVisitor()
+//         _ = isActorable.visit(self) // maybe?
+//        // isActorable.walk(self) // maybe?
+//        // self.walk(&isActorable)
+//        return isActorable.actorable
+//    }
+// }
+
+// protocol _CanBeActorableDeclSyntax {
+//    func isActorable() -> Bool
+// }
+
+extension DeclSyntaxProtocol {
     func isActorable() -> Bool {
-        var isActorable = IsActorableVisitor()
-        self.walk(&isActorable)
+        let isActorable = IsActorableVisitor()
+        _ = isActorable.walk(self)
         return isActorable.actorable
     }
 }
 
-struct IsActorableVisitor: SyntaxVisitor {
+final class IsActorableVisitor: SyntaxVisitor {
     var actorable: Bool = false
     var depth = 0
 
-    mutating func visit(_ node: InheritedTypeListSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: InheritedTypeListSyntax) -> SyntaxVisitorContinueKind {
         if "\(node)".contains("Actorable") { // TODO: make less hacky
             self.actorable = true
             return .skipChildren
@@ -440,24 +459,25 @@ struct IsActorableVisitor: SyntaxVisitor {
         return .visitChildren
     }
 
-    private mutating func visitOnlyTopLevel() -> SyntaxVisitorContinueKind {
-        self.depth += 1
-        return self.depth == 1 ? .visitChildren : .skipChildren
+    private func visitOnlyTopLevel() -> SyntaxVisitorContinueKind {
+//        self.depth += 1
+//        return self.depth == 1 ? .visitChildren : .skipChildren
+        return .visitChildren
     }
 
-    mutating func visit(_: StructDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visitOnlyTopLevel()
     }
 
-    mutating func visit(_: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visitOnlyTopLevel()
     }
 
-    mutating func visit(_: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visitOnlyTopLevel()
     }
 
-    mutating func visit(_: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visitOnlyTopLevel()
     }
 
