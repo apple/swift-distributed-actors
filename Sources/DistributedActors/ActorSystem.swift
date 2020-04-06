@@ -185,11 +185,11 @@ public final class ActorSystem {
         self._root = TheOneWhoHasNoParent()
         let theOne = self._root
 
-        let serializationLock = ReadWriteLock()
-        self.lazyInitializationLock = serializationLock
+        let initializationLock = ReadWriteLock()
+        self.lazyInitializationLock = initializationLock
 
         // serialization
-        serializationLock.withWriterLockVoid {
+        initializationLock.withWriterLockVoid {
             self._serialization = Serialization(settings: settings, system: self)
         }
 
@@ -223,16 +223,22 @@ public final class ActorSystem {
         if settings.cluster.enabled {
             // FIXME: make SerializationPoolSettings configurable
             let cluster = ClusterShell()
-            self._cluster = cluster
+            initializationLock.withWriterLockVoid {
+                self._cluster = cluster
+            }
             effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
             effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
         } else {
-            self._cluster = nil
-            self._clusterControl = ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: EventStream(ref: self.deadLetters.adapted()))
+            initializationLock.withWriterLockVoid {
+                self._cluster = nil
+                self._clusterControl = ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: EventStream(ref: self.deadLetters.adapted()))
+            }
         }
 
-        self.systemProvider = effectiveSystemProvider
-        self.userProvider = effectiveUserProvider
+        initializationLock.withWriterLockVoid {
+            self.systemProvider = effectiveSystemProvider
+            self.userProvider = effectiveUserProvider
+        }
 
         // receptionist
         let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist)
@@ -260,7 +266,9 @@ public final class ActorSystem {
             )
             lazyCluster = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
 
-            self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
+            initializationLock.withWriterLockVoid {
+                self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
+            }
 
             // Node watcher MUST be started AFTER cluster and clusterEvents
             lazyNodeDeathWatcher = try! self._prepareSystemActor(
@@ -356,12 +364,6 @@ public final class ActorSystem {
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
-        // removing it poses a risk, there may be ongoing work still invoking serialization
-//        self.serializationLock.withWriterLockVoid {
-//            self._serialization = nil
-//        }
-        self._cluster = nil
-
         self.settings.plugins.stopAll(self)
 
         DispatchQueue.global().async {
@@ -374,8 +376,17 @@ public final class ActorSystem {
             self.userProvider.stopAll()
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
+
             try! self._eventLoopGroup.syncShutdownGracefully()
             self._receptionist = self.deadLetters.adapted()
+
+            /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
+            /// as they should never be invoked anymore.
+            self.lazyInitializationLock.withWriterLockVoid {
+                self._serialization = nil
+                self._cluster = nil
+            }
+
             self.shutdownReceptacle.offerOnce(())
         }
 
