@@ -108,25 +108,8 @@ public final class SerializationPool {
                 // do the work, this may be "heavy"
                 let deserialized = try self.serialization.deserializeAny(from: &bytes, using: manifest)
 
-//                // The order of the below if/if-else/else is quite important:
-//                if let wellTyped = deserialized as? Message {
-                // 1) we usually have the right Message type, as we resolved an alive actor and are delivering to it,
-                //    the cast will be successful and we can safely deliver the message
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
-//                    return .message(wellTyped)
                 return .message(deserialized)
-
-//                } else if messageType == Never.self {
-//                    // 2) we may have resolved an already-dead actor ref, in which case the type of its message would be Never;
-//                    //    Since such Never message can never be fulfilled, it also makes no sense that such message was even sent(!),
-//                    //    thus we treat this simply as a dead letter and deliver it as such
-//                    self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
-//                    pprint("DEAD LETTER; \n    \(messageType)\n    \(Message.self)\n    Deserialized: \(deserialized)")
-//                    return .deadLetter(deserialized)
-//                } else {
-//                    // 3) the message was neither the right type, nor was the recipient a `Never` expecting ref, thus something went quite wrong and we should throw.
-//                    throw SerializationError.unableToDeserialize(hint: "Unable to deserialize payload (manifest: \(manifest)) as [\(String(reflecting: messageType))]")
-//                }
             } catch {
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: nil)
                 throw error
