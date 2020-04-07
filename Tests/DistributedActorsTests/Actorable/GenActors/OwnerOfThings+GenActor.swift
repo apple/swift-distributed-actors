@@ -25,6 +25,7 @@ import DistributedActors
 extension OwnerOfThings {
 
     public enum Message: ActorMessage { 
+        case example(s: String, i: Int, _replyTo: ActorRef<Double>) 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
         case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>>) 
         case performAskLookup(_replyTo: ActorRef<Result<Receptionist.Listing<OwnerOfThings.Message>, ErrorEnvelope>>) 
@@ -47,6 +48,10 @@ extension OwnerOfThings {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
+                case .example(let s, let i, let _replyTo):
+                    let result = instance.example(s: s, i: i)
+                    _replyTo.tell(result)
+ 
                 case .readLastObservedValue(let _replyTo):
                     let result = instance.readLastObservedValue()
                     _replyTo.tell(result)
@@ -105,6 +110,15 @@ extension OwnerOfThings {
 // MARK: Extend Actor for OwnerOfThings
 
 extension Actor where A.Message == OwnerOfThings.Message {
+
+     func example(s: String, i: Int) -> Reply<Double> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: Double.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.example(s: s, i: i, _replyTo: _replyTo)}
+        )
+    }
+ 
 
      func readLastObservedValue() -> Reply<Reception.Listing<OwnerOfThings>?> {
         // TODO: FIXME perhaps timeout should be taken from context

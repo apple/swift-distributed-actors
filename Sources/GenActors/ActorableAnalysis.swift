@@ -339,8 +339,7 @@ final class GatherParameters: SyntaxVisitor {
 extension FunctionSignatureSyntax {
     func gatherParams() -> GatherParameters.Output {
         let gather = GatherParameters()
-        _ = gather.visit(self)
-        // self.walk(&gather)
+        gather.walk(self)
         return gather.params
     }
 }
@@ -424,21 +423,6 @@ struct ResolveActorables {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Check type is Actorable
 
-// extension InheritedTypeListSyntax {
-// extension DeclSyntax {
-//    func isActorable() -> Bool {
-//        let isActorable = IsActorableVisitor()
-//         _ = isActorable.visit(self) // maybe?
-//        // isActorable.walk(self) // maybe?
-//        // self.walk(&isActorable)
-//        return isActorable.actorable
-//    }
-// }
-
-// protocol _CanBeActorableDeclSyntax {
-//    func isActorable() -> Bool
-// }
-
 extension DeclSyntaxProtocol {
     func isActorable() -> Bool {
         let isActorable = IsActorableVisitor()
@@ -452,17 +436,19 @@ final class IsActorableVisitor: SyntaxVisitor {
     var depth = 0
 
     override func visit(_ node: InheritedTypeListSyntax) -> SyntaxVisitorContinueKind {
-        if "\(node)".contains("Actorable") { // TODO: make less hacky
-            self.actorable = true
-            return .skipChildren
+        for inheritedType in node {
+            let typeName = "\(inheritedType)".trimmingCharacters(in: .punctuationCharacters).trimmingCharacters(in: .whitespaces)
+            if typeName == "Actorable" || typeName == "DistributedActors.Actorable" {
+                self.actorable = true
+                return .skipChildren
+            }
         }
         return .visitChildren
     }
 
     private func visitOnlyTopLevel() -> SyntaxVisitorContinueKind {
-//        self.depth += 1
-//        return self.depth == 1 ? .visitChildren : .skipChildren
-        return .visitChildren
+        self.depth += 1
+        return self.depth == 1 ? .visitChildren : .skipChildren
     }
 
     override func visit(_: StructDeclSyntax) -> SyntaxVisitorContinueKind {
