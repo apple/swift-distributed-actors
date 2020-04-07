@@ -155,7 +155,6 @@ extension GenerateActors {
 
         let path = try File(path: url.path)
         let gather = GatherActorables(path, self.command)
-//        sourceFile.walk(&gather)
         gather.walk(sourceFile)
 
         // perform a resolve within the file

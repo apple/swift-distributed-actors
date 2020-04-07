@@ -25,7 +25,6 @@ import DistributedActors
 extension OwnerOfThings.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case example
         case readLastObservedValue
         case performLookup
         case performAskLookup
@@ -35,9 +34,6 @@ extension OwnerOfThings.Message {
 
     public enum CodingKeys: CodingKey {
         case _case
-        case example_s
-        case example_i
-        case example__replyTo
         case readLastObservedValue__replyTo
         case performLookup__replyTo
         case performAskLookup__replyTo
@@ -48,11 +44,6 @@ extension OwnerOfThings.Message {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .example:
-            let s = try container.decode(String.self, forKey: CodingKeys.example_s)
-            let i = try container.decode(Int.self, forKey: CodingKeys.example_i)
-            let _replyTo = try container.decode(ActorRef<Double>.self, forKey: CodingKeys.example__replyTo)
-            self = .example(s: s, i: i, _replyTo: _replyTo)
         case .readLastObservedValue:
             let _replyTo = try container.decode(ActorRef<Reception.Listing<OwnerOfThings>?>.self, forKey: CodingKeys.readLastObservedValue__replyTo)
             self = .readLastObservedValue(_replyTo: _replyTo)
@@ -72,11 +63,6 @@ extension OwnerOfThings.Message {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .example(let s, let i, let _replyTo):
-            try container.encode(DiscriminatorKeys.example.rawValue, forKey: CodingKeys._case)
-            try container.encode(s, forKey: CodingKeys.example_s)
-            try container.encode(i, forKey: CodingKeys.example_i)
-            try container.encode(_replyTo, forKey: CodingKeys.example__replyTo)
         case .readLastObservedValue(let _replyTo):
             try container.encode(DiscriminatorKeys.readLastObservedValue.rawValue, forKey: CodingKeys._case)
             try container.encode(_replyTo, forKey: CodingKeys.readLastObservedValue__replyTo)

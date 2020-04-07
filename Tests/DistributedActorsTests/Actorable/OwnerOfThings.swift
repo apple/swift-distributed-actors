@@ -33,10 +33,6 @@ struct OwnerOfThings: Actorable {
         context.receptionist.registerMyself(as: Self.key.id)
     }
 
-    func example(s: String, i: Int) -> Double {
-        2.0
-    }
-
     func readLastObservedValue() -> Reception.Listing<OwnerOfThings>? {
         self.ownedListing.lastObservedValue
     }

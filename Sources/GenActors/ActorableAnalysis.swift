@@ -95,8 +95,7 @@ final class GatherActorables: SyntaxVisitor {
             }
 
             let isActorableVisitor = IsActorableVisitor()
-            _ = isActorableVisitor.visit(node)
-            // guard node.isActorable() else {
+            isActorableVisitor.walk(node)
             guard isActorableVisitor.actorable else {
                 return .visitChildren
             }
@@ -426,7 +425,7 @@ struct ResolveActorables {
 extension DeclSyntaxProtocol {
     func isActorable() -> Bool {
         let isActorable = IsActorableVisitor()
-        _ = isActorable.walk(self)
+        isActorable.walk(self)
         return isActorable.actorable
     }
 }
@@ -437,8 +436,13 @@ final class IsActorableVisitor: SyntaxVisitor {
 
     override func visit(_ node: InheritedTypeListSyntax) -> SyntaxVisitorContinueKind {
         for inheritedType in node {
-            let typeName = "\(inheritedType)".trimmingCharacters(in: .punctuationCharacters).trimmingCharacters(in: .whitespaces)
-            if typeName == "Actorable" || typeName == "DistributedActors.Actorable" {
+            // TODO: get the name more properly
+            let typeName = "\(inheritedType)"
+                .trimmingCharacters(in: .whitespaces)
+                .trimmingCharacters(in: .punctuationCharacters)
+                .replacingOccurrences(of: "DistributedActors.", with: "")
+
+            if typeName == "Actorable" || typeName == "XPCActorableProtocol" {
                 self.actorable = true
                 return .skipChildren
             }
