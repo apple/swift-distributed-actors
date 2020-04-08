@@ -113,5 +113,8 @@ extension Serialization {
         // op log receptionist
         internal static let PushOps: SerializerID = .foundationJSON
         internal static let AckOps: SerializerID = .foundationJSON
+
+        internal static let ErrorEnvelope: SerializerID = .foundationJSON
+        internal static let BestEffortStringError: SerializerID = .foundationJSON
     }
 }

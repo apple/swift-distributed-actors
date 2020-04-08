@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -80,72 +80,88 @@ extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then
 }
 
 /// Generic transportable Error type, can be used to wrap error types and represent them as best as possible for transporting.
-// FIXME: Needs better impl: https://github.com/apple/swift-distributed-actors/issues/512
 public struct ErrorEnvelope: Error, ActorMessage {
-    public let error: Error
+    public typealias CodableError = Error & Codable
 
-    public init<Failure: Error>(_ error: Failure) {
+    private let _boxed: BoxedCodableError
+
+    public var error: Error {
+        self._boxed.error
+    }
+
+    public init<Failure: CodableError>(_ error: Failure) {
         if let alreadyAnEnvelope = error as? Self {
             self = alreadyAnEnvelope
-        } else if let codableError = error as? Error & Codable {
-            self.error = codableError
         } else {
-            // we we can at least carry the error type (not the whole string repr, since it may have information we'd rather not share though)
-            self.error = BestEffortStringError(representation: String(reflecting: Failure.self))
+            self._boxed = .init(error)
         }
+    }
+
+    public init<Failure: Error>(_ error: Failure) {
+        // we can at least carry the error type (not the whole string repr, since it may have information we'd rather not share though)
+        self._boxed = .init(BestEffortStringError(representation: String(reflecting: Failure.self)))
     }
 
     // this is a cop out if we want to send back a message or just type name etc
     public init(description: String) {
-        self.error = BestEffortStringError(representation: description)
-    }
-
-    enum CodingKeys: CodingKey {
-        case manifest
-        case error
+        self._boxed = .init(BestEffortStringError(representation: description))
     }
 
     public init(from decoder: Decoder) throws {
-//        guard let context = decoder.actorSerializationContext else {
-//            throw SerializationError.missingSerializationContext(ErrorEnvelope.self, details: "While decoding [\(ErrorEnvelope.self)], using [\(decoder)]")
-//        }
-
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        // FIXME: implement being able to encode and carry Codable errors
-//        // FIXME: serialization should offer to more easily perform manifest deserialization of a Codable inside another one
-//         let manifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
-//
-//        if let ErrorType = try context.summonType(from: manifest) as? Codable.Type {
-//            ErrorType._decode(from: &bytes, using: JSONDecoder())
-//
-//            self.error = error
-//        } else {
-//            throw SerializationError.unableToDeserialize(hint: "Unable to summon Codable type for \(manifest)")
-//        }
-        self.error = try container.decode(BestEffortStringError.self, forKey: .error)
+        let container = try decoder.singleValueContainer()
+        self._boxed = try container.decode(BoxedCodableError.self)
     }
 
-    // FIXME: this likely fails in some cases
     public func encode(to encoder: Encoder) throws {
-        guard let context: Serialization.Context = encoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(encoder, self)
+        var container = encoder.singleValueContainer()
+        try container.encode(self._boxed)
+    }
+
+    private struct BoxedCodableError: Codable {
+        let error: CodableError
+
+        init<T: CodableError>(_ error: T) {
+            self.error = error
         }
 
-        var container = encoder.container(keyedBy: CodingKeys.self)
+        enum CodingKeys: CodingKey {
+            case manifest
+            case error
+        }
 
-        // FIXME: implement being able to encode and carry Codable errors (!)
-//        if let codableError = self.error as? Codable {
-//            try container.encode(context.outboundManifest(type(of: self.error as Any)), forKey: .manifest)
-//            try container.encode(codableError, forKey: .error)
-//        } else {
-        try container.encode(context.outboundManifest(BestEffortStringError.self), forKey: .manifest)
-        try container.encode(BestEffortStringError(representation: "\(type(of: self.error as Any))"), forKey: .error)
-//        }
+        init(from decoder: Decoder) throws {
+            guard let context = decoder.actorSerializationContext else {
+                throw SerializationError.missingSerializationContext(decoder, BoxedCodableError.self)
+            }
+
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+
+            let manifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
+            let errorType = try context.summonType(from: manifest)
+
+            guard let codableErrorType = errorType as? CodableError.Type else {
+                throw SerializationError.unableToDeserialize(hint: "Error type \(errorType) is not Codable")
+            }
+
+            let errorDecoder = try container.superDecoder(forKey: .error)
+            self.error = try codableErrorType.init(from: errorDecoder)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            guard let context: Serialization.Context = encoder.actorSerializationContext else {
+                throw SerializationError.missingSerializationContext(encoder, BoxedCodableError.self)
+            }
+
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(context.serialization.outboundManifest(type(of: self.error as Any)), forKey: .manifest)
+
+            let errorEncoder = container.superEncoder(forKey: .error)
+            try self.error.encode(to: errorEncoder)
+        }
     }
 }
 
-public struct BestEffortStringError: Error, Codable, CustomStringConvertible {
+public struct BestEffortStringError: Error, Codable, Equatable, CustomStringConvertible {
     let representation: String
 
     public var description: String {

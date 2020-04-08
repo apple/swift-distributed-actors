@@ -149,7 +149,7 @@ extension Serialization.Settings {
     ///
     /// By doing this before system startup you can ensure a specific serializer is used for those messages.
     /// Make sure tha other nodes in the system are configured the same way though.
-    public mutating func registerCodable<Message: ActorMessage>(
+    public mutating func registerCodable<Message: Codable>(
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializer serializerOverride: SerializerID? = nil
     ) {
