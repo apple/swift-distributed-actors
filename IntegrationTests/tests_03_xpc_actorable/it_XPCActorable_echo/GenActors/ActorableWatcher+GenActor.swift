@@ -83,7 +83,7 @@ extension ActorableWatcher {
 extension Actor where A.Message == ActorableWatcher.Message {
 
      func noop() {
-        self.ref.tell(.noop)
+        self.ref.tell(Self.Message.noop)
     }
  
 
