@@ -193,7 +193,7 @@ public final class ActorSystem {
             self._serialization = Serialization(settings: settings, system: self)
         }
 
-        // vvv all properties initialized, self can be shared vvv
+        // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv
 
         // dead letters init
         let overrideLogger: Logger? = settings.logging.overrideLoggerFactory.map { f in f("\(ActorPath._deadLetters)") }

@@ -152,7 +152,7 @@ public struct BestEffortStringError: Error, Codable, Equatable, CustomStringConv
 }
 
 /// Useful error wrapper which performs an best effort Error serialization as configured by the actor system.
-public struct NotTransportableAnyError: Error, NonTransportableActorMessage {
+public struct NonTransportableAnyError: Error, NonTransportableActorMessage {
     public let failure: Error
 
     public init<Failure: Error>(_ failure: Failure) {
@@ -175,23 +175,14 @@ public struct NotTransportableAnyError: Error, NonTransportableActorMessage {
 /// No serializer is expected to be registered for such types.
 ///
 /// - Warning: Attempting to send such message over the network will fail at runtime (and log an error or warning).
-public protocol NonTransportableActorMessage: ActorMessage {
-    // Really what this would like to express is:
-    //
-    //     func deepCopy(): Self
-    //
-    // Such that we could guarantee actors do not share state accidentally via references,
-    // and if we could prove a type is a value type it could safely `return self` here.
-    // While reference types would always need to perform a deep copy, or rely on copy on write semantics etc.
-    // OR if a reference type is known to be read-only / immutable, it could get away with sharing self as well perhaps?
-}
+public protocol NonTransportableActorMessage: ActorMessage {}
 
 extension NonTransportableActorMessage {
     public init(from decoder: Swift.Decoder) throws {
         fatalError("Attempted to decode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 
-    public func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Swift.Encoder) throws {
         fatalError("Attempted to encode NonTransportableActorMessage message: \(Self.self)! This should never happen.")
     }
 

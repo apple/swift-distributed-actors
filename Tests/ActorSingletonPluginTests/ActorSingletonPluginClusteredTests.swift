@@ -28,21 +28,21 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
 
                 settings.cluster.node.port = 7111
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
             let second = self.setUpNode("second") { settings in
                 settings += ActorSingletonPlugin()
 
                 settings.cluster.node.port = 8222
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
             let third = self.setUpNode("third") { settings in
                 settings += ActorSingletonPlugin()
 
                 settings.cluster.node.port = 9333
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
 
             // Bring up `ActorSingletonProxy` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
@@ -81,21 +81,21 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
 
                 settings.cluster.node.port = 7111
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
             let second = self.setUpNode("second") { settings in
                 settings += ActorSingletonPlugin()
 
                 settings.cluster.node.port = 8222
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
             let third = self.setUpNode("third") { settings in
                 settings += ActorSingletonPlugin()
 
                 settings.cluster.node.port = 9333
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
 
             // No leader so singleton is not available, messages sent should be stashed
@@ -143,28 +143,28 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
 
                 settings.cluster.node.port = 7111
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
             let second = self.setUpNode("second") { settings in
                 settings += ActorSingletonPlugin()
 
                 settings.cluster.node.port = 8222
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
             let third = self.setUpNode("third") { settings in
                 settings += ActorSingletonPlugin()
 
                 settings.cluster.node.port = 9333
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
             let fourth = self.setUpNode("fourth") { settings in
                 settings += ActorSingletonPlugin()
 
                 settings.cluster.node.port = 7444
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 3)
-                settings.serialization.registerCodable(GreeterSingleton.Message.self)
+                settings.serialization.register(GreeterSingleton.Message.self)
             }
 
             // Bring up `ActorSingletonProxy` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)

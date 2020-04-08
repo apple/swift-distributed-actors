@@ -26,9 +26,9 @@ let system = ActorSystem("it_XPCActorable_echo_service") { settings in
 
     settings.cluster.swim.failureDetector.pingTimeout = .seconds(3)
 
-//    settings.serialization.registerCodable(GeneratedActor.Messages.XPCEchoServiceProtocol.self, underId: 10001)
-//    settings.serialization.registerCodable(XPCEchoService.Message.self, underId: 10002)
-//    settings.serialization.registerCodable(Result<String, Error>.self, underId: 10003)
+//    settings.serialization.register(GeneratedActor.Messages.XPCEchoServiceProtocol.self, underId: 10001)
+//    settings.serialization.register(XPCEchoService.Message.self, underId: 10002)
+//    settings.serialization.register(Result<String, Error>.self, underId: 10003)
 }
 
 try! _file.append("service booted...\n")

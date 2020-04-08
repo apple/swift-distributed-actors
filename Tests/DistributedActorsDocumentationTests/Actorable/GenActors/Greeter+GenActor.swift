@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated Greeter messages
 extension Greeter {
 
-    public enum Message: ActorMessage { 
+    public enum Message: Codable {
         case greet(name: String, _replyTo: ActorRef<String>) 
     }
     

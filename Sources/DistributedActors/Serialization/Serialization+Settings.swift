@@ -34,10 +34,34 @@ extension Serialization {
             .init()
         }
 
+        /// When `true`, all messages are allowed to be sent (serialized, and deserialized) regardless if they were
+        /// registered with serialization or not. While this setting is true, the system will log a warning about each
+        /// message type when it is first encountered during the systems operation, and it will suggest registering that type.
+        /// This way one can use this setting in local debugging and quick iteration, and then easily register all necessary types
+        /// when deploying to production.
+        ///
+        /// - Warning: Do not set this value to true in production deployments, as it could be used send and deserialize any codable type
+        ///   and the serialization infrastructure would attempt deserializing it, potentially opening up for security risks.
+        // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
+        public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration()
+
         /// Serializes all messages, also when passed only locally between actors.
         ///
-        /// Use this option to test that all messages you expected to
-        public var allMessages: Bool = false
+        /// This option to ensure no reference types are "leaked" through message passing,
+        /// as messages now will always be passed through serialization accidental sharing of
+        /// mutable state (which would have been unsafe) can be avoided by the serialization round trip.
+        ///
+        /// - Warning: Do not use this setting in production settings if you care for performance however,
+        ///   as it implies needless serialization roundtrips on every single message send on the entire system (!).
+        public var serializeLocalMessages: Bool = false
+
+        /// Configures which `Codable` serializer (`Encoder` / `Decoder` pair) should be used whenever a
+        /// a message is sent however the type does not have a specific serializer requirement configured (via `register` calls).
+        ///
+        /// // TODO: This should default to some nice binary format rather than JSON.
+        ///
+        /// - Note: Affects only _outbound_ messages which are `Codable`.
+        public var defaultSerializerID: Serialization.SerializerID = .foundationJSON
 
         /// `UniqueNode` to be included in actor addresses when serializing them.
         /// By default this should be equal to the exposed node of the actor system.
@@ -46,12 +70,8 @@ extension Serialization {
         /// as it is not useful to render any address for actors which shall never be reached remotely.
         ///
         /// This is set automatically when modifying the systems cluster settings.
-        internal var localNode: UniqueNode = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, nid: NodeID(0))
-
-        /// Configures which `Codable` serializer should be used whenever a
-        ///
-        /// - Note: Affects only _outbound_ messages which are `Codable`.
-        public var defaultSerializerID: Serialization.SerializerID = .foundationJSON
+        internal var localNode: UniqueNode =
+            .init(systemName: "<mock-value-will-be-replaced-during-system-start>", host: "127.0.0.1", port: 7337, nid: NodeID(0))
 
         /// Applied before automatically selecting a serializer based on manifest.
         /// Allows to deserialize incoming messages when "the same" message is now represented on this system differently.
@@ -91,26 +111,31 @@ extension Serialization.Settings {
     /// This can be used to "force" a specific serializer be used for a message type,
     /// regardless if it is codable or not.
     @discardableResult
-    public mutating func registerManifest<Message: ActorMessage>(
+    public mutating func register<Message: ActorMessage>(
         _ type: Message.Type, hint hintOverride: String? = nil,
-        serializer overrideSerializerID: SerializerID?
+        serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
         let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
-        let serializerID = overrideSerializerID ?? self.defaultSerializerID
         // TODO: We could do educated guess work here -- if a type is protobuf representable, that's the coding we want
 
-        switch serializerID {
-        case .protobufRepresentable:
+        // TODO: add test for sending raw SwiftProtobuf.Message
+        if overrideSerializerID == SerializerID.protobufRepresentable {
             precondition(
                 type is AnyProtobufRepresentable.Type || type is SwiftProtobuf.Message.Type,
                 """
                 Attempted to register \(String(reflecting: type)) as \
-                serializable using \(SerializerID.protobufRepresentable) yet the type does NOT conform to ProtobufRepresentable or SwiftProtobuf.Message 
+                serializable using \(reflecting: overrideSerializerID), \
+                yet the type does NOT conform to ProtobufRepresentable or SwiftProtobuf.Message 
                 """
             )
-        default:
-            () // OK
+        }
+
+        let serializerID: SerializerID
+        if Message.self is AnyProtobufRepresentable.Type {
+            serializerID = .protobufRepresentable
+        } else {
+            serializerID = overrideSerializerID ?? self.defaultSerializerID
         }
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
@@ -125,9 +150,9 @@ extension Serialization.Settings {
     ///
     /// This manifest will NOT be used when _sending_ messages of the `Message` type.
     @discardableResult
-    public mutating func registerInboundManifest<Message: ActorMessage>(
+    public mutating func registerInbound<Message: ActorMessage>(
         _ type: Message.Type, hint hintOverride: String? = nil,
-        serializer overrideSerializerID: SerializerID?
+        serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
         let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
@@ -142,73 +167,22 @@ extension Serialization.Settings {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Serialization: Codable manifest and serializer registration
+// MARK: Serialization: Specialized
 
 extension Serialization.Settings {
-    /// Eagerly register a `Codable` message type to be used with a specific serializer.
-    ///
-    /// By doing this before system startup you can ensure a specific serializer is used for those messages.
-    /// Make sure tha other nodes in the system are configured the same way though.
-    public mutating func registerCodable<Message: Codable>(
-        _ type: Message.Type, hint hintOverride: String? = nil,
-        serializer serializerOverride: SerializerID? = nil
-    ) {
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
-        let serializerID = serializerOverride ?? self.defaultSerializerID
-        let manifest = Manifest(serializerID: serializerID, hint: hint)
-
-        self.typeToManifestRegistry[.init(type)] = manifest
-        self.manifest2TypeRegistry[manifest] = type
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Serialization: ProtobufRepresentable
-
-extension Serialization.Settings {
-    /// Register a type to be serialized using Google Protocol Buffers.
-    ///
-    /// The type should conform to `ProtobufRepresentable`, in order to instruct the serializer infrastructure
-    /// how to de/encode it from its protobuf representation.
-    public mutating func registerProtobufRepresentable<Message: ProtobufRepresentable>(
-        _ type: Message.Type
-    ) {
-        // 1. register the specific to this type serializer (maker)
-        self.registerSpecializedSerializer(type, serializer: .protobufRepresentable) { allocator in
-            ProtobufSerializer<Message>(allocator: allocator) // FIXME: should be able to avoid registering all together
-        }
-
-        // 2. register manifest pointing to that specialized serializer
-        let manifest = self.getSpecializedOrRegisterManifest(type, serializerID: .protobufRepresentable)
-        self.typeToManifestRegistry[.init(type)] = manifest
-        self.manifest2TypeRegistry[manifest] = type
-    }
-
-    // Internal since we want to touch only internal types and not be forced to make the public.
-    internal mutating func _registerInternalProtobufRepresentable<Message: InternalProtobufRepresentable>(
-        _ type: Message.Type
-    ) {
-        // 1. register the specific to this type serializer (maker)
-        self.registerSpecializedSerializer(type, serializer: .protobufRepresentable) { allocator in
-            InternalProtobufSerializer<Message>(allocator: allocator) // FIXME: should be able to avoid registering all together
-        }
-
-        // 2. register manifest pointing to that specialized serializer
-        let manifest = self.getSpecializedOrRegisterManifest(type, serializerID: .protobufRepresentable)
-        self.typeToManifestRegistry[.init(type)] = manifest
-        self.manifest2TypeRegistry[manifest] = type
-    }
-
-    // TODO: impl not entirely perfect yet... more tests
     /// Register a specialized serializer for a specific `Serialization.Manifest`.
-    public mutating func registerSpecializedSerializer<Message: ActorMessage>(
+    public mutating func registerSpecializedSerializer<Message>(
         _ type: Message.Type, hint hintOverride: String? = nil,
-        serializer: SerializerID,
+        serializerID: SerializerID,
         makeSerializer: @escaping (NIO.ByteBufferAllocator) -> Serializer<Message>
     ) {
+        precondition(
+            serializerID == .specializedWithTypeHint || serializerID > 16,
+            "Specialized serializerID MUST exactly `1` or be `> 16`, since IDs until 16 are reserved for general purpose serializers"
+        )
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES https://github.com/apple/swift/pull/30318
         let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
-        let manifest = Serialization.Manifest(serializerID: serializer, hint: hint)
+        let manifest = Serialization.Manifest(serializerID: serializerID, hint: hint)
 
         self.specializedSerializerMakers[manifest] = { allocator in
             makeSerializer(allocator).asAnySerializer
@@ -220,6 +194,6 @@ extension Serialization.Settings {
         serializerID: Serialization.SerializerID
     ) -> Serialization.Manifest {
         self.typeToManifestRegistry[.init(type)] ??
-            self.registerManifest(type, serializer: serializerID)
+            self.register(type, serializerID: serializerID)
     }
 }

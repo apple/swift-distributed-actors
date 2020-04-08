@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated AccessControl messages
 extension AccessControl {
 
-    public enum Message: ActorMessage { 
+    public enum Message: Codable {
         case greetPublicly 
         case greetInternal 
     }

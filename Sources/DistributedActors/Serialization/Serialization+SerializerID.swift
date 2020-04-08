@@ -31,7 +31,7 @@ extension Serialization {
             switch self.value {
             case SerializerID.doNotSerialize.value:
                 return "serializerID:doNotSerialize(\(self.value))"
-            case SerializerID.specialized.value:
+            case SerializerID.specializedWithTypeHint.value:
                 return "serializerID:specialized(\(self.value))"
             case SerializerID.foundationJSON.value:
                 return "serializerID:jsonCodable(\(self.value))"
@@ -63,7 +63,7 @@ extension Serialization.SerializerID {
     // ~~~~~~~~~~~~~~~~ general purpose serializer ids ~~~~~~~~~~~~~~~~
     public static let doNotSerialize: SerializerID = 0
 
-    public static let specialized: SerializerID = 1
+    public static let specializedWithTypeHint: SerializerID = 1
     public static let foundationJSON: SerializerID = 2
     // public static let foundationPropertyList: SerializerID = 3 // TODO: https://github.com/apple/swift-distributed-actors/issues/513
     public static let protobufRepresentable: SerializerID = 4

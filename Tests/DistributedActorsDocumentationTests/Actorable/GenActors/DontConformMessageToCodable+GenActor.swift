@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated DontConformMessageToCodable messages
 extension DontConformMessageToCodable {
 
-    public enum Message: ActorMessage { 
+    public enum Message: Codable {
         case echo(text: String, _replyTo: ActorRef<String>) 
     }
     

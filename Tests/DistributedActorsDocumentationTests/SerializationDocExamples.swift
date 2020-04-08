@@ -12,19 +12,73 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::serialize_manifest_any[]
 import DistributedActors
+import Foundation
 import NIO
+import NIOFoundationCompat
+// end::serialize_manifest_any[]
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization example - Codable messages
 
 // tag::serialization_codable_messages[]
-enum ParkingSpotStatus: String, ActorMessage {
+enum ParkingSpotStatus: String, Codable {
     case available
     case taken
 }
 
 // end::serialization_codable_messages[]
+
+// tag::serialization_codable_manual_enum_assoc[]
+struct ParkingTicket: Codable {}
+
+enum ParkingTicketMessage: Codable {
+    case issued(ParkingTicket)
+    case pay(ParkingTicket, amount: Int)
+}
+
+extension ParkingTicketMessage {
+    enum DiscriminatorKeys: String, Codable {
+        case issued
+        case pay
+    }
+
+    enum CodingKeys: CodingKey { // or Int
+        case _case
+        case issued_ticket
+        case pay_ticket
+        case pay_amount
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .issued(let ticket):
+            try container.encode(DiscriminatorKeys.issued, forKey: ._case)
+            try container.encode(ticket, forKey: .issued_ticket)
+        case .pay(let ticket, let amount):
+            try container.encode(DiscriminatorKeys.pay, forKey: ._case)
+            try container.encode(ticket, forKey: .pay_ticket)
+            try container.encode(amount, forKey: .pay_amount)
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
+        case .issued:
+            let ticket = try container.decode(ParkingTicket.self, forKey: .issued_ticket)
+            self = .issued(ticket)
+        case .pay:
+            let ticket = try container.decode(ParkingTicket.self, forKey: .pay_ticket)
+            let amount = try container.decode(Int.self, forKey: .pay_amount)
+            self = .pay(ticket, amount: amount)
+        }
+    }
+}
+
+// end::serialization_codable_manual_enum_assoc[]
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization example - protobuf messages
@@ -74,7 +128,7 @@ extension ParkingGarageStatus {
 // MARK: Serialization example - custom messages
 
 // tag::serialization_custom_messages[]
-enum CustomlyEncodedMessage: String {
+enum CustomlyEncodedMessage: Codable, NonTransportableActorMessage {
     case available
     case taken
 }
@@ -89,8 +143,8 @@ class SerializationDocExamples {
 
     func prepare_system_codable() throws {
         // tag::prepare_system_codable[]
-        let system = ActorSystem("CodableExample") { _ in
-//            settings.serialization.registerCodable(ParkingSpotStatus.self, underId: 1002) // TODO: simplify this
+        let system = ActorSystem("CodableExample") { settings in
+            settings.serialization.register(ParkingSpotStatus.self)
         }
         // end::prepare_system_codable[]
         _ = system // silence not-used warnings
@@ -114,8 +168,8 @@ class SerializationDocExamples {
 
     func prepare_system_protobuf() throws {
         // tag::prepare_system_protobuf[]
-        let system = ActorSystem("ProtobufExample") { _ in
-//            settings.serialization.registerProtobufRepresentable(for: ParkingGarageStatus.self, underId: 1002) // TODO: simplify this
+        let system = ActorSystem("ProtobufExample") { settings in
+            settings.serialization.register(ParkingGarageStatus.self)
         }
         // end::prepare_system_protobuf[]
         _ = system // silence not-used warnings
@@ -138,14 +192,36 @@ class SerializationDocExamples {
     // MARK: Serialized custom messages
 
     func prepare_system_custom() throws {
-//        // tag::prepare_system_custom[]
-//        let system = ActorSystem("CustomSerializerExample") { settings in
-//            settings.serialization.registerSerializer(CustomlyEncodedMessage.self, id: 1001) { allocator in
-//                CustomlyEncodedSerializer(allocator)
-//            }
-//        }
-//        // end::prepare_system_custom[]
-//        _ = system // silence not-used warnings
+        // tag::prepare_system_custom[]
+        let system = ActorSystem("CustomSerializerExample") { settings in
+            settings.serialization.registerSpecializedSerializer(CustomlyEncodedMessage.self, serializerID: 1001) { allocator in
+                CustomlyEncodedSerializer(allocator)
+            }
+        }
+        // end::prepare_system_custom[]
+        _ = system // silence not-used warnings
+    }
+
+    func serialization_specific_coder() throws {
+        // tag::serialization_specific_coder[]
+        let system = ActorSystem("CustomizeCoderExample") { settings in
+            settings.serialization.register(MyMessage.self, serializerID: .foundationJSON)
+        }
+        // end::serialization_specific_coder[]
+        _ = system // silence not-used warnings
+    }
+
+    struct MyMessage: Codable {}
+    struct OtherGenericMessage<M: Codable>: Codable {}
+    func serialization_register_types() throws {
+        // tag::serialization_register_types[]
+        let system = ActorSystem("RegisteringTypes") { settings in
+            // settings.serialization.insecureSerializeNotRegisteredMessages = false (default in RELEASE mode)
+            settings.serialization.register(MyMessage.self)
+            settings.serialization.register(OtherGenericMessage<Int>.self)
+        }
+        // end::serialization_register_types[]
+        _ = system // silence serialization_register_types-used warnings
     }
 
     // tag::custom_serializer[]
@@ -240,9 +316,77 @@ class SerializationDocExamples {
     func configure_serialize_all() {
         // tag::configure_serialize_all[]
         let system = ActorSystem("SerializeAll") { settings in
-            settings.serialization.allMessages = true
+            settings.serialization.serializeLocalMessages = true
         }
         // end::configure_serialize_all[]
         _ = system
     }
 }
+
+// tag::serialize_manifest_any[]
+
+protocol ForSomeReasonNotCodable {}
+
+struct DistributedAlgorithmExampleEnvelope<Payload: ForSomeReasonNotCodable>: Codable {
+    let payload: Payload
+
+    enum CodingKeys: CodingKey {
+        case payload
+        case payloadManifest
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(decoder, Self.self)
+        }
+
+        let manifest = try container.decode(Serialization.Manifest.self, forKey: .payloadManifest)
+        let data = try container.decode(Data.self, forKey: .payload)
+        var bytes = context.serialization.allocator.buffer(capacity: data.count)
+        bytes.writeBytes(data)
+
+        // Option 1: raw bytes ----------------------------------------------------------------
+        let payload = try context.serialization.deserialize(as: Payload.self, from: &bytes, using: manifest) // <1>
+
+        // Option 2: manually coding + manifest -----------------------------------------------
+        // let payloadType = try context.serialization.summonType(from: manifest) // <2>
+        // if let codablePayloadType = payloadType as? Decodable.Type {
+        //     codablePayloadType._decode(from: bytes, using: decoder) // or some other decoder, you have to know -- inspect the manifest to know which to use
+        // }
+        //
+        // Where _decode is is defined as:
+        // extension Decodable {
+        //    static func _decode(from buffer: inout NIO.ByteBuffer, using decoder: JSONDecoder) throws -> Self { ... }
+        // }
+
+        self.payload = payload
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(encoder, self)
+        }
+
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        // Option 1: raw bytes ----------------------------------------------------------------
+        let (manifest, bytes) = try context.serialization.serialize(self.payload) // TODO: mangled name type manifests only work on Swift 5.3 (!)
+        try container.encode(manifest, forKey: .payloadManifest)
+        try container.encode(bytes.getData(at: 0, length: bytes.readableBytes)!, forKey: .payload) // !-safe, we know the range from 0-readableBytes is correct
+
+        // Option 2: manually coding + manifest -----------------------------------------------
+        // let manifest_2 = try context.serialization.outboundManifest(type(of: payload as Any))
+        // try container.encode(manifest_2, forKey: .payloadManifest)
+        // let bytes_2 = payload._encode(using: encoder) // or some other encoder, ensure it matches your manifest (!)
+        // container.encode(bytes_2.getData(at: 0, length: bytes_2.readableBytes)!, forKey: .payload) // !-safe, we know the range from 0-readableBytes is correct
+        //
+        // Where _encode is defined as:
+        // extension Encodable {
+        //    func _encode(using encoder: JSONEncoder, allocator: ByteBufferAllocator) throws -> NIO.ByteBuffer { }
+        // }
+    }
+}
+
+// end::serialize_manifest_any[]

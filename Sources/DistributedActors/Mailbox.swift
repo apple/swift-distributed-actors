@@ -79,7 +79,7 @@ internal final class Mailbox<Message: ActorMessage> {
         self.address = shell._address
 
         // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
-        self.serializeAllMessages = shell.system.settings.serialization.allMessages
+        self.serializeAllMessages = shell.system.settings.serialization.serializeLocalMessages
     }
 
     #if SACT_TESTS_LEAKS
@@ -103,7 +103,7 @@ internal final class Mailbox<Message: ActorMessage> {
         self.address = system.deadLetters.address
 
         // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
-        self.serializeAllMessages = system.settings.serialization.allMessages
+        self.serializeAllMessages = system.settings.serialization.serializeLocalMessages
     }
 
     @inlinable
@@ -118,7 +118,7 @@ internal final class Mailbox<Message: ActorMessage> {
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
                     "Make sure this type has either a serializer registered OR is marked as `NonTransportableActorMessage`. " +
-                    "This check was performed since `settings.serialization.allMessages` was enabled.")
+                    "This check was performed since `settings.serialization.serializeLocalMessages` was enabled.")
             }
         }
 
