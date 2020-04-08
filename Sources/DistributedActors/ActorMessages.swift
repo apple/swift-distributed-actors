@@ -83,81 +83,63 @@ extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then
 public struct ErrorEnvelope: Error, ActorMessage {
     public typealias CodableError = Error & Codable
 
-    private let _boxed: BoxedCodableError
+    private let codableError: CodableError
 
     public var error: Error {
-        self._boxed.error
+        self.codableError
+    }
+
+    enum CodingKeys: CodingKey {
+        case manifest
+        case error
     }
 
     public init<Failure: CodableError>(_ error: Failure) {
         if let alreadyAnEnvelope = error as? Self {
             self = alreadyAnEnvelope
         } else {
-            self._boxed = .init(error)
+            self.codableError = error
         }
     }
 
     public init<Failure: Error>(_ error: Failure) {
         // we can at least carry the error type (not the whole string repr, since it may have information we'd rather not share though)
-        self._boxed = .init(BestEffortStringError(representation: String(reflecting: Failure.self)))
+        self.codableError = BestEffortStringError(representation: String(reflecting: Failure.self))
     }
 
     // this is a cop out if we want to send back a message or just type name etc
     public init(description: String) {
-        self._boxed = .init(BestEffortStringError(representation: description))
+        self.codableError = BestEffortStringError(representation: description)
     }
 
     public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        self._boxed = try container.decode(BoxedCodableError.self)
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(decoder, ErrorEnvelope.self)
+        }
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        let manifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
+        let errorType = try context.summonType(from: manifest)
+
+        guard let codableErrorType = errorType as? CodableError.Type else {
+            throw SerializationError.unableToDeserialize(hint: "Error type \(errorType) is not Codable")
+        }
+
+        let errorDecoder = try container.superDecoder(forKey: .error)
+        self.codableError = try codableErrorType.init(from: errorDecoder)
     }
 
     public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(self._boxed)
-    }
-
-    private struct BoxedCodableError: Codable {
-        let error: CodableError
-
-        init<T: CodableError>(_ error: T) {
-            self.error = error
+        guard let context: Serialization.Context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(encoder, ErrorEnvelope.self)
         }
 
-        enum CodingKeys: CodingKey {
-            case manifest
-            case error
-        }
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(context.serialization.outboundManifest(type(of: self.codableError as Any)), forKey: .manifest)
 
-        init(from decoder: Decoder) throws {
-            guard let context = decoder.actorSerializationContext else {
-                throw SerializationError.missingSerializationContext(decoder, BoxedCodableError.self)
-            }
-
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-
-            let manifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
-            let errorType = try context.summonType(from: manifest)
-
-            guard let codableErrorType = errorType as? CodableError.Type else {
-                throw SerializationError.unableToDeserialize(hint: "Error type \(errorType) is not Codable")
-            }
-
-            let errorDecoder = try container.superDecoder(forKey: .error)
-            self.error = try codableErrorType.init(from: errorDecoder)
-        }
-
-        func encode(to encoder: Encoder) throws {
-            guard let context: Serialization.Context = encoder.actorSerializationContext else {
-                throw SerializationError.missingSerializationContext(encoder, BoxedCodableError.self)
-            }
-
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(context.serialization.outboundManifest(type(of: self.error as Any)), forKey: .manifest)
-
-            let errorEncoder = container.superEncoder(forKey: .error)
-            try self.error.encode(to: errorEncoder)
-        }
+        let errorEncoder = container.superEncoder(forKey: .error)
+        try self.codableError.encode(to: errorEncoder)
     }
 }
 
