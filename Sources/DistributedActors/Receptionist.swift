@@ -87,7 +87,7 @@ public enum Receptionist {
         }
 
         public required init(from decoder: Decoder) throws {
-            throw SerializationError.notTransportableMessage(type: "")
+            throw SerializationError.nonTransportableMessage(type: "")
         }
 
         internal override var _addressableActorRef: AddressableActorRef {
@@ -134,7 +134,7 @@ public enum Receptionist {
         }
 
         required init(from decoder: Decoder) throws {
-            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
         }
 
         override func replyWith(_ refs: Set<AddressableActorRef>) {
@@ -162,7 +162,7 @@ public enum Receptionist {
         }
 
         public required init(from decoder: Decoder) throws {
-            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
         }
 
         internal override var _key: _RegistrationKey {
@@ -430,7 +430,7 @@ public class _Lookup: ReceptionistMessage, NonTransportableActorMessage {
     }
 
     required init(from decoder: Decoder) throws {
-        throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+        throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
     }
 
     func replyWith(_ refs: Set<AddressableActorRef>) {
@@ -542,7 +542,7 @@ public class _Subscribe: ReceptionistMessage, NonTransportableActorMessage {
     }
 
     required init(from decoder: Decoder) throws {
-        throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+        throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
     }
 }
 

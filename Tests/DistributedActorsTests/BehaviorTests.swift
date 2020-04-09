@@ -1042,7 +1042,7 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe = self.testKit.spawnTestProbe(expecting: NotTransportableAnyError.self)
+        let probe = self.testKit.spawnTestProbe(expecting: NonTransportableAnyError.self)
         let error = self.testKit.error()
 
         let behavior: Behavior<String> = .setup { context in

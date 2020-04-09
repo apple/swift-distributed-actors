@@ -23,9 +23,9 @@ let serviceName = "com.apple.actors.xpc.GreetingsService"
 let system = ActorSystem("XPCActorCaller") { settings in
     settings.transports += .xpc
 
-//    settings.serialization.registerCodable(GeneratedActor.Messages.GreetingsService.self)
-//    settings.serialization.registerCodable(GreetingsServiceStub.Message.self)
-//    settings.serialization.registerCodable(Result<String, Error>.self)
+//    settings.serialization.register(GeneratedActor.Messages.GreetingsService.self)
+//    settings.serialization.register(GreetingsServiceStub.Message.self)
+//    settings.serialization.register(Result<String, Error>.self)
 }
 
 // TODO: we currently need a ref to the real GreetingsService... since we cannot put a Protocol.self in there...

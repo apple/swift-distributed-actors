@@ -23,11 +23,11 @@ import XCTest
 class SerializationTests: ActorSystemTestBase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
-            settings.serialization.registerCodable(HasReceivesSystemMsgs.self)
-            settings.serialization.registerCodable(HasStringRef.self)
-            settings.serialization.registerCodable(HasIntRef.self)
-            settings.serialization.registerCodable(HasInterestingMessageRef.self)
-            settings.serialization.registerCodable(CodableTestingError.self)
+            settings.serialization.register(HasReceivesSystemMsgs.self)
+            settings.serialization.register(HasStringRef.self)
+            settings.serialization.register(HasIntRef.self)
+            settings.serialization.register(HasInterestingMessageRef.self)
+            settings.serialization.register(CodableTestingError.self)
         }
     }
 
@@ -134,7 +134,7 @@ class SerializationTests: ActorSystemTestBase {
     func test_serialize_actorRef_inMessage_forRemoting() throws {
         let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings in
             settings.cluster.enabled = true
-            settings.serialization.registerCodable(HasStringRef.self)
+            settings.serialization.register(HasStringRef.self)
         }
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.spawnTestProbe(expecting: String.self)
@@ -267,7 +267,7 @@ class SerializationTests: ActorSystemTestBase {
 
     func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {
         let s2 = ActorSystem("SerializeMessages") { settings in
-            settings.serialization.allMessages = true
+            settings.serialization.serializeLocalMessages = true
         }
 
         do {

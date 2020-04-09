@@ -268,7 +268,7 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::ask_outside[]
-        struct Hello: ActorMessage {
+        struct Hello: Codable {
             let name: String
             let replyTo: ActorRef<String>
         }
@@ -292,7 +292,7 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::ask_inside[]
-        struct Hello: ActorMessage {
+        struct Hello: Codable {
             let name: String
             let replyTo: ActorRef<String>
         }
@@ -331,7 +331,7 @@ class ActorDocExamples: XCTestCase {
         let ref: ActorRef<Event>! = nil
 
         // tag::eventStream[]
-        enum Event: String, ActorMessage {
+        enum Event: String, Codable {
             case eventOne
             case eventTwo
         }
@@ -362,7 +362,7 @@ struct ExampleWorker {
     internal static var props: Props = Props().dispatcher(.pinnedThread)
 }
 
-enum WorkerMessages: String, ActorMessage {
+enum WorkerMessages: String, Codable {
     case something
 }
 

@@ -23,7 +23,7 @@ struct Player {
 }
 
 struct GameUnit {
-    enum Command: ActorMessage {
+    enum Command: Codable {
         case player(ActorRef<Player.Command>)
         case otherCommand
     }
@@ -64,7 +64,7 @@ extension GameUnit.Command {
 }
 
 struct GameMatch {
-    enum Command: ActorMessage {
+    enum Command: Codable {
         case playerConnected(ActorRef<Player.Command>)
         case disconnectedPleaseStop
     }

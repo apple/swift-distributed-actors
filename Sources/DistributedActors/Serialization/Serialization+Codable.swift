@@ -48,7 +48,7 @@ extension Decodable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Encodable + _encode(bytes:using:SomeDecoder) extensions
 
-// TODO: once we can abstract over Coders all these could go away most likely (and accept a generic TopLevelCoder
+// TODO: once we can abstract over Coders all these could go away most likely (and accept a generic TopLevelCoder)
 
 extension Encodable {
     func _encode(using encoder: JSONEncoder, allocator: ByteBufferAllocator) throws -> NIO.ByteBuffer {

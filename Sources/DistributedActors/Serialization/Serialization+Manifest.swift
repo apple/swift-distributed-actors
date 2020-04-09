@@ -34,8 +34,6 @@ extension Serialization {
     /// bytes from the message envelope size on the wire.
     public struct Manifest: Codable, Hashable {
         /// Serializer used to serialize accompanied message.
-        ///
-        /// A serializerID of zero (`0`), implies that this specific message is never intended to be serialized.
         public let serializerID: SerializerID
 
         /// A "hint" for the serializer what data type is serialized in the accompanying payload.
@@ -131,9 +129,10 @@ extension Serialization {
         #endif
 
         let manifest: Manifest?
-        if messageType is Codable.Type {
-            let defaultCodableSerializerID = self.settings.defaultSerializerID
-            manifest = Manifest(serializerID: defaultCodableSerializerID, hint: hint)
+        if messageType is AnyProtobufRepresentable.Type {
+            manifest = Manifest(serializerID: .protobufRepresentable, hint: hint)
+        } else if messageType is Codable.Type {
+            manifest = Manifest(serializerID: self.settings.defaultSerializerID, hint: hint)
         } else if messageType is NonTransportableActorMessage.Type {
             manifest = Manifest(serializerID: .doNotSerialize, hint: nil)
         } else {
