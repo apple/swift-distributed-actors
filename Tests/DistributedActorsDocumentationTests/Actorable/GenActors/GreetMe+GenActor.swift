@@ -26,7 +26,7 @@ import XCTest
 /// DO NOT EDIT: Generated GreetMe messages
 extension GreetMe {
 
-    public enum Message: ActorMessage { 
+    public enum Message: Codable {
         case hello(greeting: String) 
     }
     

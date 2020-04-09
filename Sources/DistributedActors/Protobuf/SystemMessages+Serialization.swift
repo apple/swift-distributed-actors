@@ -95,19 +95,19 @@ extension _SystemMessage: ProtobufRepresentable {
             proto.payload = .terminated(terminated)
 
         case .carrySignal(let signal):
-            throw SerializationError.notTransportableMessage(type: "SystemMessage.carrySignal(\(signal))")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.carrySignal(\(signal))")
         case .start:
-            throw SerializationError.notTransportableMessage(type: "SystemMessage.start")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.start")
         case .nodeTerminated:
-            throw SerializationError.notTransportableMessage(type: "SystemMessage.addressTerminated")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.addressTerminated")
         case .childTerminated:
-            throw SerializationError.notTransportableMessage(type: "SystemMessage.childTerminated")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.childTerminated")
         case .resume:
-            throw SerializationError.notTransportableMessage(type: "SystemMessage.resume")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.resume")
         case .stop:
-            throw SerializationError.notTransportableMessage(type: "SystemMessage.stop")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.stop")
         case .tombstone:
-            throw SerializationError.notTransportableMessage(type: "SystemMessage.tombstone")
+            throw SerializationError.nonTransportableMessage(type: "SystemMessage.tombstone")
         }
         return proto
     }

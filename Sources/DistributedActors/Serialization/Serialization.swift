@@ -70,104 +70,104 @@ public class Serialization {
         var settings = systemSettings.serialization
 
         // ==== Declare mangled names of some known popular types // TODO: hardcoded mangled name until we have _mangledTypeName
-        settings.registerCodable(Bool.self, hint: "b", serializer: .specialized)
-        settings.registerSpecializedSerializer(Bool.self, hint: "b", serializer: .specialized) { allocator in
+        settings.register(Bool.self, hint: "b", serializerID: .specializedWithTypeHint)
+        settings.registerSpecializedSerializer(Bool.self, hint: "b", serializerID: .specializedWithTypeHint) { allocator in
             BoolSerializer(allocator)
         }
         // harder since no direct mapping to write... onto a byte buffer
-        // settings.registerCodable(Float.self, hint: "f", serializer: .specialized)
-        // settings.registerCodable(Float32.self, hint: "f", serializer: .specialized)
-        // settings.registerCodable(Float64.self, hint: "d", serializer: .specialized)
+        // settings.register(Float.self, hint: "f", serializerID: .specializedWithTypeHint)
+        // settings.register(Float32.self, hint: "f", serializerID: .specializedWithTypeHint)
+        // settings.register(Float64.self, hint: "d", serializerID: .specializedWithTypeHint)
 
-        settings.registerCodable(Int.self, hint: "i", serializer: .specialized)
-        settings.registerSpecializedSerializer(Int.self, hint: "i", serializer: .specialized) { allocator in
+        settings.register(Int.self, hint: "i", serializerID: .specializedWithTypeHint)
+        settings.registerSpecializedSerializer(Int.self, hint: "i", serializerID: .specializedWithTypeHint) { allocator in
             IntegerSerializer(Int.self, allocator)
         }
-        settings.registerCodable(UInt.self, hint: "u", serializer: .specialized)
-        settings.registerSpecializedSerializer(UInt.self, hint: "u", serializer: .specialized) { allocator in
+        settings.register(UInt.self, hint: "u", serializerID: .specializedWithTypeHint)
+        settings.registerSpecializedSerializer(UInt.self, hint: "u", serializerID: .specializedWithTypeHint) { allocator in
             IntegerSerializer(UInt.self, allocator)
         }
 
-        settings.registerCodable(Int64.self, hint: "i64", serializer: .specialized)
-        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializer: .specialized) { allocator in
+        settings.register(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint)
+        settings.registerSpecializedSerializer(Int64.self, hint: "i64", serializerID: .specializedWithTypeHint) { allocator in
             IntegerSerializer(Int64.self, allocator)
         }
-        settings.registerCodable(UInt64.self, hint: "u64", serializer: .specialized)
-        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializer: .specialized) { allocator in
+        settings.register(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint)
+        settings.registerSpecializedSerializer(UInt64.self, hint: "u64", serializerID: .specializedWithTypeHint) { allocator in
             IntegerSerializer(UInt64.self, allocator)
         }
 
-        settings.registerCodable(String.self, hint: "S", serializer: .specialized)
-        settings.registerSpecializedSerializer(String.self, hint: "S", serializer: .specialized) { allocator in
+        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
+        settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
             StringSerializer(allocator)
         }
-        settings.registerCodable(String?.self, hint: "qS")
-        settings.registerCodable(Int?.self, hint: "qI")
+        settings.register(String?.self, hint: "qS")
+        settings.register(Int?.self, hint: "qI")
 
         // ==== Declare some system messages to be handled with specialized serializers:
         // system messages
-        settings.registerProtobufRepresentable(_SystemMessage.self)
-        settings._registerInternalProtobufRepresentable(_SystemMessage.ACK.self)
-        settings._registerInternalProtobufRepresentable(_SystemMessage.NACK.self)
-        settings._registerInternalProtobufRepresentable(SystemMessageEnvelope.self)
+        settings.register(_SystemMessage.self)
+        settings.register(_SystemMessage.ACK.self)
+        settings.register(_SystemMessage.NACK.self)
+        settings.register(SystemMessageEnvelope.self)
 
         // cluster
-        settings._registerInternalProtobufRepresentable(ClusterShell.Message.self)
-        settings.registerProtobufRepresentable(Cluster.Event.self)
-        settings.registerCodable(ConvergentGossip<Cluster.Gossip>.Message.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(ClusterShell.Message.self)
+        settings.register(Cluster.Event.self)
+        settings.register(ConvergentGossip<Cluster.Gossip>.Message.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         // receptionist needs some special casing
         // TODO: document how to deal with `protocol` message accepting actors, those should be very rare.
         // TODO: do we HAVE to do this in the Receptionist?
-        settings.registerManifest(Receptionist.Message.self, serializer: .doNotSerialize)
-        settings.registerCodable(OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(Receptionist.Message.self, serializerID: .doNotSerialize)
+        settings.register(OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.registerCodable(OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-        settings.registerInboundManifest(
+        settings.register(OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.registerInbound(
             OperationLogClusterReceptionist.PushOps.self,
-            hint: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializer: .default
+            hint: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
         )
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.registerInboundManifest(OperationLogClusterReceptionist.AckOps.self, hint: "ReceptionistMessage", serializer: .default)
-        settings.registerInboundManifest(
+        settings.registerInbound(OperationLogClusterReceptionist.AckOps.self, hint: "ReceptionistMessage", serializerID: .default)
+        settings.registerInbound(
             OperationLogClusterReceptionist.AckOps.self,
-            hint: "DistributedActors.\(OperationLogClusterReceptionist.AckOps.self)", serializer: .default
+            hint: "DistributedActors.\(OperationLogClusterReceptionist.AckOps.self)", serializerID: .default
         )
 
         // swim failure detector
-        settings._registerInternalProtobufRepresentable(SWIM.Message.self)
-        settings._registerInternalProtobufRepresentable(SWIM.RemoteMessage.self)
-        settings._registerInternalProtobufRepresentable(SWIM.PingResponse.self)
+        settings.register(SWIM.Message.self)
+        settings.register(SWIM.RemoteMessage.self)
+        settings.register(SWIM.PingResponse.self)
 
         // TODO: Allow plugins to register types...?
 
-        settings.registerManifest(ActorAddress.self, serializer: .protobufRepresentable)
-        settings.registerManifest(ReplicaID.self, serializer: .foundationJSON)
-        settings.registerManifest(VersionDot.self, serializer: .protobufRepresentable)
-        settings.registerManifest(VersionVector.self, serializer: .protobufRepresentable)
+        settings.register(ActorAddress.self, serializerID: .protobufRepresentable)
+        settings.register(ReplicaID.self, serializerID: .foundationJSON)
+        settings.register(VersionDot.self, serializerID: .protobufRepresentable)
+        settings.register(VersionVector.self, serializerID: .protobufRepresentable)
 
         // crdts
         // TODO: all this registering will go away with _mangledTypeName
-        settings.registerManifest(CRDT.Identity.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.VersionedContainer<String>.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.VersionContext.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.VersionedContainerDelta<String>.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.VersionedContainerDelta<Int>.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.Replicator.Message.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.Envelope.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.Replicator.RemoteCommand.WriteResult.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.Replicator.RemoteCommand.ReadResult.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.Replicator.RemoteCommand.DeleteResult.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.GCounter.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.GCounterDelta.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.ORSet<String>.self, serializer: .protobufRepresentable)
-        settings.registerManifest(CRDT.ORSet<Int>.self, serializer: .protobufRepresentable)
-        // settings.registerManifest(AnyDeltaCRDT.self, serializer: ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDT.Envelope+SerializationTests
+        settings.register(CRDT.Identity.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.VersionedContainer<String>.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.VersionContext.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.VersionedContainerDelta<String>.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.VersionedContainerDelta<Int>.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.Replicator.Message.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.Envelope.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.Replicator.RemoteCommand.WriteResult.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.Replicator.RemoteCommand.ReadResult.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.Replicator.RemoteCommand.DeleteResult.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.GCounter.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.GCounterDelta.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.ORSet<String>.self, serializerID: .protobufRepresentable)
+        settings.register(CRDT.ORSet<Int>.self, serializerID: .protobufRepresentable)
+        // settings.register(AnyDeltaCRDT.self, serializerID:ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDT.Envelope+SerializationTests
 
         // errors
-        settings.registerCodable(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-        settings.registerCodable(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         self.settings = settings
         self.metrics = system.metrics
@@ -237,7 +237,11 @@ extension Serialization {
         #endif
     }
 
-    public func _ensureSerializer<Message: ActorMessage>(_ type: Message.Type, file: String = #file, line: UInt = #line) throws {
+    /// Ensures the `Message` will be able to be serialized, using either a specific or default serializer.
+    ///
+    /// By default, if in `insecureSerializeNotRegisteredMessages` mode, this logs warnings and allows all messages
+    /// to be serialized. If the setting `insecureSerializeNotRegisteredMessages` is `false`, then
+    public func _ensureSerializer<Message: Codable>(_ type: Message.Type, file: String = #file, line: UInt = #line) throws {
         let oid = ObjectIdentifier(type)
 
         // 1. check if this type already has a serializer registered, bail out quickly if so
@@ -259,7 +263,6 @@ extension Serialization {
 
             // 2.3. create and store the appropriate serializer
             do {
-                traceLog_Serialization("Registered [\(manifest)] for [\(reflecting: type)]")
                 self._serializers[oid] = try self.makeCodableSerializer(type, manifest: manifest)
             } catch SerializationError.noNeedToEnsureSerializer {
                 // some types are specifically marked as "do not serialize" and we should ignore failures
@@ -270,6 +273,17 @@ extension Serialization {
                 // all other errors are real and should be escalated
                 throw error
             }
+
+            traceLog_Serialization("Registered [\(manifest)] for [\(reflecting: type)]")
+            // TODO: decide if we log or crash when new things reg ensured during runtime
+            // FIXME: https://github.com/apple/swift-distributed-actors/issues/552
+//            if self.settings.insecureSerializeNotRegisteredMessages {
+//                self.log.warning("""
+//                                 Type [\(String(reflecting: type))] was not registered with Serialization, \
+//                                 sending this message will cause it to be dropped in release mode! Use: \
+//                                 settings.serialization.register(\(type).self) to avoid this in production.
+//                                 """)
+//            }
         }
     }
 
@@ -278,7 +292,7 @@ extension Serialization {
         case .doNotSerialize:
             throw SerializationError.noNeedToEnsureSerializer
 
-        case Serialization.SerializerID.specialized:
+        case Serialization.SerializerID.specializedWithTypeHint:
             guard let make = self.settings.specializedSerializerMakers[manifest] else {
                 throw SerializationError.unableToMakeSerializer(hint: "Type: \(String(reflecting: type)), Manifest: \(manifest), Specialized serializer makers: \(self.settings.specializedSerializerMakers)")
             }
@@ -347,7 +361,7 @@ extension Serialization {
             } else if let encodableMessage = messageType as? Encodable {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().encode()"
                 switch manifest.serializerID {
-                case .specialized:
+                case .specializedWithTypeHint:
                     throw SerializationError.unableToMakeSerializer(
                         hint:
                         """
@@ -439,7 +453,7 @@ extension Serialization {
         do {
             // Manifest type may be used to summon specific instances of types from the manifest
             // even if the expected type is some `Outer` type (e.g. when we sent a sub class).
-            let manifestMessageType = try self.summonType(from: manifest)
+            let manifestMessageType: Any.Type = try self.summonType(from: manifest)
             let manifestMessageTypeID = ObjectIdentifier(manifestMessageType)
             let messageTypeID = ObjectIdentifier(manifestMessageType)
 
@@ -451,7 +465,7 @@ extension Serialization {
             } else if let decodableMessageType = manifestMessageType as? Decodable.Type {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().decode()"
                 switch manifest.serializerID {
-                case .specialized:
+                case .specializedWithTypeHint:
                     throw SerializationError.unableToMakeSerializer(
                         hint:
                         """
@@ -649,7 +663,7 @@ public enum SerializationError: Error {
     case serializationError(_: Error, file: String, line: UInt)
 
     // --- registration errors ---
-    case alreadyDefined(hint: String, serializerID: Serialization.SerializerID, serializer: AnySerializer?)
+    case alreadyDefined(hint: String, serializerID: Serialization.SerializerID, serializerID: AnySerializer?)
     case reservedSerializerID(hint: String)
 
     // --- lookup errors ---
@@ -675,7 +689,7 @@ public enum SerializationError: Error {
     case unknownEnumValue(Int)
 
     // --- illegal errors ---
-    case notTransportableMessage(type: String)
+    case nonTransportableMessage(type: String)
 
     case unableToMakeSerializer(hint: String)
     case unableToSerialize(hint: String)

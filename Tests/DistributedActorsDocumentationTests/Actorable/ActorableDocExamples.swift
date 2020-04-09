@@ -138,9 +138,9 @@ struct AllInOneMachine: Actorable, CoffeeMachine, Diagnostics { // <5>
 }
 
 // end::compose_protocols_1[]
-public struct Tea: ActorMessage {}
+public struct Tea: Codable {}
 
-public struct Coffee: ActorMessage {}
+public struct Coffee: Codable {}
 
 class UsingAllInOneMachine {
     func run() throws {

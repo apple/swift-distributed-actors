@@ -26,7 +26,7 @@ import XCTest
 /// DO NOT EDIT: Generated GreetMeGreeter messages
 extension GreetMeGreeter {
 
-    public enum Message: ActorMessage { 
+    public enum Message: Codable {
         case greet(Actor<GreetMe>) 
     }
     

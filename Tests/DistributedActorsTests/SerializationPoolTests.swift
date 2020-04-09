@@ -95,8 +95,8 @@ final class SerializationPoolTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem("SerializationTests") { settings in
-            settings.serialization.registerCodable(Test1.self)
-            settings.serialization.registerCodable(Test2.self)
+            settings.serialization.register(Test1.self)
+            settings.serialization.register(Test2.self)
         }
         self.testKit = ActorTestKit(self.system)
         self.elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)

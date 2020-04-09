@@ -836,7 +836,7 @@ extension OperationLogClusterReceptionist {
         }
 
         public required init(from decoder: Decoder) throws {
-            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
         }
 
         var description: String {
@@ -850,7 +850,7 @@ extension OperationLogClusterReceptionist {
         }
 
         public required init(from decoder: Decoder) throws {
-            throw SerializationError.notTransportableMessage(type: "\(Self.self)")
+            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
         }
 
         var description: String {

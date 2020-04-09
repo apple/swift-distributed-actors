@@ -1,4 +1,5 @@
 
+[[clustering]]
 == Clustering
 
 > One actor is no actor, they come in systems.
@@ -6,6 +7,7 @@
 By connecting several nodes into a cluster you gain the ability to _transparently_ send and receive messages from actors
 located on other nodes. Along with this, advanced failure detection and mitigation mechanisms are also enabled by default.
 
+[[cluster_quickstart]]
 === Cluster QuickStart
 
 ==== Step 1: Start nodes and join them

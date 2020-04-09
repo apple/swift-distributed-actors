@@ -78,10 +78,10 @@ extension Serializer: AnySerializer {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: NotTransportableSerializer
+// MARK: NonTransportableSerializer
 
 /// Nope, as opposed to Noop
-internal class NotTransportableSerializer<Message>: Serializer<Message> {
+internal class NonTransportableSerializer<Message>: Serializer<Message> {
     override func serialize(_ message: Message) throws -> ByteBuffer {
         throw SerializationError.unableToSerialize(hint: "\(Self.self): \(Message.self)")
     }

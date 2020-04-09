@@ -899,7 +899,7 @@ final class SupervisionTests: ActorSystemTestBase {
     // MARK: Tests for selective failure handlers
 
     /// Throws all Errors it receives, EXCEPT `PleaseReplyError` to which it replies to the probe
-    private func throwerBehavior(probe: ActorTestProbe<PleaseReplyError>) -> Behavior<NotTransportableAnyError> {
+    private func throwerBehavior(probe: ActorTestProbe<PleaseReplyError>) -> Behavior<NonTransportableAnyError> {
         .receiveMessage { errorEnvelope in
             switch errorEnvelope.failure {
             case let reply as PleaseReplyError:
@@ -914,7 +914,7 @@ final class SupervisionTests: ActorSystemTestBase {
     func test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType() throws {
         let p = self.testKit.spawnTestProbe(expecting: PleaseReplyError.self)
 
-        let supervisedThrower: ActorRef<NotTransportableAnyError> = try system.spawn(
+        let supervisedThrower: ActorRef<NonTransportableAnyError> = try system.spawn(
             "thrower-1",
             props: .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: EasilyCatchableError.self),
             self.throwerBehavior(probe: p)
@@ -936,7 +936,7 @@ final class SupervisionTests: ActorSystemTestBase {
     func test_supervisor_shouldOnlyHandle_anyThrows() throws {
         let p = self.testKit.spawnTestProbe(expecting: PleaseReplyError.self)
 
-        let supervisedThrower: ActorRef<NotTransportableAnyError> = try system.spawn(
+        let supervisedThrower: ActorRef<NonTransportableAnyError> = try system.spawn(
             "thrower-2",
             props: .supervision(strategy: .restart(atMost: 100, within: nil), forAll: .errors),
             self.throwerBehavior(probe: p)
