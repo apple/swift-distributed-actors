@@ -27,6 +27,7 @@ class SerializationTests: ActorSystemTestBase {
             settings.serialization.registerCodable(HasStringRef.self)
             settings.serialization.registerCodable(HasIntRef.self)
             settings.serialization.registerCodable(HasInterestingMessageRef.self)
+            settings.serialization.registerCodable(CodableTestingError.self)
         }
     }
 
@@ -287,6 +288,66 @@ class SerializationTests: ActorSystemTestBase {
         }
         s2.shutdown().wait()
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Error envelope serialization
+
+    func test_serialize_errorEnvelope_stringDescription() throws {
+        let description = "BOOM!!!"
+        let errorEnvelope = ErrorEnvelope(description: description)
+
+        var (manifest, bytes) = try shouldNotThrow {
+            try system.serialization.serialize(errorEnvelope)
+        }
+
+        let back: ErrorEnvelope = try shouldNotThrow {
+            try system.serialization.deserialize(as: ErrorEnvelope.self, from: &bytes, using: manifest)
+        }
+
+        guard let bestEffortStringError = back.error as? BestEffortStringError else {
+            throw self.testKit.error("\(back.error) is not BestEffortStringError")
+        }
+
+        bestEffortStringError.representation.shouldEqual(description)
+    }
+
+    func test_serialize_errorEnvelope_notCodableError() throws {
+        let notCodableError: NotCodableTestingError = .errorTwo
+        let errorEnvelope = ErrorEnvelope(notCodableError)
+
+        var (manifest, bytes) = try shouldNotThrow {
+            try system.serialization.serialize(errorEnvelope)
+        }
+
+        let back: ErrorEnvelope = try shouldNotThrow {
+            try system.serialization.deserialize(as: ErrorEnvelope.self, from: &bytes, using: manifest)
+        }
+
+        guard let bestEffortStringError = back.error as? BestEffortStringError else {
+            throw self.testKit.error("\(back.error) is not BestEffortStringError")
+        }
+
+        bestEffortStringError.representation.shouldContain(String(reflecting: NotCodableTestingError.self))
+    }
+
+    func test_serialize_errorEnvelope_codableError() throws {
+        let codableError: CodableTestingError = .errorB
+        let errorEnvelope = ErrorEnvelope(codableError)
+
+        var (manifest, bytes) = try shouldNotThrow {
+            try system.serialization.serialize(errorEnvelope)
+        }
+
+        let back: ErrorEnvelope = try shouldNotThrow {
+            try system.serialization.deserialize(as: ErrorEnvelope.self, from: &bytes, using: manifest)
+        }
+
+        guard let codableTestingError = back.error as? CodableTestingError else {
+            throw self.testKit.error("\(back.error) is not CodableTestingError")
+        }
+
+        codableTestingError.shouldEqual(codableError)
+    }
 }
 
 // MARK: Example types for serialization tests
@@ -365,4 +426,14 @@ private struct NotSerializable {
     init(_ pos: String) {
         self.pos = pos
     }
+}
+
+private enum NotCodableTestingError: Error, Equatable {
+    case errorOne
+    case errorTwo
+}
+
+private enum CodableTestingError: String, Error, Equatable, Codable {
+    case errorA
+    case errorB
 }
