@@ -165,6 +165,10 @@ public class Serialization {
         settings.registerManifest(CRDT.ORSet<Int>.self, serializer: .protobufRepresentable)
         // settings.registerManifest(AnyDeltaCRDT.self, serializer: ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDT.Envelope+SerializationTests
 
+        // errors
+        settings.registerCodable(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.registerCodable(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+
         self.settings = settings
         self.metrics = system.metrics
 
