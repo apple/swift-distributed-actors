@@ -47,7 +47,7 @@ struct OwnerOfThings: Actorable {
     // for callers it still shows up as an Reply though.
     func performAskLookup() -> AskResponse<Receptionist.Listing<OwnerOfThings.Message>> {
         self.context.system.receptionist.ask(for: Receptionist.Listing<OwnerOfThings.Message>.self, timeout: .effectivelyInfinite) { ref in
-            Receptionist.Lookup(key: .init(OwnerOfThings.Message.self, id: "all/owners"), replyTo: ref)
+            Receptionist.Lookup(key: .init(messageType: OwnerOfThings.Message.self, id: "all/owners"), replyTo: ref)
         }
     }
 

@@ -27,7 +27,7 @@ import Logging
 public enum Receptionist {
     public typealias Message = ReceptionistMessage
 
-    // Implementation notes: // TODO: Intercept messages to register at remote receptionist, and hande locally?
+    // Implementation notes: // TODO: Intercept messages to register at remote receptionist, and handle locally?
     // Receptionist messages are a bit special. Technically we CAN allow sending them over to remotes
     // but we do not today. Generally though, for example registering with a remote's receptionist is a "bad idea"™
     // it is more efficient to register on the local one, so what we could do, is when sending to a remote receptionist,
@@ -37,9 +37,11 @@ public enum Receptionist {
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
-    public class RegistrationKey<Message: ActorMessage>: _RegistrationKey, CustomStringConvertible, ExpressibleByStringLiteral {
-        public init(_ type: Message.Type, id: String) {
-            super.init(id: id, typeHint: _typeName(Message.self as Any.Type))
+    ///
+    /// - See `Reception.Key` for the high-level `Actorable`/`Actor` compatible key API
+    public class RegistrationKey<Message: Codable>: _RegistrationKey, CustomStringConvertible, ExpressibleByStringLiteral {
+        public init(messageType: Message.Type, id: String) {
+            super.init(id: id, typeHint: _typeName(messageType as Any.Type))
         }
 
         public required init(stringLiteral value: StringLiteralType) {
@@ -74,7 +76,7 @@ public enum Receptionist {
     }
 
     /// When sent to receptionist will register the specified `ActorRef` under the given `RegistrationKey`
-    public class Register<Message: ActorMessage>: _Register {
+    public class Register<Message: Codable>: _Register {
         public let ref: ActorRef<Message>
         public let key: RegistrationKey<Message>
         public let replyTo: ActorRef<Registered<Message>>?
@@ -108,7 +110,7 @@ public enum Receptionist {
     }
 
     /// Response to a `Register` message
-    public class Registered<Message: ActorMessage>: NonTransportableActorMessage, CustomStringConvertible {
+    public class Registered<Message: Codable>: NonTransportableActorMessage, CustomStringConvertible {
         public let ref: ActorRef<Message>
         public let key: RegistrationKey<Message>
 
@@ -123,7 +125,7 @@ public enum Receptionist {
     }
 
     /// Used to lookup `ActorRef`s for the given `RegistrationKey`
-    public class Lookup<Message: ActorMessage>: _Lookup, ListingRequest, CustomStringConvertible {
+    public class Lookup<Message: Codable>: _Lookup, ListingRequest, CustomStringConvertible {
         public let key: RegistrationKey<Message>
         public let replyTo: ActorRef<Listing<Message>>
 
@@ -151,7 +153,7 @@ public enum Receptionist {
     }
 
     /// Subscribe to periodic updates of the specified key
-    public class Subscribe<Message: ActorMessage>: _Subscribe, ListingRequest, CustomStringConvertible {
+    public class Subscribe<Message: Codable>: _Subscribe, ListingRequest, CustomStringConvertible {
         public let key: RegistrationKey<Message>
         public let replyTo: ActorRef<Listing<Message>>
 
@@ -190,9 +192,11 @@ public enum Receptionist {
         }
     }
 
-    /// Response to `Lookup` and `Subscribe` requests
-    /// // TODO: can be made Codable
-    public struct Listing<Message: ActorMessage>: ActorMessage, Equatable, CustomStringConvertible {
+    /// Response to `Lookup` and `Subscribe` requests.
+    /// A listing MAY be empty.
+    ///
+    /// - See `Reception.Listing` for the high-level `Actorable`/`Actor` compatible key API
+    public struct Listing<Message: Codable>: Codable, Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
         public var description: String {
             "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
@@ -346,7 +350,7 @@ public enum Receptionist {
 public extension ActorRef where Message == ReceptionistMessage {
     /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
     func register<M>(_ ref: ActorRef<M>, key keyId: String, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
-        let key = Receptionist.RegistrationKey(M.self, id: keyId)
+        let key = Receptionist.RegistrationKey(messageType: M.self, id: keyId)
         self.register(ref, key: key, replyTo: replyTo)
     }
 
@@ -398,7 +402,7 @@ extension ActorAddress {
 ///     - `Receptionist.Lookup`
 ///     - `Receptionist.Register`
 ///     - `Receptionist.Subscribe`
-public class ReceptionistMessage: ActorMessage {}
+public class ReceptionistMessage: Codable {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: internal untyped protocols
@@ -574,7 +578,7 @@ internal struct AnySubscribe: Hashable {
 }
 
 internal protocol ListingRequest {
-    associatedtype Message: ActorMessage
+    associatedtype Message: Codable
 
     var key: Receptionist.RegistrationKey<Message> { get }
     var _key: _RegistrationKey { get }

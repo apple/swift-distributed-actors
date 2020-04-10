@@ -133,11 +133,13 @@ public enum Reception {}
 extension Reception {
     /// Key used to identify Actors registered in `Actor.Context.Receptionist`.
     /// Used to lookup actors of specific type and group `id`.
+    ///
+    /// - See `Receptionist.RegistrationKey` for the low-level `ActorRef` compatible key API
     public struct Key<Act: Actorable> {
         public let underlying: SystemReceptionist.RegistrationKey<Act.Message>
 
         public init(_ type: Act.Type = Act.self, id: String) {
-            self.underlying = .init(Act.Message.self, id: id)
+            self.underlying = .init(messageType: Act.Message.self, id: id)
         }
 
         public var id: String {
@@ -148,7 +150,7 @@ extension Reception {
     /// Contains a list of actors looked up using a `Key`.
     /// A listing MAY be empty.
     ///
-    /// This is the `Actorable` version of `SystemReceptionist.Listing`, allowing location of `Actor` instances.
+    /// - See `Receptionist.RegistrationKey` for the low-level `ActorRef` compatible key API
     public struct Listing<Act: Actorable>: ActorMessage, Equatable {
         public let refs: Set<ActorRef<Act.Message>>
 
