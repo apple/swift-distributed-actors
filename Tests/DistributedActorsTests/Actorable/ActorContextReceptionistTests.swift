@@ -106,7 +106,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
                     .same
                 }
             )
-            self.system.receptionist.register(ref, key: .init(OwnerOfThings.Message.self, id: "owners-of-things"))
+            self.system.receptionist.register(ref, key: .init(messageType: OwnerOfThings.Message.self, id: "owners-of-things"))
         }
 
         let listing = try! p.expectMessage(within: .seconds(60))

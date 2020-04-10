@@ -58,7 +58,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
                 }
             )
 
-            let key = Receptionist.RegistrationKey(String.self, id: "test")
+            let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
             // subscribe on `remote`
             let subscriberProbe = testKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
@@ -98,7 +98,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
                 }
             )
 
-            let key = Receptionist.RegistrationKey(String.self, id: "test")
+            let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
             remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
 
@@ -140,7 +140,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             let refC: ActorRef<String> = try remote.spawn("refC", behavior)
             let refD: ActorRef<String> = try remote.spawn("refD", behavior)
 
-            let key = Receptionist.RegistrationKey(String.self, id: "test")
+            let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
             local.receptionist.tell(Receptionist.Register(refA, key: key, replyTo: registeredProbe.ref))
             _ = try registeredProbe.expectMessage()
@@ -183,7 +183,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             let refA: ActorRef<String> = try first.spawn(.anonymous, self.stopOnMessage)
             let refB: ActorRef<String> = try first.spawn(.anonymous, self.stopOnMessage)
 
-            let key = Receptionist.RegistrationKey(String.self, id: "test")
+            let key = Receptionist.RegistrationKey(messageType: String.self, id: "test")
 
             first.receptionist.register(refA, key: key, replyTo: registeredProbe.ref)
             _ = try registeredProbe.expectMessage()
@@ -215,8 +215,8 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-            let firstKey: Receptionist.RegistrationKey<String> = .init(String.self, id: "first")
-            let extraKey: Receptionist.RegistrationKey<String> = .init(String.self, id: "extra")
+            let firstKey = Receptionist.RegistrationKey(messageType: String.self, id: "first")
+            let extraKey = Receptionist.RegistrationKey(messageType: String.self, id: "extra")
 
             let ref = try first.spawn("hi", self.stopOnMessage)
             first.receptionist.register(ref, key: firstKey)
@@ -260,7 +260,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-            let key: Receptionist.RegistrationKey<String> = .init(String.self, id: "key")
+            let key = Receptionist.RegistrationKey(messageType: String.self, id: "key")
 
             let firstRef = try first.spawn("onFirst", self.stopOnMessage)
             first.receptionist.register(firstRef, key: key)
@@ -294,7 +294,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-            let key: Receptionist.RegistrationKey<String> = .init(String.self, id: "first")
+            let key: Receptionist.RegistrationKey<String> = .init(messageType: String.self, id: "first")
 
             var allRefs: Set<ActorRef<String>> = []
             for i in 1 ... (first.settings.cluster.receptionist.syncBatchSize * 10) {
@@ -327,7 +327,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             try self.joinNodes(node: first, with: third)
             try self.joinNodes(node: fourth, with: second)
 
-            let key: Receptionist.RegistrationKey<String> = .init(String.self, id: "key")
+            let key = Receptionist.RegistrationKey(messageType: String.self, id: "key")
 
             let ref = try first.spawn("hi", self.stopOnMessage)
             first.receptionist.register(ref, key: key)

@@ -92,7 +92,7 @@ if system.cluster.node.port == 7337 { // <2>
         "greeter",
         of: Receptionist.Listing<String>.self,
         .setup { context in // <3>
-            context.system.receptionist.subscribe(key: Receptionist.RegistrationKey(String.self, id: chatRoomId), subscriber: context.myself)
+            context.system.receptionist.subscribe(key: Receptionist.RegistrationKey(messageType: String.self, id: chatRoomId), subscriber: context.myself)
 
             return .receiveMessage { chattersListing in // <4>
                 for chatter in chattersListing.refs {
