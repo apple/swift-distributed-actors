@@ -29,7 +29,7 @@ import XCTest
 // MARK: DO NOT EDIT: Generated Diagnostics messages 
 
 extension GeneratedActor.Messages {
-    public enum Diagnostics: Codable {
+    public enum Diagnostics: ActorMessage { 
         case printDiagnostics  
     }
 }
