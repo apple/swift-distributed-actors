@@ -45,7 +45,7 @@ public class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
 
     public override func deserialize(from bytes: ByteBuffer) throws -> Message {
         guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-            fatalError("Could not read data! Was: \(bytes), trying to deserialize: \(Message.self)")
+            throw SerializationError.unableToDeserialize("Could not read data! Was: \(bytes), trying to deserialize: \(Message.self)")
         }
 
         return try self.decoder.decode(Message.self, from: data)
@@ -91,7 +91,7 @@ public class PropertyListCodableSerializer<Message: Codable>: Serializer<Message
 
     public override func deserialize(from bytes: ByteBuffer) throws -> Message {
         guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-            fatalError("Could not read data! Was: \(bytes), trying to deserialize: \(Message.self)")
+            throw SerializationError.unableToDeserialize("Could not read data! Was: \(bytes), trying to deserialize: \(Message.self)")
         }
 
         return try self.decoder.decode(Message.self, from: data)

@@ -227,7 +227,7 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
 
         if type is Data.Type {
             guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-                fatalError("Could not read data! Was: \(bytes), trying to deserialize: \(T.self)")
+                throw SerializationError.unableToDeserialize("Could not read data! Was: \(bytes), trying to deserialize: \(T.self)")
             }
             return data as! T
         } else if type is NIO.ByteBuffer.Type {
