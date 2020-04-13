@@ -52,6 +52,10 @@ NOTE: While messages locally are passed simply by storing the passed message in 
 
 ==== Selecting the default Codable Coders
 
+NOTE: By default, Foundation's JSON, PropertyList (binary or xml) coders are supported.
++
+You can configure which coder should be used by default by setting `settings.serialization.defaultSerializerID`.
+
 The ActorSystem's serialization infrastructure allows for specifying what coder should be used for certain messages.
 
 If a type is safe to be serialized (see <<serialization_register>>), it will be serialized using the serializer associated with its type. If no serializer is specified for its specific type, the default Codable coder will be used.

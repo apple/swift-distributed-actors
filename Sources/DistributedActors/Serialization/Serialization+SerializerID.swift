@@ -31,14 +31,16 @@ extension Serialization {
             switch self.value {
             case SerializerID.doNotSerialize.value:
                 return "serializerID:doNotSerialize(\(self.value))"
+            case SerializerID.protobufRepresentable.value:
+                return "serializerID:protobufRepresentable(\(self.value))"
             case SerializerID.specializedWithTypeHint.value:
                 return "serializerID:specialized(\(self.value))"
             case SerializerID.foundationJSON.value:
                 return "serializerID:jsonCodable(\(self.value))"
-            case SerializerID.foundationPropertyList.value:
-                return "serializerID:plistCodable(\(self.value))"
-            case SerializerID.protobufRepresentable.value:
-                return "serializerID:protobufRepresentable(\(self.value))"
+            case SerializerID.foundationPropertyListBinary.value:
+                return "serializerID:foundationPropertyListBinary(\(self.value))"
+            case SerializerID.foundationPropertyListXML.value:
+                return "serializerID:foundationPropertyListXML(\(self.value))"
             default:
                 return "serializerID:\(self.value)"
             }
@@ -66,9 +68,11 @@ extension Serialization.SerializerID {
     public static let doNotSerialize: SerializerID = 0
 
     public static let specializedWithTypeHint: SerializerID = 1
-    public static let foundationJSON: SerializerID = 2
-    public static let foundationPropertyList: SerializerID = 3
-    public static let protobufRepresentable: SerializerID = 4
+    public static let protobufRepresentable: SerializerID = 2
+
+    public static let foundationJSON: SerializerID = 3
+    public static let foundationPropertyListBinary: SerializerID = 4
+    public static let foundationPropertyListXML: SerializerID = 5
     // ... reserved = 5
     // ... -- || --
     // ... reserved = 16
