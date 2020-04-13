@@ -35,6 +35,8 @@ extension Serialization {
                 return "serializerID:specialized(\(self.value))"
             case SerializerID.foundationJSON.value:
                 return "serializerID:jsonCodable(\(self.value))"
+            case SerializerID.foundationPropertyList.value:
+                return "serializerID:plistCodable(\(self.value))"
             case SerializerID.protobufRepresentable.value:
                 return "serializerID:protobufRepresentable(\(self.value))"
             default:
@@ -65,7 +67,7 @@ extension Serialization.SerializerID {
 
     public static let specializedWithTypeHint: SerializerID = 1
     public static let foundationJSON: SerializerID = 2
-    // public static let foundationPropertyList: SerializerID = 3 // TODO: https://github.com/apple/swift-distributed-actors/issues/513
+    public static let foundationPropertyList: SerializerID = 3
     public static let protobufRepresentable: SerializerID = 4
     // ... reserved = 5
     // ... -- || --
