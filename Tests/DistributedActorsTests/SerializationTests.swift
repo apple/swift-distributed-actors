@@ -28,6 +28,9 @@ class SerializationTests: ActorSystemTestBase {
             settings.serialization.register(HasIntRef.self)
             settings.serialization.register(HasInterestingMessageRef.self)
             settings.serialization.register(CodableTestingError.self)
+
+            settings.serialization.register(PListBinCodableTest.self, serializerID: .foundationPropertyListBinary)
+            settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListXML)
         }
     }
 
@@ -349,34 +352,53 @@ class SerializationTests: ActorSystemTestBase {
         codableTestingError.shouldEqual(codableError)
     }
 
-    func test_plist() throws {
-        struct Test: Codable, Equatable {
-            let name: String
-            let items: [String]
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: PList coding
+
+    func test_plist_binary() throws {
+        let test = PListBinCodableTest(name: "foo", items: ["bar", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz"])
+
+        var (manifest, bytes) = try! shouldNotThrow {
+            try system.serialization.serialize(test)
         }
 
-        let s2 = ActorSystem("SerializeMessages") { settings in
-            settings.serialization.serializeLocalMessages = true
-            settings.serialization.register(Test.self, serializerID: .foundationPropertyList)
+        let back = try! system.serialization.deserialize(as: PListBinCodableTest.self, from: &bytes, using: manifest)
+
+        back.shouldEqual(test)
+    }
+
+    func test_plist_xml() throws {
+        let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
+
+        var (manifest, bytes) = try shouldNotThrow {
+            try system.serialization.serialize(test)
         }
 
-        do {
-            let p = self.testKit.spawnTestProbe("p1", expecting: Test.self)
-            let echo: ActorRef<Test> = try s2.spawn(
-                "echo",
-                .receiveMessage { msg in
-                    p.ref.tell(Test(name: "echo:\(msg.name)", items: msg.items.map { "echo:\($0)" }))
-                    return .same
-                }
-            )
+        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: &bytes, using: manifest)
 
-            echo.tell(Test(name: "foo", items: ["bar", "baz"])) // is a built-in serializable message
-            try p.expectMessage(Test(name: "echo:foo", items: ["echo:bar", "echo:baz"]))
-        } catch {
-            s2.shutdown().wait()
-            throw error
+        back.shouldEqual(test)
+    }
+
+    func test_plist_throws_whenWrongFormat() throws {
+        let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
+
+        var (manifest, bytes) = try shouldNotThrow {
+            try system.serialization.serialize(test)
         }
-        s2.shutdown().wait()
+
+        let system2 = ActorSystem("OtherSystem") { settings in
+            settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
+        }
+        defer {
+            system2.shutdown().wait()
+        }
+
+        _ = shouldThrow {
+            _ = try system2.serialization.deserialize(as: PListXMLCodableTest.self, from: &bytes, using: manifest)
+        }
+
+        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: &bytes, using: manifest)
+        back.shouldEqual(test)
     }
 }
 
@@ -466,4 +488,14 @@ private enum NotCodableTestingError: Error, Equatable {
 private enum CodableTestingError: String, Error, Equatable, Codable {
     case errorA
     case errorB
+}
+
+private struct PListBinCodableTest: Codable, Equatable {
+    let name: String
+    let items: [String]
+}
+
+private struct PListXMLCodableTest: Codable, Equatable {
+    let name: String
+    let items: [String]
 }

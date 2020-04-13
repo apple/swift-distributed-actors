@@ -34,13 +34,14 @@ extension Decodable {
 }
 
 extension Decodable {
-    static func _decode(from buffer: inout NIO.ByteBuffer, using decoder: PropertyListDecoder) throws -> Self {
+    static func _decode(from buffer: inout NIO.ByteBuffer, using decoder: PropertyListDecoder, format _format: PropertyListSerialization.PropertyListFormat) throws -> Self {
         let readableBytes = buffer.readableBytes
 
         return try buffer.withUnsafeMutableReadableBytes {
             // we are getting the pointer from a ByteBuffer, so it should be valid and force unwrap should be fine
             let data = Data(bytesNoCopy: $0.baseAddress!, count: readableBytes, deallocator: .none)
-            return try decoder.decode(Self.self, from: data)
+            var format = _format
+            return try decoder.decode(Self.self, from: data, format: &format)
         }
     }
 }

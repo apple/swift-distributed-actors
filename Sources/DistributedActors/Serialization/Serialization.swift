@@ -306,8 +306,22 @@ extension Serialization {
             serializer.setSerializationContext(self.context)
             return serializer
 
-        case Serialization.SerializerID.foundationPropertyList:
-            let serializer = PropertyListCodableSerializer<Message>(allocator: self.allocator)
+        case Serialization.SerializerID.foundationPropertyListBinary,
+             Serialization.SerializerID.foundationPropertyListXML:
+            let format: PropertyListSerialization.PropertyListFormat
+            switch manifest.serializerID {
+            case Serialization.SerializerID.foundationPropertyListBinary:
+                format = .binary
+            case Serialization.SerializerID.foundationPropertyListXML:
+                format = .xml
+            default:
+                fatalError("Unable to make PropertyList serializer for serializerID: \(manifest.serializerID); type: \(String(reflecting: Message.self))")
+            }
+
+            let serializer = PropertyListCodableSerializer<Message>(
+                allocator: self.allocator,
+                format: format
+            )
             serializer.setSerializationContext(self.context)
             return serializer
 
@@ -376,20 +390,27 @@ extension Serialization {
                         """
                     )
 
+                case .protobufRepresentable:
+                    let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
+                    encoder.userInfo[.actorSerializationContext] = self.context
+                    result = try encodableMessage._encode(using: encoder)
+
                 case .foundationJSON:
                     let encoder = JSONEncoder()
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
 
-                case .foundationPropertyList:
+                case .foundationPropertyListBinary:
                     let encoder = PropertyListEncoder()
+                    encoder.outputFormat = .binary
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
 
-                case .protobufRepresentable:
-                    let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
+                case .foundationPropertyListXML:
+                    let encoder = PropertyListEncoder()
+                    encoder.outputFormat = .xml
                     encoder.userInfo[.actorSerializationContext] = self.context
-                    result = try encodableMessage._encode(using: encoder)
+                    result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
 
                 case let otherSerializerID:
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(messageType), manifest: \(manifest)")
@@ -484,20 +505,25 @@ extension Serialization {
                         Known specializedSerializerMakers: \(self.settings.specializedSerializerMakers)
                         """
                     )
-                case .foundationJSON:
-                    let decoder = JSONDecoder()
-                    decoder.userInfo[.actorSerializationContext] = self.context
-                    result = try decodableMessageType._decode(from: &bytes, using: decoder)
-
-                case .foundationPropertyList:
-                    let decoder = PropertyListDecoder()
-                    decoder.userInfo[.actorSerializationContext] = self.context
-                    result = try decodableMessageType._decode(from: &bytes, using: decoder)
 
                 case .protobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: &bytes, using: decoder)
+
+                case .foundationJSON:
+                    let decoder = JSONDecoder()
+                    decoder.userInfo[.actorSerializationContext] = self.context
+                    result = try decodableMessageType._decode(from: &bytes, using: decoder)
+
+                case .foundationPropertyListBinary:
+                    let decoder = PropertyListDecoder()
+                    decoder.userInfo[.actorSerializationContext] = self.context
+                    result = try decodableMessageType._decode(from: &bytes, using: decoder, format: .binary)
+                case .foundationPropertyListXML:
+                    let decoder = PropertyListDecoder()
+                    decoder.userInfo[.actorSerializationContext] = self.context
+                    result = try decodableMessageType._decode(from: &bytes, using: decoder, format: .xml)
 
                 case let otherSerializerID:
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(manifestMessageType), manifest: \(manifest)")
