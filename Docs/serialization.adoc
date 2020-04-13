@@ -52,7 +52,7 @@ NOTE: While messages locally are passed simply by storing the passed message in 
 
 ==== Selecting the default Codable Coders
 
-NOTE: By default, Foundation's JSON, PropertyList (binary or xml) coders are supported.
+NOTE: By default, Foundation's JSON and PropertyList (binary or xml) coders are supported.
 +
 You can configure which coder should be used by default by setting `settings.serialization.defaultSerializerID`.
 

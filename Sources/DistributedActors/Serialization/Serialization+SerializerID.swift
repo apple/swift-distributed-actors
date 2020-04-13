@@ -73,7 +73,7 @@ extension Serialization.SerializerID {
     public static let foundationJSON: SerializerID = 3
     public static let foundationPropertyListBinary: SerializerID = 4
     public static let foundationPropertyListXML: SerializerID = 5
-    // ... reserved = 5
+    // ... reserved = 6
     // ... -- || --
     // ... reserved = 16
 
