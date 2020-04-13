@@ -306,6 +306,11 @@ extension Serialization {
             serializer.setSerializationContext(self.context)
             return serializer
 
+        case Serialization.SerializerID.foundationPropertyList:
+            let serializer = PropertyListCodableSerializer<Message>(allocator: self.allocator)
+            serializer.setSerializationContext(self.context)
+            return serializer
+
         case Serialization.SerializerID.protobufRepresentable:
             // TODO: determine what custom one to use, proto or what else
             return TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
@@ -373,6 +378,11 @@ extension Serialization {
 
                 case .foundationJSON:
                     let encoder = JSONEncoder()
+                    encoder.userInfo[.actorSerializationContext] = self.context
+                    result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
+
+                case .foundationPropertyList:
+                    let encoder = PropertyListEncoder()
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
 
@@ -476,6 +486,11 @@ extension Serialization {
                     )
                 case .foundationJSON:
                     let decoder = JSONDecoder()
+                    decoder.userInfo[.actorSerializationContext] = self.context
+                    result = try decodableMessageType._decode(from: &bytes, using: decoder)
+
+                case .foundationPropertyList:
+                    let decoder = PropertyListDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: &bytes, using: decoder)
 

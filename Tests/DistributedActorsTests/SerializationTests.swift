@@ -348,6 +348,36 @@ class SerializationTests: ActorSystemTestBase {
 
         codableTestingError.shouldEqual(codableError)
     }
+
+    func test_plist() throws {
+        struct Test: Codable, Equatable {
+            let name: String
+            let items: [String]
+        }
+
+        let s2 = ActorSystem("SerializeMessages") { settings in
+            settings.serialization.serializeLocalMessages = true
+            settings.serialization.register(Test.self, serializerID: .foundationPropertyList)
+        }
+
+        do {
+            let p = self.testKit.spawnTestProbe("p1", expecting: Test.self)
+            let echo: ActorRef<Test> = try s2.spawn(
+                "echo",
+                .receiveMessage { msg in
+                    p.ref.tell(Test(name: "echo:\(msg.name)", items: msg.items.map { "echo:\($0)" }))
+                    return .same
+                }
+            )
+
+            echo.tell(Test(name: "foo", items: ["bar", "baz"])) // is a built-in serializable message
+            try p.expectMessage(Test(name: "echo:foo", items: ["echo:bar", "echo:baz"]))
+        } catch {
+            s2.shutdown().wait()
+            throw error
+        }
+        s2.shutdown().wait()
+    }
 }
 
 // MARK: Example types for serialization tests
