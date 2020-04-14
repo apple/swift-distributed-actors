@@ -722,6 +722,10 @@ internal extension Behavior {
     ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
     @inlinable
     func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) throws -> Behavior<Message> {
+        guard self.isStillAlive else {
+            return self // ignore, we're already dead and cannot become any other behavior
+        }
+
         // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
         let failAtDepth = context.system.settings.actor.maxBehaviorNestingDepth
 
