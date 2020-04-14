@@ -30,7 +30,8 @@ extension LifecycleActor.Message {
         case pleaseStopViaBehavior
         case pleaseStopViaContextStop
         case pleaseStopViaContextStopCalledManyTimes
-        case watchChildAndTerminateIt
+        case watchChildAndTellItToStop
+        case watchChildAndStopIt
         case _doNOTSkipMe
 
     }
@@ -55,8 +56,10 @@ extension LifecycleActor.Message {
             self = .pleaseStopViaContextStop(_replyTo: _replyTo)
         case .pleaseStopViaContextStopCalledManyTimes:
             self = .pleaseStopViaContextStopCalledManyTimes
-        case .watchChildAndTerminateIt:
-            self = .watchChildAndTerminateIt
+        case .watchChildAndTellItToStop:
+            self = .watchChildAndTellItToStop
+        case .watchChildAndStopIt:
+            self = .watchChildAndStopIt
         case ._doNOTSkipMe:
             self = ._doNOTSkipMe
 
@@ -76,8 +79,10 @@ extension LifecycleActor.Message {
             try container.encode(_replyTo, forKey: CodingKeys.pleaseStopViaContextStop__replyTo)
         case .pleaseStopViaContextStopCalledManyTimes:
             try container.encode(DiscriminatorKeys.pleaseStopViaContextStopCalledManyTimes.rawValue, forKey: CodingKeys._case)
-        case .watchChildAndTerminateIt:
-            try container.encode(DiscriminatorKeys.watchChildAndTerminateIt.rawValue, forKey: CodingKeys._case)
+        case .watchChildAndTellItToStop:
+            try container.encode(DiscriminatorKeys.watchChildAndTellItToStop.rawValue, forKey: CodingKeys._case)
+        case .watchChildAndStopIt:
+            try container.encode(DiscriminatorKeys.watchChildAndStopIt.rawValue, forKey: CodingKeys._case)
         case ._doNOTSkipMe:
             try container.encode(DiscriminatorKeys._doNOTSkipMe.rawValue, forKey: CodingKeys._case)
 

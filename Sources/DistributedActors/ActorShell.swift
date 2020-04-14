@@ -513,9 +513,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     /// Returns: `true` if next behavior is .stop and appropriate actions will be taken
     @inlinable
     internal func becomeNext(behavior next: Behavior<Message>) throws {
-        guard self.behavior.isStillAlive else {
-            return // ignore, we're already dead and cannot become any other behavior
-        }
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
         self.behavior = try self.behavior.canonicalize(self, next: next)
     }

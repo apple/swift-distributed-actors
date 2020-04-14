@@ -222,8 +222,6 @@ public class OperationLogClusterReceptionist {
 
     var behavior: Behavior<Message> {
         .setup { context in
-            context.log.debug("Initialized receptionist: \(OperationLogClusterReceptionist.self)")
-
             // === listen to cluster events ------------------
             context.system.cluster.events.subscribe(
                 context.subReceive(Cluster.Event.self) { event in
