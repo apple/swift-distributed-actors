@@ -30,7 +30,8 @@ extension LifecycleActor {
         case pleaseStopViaBehavior 
         case pleaseStopViaContextStop(_replyTo: ActorRef<String>) 
         case pleaseStopViaContextStopCalledManyTimes 
-        case watchChildAndTerminateIt 
+        case watchChildAndTellItToStop 
+        case watchChildAndStopIt 
         case _doNOTSkipMe 
     }
     
@@ -64,8 +65,11 @@ extension LifecycleActor {
                 case .pleaseStopViaContextStopCalledManyTimes:
                     return /*become*/ instance.pleaseStopViaContextStopCalledManyTimes()
  
-                case .watchChildAndTerminateIt:
-                    try instance.watchChildAndTerminateIt()
+                case .watchChildAndTellItToStop:
+                    try instance.watchChildAndTellItToStop()
+ 
+                case .watchChildAndStopIt:
+                    try instance.watchChildAndStopIt()
  
                 case ._doNOTSkipMe:
                     instance._doNOTSkipMe()
@@ -130,8 +134,13 @@ extension Actor where A.Message == LifecycleActor.Message {
     }
  
 
-     func watchChildAndTerminateIt() {
-        self.ref.tell(Self.Message.watchChildAndTerminateIt)
+     func watchChildAndTellItToStop() {
+        self.ref.tell(Self.Message.watchChildAndTellItToStop)
+    }
+ 
+
+     func watchChildAndStopIt() {
+        self.ref.tell(Self.Message.watchChildAndStopIt)
     }
  
 

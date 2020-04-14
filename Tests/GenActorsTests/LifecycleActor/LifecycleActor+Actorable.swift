@@ -49,10 +49,16 @@ public struct LifecycleActor: Actorable {
         }
     }
 
-    func watchChildAndTerminateIt() throws {
+    func watchChildAndTellItToStop() throws {
         let child: Actor<LifecycleActor> = try self.context.spawn("child") { LifecycleActor(context: $0, probe: self.probe) }
         self.context.watch(child)
         child.pleaseStopViaBehavior()
+    }
+
+    func watchChildAndStopIt() throws {
+        let child: Actor<LifecycleActor> = try self.context.spawn("child") { LifecycleActor(context: $0, probe: self.probe) }
+        self.context.watch(child)
+        try self.context.stop(child: child)
     }
 
     public func receiveTerminated(context: Actor<Self>.Context, terminated: Signals.Terminated) -> DeathPactDirective {

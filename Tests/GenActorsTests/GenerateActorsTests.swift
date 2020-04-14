@@ -295,11 +295,28 @@ final class GenerateActorsTests: XCTestCase {
         try p.expectMessage("postStop(context:):\(actor.ref.path)")
     }
 
-    func test_LifecycleActor_watchActorsAndReceiveTerminationSignals() throws {
+    func test_LifecycleActor_watchActorsAndReceiveTerminationSignals_whenItStops() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
         let actor: Actor<LifecycleActor> = try self.system.spawn("watcher") { LifecycleActor(context: $0, probe: p.ref) }
-        actor.watchChildAndTerminateIt()
+        actor.watchChildAndTellItToStop()
+
+        try p.expectMessage("preStart(context:):/user/watcher")
+        try p.expectMessage("preStart(context:):/user/watcher/child")
+        try p.expectMessagesInAnyOrder(
+            [
+                // these signals are sent concurrently -- the child is stopping in one thread, and the notification in parent is processed in another
+                "postStop(context:):/user/watcher/child",
+                "terminated:ChildTerminated(/user/watcher/child)",
+            ]
+        )
+    }
+
+    func test_LifecycleActor_watchActorsAndReceiveTerminationSignals_whenParentStopsIt() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let actor: Actor<LifecycleActor> = try self.system.spawn("watcher") { LifecycleActor(context: $0, probe: p.ref) }
+        actor.watchChildAndStopIt()
 
         try p.expectMessage("preStart(context:):/user/watcher")
         try p.expectMessage("preStart(context:):/user/watcher/child")
