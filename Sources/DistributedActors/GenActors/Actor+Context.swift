@@ -97,6 +97,26 @@ extension Actor.Context {
 // MARK: Actor<A>.Context + Spawning
 
 extension Actor.Context {
+    /// Stops the current actor -- meaning that the current message is the last one it will ever process.
+    ///
+    /// This function is idempotent (may be called multiple times) and does NOT stop the actor from completing the
+    /// currently executing actorable function. The stopping effect will take place after the current receive has completed.
+    ///
+    /// If this actor had any child actors, they will be stopped as well.
+    ///
+    /// ### Behavior-stype API Equivalent:
+    /// This is equivalent to returning `Behavior.stop` from a `Behavior` style actor receive function.
+    ///
+    /// - SeeAlso: `Behavior.stop`
+    public func stop() {
+        self._underlying._forceStop()
+    }
+}
+
+// ==== ------------------------------------------------------------------------------------------------------------
+// MARK: Actor<A>.Context + Spawning
+
+extension Actor.Context {
     public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
         let ref = try self._underlying.spawn(
             naming,
