@@ -20,7 +20,7 @@
 /// of actors, they can't be prevented from receiving messages while waiting for
 /// the external source to respond. In this case messages should be stashed and
 /// then unstashed once the external source has responded.
-public final class StashBuffer<Message: ActorMessage> {
+public final class StashBuffer<Message: Codable> {
     @usableFromInline
     let buffer: RingBuffer<Message>
 

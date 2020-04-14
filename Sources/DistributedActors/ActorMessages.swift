@@ -24,7 +24,19 @@ import NIO
 ///
 /// You can customize which coder/decoder should be used by registering specialized manifests for the message type,
 /// or having the type conform to one of the special `...Representable` (e.g. `ProtobufRepresentable`) protocols.
-public typealias ActorMessage = Codable
+public protocol ActorMessage: Codable {
+    static var codableIntent: CodableIntent { get }
+}
+
+public extension ActorMessage {
+    static let codableIntent: CodableIntent = .network
+}
+
+enum CodableIntent {
+    case never
+    case local
+    case network
+}
 
 /// A `Never` can never be sent as message, even more so over the wire.
 extension Never: NonTransportableActorMessage {}
@@ -33,7 +45,7 @@ extension Never: NonTransportableActorMessage {}
 // MARK: Common utility messages
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
-extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then: , Failure == ErrorEnvelope {
+extension Result: ActorMessage, Codable where Success: ActorMessage { // FIXME: only then: , Failure == ErrorEnvelope {
     public enum DiscriminatorKeys: String, Codable {
         case success
         case failure
@@ -176,6 +188,10 @@ public struct NonTransportableAnyError: Error, NonTransportableActorMessage {
 ///
 /// - Warning: Attempting to send such message over the network will fail at runtime (and log an error or warning).
 public protocol NonTransportableActorMessage: ActorMessage {}
+
+extension NonTransportableActorMessage {
+    public static let codableIntent: CodableIntent = .never
+}
 
 extension NonTransportableActorMessage {
     public init(from decoder: Swift.Decoder) throws {

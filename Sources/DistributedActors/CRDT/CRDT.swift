@@ -59,7 +59,7 @@ extension CRDT {
         typealias ReadResult = CRDT.Replicator.LocalCommand.ReadResult
         typealias DeleteResult = CRDT.Replicator.LocalCommand.DeleteResult
 
-        public init<Message: ActorMessage>(ownerContext: ActorContext<Message>, id: CRDT.Identity, data: DataType, delegate: ActorOwnedDelegate<DataType> = ActorOwnedDelegate<DataType>()) {
+        public init<Message: Codable>(ownerContext: ActorContext<Message>, id: CRDT.Identity, data: DataType, delegate: ActorOwnedDelegate<DataType> = ActorOwnedDelegate<DataType>()) {
             self.id = id
             self.data = data
             self.delegate = delegate

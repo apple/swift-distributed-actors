@@ -18,7 +18,7 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor singleton
 
-internal final class ActorSingleton<Message: ActorMessage> {
+internal final class ActorSingleton<Message: Codable> {
     /// Settings for the `ActorSingleton`
     let settings: ActorSingletonSettings
 

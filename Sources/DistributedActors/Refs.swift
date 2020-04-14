@@ -23,7 +23,7 @@ import struct NIO.ByteBuffer
 ///
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message: ActorMessage>: ReceivesMessages, _ReceivesSystemMessages {
+public struct ActorRef<Message: Codable>: ReceivesMessages, _ReceivesSystemMessages {
     /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -317,7 +317,7 @@ extension ActorRef {
 /// and are such that a stopped actor can be released as soon as possible (shell), yet the cell remains
 /// active while anyone still holds references to it. The mailbox class on the other hand, is kept alive by
 /// by the cell, as it may result in message sends to dead letters which the mailbox handles
-public final class ActorCell<Message: ActorMessage> {
+public final class ActorCell<Message: Codable> {
     let mailbox: Mailbox<Message>
 
     weak var actor: ActorShell<Message>?
@@ -406,7 +406,7 @@ public extension ActorRef where Message == DeadLetter {
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
 // TODO: we could use this to make TestProbes more "real" rather than wrappers
-open class CellDelegate<Message: ActorMessage> {
+open class CellDelegate<Message: Codable> {
     public init() {
         // nothing
     }

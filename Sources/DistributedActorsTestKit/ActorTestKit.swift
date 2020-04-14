@@ -65,7 +65,7 @@ public struct ActorTestKitSettings {
 
 extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    public func spawnTestProbe<Message: ActorMessage>(
+    public func spawnTestProbe<Message: Codable>(
         _ naming: ActorNaming? = nil,
         expecting type: Message.Type = Message.self,
         file: StaticString = #file, line: UInt = #line
@@ -329,7 +329,7 @@ struct MockActorContextError: Error, CustomStringConvertible {
     }
 }
 
-final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
+final class MockActorContext<Message: Codable>: ActorContext<Message> {
     private let _system: ActorSystem
 
     init(_ system: ActorSystem) {
@@ -383,7 +383,7 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
-        where M: ActorMessage {
+        where M: Codable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
@@ -392,7 +392,7 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
-        where M: ActorMessage {
+        where M: Codable {
         fatalError("Failed: \(MockActorContextError())")
     }
 

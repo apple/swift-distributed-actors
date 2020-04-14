@@ -22,7 +22,7 @@ import Logging
 /// dynamically, e.g. if a node joins or removes itself from the cluster.
 ///
 // TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
-public class WorkerPool<Message: ActorMessage> { // TODO: really has to be Codable?
+public class WorkerPool<Message: Codable> { // TODO: really has to be Codable?
     typealias Ref = WorkerPoolRef<Message>
 
     /// A selector defines how actors should be selected to participate in the pool.
@@ -209,7 +209,7 @@ internal extension WorkerPool {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Worker Pool Ref
 
-public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
+public struct WorkerPoolRef<Message: Codable>: ReceivesMessages {
     @usableFromInline
     internal let _ref: ActorRef<WorkerPoolMessage<Message>>
 
@@ -258,7 +258,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
 // }
 
 @usableFromInline
-internal enum WorkerPoolMessage<Message: ActorMessage>: NonTransportableActorMessage {
+internal enum WorkerPoolMessage<Message: Codable>: NonTransportableActorMessage {
     case forward(Message)
     case listing(Receptionist.Listing<Message>)
 }
@@ -279,7 +279,7 @@ public enum WorkerPoolError: Error {
 // MARK: WorkerPool Settings
 
 /// Used to configure a `WorkerPool`.
-public struct WorkerPoolSettings<Message: ActorMessage> { // TODO: need the Codable?
+public struct WorkerPoolSettings<Message: Codable> { // TODO: need the Codable?
     /// Log level at which the worker pool will log its internal messages.
     /// Usually not interesting unless debugging the workings of a worker pool and workers joining/leaving it.
     var logLevel: Logger.Level = .trace

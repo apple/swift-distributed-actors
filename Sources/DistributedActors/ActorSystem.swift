@@ -440,7 +440,7 @@ public protocol ActorRefFactory {
         file: String, line: UInt,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
 }
 
 // extension ActorRefFactory {
@@ -474,7 +474,7 @@ extension ActorSystem: ActorRefFactory {
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: Codable {
         try self.serialization._ensureSerializer(type, file: file, line: line) // FIXME: do we need to ensure when it is not Codable?
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
@@ -489,7 +489,7 @@ extension ActorSystem: ActorRefFactory {
     public func _spawnSystemActor<Message>(
         _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: Codable {
         try self.serialization._ensureSerializer(Message.self)
         return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
     }
@@ -507,7 +507,7 @@ extension ActorSystem: ActorRefFactory {
     internal func _prepareSystemActor<Message>(
         _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
     ) throws -> LazyStart<Message>
-        where Message: ActorMessage {
+        where Message: Codable {
         // try self._serialization._ensureSerializer(Message.self)
         let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
         return LazyStart(ref: ref)
@@ -519,7 +519,7 @@ extension ActorSystem: ActorRefFactory {
         _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
         startImmediately: Bool = true
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: Codable {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
@@ -616,7 +616,7 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
     /// :nodoc: INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message: Codable>(context: ResolveContext<Message>) -> ActorRef<Message> {
 //        if let serialization = context.system._serialization {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
@@ -682,7 +682,7 @@ public enum ActorSystemError: Error {
 /// **CAUTION** Not calling `wakeUp` will prevent the actor from ever running
 /// and can cause leaks. Also `wakeUp` MUST NOT be called more than once,
 /// as that would violate the single-threaded execution guaranteed of actors.
-internal struct LazyStart<Message: ActorMessage> {
+internal struct LazyStart<Message: Codable> {
     let ref: ActorRef<Message>
 
     init(ref: ActorRef<Message>) {

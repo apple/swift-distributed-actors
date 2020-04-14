@@ -16,7 +16,7 @@
 ///
 /// The most important behavior is `Behavior.receive` since it allows handling incoming messages with a simple block.
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
-public struct Behavior<Message: ActorMessage> {
+public struct Behavior<Message: Codable> {
     @usableFromInline
     let underlying: _Behavior<Message>
 
@@ -324,7 +324,7 @@ internal extension Behavior {
 }
 
 @usableFromInline
-internal enum _Behavior<Message: ActorMessage> {
+internal enum _Behavior<Message: Codable> {
     case setup(_ onStart: (ActorContext<Message>) throws -> Behavior<Message>)
 
     case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>)
@@ -361,7 +361,7 @@ internal enum StopReason {
     case failure(Supervision.Failure)
 }
 
-public enum IllegalBehaviorError<Message: ActorMessage>: Error {
+public enum IllegalBehaviorError<Message: Codable>: Error {
     /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
     /// See their individual documentation for the rationale why that is so.
     case notAllowedAsInitial(_ behavior: Behavior<Message>)
@@ -403,7 +403,7 @@ extension Behavior {
 /// - SeeAlso: `Behavior` for general documentation about behaviors,
 /// - SeeAlso: `Behavior.receive` and `Behavior.receiveSignal` for closure-style behaviors corresponding to the
 ///            `receive` and `receiveSignal` functions of the `ClassBehavior`.
-open class ClassBehavior<Message: ActorMessage> {
+open class ClassBehavior<Message: Codable> {
     public init() {}
 
     /// Invoked each time the actor running this behavior is to receive a message.
@@ -437,7 +437,7 @@ extension Behavior {
 }
 
 /// Used in combination with `Behavior.intercept` to intercept messages and signals delivered to a behavior.
-open class Interceptor<Message: ActorMessage> {
+open class Interceptor<Message: Codable> {
     public init() {}
 
     @inlinable

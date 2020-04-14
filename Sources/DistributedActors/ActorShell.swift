@@ -27,7 +27,7 @@ import NIO
 /// all actor interactions with messages, user code, and the mailbox itself happen.
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
-public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractActor {
+public final class ActorShell<Message: Codable>: ActorContext<Message>, AbstractActor {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -655,7 +655,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
-        where M: ActorMessage {
+        where M: Codable {
         try self.system.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(naming, props: props, behavior)
     }
@@ -665,7 +665,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 //        file: String = #file, line: UInt = #line,
 //        _ behavior: Behavior<M>
 //    ) throws -> ActorRef<M>
-//    where M: ActorMessage {
+//    where M: Codable {
 //        try self.system.serialization._ensureCodableSerializer(type, file: file, line: line)
 //        return try self._spawn(naming, props: props, behavior)
 //    }
@@ -675,7 +675,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: Codable {
         self.watch(try self.spawn(naming, props: props, behavior))
     }
 
@@ -684,11 +684,11 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 //        file: String = #file, line: UInt = #line,
 //        _ behavior: Behavior<Message>
 //    ) throws -> ActorRef<Message>
-//        where Message: ActorMessage {
+//        where Message: Codable {
 //        self.watch(try self.spawn(naming, props: props, behavior))
 //    }
 
-    public override func stop<Message: ActorMessage>(child ref: ActorRef<Message>) throws {
+    public override func stop<Message: Codable>(child ref: ActorRef<Message>) throws {
         try self._stop(child: ref)
     }
 
@@ -724,7 +724,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     }
 
     public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
-        where SubMessage: ActorMessage {
+        where SubMessage: Codable {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
@@ -1009,7 +1009,7 @@ extension AbstractActor {
     }
 
     public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
-        where Message: ActorMessage {
+        where Message: Codable {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
         do {

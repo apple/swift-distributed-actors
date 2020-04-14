@@ -62,7 +62,7 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
 
 extension ActorSystem {
     /// Dead letters reference dedicated to a specific address.
-    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
+    public func personalDeadLetters<Message: Codable>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.node == nil || recipient.node == self.settings.cluster.uniqueBindNode else {

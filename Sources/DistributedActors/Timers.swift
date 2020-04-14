@@ -78,7 +78,7 @@ extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation
     }
 }
 
-public class Timers<Message: ActorMessage> {
+public class Timers<Message: Codable> {
     @usableFromInline
     internal var timerGen: Int = 0
 

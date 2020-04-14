@@ -19,7 +19,7 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message: ActorMessage>: ActorRefFactory {
+public class ActorContext<Message: Codable>: ActorRefFactory {
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
         undefined()
@@ -181,7 +181,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
     public func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M>
-        where M: ActorMessage {
+        where M: Codable {
         return undefined()
     }
 
@@ -205,7 +205,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     @discardableResult
     public func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M>
-        where M: ActorMessage {
+        where M: Codable {
         return undefined()
     }
 
@@ -221,7 +221,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
-        where M: ActorMessage {
+        where M: Codable {
         return undefined()
     }
 
@@ -236,7 +236,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
-        where M: ActorMessage {
+        where M: Codable {
         return undefined()
     }
 
@@ -264,7 +264,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
-    public func stop<M>(child ref: ActorRef<M>) throws where M: ActorMessage {
+    public func stop<M>(child ref: ActorRef<M>) throws where M: Codable {
         return undefined()
     }
 
@@ -453,7 +453,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
-        where SubMessage: ActorMessage {
+        where SubMessage: Codable {
         return undefined()
     }
 

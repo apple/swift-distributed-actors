@@ -59,7 +59,7 @@ extension Serialization {
         public func resolveActorRef<Message>(
             _ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress,
             userInfo: [CodingUserInfoKey: Any] = [:]
-        ) -> ActorRef<Message> where Message: ActorMessage {
+        ) -> ActorRef<Message> where Message: Codable {
             let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
             return self.system._resolve(context: context)
         }
@@ -77,7 +77,7 @@ extension Serialization {
         /// Obtain a manifest for the passed `Message` type, which allows to determine which serializer should be used for the type.
         ///
         /// - SeeAlso: `Serialization.outboundManifest` for more details.
-        public func outboundManifest<Message: ActorMessage>(_ type: Message.Type) throws -> Serialization.Manifest {
+        public func outboundManifest<Message: Codable>(_ type: Message.Type) throws -> Serialization.Manifest {
             try self.system.serialization.outboundManifest(type)
         }
     }

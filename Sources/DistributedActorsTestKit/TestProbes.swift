@@ -31,7 +31,7 @@ extension ActorTestProbeCommand: NonTransportableActorMessage {}
 /// which make testing asynchronous actor interactions simpler.
 ///
 /// - SeeAlso: `ActorableTestProbe` which is the equivalent API for `Actorable`s.
-public class ActorTestProbe<Message: ActorMessage> {
+public class ActorTestProbe<Message: Codable> {
     /// Name of the test probe (and underlying actor).
     public let name: String
 
@@ -495,7 +495,7 @@ public extension ActorTestProbe {
 }
 
 /// Allows intercepting messages
-public final class ProbeInterceptor<Message: ActorMessage>: Interceptor<Message> {
+public final class ProbeInterceptor<Message: Codable>: Interceptor<Message> {
     let probe: ActorTestProbe<Message>
 
     public init(probe: ActorTestProbe<Message>) {

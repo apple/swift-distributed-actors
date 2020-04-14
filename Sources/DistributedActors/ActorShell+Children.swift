@@ -23,10 +23,10 @@ internal protocol ChildActorRefFactory: ActorRefFactory {
         file: String, line: UInt,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage
+        where Message: Codable
 
     func stop<Message>(child ref: ActorRef<Message>) throws
-        where Message: ActorMessage
+        where Message: Codable
 }
 
 internal enum Child {

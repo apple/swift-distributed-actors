@@ -51,7 +51,7 @@ internal enum MailboxBitMasks {
     //                           = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001_1101
 }
 
-internal final class Mailbox<Message: ActorMessage> {
+internal final class Mailbox<Message: Codable> {
     weak var shell: ActorShell<Message>?
     let _status: Atomic<UInt64> = Atomic(value: 0)
     let userMessages: MPSCLinkedQueue<Envelope>

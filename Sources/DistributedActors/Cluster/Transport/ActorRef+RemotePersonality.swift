@@ -22,7 +22,7 @@
 /// is clear about its current lifecycle state (it may have already terminated the moment the message was sent,
 /// or even before then). To obtain lifecycle status of this actor the usual strategy of watching it needs to be employed.
 // TODO: reimplement as CellDelegate as it shall become simply another transport?
-public final class RemotePersonality<Message: ActorMessage> {
+public final class RemotePersonality<Message: Codable> {
     let address: ActorAddress
 
     let deadLetters: ActorRef<DeadLetter>

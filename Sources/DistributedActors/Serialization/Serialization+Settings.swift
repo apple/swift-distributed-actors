@@ -111,7 +111,7 @@ extension Serialization.Settings {
     /// This can be used to "force" a specific serializer be used for a message type,
     /// regardless if it is codable or not.
     @discardableResult
-    public mutating func register<Message: ActorMessage>(
+    public mutating func register<Message: Codable>(
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
@@ -150,7 +150,7 @@ extension Serialization.Settings {
     ///
     /// This manifest will NOT be used when _sending_ messages of the `Message` type.
     @discardableResult
-    public mutating func registerInbound<Message: ActorMessage>(
+    public mutating func registerInbound<Message: Codable>(
         _ type: Message.Type, hint hintOverride: String? = nil,
         serializerID overrideSerializerID: SerializerID? = nil
     ) -> Manifest {
@@ -189,7 +189,7 @@ extension Serialization.Settings {
         }
     }
 
-    public mutating func getSpecializedOrRegisterManifest<Message: ActorMessage>(
+    public mutating func getSpecializedOrRegisterManifest<Message: Codable>(
         _ type: Message.Type,
         serializerID: Serialization.SerializerID
     ) -> Serialization.Manifest {

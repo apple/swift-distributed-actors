@@ -22,7 +22,7 @@ fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
 /// When an XPC service was sent a "real" actor ref and replies to it, we want to capture this logic in this "proxy"
 /// which will make the reply happen over XPC, in such way that the other side can deserialize the actual destination.
-internal final class XPCProxiedRefDelegate<Message: ActorMessage>: CellDelegate<Message>, CustomStringConvertible {
+internal final class XPCProxiedRefDelegate<Message: Codable>: CellDelegate<Message>, CustomStringConvertible {
     /// The "origin" peer on which the actor we're proxying to lives.
     private let peer: xpc_connection_t
 
