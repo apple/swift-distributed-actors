@@ -25,6 +25,7 @@ import NIO
 public struct Actor<A: Actorable>: ActorMessage {
     public typealias Message = A.Message
     public typealias Myself = Actor<A>
+    public typealias Behavior = DistributedActors.Behavior<A.Message>
 
     /// Underlying `ActorRef` to the actor running the `Actorable` behavior.
     public let ref: ActorRef<A.Message>

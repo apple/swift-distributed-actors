@@ -26,7 +26,10 @@ import class NIO.EventLoopFuture
 extension LifecycleActor {
 
     public enum Message: ActorMessage { 
-        case pleaseStop 
+        case hello(_replyTo: ActorRef<String>) 
+        case pleaseStopViaBehavior 
+        case pleaseStopViaContextStop(_replyTo: ActorRef<String>) 
+        case pleaseStopViaContextStopCalledManyTimes 
         case watchChildAndTerminateIt 
         case _doNOTSkipMe 
     }
@@ -47,8 +50,19 @@ extension LifecycleActor {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .pleaseStop:
-                    return /*become*/ instance.pleaseStop()
+                case .hello(let _replyTo):
+                    let result = instance.hello()
+                    _replyTo.tell(result)
+ 
+                case .pleaseStopViaBehavior:
+                    return /*become*/ instance.pleaseStopViaBehavior()
+ 
+                case .pleaseStopViaContextStop(let _replyTo):
+                    let result = instance.pleaseStopViaContextStop()
+                    _replyTo.tell(result)
+ 
+                case .pleaseStopViaContextStopCalledManyTimes:
+                    return /*become*/ instance.pleaseStopViaContextStopCalledManyTimes()
  
                 case .watchChildAndTerminateIt:
                     try instance.watchChildAndTerminateIt()
@@ -88,8 +102,31 @@ extension LifecycleActor {
 
 extension Actor where A.Message == LifecycleActor.Message {
 
-    public func pleaseStop() {
-        self.ref.tell(Self.Message.pleaseStop)
+    public func hello() -> Reply<String> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.hello(_replyTo: _replyTo)}
+        )
+    }
+ 
+
+    public func pleaseStopViaBehavior() {
+        self.ref.tell(Self.Message.pleaseStopViaBehavior)
+    }
+ 
+
+    public func pleaseStopViaContextStop() -> Reply<String> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.pleaseStopViaContextStop(_replyTo: _replyTo)}
+        )
+    }
+ 
+
+    public func pleaseStopViaContextStopCalledManyTimes() {
+        self.ref.tell(Self.Message.pleaseStopViaContextStopCalledManyTimes)
     }
  
 

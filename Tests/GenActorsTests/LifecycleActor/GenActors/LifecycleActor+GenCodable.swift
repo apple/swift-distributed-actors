@@ -26,7 +26,10 @@ import class NIO.EventLoopFuture
 extension LifecycleActor.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case pleaseStop
+        case hello
+        case pleaseStopViaBehavior
+        case pleaseStopViaContextStop
+        case pleaseStopViaContextStopCalledManyTimes
         case watchChildAndTerminateIt
         case _doNOTSkipMe
 
@@ -34,14 +37,24 @@ extension LifecycleActor.Message {
 
     public enum CodingKeys: CodingKey {
         case _case
+        case hello__replyTo
+        case pleaseStopViaContextStop__replyTo
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .pleaseStop:
-            self = .pleaseStop
+        case .hello:
+            let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.hello__replyTo)
+            self = .hello(_replyTo: _replyTo)
+        case .pleaseStopViaBehavior:
+            self = .pleaseStopViaBehavior
+        case .pleaseStopViaContextStop:
+            let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.pleaseStopViaContextStop__replyTo)
+            self = .pleaseStopViaContextStop(_replyTo: _replyTo)
+        case .pleaseStopViaContextStopCalledManyTimes:
+            self = .pleaseStopViaContextStopCalledManyTimes
         case .watchChildAndTerminateIt:
             self = .watchChildAndTerminateIt
         case ._doNOTSkipMe:
@@ -53,8 +66,16 @@ extension LifecycleActor.Message {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .pleaseStop:
-            try container.encode(DiscriminatorKeys.pleaseStop.rawValue, forKey: CodingKeys._case)
+        case .hello(let _replyTo):
+            try container.encode(DiscriminatorKeys.hello.rawValue, forKey: CodingKeys._case)
+            try container.encode(_replyTo, forKey: CodingKeys.hello__replyTo)
+        case .pleaseStopViaBehavior:
+            try container.encode(DiscriminatorKeys.pleaseStopViaBehavior.rawValue, forKey: CodingKeys._case)
+        case .pleaseStopViaContextStop(let _replyTo):
+            try container.encode(DiscriminatorKeys.pleaseStopViaContextStop.rawValue, forKey: CodingKeys._case)
+            try container.encode(_replyTo, forKey: CodingKeys.pleaseStopViaContextStop__replyTo)
+        case .pleaseStopViaContextStopCalledManyTimes:
+            try container.encode(DiscriminatorKeys.pleaseStopViaContextStopCalledManyTimes.rawValue, forKey: CodingKeys._case)
         case .watchChildAndTerminateIt:
             try container.encode(DiscriminatorKeys.watchChildAndTerminateIt.rawValue, forKey: CodingKeys._case)
         case ._doNOTSkipMe:
