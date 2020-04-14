@@ -24,15 +24,13 @@ final class GenCodableTests: XCTestCase {
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self))) { _ in
-//            settings.serialization.register(JackOfAllTrades.Message.self)
-//            settings.serialization.register(GeneratedActor.Messages.Parking.self)
-//            settings.serialization.register(GeneratedActor.Messages.Ticketing.self)
-        }
+        self.system = ActorSystem(String(describing: type(of: self)))
         self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
     }
 }

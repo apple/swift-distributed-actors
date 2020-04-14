@@ -132,6 +132,17 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Internal _stop capability (without returning Behavior.stop) for Actorables
+
+    /// Allows setting the "next" behavior externally.
+    ///
+    /// Exists solely for Actorables, should not be used in the Behavior style API.
+    /// MUST be invoked from inside the actor (i.e. not concurrently).
+    internal func _forceStop() {
+        undefined()
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Death Watch
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal

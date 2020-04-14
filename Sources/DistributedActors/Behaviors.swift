@@ -355,7 +355,7 @@ internal enum _Behavior<Message: ActorMessage> {
 internal enum StopReason {
     /// the actor decided to stop and returned Behavior.stop
     case stopMyself
-    /// a stop was requested by the parent, i.e. `context.stop(ref)`
+    /// a stop was requested by the parent, i.e. `context.stop(child:)`
     case stopByParent
     /// the actor experienced a failure that was not handled by supervision
     case failure(Supervision.Failure)
@@ -724,6 +724,8 @@ internal extension Behavior {
     func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) throws -> Behavior<Message> {
         // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
         let failAtDepth = context.system.settings.actor.maxBehaviorNestingDepth
+
+        // TODO: what if already stopped or failed
 
         func canonicalize0(_ context: ActorContext<Message>, base: Behavior<Message>, next: Behavior<Message>, depth: Int) throws -> Behavior<Message> {
             let deeper = depth + 1

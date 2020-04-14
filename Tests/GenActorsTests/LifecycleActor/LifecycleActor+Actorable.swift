@@ -15,7 +15,6 @@
 import DistributedActors
 import class NIO.EventLoopFuture
 
-// struct LifecycleActor: ActorableLifecycle, Actorable {
 public struct LifecycleActor: Actorable {
     let context: Actor<LifecycleActor>.Context
     let probe: ActorRef<String>
@@ -28,14 +27,32 @@ public struct LifecycleActor: Actorable {
         probe.tell("\(#function):\(context.path)")
     }
 
-    public func pleaseStop() -> Behavior<Message> {
+    public func hello() -> String {
+        "hello"
+    }
+
+    public func pleaseStopViaBehavior() -> Behavior<Message> {
         .stop
+    }
+
+    public func pleaseStopViaContextStop() -> String {
+        self.context.stop() // no further messages (after this one) will be processed by this actor
+        return "stopping"
+    }
+
+    public func pleaseStopViaContextStopCalledManyTimes() -> Myself.Behavior {
+        self.context.stop() // no further messages (after this one) will be processed by this actor
+        self.context.stop() // should be no-op
+        self.context.stop() // should be no-op
+        return .receiveMessage { _ in
+            fatalError("Should not be able to receive anything once a stop has been issued")
+        }
     }
 
     func watchChildAndTerminateIt() throws {
         let child: Actor<LifecycleActor> = try self.context.spawn("child") { LifecycleActor(context: $0, probe: self.probe) }
         self.context.watch(child)
-        child.pleaseStop()
+        child.pleaseStopViaBehavior()
     }
 
     public func receiveTerminated(context: Actor<Self>.Context, terminated: Signals.Terminated) -> DeathPactDirective {

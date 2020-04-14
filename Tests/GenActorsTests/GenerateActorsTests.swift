@@ -259,15 +259,39 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Lifecycle callbacks
+    // MARK: Lifecycle
 
-    func test_LifecycleActor_shouldReceiveLifecycleEvents() throws {
+    func test_LifecycleActor_shouldBeAbleToStopItself_viaContext() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
         let actor = try system.spawn("lifecycleActor") { LifecycleActor(context: $0, probe: p.ref) }
 
         try p.expectMessage("preStart(context:):\(actor.ref.path)")
-        actor.pleaseStop()
+        try actor.pleaseStopViaContextStop().wait().shouldEqual("stopping")
+        try p.expectMessage("postStop(context:):\(actor.ref.path)")
+    }
+
+    func test_LifecycleActor_shouldBeAbleToStopItself_viaContext_notCrashWhenStopCalledManyTimes() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let actor = try system.spawn("lifecycleActor") { LifecycleActor(context: $0, probe: p.ref) }
+
+        try p.expectMessage("preStart(context:):\(actor.ref.path)")
+        actor.pleaseStopViaContextStopCalledManyTimes()
+        try p.expectMessage("postStop(context:):\(actor.ref.path)")
+
+        // TODO: improved test probes for Actorables; incl. expecting a reply, expectNoMessage etc
+        actor.ref.tell(.hello(_replyTo: p.ref))
+        try p.expectNoMessage(for: .milliseconds(100))
+    }
+
+    func test_LifecycleActor_shouldBeAbleToStopItself_returningBehavior() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let actor = try system.spawn("lifecycleActor") { LifecycleActor(context: $0, probe: p.ref) }
+
+        try p.expectMessage("preStart(context:):\(actor.ref.path)")
+        actor.pleaseStopViaBehavior()
         try p.expectMessage("postStop(context:):\(actor.ref.path)")
     }
 
