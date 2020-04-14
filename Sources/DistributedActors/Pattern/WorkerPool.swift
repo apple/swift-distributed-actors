@@ -222,7 +222,7 @@ public struct WorkerPoolRef<Message: Codable>: ReceivesMessages {
         self._ref.tell(.forward(message), file: file, line: line)
     }
 
-    public func ask<Answer: ActorMessage>(
+    public func ask<Answer: Codable>(
         for type: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
@@ -245,7 +245,7 @@ public struct WorkerPoolRef<Message: Codable>: ReceivesMessages {
 // extension WorkerPoolRef: ReceivesQuestions {
 //    public typealias Question = Message
 //
-//    public func ask<Answer: ActorMessage>(
+//    public func ask<Answer: Codable>(
 //        for type: Answer.Type = Answer.self,
 //        timeout: TimeAmount,
 //        file: String = #file, function: String = #function, line: UInt = #line,

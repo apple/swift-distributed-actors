@@ -207,7 +207,7 @@ extension CRDT {
             private let _onDataOperationResultComplete: (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void
             private let _onVoidOperationResultComplete: (EventLoopFuture<Void>, @escaping (Result<Void, Swift.Error>) -> Void) -> Void
 
-            init<OwnerMessage: ActorMessage>(
+            init<OwnerMessage: Codable>(
                 _ ownerContext: ActorContext<OwnerMessage>,
                 subReceive: ActorRef<Replication.DataOwnerMessage>,
                 replicator: ActorRef<Replicator.Message>,

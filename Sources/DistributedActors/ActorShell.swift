@@ -776,7 +776,7 @@ public final class ActorShell<Message: Codable>: ActorContext<Message>, Abstract
     }
 
     public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
-        where From: ActorMessage {
+        where From: Codable {
         do {
             let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in

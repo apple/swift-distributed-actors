@@ -22,7 +22,7 @@ extension CRDT {
     /// - SeeAlso: Akka's [`LWWMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/LWWMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
     /// - SeeAlso: `CRDT.LWWRegister`
-    public struct LWWMap<Key: Codable & Hashable, Value: ActorMessage>: NamedDeltaCRDT, LWWMapOperations {
+    public struct LWWMap<Key: Codable & Hashable, Value: Codable>: NamedDeltaCRDT, LWWMapOperations {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
         public let replicaId: ReplicaID

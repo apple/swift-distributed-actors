@@ -40,7 +40,7 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
+internal final class ActorRefAdapter<To: Codable>: AbstractAdapter {
     public let fromType: Any.Type
     private let target: ActorRef<To>
     let address: ActorAddress
@@ -222,7 +222,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
         .completed
     }
 
-    public func _resolve<Message2>(context: ResolveContext<Message2>) -> ActorRef<Message2> {
+    public func _resolve<Message2>(context: ResolveContext<Message2>) -> ActorRef<Message2> where Message2: Codable {
         self.deadLetters.adapted()
     }
 
@@ -234,7 +234,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SubReceiveAdapter
 
-internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: ActorMessage>: AbstractAdapter {
+internal final class SubReceiveAdapter<Message: Codable, OwnerMessage: Codable>: AbstractAdapter {
     internal let fromType: Any.Type
 
     private let target: ActorRef<OwnerMessage>

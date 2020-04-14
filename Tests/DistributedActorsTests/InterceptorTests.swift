@@ -34,7 +34,7 @@ final class ShoutingInterceptor: Interceptor<String> {
     }
 }
 
-final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
+final class TerminatedInterceptor<Message: Codable>: Interceptor<Message> {
     let probe: ActorTestProbe<Signals.Terminated>
 
     init(probe: ActorTestProbe<Signals.Terminated>) {
@@ -153,7 +153,7 @@ final class InterceptorTests: ActorSystemTestBase {
         }
     }
 
-    class SignalToStringInterceptor<Message: ActorMessage>: Interceptor<Message> {
+    class SignalToStringInterceptor<Message: Codable>: Interceptor<Message> {
         let probe: ActorTestProbe<String>
 
         init(_ probe: ActorTestProbe<String>) {

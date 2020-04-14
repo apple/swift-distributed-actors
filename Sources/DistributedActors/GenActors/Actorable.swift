@@ -35,7 +35,7 @@ import NIO
 /// generated and conformed to Codable by the GenActors source generator. In general however we may want to look into the future
 /// and consider if we want to allow not only Codable messages here.
 public protocol Actorable {
-    associatedtype Message: ActorMessage // TODO: Lift this restriction as even Actorables may want to use some specialized serializer?
+    associatedtype Message: Codable
 
     /// Represents a handle to this actor (`myself`), that is safe to pass to other actors, threads, and even nodes.
     typealias Myself = Actor<Self>

@@ -422,7 +422,7 @@ public class ActorContext<Message: Codable>: ActorRefFactory {
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From>
-        where From: ActorMessage {
+        where From: Codable {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
@@ -438,7 +438,7 @@ public class ActorContext<Message: Codable>: ActorRefFactory {
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
     public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
-        where From: ActorMessage {
+        where From: Codable {
         return undefined()
     }
 
@@ -467,7 +467,8 @@ public class ActorContext<Message: Codable>: ActorRefFactory {
     /// There can only be one `subReceive` per type. When installing a new `subReceive`
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
+        where SubMessage: Codable {
         self.subReceive(SubReceiveId(type), type, closure)
     }
 

@@ -131,7 +131,7 @@ extension ActorTestKit {
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnEventStreamTestProbe<Event: ActorMessage>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
+    public func spawnEventStreamTestProbe<Event: Codable>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
         let p = self.spawnTestProbe(.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
         eventStream.subscribe(p.ref)
         return p
@@ -309,13 +309,13 @@ extension ActorTestKit {
 public extension ActorTestKit {
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M: ActorMessage>(forType: M.Type = M.self) -> ActorContext<M> {
+    func makeFakeContext<M: Codable>(forType: M.Type = M.self) -> ActorContext<M> {
         MockActorContext(self.system)
     }
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M: ActorMessage>(for: Behavior<M>) -> ActorContext<M> {
+    func makeFakeContext<M: Codable>(for: Behavior<M>) -> ActorContext<M> {
         self.makeFakeContext(forType: M.self)
     }
 }

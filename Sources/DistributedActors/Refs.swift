@@ -138,7 +138,7 @@ extension ActorRef.Personality {
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 public protocol ReceivesMessages: Codable {
-    associatedtype Message: ActorMessage
+    associatedtype Message: Codable
     /// Send message to actor referred to by this `ActorRef`.
     ///
     /// The symbolic version of "tell" is `!` and should also be pronounced as "tell".
@@ -176,7 +176,7 @@ public protocol _ReceivesSystemMessages: Codable {
     )
 
     /// :nodoc: INTERNAL API
-    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> RemotePersonality<M>
+    func _unsafeGetRemotePersonality<Message: Codable>(_ type: Message.Type) -> RemotePersonality<Message>
 }
 
 extension _ReceivesSystemMessages {
@@ -277,7 +277,7 @@ extension ActorRef {
         )
     }
 
-    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
+    public func _unsafeGetRemotePersonality<M: Codable>(_ type: M.Type = M.self) -> RemotePersonality<M> {
         switch self.personality {
         case .remote(let personality):
             return personality._unsafeAssumeCast(to: type)
@@ -487,7 +487,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     }
 
     @usableFromInline
-    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
+    internal func _unsafeGetRemotePersonality<M: Codable>(_ type: M.Type = M.self) -> RemotePersonality<M> {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT be interacted with directly!")
     }

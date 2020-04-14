@@ -25,14 +25,18 @@ import NIO
 /// You can customize which coder/decoder should be used by registering specialized manifests for the message type,
 /// or having the type conform to one of the special `...Representable` (e.g. `ProtobufRepresentable`) protocols.
 public protocol ActorMessage: Codable {
+
+    /// TODO: Would want to move this or something similar into `Codable`.
     static var codableIntent: CodableIntent { get }
 }
 
 public extension ActorMessage {
-    static let codableIntent: CodableIntent = .network
+    static var codableIntent: CodableIntent {
+        .network
+    }
 }
 
-enum CodableIntent {
+public enum CodableIntent {
     case never
     case local
     case network
@@ -45,7 +49,7 @@ extension Never: NonTransportableActorMessage {}
 // MARK: Common utility messages
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
-extension Result: ActorMessage, Codable where Success: ActorMessage { // FIXME: only then: , Failure == ErrorEnvelope {
+extension Result: ActorMessage, Codable where Success: Codable { // FIXME: only then: , Failure == ErrorEnvelope {
     public enum DiscriminatorKeys: String, Codable {
         case success
         case failure
@@ -190,7 +194,9 @@ public struct NonTransportableAnyError: Error, NonTransportableActorMessage {
 public protocol NonTransportableActorMessage: ActorMessage {}
 
 extension NonTransportableActorMessage {
-    public static let codableIntent: CodableIntent = .never
+    public static var codableIntent: CodableIntent {
+        .never
+    }
 }
 
 extension NonTransportableActorMessage {

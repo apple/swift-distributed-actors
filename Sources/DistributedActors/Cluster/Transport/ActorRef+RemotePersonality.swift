@@ -142,7 +142,7 @@ public final class RemotePersonality<Message: Codable> {
         return nil
     }
 
-    func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemotePersonality<NewMessage> {
+    func _unsafeAssumeCast<NewMessage: Codable>(to: NewMessage.Type) -> RemotePersonality<NewMessage> {
         RemotePersonality<NewMessage>(shell: self.clusterShell, address: self.address, system: self.system)
     }
 }
