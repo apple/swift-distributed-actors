@@ -333,7 +333,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Awaiting on a result (context.awaitResult)
 
     func test_AwaitingActorable_awaitOnAResult() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Result<String, ErrorEnvelope>.self)
+        let p = self.testKit.spawnTestProbe(expecting: Result<String, AwaitingActorableError>.self)
 
         let actor = try self.system.spawn("testActor") { AwaitingActorable(context: $0) }
         let promise = self.system._eventLoopGroup.next().makePromise(of: String.self)
@@ -351,7 +351,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_AwaitingActorable_onResultAsync() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Result<String, ErrorEnvelope>.self)
+        let p = self.testKit.spawnTestProbe(expecting: Result<String, AwaitingActorableError>.self)
 
         let actor = try self.system.spawn("testActor") { AwaitingActorable(context: $0) }
         let promise = self.system._eventLoopGroup.next().makePromise(of: String.self)

@@ -26,8 +26,8 @@ import class NIO.EventLoopFuture
 extension AwaitingActorable {
 
     public enum Message: ActorMessage { 
-        case awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
-        case onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
+        case awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) 
+        case onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) 
     }
     
 }
@@ -84,12 +84,12 @@ extension AwaitingActorable {
 
 extension Actor where A.Message == AwaitingActorable.Message {
 
-     func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) {
+     func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) {
         self.ref.tell(Self.Message.awaitOnAFuture(f: f, replyTo: replyTo))
     }
  
 
-     func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) {
+     func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) {
         self.ref.tell(Self.Message.onResultAsyncExample(f: f, replyTo: replyTo))
     }
  

@@ -25,15 +25,15 @@ public struct AwaitingActorable: Actorable {
         false
     }
 
-    func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) -> Behavior<Myself.Message> {
+    func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) -> Behavior<Myself.Message> {
         context.awaitResult(of: f, timeout: .effectivelyInfinite) { result in
-            replyTo.tell(result.mapError { error in ErrorEnvelope(error) })
+            replyTo.tell(result.mapError { error in AwaitingActorableError.error(error) })
         }
     }
 
-    func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) {
+    func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) {
         context.onResultAsync(of: f, timeout: .effectivelyInfinite) { result in
-            replyTo.tell(result.mapError { error in ErrorEnvelope(error) })
+            replyTo.tell(result.mapError { error in AwaitingActorableError.error(error) })
         }
     }
 }
@@ -41,4 +41,8 @@ public struct AwaitingActorable: Actorable {
 // should not accidentally try to make this actorable
 public struct ExampleModel {
     public struct ExampleData {}
+}
+
+public enum AwaitingActorableError: Error, NonTransportableActorMessage {
+    case error(Error)
 }
