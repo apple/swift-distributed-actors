@@ -130,11 +130,12 @@ public struct ActorOriginLogHandler: LogHandler {
     }
 
     public init<T>(_ context: ActorContext<T>) {
+        let dispatcherName = context.props.dispatcher.name
         self.init(
             LoggingContext(
                 identifier: context.path.description,
                 useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
-                dispatcher: { () in context.props.dispatcher.name }
+                dispatcher: { () in dispatcherName } // beware of closing over the context here (!)
             )
         )
     }
