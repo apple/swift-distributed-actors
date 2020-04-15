@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -545,12 +545,12 @@ extension ActorableMessageDecl {
                 printer.print("self.ref.ask(for: \(t).self, timeout: .effectivelyInfinite) { _replyTo in")
                 printer.indent()
             }
-        case .result(let t, let errType):
+        case .result(let t, _):
             isAsk = true
             printer.print("// TODO: FIXME perhaps timeout should be taken from context")
             printer.print("Reply.from(askResponse: ")
             printer.indent()
-            printer.print("self.ref.ask(for: Result<\(t), \(errType)>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.print("self.ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
             printer.indent()
         case .void:
             printer.print("self.ref.tell(", skipNewline: true)
@@ -604,8 +604,8 @@ extension ActorableMessageDecl.ReturnType {
             return ""
         case .behavior:
             return ""
-        case .result(let t, let errT):
-            return " -> ResultReply<\(t), \(errT)>"
+        case .result(let t, _):
+            return " -> Reply<Result<\(t), ErrorEnvelope>>"
         case .nioEventLoopFuture(let t),
              .actorReply(let t),
              .askResponse(let t):
@@ -621,8 +621,8 @@ extension ActorableMessageDecl.ReturnType {
             return ""
         case .behavior(let behavior):
             return " -> \(behavior)"
-        case .result(let t, let errT):
-            return " -> Result<\(t), \(errT)>"
+        case .result(let t, _):
+            return " -> Result<\(t), ErrorEnvelope>"
         case .nioEventLoopFuture(let t):
             return " -> EventLoopFuture<\(t)>"
         case .actorReply(let t):
@@ -636,6 +636,14 @@ extension ActorableMessageDecl.ReturnType {
 
     var isTypeReturn: Bool {
         if case .type = self {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    var isResultReturn: Bool {
+        if case .result = self {
             return true
         } else {
             return false
@@ -701,7 +709,7 @@ extension ActorFuncDecl {
         let context: [String: Any] = [
             "name": self.message.name,
             "returnIfBecome": self.message.returnIfBecome,
-            "storeIfTypeReturn": self.message.returnType.isTypeReturn ? "let result = " : "",
+            "storeIfTypeOrResultReturn": self.message.returnType.isTypeReturn || self.message.returnType.isResultReturn ? "let result = " : "",
             "replyWithTypeReturn": self.message.returnType.isTypeReturn ?
                 (self.message.throwing ?
                     "\n                    _replyTo.tell(.success(result))" :
@@ -721,7 +729,7 @@ extension ActorFuncDecl {
         // render invocation
         ret.append(try Template(
             templateString:
-            "                    {{storeIfTypeReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}"
+            "                    {{storeIfTypeOrResultReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}"
         ).render(context))
 
         switch self.message.returnType {
@@ -747,6 +755,10 @@ extension ActorFuncDecl {
             ret.append("\n\(pad)        _replyTo.tell(.failure(ErrorEnvelope(error)))")
             ret.append("\n\(pad)    }")
             ret.append("\n\(pad)}")
+        case .result:
+            let pad = "                    "
+            ret.append("\n\(pad)_replyTo.tell(result.mapError { error in ErrorEnvelope(error) })")
+            ret.append("\n")
         default:
             ret.append("\n")
         }

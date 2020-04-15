@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated AllInOneMachine messages
 extension AllInOneMachine {
 
-    public enum Message: Codable {
+    public enum Message: ActorMessage { 
         case clean 
         case coffeeMachine(/*TODO: MODULE.*/GeneratedActor.Messages.CoffeeMachine) 
         case diagnostics(/*TODO: MODULE.*/GeneratedActor.Messages.Diagnostics) 

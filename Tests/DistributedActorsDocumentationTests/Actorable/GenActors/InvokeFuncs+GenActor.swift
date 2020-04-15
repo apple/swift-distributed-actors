@@ -31,7 +31,7 @@ import XCTest
 /// DO NOT EDIT: Generated InvokeFuncs messages
 extension InvokeFuncs {
 
-    public enum Message: Codable {
+    public enum Message: ActorMessage { 
         case doThingsAndRunTask(_replyTo: ActorRef<Int>) 
         case doThingsAsync(_replyTo: ActorRef<Result<Int, ErrorEnvelope>>) 
         case internalTask(_replyTo: ActorRef<Int>) 

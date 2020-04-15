@@ -93,6 +93,10 @@ public struct TestActorable: Actorable {
         "Hello strict \(name)!"
     }
 
+    public func greetReplyToReturnResult(name: String) -> Result<String, Error> {
+        .success("Hello result \(name)!")
+    }
+
     // TODO: would be better served as `async` function
     public func greetReplyToReturnNIOFuture(name: String) -> EventLoopFuture<String> {
         let loop = self.context.system._eventLoopGroup.next()

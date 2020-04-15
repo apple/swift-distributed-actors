@@ -38,6 +38,7 @@ extension TestActorable {
         case greetReplyToActor(name: String, replyTo: Actor<TestActorable>) 
         case greetReplyToReturnStrict(name: String, _replyTo: ActorRef<String>) 
         case greetReplyToReturnStrictThrowing(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
+        case greetReplyToReturnResult(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
         case greetReplyToReturnNIOFuture(name: String, _replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
         case becomeStopped 
         case contextSpawnExample 
@@ -102,6 +103,10 @@ extension TestActorable {
                         context.log.warning("Error thrown while handling [\(message)], error: \(error)")
                         _replyTo.tell(.failure(ErrorEnvelope(error)))
                     }
+ 
+                case .greetReplyToReturnResult(let name, let _replyTo):
+                    let result = instance.greetReplyToReturnResult(name: name)
+                    _replyTo.tell(result.mapError { error in ErrorEnvelope(error) })
  
                 case .greetReplyToReturnNIOFuture(let name, let _replyTo):
                     instance.greetReplyToReturnNIOFuture(name: name)
@@ -218,6 +223,15 @@ extension Actor where A.Message == TestActorable.Message {
         Reply.from(askResponse: 
             self.ref.ask(for: Result<String, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)}
+        )
+    }
+ 
+
+    public func greetReplyToReturnResult(name: String) -> Reply<Result<String, ErrorEnvelope>> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: Result<String, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.greetReplyToReturnResult(name: name, _replyTo: _replyTo)}
         )
     }
  

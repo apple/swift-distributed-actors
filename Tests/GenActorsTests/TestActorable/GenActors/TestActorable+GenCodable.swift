@@ -38,6 +38,7 @@ extension TestActorable.Message {
         case greetReplyToActor
         case greetReplyToReturnStrict
         case greetReplyToReturnStrictThrowing
+        case greetReplyToReturnResult
         case greetReplyToReturnNIOFuture
         case becomeStopped
         case contextSpawnExample
@@ -61,6 +62,8 @@ extension TestActorable.Message {
         case greetReplyToReturnStrict__replyTo
         case greetReplyToReturnStrictThrowing_name
         case greetReplyToReturnStrictThrowing__replyTo
+        case greetReplyToReturnResult_name
+        case greetReplyToReturnResult__replyTo
         case greetReplyToReturnNIOFuture_name
         case greetReplyToReturnNIOFuture__replyTo
 
@@ -107,6 +110,10 @@ extension TestActorable.Message {
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing_name)
             let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing__replyTo)
             self = .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)
+        case .greetReplyToReturnResult:
+            let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnResult_name)
+            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetReplyToReturnResult__replyTo)
+            self = .greetReplyToReturnResult(name: name, _replyTo: _replyTo)
         case .greetReplyToReturnNIOFuture:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnNIOFuture_name)
             let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetReplyToReturnNIOFuture__replyTo)
@@ -162,6 +169,10 @@ extension TestActorable.Message {
             try container.encode(DiscriminatorKeys.greetReplyToReturnStrictThrowing.rawValue, forKey: CodingKeys._case)
             try container.encode(name, forKey: CodingKeys.greetReplyToReturnStrictThrowing_name)
             try container.encode(_replyTo, forKey: CodingKeys.greetReplyToReturnStrictThrowing__replyTo)
+        case .greetReplyToReturnResult(let name, let _replyTo):
+            try container.encode(DiscriminatorKeys.greetReplyToReturnResult.rawValue, forKey: CodingKeys._case)
+            try container.encode(name, forKey: CodingKeys.greetReplyToReturnResult_name)
+            try container.encode(_replyTo, forKey: CodingKeys.greetReplyToReturnResult__replyTo)
         case .greetReplyToReturnNIOFuture(let name, let _replyTo):
             try container.encode(DiscriminatorKeys.greetReplyToReturnNIOFuture.rawValue, forKey: CodingKeys._case)
             try container.encode(name, forKey: CodingKeys.greetReplyToReturnNIOFuture_name)

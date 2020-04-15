@@ -108,6 +108,18 @@ final class GenerateActorsTests: XCTestCase {
         try futureString.wait().shouldEqual("Hello strict \(name)!")
     }
 
+    func test_TestActorable_greetReplyToReturnResult() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        let name = "Caplin"
+        let futureResult: Reply<Result<String, ErrorEnvelope>> = actor.greetReplyToReturnResult(name: name)
+
+        guard case .success(let reply) = try futureResult.wait() else {
+            throw self.testKit.fail("Expected .success, got \(futureResult)")
+        }
+        reply.shouldEqual("Hello result \(name)!")
+    }
+
     func test_TestActorable_greetReplyToReturnNIOFuture() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
@@ -280,7 +292,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Awaiting on a result (context.awaitResult)
 
     func test_AwaitingActorable_awaitOnAResult() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Result<String, Error>.self)
+        let p = self.testKit.spawnTestProbe(expecting: Result<String, ErrorEnvelope>.self)
 
         let actor = try self.system.spawn("testActor") { AwaitingActorable(context: $0) }
         let promise = self.system._eventLoopGroup.next().makePromise(of: String.self)
@@ -298,7 +310,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_AwaitingActorable_onResultAsync() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Result<String, Error>.self)
+        let p = self.testKit.spawnTestProbe(expecting: Result<String, ErrorEnvelope>.self)
 
         let actor = try self.system.spawn("testActor") { AwaitingActorable(context: $0) }
         let promise = self.system._eventLoopGroup.next().makePromise(of: String.self)
