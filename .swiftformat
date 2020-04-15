@@ -5,6 +5,7 @@
 --exclude "**/*.pb.swift"
 --exclude "**/*+GenActor.swift"
 --exclude "**/*+GenCodable.swift"
+--exclude "**/*+XPCProtocolStub.swift"
 
 # format options
 

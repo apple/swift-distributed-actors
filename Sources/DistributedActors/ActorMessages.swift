@@ -33,7 +33,7 @@ extension Never: NonTransportableActorMessage {}
 // MARK: Common utility messages
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
-extension Result: ActorMessage where Success: ActorMessage, Failure == ErrorEnvelope {
+extension Result: ActorMessage where Success: ActorMessage, Failure: ActorMessage {
     public enum DiscriminatorKeys: String, Codable {
         case success
         case failure
@@ -51,7 +51,7 @@ extension Result: ActorMessage where Success: ActorMessage, Failure == ErrorEnve
         case .success:
             self = .success(try container.decode(Success.self, forKey: .success_value))
         case .failure:
-            self = .failure(try container.decode(ErrorEnvelope.self, forKey: .failure_value))
+            self = .failure(try container.decode(Failure.self, forKey: .failure_value))
         }
     }
 
@@ -61,9 +61,9 @@ extension Result: ActorMessage where Success: ActorMessage, Failure == ErrorEnve
         case .success(let success):
             try container.encode(DiscriminatorKeys.success, forKey: ._case)
             try container.encode(success, forKey: .success_value)
-        case .failure(let errorEnvelope):
+        case .failure(let failure):
             try container.encode(DiscriminatorKeys.failure, forKey: ._case)
-            try container.encode(errorEnvelope, forKey: .failure_value)
+            try container.encode(failure, forKey: .failure_value)
         }
     }
 }
@@ -90,7 +90,7 @@ public struct ErrorEnvelope: Error, ActorMessage {
             self.codableError = codableError
         } else {
             // we can at least carry the error type (not the whole string repr, since it may have information we'd rather not share though)
-            self.codableError = BestEffortStringError(representation: String(reflecting: error.self))
+            self.codableError = BestEffortStringError(representation: String(reflecting: type(of: error as Any)))
         }
     }
 
