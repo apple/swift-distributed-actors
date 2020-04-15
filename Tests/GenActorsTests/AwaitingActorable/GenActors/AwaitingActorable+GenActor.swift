@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -26,8 +26,8 @@ import class NIO.EventLoopFuture
 extension AwaitingActorable {
 
     public enum Message: ActorMessage { 
-        case awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 
-        case onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 
+        case awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
+        case onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) 
     }
     
 }
@@ -84,12 +84,12 @@ extension AwaitingActorable {
 
 extension Actor where A.Message == AwaitingActorable.Message {
 
-     func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) {
+     func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) {
         self.ref.tell(Self.Message.awaitOnAFuture(f: f, replyTo: replyTo))
     }
  
 
-     func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) {
+     func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) {
         self.ref.tell(Self.Message.onResultAsyncExample(f: f, replyTo: replyTo))
     }
  

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -147,8 +147,8 @@ struct ActorableMessageDecl {
 
         case .type(let valueType) /* self.throwing */:
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
-        case .result(let valueType, let errorType):
-            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), \(errorType)>>"))
+        case .result(let valueType, _):
+            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         case .nioEventLoopFuture(let valueType),
              .actorReply(let valueType),
              .askResponse(let valueType):

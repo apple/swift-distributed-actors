@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -25,15 +25,15 @@ public struct AwaitingActorable: Actorable {
         false
     }
 
-    func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) -> Behavior<Myself.Message> {
-        context.awaitResult(of: f, timeout: .effectivelyInfinite) {
-            replyTo.tell($0)
+    func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) -> Behavior<Myself.Message> {
+        context.awaitResult(of: f, timeout: .effectivelyInfinite) { result in
+            replyTo.tell(result.mapError { error in ErrorEnvelope(error) })
         }
     }
 
-    func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) {
-        context.onResultAsync(of: f, timeout: .effectivelyInfinite) {
-            replyTo.tell($0)
+    func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, ErrorEnvelope>>) {
+        context.onResultAsync(of: f, timeout: .effectivelyInfinite) { result in
+            replyTo.tell(result.mapError { error in ErrorEnvelope(error) })
         }
     }
 }

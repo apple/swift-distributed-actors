@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -614,12 +614,12 @@ final class BehaviorTests: ActorSystemTestBase {
         try p.expectMessage("resumed:something else")
     }
 
-    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, Error>>? = nil) -> Behavior<String> {
+    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
-                return context.awaitResult(of: future, timeout: timeout) {
-                    suspendProbe?.tell($0)
+                return context.awaitResult(of: future, timeout: timeout) { result in
+                    suspendProbe?.tell(result.mapError { error in ErrorEnvelope(error) })
                     return .same
                 }
             default:
@@ -648,7 +648,7 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
@@ -680,7 +680,7 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
@@ -695,8 +695,8 @@ final class BehaviorTests: ActorSystemTestBase {
         promise.fail(self.testKit.error())
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
-        case .failure(let error):
-            guard error is CallSiteError else {
+        case .failure(let errorEnvelope):
+            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: CallSiteError.self))") else {
                 throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
@@ -764,7 +764,7 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
@@ -775,8 +775,8 @@ final class BehaviorTests: ActorSystemTestBase {
 
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
-        case .failure(let error):
-            guard error is TimeoutError else {
+        case .failure(let errorEnvelope):
+            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: TimeoutError.self))") else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
@@ -790,13 +790,13 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             p.tell("initializing")
             return context.awaitResult(of: future, timeout: .milliseconds(100)) { result in
-                suspendProbe.tell(result)
+                suspendProbe.tell(result.mapError { error in ErrorEnvelope(error) })
                 return .receiveMessage { message in
                     p.tell(message)
                     return .same
@@ -811,8 +811,8 @@ final class BehaviorTests: ActorSystemTestBase {
 
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
-        case .failure(let error):
-            guard error is TimeoutError else {
+        case .failure(let errorEnvelope):
+            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: TimeoutError.self))") else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default:
@@ -829,13 +829,13 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             p.tell("initializing")
             return context.awaitResult(of: future, timeout: .milliseconds(10)) { result in
-                suspendProbe.tell(result)
+                suspendProbe.tell(result.mapError { error in ErrorEnvelope(error) })
                 return .same
             }
         }
@@ -847,8 +847,8 @@ final class BehaviorTests: ActorSystemTestBase {
 
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
-        case .failure(let error):
-            guard error is TimeoutError else {
+        case .failure(let errorEnvelope):
+            guard let error = errorEnvelope.error as? BestEffortStringError, error.representation.contains("\(String(reflecting: TimeoutError.self))") else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default:
@@ -862,7 +862,7 @@ final class BehaviorTests: ActorSystemTestBase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
@@ -870,7 +870,7 @@ final class BehaviorTests: ActorSystemTestBase {
             return .receiveMessage { _ in
                 context.awaitResult(of: future, timeout: .seconds(3)) { result in
                     .setup { _ in
-                        suspendProbe.tell(result)
+                        suspendProbe.tell(result.mapError { error in ErrorEnvelope(error) })
                         return .same
                     }
                 }

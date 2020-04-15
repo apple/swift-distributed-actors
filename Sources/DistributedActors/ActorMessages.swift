@@ -33,7 +33,7 @@ extension Never: NonTransportableActorMessage {}
 // MARK: Common utility messages
 
 // FIXME: we should not add Codable conformance onto a stdlib type, but rather fix this in stdlib
-extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then: , Failure == ErrorEnvelope {
+extension Result: ActorMessage where Success: ActorMessage, Failure == ErrorEnvelope {
     public enum DiscriminatorKeys: String, Codable {
         case success
         case failure
@@ -45,36 +45,25 @@ extension Result: ActorMessage where Success: ActorMessage { // FIXME: only then
         case failure_value
     }
 
-    public func encode(to encoder: Encoder) throws {
-        switch self {
-        case .success(let success):
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(DiscriminatorKeys.success, forKey: ._case)
-            try container.encode(success, forKey: .success_value)
-
-        case .failure(let error):
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(DiscriminatorKeys.failure, forKey: ._case)
-            if let errorEnvelope = error as? ErrorEnvelope {
-                try container.encode(errorEnvelope, forKey: .failure_value)
-            } else {
-                try container.encode(ErrorEnvelope(description: "\(error)"), forKey: .failure_value)
-            }
-        }
-    }
-
     public init(from decoder: Swift.Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .success:
             self = .success(try container.decode(Success.self, forKey: .success_value))
         case .failure:
-            let error = try container.decode(ErrorEnvelope.self, forKey: .failure_value)
-            if let wellTypedError = error as? Failure {
-                self = .failure(wellTypedError)
-            } else {
-                throw SerializationError.unableToDeserialize(hint: "Decoded failure: \(error) but unable to cast it as \(Result<Success, Failure>.self)")
-            }
+            self = .failure(try container.decode(ErrorEnvelope.self, forKey: .failure_value))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .success(let success):
+            try container.encode(DiscriminatorKeys.success, forKey: ._case)
+            try container.encode(success, forKey: .success_value)
+        case .failure(let errorEnvelope):
+            try container.encode(DiscriminatorKeys.failure, forKey: ._case)
+            try container.encode(errorEnvelope, forKey: .failure_value)
         }
     }
 }
@@ -94,17 +83,15 @@ public struct ErrorEnvelope: Error, ActorMessage {
         case error
     }
 
-    public init<Failure: CodableError>(_ error: Failure) {
+    public init(_ error: Error) {
         if let alreadyAnEnvelope = error as? Self {
             self = alreadyAnEnvelope
+        } else if let codableError = error as? CodableError {
+            self.codableError = codableError
         } else {
-            self.codableError = error
+            // we can at least carry the error type (not the whole string repr, since it may have information we'd rather not share though)
+            self.codableError = BestEffortStringError(representation: String(reflecting: error.self))
         }
-    }
-
-    public init<Failure: Error>(_ error: Failure) {
-        // we can at least carry the error type (not the whole string repr, since it may have information we'd rather not share though)
-        self.codableError = BestEffortStringError(representation: String(reflecting: Failure.self))
     }
 
     // this is a cop out if we want to send back a message or just type name etc
