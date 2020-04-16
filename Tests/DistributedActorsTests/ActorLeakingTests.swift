@@ -270,6 +270,42 @@ final class ActorLeakingTests: ActorSystemTestBase {
         ref.tell("shutdown") // since we lost the `system` reference here we'll ask the actor to stop the system
     }
 
+    func test_actor_whichLogsShouldNotCauseLeak_onDisabledLevel() throws {
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
+        let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
+
+        var system: ActorSystem? = ActorSystem("Test")
+        _ = try system?.spawn("logging", of: String.self, .setup { context in
+            context.log.trace("Not going to be logged")
+            return .receiveMessage { _ in .same }
+        })
+        system?.shutdown().wait()
+        system = nil
+
+        ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
+        #endif // SACT_TESTS_LEAKS
+    }
+
+    func test_actor_whichLogsShouldNotCauseLeak_onEnabled() throws {
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
+        let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
+
+        var system: ActorSystem? = ActorSystem("Test")
+        _ = try system?.spawn("logging", of: String.self, .setup { context in
+            context.log.warning("Not going to be logged")
+            return .receiveMessage { _ in .same }
+        })
+        system?.shutdown().wait()
+        system = nil
+
+        ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
+        #endif // SACT_TESTS_LEAKS
+    }
+
     private func skipLeakTests(function: String = #function) {
         pnote("Skipping leak test \(function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
     }
