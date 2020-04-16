@@ -67,7 +67,7 @@ internal final class Mailbox<Message: ActorMessage> {
     init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
         #if SACT_TESTS_LEAKS
         if shell.address.segments.first?.value == "user" {
-            _ = shell._system.userMailboxInitCounter.add(1)
+            _ = shell._system?.userMailboxInitCounter.add(1)
         }
         #endif
         self.shell = shell
@@ -183,7 +183,7 @@ internal final class Mailbox<Message: ActorMessage> {
         // this mailbox.
         self.userMessages.enqueue(envelope)
 
-        self.shell?._system.metrics.recordMailboxMessageCount(Int(self.status.messageCount))
+        self.shell?._system?.metrics.recordMailboxMessageCount(Int(self.status.messageCount))
 
         if oldStatus.activations == 0, !oldStatus.isSuspended {
             return .needsScheduling

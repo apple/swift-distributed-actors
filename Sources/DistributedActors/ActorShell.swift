@@ -54,9 +54,18 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     internal let _dispatcher: MessageDispatcher
 
     @usableFromInline
-    var _system: ActorSystem
+    internal weak var _system: ActorSystem?
     public override var system: ActorSystem {
-        self._system
+        if let system = self._system {
+            return system
+        } else {
+            return fatalErrorBacktrace(
+                """
+                Accessed context.system (of actor: \(self.address)) while system was already stopped and released, this should never happen. \
+                This may indicate that the context was stored somewhere or passed to another asynchronously executing non-actor context, \
+                which is always a programming bug (!). An actor's context MUST NOT ever be accessed by anyone else rather than the actor itself.
+                """)
+        }
     }
 
     /// Guaranteed to be set during ActorRef creation
