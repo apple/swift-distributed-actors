@@ -54,7 +54,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     internal let _dispatcher: MessageDispatcher
 
     @usableFromInline
-    internal weak var _system: ActorSystem?
+    internal var _system: ActorSystem?
     public override var system: ActorSystem {
         if let system = self._system {
             return system
@@ -201,11 +201,13 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         traceLog_Cell("deinit cell \(self._address)")
         #if SACT_TESTS_LEAKS
         if self.address.segments.first?.value == "user" {
-            _ = system.userCellInitCounter.sub(1)
+            _ = self.system.userCellInitCounter.sub(1)
         }
         #endif
         self.instrumentation.actorStopped()
-        system.metrics.recordActorStop(self)
+        self.system.metrics.recordActorStop(self)
+
+        self._system = nil
     }
 
     /// :nodoc: INTERNAL API: MUST be called immediately after constructing the cell and ref,
