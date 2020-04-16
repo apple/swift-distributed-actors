@@ -241,6 +241,35 @@ final class ActorLeakingTests: ActorSystemTestBase {
         #endif // SACT_TESTS_LEAKS
     }
 
+    func test_releasing_ActorSystem_mustNotLeaveActorsReferringToANilSystemFromContext() throws {
+        #if !SACT_TESTS_LEAKS
+        return self.skipLeakTests()
+        #else
+        var system: ActorSystem? = ActorSystem("FreeMe") // only "reference from user land" to the system
+
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let ref = try system!.spawn("echo", of: String.self, .receive { context, message in
+            if message == "shutdown" {
+                context.system.shutdown()
+            }
+            p.tell("system:\(context.system)")
+            return .same
+        })
+
+        ref.tell("x")
+        try p.expectMessage("system:ActorSystem(FreeMe)")
+
+        // clear the strong reference from "user land"
+        system = nil
+
+        ref.tell("x")
+        try p.expectMessage("system:ActorSystem(FreeMe)")
+        #endif // SACT_TESTS_LEAKS
+
+        ref.tell("shutdown") // since we lost the `system` reference here we'll ask the actor to stop the system
+    }
+
     private func skipLeakTests(function: String = #function) {
         pnote("Skipping leak test \(function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
     }
