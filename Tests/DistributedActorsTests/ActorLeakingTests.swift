@@ -265,9 +265,10 @@ final class ActorLeakingTests: ActorSystemTestBase {
 
         ref.tell("x")
         try p.expectMessage("system:ActorSystem(FreeMe)")
-        #endif // SACT_TESTS_LEAKS
-
+        
         ref.tell("shutdown") // since we lost the `system` reference here we'll ask the actor to stop the system
+        
+        #endif // SACT_TESTS_LEAKS
     }
 
     func test_actor_whichLogsShouldNotCauseLeak_onDisabledLevel() throws {
@@ -276,7 +277,9 @@ final class ActorLeakingTests: ActorSystemTestBase {
         #else
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
 
-        var system: ActorSystem? = ActorSystem("Test")
+        var system: ActorSystem? = ActorSystem("Test") { settings in
+            settings.logging.defaultLevel = .info
+        }
         _ = try system?.spawn("logging", of: String.self, .setup { context in
             context.log.trace("Not going to be logged")
             return .receiveMessage { _ in .same }
@@ -294,7 +297,9 @@ final class ActorLeakingTests: ActorSystemTestBase {
         #else
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
 
-        var system: ActorSystem? = ActorSystem("Test")
+        var system: ActorSystem? = ActorSystem("Test") { settings in
+            settings.logging.defaultLevel = .info
+        }
         _ = try system?.spawn("logging", of: String.self, .setup { context in
             context.log.warning("Not going to be logged")
             return .receiveMessage { _ in .same }
