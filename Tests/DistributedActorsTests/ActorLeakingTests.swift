@@ -265,9 +265,9 @@ final class ActorLeakingTests: ActorSystemTestBase {
 
         ref.tell("x")
         try p.expectMessage("system:ActorSystem(FreeMe)")
-        
+
         ref.tell("shutdown") // since we lost the `system` reference here we'll ask the actor to stop the system
-        
+
         #endif // SACT_TESTS_LEAKS
     }
 
