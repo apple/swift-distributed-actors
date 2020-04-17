@@ -12,33 +12,26 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActors
+import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import SwiftBenchmarkTools
 
-/// `ActorRef` which acts like a "latch" which can await the receipt of exactly one message;
 @usableFromInline
-internal class BenchmarkLatchGuardian<Message: ActorMessage>: Guardian { // This is an ugly hack to inject a personality into an actor ref
+internal class BenchmarkLatchPersonality<Message: Codable>: CellDelegate<Message> {
     let startTime = Atomic<UInt64>(value: 0)
     let receptacle = BlockingReceptacle<Message>()
 
-    override init(parent: _ReceivesSystemMessages, name: String, system: ActorSystem) {
-        super.init(parent: parent, name: name, system: system)
-    }
-
-    override func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
-        self.receptacle.offerOnce(message as! Message)
+    override func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+        self.receptacle.offerOnce(message)
         self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
     }
 
-    override func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
-        // ignore
+    override var address: ActorAddress {
+        ActorAddress(path: ._system, incarnation: .wellKnown)
     }
 
-    override var address: ActorAddress {
-        var fakePath: ActorPath = ._root
-        try! fakePath.append(segment: .init("benchmarkLatch"))
-        return ActorAddress(path: fakePath, incarnation: .wellKnown)
+    var ref: ActorRef<Message> {
+        .init(.delegate(self as CellDelegate))
     }
 
     func blockUntilMessageReceived() -> Message {
