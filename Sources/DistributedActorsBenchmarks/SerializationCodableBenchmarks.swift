@@ -61,8 +61,8 @@ struct SmallMessage: ActorMessage {
 let message_small = SmallMessage(number: 1337, name: "kappa")
 
 func bench_codable_roundTrip_message_small(n: Int) {
-    var (manifest, bytes) = try! system.serialization.serialize(message_small)
-    _ = try! system.serialization.deserialize(as: SmallMessage.self, from: &bytes, using: manifest)
+    let serialized = try! system.serialization.serialize(message_small)
+    _ = try! system.serialization.deserialize(as: SmallMessage.self, from: serialized)
 }
 
 // -------
@@ -81,8 +81,8 @@ private func setUpActorRef() {
 }
 
 func bench_codable_roundTrip_message_withRef(n: Int) {
-    var (manifest, bytes) = try! system.serialization.serialize(message_withRef!)
-    _ = try! system.serialization.deserialize(as: MessageWithRef.self, from: &bytes, using: manifest)
+    let serialized = try! system.serialization.serialize(message_withRef!)
+    _ = try! system.serialization.deserialize(as: MessageWithRef.self, from: serialized)
 }
 
 // -------
@@ -138,6 +138,6 @@ let message_medium = MediumMessage(
 )
 
 func bench_codable_roundTrip_message_medium(n: Int) {
-    var (manifest, bytes) = try! system.serialization.serialize(message_medium)
-    _ = try! system.serialization.deserialize(as: MediumMessage.self, from: &bytes, using: manifest)
+    let serialized = try! system.serialization.serialize(message_medium)
+    _ = try! system.serialization.deserialize(as: MediumMessage.self, from: serialized)
 }

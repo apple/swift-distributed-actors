@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct NIO.ByteBuffer
-
 internal protocol WireMessage {}
 
 /// The wire protocol data types are namespaced using this enum.
@@ -33,7 +31,7 @@ internal enum Wire {
         // TODO: metadata
         // TODO: "flags" incl. isSystemMessage
 
-        var payload: ByteBuffer
+        var payload: Serialization.Buffer
         var manifest: Serialization.Manifest
     }
 

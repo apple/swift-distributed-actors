@@ -118,13 +118,13 @@ class SerializationTests: ActorSystemTestBase {
 
         pinfo("Before serialize: \(hasRef)")
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(hasRef)
         }
-        pinfo("serialized ref: \(bytes.stringDebugDescription())")
+        pinfo("serialized ref: \(serialized.buffer.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            try system.serialization.deserialize(as: HasStringRef.self, from: &bytes, using: manifest)
+            try system.serialization.deserialize(as: HasStringRef.self, from: serialized)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -154,10 +154,10 @@ class SerializationTests: ActorSystemTestBase {
 
         pinfo("Before serialize: \(hasRef)")
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try remoteCapableSystem.serialization.serialize(hasRef)
         }
-        let serializedFormat: String = bytes.stringDebugDescription()
+        let serializedFormat: String = serialized.buffer.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
         serializedFormat.contains("sact").shouldBeTrue()
         serializedFormat.contains("\(remoteCapableSystem.settings.cluster.uniqueBindNode.nid)").shouldBeTrue()
@@ -166,7 +166,7 @@ class SerializationTests: ActorSystemTestBase {
         serializedFormat.contains("\(ClusterSettings.Default.bindPort)").shouldBeTrue()
 
         let back: HasStringRef = try shouldNotThrow {
-            try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: &bytes, using: manifest)
+            try remoteCapableSystem.serialization.deserialize(as: HasStringRef.self, from: serialized)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -182,7 +182,7 @@ class SerializationTests: ActorSystemTestBase {
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(hasRef)
         }
 
@@ -190,7 +190,7 @@ class SerializationTests: ActorSystemTestBase {
 
         try self.testKit.eventually(within: .seconds(3)) {
             let back: HasStringRef = try shouldNotThrow {
-                try system.serialization.deserialize(as: HasStringRef.self, from: &bytes, using: manifest)
+                try system.serialization.deserialize(as: HasStringRef.self, from: serialized)
             }
 
             guard "\(back.containedRef.address)" == "/dead/user/dead-on-arrival" else {
@@ -203,13 +203,13 @@ class SerializationTests: ActorSystemTestBase {
         let stoppedRef: ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(hasRef)
         }
 
         try self.testKit.eventually(within: .seconds(3)) {
             let back: HasInterestingMessageRef = try shouldNotThrow {
-                try system.serialization.deserialize(as: HasInterestingMessageRef.self, from: &bytes, using: manifest)
+                try system.serialization.deserialize(as: HasInterestingMessageRef.self, from: serialized)
             }
 
             back.containedInterestingRef.tell(InterestingMessage())
@@ -250,12 +250,12 @@ class SerializationTests: ActorSystemTestBase {
 
         let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(hasSysRef)
         }
 
         let back: HasReceivesSystemMsgs = try shouldNotThrow {
-            try system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: &bytes, using: manifest)
+            try system.serialization.deserialize(as: HasReceivesSystemMsgs.self, from: serialized)
         }
 
         back.sysRef.address.shouldEqual(sysRef.address)
@@ -299,12 +299,12 @@ class SerializationTests: ActorSystemTestBase {
         let description = "BOOM!!!"
         let errorEnvelope = ErrorEnvelope(description: description)
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(errorEnvelope)
         }
 
         let back: ErrorEnvelope = try shouldNotThrow {
-            try system.serialization.deserialize(as: ErrorEnvelope.self, from: &bytes, using: manifest)
+            try system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
 
         guard let bestEffortStringError = back.error as? BestEffortStringError else {
@@ -318,12 +318,12 @@ class SerializationTests: ActorSystemTestBase {
         let notCodableError: NotCodableTestingError = .errorTwo
         let errorEnvelope = ErrorEnvelope(notCodableError)
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(errorEnvelope)
         }
 
         let back: ErrorEnvelope = try shouldNotThrow {
-            try system.serialization.deserialize(as: ErrorEnvelope.self, from: &bytes, using: manifest)
+            try system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
 
         guard let bestEffortStringError = back.error as? BestEffortStringError else {
@@ -337,12 +337,12 @@ class SerializationTests: ActorSystemTestBase {
         let codableError: CodableTestingError = .errorB
         let errorEnvelope = ErrorEnvelope(codableError)
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(errorEnvelope)
         }
 
         let back: ErrorEnvelope = try shouldNotThrow {
-            try system.serialization.deserialize(as: ErrorEnvelope.self, from: &bytes, using: manifest)
+            try system.serialization.deserialize(as: ErrorEnvelope.self, from: serialized)
         }
 
         guard let codableTestingError = back.error as? CodableTestingError else {
@@ -358,11 +358,11 @@ class SerializationTests: ActorSystemTestBase {
     func test_plist_binary() throws {
         let test = PListBinCodableTest(name: "foo", items: ["bar", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz", "baz"])
 
-        var (manifest, bytes) = try! shouldNotThrow {
+        let serialized = try! shouldNotThrow {
             try system.serialization.serialize(test)
         }
 
-        let back = try! system.serialization.deserialize(as: PListBinCodableTest.self, from: &bytes, using: manifest)
+        let back = try! system.serialization.deserialize(as: PListBinCodableTest.self, from: serialized)
 
         back.shouldEqual(test)
     }
@@ -370,11 +370,11 @@ class SerializationTests: ActorSystemTestBase {
     func test_plist_xml() throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(test)
         }
 
-        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: &bytes, using: manifest)
+        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
 
         back.shouldEqual(test)
     }
@@ -382,7 +382,7 @@ class SerializationTests: ActorSystemTestBase {
     func test_plist_throws_whenWrongFormat() throws {
         let test = PListXMLCodableTest(name: "foo", items: ["bar", "baz"])
 
-        var (manifest, bytes) = try shouldNotThrow {
+        let serialized = try shouldNotThrow {
             try system.serialization.serialize(test)
         }
 
@@ -394,10 +394,10 @@ class SerializationTests: ActorSystemTestBase {
         }
 
         _ = shouldThrow {
-            _ = try system2.serialization.deserialize(as: PListXMLCodableTest.self, from: &bytes, using: manifest)
+            _ = try system2.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         }
 
-        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: &bytes, using: manifest)
+        let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         back.shouldEqual(test)
     }
 }

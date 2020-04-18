@@ -28,12 +28,12 @@ import Foundation // for Codable
 open class Serializer<Message> {
     public init() {}
 
-    open func serialize(_ message: Message) throws -> ByteBuffer {
+    open func serialize(_ message: Message) throws -> Serialization.Buffer {
         undefined()
     }
 
     // TODO: does this stay like this?
-    open func deserialize(from bytes: ByteBuffer) throws -> Message {
+    open func deserialize(from buffer: Serialization.Buffer) throws -> Message {
         undefined()
     }
 
@@ -54,7 +54,7 @@ extension Serializer: AnySerializer {
         self as! Serializer<M>
     }
 
-    public func trySerialize(_ message: Any) throws -> ByteBuffer {
+    public func trySerialize(_ message: Any) throws -> Serialization.Buffer {
         guard let _message = message as? Message else {
             throw SerializationError.wrongSerializer(
                 hint: """
@@ -68,8 +68,8 @@ extension Serializer: AnySerializer {
     }
 
     // FIXME: this is evil?
-    public func tryDeserialize(_ bytes: ByteBuffer) throws -> Any {
-        try self.deserialize(from: bytes)
+    public func tryDeserialize(_ buffer: Serialization.Buffer) throws -> Any {
+        try self.deserialize(from: buffer)
     }
 
     public var asAnySerializer: AnySerializer {
@@ -82,11 +82,11 @@ extension Serializer: AnySerializer {
 
 /// Nope, as opposed to Noop
 internal class NonTransportableSerializer<Message>: Serializer<Message> {
-    override func serialize(_ message: Message) throws -> ByteBuffer {
+    override func serialize(_ message: Message) throws -> Serialization.Buffer {
         throw SerializationError.unableToSerialize(hint: "\(Self.self): \(Message.self)")
     }
 
-    override func deserialize(from bytes: ByteBuffer) throws -> Message {
+    override func deserialize(from bytes: Serialization.Buffer) throws -> Message {
         throw SerializationError.unableToDeserialize(hint: "\(Self.self): \(Message.self)")
     }
 }
@@ -96,10 +96,10 @@ internal class NonTransportableSerializer<Message>: Serializer<Message> {
 
 // TODO: We may be able to remove the Serializer infrastructure and rely on Coders if we're able to generalize them
 public protocol AnySerializer {
-    func trySerialize(_ message: Any) throws -> ByteBuffer
+    func trySerialize(_ message: Any) throws -> Serialization.Buffer
 
     // TODO: tryDeserialize(as: from) // !!!!!!
-    func tryDeserialize(_ bytes: ByteBuffer) throws -> Any
+    func tryDeserialize(_ buffer: Serialization.Buffer) throws -> Any
 
     func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?)
     func setSerializationContext(_ context: Serialization.Context)
@@ -120,11 +120,11 @@ internal struct BoxedAnySerializer: AnySerializer, CustomStringConvertible {
         self.serializer.setUserInfo(key: key, value: value)
     }
 
-    func trySerialize(_ message: Any) throws -> ByteBuffer {
+    func trySerialize(_ message: Any) throws -> Serialization.Buffer {
         try self.serializer.trySerialize(message)
     }
 
-    func tryDeserialize(_ bytes: ByteBuffer) throws -> Any {
+    func tryDeserialize(_ bytes: Serialization.Buffer) throws -> Any {
         try self.serializer.tryDeserialize(bytes)
     }
 

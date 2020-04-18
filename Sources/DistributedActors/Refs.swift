@@ -170,7 +170,7 @@ public protocol _ReceivesSystemMessages: Codable {
 
     /// :nodoc: INTERNAL API: This way remoting sends messages
     func _deserializeDeliver(
-        _ messageBytes: NIO.ByteBuffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: SerializationPool,
         file: String, line: UInt
     )
@@ -239,7 +239,7 @@ extension ActorRef {
     }
 
     public func _deserializeDeliver(
-        _ messageBytes: NIO.ByteBuffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: SerializationPool,
         file: String = #file, line: UInt = #line
     ) {
@@ -473,7 +473,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
 
     @usableFromInline
     internal func _deserializeDeliver(
-        _ messageBytes: ByteBuffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: SerializationPool,
         file: String = #file, line: UInt = #line
     ) {

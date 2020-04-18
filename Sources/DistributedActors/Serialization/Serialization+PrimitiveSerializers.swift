@@ -29,18 +29,27 @@ internal class StringSerializer: Serializer<String> {
         self.allocate = allocator
     }
 
-    override func serialize(_ message: String) throws -> ByteBuffer {
+    override func serialize(_ message: String) throws -> Serialization.Buffer {
         let len = message.lengthOfBytes(using: .utf8) // TODO: optimize for ascii?
         var buffer = self.allocate.buffer(capacity: len)
         buffer.writeString(message)
-        return buffer
+        return .nioByteBuffer(buffer)
     }
 
-    override func deserialize(from bytes: ByteBuffer) throws -> String {
-        guard let s = bytes.getString(at: 0, length: bytes.readableBytes) else {
-            throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
+    override func deserialize(from buffer: Serialization.Buffer) throws -> String {
+        switch buffer {
+        case .data(let data):
+            // FIXME: requried? or just throw error?
+            guard let s = String(data: data, encoding: .utf8) else {
+                throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
+            }
+            return s
+        case .nioByteBuffer(let buffer):
+            guard let s = buffer.getString(at: 0, length: buffer.readableBytes) else {
+                throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
+            }
+            return s
         }
-        return s
     }
 }
 
@@ -55,17 +64,22 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
         self.allocate = allocator
     }
 
-    override func serialize(_ message: Number) throws -> ByteBuffer {
+    override func serialize(_ message: Number) throws -> Serialization.Buffer {
         var buffer = self.allocate.buffer(capacity: MemoryLayout<Number>.size)
         buffer.writeInteger(message, endianness: .big, as: Number.self)
-        return buffer
+        return .nioByteBuffer(buffer)
     }
 
-    override func deserialize(from bytes: ByteBuffer) throws -> Number {
-        if let i = bytes.getInteger(at: 0, endianness: .big, as: Number.self) {
+    override func deserialize(from buffer: Serialization.Buffer) throws -> Number {
+        switch buffer {
+        case .data(let data):
+            // FIXME: requried? or just throw error?
+            return data.withUnsafeBytes { $0.load(as: Number.self) }
+        case .nioByteBuffer(let buffer):
+            guard let i = buffer.getInteger(at: 0, endianness: .big, as: Number.self) else {
+                throw SerializationError.notAbleToDeserialize(hint: "\(buffer) as \(Number.self)")
+            }
             return i
-        } else {
-            throw SerializationError.notAbleToDeserialize(hint: "\(bytes) as \(Number.self)")
         }
     }
 }
@@ -78,18 +92,24 @@ internal class BoolSerializer: Serializer<Bool> {
         self.allocate = allocator
     }
 
-    override func serialize(_ message: Bool) throws -> ByteBuffer {
+    override func serialize(_ message: Bool) throws -> Serialization.Buffer {
         var buffer = self.allocate.buffer(capacity: 1)
         let v: Int8 = message ? 1 : 0
         buffer.writeInteger(v)
-        return buffer
+        return .nioByteBuffer(buffer)
     }
 
-    override func deserialize(from bytes: ByteBuffer) throws -> Bool {
-        if let i = bytes.getInteger(at: 0, endianness: .big, as: Int8.self) {
+    override func deserialize(from buffer: Serialization.Buffer) throws -> Bool {
+        switch buffer {
+        case .data(let data):
+            // FIXME: requried? or just throw error?
+            let i = data.withUnsafeBytes { $0.load(as: Int8.self) }
             return i == 1
-        } else {
-            throw SerializationError.notAbleToDeserialize(hint: "\(bytes) as \(Bool.self) (1/0 Int8)")
+        case .nioByteBuffer(let buffer):
+            guard let i = buffer.getInteger(at: 0, endianness: .big, as: Int8.self) else {
+                throw SerializationError.notAbleToDeserialize(hint: "\(buffer) as \(Bool.self) (1/0 Int8)")
+            }
+            return i == 1
         }
     }
 }

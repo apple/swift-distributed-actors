@@ -40,10 +40,15 @@ extension CRDT.Envelope: InternalProtobufRepresentable {
 
     func toProto(context: Serialization.Context) throws -> ProtoCRDTEnvelope {
         var proto = ProtoCRDTEnvelope()
-        var (manifest, bytes) = try context.serialization.serialize(self.data)
+        let serialized = try context.serialization.serialize(self.data)
         pprint("Serialize: manifest: \(manifest)")
-        proto.manifest = try manifest.toProto(context: context)
-        proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe, since we know exactly how many bytes to read here
+        proto.manifest = try serialized.manifest.toProto(context: context)
+        switch serialized.buffer {
+        case .data(let data):
+            proto.payload = data
+        case .nioByteBuffer(var buffer):
+            proto.payload = buffer.readData(length: buffer.readableBytes)! // !-safe, since we know exactly how many bytes to read here
+        }
         return proto
     }
 
@@ -55,10 +60,7 @@ extension CRDT.Envelope: InternalProtobufRepresentable {
         let manifest = try Serialization.Manifest(fromProto: proto.manifest, context: context)
         self.manifest = manifest
 
-        var bytes = context.allocator.buffer(capacity: proto.payload.count)
-        bytes.writeBytes(proto.payload)
-
-        let deserialized = try context.serialization.deserializeAny(from: &bytes, using: manifest)
+        let deserialized = try context.serialization.deserializeAny(from: .data(proto.payload), using: manifest)
 
         switch deserialized {
 //        case let delta as AnyDeltaCRDT:

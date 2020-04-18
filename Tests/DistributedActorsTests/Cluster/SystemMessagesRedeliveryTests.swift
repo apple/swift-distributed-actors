@@ -262,8 +262,8 @@ final class SystemMessagesRedeliveryTests: ActorSystemTestBase {
 
         func validateRoundTrip<T: Equatable>(_ value: T) throws {
             try shouldNotThrow {
-                var (manifest, bytes) = try system.serialization.serialize(value)
-                let back = try system.serialization.deserialize(as: T.self, from: &bytes, using: manifest)
+                let serialized = try system.serialization.serialize(value)
+                let back = try system.serialization.deserialize(as: T.self, from: serialized)
 
                 back.shouldEqual(value)
             }
