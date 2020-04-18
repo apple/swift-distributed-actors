@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -132,10 +132,14 @@ extension Serialization.Settings {
         }
 
         let serializerID: SerializerID
-        if Message.self is AnyProtobufRepresentable.Type {
-            serializerID = .protobufRepresentable
+        if let overrideSerializerID = overrideSerializerID {
+            serializerID = overrideSerializerID
         } else {
-            serializerID = overrideSerializerID ?? self.defaultSerializerID
+            if let serializationRepresentableType = Message.self as? SerializationRepresentable.Type {
+                serializerID = serializationRepresentableType.defaultSerializerID ?? self.defaultSerializerID
+            } else {
+                serializerID = self.defaultSerializerID
+            }
         }
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
