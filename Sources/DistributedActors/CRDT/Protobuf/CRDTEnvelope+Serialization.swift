@@ -41,7 +41,6 @@ extension CRDT.Envelope: InternalProtobufRepresentable {
     func toProto(context: Serialization.Context) throws -> ProtoCRDTEnvelope {
         var proto = ProtoCRDTEnvelope()
         let serialized = try context.serialization.serialize(self.data)
-        pprint("Serialize: manifest: \(manifest)")
         proto.manifest = try serialized.manifest.toProto(context: context)
         switch serialized.buffer {
         case .data(let data):

@@ -29,7 +29,7 @@ class ProtoEnvelopeTests: XCTestCase {
 
         do {
             var envelopeBytes = try proto.serializedByteBuffer(allocator: allocator)
-            envelope_deserialized = try ProtoEnvelope(serializedData: envelopeBytes.readData(length: envelopeBytes.readableBytes)!) // safe since using readableBytes
+            envelope_deserialized = try ProtoEnvelope(serializedData: envelopeBytes.readData(length: envelopeBytes.readableBytes)!) // !-safe since using readableBytes
         }
 
         envelope_deserialized.shouldEqual(proto)

@@ -340,7 +340,7 @@ extension Serialization {
     // FIXME: docs
     public struct Serialized {
         public let manifest: Serialization.Manifest
-        public let buffer: Buffer
+        public let buffer: Serialization.Buffer
     }
 
     // FIXME: docs

@@ -39,7 +39,7 @@ internal class StringSerializer: Serializer<String> {
     override func deserialize(from buffer: Serialization.Buffer) throws -> String {
         switch buffer {
         case .data(let data):
-            // FIXME: requried? or just throw error?
+            // FIXME: required? or just throw error?
             guard let s = String(data: data, encoding: .utf8) else {
                 throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
             }
@@ -73,7 +73,7 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
     override func deserialize(from buffer: Serialization.Buffer) throws -> Number {
         switch buffer {
         case .data(let data):
-            // FIXME: requried? or just throw error?
+            // FIXME: required? or just throw error?
             return data.withUnsafeBytes { $0.load(as: Number.self) }
         case .nioByteBuffer(let buffer):
             guard let i = buffer.getInteger(at: 0, endianness: .big, as: Number.self) else {
@@ -102,7 +102,7 @@ internal class BoolSerializer: Serializer<Bool> {
     override func deserialize(from buffer: Serialization.Buffer) throws -> Bool {
         switch buffer {
         case .data(let data):
-            // FIXME: requried? or just throw error?
+            // FIXME: required? or just throw error?
             let i = data.withUnsafeBytes { $0.load(as: Int8.self) }
             return i == 1
         case .nioByteBuffer(let buffer):

@@ -29,7 +29,7 @@ extension Decodable {
         case .data(let d):
             data = d
         case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since usign readableBytes
+            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
         }
         return try decoder.decode(Self.self, from: data)
     }
@@ -43,7 +43,7 @@ extension Decodable {
         case .data(let d):
             data = d
         case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since usign readableBytes
+            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
         }
         var format = _format
         return try decoder.decode(Self.self, from: data, format: &format)

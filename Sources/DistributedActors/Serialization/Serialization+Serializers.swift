@@ -80,7 +80,6 @@ extension Serializer: AnySerializer {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: NonTransportableSerializer
 
-/// Nope, as opposed to Noop
 internal class NonTransportableSerializer<Message>: Serializer<Message> {
     override func serialize(_ message: Message) throws -> Serialization.Buffer {
         throw SerializationError.unableToSerialize(hint: "\(Self.self): \(Message.self)")
@@ -98,7 +97,6 @@ internal class NonTransportableSerializer<Message>: Serializer<Message> {
 public protocol AnySerializer {
     func trySerialize(_ message: Any) throws -> Serialization.Buffer
 
-    // TODO: tryDeserialize(as: from) // !!!!!!
     func tryDeserialize(_ buffer: Serialization.Buffer) throws -> Any
 
     func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?)

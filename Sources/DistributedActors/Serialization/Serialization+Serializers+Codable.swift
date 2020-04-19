@@ -43,7 +43,7 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
         case .data(let d):
             data = d
         case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since usign readableBytes
+            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
         }
         return try self.decoder.decode(Message.self, from: data)
     }
@@ -96,7 +96,7 @@ internal class PropertyListCodableSerializer<Message: Codable>: Serializer<Messa
         case .data(let d):
             data = d
         case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since usign readableBytes
+            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
         }
         // FIXME: validate format = self.format?
         return try self.decoder.decode(Message.self, from: data, format: &format)
