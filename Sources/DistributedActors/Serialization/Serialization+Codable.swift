@@ -20,7 +20,6 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Decodable + _decode(bytes:using:SomeDecoder) extensions
 
-// FIXME: remove?
 // TODO: once we can abstract over Coders all these could go away most likely (and accept a generic TopLevelCoder)
 extension Decodable {
     static func _decode(from buffer: Serialization.Buffer, using decoder: JSONDecoder) throws -> Self {
@@ -35,7 +34,6 @@ extension Decodable {
     }
 }
 
-// FIXME: remove?
 extension Decodable {
     static func _decode(from buffer: Serialization.Buffer, using decoder: PropertyListDecoder, format _format: PropertyListSerialization.PropertyListFormat) throws -> Self {
         let data: Data
@@ -50,14 +48,12 @@ extension Decodable {
     }
 }
 
-// FIXME: remove?
 extension Decodable {
     static func _decode(from buffer: Serialization.Buffer, using decoder: TopLevelBytesBlobDecoder) throws -> Self {
         try decoder.decode(Self.self, from: buffer)
     }
 }
 
-// FIXME: remove?
 extension Decodable {
     static func _decode(from buffer: Serialization.Buffer, using decoder: TopLevelProtobufBlobDecoder) throws -> Self {
         try decoder.decode(Self.self, from: buffer)
@@ -69,28 +65,24 @@ extension Decodable {
 
 // TODO: once we can abstract over Coders all these could go away most likely (and accept a generic TopLevelCoder)
 
-// FIXME: remove
 extension Encodable {
     func _encode(using encoder: JSONEncoder) throws -> Data {
         try encoder.encode(self)
     }
 }
 
-// FIXME: remove?
 extension Encodable {
     func _encode(using encoder: PropertyListEncoder) throws -> Data {
         try encoder.encode(self)
     }
 }
 
-// FIXME: remove?
 extension Encodable {
     func _encode(using encoder: TopLevelBytesBlobEncoder) throws -> Serialization.Buffer {
         try encoder.encode(self)
     }
 }
 
-// FIXME: remove?
 extension Encodable {
     func _encode(using encoder: TopLevelProtobufBlobEncoder) throws -> Serialization.Buffer {
         try encoder.encode(self)

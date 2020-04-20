@@ -337,13 +337,17 @@ extension Serialization {
 
 // TODO: shall we make those return something async-capable, or is our assumption that we invoke these in the serialization pools enough at least until proven wrong?
 extension Serialization {
-    // FIXME: docs
+    /// Container for serializatoin output.
+    ///
+    /// Describing what serializer was used to serialize the value, and its serialized bytes
     public struct Serialized {
         public let manifest: Serialization.Manifest
         public let buffer: Serialization.Buffer
     }
 
-    // FIXME: docs
+    /// Abstraction of bytes containers.
+    ///
+    /// Designed to minimize allocation and copies when switching between different byte container types.
     public enum Buffer {
         case data(Data)
         case nioByteBuffer(ByteBuffer)
@@ -361,7 +365,7 @@ extension Serialization {
     /// Generate `Serialization.Manifest` and serialize the passed in message.
     ///
     /// - Parameter message: The message intended to be serialized. Existence of an apropriate serializer should be ensured before calling this method.
-    /// - Returns: Manifest (describing what serializer was used to serialize the value), and its serialized bytes
+    /// - Returns: `Serialized` describing what serializer was used to serialize the value, and its serialized bytes
     /// - Throws: If no manifest could be created for the value, or a manifest was created however it selected
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
     public func serialize<Message>( // TODO: can we require Codable here?
@@ -453,7 +457,11 @@ extension Serialization {
         }
     }
 
-    // FIXME: docs
+    /// Deserialize a given payload as the expected type, using the passed type and manifest.
+    ///
+    /// - Parameters:
+    ///   - as: expected type that the deserialized message should be
+    ///   - from: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
     public func deserialize<T>(
         as messageType: T.Type, from serialized: Serialized,
         file: String = #file, line: UInt = #line
@@ -464,9 +472,9 @@ extension Serialization {
     /// Deserialize a given payload as the expected type, using the passed type and manifest.
     ///
     /// - Parameters:
-    ///   - type: expected type that the deserialized message should be
-    ///   - bytes: containing the serialized bytes of the message
-    ///   - manifest: used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
+    ///   - as: expected type that the deserialized message should be
+    ///   - from: `Buffer` containing the serialized bytes of the message
+    ///   - using: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
     public func deserialize<T>(
         as messageType: T.Type, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line
@@ -501,8 +509,8 @@ extension Serialization {
     /// is to carry it as an `Any` inside a `DeadLetter` notification.
     ///
     /// - Parameters:
-    ///   - bytes: containing the serialized bytes of the message
-    ///   - manifest: used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
+    ///   - from: `Buffer` containing the serialized bytes of the message
+    ///   - using: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
     public func deserializeAny(
         from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line

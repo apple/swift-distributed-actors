@@ -65,7 +65,7 @@ public enum XPCSerialization {
 
         switch serialized.buffer {
         case .data(let data):
-            // FIXME:  https://github.com/apple/swift-distributed-actors/issues/536
+            // FIXME: https://github.com/apple/swift-distributed-actors/issues/536
             fatalError("not implmented")
         case .nioByteBuffer(let buffer):
             buffer.withUnsafeReadableBytes { bytes in
