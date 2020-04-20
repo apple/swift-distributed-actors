@@ -346,6 +346,23 @@ extension ClusteredNodesTestBase {
         }
     }
 
+    /// Assert based on the event stream of `Cluster.Event` that the given `node` was downed or removed.
+    public func assertMemberDown(_ eventStreamProbe: ActorTestProbe<Cluster.Event>, node: UniqueNode) throws {
+        let events = try eventStreamProbe.fishFor(Cluster.Event.self, within: .seconds(5)) {
+            switch $0 {
+            case .membershipChange(let change)
+                where change.node == node && change.toStatus.isAtLeastDown:
+                return .catchComplete($0)
+            default:
+                return .ignore
+            }
+        }
+
+        guard events.first != nil else {
+            throw self._testKits.first!.fail("Expected to capture cluster event about \(node) being down or removed, yet none captured!")
+        }
+    }
+
     /// Asserts the given node is the leader.
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
