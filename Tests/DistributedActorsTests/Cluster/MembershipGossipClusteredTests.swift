@@ -66,17 +66,15 @@ final class MembershipGossipClusteredTests: ClusteredNodesTestBase {
                 try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
             }
 
+            let firstEvents = testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
+            let secondEvents = testKit(second).spawnEventStreamTestProbe(subscribedTo: second.cluster.events)
+            let thirdEvents = testKit(third).spawnEventStreamTestProbe(subscribedTo: third.cluster.events)
+
             second.cluster.down(node: third.cluster.node.node)
 
-            try self.testKit(first).eventually(within: .seconds(5)) {
-                try self.assertMemberStatus(on: first, node: third.cluster.node, is: .down)
-            }
-            try self.testKit(second).eventually(within: .seconds(5)) {
-                try self.assertMemberStatus(on: second, node: third.cluster.node, is: .down)
-            }
-            try self.testKit(third).eventually(within: .seconds(5)) {
-                try self.assertMemberStatus(on: third, node: third.cluster.node, is: .down)
-            }
+            try self.assertMemberDown(firstEvents, node: third.cluster.node)
+            try self.assertMemberDown(secondEvents, node: third.cluster.node)
+            try self.assertMemberDown(thirdEvents, node: third.cluster.node)
         }
     }
 

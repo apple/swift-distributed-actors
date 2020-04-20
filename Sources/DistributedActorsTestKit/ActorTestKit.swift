@@ -131,8 +131,12 @@ extension ActorTestKit {
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
-    public func spawnEventStreamTestProbe<Event: ActorMessage>(subscribedTo eventStream: EventStream<Event>, file: String = #file, line: UInt = #line, column: UInt = #column) -> ActorTestProbe<Event> {
-        let p = self.spawnTestProbe(.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
+    public func spawnEventStreamTestProbe<Event: ActorMessage>(
+        _ naming: ActorNaming? = nil,
+        subscribedTo eventStream: EventStream<Event>,
+        file: String = #file, line: UInt = #line, column: UInt = #column
+    ) -> ActorTestProbe<Event> {
+        let p = self.spawnTestProbe(naming ?? ActorNaming.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
         eventStream.subscribe(p.ref)
         return p
     }
