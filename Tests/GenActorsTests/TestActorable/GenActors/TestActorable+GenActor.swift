@@ -97,8 +97,8 @@ extension TestActorable {
  
                 case .greetReplyToReturnStrictThrowing(let name, let _replyTo):
                     do {
-                    let result = try instance.greetReplyToReturnStrictThrowing(name: name)
-                    _replyTo.tell(.success(result))
+                        let result = try instance.greetReplyToReturnStrictThrowing(name: name)
+                        _replyTo.tell(.success(result))
                     } catch {
                         context.log.warning("Error thrown while handling [\(message)], error: \(error)")
                         _replyTo.tell(.failure(ErrorEnvelope(error)))
@@ -117,7 +117,8 @@ extension TestActorable {
                             case .failure(let error):
                                 _replyTo.tell(.failure(ErrorEnvelope(error)))
                             }
-                        } 
+                        }
+ 
                 case .becomeStopped:
                     return /*become*/ instance.becomeStopped()
  

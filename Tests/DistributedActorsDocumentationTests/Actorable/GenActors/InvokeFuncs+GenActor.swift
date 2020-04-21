@@ -66,7 +66,8 @@ extension InvokeFuncs {
                             case .failure(let error):
                                 _replyTo.tell(.failure(ErrorEnvelope(error)))
                             }
-                        } 
+                        }
+ 
                 case .internalTask(let _replyTo):
                     let result = instance.internalTask()
                     _replyTo.tell(result)

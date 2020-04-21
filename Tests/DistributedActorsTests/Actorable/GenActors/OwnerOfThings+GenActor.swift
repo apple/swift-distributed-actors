@@ -60,7 +60,8 @@ extension OwnerOfThings {
                             case .failure(let error):
                                 _replyTo.tell(.failure(ErrorEnvelope(error)))
                             }
-                        } 
+                        }
+ 
                 case .performAskLookup(let _replyTo):
                     instance.performAskLookup()
                         ._onComplete { res in
@@ -70,7 +71,8 @@ extension OwnerOfThings {
                             case .failure(let error):
                                 _replyTo.tell(.failure(ErrorEnvelope(error)))
                             }
-                        } 
+                        }
+ 
                 case .performSubscribe(let p):
                     instance.performSubscribe(p: p)
  
