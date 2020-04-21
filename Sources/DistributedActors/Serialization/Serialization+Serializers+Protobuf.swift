@@ -38,14 +38,7 @@ open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Messag
     }
 
     open override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
-        let data: Data
-        switch buffer {
-        case .data(let d):
-            data = d
-        case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
-        }
-        let proto = try ProtobufMessage(serializedData: data)
+        let proto = try ProtobufMessage(serializedData: buffer.readData())
         return try self.fromProto(proto, context: self.serializationContext)
     }
 

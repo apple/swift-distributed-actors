@@ -23,28 +23,14 @@ import Foundation // for Codable
 // TODO: once we can abstract over Coders all these could go away most likely (and accept a generic TopLevelCoder)
 extension Decodable {
     static func _decode(from buffer: Serialization.Buffer, using decoder: JSONDecoder) throws -> Self {
-        let data: Data
-        switch buffer {
-        case .data(let d):
-            data = d
-        case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
-        }
-        return try decoder.decode(Self.self, from: data)
+        try decoder.decode(Self.self, from: buffer.readData())
     }
 }
 
 extension Decodable {
     static func _decode(from buffer: Serialization.Buffer, using decoder: PropertyListDecoder, format _format: PropertyListSerialization.PropertyListFormat) throws -> Self {
-        let data: Data
-        switch buffer {
-        case .data(let d):
-            data = d
-        case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
-        }
         var format = _format
-        return try decoder.decode(Self.self, from: data, format: &format)
+        return try decoder.decode(Self.self, from: buffer.readData(), format: &format)
     }
 }
 

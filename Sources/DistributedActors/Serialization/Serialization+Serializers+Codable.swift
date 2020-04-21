@@ -38,14 +38,7 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
     }
 
     public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
-        let data: Data
-        switch buffer {
-        case .data(let d):
-            data = d
-        case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
-        }
-        return try self.decoder.decode(Message.self, from: data)
+        try self.decoder.decode(Message.self, from: buffer.readData())
     }
 
     public override func setSerializationContext(_ context: Serialization.Context) {
@@ -91,15 +84,8 @@ internal class PropertyListCodableSerializer<Message: Codable>: Serializer<Messa
 
     public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
         var format = self.format
-        let data: Data
-        switch buffer {
-        case .data(let d):
-            data = d
-        case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
-        }
         // FIXME: validate format = self.format?
-        return try self.decoder.decode(Message.self, from: data, format: &format)
+        return try self.decoder.decode(Message.self, from: buffer.readData(), format: &format)
     }
 
     public override func setSerializationContext(_ context: Serialization.Context) {

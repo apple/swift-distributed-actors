@@ -50,13 +50,7 @@ extension ProtoEnvelope {
             self.manifest.hint = hint
         }
         self.manifest.serializerID = envelope.manifest.serializerID.value
-
-        switch envelope.payload {
-        case .data(let data):
-            self.payload = data
-        case .nioByteBuffer(var buffer):
-            self.payload = buffer.readData(length: buffer.readableBytes)! // !-safe because we read exactly the number of readable bytes
-        }
+        self.payload = envelope.payload.readData()
     }
 }
 

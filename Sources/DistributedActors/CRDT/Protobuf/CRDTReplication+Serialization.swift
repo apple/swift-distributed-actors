@@ -337,12 +337,7 @@ extension ProtoCRDTEnvelope {
         let serialized = try context.serialization.serialize(crdt)
         var proto = ProtoCRDTEnvelope()
         proto.manifest = try serialized.manifest.toProto(context: context)
-        switch serialized.buffer {
-        case .data(let data):
-            proto.payload = data
-        case .nioByteBuffer(var buffer):
-            proto.payload = buffer.readData(length: buffer.readableBytes)! // !-safe, since we definitely read a safe amount of data here
-        }
+        proto.payload = serialized.buffer.readData()
         return proto
     }
 }

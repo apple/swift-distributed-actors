@@ -123,12 +123,7 @@ private extension Dictionary where Key == VersionDot, Value: Codable & Hashable 
 
             let serialized = try context.system.serialization.serialize(element)
             envelope.manifest = try serialized.manifest.toProto(context: context)
-            switch serialized.buffer {
-            case .data(let data):
-                envelope.payload = data
-            case .nioByteBuffer(var buffer):
-                envelope.payload = buffer.readData(length: buffer.readableBytes)! // !-safe because we read exactly the number of readable bytes
-            }
+            envelope.payload = serialized.buffer.readData()
             envelopes.append(envelope)
         }
 

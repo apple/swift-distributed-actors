@@ -118,14 +118,7 @@ extension InternalProtobufRepresentable {
 
 extension InternalProtobufRepresentable where Self: ActorMessage {
     init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
-        let data: Data
-        switch buffer {
-        case .data(let d):
-            data = d
-        case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
-        }
-        let proto = try ProtobufRepresentation(serializedData: data)
+        let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
 
@@ -136,14 +129,7 @@ extension InternalProtobufRepresentable where Self: ActorMessage {
 
 extension ProtobufRepresentable where Self: ActorMessage {
     public init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
-        let data: Data
-        switch buffer {
-        case .data(let d):
-            data = d
-        case .nioByteBuffer(var buffer):
-            data = buffer.readData(length: buffer.readableBytes)! // safe since using readableBytes
-        }
-        let proto = try ProtobufRepresentation(serializedData: data)
+        let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
 

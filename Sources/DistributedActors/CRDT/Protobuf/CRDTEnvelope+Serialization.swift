@@ -42,12 +42,7 @@ extension CRDT.Envelope: InternalProtobufRepresentable {
         var proto = ProtoCRDTEnvelope()
         let serialized = try context.serialization.serialize(self.data)
         proto.manifest = try serialized.manifest.toProto(context: context)
-        switch serialized.buffer {
-        case .data(let data):
-            proto.payload = data
-        case .nioByteBuffer(var buffer):
-            proto.payload = buffer.readData(length: buffer.readableBytes)! // !-safe, since we know exactly how many bytes to read here
-        }
+        proto.payload = serialized.buffer.readData()
         return proto
     }
 

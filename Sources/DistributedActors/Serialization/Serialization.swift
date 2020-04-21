@@ -352,12 +352,23 @@ extension Serialization {
         case data(Data)
         case nioByteBuffer(ByteBuffer)
 
+        /// Number of bytes available in buffer
         public var count: Int {
             switch self {
             case .data(let data):
                 return data.count
             case .nioByteBuffer(let buffer):
                 return buffer.readableBytes
+            }
+        }
+
+        /// Convert the buffer to `Data`, this will copy in case the underlying buffer is a `ByteBuffer`
+        public func readData() -> Data {
+            switch self {
+            case .data(let data):
+                return data
+            case .nioByteBuffer(var buffer):
+                return buffer.readData(length: buffer.readableBytes)! // ! safe since reading readableBytes
             }
         }
     }
