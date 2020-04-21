@@ -134,12 +134,10 @@ extension Serialization.Settings {
         let serializerID: SerializerID
         if let overrideSerializerID = overrideSerializerID {
             serializerID = overrideSerializerID
+        } else if let serializationRepresentableType = Message.self as? SerializationRepresentable.Type {
+            serializerID = serializationRepresentableType.defaultSerializerID ?? self.defaultSerializerID
         } else {
-            if let serializationRepresentableType = Message.self as? SerializationRepresentable.Type {
-                serializerID = serializationRepresentableType.defaultSerializerID ?? self.defaultSerializerID
-            } else {
-                serializerID = self.defaultSerializerID
-            }
+            serializerID = self.defaultSerializerID
         }
 
         let manifest = Manifest(serializerID: serializerID, hint: hint)
