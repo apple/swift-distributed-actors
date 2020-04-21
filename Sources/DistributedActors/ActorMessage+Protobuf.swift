@@ -123,23 +123,23 @@ extension InternalProtobufRepresentable {
 // MARK: Codable -- ProtobufRepresentable --> Protocol Buffers
 
 extension InternalProtobufRepresentable where Self: ActorMessage {
-    init(context: Serialization.Context, from buffer: inout NIO.ByteBuffer, using manifest: Serialization.Manifest) throws {
-        let proto = try ProtobufRepresentation(buffer: &buffer)
+    init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
+        let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
 
-    func serialize(context: Serialization.Context, to buffer: inout NIO.ByteBuffer) throws {
-        try self.toProto(context: context).writeSerializedBytes(to: &buffer)
+    func serialize(context: Serialization.Context) throws -> Serialization.Buffer {
+        try .data(self.toProto(context: context).serializedData())
     }
 }
 
 extension ProtobufRepresentable where Self: ActorMessage {
-    public init(context: Serialization.Context, from buffer: inout NIO.ByteBuffer, using manifest: Serialization.Manifest) throws {
-        let proto = try ProtobufRepresentation(buffer: &buffer)
+    public init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
+        let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
     }
 
-    public func serialize(context: Serialization.Context, to buffer: inout NIO.ByteBuffer) throws {
-        try self.toProto(context: context).writeSerializedBytes(to: &buffer)
+    public func serialize(context: Serialization.Context) throws -> Serialization.Buffer {
+        try .data(self.toProto(context: context).serializedData())
     }
 }

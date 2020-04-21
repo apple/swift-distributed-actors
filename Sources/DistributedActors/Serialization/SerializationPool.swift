@@ -69,19 +69,19 @@ public final class SerializationPool {
     internal func serialize(
         message: Any,
         recipientPath: ActorPath,
-        promise: EventLoopPromise<(Serialization.Manifest, ByteBuffer)>
+        promise: EventLoopPromise<Serialization.Serialized>
     ) {
         // TODO: also record thr delay between submitting and starting serialization work here?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
             do {
                 self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipientPath, message: message)
-                let (manifest, bytes) = try self.serialization.serialize(message)
+                let serialized = try self.serialization.serialize(message)
 
                 // TODO: collapse those two and only use the instrumentation points, also for metrics
-                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: bytes.readableBytes)
-                self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, bytes.readableBytes)
+                self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: serialized.buffer.count)
+                self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.buffer.count)
 
-                return (manifest, bytes)
+                return serialized
             } catch {
                 self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: 0)
                 throw error
@@ -92,7 +92,7 @@ public final class SerializationPool {
     /// Note: The `Message` type MAY be `Never` in which case it is assumed that the message was intended for an already dead actor and the deserialized message is returned as such.
     @inlinable
     internal func deserializeAny(
-        from _bytes: ByteBuffer,
+        from buffer: Serialization.Buffer,
         using manifest: Serialization.Manifest,
         recipientPath: ActorPath,
         // The only reason we use a wrapper instead of raw function is that (...) -> () do not have identity,
@@ -101,12 +101,11 @@ public final class SerializationPool {
     ) {
         self.enqueue(recipientPath: recipientPath, onComplete: { callback.call($0) }, workerPool: self.deserializationWorkerPool) {
             do {
-                var bytes = _bytes
-                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, bytes.readableBytes)
-                self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: bytes.readableBytes)
+                self.serialization.metrics.recordSerializationMessageInbound(recipientPath, buffer.count)
+                self.instrumentation.remoteActorMessageDeserializeStart(id: callback, recipient: recipientPath, bytes: buffer.count)
 
                 // do the work, this may be "heavy"
-                let deserialized = try self.serialization.deserializeAny(from: &bytes, using: manifest)
+                let deserialized = try self.serialization.deserializeAny(from: buffer, using: manifest)
 
                 self.instrumentation.remoteActorMessageDeserializeEnd(id: callback, message: deserialized)
                 return .message(deserialized)

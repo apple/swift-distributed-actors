@@ -30,19 +30,25 @@ public enum XPCSerialization {
     // MARK: Serialize
 
     public static func serializeActorMessage<Message>(_ system: ActorSystem, message: Message) throws -> xpc_object_t {
-        let (manifest, buf) = try system.serialization.serialize(message)
+        let serialized = try system.serialization.serialize(message)
 
         // TODO: mark that this invocation will be over XPC somehow; serializer.setSerializationContext(<#T##context: Serialization.Context##Serialization.Context#>)
 
         // TODO: serialize the Envelope
         let xdict: xpc_object_t = xpc_dictionary_create(nil, nil, 0)
         // xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.manifestHint.rawValue, manifest.hint ?? "") // FIXME: handle manifests
-        xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(manifest.serializerID.value))
+        xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(serialized.manifest.serializerID.value))
 
-        buf.withUnsafeReadableBytes { bytes in
-            if let baseAddress = bytes.baseAddress {
-                xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue, UInt64(buf.readableBytes))
-                xpc_dictionary_set_data(xdict, ActorableXPCMessageField.message.rawValue, baseAddress, buf.readableBytes)
+        switch serialized.buffer {
+        case .data(let data):
+            // FIXME: https://github.com/apple/swift-distributed-actors/issues/536
+            fatalError("not implmented")
+        case .nioByteBuffer(let buffer):
+            buffer.withUnsafeReadableBytes { bytes in
+                if let baseAddress = bytes.baseAddress {
+                    xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue, UInt64(buffer.readableBytes))
+                    xpc_dictionary_set_data(xdict, ActorableXPCMessageField.message.rawValue, baseAddress, buffer.readableBytes)
+                }
             }
         }
 
@@ -55,11 +61,18 @@ public enum XPCSerialization {
         address.node?.node.protocol = "xpc"
         try! _file.append("[sending] [TO: \(address)]\n")
 
-        let (_, buf) = try system.serialization.serialize(address)
-        buf.withUnsafeReadableBytes { bytes in
-            if let baseAddress = bytes.baseAddress {
-                // FIXME: what about manifest?
-                xpc_dictionary_set_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, baseAddress, buf.readableBytes)
+        let serialized = try system.serialization.serialize(address)
+
+        switch serialized.buffer {
+        case .data(let data):
+            // FIXME: https://github.com/apple/swift-distributed-actors/issues/536
+            fatalError("not implmented")
+        case .nioByteBuffer(let buffer):
+            buffer.withUnsafeReadableBytes { bytes in
+                if let baseAddress = bytes.baseAddress {
+                    // FIXME: what about manifest?
+                    xpc_dictionary_set_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, baseAddress, buffer.readableBytes)
+                }
             }
         }
     }
@@ -115,18 +128,18 @@ public enum XPCSerialization {
 
         let serialization: Serialization = system.serialization
 
-        var buf = serialization.allocator.buffer(capacity: 0)
-        buf.writeBytes(rawDataBufferPointer)
+        var buffer = serialization.allocator.buffer(capacity: 0)
+        buffer.writeBytes(rawDataBufferPointer)
 
         do {
             let manifest: Serialization.Manifest = .init(serializerID: Serialization.SerializerID.foundationJSON, hint: "???")
-            let address = try serialization.deserialize(as: ActorAddress.self, from: &buf, using: manifest)
+            let address = try serialization.deserialize(as: ActorAddress.self, from: .nioByteBuffer(buffer), using: manifest)
             try! _file.append("\(#function) trying to resolve: \(address)")
             return system._resolveUntyped(context: ResolveContext(address: address, system: system))
         } catch {
             // TODO: only nowadays since we know its JSON
             try! _file.append("error: \(error)")
-            throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no recipient>", error: error)
+            throw XPCSerializationError.decodingError(payload: buffer.getString(at: 0, length: buffer.readableBytes) ?? "<no recipient>", error: error)
         }
     }
 }

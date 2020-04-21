@@ -32,20 +32,13 @@ open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Messag
         return context
     }
 
-    let allocator: ByteBufferAllocator
-
-    init(allocator: ByteBufferAllocator) {
-        self.allocator = allocator
-    }
-
-    open override func serialize(_ message: Message) throws -> ByteBuffer {
+    open override func serialize(_ message: Message) throws -> Serialization.Buffer {
         let proto = try self.toProto(message, context: self.serializationContext)
-        return try proto.serializedByteBuffer(allocator: self.allocator)
+        return .data(try proto.serializedData())
     }
 
-    open override func deserialize(from bytes: ByteBuffer) throws -> Message {
-        var bytes = bytes
-        let proto = try ProtobufMessage(buffer: &bytes)
+    open override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
+        let proto = try ProtobufMessage(serializedData: buffer.readData())
         return try self.fromProto(proto, context: self.serializationContext)
     }
 

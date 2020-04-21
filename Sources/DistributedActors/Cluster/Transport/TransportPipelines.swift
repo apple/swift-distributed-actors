@@ -229,9 +229,10 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
         var bytes = self.unwrapInboundIn(data)
 
         do {
-            let protoEnvelope = try ProtoEnvelope(buffer: &bytes)
+            let data = bytes.readData(length: bytes.readableBytes)! // safe since using readableBytes
+            let protoEnvelope = try ProtoEnvelope(serializedData: data)
             bytes.discardReadBytes()
-            let envelope = try Wire.Envelope(protoEnvelope, allocator: context.channel.allocator)
+            let envelope = try Wire.Envelope(protoEnvelope)
             context.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {
             context.fireErrorCaught(error)
@@ -259,7 +260,7 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
     }
 
     private func serializeThenWrite(_ context: ChannelHandlerContext, envelope transportEnvelope: TransportEnvelope, promise: EventLoopPromise<Void>?) {
-        let serializationPromise: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = context.eventLoop.makePromise()
+        let serializationPromise: EventLoopPromise<Serialization.Serialized> = context.eventLoop.makePromise()
 
         self.serializationPool.serialize(
             message: transportEnvelope.underlyingMessage,
@@ -269,12 +270,12 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
 
         serializationPromise.futureResult.whenComplete {
             switch $0 {
-            case .success((let manifest, let bytes)):
+            case .success(let serialized):
                 // force unwrapping here is safe because we read exactly the amount of readable bytes
                 let wireEnvelope = Wire.Envelope(
                     recipient: transportEnvelope.recipient,
-                    payload: bytes,
-                    manifest: manifest
+                    payload: serialized.buffer,
+                    manifest: serialized.manifest
                 )
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
 

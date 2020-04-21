@@ -78,8 +78,8 @@ private func tearDown() {
 var protoSmallMessage = ProtoSmallMessage()
 
 func bench_protobuf_roundTrip_message_small(n: Int) {
-    var (manifest, bytes) = try! system.serialization.serialize(protoSmallMessage)
-    _ = try! system.serialization.deserialize(as: ProtoSmallMessage.self, from: &bytes, using: manifest)
+    let serialized = try! system.serialization.serialize(protoSmallMessage)
+    _ = try! system.serialization.deserialize(as: ProtoSmallMessage.self, from: serialized)
 }
 
 // -------
@@ -87,6 +87,6 @@ func bench_protobuf_roundTrip_message_small(n: Int) {
 var protoMediumMessage = ProtoMediumMessage()
 
 func bench_protobuf_roundTrip_message_medium(n: Int) {
-    var (manifest, bytes) = try! system.serialization.serialize(protoMediumMessage)
-    _ = try! system.serialization.deserialize(as: ProtoMediumMessage.self, from: &bytes, using: manifest)
+    let serialized = try! system.serialization.serialize(protoMediumMessage)
+    _ = try! system.serialization.deserialize(as: ProtoMediumMessage.self, from: serialized)
 }

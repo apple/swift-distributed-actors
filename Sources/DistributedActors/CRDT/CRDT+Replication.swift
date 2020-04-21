@@ -228,16 +228,16 @@ extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
 }
 
 extension CRDT.Replicator.Message {
-    init(context: Serialization.Context, from buffer: inout ByteBuffer, using manifest: Serialization.Manifest) throws {
-        self = .remoteCommand(try CRDT.Replicator.RemoteCommand(context: context, from: &buffer, using: manifest))
+    init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
+        self = .remoteCommand(try CRDT.Replicator.RemoteCommand(context: context, from: buffer, using: manifest))
     }
 
-    func serialize(context: Serialization.Context, to buffer: inout ByteBuffer) throws {
+    func serialize(context: Serialization.Context) throws -> Serialization.Buffer {
         switch self {
         case .localCommand:
             return fatalErrorBacktrace("Attempted to serialize message: \(Self.self)! This should never happen.")
         case .remoteCommand(let remoteCommand):
-            try remoteCommand.serialize(context: context, to: &buffer)
+            return try remoteCommand.serialize(context: context)
         }
     }
 }

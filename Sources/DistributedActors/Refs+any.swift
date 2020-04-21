@@ -103,7 +103,7 @@ extension AddressableActorRef: _ReceivesSystemMessages {
     }
 
     public func _deserializeDeliver(
-        _ messageBytes: ByteBuffer, using manifest: Serialization.Manifest,
+        _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,
         on pool: SerializationPool,
         file: String = #file, line: UInt = #line
     ) {

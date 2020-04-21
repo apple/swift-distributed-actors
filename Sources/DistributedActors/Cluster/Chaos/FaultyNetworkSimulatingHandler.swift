@@ -131,8 +131,8 @@ internal final class TransportToWireInboundHandler: ChannelInboundHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let transportEnvelope = self.unwrapInboundIn(data)
 
-        let (manifest, buffer) = try! self.system.serialization.serialize(transportEnvelope.underlyingMessage)
-        let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, payload: buffer, manifest: manifest)
+        let serialized = try! self.system.serialization.serialize(transportEnvelope.underlyingMessage)
+        let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, payload: serialized.buffer, manifest: serialized.manifest)
 
         context.fireChannelRead(self.wrapInboundOut(wireEnvelope))
     }

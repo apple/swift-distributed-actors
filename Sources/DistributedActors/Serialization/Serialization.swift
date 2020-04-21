@@ -302,7 +302,7 @@ extension Serialization {
             return serializer
 
         case Serialization.SerializerID.foundationJSON:
-            let serializer = JSONCodableSerializer<Message>(allocator: self.allocator)
+            let serializer = JSONCodableSerializer<Message>()
             serializer.setSerializationContext(self.context)
             return serializer
 
@@ -318,10 +318,7 @@ extension Serialization {
                 fatalError("Unable to make PropertyList serializer for serializerID: \(manifest.serializerID); type: \(String(reflecting: Message.self))")
             }
 
-            let serializer = PropertyListCodableSerializer<Message>(
-                allocator: self.allocator,
-                format: format
-            )
+            let serializer = PropertyListCodableSerializer<Message>(format: format)
             serializer.setSerializationContext(self.context)
             return serializer
 
@@ -340,16 +337,52 @@ extension Serialization {
 
 // TODO: shall we make those return something async-capable, or is our assumption that we invoke these in the serialization pools enough at least until proven wrong?
 extension Serialization {
+    /// Container for serializatoin output.
+    ///
+    /// Describing what serializer was used to serialize the value, and its serialized bytes
+    public struct Serialized {
+        public let manifest: Serialization.Manifest
+        public let buffer: Serialization.Buffer
+    }
+
+    /// Abstraction of bytes containers.
+    ///
+    /// Designed to minimize allocation and copies when switching between different byte container types.
+    public enum Buffer {
+        case data(Data)
+        case nioByteBuffer(ByteBuffer)
+
+        /// Number of bytes available in buffer
+        public var count: Int {
+            switch self {
+            case .data(let data):
+                return data.count
+            case .nioByteBuffer(let buffer):
+                return buffer.readableBytes
+            }
+        }
+
+        /// Convert the buffer to `Data`, this will copy in case the underlying buffer is a `ByteBuffer`
+        public func readData() -> Data {
+            switch self {
+            case .data(let data):
+                return data
+            case .nioByteBuffer(var buffer):
+                return buffer.readData(length: buffer.readableBytes)! // ! safe since reading readableBytes
+            }
+        }
+    }
+
     /// Generate `Serialization.Manifest` and serialize the passed in message.
     ///
     /// - Parameter message: The message intended to be serialized. Existence of an apropriate serializer should be ensured before calling this method.
-    /// - Returns: Manifest (describing what serializer was used to serialize the value), and its serialized bytes
+    /// - Returns: `Serialized` describing what serializer was used to serialize the value, and its serialized bytes
     /// - Throws: If no manifest could be created for the value, or a manifest was created however it selected
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
     public func serialize<Message>( // TODO: can we require Codable here?
         _ message: Message,
         file: String = #file, line: UInt = #line
-    ) throws -> (Serialization.Manifest, ByteBuffer) {
+    ) throws -> Serialized {
         do {
             // Implementation notes: It is tremendously important to use the `messageType` for all type identification
             // purposes. DO NOT use `Message.self` as it yields not the "expected" types when a specific T is passed in
@@ -372,7 +405,7 @@ extension Serialization {
 
             traceLog_Serialization("serialize(\(message), manifest: \(manifest))")
 
-            let result: NIO.ByteBuffer
+            let result: Serialization.Buffer
             if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let serializer = makeSpecializedSerializer(self.allocator)
                 serializer.setSerializationContext(self.context)
@@ -398,19 +431,19 @@ extension Serialization {
                 case .foundationJSON:
                     let encoder = JSONEncoder()
                     encoder.userInfo[.actorSerializationContext] = self.context
-                    result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
+                    result = .data(try encodableMessage._encode(using: encoder))
 
                 case .foundationPropertyListBinary:
                     let encoder = PropertyListEncoder()
                     encoder.outputFormat = .binary
                     encoder.userInfo[.actorSerializationContext] = self.context
-                    result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
+                    result = .data(try encodableMessage._encode(using: encoder))
 
                 case .foundationPropertyListXML:
                     let encoder = PropertyListEncoder()
                     encoder.outputFormat = .xml
                     encoder.userInfo[.actorSerializationContext] = self.context
-                    result = try encodableMessage._encode(using: encoder, allocator: self.allocator)
+                    result = .data(try encodableMessage._encode(using: encoder))
 
                 case let otherSerializerID:
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(messageType), manifest: \(manifest)")
@@ -428,7 +461,7 @@ extension Serialization {
                 result = try serializer.trySerialize(message)
             }
 
-            return (manifest, result)
+            return Serialized(manifest: manifest, buffer: result)
         } catch {
             // enrich with location of the failed serialization
             throw SerializationError.serializationError(error, file: file, line: line)
@@ -438,20 +471,32 @@ extension Serialization {
     /// Deserialize a given payload as the expected type, using the passed type and manifest.
     ///
     /// - Parameters:
-    ///   - type: expected type that the deserialized message should be
-    ///   - bytes: containing the serialized bytes of the message
-    ///   - manifest: used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
+    ///   - as: expected type that the deserialized message should be
+    ///   - from: `Serialized` containing the manifest used to identify which serializer should be used to deserialize the bytes and the serialized bytes of the message
     public func deserialize<T>(
-        as messageType: T.Type, from bytes: inout ByteBuffer, using manifest: Serialization.Manifest,
+        as messageType: T.Type, from serialized: Serialized,
+        file: String = #file, line: UInt = #line
+    ) throws -> T {
+        try self.deserialize(as: messageType, from: serialized.buffer, using: serialized.manifest, file: file, line: line)
+    }
+
+    /// Deserialize a given payload as the expected type, using the passed type and manifest.
+    ///
+    /// - Parameters:
+    ///   - as: expected type that the deserialized message should be
+    ///   - from: `Buffer` containing the serialized bytes of the message
+    ///   - using: `Manifest` used to identify which serializer should be used to deserialize the bytes (json? protobuf? other?)
+    public func deserialize<T>(
+        as messageType: T.Type, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line
     ) throws -> T {
         guard messageType != Any.self else {
             // most likely deadLetters is trying to deserialize (!), and it only has an `Any` in hand.
             // let's use the manifest to invoke the right serializer, however
-            return fatalErrorBacktrace("ATTEMPT TO DESERIALIZE FROM DEAD LETTERS? payload: \(bytes)")
+            return fatalErrorBacktrace("ATTEMPT TO DESERIALIZE FROM DEAD LETTERS? payload: \(buffer)")
         }
 
-        let deserializedAny = try self.deserializeAny(from: &bytes, using: manifest, file: file, line: line)
+        let deserializedAny = try self.deserializeAny(from: buffer, using: manifest, file: file, line: line)
         if let deserialized = deserializedAny as? T {
             return deserialized
         } else {
@@ -475,10 +520,10 @@ extension Serialization {
     /// is to carry it as an `Any` inside a `DeadLetter` notification.
     ///
     /// - Parameters:
-    ///   - bytes: containing the serialized bytes of the message
-    ///   - manifest: used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
+    ///   - from: `Buffer` containing the serialized bytes of the message
+    ///   - using: `Manifest` used identify the decoder as well as summon the Type of the message. The resulting message is NOT cast to the summoned type.
     public func deserializeAny(
-        from bytes: inout ByteBuffer, using manifest: Serialization.Manifest,
+        from buffer: Serialization.Buffer, using manifest: Serialization.Manifest,
         file: String = #file, line: UInt = #line
     ) throws -> Any {
         do {
@@ -492,7 +537,7 @@ extension Serialization {
             if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let specializedSerializer = makeSpecializedSerializer(self.allocator)
                 specializedSerializer.setSerializationContext(self.context)
-                result = try specializedSerializer.tryDeserialize(bytes)
+                result = try specializedSerializer.tryDeserialize(buffer)
             } else if let decodableMessageType = manifestMessageType as? Decodable.Type {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().decode()"
                 switch manifest.serializerID {
@@ -509,21 +554,21 @@ extension Serialization {
                 case .protobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
-                    result = try decodableMessageType._decode(from: &bytes, using: decoder)
+                    result = try decodableMessageType._decode(from: buffer, using: decoder)
 
                 case .foundationJSON:
                     let decoder = JSONDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
-                    result = try decodableMessageType._decode(from: &bytes, using: decoder)
+                    result = try decodableMessageType._decode(from: buffer, using: decoder)
 
                 case .foundationPropertyListBinary:
                     let decoder = PropertyListDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
-                    result = try decodableMessageType._decode(from: &bytes, using: decoder, format: .binary)
+                    result = try decodableMessageType._decode(from: buffer, using: decoder, format: .binary)
                 case .foundationPropertyListXML:
                     let decoder = PropertyListDecoder()
                     decoder.userInfo[.actorSerializationContext] = self.context
-                    result = try decodableMessageType._decode(from: &bytes, using: decoder, format: .xml)
+                    result = try decodableMessageType._decode(from: buffer, using: decoder, format: .xml)
 
                 case let otherSerializerID:
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(manifestMessageType), manifest: \(manifest)")
@@ -537,7 +582,7 @@ extension Serialization {
                     throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Manifest Type: \(manifestMessageType), id: \(messageTypeID), known serializers: \(self._serializers)")
                 }
 
-                result = try serializer.tryDeserialize(bytes)
+                result = try serializer.tryDeserialize(buffer)
             }
 
             return result
@@ -555,14 +600,14 @@ extension Serialization {
         case is NonTransportableActorMessage:
             return // skip
         default:
-            var (manifest, bytes) = try self.serialize(message)
+            let serialized = try self.serialize(message)
             do {
-                _ = try self.deserialize(as: Message.self, from: &bytes, using: manifest)
+                _ = try self.deserialize(as: Message.self, from: serialized)
                 self.log.debug("Serialization verification passed for: [\(type(of: message as Any))]")
                 // checking if the deserialized is equal to the passed in is a bit tricky,
                 // so we only check if the round trip invocation was possible at all or not.
             } catch {
-                throw SerializationError.unableToDeserialize(hint: "verifySerializable failed, manifest: \(manifest), message: \(message), error: \(error)")
+                throw SerializationError.unableToDeserialize(hint: "verifySerializable failed, manifest: \(serialized.manifest), message: \(message), error: \(error)")
             }
         }
     }

@@ -334,10 +334,10 @@ extension CRDT.Replicator.RemoteCommand.DeleteResult: InternalProtobufRepresenta
 extension ProtoCRDTEnvelope {
     /// Not an init to make it explicit that we perform serialization here.
     public static func serialize(_ context: Serialization.Context, crdt: StateBasedCRDT) throws -> ProtoCRDTEnvelope {
-        var (manifest, bytes) = try context.serialization.serialize(crdt)
+        let serialized = try context.serialization.serialize(crdt)
         var proto = ProtoCRDTEnvelope()
-        proto.manifest = try manifest.toProto(context: context)
-        proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe, since we definitely read a safe amount of data here
+        proto.manifest = try serialized.manifest.toProto(context: context)
+        proto.payload = serialized.buffer.readData()
         return proto
     }
 }
