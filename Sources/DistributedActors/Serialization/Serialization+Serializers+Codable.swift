@@ -23,31 +23,22 @@ import Foundation // for Codable
 ///   use the same encoding/decoding mechanism for a specific message.
 // TODO: would be nice to be able to abstract over the coders (using TopLevelDecoder-like types) then rename this to `AnyCodableSerializer`
 internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
-    internal let allocate: ByteBufferAllocator
     internal var encoder: JSONEncoder
     internal var decoder: JSONDecoder
 
-    public init(allocator: ByteBufferAllocator, encoder: JSONEncoder = .init(), decoder: JSONDecoder = .init()) {
-        self.allocate = allocator
+    public init(encoder: JSONEncoder = .init(), decoder: JSONDecoder = .init()) {
         self.encoder = encoder
         self.decoder = decoder
     }
 
-    public override func serialize(_ message: Message) throws -> ByteBuffer {
+    public override func serialize(_ message: Message) throws -> Serialization.Buffer {
         let data = try encoder.encode(message)
-        var bytes = self.allocate.buffer(capacity: data.count)
-        bytes.writeBytes(data)
-
         traceLog_Serialization("serialized to: \(data)")
-        return bytes
+        return .data(data)
     }
 
-    public override func deserialize(from bytes: ByteBuffer) throws -> Message {
-        guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-            throw SerializationError.unableToDeserialize(hint: "Could not read data! Was: \(bytes), trying to deserialize: \(Message.self)")
-        }
-
-        return try self.decoder.decode(Message.self, from: data)
+    public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
+        try self.decoder.decode(Message.self, from: buffer.readData())
     }
 
     public override func setSerializationContext(_ context: Serialization.Context) {
@@ -68,42 +59,33 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
 ///   use the same encoding/decoding mechanism for a specific message.
 // TODO: would be nice to be able to abstract over the coders (using TopLevelDecoder-like types) then rename this to `AnyCodableSerializer`
 internal class PropertyListCodableSerializer<Message: Codable>: Serializer<Message> {
-    internal let allocate: ByteBufferAllocator
     internal let encoder: PropertyListEncoder
     internal let decoder: PropertyListDecoder
     internal let format: PropertyListSerialization.PropertyListFormat
 
-    public init(allocator: ByteBufferAllocator, format: PropertyListSerialization.PropertyListFormat) {
-        self.allocate = allocator
+    public init(format: PropertyListSerialization.PropertyListFormat) {
         self.format = format
         self.encoder = PropertyListEncoder()
         self.encoder.outputFormat = format
         self.decoder = PropertyListDecoder()
     }
 
-    public init(allocator: ByteBufferAllocator, encoder: PropertyListEncoder = .init(), decoder: PropertyListDecoder = .init()) {
-        self.allocate = allocator
+    public init(encoder: PropertyListEncoder = .init(), decoder: PropertyListDecoder = .init()) {
         self.encoder = encoder
         self.format = encoder.outputFormat
         self.decoder = decoder
     }
 
-    public override func serialize(_ message: Message) throws -> ByteBuffer {
+    public override func serialize(_ message: Message) throws -> Serialization.Buffer {
         let data = try encoder.encode(message)
-        var bytes = self.allocate.buffer(capacity: data.count)
-        bytes.writeBytes(data)
-
         traceLog_Serialization("serialized to: \(data)")
-        return bytes
+        return .data(data)
     }
 
-    public override func deserialize(from bytes: ByteBuffer) throws -> Message {
-        guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-            throw SerializationError.unableToDeserialize(hint: "Could not read data! Was: \(bytes), trying to deserialize: \(Message.self)")
-        }
-
+    public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
         var format = self.format
-        return try self.decoder.decode(Message.self, from: data, format: &format)
+        // FIXME: validate format = self.format?
+        return try self.decoder.decode(Message.self, from: buffer.readData(), format: &format)
     }
 
     public override func setSerializationContext(_ context: Serialization.Context) {

@@ -25,7 +25,7 @@ import NIOFoundationCompat
 class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     let allocator: ByteBufferAllocator
 
-    var result: ByteBuffer?
+    var result: Serialization.Buffer?
 
     init(allocator: ByteBufferAllocator) {
         self.allocator = allocator
@@ -37,7 +37,7 @@ class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
 
     var userInfo: [CodingUserInfoKey: Any] = [:]
 
-    func encode<T>(_ value: T) throws -> ByteBuffer where T: Encodable {
+    func encode<T>(_ value: T) throws -> Serialization.Buffer where T: Encodable {
         var container = self.singleValueContainer()
         try container.encode(value)
         guard let result = self.result else {
@@ -51,9 +51,7 @@ class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
             throw SerializationError.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)")
         }
 
-        var result = self.allocator.buffer(capacity: data.count)
-        result.writeBytes(data)
-        self.result = result
+        self.result = .data(data)
     }
 
     func store(buffer: ByteBuffer) throws {
@@ -61,7 +59,7 @@ class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
             throw SerializationError.unableToSerialize(hint: "Already encoded a single value, yet attempted to store another in \(Self.self)")
         }
 
-        self.result = buffer
+        self.result = .nioByteBuffer(buffer)
     }
 
     func store(bytes: [UInt8]) throws {
@@ -71,7 +69,7 @@ class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
 
         var result = self.allocator.buffer(capacity: bytes.count)
         result.writeBytes(bytes)
-        self.result = result
+        self.result = .nioByteBuffer(result)
     }
 
     func container<Key>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> where Key: CodingKey {
@@ -181,7 +179,7 @@ class TopLevelProtobufBlobDecoder: _TopLevelBlobDecoder {
     private(set) var codingPath: [CodingKey] = []
     var userInfo: [CodingUserInfoKey: Any] = [:]
 
-    var bytes: ByteBuffer?
+    var buffer: Serialization.Buffer?
 
     func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> where Key: CodingKey {
         fatalError("container(keyedBy:) has not been implemented")
@@ -198,8 +196,8 @@ class TopLevelProtobufBlobDecoder: _TopLevelBlobDecoder {
         TopLevelProtobufBlobSingleValueDecodingContainer(superEncoder: self)
     }
 
-    func decode<T>(_ type: T.Type, from bytes: ByteBuffer) throws -> T where T: Decodable {
-        self.bytes = bytes
+    func decode<T>(_ type: T.Type, from buffer: Serialization.Buffer) throws -> T where T: Decodable {
+        self.buffer = buffer
 
         if let P = type as? AnyProtobufRepresentable.Type {
             return try P.init(from: self) as! T // explicit .init() is required here (!)
@@ -221,18 +219,16 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
     }
 
     func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
-        guard let bytes = self.superEncoder.bytes else {
+        guard let buffer = self.superEncoder.buffer else {
             fatalError("Super encoder has no bytes...!")
         }
 
-        if type is Data.Type {
-            guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-                throw SerializationError.unableToDeserialize(hint: "Could not read data! Was: \(bytes), trying to deserialize: \(T.self)")
-            }
+        switch buffer {
+        case .data(let data) where type is Data.Type:
             return data as! T
-        } else if type is NIO.ByteBuffer.Type {
-            return bytes as! T
-        } else {
+        case .nioByteBuffer(let buffer) where type is NIO.ByteBuffer.Type:
+            return buffer as! T
+        default:
             throw SerializationError.unableToDeserialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only suports raw bytes")
         }
     }

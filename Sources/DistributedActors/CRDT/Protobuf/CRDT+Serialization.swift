@@ -122,10 +122,8 @@ private extension Dictionary where Key == VersionDot, Value: Codable & Hashable 
             envelope.dot = try dot.toProto(context: context)
 
             let serialized = try context.system.serialization.serialize(element)
-            envelope.manifest = try serialized.0.toProto(context: context)
-            var bytes = serialized.1
-            envelope.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
-
+            envelope.manifest = try serialized.manifest.toProto(context: context)
+            envelope.payload = serialized.buffer.readData()
             envelopes.append(envelope)
         }
 
@@ -145,13 +143,10 @@ private extension Dictionary where Key == VersionDot, Value: Codable & Hashable 
             }
 
             // TODO: avoid having to alloc, but deser from Data directly
-            var bytes = context.allocator.buffer(capacity: envelope.payload.count)
-            bytes.writeBytes(envelope.payload)
-
             let key = try VersionDot(fromProto: envelope.dot, context: context)
 
             let manifest = try Serialization.Manifest(fromProto: envelope.manifest, context: context)
-            dict[key] = try context.system.serialization.deserialize(as: Value.self, from: &bytes, using: manifest)
+            dict[key] = try context.system.serialization.deserialize(as: Value.self, from: .data(envelope.payload), using: manifest)
         }
 
         self = dict

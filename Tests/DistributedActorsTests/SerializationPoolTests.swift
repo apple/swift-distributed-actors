@@ -122,7 +122,7 @@ final class SerializationPoolTests: XCTestCase {
         let test1 = Test1()
         test1.lock.lock()
         defer { test1.lock.unlock() }
-        let promise1: NIO.EventLoopPromise<(Serialization.Manifest, NIO.ByteBuffer)> = self.el.makePromise()
+        let promise1: NIO.EventLoopPromise<Serialization.Serialized> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -130,7 +130,7 @@ final class SerializationPoolTests: XCTestCase {
         let test2 = Test1()
         test2.lock.lock()
         defer { test2.lock.unlock() }
-        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
+        let promise2: EventLoopPromise<Serialization.Serialized> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -153,14 +153,14 @@ final class SerializationPoolTests: XCTestCase {
         // wait on the `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
+        let promise1: EventLoopPromise<Serialization.Serialized> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
+        let promise2: EventLoopPromise<Serialization.Serialized> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -188,14 +188,14 @@ final class SerializationPoolTests: XCTestCase {
         // when unlocking `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
+        let promise1: EventLoopPromise<Serialization.Serialized> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
+        let promise2: EventLoopPromise<Serialization.Serialized> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -241,9 +241,9 @@ final class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(from: .nioByteBuffer(buffer1), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
         try p.expectMessage("p1")
-        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(from: .nioByteBuffer(buffer2), using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
         try p.expectMessage("p2")
     }
 
@@ -276,8 +276,8 @@ final class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
-        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(from: .nioByteBuffer(buffer1), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(from: .nioByteBuffer(buffer2), using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
 
         Test2.deserializerLock.unlock()
 
@@ -316,8 +316,8 @@ final class SerializationPoolTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserializeAny(from: buffer1, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
-        serializationPool.deserializeAny(from: buffer2, using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
+        serializationPool.deserializeAny(from: .nioByteBuffer(buffer1), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise1))
+        serializationPool.deserializeAny(from: .nioByteBuffer(buffer2), using: self.manifest2, recipientPath: self.actorPath2, callback: self.completePromise(Test2.self, promise2))
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -336,7 +336,7 @@ final class SerializationPoolTests: XCTestCase {
         // on different, separate threads, than the objects being deserialized
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<(Serialization.Manifest, ByteBuffer)> = self.el.makePromise()
+        let promise1: EventLoopPromise<Serialization.Serialized> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -352,7 +352,7 @@ final class SerializationPoolTests: XCTestCase {
         promise1.futureResult.whenFailure { print("\($0)") }
 
         serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
-        serializationPool.deserializeAny(from: buffer, using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise2))
+        serializationPool.deserializeAny(from: .nioByteBuffer(buffer), using: self.manifest1, recipientPath: self.actorPath1, callback: self.completePromise(Test1.self, promise2))
 
         try p.expectNoMessage(for: .milliseconds(20))
 

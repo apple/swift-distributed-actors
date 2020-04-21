@@ -243,16 +243,18 @@ class SerializationDocExamples {
             self.takenRepr = takenRepr
         }
 
-        override func serialize(_ message: CustomlyEncodedMessage) throws -> ByteBuffer { // <2>
+        override func serialize(_ message: CustomlyEncodedMessage) throws -> Serialization.Buffer { // <2>
             switch message {
-            case .available: return self.availableRepr
-            case .taken: return self.takenRepr
+            case .available: return .nioByteBuffer(self.availableRepr)
+            case .taken: return .nioByteBuffer(self.takenRepr)
             }
         }
 
-        override func deserialize(from bytes: ByteBuffer) throws -> CustomlyEncodedMessage { // <3>
-            var bytes = bytes // TODO: bytes should become `inout`
-            guard let letter = bytes.readString(length: 1) else {
+        override func deserialize(from buffer: Serialization.Buffer) throws -> CustomlyEncodedMessage { // <3>
+            guard case .nioByteBuffer(var buffer) = buffer else {
+                throw CodingError.unknownEncoding("expected ByteBuffer")
+            }
+            guard let letter = buffer.readString(length: 1) else {
                 throw CodingError.notEnoughBytes
             }
 
@@ -288,11 +290,11 @@ class SerializationDocExamples {
             self.context = context // <1>
         }
 
-        override func serialize(_ message: ContainsActorRef) throws -> ByteBuffer {
+        override func serialize(_ message: ContainsActorRef) throws -> Serialization.Buffer {
             fatalError("apply your favourite serialization mechanism here")
         }
 
-        override func deserialize(from bytes: ByteBuffer) throws -> ContainsActorRef {
+        override func deserialize(from buffer: Serialization.Buffer) throws -> ContainsActorRef {
             let address: ActorAddress = undefined(hint: "your favourite serialization")
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
@@ -344,11 +346,11 @@ struct DistributedAlgorithmExampleEnvelope<Payload: ForSomeReasonNotCodable>: Co
 
         let manifest = try container.decode(Serialization.Manifest.self, forKey: .payloadManifest)
         let data = try container.decode(Data.self, forKey: .payload)
-        var bytes = context.serialization.allocator.buffer(capacity: data.count)
-        bytes.writeBytes(data)
+        var buffer = context.serialization.allocator.buffer(capacity: data.count)
+        buffer.writeBytes(data)
 
         // Option 1: raw bytes ----------------------------------------------------------------
-        let payload = try context.serialization.deserialize(as: Payload.self, from: &bytes, using: manifest) // <1>
+        let payload = try context.serialization.deserialize(as: Payload.self, from: .nioByteBuffer(buffer), using: manifest) // <1>
 
         // Option 2: manually coding + manifest -----------------------------------------------
         // let payloadType = try context.serialization.summonType(from: manifest) // <2>
@@ -372,9 +374,16 @@ struct DistributedAlgorithmExampleEnvelope<Payload: ForSomeReasonNotCodable>: Co
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         // Option 1: raw bytes ----------------------------------------------------------------
-        let (manifest, bytes) = try context.serialization.serialize(self.payload) // TODO: mangled name type manifests only work on Swift 5.3 (!)
-        try container.encode(manifest, forKey: .payloadManifest)
-        try container.encode(bytes.getData(at: 0, length: bytes.readableBytes)!, forKey: .payload) // !-safe, we know the range from 0-readableBytes is correct
+        let serialized = try context.serialization.serialize(self.payload) // TODO: mangled name type manifests only work on Swift 5.3 (!)
+        try container.encode(serialized.manifest, forKey: .payloadManifest)
+        let data: Data
+        switch serialized.buffer {
+        case .data(let d):
+            data = d
+        case .nioByteBuffer(let buffer):
+            data = buffer.getData(at: 0, length: buffer.readableBytes)! // !-safe, we know the range from 0-readableBytes is correct
+        }
+        try container.encode(data, forKey: .payload)
 
         // Option 2: manually coding + manifest -----------------------------------------------
         // let manifest_2 = try context.serialization.outboundManifest(type(of: payload as Any))

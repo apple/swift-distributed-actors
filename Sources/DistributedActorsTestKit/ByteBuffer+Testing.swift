@@ -20,6 +20,25 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
+extension Serialization.Buffer {
+    // For easier visual inspection of known utf8 data within a Buffer, use with care (!)
+    public func stringDebugDescription() -> String {
+        switch self {
+        case .data(let data):
+            return data.stringDebugDescription()
+        case .nioByteBuffer(let bufffer):
+            return bufffer.stringDebugDescription()
+        }
+    }
+}
+
+extension Data {
+    // For easier visual inspection of known utf8 data within a Data, use with care (!)
+    public func stringDebugDescription() -> String {
+        String(data: self, encoding: .utf8)!
+    }
+}
+
 extension ByteBuffer {
     // For easier visual inspection of known utf8 data within a ByteBuffer, use with care (!)
     public func stringDebugDescription() -> String {

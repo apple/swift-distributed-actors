@@ -26,7 +26,7 @@ public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
         self.context = context
     }
 
-    public override func serialize(_ message: Message) throws -> ByteBuffer {
+    public override func serialize(_ message: Message) throws -> Serialization.Buffer {
         guard let repr = message as? AnyProtobufRepresentable else {
             throw SerializationError.unableToSerialize(hint: "Can only serialize AnyInternalProtobufRepresentable types, was: \(String(reflecting: Message.self))")
         }
@@ -35,15 +35,15 @@ public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
         encoder.userInfo[.actorSerializationContext] = self.context
         try repr.encode(to: encoder)
 
-        guard let bytes = encoder.result else {
+        guard let buffer = encoder.result else {
             throw SerializationError.unableToSerialize(hint: "Encoding result of \(TopLevelBytesBlobEncoder.self) was empty, for message: \(message)")
         }
 
-        traceLog_Serialization("serialized to: \(bytes)")
-        return bytes
+        traceLog_Serialization("serialized to: \(buffer)")
+        return buffer
     }
 
-    public override func deserialize(from bytes: ByteBuffer) throws -> Message {
+    public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
         guard let ProtoType = Message.self as? AnyProtobufRepresentable.Type else {
             throw SerializationError.unableToDeserialize(hint: "Can only deserialize AnyInternalProtobufRepresentable but was \(Message.self)")
         }

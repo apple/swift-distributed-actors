@@ -12,14 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.Data
-import struct NIO.ByteBuffer
-import struct NIO.ByteBufferAllocator
-
 internal protocol _TopLevelBlobEncoder: Encoder {
-    func encode<T>(_ value: T) throws -> ByteBuffer where T: Encodable
+    func encode<T>(_ value: T) throws -> Serialization.Buffer where T: Encodable
 }
 
 internal protocol _TopLevelBlobDecoder: Decoder {
-    func decode<T>(_ type: T.Type, from: ByteBuffer) throws -> T where T: Decodable
+    func decode<T>(_ type: T.Type, from: Serialization.Buffer) throws -> T where T: Decodable
 }

@@ -27,7 +27,7 @@ enum WireEnvelopeError: Error {
 // TODO: ProtobufRepresentable?
 
 extension Wire.Envelope {
-    init(_ proto: ProtoEnvelope, allocator: ByteBufferAllocator) throws {
+    init(_ proto: ProtoEnvelope) throws {
         guard proto.hasRecipient else {
             throw WireEnvelopeError.emptyRecipient
         }
@@ -36,10 +36,7 @@ extension Wire.Envelope {
         }
 
         self.recipient = try ActorAddress(fromProto: proto.recipient)
-
-        var payloadBuffer = allocator.buffer(capacity: proto.payload.count)
-        payloadBuffer.writeBytes(proto.payload)
-        self.payload = payloadBuffer
+        self.payload = .data(proto.payload)
         self.manifest = .init(fromProto: proto.manifest)
     }
 }
@@ -53,9 +50,7 @@ extension ProtoEnvelope {
             self.manifest.hint = hint
         }
         self.manifest.serializerID = envelope.manifest.serializerID.value
-
-        var payloadBuffer = envelope.payload
-        self.payload = payloadBuffer.readData(length: payloadBuffer.readableBytes)! // !-safe because we read exactly the number of readable bytes
+        self.payload = envelope.payload.readData()
     }
 }
 

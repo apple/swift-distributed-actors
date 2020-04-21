@@ -28,8 +28,8 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
             let g1AsAny = g1
             let envelope = CRDT.Envelope(manifest: .init(serializerID: Serialization.ReservedID.CRDTGCounter, hint: _typeName(CRDT.GCounter.self)), g1AsAny) // FIXME: real manifest
 
-            var (manifest, bytes) = try system.serialization.serialize(envelope)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Envelope.self, from: &bytes, using: manifest)
+            let serialized = try system.serialization.serialize(envelope)
+            let deserialized = try system.serialization.deserialize(as: CRDT.Envelope.self, from: serialized)
 
 //            guard case let data = deserialized.data else {
 //                throw self.testKit.fail("CRDT.Envelope._boxed should be .DeltaCRDT for DeltaCRDTBox")
