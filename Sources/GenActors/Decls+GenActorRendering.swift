@@ -178,12 +178,16 @@ extension Rendering {
 
                 "funcCases": self.actorable.renderCaseDecls,
 
-                "funcSwitchCases": try self.actorable.funcs.map {
-                    try $0.renderFuncSwitchCase(partOfProtocol: nil)
+                "funcSwitchCases": try self.actorable.funcs.map { funcDecl in
+                    try CodePrinter.content { printer in
+                        try funcDecl.renderFuncSwitchCase(partOfProtocol: nil, printer: &printer)
+                    }
                 },
                 "funcBoxSwitchCases": try self.actorable.actorableProtocols.flatMap { box in
-                    try box.funcs.map {
-                        try $0.renderFuncSwitchCase(partOfProtocol: box)
+                    try box.funcs.map { funcDecl in
+                        try CodePrinter.content { printer in
+                            try funcDecl.renderFuncSwitchCase(partOfProtocol: box, printer: &printer)
+                        }
                     }
                 },
 
@@ -692,86 +696,94 @@ extension ActorFuncDecl {
     }
 
     // TODO: dedup with the boxed one
-    func renderFuncSwitchCase(partOfProtocol ownerProtocol: ActorableTypeDecl?) throws -> String {
-        var ret = "case "
+    func renderFuncSwitchCase(partOfProtocol ownerProtocol: ActorableTypeDecl?, printer: inout CodePrinter) throws {
+        printer.print("case ", skipNewline: true)
 
         if let boxProto = ownerProtocol {
-            ret.append(".")
-            ret.append(boxProto.nameFirstLowercased)
-            ret.append("(")
+            printer.print(".\(boxProto.nameFirstLowercased)(", skipNewline: true)
         }
-        ret.append(".\(message.name)\(message.renderCaseLetParams)")
-        if ownerProtocol != nil {
-            ret.append(")")
-        }
-        ret.append(":\n")
 
-        let context: [String: Any] = [
-            "name": self.message.name,
-            "returnIfBecome": self.message.returnIfBecome,
-            "storeIfTypeOrResultReturn": self.message.returnType.isTypeReturn || self.message.returnType.isResultReturn ? "let result = " : "",
-            "replyWithTypeReturn": self.message.returnType.isTypeReturn ?
-                (self.message.throwing ?
-                    "\n                    _replyTo.tell(.success(result))" :
-                    "\n                    _replyTo.tell(result)"
-                ) : "",
-            "try": self.message.throwing ? "try " : "",
-            "passParams": CodePrinter.content(self.message.passParams),
-        ]
+        printer.print(".\(message.name)\(message.renderCaseLetParams)", skipNewline: true)
+
+        if ownerProtocol != nil {
+            printer.print(")", skipNewline: true)
+        }
+
+        printer.print(":")
+        printer.indent(by: 5)
 
         if self.message.throwing, self.message.returnType.rendersReturn {
-            ret.append("                    do {")
-            ret.append("\n")
+            printer.print("do {")
+            printer.indent()
         }
 
-        // FIXME: it really is time to adopt CodePrinter
-
         // render invocation
-        ret.append(try Template(
-            templateString:
-            "                    {{storeIfTypeOrResultReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}"
-        ).render(context))
+        if self.message.returnType.isTypeReturn || self.message.returnType.isResultReturn {
+            printer.print("let result = ", skipNewline: true)
+        }
+        printer.print(self.message.returnIfBecome, skipNewline: true)
+        if self.message.throwing {
+            printer.print("try ", skipNewline: true)
+        }
+        printer.print("instance.\(self.message.name)(\(CodePrinter.content(self.message.passParams)))")
+        if self.message.returnType.isTypeReturn {
+            if self.message.throwing {
+                printer.print("_replyTo.tell(.success(result))")
+            } else {
+                printer.print("_replyTo.tell(result)")
+            }
+        }
 
         switch self.message.returnType {
         case .nioEventLoopFuture:
-            // FIXME: replace with code printer
-            let pad = "                        "
-            ret.append("\n\(pad).whenComplete { res in")
-            ret.append("\n\(pad)    switch res {")
-            ret.append("\n\(pad)    case .success(let value):")
-            ret.append("\n\(pad)        _replyTo.tell(.success(value))")
-            ret.append("\n\(pad)    case .failure(let error):")
-            ret.append("\n\(pad)        _replyTo.tell(.failure(ErrorEnvelope(error)))")
-            ret.append("\n\(pad)    }")
-            ret.append("\n\(pad)}")
+            printer.indent()
+            printer.print(".whenComplete { res in")
+            printer.indent()
+            printer.print("switch res {")
+            printer.print("case .success(let value):")
+            printer.indent()
+            printer.print("_replyTo.tell(.success(value))")
+            printer.outdent()
+            printer.print("case .failure(let error):")
+            printer.indent()
+            printer.print("_replyTo.tell(.failure(ErrorEnvelope(error)))")
+            printer.outdent()
+            printer.print("}")
+            printer.outdent()
+            printer.print("}")
+            printer.outdent()
         case .actorReply, .askResponse:
-            // FIXME: replace with code printer
-            let pad = "                        "
-            ret.append("\n\(pad)._onComplete { res in")
-            ret.append("\n\(pad)    switch res {")
-            ret.append("\n\(pad)    case .success(let value):")
-            ret.append("\n\(pad)        _replyTo.tell(.success(value))")
-            ret.append("\n\(pad)    case .failure(let error):")
-            ret.append("\n\(pad)        _replyTo.tell(.failure(ErrorEnvelope(error)))")
-            ret.append("\n\(pad)    }")
-            ret.append("\n\(pad)}")
+            printer.indent()
+            printer.print("._onComplete { res in")
+            printer.indent()
+            printer.print("switch res {")
+            printer.print("case .success(let value):")
+            printer.indent()
+            printer.print("_replyTo.tell(.success(value))")
+            printer.outdent()
+            printer.print("case .failure(let error):")
+            printer.indent()
+            printer.print("_replyTo.tell(.failure(ErrorEnvelope(error)))")
+            printer.outdent()
+            printer.print("}")
+            printer.outdent()
+            printer.print("}")
+            printer.outdent()
         case .result:
-            let pad = "                    "
-            ret.append("\n\(pad)_replyTo.tell(result.mapError { error in ErrorEnvelope(error) })")
-            ret.append("\n")
+            printer.print("_replyTo.tell(result.mapError { error in ErrorEnvelope(error) })")
         default:
-            ret.append("\n")
+            printer.print("")
         }
 
         if self.message.throwing, self.message.returnType.rendersReturn {
-            let pad = "                    " // FIXME: replace with code printer
-            ret.append("\(pad)} catch {\n")
-            ret.append("\(pad)    context.log.warning(\"Error thrown while handling [\\(message)], error: \\(error)\")\n")
-            ret.append("\(pad)    _replyTo.tell(.failure(ErrorEnvelope(error)))\n")
-            ret.append("\(pad)}\n")
+            printer.outdent()
+            printer.print("} catch {")
+            printer.indent()
+            printer.print("context.log.warning(\"Error thrown while handling [\\(message)], error: \\(error)\")")
+            printer.print("_replyTo.tell(.failure(ErrorEnvelope(error)))")
+            printer.outdent()
+            printer.print("}")
         }
-
-        return ret
     }
 
     func renderCaseDecl() -> String {

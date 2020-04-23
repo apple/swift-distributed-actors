@@ -53,6 +53,10 @@ struct CodePrinter {
         self.indentation += 1
     }
 
+    mutating func indent(by amount: Int) {
+        self.indentation += amount
+    }
+
     mutating func outdent() {
         guard self.indentation > 0 else {
             return

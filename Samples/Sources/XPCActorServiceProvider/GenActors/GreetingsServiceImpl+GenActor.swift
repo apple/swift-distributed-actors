@@ -45,8 +45,8 @@ extension GreetingsServiceImpl {
  
                 case .greetingsService(.greet(let name, let _replyTo)):
                     do {
-                    let result = try instance.greet(name: name)
-                    _replyTo.tell(.success(result))
+                        let result = try instance.greet(name: name)
+                        _replyTo.tell(.success(result))
                     } catch {
                         context.log.warning("Error thrown while handling [\(message)], error: \(error)")
                         _replyTo.tell(.failure(ErrorEnvelope(error)))
@@ -67,7 +67,8 @@ extension GreetingsServiceImpl {
                             case .failure(let error):
                                 _replyTo.tell(.failure(ErrorEnvelope(error)))
                             }
-                        } 
+                        }
+ 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
