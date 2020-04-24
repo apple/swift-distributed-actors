@@ -844,7 +844,7 @@ extension ClusterShell {
                 // this seems to be a re-delivered accept, we already accepted association with this node.
                 return .same
             } else {
-                state.log.error("Illegal handshake accept received. No handshake was in progress with \(accept.from)") // TODO: tests and think this through more
+                state.log.error("Unexpected handshake accept received: [\(accept)]. No handshake was in progress with \(accept.from)")
                 return .same
             }
         }

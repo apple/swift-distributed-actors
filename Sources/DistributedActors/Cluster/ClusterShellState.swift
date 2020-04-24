@@ -289,26 +289,27 @@ extension ClusterShellState {
         case abortDueToConcurrentHandshake
     }
 
-    mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? { // TODO: return directives to act on
-        if let inProgressHandshake = self._handshakes[accept.from.node] {
-            switch inProgressHandshake {
-            case .initiated(let hsm):
-                let completed = HandshakeStateMachine.CompletedState(fromInitiated: hsm, remoteNode: accept.from)
-                return completed
-            case .wasOfferedHandshake:
-                // TODO: model the states to express this can not happen // there is a client side state machine and a server side one
-                self.log.warning("Received accept but state machine is in WAS OFFERED state. This should be impossible.")
-                return nil
-            case .completed:
-                // TODO: validate if it is for the same UID or not, if not, we may be in trouble?
-                self.log.warning("Received handshake Accept for already completed handshake. This should not happen.")
-                return nil
-            case .inFlight:
-                fatalError("An in-flight marker state should never be stored, yet was encountered in \(#function)")
-            }
-        } else {
+    mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? {
+        guard let inProgressHandshake = self._handshakes[accept.from.node] else {
             // TODO: what if node that sent handshake, has already terminated -- would we have removed the in progress handshake already causing this?
-            fatalError("Accept incoming [\(accept)] for handshake which was not in progress! On node: \(self.myselfNode), cluster shell state: \(self), membership: \(self.membership)") // TODO: model differently
+            // fatalError("Accept incoming [\(accept)] for handshake which was not in progress! On node: \(self.myselfNode), cluster shell state: \(self), membership: \(self.membership)") // TODO: model differently
+            return nil
+        }
+
+        switch inProgressHandshake {
+        case .initiated(let hsm):
+            let completed = HandshakeStateMachine.CompletedState(fromInitiated: hsm, remoteNode: accept.from)
+            return completed
+        case .wasOfferedHandshake:
+            // TODO: model the states to express this can not happen // there is a client side state machine and a server side one
+            self.log.warning("Received accept but state machine is in WAS OFFERED state. This should be impossible.")
+            return nil
+        case .completed:
+            // TODO: validate if it is for the same UID or not, if not, we may be in trouble?
+            self.log.warning("Received handshake Accept for already completed handshake. This should not happen.")
+            return nil
+        case .inFlight:
+            fatalError("An in-flight marker state should never be stored, yet was encountered in \(#function)")
         }
     }
 
