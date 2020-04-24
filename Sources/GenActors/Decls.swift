@@ -108,7 +108,7 @@ extension ActorableTypeDecl: Hashable {
 
 extension ActorableTypeDecl: Comparable {
     public static func < (lhs: ActorableTypeDecl, rhs: ActorableTypeDecl) -> Bool {
-        return lhs.name < rhs.name
+        lhs.name < rhs.name
     }
 }
 
