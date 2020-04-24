@@ -396,7 +396,7 @@ internal struct SWIMShell {
                 // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
                 // We don't use Deadline because tests can override TimeSource
                 guard let startTime = suspect.suspicionStartedAt,
-                      self.swim.isExpired(deadline: startTime + suspicionTimeout.nanoseconds) else {
+                    self.swim.isExpired(deadline: startTime + suspicionTimeout.nanoseconds) else {
                     continue // skip, this suspect is not timed-out yet
                 }
 

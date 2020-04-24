@@ -346,7 +346,6 @@ extension ClusterShellState {
         let handshake: HandshakeStateMachine.CompletedState
         let channel: Channel
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
