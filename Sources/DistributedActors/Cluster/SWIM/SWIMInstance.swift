@@ -602,7 +602,16 @@ extension SWIM.Instance {
             case .applied(let previousStatus, let currentStatus):
                 var member = member
                 member.status = currentStatus
-                return .applied(change: .init(fromStatus: previousStatus, member: member))
+                if currentStatus.isSuspect, previousStatus?.isAlive ?? false {
+                    return .applied(
+                        change: .init(fromStatus: previousStatus, member: member),
+                        level: .debug,
+                        message: "Member [\(member.ref.address.node, orElse: "<unknown-node>")] marked as suspect, via incoming gossip"
+                    )
+                } else {
+                    return .applied(change: .init(fromStatus: previousStatus, member: member))
+                }
+
             case .ignoredDueToOlderStatus(let currentStatus):
                 return .ignored(
                     level: .trace,
