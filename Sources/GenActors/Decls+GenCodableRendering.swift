@@ -61,6 +61,8 @@ extension Rendering {
 
             let baseName = "\(self.actorable.messageFullyQualifiedName)"
 
+            let actorableProtocols = self.actorable.actorableProtocols.sorted()
+
             // ==== ----------------------------------------------------------------------------------------------------
             // MARK: discriminatorCases
             var discriminatorCases = printer.makeIndented(by: 2)
@@ -70,7 +72,7 @@ extension Rendering {
             }
 
             // actorable protocols
-            self.actorable.actorableProtocols.forEach { proto in
+            actorableProtocols.forEach { proto in
                 discriminatorCases.print("case \(proto.boxFuncName)")
             }
 
@@ -92,7 +94,7 @@ extension Rendering {
             }
 
             // actorable protocols
-            self.actorable.actorableProtocols.forEach { proto in
+            actorableProtocols.forEach { proto in
                 codingKeys.print("case \(proto.boxFuncName)")
             }
 
@@ -125,7 +127,7 @@ extension Rendering {
             }
 
             // also encode any actorable protocols we conform to
-            self.actorable.actorableProtocols.forEach { proto in
+            actorableProtocols.forEach { proto in
                 decodeCases.print("case .\(proto.boxFuncName):") // case _boxParking:
                 decodeCases.indent()
                 decodeCases.print("let boxed = try container.decode(\(proto.messageFullyQualifiedName).self, forKey: CodingKeys.\(proto.boxFuncName))")
@@ -158,7 +160,7 @@ extension Rendering {
             }
 
             // also encode any actorable protocols we conform to
-            self.actorable.actorableProtocols.forEach { proto in
+            actorableProtocols.forEach { proto in
                 encodeCases.print(proto.renderCaseLet) // case parking(let boxed):
                 encodeCases.indent()
                 encodeCases.print("try container.encode(DiscriminatorKeys.\(proto.boxFuncName).rawValue, forKey: CodingKeys._case)")

@@ -106,6 +106,12 @@ extension ActorableTypeDecl: Hashable {
     }
 }
 
+extension ActorableTypeDecl: Comparable {
+    public static func < (lhs: ActorableTypeDecl, rhs: ActorableTypeDecl) -> Bool {
+        lhs.name < rhs.name
+    }
+}
+
 struct ActorFuncDecl {
     let message: ActorableMessageDecl
 }
