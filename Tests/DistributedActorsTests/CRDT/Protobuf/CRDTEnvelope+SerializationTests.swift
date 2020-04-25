@@ -31,16 +31,13 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(envelope)
             let deserialized = try system.serialization.deserialize(as: CRDT.Envelope.self, from: serialized)
 
-//            guard case let data = deserialized.data else {
-//                throw self.testKit.fail("CRDT.Envelope._boxed should be .DeltaCRDT for DeltaCRDTBox")
-//            }
             guard let gg1 = deserialized.data as? CRDT.GCounter else {
                 throw self.testKit.fail("DeltaCRDTBox.underlying should be GCounter")
             }
 
             gg1.value.shouldEqual(g1.value)
             gg1.delta.shouldNotBeNil()
-            "\(gg1.delta!.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@localhost:9001/user/alpha: 2]")
+            "\(gg1.delta!.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@127.0.0.1:9001/user/alpha: 2]")
         }
     }
 
@@ -65,7 +62,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
 //            }
 //
 //            dg1Delta.state.count.shouldEqual(1)
-//            "\(dg1Delta.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@localhost:9001/user/alpha: 2]")
+//            "\(dg1Delta.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@127.0.0.1:9001/user/alpha: 2]")
 //        }
 //    }
 }

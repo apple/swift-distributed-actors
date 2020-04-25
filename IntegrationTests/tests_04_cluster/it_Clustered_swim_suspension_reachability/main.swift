@@ -31,10 +31,10 @@ let system = ActorSystem("System") { settings in
     settings.cluster.enabled = true
     settings.cluster.bindPort = Int(args[0])!
 
+    settings.cluster.swim.probeInterval = .milliseconds(300)
+    settings.cluster.swim.pingTimeout = .milliseconds(100)
     settings.cluster.swim.lifeguard.suspicionTimeoutMin = .seconds(1)
     settings.cluster.swim.lifeguard.suspicionTimeoutMax = .seconds(1)
-    settings.cluster.swim.failureDetector.pingTimeout = .milliseconds(100)
-    settings.cluster.swim.failureDetector.probeInterval = .milliseconds(300)
 
     settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
     settings.cluster.downingStrategy = .none

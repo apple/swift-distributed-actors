@@ -36,8 +36,8 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
             let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
 
             deserialized.state.count.shouldEqual(2) // replicas A and B
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A: 2")
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/B: 5")
+            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A: 2")
+            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/B: 5")
         }
     }
 
@@ -62,7 +62,7 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(dot)
             let deserialized = try system.serialization.deserialize(as: VersionDot.self, from: serialized)
 
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@localhost:9001/user/A")
+            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A")
             deserialized.version.shouldEqual(2)
         }
     }

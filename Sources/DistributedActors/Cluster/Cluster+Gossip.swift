@@ -278,12 +278,12 @@ extension Cluster.Gossip {
     }
 }
 
-extension Cluster.Gossip.SeenTable: CustomStringConvertible, CustomDebugStringConvertible {
+extension Cluster.Gossip.SeenTable: CustomStringConvertible, CustomPrettyStringConvertible {
     public var description: String {
         "Cluster.Gossip.SeenTable(\(self.underlying))"
     }
 
-    var debugDescription: String {
+    public var prettyDescription: String {
         var s = "Cluster.Gossip.SeenTable(\n"
         let entryHeadingPadding = String(repeating: " ", count: 4)
         let entryPadding = String(repeating: " ", count: 4 * 2)

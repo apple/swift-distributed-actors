@@ -112,7 +112,7 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
             guard let ddg1 = deserializedDelta as? CRDT.GCounterDelta else {
                 throw self.testKit.fail("Should be a GCounter")
             }
-            "\(ddg1.state)".shouldContain("[actor:sact://CRDTReplicationSerializationTests@localhost:9001/user/alpha: 5]")
+            "\(ddg1.state)".shouldContain("[actor:sact://CRDTReplicationSerializationTests@127.0.0.1:9001/user/alpha: 5]")
         }
     }
 

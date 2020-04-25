@@ -260,7 +260,7 @@ internal final class OutboundSystemMessageRedelivery {
         //        }
     }
 
-    func onReconnected(newAssociationID: Association.AssociationState) {
+    func onReconnected(newAssociationID: Association) {
         // TODO: redeliver everything
     }
 

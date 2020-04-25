@@ -19,6 +19,12 @@ import NIOSSL
 import XCTest
 
 final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.filterActorPaths = [
+            "/system/cluster/swim",
+        ]
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 
@@ -256,6 +262,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
     func test_ensureDownAndRemovalSpreadsToAllMembers() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
+                settings.cluster.swim.probeInterval = .milliseconds(300)
+                settings.cluster.swim.pingTimeout = .milliseconds(100)
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
                 settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
             }
@@ -263,6 +271,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             first.cluster.events.subscribe(p1.ref)
 
             let second = self.setUpNode("second") { settings in
+                settings.cluster.swim.probeInterval = .milliseconds(300)
+                settings.cluster.swim.pingTimeout = .milliseconds(100)
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
                 settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
             }
@@ -270,6 +280,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             second.cluster.events.subscribe(p2.ref)
 
             let third = self.setUpNode("third") { settings in
+                settings.cluster.swim.probeInterval = .milliseconds(300)
+                settings.cluster.swim.pingTimeout = .milliseconds(100)
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
                 settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
             }
@@ -286,19 +298,19 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             second.shutdown()
 
             // other nodes have observed it down
-            try self.ensureNodes(.down, on: first, nodes: second.cluster.node)
-            try self.ensureNodes(.down, on: third, nodes: second.cluster.node)
+            try self.ensureNodes(.down, on: first, within: .seconds(15), nodes: second.cluster.node)
+            try self.ensureNodes(.down, on: third, within: .seconds(15), nodes: second.cluster.node)
 
             // on the leader node, the other node noticed as up:
             let testKit = self.testKit(first)
-            try testKit.eventually(within: .seconds(10)) {
+            try testKit.eventually(within: .seconds(20)) {
                 let event: Cluster.Event? = try p1.maybeExpectMessage()
                 switch event {
                 case .membershipChange(.init(node: second.cluster.node, fromStatus: .up, toStatus: .down)): ()
                 case let other: throw testKit.error("Expected `second` [     up] -> [  .down], on first node, was: \(other, orElse: "nil")")
                 }
             }
-            try testKit.eventually(within: .seconds(10)) {
+            try testKit.eventually(within: .seconds(20)) {
                 let event: Cluster.Event? = try p1.maybeExpectMessage()
                 switch event {
                 case .membershipChange(.init(node: second.cluster.node, fromStatus: .down, toStatus: .removed)): ()

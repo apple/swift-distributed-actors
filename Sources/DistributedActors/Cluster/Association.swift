@@ -17,7 +17,7 @@ import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Remote Association State Machine
+// MARK: Association
 
 /// An `Association` represents a bi-directional agreement between two nodes that they are able to communicate with each other.
 ///
@@ -32,98 +32,95 @@ import NIO
 ///
 /// A completed ("associated") `Association` can ONLY be obtained by successfully completing a `HandshakeStateMachine` dance,
 /// as only the handshake can ensure that the other side is also an actor node that is able and willing to communicate with us.
-struct Association {
+final class Association: CustomStringConvertible {
+    // TODO: Terrible lock which we want to get rid of; it means that every remote send has to content against all other sends about getting this ref
+    // and the only reason is really because the off chance case in which we have to make an Association earlier than we have the handshake completed (i.e. we send to a ref that is not yet associated)
+    let lock: Lock
 
-    final class AssociationState: CustomStringConvertible {
-        // TODO: Terrible lock which we want to get rid of; it means that every remote send has to content against all other sends about getting this ref
-        // and the only reason is really because the off chance case in which we have to make an Association earlier than we have the handshake completed (i.e. we send to a ref that is not yet associated)
-        let lock: Lock
+    // TODO: This style of implementation queue -> channel swapping can only ever work with coarse locking and is just temporary
+    //       We'd prefer to have a lock-less way to implement this and we can achieve it but it's a pain to implement so will be done in a separate step.
+    var state: State
 
-        // TODO: This style of implementation queue -> channel swapping can only ever work with coarse locking and is just temporary
-        //       We'd prefer to have a lock-less way to implement this and we can achieve it but it's a pain to implement so will be done in a separate step.
-        var state: State
+    enum State {
+        case associating(queue: MPSCLinkedQueue<TransportEnvelope>)
+        case associated(channel: Channel) // TODO: ActorTransport.Node/Peer/Target ???
+        case tombstone(ActorRef<DeadLetter>)
+    }
 
-        enum State {
-            case associating(queue: MPSCLinkedQueue<TransportEnvelope>)
-            case associated(channel: Channel) // TODO: ActorTransport.Node/Peer/Target ???
-            case tombstone(ActorRef<DeadLetter>)
-        }
+    /// The address of this node, that was offered to the remote side for this association
+    /// This matters in case we have multiple "self" addresses; e.g. we bind to one address, but expose another because NAT
+    let selfNode: UniqueNode
+    var remoteNode: UniqueNode
 
-        /// The address of this node, that was offered to the remote side for this association
-        /// This matters in case we have multiple "self" addresses; e.g. we bind to one address, but expose another because NAT
-        let selfNode: UniqueNode
-        var remoteNode: UniqueNode
+    init(selfNode: UniqueNode, remoteNode: UniqueNode) {
+        self.selfNode = selfNode
+        self.remoteNode = remoteNode
+        self.lock = Lock()
+        self.state = .associating(queue: .init())
+    }
 
-        init(selfNode: UniqueNode, remoteNode: UniqueNode) {
-            self.selfNode = selfNode
-            self.remoteNode = remoteNode
-            self.lock = Lock()
-            self.state = .associating(queue: .init())
-        }
+    /// Complete the association and drain any pending message sends onto the channel.
+    // TODO: This style can only ever work since we lock around the entirety of enqueueing messages and this setting; make it such that we don't need the lock eventually
+    func completeAssociation(handshake: HandshakeStateMachine.CompletedState, over channel: Channel) {
+        // TODO: assert that the channel is for the right remote node?
 
-        /// Complete the association and drain any pending message sends onto the channel.
-        // TODO: This style can only ever work since we lock around the entirety of enqueueing messages and this setting; make it such that we don't need the lock eventually
-        func completeAssociation(handshake: HandshakeStateMachine.CompletedState, over channel: Channel) {
-            // TODO: assert that the channel is for the right remote node?
+        self.lock.withLockVoid {
+            switch self.state {
+            case .associating(let sendQueue):
+                // 1) store associated channel
+                self.state = .associated(channel: channel)
 
-            self.lock.withLockVoid {
-                switch self.state {
-                case .associating(let sendQueue):
-                    // 1) store associated channel
-                    self.state = .associated(channel: channel)
-
-                    // 2) we need to flush all the queued up messages
-                    //    - yes, we need to flush while holding the lock... it's an annoyance in this lock based design
-                    //      but it ensures that once we've flushed, all other messages will be sent in the proper order "after"
-                    //      the previously enqueued ones; A lockless design would not be able to get rid of the queue AFAIR,
-                    while let envelope = sendQueue.dequeue() {
-                        _ = channel.writeAndFlush(envelope)
-                    }
-
-                case .associated(let existingAssociatedChannel):
-                    fatalError("MUST NOT complete an association twice; Was \(existingAssociatedChannel) and tried to complete with \(channel) from \(handshake)")
-
-                case .tombstone:
-                    _ = channel.close()
-                    return
+                // 2) we need to flush all the queued up messages
+                //    - yes, we need to flush while holding the lock... it's an annoyance in this lock based design
+                //      but it ensures that once we've flushed, all other messages will be sent in the proper order "after"
+                //      the previously enqueued ones; A lockless design would not be able to get rid of the queue AFAIR,
+                while let envelope = sendQueue.dequeue() {
+                    _ = channel.writeAndFlush(envelope)
                 }
+
+            case .associated(let existingAssociatedChannel):
+                fatalError("MUST NOT complete an association twice; Was \(existingAssociatedChannel) and tried to complete with \(channel) from \(handshake)")
+
+            case .tombstone:
+                _ = channel.close()
+                return
+            }
+        }
+    }
+
+    /// Terminate the association and store a tombstone in it.
+    ///
+    /// If any messages were still queued up in it, or if it was hosting a channel these get drained / closed,
+    /// before the tombstone is returned.
+    ///
+    /// After invoking this the association will never again be useful for sending messages.
+    func terminate(_ system: ActorSystem) -> Association.Tombstone {
+        self.lock.withLockVoid {
+            switch self.state {
+            case .associating(let sendQueue):
+                while let envelope = sendQueue.dequeue() {
+                    system.deadLetters.tell(.init(envelope.underlyingMessage, recipient: envelope.recipient))
+                }
+                // in case someone stored a reference to this association in a ref, we swap it into a dead letter sink
+                self.state = .tombstone(system.deadLetters)
+            case .associated(let channel):
+                _ = channel.close()
+                // in case someone stored a reference to this association in a ref, we swap it into a dead letter sink
+                self.state = .tombstone(system.deadLetters)
+            case .tombstone:
+                () // ok
             }
         }
 
-        /// Terminate the association and store a tombstone in it.
-        ///
-        /// If any messages were still queued up in it, or if it was hosting a channel these get drained / closed,
-        /// before the tombstone is returned.
-        ///
-        /// After invoking this the association will never again be useful for sending messages.
-        func terminate(_ system: ActorSystem) -> Association.Tombstone {
-            self.lock.withLockVoid {
-                switch self.state {
-                case .associating(let sendQueue):
-                    while let envelope = sendQueue.dequeue() {
-                        system.deadLetters.tell(.init(envelope.underlyingMessage, recipient: envelope.recipient))
-                    }
-                    // in case someone stored a reference to this association in a ref, we swap it into a dead letter sink
-                    self.state = .tombstone(system.deadLetters)
-                case .associated(let channel):
-                    _ = channel.close()
-                    // in case someone stored a reference to this association in a ref, we swap it into a dead letter sink
-                    self.state = .tombstone(system.deadLetters)
-                case .tombstone:
-                    () // ok
-                }
-            }
+        return Association.Tombstone(self.remoteNode, settings: system.settings.cluster)
+    }
 
-            return Association.Tombstone(self.remoteNode, settings: system.settings.cluster)
-        }
-
-        var description: String {
-            "AssociatedState(\(self.state), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
-        }
+    var description: String {
+        "AssociatedState(\(self.state), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
     }
 }
 
-extension Association.AssociationState {
+extension Association {
     /// Concurrency: safe to invoke from any thread.
     func sendUserMessage(envelope: Envelope, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
         let transportEnvelope = TransportEnvelope(envelope: envelope, recipient: recipient)
@@ -152,7 +149,17 @@ extension Association.AssociationState {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Association Tombstone
+
 extension Association {
+    /// A tombstone is necessary to be kept for a period of time when an association is terminated,
+    /// as we may never be completely sure if the other node is truly terminated or just had network (or other issues)
+    /// for some time. In the case it'd try to associate and communicate with us again, we must be able to reject it
+    /// as we've terminated the association already, yet it may not have done so for its association to us.
+    ///
+    /// Tombstones are slightly lighter than a real association, and are kept for a maximum of `settings.cluster.associationTombstoneTTL` TODO: make this setting (!!!)
+    /// before being cleaned up.
     struct Tombstone: Hashable {
         let remoteNode: UniqueNode
 

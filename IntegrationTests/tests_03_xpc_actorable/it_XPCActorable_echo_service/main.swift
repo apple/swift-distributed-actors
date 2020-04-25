@@ -24,7 +24,7 @@ try! _file.append("service starting...\n")
 let system = ActorSystem("it_XPCActorable_echo_service") { settings in
     settings.transports += .xpcService
 
-    settings.cluster.swim.failureDetector.pingTimeout = .seconds(3)
+    settings.cluster.swim.pingTimeout = .seconds(3)
 
 //    settings.serialization.register(GeneratedActor.Messages.XPCEchoServiceProtocol.self, underId: 10001)
 //    settings.serialization.register(XPCEchoService.Message.self, underId: 10002)

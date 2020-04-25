@@ -190,6 +190,7 @@ class RemotingTLSTests: ClusteredNodesTestBase {
         let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey2.utf8), format: .pem))
 
         let local = self.setUpNode("local") { settings in
+            settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource1],
                 privateKey: testKeySource1,
@@ -199,6 +200,7 @@ class RemotingTLSTests: ClusteredNodesTestBase {
         }
 
         let remote = setUpNode("remote") { settings in
+            settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource2],
                 privateKey: testKeySource2,
@@ -265,7 +267,7 @@ class RemotingTLSTests: ClusteredNodesTestBase {
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
         let local = self.setUpNode("local") { settings in
-            settings.cluster.node.host = "127.0.0.1"
+            settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -275,7 +277,7 @@ class RemotingTLSTests: ClusteredNodesTestBase {
         }
 
         let remote = setUpNode("remote") { settings in
-            settings.cluster.node.host = "127.0.0.1"
+            settings.cluster.node.host = "localhost"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
