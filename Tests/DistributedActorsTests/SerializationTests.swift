@@ -117,7 +117,7 @@ class SerializationTests: ActorSystemTestBase {
             let addressAgain = try decoder.decode(ActorAddress.self, from: encoded)
             pinfo("Deserialized again: \(String(reflecting: addressAgain))")
 
-            "\(addressAgain)".shouldEqual("sact://SerializationTests@localhost:9001/user/hello")
+            "\(addressAgain)".shouldEqual("sact://SerializationTests@127.0.0.1:9001/user/hello")
         }
     }
 

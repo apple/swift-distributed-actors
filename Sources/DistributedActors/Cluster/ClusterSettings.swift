@@ -22,7 +22,7 @@ import NIOSSL
 public struct ClusterSettings {
     public enum Default {
         public static let systemName: String = "ActorSystem"
-        public static let bindHost: String = "localhost"
+        public static let bindHost: String = "127.0.0.1"
         public static let bindPort: Int = 7337
     }
 
@@ -157,7 +157,7 @@ public struct ClusterSettings {
     // MARK: Logging
 
     /// If enabled, logs membership changes (including the entire membership table from the perspective of the current node).
-    public var logMembershipChanges: Logger.Level? = .info
+    public var logMembershipChanges: Logger.Level? = .debug
 
     /// When enabled traces _all_ incoming and outgoing cluster (e.g. handshake) protocol communication (remote messages).
     /// All logs will be prefixed using `[tracelog:cluster]`, for easier grepping.

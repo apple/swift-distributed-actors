@@ -43,13 +43,13 @@ internal class ClusterShell {
 
     /// Used by remote actor refs to obtain associations
     /// - Protected by: `_associationsLock`
-    private var _activeAssociations: [UniqueNode: Association.AssociationState]
+    private var _activeAssociations: [UniqueNode: Association]
     /// Node tombstones are kept here in order to avoid attempting to associate if we get a reference to such node,
     /// which would normally trigger an `ensureAssociated`.
     /// - Protected by: `_associationsLock`
     private var _associationTombstones: [UniqueNode: Association.Tombstone]
 
-    internal func getExistingAssociation(with node: Node) -> Association.AssociationState? {
+    internal func getExistingAssociation(with node: Node) -> Association? {
         self._associationsLock.withLock {
             // TODO: a bit terrible; perhaps we should key be Node and then confirm by UniqueNode?
             // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
@@ -68,7 +68,7 @@ internal class ClusterShell {
             } else if let existing = self._activeAssociations[node] {
                 return .association(existing)
             } else {
-                let association = Association.AssociationState(selfNode: self.selfNode, remoteNode: node)
+                let association = Association(selfNode: self.selfNode, remoteNode: node)
                 self._activeAssociations[node] = association
 
                 /// We're trying to send to `node` yet it has no association (not even in progress),
@@ -82,7 +82,7 @@ internal class ClusterShell {
 
     enum StoredAssociationState {
         /// An existing (ready or being associated association) which can be used to send (or buffer buffer until associated/terminated)
-        case association(Association.AssociationState)
+        case association(Association)
         /// The association with the node existed, but is now a tombstone and no more messages shall be send to it.
         case tombstone(Association.Tombstone)
     }
@@ -92,7 +92,7 @@ internal class ClusterShell {
     private func storeCompleteAssociation(_ associated: ClusterShellState.AssociatedDirective) {
         self._associationsLock.withLockVoid {
             let association = self._activeAssociations[associated.handshake.remoteNode] ??
-                Association.AssociationState(selfNode: associated.handshake.localNode, remoteNode: associated.handshake.remoteNode)
+                Association(selfNode: associated.handshake.localNode, remoteNode: associated.handshake.remoteNode)
 
             association.completeAssociation(handshake: associated.handshake, over: associated.channel)
 
@@ -109,7 +109,7 @@ internal class ClusterShell {
     internal func terminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, _ remoteNode: UniqueNode) {
         traceLog_Remote(system.cluster.node, "Terminate association with [\(remoteNode)]")
 
-        let removedAssociationOption: Association.AssociationState? = self._associationsLock.withLock {
+        let removedAssociationOption: Association? = self._associationsLock.withLock {
             // tombstone the association in the shell immediately.
             // No more message sends to the system will be possible.
             traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Stored tombstone")
@@ -147,7 +147,7 @@ internal class ClusterShell {
     /// This is a best-effort message; as we may be downing it because we cannot communicate with it after all, in such situation (and many others)
     /// the other node would never receive this direct kill/down eager "gossip." We hope it will either receive the down via some means, or determine
     /// by itself that it should down itself.
-    internal static func shootTheOtherNodeAndCloseConnection(system: ActorSystem, targetNodeAssociation: Association.AssociationState) {
+    internal static func shootTheOtherNodeAndCloseConnection(system: ActorSystem, targetNodeAssociation: Association) {
         let log = system.log
         let remoteNode = targetNodeAssociation.remoteNode
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Shooting the other node a direct .gossip to down itself")
@@ -178,9 +178,9 @@ internal class ClusterShell {
 
     /// For testing only.
     /// Safe to concurrently access by privileged internals.
-    internal var _testingOnly_associations: [Association.AssociationState] {
+    internal var _testingOnly_associations: [Association] {
         self._associationsLock.withLock {
-            [Association.AssociationState](self._activeAssociations.values)
+            [Association](self._activeAssociations.values)
         }
     }
 

@@ -305,8 +305,6 @@ public enum Receptionist {
                 // 1) we remove any registrations that it hosted
                 let regs: Set<AddressableActorRef> = self._registrations.removeValue(forKey: key) ?? []
                 let prunedRegs = regs.filter { $0.address.node != node }
-                pprint("regs = \(regs)")
-                pprint("prunedRegs = \(prunedRegs)")
                 if !prunedRegs.isEmpty {
                     self._registrations[key] = prunedRegs
                 }
