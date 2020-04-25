@@ -168,6 +168,8 @@ extension Rendering {
         )
 
         func render(_ settings: GenerateActorsCommand) throws -> String {
+            let actorableProtocols = self.actorable.actorableProtocols.sorted()
+
             let context: [String: Any] = [
                 "baseName": self.actorable.fullName,
                 "actorableProtocol": self.actorable.type == .protocol ? self.actorable.name : "",
@@ -183,7 +185,7 @@ extension Rendering {
                         try funcDecl.renderFuncSwitchCase(partOfProtocol: nil, printer: &printer)
                     }
                 },
-                "funcBoxSwitchCases": try self.actorable.actorableProtocols.flatMap { box in
+                "funcBoxSwitchCases": try actorableProtocols.flatMap { box in
                     try box.funcs.map { funcDecl in
                         try CodePrinter.content { printer in
                             try funcDecl.renderFuncSwitchCase(partOfProtocol: box, printer: &printer)
@@ -191,7 +193,7 @@ extension Rendering {
                     }
                 },
 
-                "boxFuncs": try self.actorable.actorableProtocols.map { inheritedProtocol in
+                "boxFuncs": try actorableProtocols.map { inheritedProtocol in
                     try inheritedProtocol.renderBoxingFunc(in: self.actorable)
                 },
 
@@ -329,7 +331,7 @@ extension ActorableTypeDecl {
             $0.renderCaseDecl()
         }
 
-        let renderedActorableProtocolBoxes = self.actorableProtocols.map { decl in
+        let renderedActorableProtocolBoxes = self.actorableProtocols.sorted().map { decl in
             "case \(decl.nameFirstLowercased)(/*TODO: MODULE.*/GeneratedActor.Messages.\(decl.name))"
         }
 
