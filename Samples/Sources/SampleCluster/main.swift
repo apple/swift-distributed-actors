@@ -106,4 +106,4 @@ if system.cluster.node.port == 7337 { // <2>
 
 // end::cluster-sample-actors-discover-and-chat[]
 
-system.park(atMost: .seconds(60))
+system.park(atMost: .seconds(6000))

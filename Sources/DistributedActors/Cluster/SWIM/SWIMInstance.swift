@@ -66,11 +66,11 @@ final class SWIMInstance {
     var localHealthMultiplier = 0
 
     var dynamicLHMProtocolInterval: TimeAmount {
-        TimeAmount.nanoseconds(self.settings.failureDetector.probeInterval.nanoseconds * Int64(1 + self.localHealthMultiplier))
+        TimeAmount.nanoseconds(self.settings.probeInterval.nanoseconds * Int64(1 + self.localHealthMultiplier))
     }
 
     var dynamicLHMPingTimeout: TimeAmount {
-        TimeAmount.nanoseconds(self.settings.failureDetector.pingTimeout.nanoseconds * Int64(1 + self.localHealthMultiplier))
+        TimeAmount.nanoseconds(self.settings.pingTimeout.nanoseconds * Int64(1 + self.localHealthMultiplier))
     }
 
     /// The incarnation number is used to get a sense of ordering of events, so if an `.alive` or `.suspect`
@@ -198,7 +198,7 @@ final class SWIMInstance {
         return self.membersToPing[self.membersToPingIndex].ref
     }
 
-    /// Selects `settings.failureDetector.indirectProbeCount` members to send a `ping-req` to.
+    /// Selects `settings.indirectProbeCount` members to send a `ping-req` to.
     func membersToPingRequest(target: ActorRef<SWIM.Message>) -> ArraySlice<SWIM.Member> {
         func notTarget(_ ref: ActorRef<SWIM.Message>) -> Bool {
             ref.address != target.address
@@ -211,7 +211,7 @@ final class SWIMInstance {
             .filter { notTarget($0.ref) && notMyself($0.ref) && isReachable($0.status) }
             .shuffled()
 
-        return candidates.prefix(self.settings.failureDetector.indirectProbeCount)
+        return candidates.prefix(self.settings.indirectProbeCount)
     }
 
     func notMyself(_ member: SWIM.Member) -> Bool {

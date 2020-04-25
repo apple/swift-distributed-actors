@@ -343,7 +343,7 @@ extension ClusterShellState {
 
     struct AssociatedDirective {
         let membershipChange: Cluster.MembershipChange
-        // let association: Association.AssociationState
+        // let association: Association
         let handshake: HandshakeStateMachine.CompletedState
         let channel: Channel
     }

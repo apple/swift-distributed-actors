@@ -174,7 +174,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         let remotePort = local.cluster.node.node.port + 10
         // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
-        let remoteNode = Node(systemName: "remote", host: "localhost", port: remotePort)
+        let remoteNode = Node(systemName: "remote", host: "127.0.0.1", port: remotePort)
 
         local.cluster.join(node: remoteNode)
         sleep(1) // we give it some time to keep failing to connect, so the second node is not yet started

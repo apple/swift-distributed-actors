@@ -39,7 +39,7 @@ internal struct SWIMShell {
 
             // TODO: install an .cluster.down(my node) with context.defer in case we crash? Or crash system when this crashes: issue #926
 
-            let probeInterval = settings.failureDetector.probeInterval
+            let probeInterval = settings.probeInterval
             context.timers.startSingle(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), delay: probeInterval)
             let shell = SWIMShell(SWIMInstance(settings, myShellMyself: context.myself, myNode: context.system.cluster.node), clusterRef: clusterRef)
 
@@ -235,7 +235,7 @@ internal struct SWIMShell {
         switch result {
         case .failure(let err):
             if let timeoutError = err as? TimeoutError {
-                context.log.warning(
+                context.log.debug(
                     """
                     Did not receive ack from \(reflecting: pingedMember.address) within [\(timeoutError.timeout.prettyDescription)]. \
                     Sending ping requests to other members.

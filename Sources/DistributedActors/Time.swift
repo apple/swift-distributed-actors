@@ -124,7 +124,7 @@ extension TimeAmount: Comparable {
 }
 
 /// "Pretty" time amount rendering, useful for human readable durations in tests
-extension TimeAmount: CustomStringConvertible {
+extension TimeAmount: CustomStringConvertible, CustomPrettyStringConvertible {
     public var description: String {
         "TimeAmount(\(self.prettyDescription), nanoseconds: \(self.nanoseconds))"
     }

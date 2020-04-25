@@ -68,11 +68,11 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let deserialized = try system.serialization.deserialize(as: CRDT.VersionContext.self, from: serialized)
 
             deserialized.vv.state.count.shouldEqual(2) // replicas alpha and beta
-            "\(deserialized.vv)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 1")
-            "\(deserialized.vv)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/beta: 3")
+            "\(deserialized.vv)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha: 1")
+            "\(deserialized.vv)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/beta: 3")
 
             deserialized.gaps.count.shouldEqual(1)
-            "\(deserialized.gaps)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/alpha,4)")
+            "\(deserialized.gaps)".shouldContain("Dot(actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha,4)")
         }
     }
 
@@ -109,22 +109,22 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(versionedContainer)
             let deserialized = try system.serialization.deserialize(as: CRDT.VersionedContainer<String>.self, from: serialized)
 
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
-            "\(deserialized.versionContext.vv)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 3") // adding "bye" bumps version to 3
-            "\(deserialized.versionContext.vv)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/beta: 1")
-            "\(deserialized.versionContext.gaps)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/beta,3)")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
+            "\(deserialized.versionContext.vv)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha: 3") // adding "bye" bumps version to 3
+            "\(deserialized.versionContext.vv)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/beta: 1")
+            "\(deserialized.versionContext.gaps)".shouldContain("Dot(actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/beta,3)")
             deserialized.elementByBirthDot.count.shouldEqual(3)
-            "\(deserialized.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/alpha,1): \"hello\"")
-            "\(deserialized.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/beta,3): \"world\"")
-            "\(deserialized.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/alpha,3): \"bye\"")
+            "\(deserialized.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha,1): \"hello\"")
+            "\(deserialized.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/beta,3): \"world\"")
+            "\(deserialized.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha,3): \"bye\"")
 
             deserialized.delta.shouldNotBeNil()
             // The birth dot for "bye" is added to gaps since delta's versionContext started out empty
             // and therefore not contiguous
             deserialized.delta!.versionContext.vv.isEmpty.shouldBeTrue()
-            "\(deserialized.delta!.versionContext.gaps)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/alpha,3)")
+            "\(deserialized.delta!.versionContext.gaps)".shouldContain("Dot(actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha,3)")
             deserialized.delta!.elementByBirthDot.count.shouldEqual(1)
-            "\(deserialized.delta!.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@localhost:9001/user/alpha,3): \"bye\"")
+            "\(deserialized.delta!.elementByBirthDot)".shouldContain("Dot(actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha,3): \"bye\"")
         }
     }
 
@@ -135,7 +135,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(versionedContainer)
             let deserialized = try system.serialization.deserialize(as: CRDT.VersionedContainer<String>.self, from: serialized)
 
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.versionContext.vv.isEmpty.shouldBeTrue()
             deserialized.versionContext.gaps.isEmpty.shouldBeTrue()
             deserialized.elementByBirthDot.isEmpty.shouldBeTrue()
@@ -155,8 +155,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let deserialized = try system.serialization.deserialize(as: CRDT.GCounter.self, from: serialized)
 
             g1.value.shouldEqual(deserialized.value)
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
-            "\(deserialized.state)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 2]")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
+            "\(deserialized.state)".shouldContain("[actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha: 2]")
         }
     }
 
@@ -168,7 +168,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(g1.delta!) // !-safe, must have a delta, we just changed it
             let deserialized = try system.serialization.deserialize(as: CRDT.GCounter.Delta.self, from: serialized)
 
-            "\(deserialized.state)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 13]")
+            "\(deserialized.state)".shouldContain("[actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha: 13]")
         }
     }
 
@@ -186,9 +186,9 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(set)
             let deserialized = try system.serialization.deserialize(as: CRDT.ORSet<String>.self, from: serialized)
 
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.elements.shouldEqual(set.elements)
-            "\(deserialized.state.versionContext.vv)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 2]")
+            "\(deserialized.state.versionContext.vv)".shouldContain("[actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha: 2]")
             deserialized.state.versionContext.gaps.isEmpty.shouldBeTrue() // changes are contiguous so no gaps
             deserialized.state.elementByBirthDot.count.shouldEqual(2)
             "\(deserialized.state.elementByBirthDot)".shouldContain("/user/alpha,1): \"hello\"")
@@ -210,7 +210,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let deserialized = try system.serialization.deserialize(as: CRDT.ORSet<String>.Delta.self, from: serialized)
 
             // delta contains the same elements as set
-            "\(deserialized.versionContext.vv)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:9001/user/alpha: 2]")
+            "\(deserialized.versionContext.vv)".shouldContain("[actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha: 2]")
             deserialized.versionContext.gaps.isEmpty.shouldBeTrue() // changes are contiguous so no gaps
             deserialized.elementByBirthDot.count.shouldEqual(2)
             "\(deserialized.elementByBirthDot)".shouldContain("/user/alpha,1): \"hello\"")
