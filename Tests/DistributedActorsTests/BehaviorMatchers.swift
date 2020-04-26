@@ -35,7 +35,7 @@ internal extension Behavior {
                 return 1 + max(try nestingDepth0(first), try nestingDepth0(other))
             case .suspended(let previousBehavior, _):
                 return try 1 + nestingDepth0(previousBehavior)
-            case .same, .receive, .receiveMessage, .stop, .failed, .unhandled, .ignore, .class, .suspend:
+            case .same, .receive, .receiveMessage, .stop, .failed, .unhandled, .ignore, .suspend:
                 return 1
             }
         }
@@ -78,7 +78,7 @@ internal extension Behavior {
                 return "\(pad)suspended(\n" +
                     (try prettyFormat0(previousBehavior, depth: depth + 1)) +
                     "\(pad))\n"
-            case .same, .receive, .receiveMessage, .stop, .failed, .unhandled, .ignore, .class, .suspend:
+            case .same, .receive, .receiveMessage, .stop, .failed, .unhandled, .ignore, .suspend:
                 return "\(pad)\(b)\n"
             }
         }

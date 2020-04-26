@@ -330,8 +330,6 @@ internal enum _Behavior<Message: ActorMessage> {
     case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>)
     case receiveMessage(_ handle: (Message) throws -> Behavior<Message>)
 
-    case `class`(ClassBehavior<Message>)
-
     indirect case stop(postStop: Behavior<Message>?, reason: StopReason)
     indirect case failed(behavior: Behavior<Message>, cause: Supervision.Failure)
 
@@ -381,48 +379,6 @@ public enum IllegalBehaviorError<Message: ActorMessage>: Error {
     /// as it has a high potential for resulting in an eagerly infinitely looping during behavior canonicalization.
     /// If such behavior is indeed what you want, you can return the behavior containing the setup rather than the `.same` marker.
     case illegalTransition(from: Behavior<Message>, to: Behavior<Message>)
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Class-based Behavior
-
-extension Behavior {
-    /// Allows defining actors by extending the `ClassBehavior` class.
-    ///
-    /// This allows for easier storage of mutable state, since one can utilize instance variables for this,
-    /// rather than closing over state like it is typical in the more function heavy (class-less) style.
-    public static func `class`(_ makeBehavior: @escaping () -> ClassBehavior<Message>) -> Behavior<Message> {
-        Behavior(underlying: .setup { _ in
-            Behavior(underlying: .class(makeBehavior()))
-        })
-    }
-}
-
-/// Allows writing actors in "class style" by extending this behavior and spawning it using `.custom(MyBehavior())`
-///
-/// - SeeAlso: `Behavior` for general documentation about behaviors,
-/// - SeeAlso: `Behavior.receive` and `Behavior.receiveSignal` for closure-style behaviors corresponding to the
-///            `receive` and `receiveSignal` functions of the `ClassBehavior`.
-open class ClassBehavior<Message: ActorMessage> {
-    public init() {}
-
-    /// Invoked each time the actor running this behavior is to receive a message.
-    /// The returned behavior will be used for handling the next incoming message or signal.
-    /// In order to remain the same behavior as currently, return `.same`.
-    ///
-    /// - SeeAlso: `Behavior.receive`
-    open func receive(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
-        undefined(hint: "MUST override receive(context:message:) when extending ClassBehavior")
-    }
-
-    /// Invoked each time the actor running this behavior is to receive a `Signal`.
-    /// The returned behavior will be used for handling the next incoming message or signal,
-    /// with the exception of signals like `Signals.PostStop`.
-    ///
-    /// - SeeAlso: `Behavior.receiveSignal`
-    open func receiveSignal(context: ActorContext<Message>, signal: Signal) -> Behavior<Message> {
-        .unhandled
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -508,7 +464,6 @@ public extension Behavior {
         switch self.underlying {
         case .receiveMessage(let recv): return try recv(message)
         case .receive(let recv): return try recv(context, message)
-        case .class(let behavior): return try behavior.receive(context: context, message: message)
         case .signalHandling(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case .intercept(let inner, let interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case .orElse(let first, let second): return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
@@ -571,9 +526,6 @@ public extension Behavior {
             return .unhandled
         case .setup:
             return .unhandled
-
-        case .class(let behavior):
-            return behavior.receiveSignal(context: context, signal: signal)
 
         case .same:
             return .unhandled
@@ -746,7 +698,6 @@ internal extension Behavior {
                 case .same: return base
                 case .ignore: return base
                 case .unhandled: return base
-                case .class: return canonical
 
                 case .stop(.none, let reason): return .stop(postStop: base, reason: reason)
                 case .stop(.some, _): return canonical

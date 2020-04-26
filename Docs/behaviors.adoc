@@ -38,39 +38,7 @@ This is because conceptually and Actor is the sum of three parts:
 2. A api:Behavior[struct]  that should be run for each subsequent message.
 3. A api:MessageDispatcher[protocol] which "runs the Actor".
 
-==== Behaviors defined in `class`-oriented style
-
-To many developers, the more familiar way of defining api:Behavior[struct] is likely going to be the `class`-oriented style.
-While we consider this state to lead into sharing too much state between the various states an actor can reside in,
-we do acknowledge that the familiarity of this way of defining actors is a nice entry path to working with actors.
-
-To define a simple behavior that will extend a `class` you can:
-
-[source]
-----
-include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=classOriented_behavior]
-----
-<1> Extend the `ClassBehavior` base class #TODO: Maybe we call it ClassBehavior, so it's the class-oriented one? Want to avoid this being the only place with Actor in name of behavior#
-<2> Implement the `receive` function; it will be invoked using the actors' context and arriving message for every message sent to this actor
-<3> Do something with the message, e.g. print it
-<4> Return the "next behavior" which this actor should _become_. Our actor is simple and stable in its behavior, thus it can return the special `Behavior.same`.
-
-We can extend this actor to have some internal state, that it will keep mutating upon receipt of a message:
-
-[source]
-----
-include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=classOriented_behaviorWithState]
-----
-<1> A class-oriented actor behavior can have stored properties which it is safe to modify during a _reduction_
-<2> We increment the local counter for every message that we receive; Even though we may run these on various threads, proper synchronization is in place.
-
-Messages will be processed one-by-one by the actor, and the _thread_ which the actor uses to run these _reductions_ MAY change in between reductions.
-However, the thread-safety of accessing the actors stored property is guaranteed thanks to how actors are scheduled.
-
-Effectively, within an actor you can work as-if it was a single threaded application. The same applies for the function-oriented style as well,
-which we'll explore in the following section.
-
-==== Behaviors defined in function-oriented style
+==== Behaviors
 
 Those three elements together form one functioning actor. In other words, an actor is a behavior that is able to be run
 with messages from a mailbox. It is by design that the actor itself cannot be seen nor reached from user code, this
