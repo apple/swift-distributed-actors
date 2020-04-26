@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -93,7 +93,7 @@ final class CRDTVersioningTests: XCTestCase {
     // MARK: VersionedContainer tests
 
     func test_VersionedContainer_add_remove_shouldModifyDelta() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
+        var aContainer = IntContainer(replicaID: replicaA)
         aContainer.isEmpty.shouldBeTrue()
 
         aContainer.add(3)
@@ -219,7 +219,7 @@ final class CRDTVersioningTests: XCTestCase {
 
     func test_VersionedContainer_removeAll_shouldAddAllBirthDotsToDeltaVersionContext() throws {
         let versionContext = CRDT.VersionContext(vv: VersionVector([(self.replicaA, V(3)), (self.replicaB, V(1))]), gaps: [VersionDot(self.replicaB, V(5))])
-        var aContainer = IntContainer(replicaId: replicaA, versionContext: versionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4])
+        var aContainer = IntContainer(replicaID: replicaA, versionContext: versionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4])
 
         // container: elementByBirthDot=[(A,2): 4], vv=[(A,3), (B,1)], gaps=[(B,5)]
         aContainer.elements.shouldEqual([4])
@@ -277,8 +277,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_merge_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)
@@ -303,8 +303,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_merge_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)
@@ -338,10 +338,10 @@ final class CRDTVersioningTests: XCTestCase {
 
     func test_VersionedContainer_merge_twoReplicasFormCompleteHistory() throws {
         let aVersionContext = CRDT.VersionContext(vv: VersionVector([(self.replicaA, V(3)), (self.replicaB, V(1)), (self.replicaC, V(1))]), gaps: [VersionDot(self.replicaC, V(4)), VersionDot(self.replicaC, V(5))])
-        var aContainer = IntContainer(replicaId: replicaA, versionContext: aVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(4)): 0, VersionDot(replicaC, V(5)): 3])
+        var aContainer = IntContainer(replicaID: replicaA, versionContext: aVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(4)): 0, VersionDot(replicaC, V(5)): 3])
 
         let bVersionContext = CRDT.VersionContext(vv: VersionVector([(self.replicaA, V(3)), (self.replicaB, V(1))]), gaps: [VersionDot(self.replicaC, V(2)), VersionDot(self.replicaC, V(3))])
-        let bContainer = IntContainer(replicaId: replicaB, versionContext: bVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(3)): 7])
+        let bContainer = IntContainer(replicaID: replicaB, versionContext: bVersionContext, elementByBirthDot: [VersionDot(replicaA, V(2)): 4, VersionDot(replicaC, V(3)): 7])
 
         // `merge` mutates aContainer
         aContainer.merge(other: bContainer)
@@ -359,8 +359,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)
@@ -389,8 +389,8 @@ final class CRDTVersioningTests: XCTestCase {
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
-        var aContainer = IntContainer(replicaId: replicaA)
-        var bContainer = IntContainer(replicaId: replicaB)
+        var aContainer = IntContainer(replicaID: replicaA)
+        var bContainer = IntContainer(replicaID: replicaB)
 
         aContainer.add(1)
         aContainer.add(3)

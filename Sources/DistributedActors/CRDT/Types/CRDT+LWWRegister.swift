@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -27,7 +27,7 @@ extension CRDT {
     ///
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
     public struct LWWRegister<Value>: CvRDT, LWWRegisterOperations {
-        public let replicaId: ReplicaID
+        public let replicaID: ReplicaID
 
         let defaultClock: () -> Clock
         let initialValue: Value
@@ -36,24 +36,24 @@ extension CRDT {
         private(set) var clock: Clock
         private(set) var updatedBy: ReplicaID
 
-        init(replicaId: ReplicaID, initialValue: Value, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
-            self.init(replicaId: replicaId, initialValue: initialValue, clock: defaultClock(), defaultClock: defaultClock)
+        init(replicaID: ReplicaID, initialValue: Value, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
+            self.init(replicaID: replicaID, initialValue: initialValue, clock: defaultClock(), defaultClock: defaultClock)
         }
 
-        init(replicaId: ReplicaID, initialValue: Value, clock: Clock, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
-            self.replicaId = replicaId
+        init(replicaID: ReplicaID, initialValue: Value, clock: Clock, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
+            self.replicaID = replicaID
             self.defaultClock = defaultClock
             self.initialValue = initialValue
             self.value = initialValue
             self.clock = clock
-            self.updatedBy = self.replicaId
+            self.updatedBy = self.replicaID
         }
 
         /// Assigns `value` to the register.
         public mutating func assign(_ value: Value) {
             self.value = value
             self.clock = self.defaultClock()
-            self.updatedBy = self.replicaId
+            self.updatedBy = self.replicaID
         }
 
         public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
@@ -78,14 +78,14 @@ extension CRDT {
 }
 
 extension CRDT.LWWRegister where Value: ExpressibleByNilLiteral {
-    init(replicaId: ReplicaID) {
-        self.init(replicaId: replicaId, initialValue: nil)
+    init(replicaID: ReplicaID) {
+        self.init(replicaID: replicaID, initialValue: nil)
     }
 }
 
 extension CRDT.LWWRegister: ResettableCRDT {
     public mutating func reset() {
-        self = .init(replicaId: self.replicaId, initialValue: self.initialValue)
+        self = .init(replicaID: self.replicaID, initialValue: self.initialValue)
     }
 }
 
@@ -115,7 +115,7 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
 
 extension CRDT.LWWRegister {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
-        CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaId: .actorAddress(owner.address), initialValue: initialValue))
+        CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaID: .actorAddress(owner.address), initialValue: initialValue))
     }
 }
 

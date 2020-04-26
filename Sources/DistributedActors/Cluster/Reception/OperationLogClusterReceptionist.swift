@@ -407,11 +407,11 @@ extension OperationLogClusterReceptionist {
         // 2) check for all peers if we are "behind", and should pull information from them
         //    if this message indicated "end" of the push, then we assume we are up to date with it
         //    and will only pull again from it on the SlowACK
-        let myselfReplicaId: ReplicaID = .actorAddress(context.myself.address)
+        let myselfReplicaID: ReplicaID = .actorAddress(context.myself.address)
         // Note that we purposefully also skip replying to the peer (sender) to the sender of this push yet,
         // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
-        for replica in push.observedSeqNrs.replicaIds
-            where replica != peerReplicaId && replica != myselfReplicaId &&
+        for replica in push.observedSeqNrs.replicaIDs
+            where replica != peerReplicaId && replica != myselfReplicaID &&
             self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
             switch replica {
             case .actorAddress(let address):

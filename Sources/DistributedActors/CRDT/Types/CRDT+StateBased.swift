@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,9 +18,7 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Core CRDT protocols
 
-/// Type erased, top-level, protocol for any kind of state based (also known as `CvRDT`).
-///
-// FIXME: This protocol is not necessary if the restriction of the `CvRDT` protocol being used as a generic constraint only is lifted.
+/// Top-level protocol for any kind of state based CRDT (also known as `CvRDT`).
 public protocol StateBasedCRDT: Codable {
     /// Attempts to merge the state of the given data type instance into this data type instance.
     ///
@@ -124,21 +122,11 @@ extension DeltaCRDT {
     }
 }
 
-// extension DeltaCRDT {
-//    internal var asAnyStateBasedCRDT: AnyStateBasedCRDT {
-//        self.asAnyDeltaCRDT
-//    }
-//
-//    internal var asAnyDeltaCRDT: AnyDeltaCRDT {
-//        AnyDeltaCRDT(self)
-//    }
-// }
-
 /// Named ẟ-CRDT makes use of an identifier (e.g., replica ID) to change a specific part of the state.
 ///
 /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
 public protocol NamedDeltaCRDT: DeltaCRDT {
-    var replicaId: ReplicaID { get }
+    var replicaID: ReplicaID { get }
 }
 
 /// CRDT that can be reset to "zero" value. e.g., zero counter, empty set, etc.

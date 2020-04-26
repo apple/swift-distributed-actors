@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -54,7 +54,7 @@ extension CRDT {
     public struct ORMap<Key: Codable & Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
-        public let replicaId: ReplicaID
+        public let replicaID: ReplicaID
 
         /// Creates a new `Value` instance. e.g., zero counter, empty set, etc.
         /// The initializer should not close over mutable state as no strong guarantees are provided about
@@ -99,10 +99,10 @@ extension CRDT {
             self._values.isEmpty
         }
 
-        init(replicaId: ReplicaID, valueInitializer: @escaping () -> Value) {
-            self.replicaId = replicaId
+        init(replicaID: ReplicaID, valueInitializer: @escaping () -> Value) {
+            self.replicaID = replicaID
             self.valueInitializer = valueInitializer
-            self._keys = ORSet(replicaId: replicaId)
+            self._keys = ORSet(replicaID: replicaID)
             self._values = [:]
         }
 
@@ -349,7 +349,7 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 
 extension CRDT.ORMap {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String, valueInitializer: @escaping () -> Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaId: .actorAddress(owner.address), valueInitializer: valueInitializer))
+        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(owner.address), valueInitializer: valueInitializer))
     }
 }
 
