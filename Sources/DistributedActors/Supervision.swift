@@ -500,13 +500,6 @@ internal class Supervisor<Message: ActorMessage> {
         // Since this is a special situation somewhat, in which the tight crash loop could consume considerable resources (and maybe never recover),
         // we limit the number of times the restart is attempted
 
-        do {
-            try context._downcastUnsafe.deferred.invokeAllAfterReceiveFailed()
-        } catch {
-            context.log.warning("Failed while invoking deferred behaviors after failed receive. \(error)")
-            errorToHandle = error
-        }
-
         repeat {
             switch processingAction {
             case .closure(let closure):
