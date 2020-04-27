@@ -24,8 +24,9 @@ final class RemoteActorRefProviderTests: ActorSystemTestBase {
         }
     }
 
-    let node = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeID(888_888))
-    lazy var remoteNode = ActorAddress(node: node, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
+    let localNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 7111, nid: NodeID(777_777))
+    let remoteNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeID(888_888))
+    lazy var remoteAddress = ActorAddress(node: remoteNode, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Properly resolve
@@ -36,7 +37,7 @@ final class RemoteActorRefProviderTests: ActorSystemTestBase {
         let guardian = Guardian(parent: theOne, name: "user", system: system)
         let localProvider = LocalActorRefProvider(root: guardian)
 
-        let clusterShell = ClusterShell()
+        let clusterShell = ClusterShell(selfNode: self.localNode)
         let provider = RemoteActorRefProvider(settings: system.settings, cluster: clusterShell, localProvider: localProvider)
 
         let node = UniqueNode(node: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())

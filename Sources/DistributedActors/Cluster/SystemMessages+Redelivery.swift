@@ -252,6 +252,7 @@ internal final class OutboundSystemMessageRedelivery {
         // ./' ./' ./' Never gonna give you up, never gonna let you down ./' ./' ./'
         // we currently never give up
 
+        // FIXME: implement giving up reconnecting
         //        if self.redeliveryTicksSinceLastACK > self.maxRedeliveryTicksWithoutACK {
         //            return GiveUpRedeliveringSystemMessagesError()
         //        } else {
@@ -259,7 +260,7 @@ internal final class OutboundSystemMessageRedelivery {
         //        }
     }
 
-    func onReconnected(newAssociationID: Association.AssociatedState) {
+    func onReconnected(newAssociationID: Association.AssociationState) {
         // TODO: redeliver everything
     }
 

@@ -210,7 +210,7 @@ internal struct HandshakeStateMachine {
     // MARK: Handshake Completed
 
     /// State reached once we have received a `HandshakeAccepted` and are ready to create an association.
-    /// This state is used to unlock creating an Association.
+    /// This state is used to unlock creating a completed Association.
     internal struct CompletedState {
         let protocolVersion: Version
         var remoteNode: UniqueNode

@@ -257,21 +257,21 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
             }
             let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
             first.cluster.events.subscribe(p1.ref)
 
             let second = self.setUpNode("second") { settings in
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
             }
             let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
             second.cluster.events.subscribe(p2.ref)
 
             let third = self.setUpNode("third") { settings in
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
-                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
+                settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
             }
             let p3 = self.testKit(third).spawnTestProbe(expecting: Cluster.Event.self)
             third.cluster.events.subscribe(p3.ref)
@@ -291,14 +291,14 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
 
             // on the leader node, the other node noticed as up:
             let testKit = self.testKit(first)
-            try testKit.eventually(within: .seconds(5)) {
+            try testKit.eventually(within: .seconds(10)) {
                 let event: Cluster.Event? = try p1.maybeExpectMessage()
                 switch event {
                 case .membershipChange(.init(node: second.cluster.node, fromStatus: .up, toStatus: .down)): ()
                 case let other: throw testKit.error("Expected `second` [     up] -> [  .down], on first node, was: \(other, orElse: "nil")")
                 }
             }
-            try testKit.eventually(within: .seconds(5)) {
+            try testKit.eventually(within: .seconds(10)) {
                 let event: Cluster.Event? = try p1.maybeExpectMessage()
                 switch event {
                 case .membershipChange(.init(node: second.cluster.node, fromStatus: .down, toStatus: .removed)): ()
