@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -21,7 +21,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_CRDTEnvelope_DeltaCRDTBox_GCounter() throws {
         try shouldNotThrow {
-            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
             g1.increment(by: 2)
             g1.delta.shouldNotBeNil()
 
@@ -47,7 +47,7 @@ final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
 //    // TODO: use a "real" CvRDT rather than GCounter.Delta
 //    func test_serializationOf_CRDTEnvelope_AnyCvRDT_GCounter_delta() throws {
 //        try shouldNotThrow {
-//            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+//            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
 //            g1.increment(by: 2)
 //            g1.delta.shouldNotBeNil()
 //

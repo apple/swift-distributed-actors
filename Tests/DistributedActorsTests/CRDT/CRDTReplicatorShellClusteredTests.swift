@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -60,7 +60,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register the owner
@@ -84,7 +84,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
@@ -125,7 +125,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         let deleteP = self.localTestKit.spawnTestProbe(expecting: LocalDeleteResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 changes
@@ -160,7 +160,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         let readP = self.localTestKit.spawnTestProbe(expecting: RemoteReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
@@ -200,7 +200,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         let readP = self.localTestKit.spawnTestProbe(expecting: RemoteReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
@@ -240,7 +240,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
         let deleteP = self.localTestKit.spawnTestProbe(expecting: RemoteDeleteResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 changes
@@ -280,9 +280,9 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
 
         let id = CRDT.Identity("gcounter-1")
         // Local and remote have different versions of g1
-        var g1Local = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1Local = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1Local.increment(by: 1)
-        var g1Remote = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g1Remote = CRDT.GCounter(replicaID: .actorAddress(self.ownerBeta))
         g1Remote.increment(by: 3)
 
         // Register owner so replicator will notify it on g1 updates
@@ -301,7 +301,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
             throw self.localTestKit.fail("Should be a GCounter")
         }
         "\(gg1Remote.state)".shouldContain("/user/alpha: 1")
-        gg1Remote.state[g1Remote.replicaId]!.shouldEqual(3)
+        gg1Remote.state[g1Remote.replicaID]!.shouldEqual(3)
         gg1Remote.value.shouldEqual(4) // 1 + 3
 
         // Owner on remote node should have been notified
@@ -326,9 +326,9 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
 
         let id = CRDT.Identity("gcounter-1")
         // Local and remote have different versions of g1
-        var g1Local = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1Local = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1Local.increment(by: 1)
-        var g1Remote = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g1Remote = CRDT.GCounter(replicaID: .actorAddress(self.ownerBeta))
         g1Remote.increment(by: 3)
 
         // Register owner so replicator has a copy of g1 and will notify the owner on g1 updates
@@ -344,7 +344,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
             throw self.localTestKit.fail("Should be a GCounter")
         }
         "\(gg1Local.state)".shouldContain("/user/beta: 3")
-        gg1Local.state[gg1Local.replicaId]!.shouldEqual(1)
+        gg1Local.state[gg1Local.replicaID]!.shouldEqual(1)
         gg1Local.value.shouldEqual(4) // 1 + 3
 
         // Local owner should have been notified
@@ -369,7 +369,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
 
         let id = CRDT.Identity("gcounter-1")
         // g1 doesn't exist locally
-        var g1Remote = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g1Remote = CRDT.GCounter(replicaID: .actorAddress(self.ownerBeta))
         g1Remote.increment(by: 3)
 
         // Register owner so replicator has a copy of g1 and will notify the owner on g1 updates
@@ -402,9 +402,9 @@ final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
 
         let id = CRDT.Identity("gcounter-1")
         // Local and remote have different versions of g1
-        var g1Local = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1Local = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
         g1Local.increment(by: 1)
-        var g1Remote = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g1Remote = CRDT.GCounter(replicaID: .actorAddress(self.ownerBeta))
         g1Remote.increment(by: 3)
 
         // Register owner so replicator will notify it on g1 updates

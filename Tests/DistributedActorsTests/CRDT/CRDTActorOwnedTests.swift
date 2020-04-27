@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -338,7 +338,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
     private func actorOwnedORMapBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORMapCommand> {
         .setup { context in
-            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, valueInitializer: { CRDT.GCounter(replicaId: .actorAddress(context.address)) })
+            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, valueInitializer: { CRDT.GCounter(replicaID: .actorAddress(context.address)) })
             m.onUpdate { id, mm in
                 context.log.trace("ORMap \(id) updated with new value: \(mm.underlying)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
