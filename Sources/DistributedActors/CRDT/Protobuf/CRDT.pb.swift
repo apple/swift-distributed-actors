@@ -246,15 +246,113 @@ public struct ProtoCRDTORSet {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-/// TODO: NOT DONE: LWWRegistry
-public struct ProtoCRDTLWWRegistry {
+public struct ProtoCRDTLWWRegister {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  public var replicaID: ProtoVersionReplicaID {
+    get {return _storage._replicaID ?? ProtoVersionReplicaID()}
+    set {_uniqueStorage()._replicaID = newValue}
+  }
+  /// Returns true if `replicaID` has been explicitly set.
+  public var hasReplicaID: Bool {return _storage._replicaID != nil}
+  /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
+  public mutating func clearReplicaID() {_uniqueStorage()._replicaID = nil}
+
+  public var initialValue: ProtoCRDTLWWRegister.Value {
+    get {return _storage._initialValue ?? ProtoCRDTLWWRegister.Value()}
+    set {_uniqueStorage()._initialValue = newValue}
+  }
+  /// Returns true if `initialValue` has been explicitly set.
+  public var hasInitialValue: Bool {return _storage._initialValue != nil}
+  /// Clears the value of `initialValue`. Subsequent reads from it will return its default value.
+  public mutating func clearInitialValue() {_uniqueStorage()._initialValue = nil}
+
+  public var value: ProtoCRDTLWWRegister.Value {
+    get {return _storage._value ?? ProtoCRDTLWWRegister.Value()}
+    set {_uniqueStorage()._value = newValue}
+  }
+  /// Returns true if `value` has been explicitly set.
+  public var hasValue: Bool {return _storage._value != nil}
+  /// Clears the value of `value`. Subsequent reads from it will return its default value.
+  public mutating func clearValue() {_uniqueStorage()._value = nil}
+
+  public var clock: ProtoCRDTLWWRegister.Clock {
+    get {return _storage._clock ?? ProtoCRDTLWWRegister.Clock()}
+    set {_uniqueStorage()._clock = newValue}
+  }
+  /// Returns true if `clock` has been explicitly set.
+  public var hasClock: Bool {return _storage._clock != nil}
+  /// Clears the value of `clock`. Subsequent reads from it will return its default value.
+  public mutating func clearClock() {_uniqueStorage()._clock = nil}
+
+  public var updatedBy: ProtoVersionReplicaID {
+    get {return _storage._updatedBy ?? ProtoVersionReplicaID()}
+    set {_uniqueStorage()._updatedBy = newValue}
+  }
+  /// Returns true if `updatedBy` has been explicitly set.
+  public var hasUpdatedBy: Bool {return _storage._updatedBy != nil}
+  /// Clears the value of `updatedBy`. Subsequent reads from it will return its default value.
+  public mutating func clearUpdatedBy() {_uniqueStorage()._updatedBy = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
+  public struct Value {
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
+
+    public var manifest: ProtoManifest {
+      get {return _storage._manifest ?? ProtoManifest()}
+      set {_uniqueStorage()._manifest = newValue}
+    }
+    /// Returns true if `manifest` has been explicitly set.
+    public var hasManifest: Bool {return _storage._manifest != nil}
+    /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+    public mutating func clearManifest() {_uniqueStorage()._manifest = nil}
+
+    public var payload: Data {
+      get {return _storage._payload}
+      set {_uniqueStorage()._payload = newValue}
+    }
+
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+    public init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
+  }
+
+  public struct Clock {
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
+
+    public var manifest: ProtoManifest {
+      get {return _storage._manifest ?? ProtoManifest()}
+      set {_uniqueStorage()._manifest = newValue}
+    }
+    /// Returns true if `manifest` has been explicitly set.
+    public var hasManifest: Bool {return _storage._manifest != nil}
+    /// Clears the value of `manifest`. Subsequent reads from it will return its default value.
+    public mutating func clearManifest() {_uniqueStorage()._manifest = nil}
+
+    public var payload: Data {
+      get {return _storage._payload}
+      set {_uniqueStorage()._payload = newValue}
+    }
+
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+    public init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
+  }
+
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -755,20 +853,232 @@ extension ProtoCRDTORSet: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   }
 }
 
-extension ProtoCRDTLWWRegistry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = "CRDTLWWRegistry"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+extension ProtoCRDTLWWRegister: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = "CRDTLWWRegister"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "replicaID"),
+    2: .same(proto: "initialValue"),
+    3: .same(proto: "value"),
+    4: .same(proto: "clock"),
+    5: .same(proto: "updatedBy"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _replicaID: ProtoVersionReplicaID? = nil
+    var _initialValue: ProtoCRDTLWWRegister.Value? = nil
+    var _value: ProtoCRDTLWWRegister.Value? = nil
+    var _clock: ProtoCRDTLWWRegister.Clock? = nil
+    var _updatedBy: ProtoVersionReplicaID? = nil
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _replicaID = source._replicaID
+      _initialValue = source._initialValue
+      _value = source._value
+      _clock = source._clock
+      _updatedBy = source._updatedBy
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let _ = try decoder.nextFieldNumber() {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._initialValue)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._value)
+        case 4: try decoder.decodeSingularMessageField(value: &_storage._clock)
+        case 5: try decoder.decodeSingularMessageField(value: &_storage._updatedBy)
+        default: break
+        }
+      }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._replicaID {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if let v = _storage._initialValue {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      }
+      if let v = _storage._value {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      }
+      if let v = _storage._clock {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      }
+      if let v = _storage._updatedBy {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      }
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoCRDTLWWRegistry, rhs: ProtoCRDTLWWRegistry) -> Bool {
+  public static func ==(lhs: ProtoCRDTLWWRegister, rhs: ProtoCRDTLWWRegister) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._replicaID != rhs_storage._replicaID {return false}
+        if _storage._initialValue != rhs_storage._initialValue {return false}
+        if _storage._value != rhs_storage._value {return false}
+        if _storage._clock != rhs_storage._clock {return false}
+        if _storage._updatedBy != rhs_storage._updatedBy {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoCRDTLWWRegister.Value: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = ProtoCRDTLWWRegister.protoMessageName + ".Value"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "manifest"),
+    2: .same(proto: "payload"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _manifest: ProtoManifest? = nil
+    var _payload: Data = SwiftProtobuf.Internal.emptyData
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _manifest = source._manifest
+      _payload = source._payload
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._manifest)
+        case 2: try decoder.decodeSingularBytesField(value: &_storage._payload)
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._manifest {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if !_storage._payload.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 2)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ProtoCRDTLWWRegister.Value, rhs: ProtoCRDTLWWRegister.Value) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._manifest != rhs_storage._manifest {return false}
+        if _storage._payload != rhs_storage._payload {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoCRDTLWWRegister.Clock: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = ProtoCRDTLWWRegister.protoMessageName + ".Clock"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "manifest"),
+    2: .same(proto: "payload"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _manifest: ProtoManifest? = nil
+    var _payload: Data = SwiftProtobuf.Internal.emptyData
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _manifest = source._manifest
+      _payload = source._payload
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._manifest)
+        case 2: try decoder.decodeSingularBytesField(value: &_storage._payload)
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._manifest {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if !_storage._payload.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 2)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ProtoCRDTLWWRegister.Clock, rhs: ProtoCRDTLWWRegister.Clock) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._manifest != rhs_storage._manifest {return false}
+        if _storage._payload != rhs_storage._payload {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

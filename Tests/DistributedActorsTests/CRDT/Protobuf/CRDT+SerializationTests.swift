@@ -14,13 +14,18 @@
 
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
 import XCTest
 
 final class CRDTSerializationTests: ActorSystemTestBase {
     typealias V = UInt64
 
     override func setUp() {
-        _ = self.setUpNode(String(describing: type(of: self))) { _ in
+        _ = self.setUpNode(String(describing: type(of: self))) { settings in
+            // TODO: all this registering will go away with _mangledTypeName
+            settings.serialization.register(CRDT.ORSet<String>.self, serializerID: Serialization.ReservedID.CRDTORSet)
+            settings.serialization.register(CRDT.ORSet<String>.Delta.self, serializerID: Serialization.ReservedID.CRDTORSetDelta)
+            settings.serialization.register(CRDT.LWWRegister<Int>.self, serializerID: Serialization.ReservedID.CRDTLWWRegister)
         }
     }
 
@@ -203,6 +208,33 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             deserialized.elementByBirthDot.count.shouldEqual(2)
             "\(deserialized.elementByBirthDot)".shouldContain("/user/alpha,1): \"hello\"")
             "\(deserialized.elementByBirthDot)".shouldContain("/user/alpha,2): \"world\"") // order in version vector kept right
+        }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: LWWRegister
+
+    func test_serializationOf_LWWRegister() throws {
+        try shouldNotThrow {
+            let clock = WallTimeClock()
+            var register: CRDT.LWWRegister<Int> = CRDT.LWWRegister(replicaID: .actorAddress(self.ownerAlpha), initialValue: 6, clock: clock)
+            register.assign(8)
+
+            let serialized = try system.serialization.serialize(register)
+            let deserialized = try system.serialization.deserialize(as: CRDT.LWWRegister<Int>.self, from: serialized)
+
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            deserialized.initialValue.shouldEqual(6)
+            deserialized.value.shouldEqual(8)
+            "\(deserialized.updatedBy)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+
+            // The way `Date`/`Codable` handles fractional seconds makes it difficult
+            // to compare `Date` before and after serialization. We settle with comparing
+            // ISO-8601 representation of `Date`.
+            if #available(macOS 10.13, *) {
+                Formatter.iso8601WithFractionalSeconds.string(from: deserialized.clock.timestamp)
+                    .shouldEqual(Formatter.iso8601WithFractionalSeconds.string(from: clock.timestamp))
+            }
         }
     }
 }

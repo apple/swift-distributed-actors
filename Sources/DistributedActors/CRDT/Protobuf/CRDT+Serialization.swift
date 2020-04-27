@@ -250,15 +250,68 @@ extension CRDT.ORSet: ProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.LWWRegister
 
-// FIXME: https://github.com/apple/swift-distributed-actors/issues/509
-extension CRDT.LWWRegister: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoCRDTLWWRegistry
+extension CRDT.LWWRegisterWithCustomClock: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoCRDTLWWRegister
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
-        fatalError("TODO: Serialization of LWWRegister is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
+        var proto = ProtobufRepresentation()
+        proto.replicaID = try self.replicaID.toProto(context: context)
+        proto.updatedBy = try self.updatedBy.toProto(context: context)
+
+        func toProto(_ value: Value) throws -> ProtoCRDTLWWRegister.Value {
+            let serialized = try context.serialization.serialize(value)
+            var proto = ProtoCRDTLWWRegister.Value()
+            proto.manifest = try serialized.manifest.toProto(context: context)
+            proto.payload = serialized.buffer.readData()
+            return proto
+        }
+
+        proto.initialValue = try toProto(self.initialValue)
+        proto.value = try toProto(self.value)
+
+        let serializedClock = try context.serialization.serialize(self.clock)
+        proto.clock.manifest = try serializedClock.manifest.toProto(context: context)
+        proto.clock.payload = serializedClock.buffer.readData()
+
+        return proto
     }
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        fatalError("TODO: Serialization of LWWRegister is not implemented https://github.com/apple/swift-distributed-actors/issues/509")
+        guard proto.hasReplicaID else {
+            throw SerializationError.missingField("replicaID", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+        }
+        self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
+
+        func fromProto(_ valueProto: ProtoCRDTLWWRegister.Value) throws -> Value {
+            try context.serialization.deserialize(
+                as: Value.self,
+                from: .data(valueProto.payload),
+                using: Serialization.Manifest(fromProto: valueProto.manifest, context: context)
+            )
+        }
+
+        guard proto.hasInitialValue else {
+            throw SerializationError.missingField("initialValue", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+        }
+        self.initialValue = try fromProto(proto.initialValue)
+
+        guard proto.hasValue else {
+            throw SerializationError.missingField("value", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+        }
+        self.value = try fromProto(proto.value)
+
+        guard proto.hasClock else {
+            throw SerializationError.missingField("clock", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+        }
+        self.clock = try context.serialization.deserialize(
+            as: Clock.self,
+            from: .data(proto.clock.payload),
+            using: Serialization.Manifest(fromProto: proto.clock.manifest, context: context)
+        )
+
+        guard proto.hasUpdatedBy else {
+            throw SerializationError.missingField("updatedBy", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+        }
+        self.updatedBy = try ReplicaID(fromProto: proto.updatedBy, context: context)
     }
 }

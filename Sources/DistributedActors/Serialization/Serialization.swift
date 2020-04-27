@@ -159,15 +159,15 @@ public class Serialization {
         settings.register(CRDT.Replicator.RemoteCommand.WriteResult.self, serializerID: .protobufRepresentable)
         settings.register(CRDT.Replicator.RemoteCommand.ReadResult.self, serializerID: .protobufRepresentable)
         settings.register(CRDT.Replicator.RemoteCommand.DeleteResult.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.GCounter.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.GCounterDelta.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.ORSet<String>.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.ORSet<Int>.self, serializerID: .protobufRepresentable)
-        // settings.register(AnyDeltaCRDT.self, serializerID:ReservedID.CRDTDeltaBox) // FIXME: so we cannot test the CRDT.Envelope+SerializationTests
+        settings.register(CRDT.GCounter.self, serializerID: Serialization.ReservedID.CRDTGCounter)
+        settings.register(CRDT.GCounterDelta.self, serializerID: Serialization.ReservedID.CRDTGCounterDelta)
 
         // errors
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.register(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+
+        // clocks
+        settings.register(WallTimeClock.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         self.settings = settings
         self.metrics = system.metrics
@@ -302,7 +302,13 @@ extension Serialization {
             return serializer
 
         case Serialization.SerializerID.foundationJSON:
-            let serializer = JSONCodableSerializer<Message>()
+            let encoder = JSONEncoder()
+            let decoder = JSONDecoder()
+            if #available(macOS 10.13, *) {
+                encoder.dateEncodingStrategy = .iso8601Custom
+                decoder.dateDecodingStrategy = .iso8601Custom
+            }
+            let serializer = JSONCodableSerializer<Message>(encoder: encoder, decoder: decoder)
             serializer.setSerializationContext(self.context)
             return serializer
 
@@ -430,6 +436,9 @@ extension Serialization {
 
                 case .foundationJSON:
                     let encoder = JSONEncoder()
+                    if #available(macOS 10.13, *) {
+                        encoder.dateEncodingStrategy = .iso8601Custom
+                    }
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
@@ -558,6 +567,9 @@ extension Serialization {
 
                 case .foundationJSON:
                     let decoder = JSONDecoder()
+                    if #available(macOS 10.13, *) {
+                        decoder.dateDecodingStrategy = .iso8601Custom
+                    }
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder)
 

@@ -17,6 +17,9 @@ import NIOFoundationCompat
 
 import Foundation // for Codable
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: JSON
+
 /// Allows for serialization of messages using the Foundation's `JSONEncoder` and `JSONDecoder`.
 ///
 /// - Note: Take care to ensure that both "ends" (sending and receiving members of a cluster)
@@ -52,6 +55,50 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
         self.decoder.userInfo[key] = value
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: JSON Date formatting
+
+// Source: https://stackoverflow.com/questions/46458487/how-to-convert-a-date-string-with-optional-fractional-seconds-using-codable-in-s
+
+extension Formatter {
+    @available(macOS 10.13, *)
+    static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    @available(macOS 10.13, *)
+    static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+}
+
+extension JSONEncoder.DateEncodingStrategy {
+    @available(macOS 10.13, *)
+    static let iso8601Custom = custom { date, encoder in
+        var container = encoder.singleValueContainer()
+        try container.encode(Formatter.iso8601WithFractionalSeconds.string(from: date))
+    }
+}
+
+extension JSONDecoder.DateDecodingStrategy {
+    @available(macOS 10.13, *)
+    static let iso8601Custom = custom { decoder in
+        let container = try decoder.singleValueContainer()
+        let string = try container.decode(String.self)
+        if let date = Formatter.iso8601WithFractionalSeconds.date(from: string) ?? Formatter.iso8601.date(from: string) {
+            return date
+        }
+        throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid date: \(string)")
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: plist
 
 /// Allows for serialization of messages using the Foundation's `PropertyListEncoder` and `PropertyListDecoder`, using the specified format.
 ///
