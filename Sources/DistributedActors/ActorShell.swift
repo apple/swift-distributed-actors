@@ -105,26 +105,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     // TODO: we can likely optimize not having to call "through" supervisor if we are .stop anyway
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Defer
-
-    @usableFromInline
-    internal let deferred = DefersContainer()
-
-    public override func `defer`(
-        until: DeferUntilWhen,
-        file: String = #file, line: UInt = #line,
-        _ closure: @escaping () -> Void
-    ) {
-        do {
-            let deferred = ActorDeferredClosure(until: until, closure, file: file, line: line)
-            try self.deferred.push(deferred)
-        } catch {
-            // FIXME: Only reason this fails silently and not fatalErrors is since it would easily get into crash looping infinitely...
-            self.log.error("Attempted to invoke context.defer nested in another context.defer execution. This is currently not supported. \(error)")
-        }
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actorable support functions
 
     internal override func _forceStop() {
@@ -419,8 +399,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     /// Handles all actions that MUST be applied after a message is interpreted.
     @usableFromInline
     internal func finishInterpretAnyMessage(_ next: Behavior<Message>) throws -> ActorRunResult {
-        try self.deferred.invokeAllAfterReceived()
-
         if next.isChanging {
             try self.becomeNext(behavior: next)
         }
@@ -496,9 +474,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     @inlinable public func _restartPrepare() throws {
         self.children.stopAll(includeAdapters: false)
         self.timers.cancelAll() // TODO: cancel all except the restart timer
-
-        // since we are restarting that means that we have failed
-        try self.deferred.invokeAllAfterFailing()
 
         /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
         /// and we can not change this decision; at least not in the current scheme (which is simple and good enough for most cases).
@@ -596,8 +571,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         self.notifyParentOfTermination()
         self.notifyWatchersOfTermination()
 
-        self.invokePendingDeferredClosuresWhileTerminating()
-
         do {
             _ = try self.behavior.interpretSignal(context: self, signal: Signals.PostStop())
         } catch {
@@ -647,26 +620,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         }
 
         parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .escalating(failure)))
-    }
-
-    func invokePendingDeferredClosuresWhileTerminating() {
-        do {
-            switch self.behavior.underlying {
-            case .stop(_, let reason):
-                switch reason {
-                case .failure:
-                    try self.deferred.invokeAllAfterFailing()
-                case .stopMyself, .stopByParent:
-                    try self.deferred.invokeAllAfterStop()
-                }
-            case .failed:
-                try self.deferred.invokeAllAfterFailing()
-            default:
-                fatalError("Potential bug. Should only be invoked on .stop / .failed")
-            }
-        } catch {
-            self.log.error("Invoking context.deferred closures threw: \(error), remaining closures will NOT be invoked. Proceeding with termination.")
-        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
