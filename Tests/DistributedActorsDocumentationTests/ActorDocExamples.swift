@@ -51,31 +51,6 @@ class ActorDocExamples: XCTestCase {
         _ = behavior // silence not-used warning
     }
 
-    func example_classOriented_behavior() throws {
-        // tag::classOriented_behavior[]
-        final class GreetingsPrinterBehavior: ClassBehavior<Greetings> { // <1>
-            override func receive(context: ActorContext<Greetings>, message: Greetings) throws -> Behavior<Greetings> { // <2>
-                print("Received: \(message)") // <3>
-                return .same // <4>
-            }
-        }
-        // end::classOriented_behavior[]
-    }
-
-    func example_classOriented_behaviorWithState() throws {
-        // tag::classOriented_behaviorWithState[]
-        final class GreetingsPrinterBehavior: ClassBehavior<Greetings> {
-            private var messageCounter = 0 // <1>
-
-            override func receive(context: ActorContext<Greetings>, message: Greetings) throws -> Behavior<Greetings> {
-                self.messageCounter += 1 // <2>
-                print("Received \(self.messageCounter)-th message: \(message)")
-                return .same
-            }
-        }
-        // end::classOriented_behaviorWithState[]
-    }
-
     func example_spawn_tell() throws {
         // tag::spawn[]
         let system = ActorSystem("ExampleSystem") // <1>

@@ -496,28 +496,6 @@ final class SupervisionTests: ActorSystemTestBase {
         )
     }
 
-    func test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let ref = try system.spawn(
-            "class-behavior",
-            props: .supervision(strategy: .restart(atMost: 2, within: nil)),
-            .class { MyCrashingClassBehavior(p.ref) }
-        )
-
-        ref.tell("one")
-        // throws and restarts
-        ref.tell("two")
-
-        try p.expectMessage("init")
-        let id1 = try p.expectMessage()
-        try p.expectMessage("message:one")
-        try p.expectMessage("init")
-        let id2 = try p.expectMessage()
-        try p.expectMessage("message:two")
-
-        id2.shouldNotEqual(id1)
-    }
-
     func test_restartSupervised_throwsInAwaitResult_shouldRestart() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestart(
             runName: "throws",
@@ -525,22 +503,6 @@ final class SupervisionTests: ActorSystemTestBase {
                 FaultyMessage.pleaseFailAwaiting(message: "Boom!")
             }
         )
-    }
-
-    class MyCrashingClassBehavior: ClassBehavior<String> {
-        let probe: ActorRef<String>
-
-        init(_ probe: ActorRef<String>) {
-            self.probe = probe
-            super.init()
-            probe.tell("init")
-            probe.tell("\(ObjectIdentifier(self))")
-        }
-
-        override func receive(context: ActorContext<String>, message: String) throws -> Behavior<String> {
-            self.probe.tell("message:\(message)")
-            throw FaultyError.boom(message: "Booming on purpose, in class behavior!")
-        }
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

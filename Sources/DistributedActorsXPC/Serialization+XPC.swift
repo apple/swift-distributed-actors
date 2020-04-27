@@ -40,7 +40,7 @@ public enum XPCSerialization {
         xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(serialized.manifest.serializerID.value))
 
         switch serialized.buffer {
-        case .data(let data):
+        case .data:
             // FIXME: https://github.com/apple/swift-distributed-actors/issues/536
             fatalError("not implmented")
         case .nioByteBuffer(let buffer):
@@ -64,7 +64,7 @@ public enum XPCSerialization {
         let serialized = try system.serialization.serialize(address)
 
         switch serialized.buffer {
-        case .data(let data):
+        case .data:
             // FIXME: https://github.com/apple/swift-distributed-actors/issues/536
             fatalError("not implmented")
         case .nioByteBuffer(let buffer):

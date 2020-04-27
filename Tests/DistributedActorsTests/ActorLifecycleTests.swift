@@ -112,47 +112,4 @@ class ActorLifecycleTests: ActorSystemTestBase {
 
         try p.expectNoMessage(for: .milliseconds(200))
     }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Stopping actors
-
-    func test_stopping_shouldDeinitTheBehavior() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("p1")
-        let chattyAboutLifecycle =
-            try system.spawn("deinitLifecycleActor", .class { LifecycleDeinitClassBehavior(p.ref) })
-
-        chattyAboutLifecycle.tell(.stop)
-
-        try p.expectMessage("init")
-        try p.expectMessage("receive:stop")
-        try p.expectMessage("signal:PostStop()")
-        try p.expectMessage("deinit")
-    }
-}
-
-private enum LifecycleDeinitActorMessage: String, ActorMessage {
-    case stop
-}
-
-private final class LifecycleDeinitClassBehavior: ClassBehavior<LifecycleDeinitActorMessage> {
-    let probe: ActorRef<String>
-
-    init(_ p: ActorRef<String>) {
-        self.probe = p
-        self.probe.tell("init")
-    }
-
-    deinit {
-        self.probe.tell("deinit")
-    }
-
-    override func receive(context: ActorContext<LifecycleDeinitActorMessage>, message: LifecycleDeinitActorMessage) -> Behavior<LifecycleDeinitActorMessage> {
-        self.probe.tell("receive:\(message)")
-        return .stop
-    }
-
-    override func receiveSignal(context: ActorContext<LifecycleDeinitActorMessage>, signal: Signal) -> Behavior<LifecycleDeinitActorMessage> {
-        self.probe.tell("signal:\(signal)")
-        return .same
-    }
 }
