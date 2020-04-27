@@ -1,7 +1,7 @@
 
 # Swift Distributed Actors
 
-"Swift Distributed Actors" – Distributed Systems (and Concurrency) powered by Actors.
+The Distributed Systems (and Concurrency) toolkit for Swift.
 
 ## Development
 
