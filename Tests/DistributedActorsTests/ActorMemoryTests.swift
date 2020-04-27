@@ -24,8 +24,8 @@ final class ActorMemoryTests: XCTestCase {
 
     func test_osx_actorShell_instanceSize() {
         #if os(OSX)
-        class_getInstanceSize(ActorShell<Int>.self).shouldEqual(520) // FIXME: make it back to 480 or smaller
-        class_getInstanceSize(ActorShell<String>.self).shouldEqual(520) // FIXME: make it back to 480 or smaller
+        class_getInstanceSize(ActorShell<Int>.self).shouldEqual(512) // FIXME: make it back to 480 or smaller
+        class_getInstanceSize(ActorShell<String>.self).shouldEqual(512) // FIXME: make it back to 480 or smaller
         #else
         print("Skipping test_osx_actorShell_instanceSize as requires Objective-C runtime")
         #endif
