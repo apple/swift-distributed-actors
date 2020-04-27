@@ -32,19 +32,19 @@ stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_suspension_reachability 7337 > ${
 declare -r first_pid=$(echo $!)
 wait_log_exists ${first_logs} 'Binding to: ' 200 # since it might be compiling again...
 
-stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_suspension_reachability 8228 localhost 7337 > ${second_logs} 2>&1 &
+stdbuf -i0 -o0 -e0 swift run it_Clustered_swim_suspension_reachability 8228 127.0.0.1 7337 > ${second_logs} 2>&1 &
 declare -r second_pid=$(echo $!)
 wait_log_exists ${second_logs} 'Binding to: ' 200 # since it might be compiling again...
 
 echo "Waiting nodes to become .up..."
-wait_log_exists ${first_logs} 'membershipChange(sact://System@localhost:8228 :: \[joining\] -> \[     up\])' 40
+wait_log_exists ${first_logs} 'membershipChange(sact://System@127.0.0.1:8228 :: \[joining\] -> \[     up\])' 50
 echo 'Second member seen .up, good...'
 
 # suspend the second process, causing unreachability
 kill -SIGSTOP ${second_pid}
 jobs
 
-wait_log_exists ${first_logs} 'reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*localhost:8228, status: up, reachability: unreachable' 40
+wait_log_exists ${first_logs} 'reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: unreachable' 50
 echo 'Second member seen .unreachable, good...'
 
 # resume it in the background
@@ -52,7 +52,7 @@ kill -SIGCONT ${second_pid}
 
 # it should become reachable again
 declare -r expected_second_member_unreachable=
-wait_log_exists ${first_logs} 'reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*localhost:8228, status: up, reachability: reachable' 40
+wait_log_exists ${first_logs} 'reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: reachable' 50
 echo 'Second member seen .unreachable, good...'
 
 
