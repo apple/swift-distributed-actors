@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -48,6 +48,26 @@ class SerializationTests: ActorSystemTestBase {
         }
 
         buf.shouldEqual(out)
+    }
+
+    func test_serialize_Int_withData() throws {
+        let value: Int = 6
+
+        let serialized = try system.serialization.serialize(value)
+        // Deserialize from `Data`
+        let deserialized = try system.serialization.deserialize(as: Int.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
+
+        deserialized.shouldEqual(value)
+    }
+
+    func test_serialize_Bool_withData() throws {
+        let value: Bool = true
+
+        let serialized = try system.serialization.serialize(value)
+        // Deserialize from `Data`
+        let deserialized = try system.serialization.deserialize(as: Bool.self, from: .data(serialized.buffer.readData()), using: serialized.manifest)
+
+        deserialized.shouldEqual(value)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

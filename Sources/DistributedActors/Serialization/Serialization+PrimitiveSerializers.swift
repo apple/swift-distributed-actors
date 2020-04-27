@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -39,7 +39,6 @@ internal class StringSerializer: Serializer<String> {
     override func deserialize(from buffer: Serialization.Buffer) throws -> String {
         switch buffer {
         case .data(let data):
-            // FIXME: required? or just throw error?
             guard let s = String(data: data, encoding: .utf8) else {
                 throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
             }
@@ -73,8 +72,7 @@ internal class IntegerSerializer<Number: FixedWidthInteger>: Serializer<Number> 
     override func deserialize(from buffer: Serialization.Buffer) throws -> Number {
         switch buffer {
         case .data(let data):
-            // FIXME: required? or just throw error?
-            return data.withUnsafeBytes { $0.load(as: Number.self) }
+            return Number(bigEndian: data.withUnsafeBytes { $0.load(as: Number.self) })
         case .nioByteBuffer(let buffer):
             guard let i = buffer.getInteger(at: 0, endianness: .big, as: Number.self) else {
                 throw SerializationError.notAbleToDeserialize(hint: "\(buffer) as \(Number.self)")
@@ -102,7 +100,6 @@ internal class BoolSerializer: Serializer<Bool> {
     override func deserialize(from buffer: Serialization.Buffer) throws -> Bool {
         switch buffer {
         case .data(let data):
-            // FIXME: required? or just throw error?
             let i = data.withUnsafeBytes { $0.load(as: Int8.self) }
             return i == 1
         case .nioByteBuffer(let buffer):
