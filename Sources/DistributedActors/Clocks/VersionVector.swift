@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -32,18 +32,18 @@
 /// - SeeAlso: [Why Logical Clocks are Easy](https://queue.acm.org/detail.cfm?id=2917756)
 /// - SeeAlso: [Version Vectors are not Vector Clocks](https://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/)
 public struct VersionVector {
-    // TODO: should we disallow mixing ReplicaId types somehow?
+    // TODO: should we disallow mixing ReplicaID types somehow?
 
     public typealias Version = UInt64
-    public typealias ReplicaVersion = (replicaId: ReplicaID, version: Version) // TODO: struct?
+    public typealias ReplicaVersion = (replicaID: ReplicaID, version: Version) // TODO: struct?
 
     // Internal state is a dictionary of replicas and their corresponding version
     internal var state: [ReplicaID: Version] = [:]
 
     public static let empty: VersionVector = .init()
 
-    public static func first(at replicaId: ReplicaID) -> Self {
-        .init((replicaId, 1))
+    public static func first(at replicaID: ReplicaID) -> Self {
+        .init((replicaID, 1))
     }
 
     public init() {}
@@ -56,14 +56,14 @@ public struct VersionVector {
         self.init([replicaVersion])
     }
 
-    public init(_ version: Version, at replicaId: ReplicaID) {
-        self.init([(replicaId, version)])
+    public init(_ version: Version, at replicaID: ReplicaID) {
+        self.init([(replicaID, version)])
     }
 
     public init(_ replicaVersions: [ReplicaVersion]) {
         for rv in replicaVersions {
             precondition(rv.version > 0, "Version must be greater than 0")
-            self.state[rv.replicaId] = rv.version
+            self.state[rv.replicaID] = rv.version
         }
     }
 
@@ -77,16 +77,16 @@ public struct VersionVector {
 
     /// Increment version at the given replica.
     ///
-    /// - Parameter replicaId: The replica whose version is to be incremented.
+    /// - Parameter replicaID: The replica whose version is to be incremented.
     /// - Returns: The replica's version after the increment.
     @discardableResult
-    public mutating func increment(at replicaId: ReplicaID) -> Version {
-        if let current = self.state[replicaId] {
+    public mutating func increment(at replicaID: ReplicaID) -> Version {
+        if let current = self.state[replicaID] {
             let nextVersion = current + 1
-            self.state[replicaId] = nextVersion
+            self.state[replicaID] = nextVersion
             return nextVersion
         } else {
-            self.state[replicaId] = 1
+            self.state[replicaID] = 1
             return 1
         }
     }
@@ -97,32 +97,32 @@ public struct VersionVector {
     }
 
     /// Prune any trace of the passed in replica id.
-    public func pruneReplica(_ replicaId: ReplicaID) -> Self {
+    public func pruneReplica(_ replicaID: ReplicaID) -> Self {
         var s = self
-        s.state.removeValue(forKey: replicaId)
+        s.state.removeValue(forKey: replicaID)
         return s
     }
 
     /// Obtain current version at the given replica. If the replica is unknown, the default version is 0.
     ///
-    /// - Parameter replicaId: The replica whose version is being queried.
+    /// - Parameter replicaID: The replica whose version is being queried.
     /// - Returns: The replica's version or 0 if replica is unknown.
-    public subscript(replicaId: ReplicaID) -> Version {
-        self.state[replicaId] ?? 0
+    public subscript(replicaID: ReplicaID) -> Version {
+        self.state[replicaID] ?? 0
     }
 
     /// Lists all replica ids that this version vector contains.
-    public var replicaIds: Dictionary<ReplicaID, Version>.Keys {
+    public var replicaIDs: Dictionary<ReplicaID, Version>.Keys {
         self.state.keys
     }
 
     /// Determine if this `VersionVector` contains a specific version at the given replica.
     ///
-    /// - Parameter replicaId: The replica of interest
+    /// - Parameter replicaID: The replica of interest
     /// - Parameter version: The version of interest
     /// - Returns: True if the replica's version in the `VersionVector` is greater than or equal to `version`. False otherwise.
-    public func contains(_ replicaId: ReplicaID, _ version: Version) -> Bool {
-        self[replicaId] >= version
+    public func contains(_ replicaID: ReplicaID, _ version: Version) -> Bool {
+        self[replicaID] >= version
     }
 
     /// Compare this `VersionVector` with another and determine causality between the two.
@@ -166,8 +166,8 @@ extension VersionVector: Comparable {
         // If every entry in version vector X is less than or equal to the corresponding entry in
         // version vector Y, and at least one entry is strictly smaller, then X < Y.
         var hasAtLeastOneStrictlyLessThan = false
-        for (replicaId, lVersion) in lhs.state {
-            let rVersion = rhs[replicaId]
+        for (replicaID, lVersion) in lhs.state {
+            let rVersion = rhs[replicaID]
             if lVersion > rVersion {
                 return false
             }
@@ -201,12 +201,12 @@ extension VersionVector: Codable {
 /// `VersionDot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Version` needs
 /// to be `Hashable` we have to define a type.
 public struct VersionDot {
-    public let replicaId: ReplicaID
+    public let replicaID: ReplicaID
     public let version: Version
     public typealias Version = UInt64
 
-    init(_ replicaId: ReplicaID, _ version: Version) {
-        self.replicaId = replicaId
+    init(_ replicaID: ReplicaID, _ version: Version) {
+        self.replicaID = replicaID
         self.version = version
     }
 }
@@ -216,17 +216,17 @@ extension VersionDot: Hashable {}
 extension VersionDot: Comparable {
     /// Lexical, NOT causal ordering of two dots.
     public static func < (lhs: VersionDot, rhs: VersionDot) -> Bool {
-        if lhs.replicaId == rhs.replicaId {
+        if lhs.replicaID == rhs.replicaID {
             return lhs.version < rhs.version
         } else {
-            return lhs.replicaId < rhs.replicaId
+            return lhs.replicaID < rhs.replicaID
         }
     }
 }
 
 extension VersionDot: CustomStringConvertible {
     public var description: String {
-        "Dot(\(self.replicaId),\(self.version))"
+        "Dot(\(self.replicaID),\(self.version))"
     }
 }
 

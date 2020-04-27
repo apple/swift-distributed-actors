@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,13 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ReplicaId
+// MARK: ReplicaID
 
 extension ReplicaID: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoVersionReplicaId
+    public typealias ProtobufRepresentation = ProtoVersionReplicaID
 
-    public func toProto(context: Serialization.Context) throws -> ProtoVersionReplicaId {
-        var proto = ProtoVersionReplicaId()
+    public func toProto(context: Serialization.Context) throws -> ProtoVersionReplicaID {
+        var proto = ProtoVersionReplicaID()
         switch self {
         case .actorAddress(let actorAddress):
             proto.actorAddress = try actorAddress.toProto(context: context)
@@ -29,7 +29,7 @@ extension ReplicaID: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionReplicaId, context: Serialization.Context) throws {
+    public init(fromProto proto: ProtoVersionReplicaID, context: Serialization.Context) throws {
         guard let value = proto.value else {
             throw SerializationError.missingField("value", type: String(describing: ReplicaID.self))
         }
@@ -54,9 +54,9 @@ extension VersionVector: ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtoVersionVector {
         var proto = ProtoVersionVector()
 
-        let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaId, version in
+        let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaID, version in
             var replicaVersion = ProtoReplicaVersion()
-            replicaVersion.replicaID = try replicaId.toProto(context: context)
+            replicaVersion.replicaID = try replicaID.toProto(context: context)
             replicaVersion.version = UInt64(version)
             return replicaVersion
         }
@@ -73,8 +73,8 @@ extension VersionVector: ProtobufRepresentable {
             guard replicaVersion.hasReplicaID else {
                 throw SerializationError.missingField("replicaID", type: String(describing: ReplicaVersion.self))
             }
-            let replicaId = try ReplicaID(fromProto: replicaVersion.replicaID, context: context)
-            state[replicaId] = replicaVersion.version
+            let replicaID = try ReplicaID(fromProto: replicaVersion.replicaID, context: context)
+            state[replicaID] = replicaVersion.version
         }
     }
 }
@@ -87,7 +87,7 @@ extension VersionDot: ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtoVersionDot {
         var proto = ProtoVersionDot()
-        proto.replicaID = try self.replicaId.toProto(context: context)
+        proto.replicaID = try self.replicaID.toProto(context: context)
         proto.version = UInt64(self.version)
         return proto
     }
@@ -96,7 +96,7 @@ extension VersionDot: ProtobufRepresentable {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: VersionDot.self))
         }
-        self.replicaId = try ReplicaID(fromProto: proto.replicaID, context: context)
+        self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
         self.version = proto.version
     }
 }

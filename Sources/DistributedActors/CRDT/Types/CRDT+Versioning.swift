@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -82,11 +82,11 @@ extension CRDT {
         public mutating func compact() {
             // Sort dots by replica then by version in ascending order. We need this ordering to check for continuity.
             for dot in self.gaps.sorted() {
-                if dot.version == self.vv[dot.replicaId] + 1 {
+                if dot.version == self.vv[dot.replicaID] + 1 {
                     // If the dot's version follows replica's version in `vv`, it is no longer detached and can be added to `vv`.
-                    self.vv.increment(at: dot.replicaId)
+                    self.vv.increment(at: dot.replicaID)
                     self.gaps.remove(dot)
-                } else if self.vv.contains(dot.replicaId, dot.version) {
+                } else if self.vv.contains(dot.replicaID, dot.version) {
                     // The dot is covered by `vv` already. Remove.
                     self.gaps.remove(dot)
                 }
@@ -100,7 +100,7 @@ extension CRDT {
         /// Dots that are NOT contained in `VersionContext` are important because they are likely changes that have not
         /// been processed yet.
         public func contains(_ dot: VersionDot) -> Bool {
-            self.vv.contains(dot.replicaId, dot.version) || self.gaps.contains(dot)
+            self.vv.contains(dot.replicaID, dot.version) || self.gaps.contains(dot)
         }
     }
 }
@@ -126,7 +126,7 @@ extension CRDT {
     public struct VersionedContainer<Element: Codable & Hashable>: NamedDeltaCRDT {
         public typealias Delta = VersionedContainerDelta<Element>
 
-        public let replicaId: ReplicaID
+        public let replicaID: ReplicaID
 
         // Version context of the container
         internal var versionContext: VersionContext
@@ -151,8 +151,8 @@ extension CRDT {
             self.elementByBirthDot.isEmpty
         }
 
-        public init(replicaId: ReplicaID, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
-            self.replicaId = replicaId
+        public init(replicaID: ReplicaID, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
+            self.replicaID = replicaID
             self.versionContext = versionContext
             self.elementByBirthDot = elementByBirthDot
         }
@@ -162,14 +162,14 @@ extension CRDT {
             // should not contain dots for the current replica), so we can generate next dot using `versionContext.vv` only.
             precondition(
                 self.versionContext.gaps.filter { dot in
-                    dot.replicaId == self.replicaId
+                    dot.replicaID == self.replicaID
                 }.isEmpty,
-                "There must not be gaps in replica \(self.replicaId)'s version context"
+                "There must not be gaps in replica \(self.replicaID)'s version context"
             )
 
             // Increment version vector and create a birth dot with the new version
-            let nextVersion = self.versionContext.vv.increment(at: self.replicaId)
-            let birthDot = VersionDot(self.replicaId, nextVersion)
+            let nextVersion = self.versionContext.vv.increment(at: self.replicaID)
+            let birthDot = VersionDot(self.replicaID, nextVersion)
             // An element may have multiple birth dots if added multiple times
             self.elementByBirthDot[birthDot] = element
 

@@ -10,7 +10,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -76,8 +76,8 @@ public struct ProtoCRDTVersionedContainer {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var replicaID: ProtoVersionReplicaId {
-    get {return _storage._replicaID ?? ProtoVersionReplicaId()}
+  public var replicaID: ProtoVersionReplicaID {
+    get {return _storage._replicaID ?? ProtoVersionReplicaID()}
     set {_uniqueStorage()._replicaID = newValue}
   }
   /// Returns true if `replicaID` has been explicitly set.
@@ -146,8 +146,8 @@ public struct ProtoCRDTGCounter {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var replicaID: ProtoVersionReplicaId {
-    get {return _storage._replicaID ?? ProtoVersionReplicaId()}
+  public var replicaID: ProtoVersionReplicaID {
+    get {return _storage._replicaID ?? ProtoVersionReplicaID()}
     set {_uniqueStorage()._replicaID = newValue}
   }
   /// Returns true if `replicaID` has been explicitly set.
@@ -177,8 +177,8 @@ public struct ProtoCRDTGCounter {
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var replicaID: ProtoVersionReplicaId {
-      get {return _storage._replicaID ?? ProtoVersionReplicaId()}
+    public var replicaID: ProtoVersionReplicaID {
+      get {return _storage._replicaID ?? ProtoVersionReplicaID()}
       set {_uniqueStorage()._replicaID = newValue}
     }
     /// Returns true if `replicaID` has been explicitly set.
@@ -220,8 +220,8 @@ public struct ProtoCRDTORSet {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var replicaID: ProtoVersionReplicaId {
-    get {return _storage._replicaID ?? ProtoVersionReplicaId()}
+  public var replicaID: ProtoVersionReplicaID {
+    get {return _storage._replicaID ?? ProtoVersionReplicaID()}
     set {_uniqueStorage()._replicaID = newValue}
   }
   /// Returns true if `replicaID` has been explicitly set.
@@ -360,14 +360,14 @@ extension ProtoCRDTVersionContext: SwiftProtobuf.Message, SwiftProtobuf._Message
 extension ProtoCRDTVersionedContainer: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "CRDTVersionedContainer"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "replicaId"),
+    1: .same(proto: "replicaID"),
     2: .same(proto: "versionContext"),
     3: .same(proto: "elementByBirthDot"),
     4: .same(proto: "delta"),
   ]
 
   fileprivate class _StorageClass {
-    var _replicaID: ProtoVersionReplicaId? = nil
+    var _replicaID: ProtoVersionReplicaID? = nil
     var _versionContext: ProtoCRDTVersionContext? = nil
     var _elementByBirthDot: [ProtoVersionDottedElementEnvelope] = []
     var _delta: ProtoCRDTVersionedContainerDelta? = nil
@@ -514,13 +514,13 @@ extension ProtoCRDTVersionedContainerDelta: SwiftProtobuf.Message, SwiftProtobuf
 extension ProtoCRDTGCounter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "CRDTGCounter"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "replicaId"),
+    1: .same(proto: "replicaID"),
     2: .same(proto: "state"),
     3: .same(proto: "delta"),
   ]
 
   fileprivate class _StorageClass {
-    var _replicaID: ProtoVersionReplicaId? = nil
+    var _replicaID: ProtoVersionReplicaID? = nil
     var _state: [ProtoCRDTGCounter.ReplicaState] = []
     var _delta: ProtoCRDTGCounter.Delta? = nil
 
@@ -596,7 +596,7 @@ extension ProtoCRDTGCounter.ReplicaState: SwiftProtobuf.Message, SwiftProtobuf._
   ]
 
   fileprivate class _StorageClass {
-    var _replicaID: ProtoVersionReplicaId? = nil
+    var _replicaID: ProtoVersionReplicaID? = nil
     var _count: UInt64 = 0
 
     static let defaultInstance = _StorageClass()
@@ -689,12 +689,12 @@ extension ProtoCRDTGCounter.Delta: SwiftProtobuf.Message, SwiftProtobuf._Message
 extension ProtoCRDTORSet: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "CRDTORSet"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "replicaId"),
+    1: .same(proto: "replicaID"),
     2: .same(proto: "state"),
   ]
 
   fileprivate class _StorageClass {
-    var _replicaID: ProtoVersionReplicaId? = nil
+    var _replicaID: ProtoVersionReplicaID? = nil
     var _state: ProtoCRDTVersionedContainer? = nil
 
     static let defaultInstance = _StorageClass()

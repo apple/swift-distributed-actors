@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -32,7 +32,7 @@ extension CRDT {
         public typealias ORSetDelta = VersionedContainerDelta<Element>
         public typealias Delta = ORSetDelta
 
-        public let replicaId: ReplicaID
+        public let replicaID: ReplicaID
 
         // State is a `VersionedContainer` which does most of the heavy-lifting, which includes tracking delta
         var state: VersionedContainer<Element>
@@ -53,9 +53,9 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaId: ReplicaID) {
-            self.replicaId = replicaId
-            self.state = VersionedContainer(replicaId: replicaId)
+        init(replicaID: ReplicaID) {
+            self.replicaID = replicaID
+            self.state = VersionedContainer(replicaID: replicaID)
         }
 
         public mutating func add(_ element: Element) {
@@ -110,7 +110,7 @@ extension CRDT {
             if self.state.elementByBirthDot.count > 1 {
                 // Sort birth dots in descending order. i.e., newest version to oldest version by replica
                 let sortedBirthDots = self.state.elementByBirthDot.keys.sorted(by: >)
-                var replica: ReplicaID = sortedBirthDots[0].replicaId
+                var replica: ReplicaID = sortedBirthDots[0].replicaID
                 var seenReplicaElements: Set<Element> = []
 
                 // Birth dots of duplicate elements within a replica.
@@ -120,8 +120,8 @@ extension CRDT {
 
                 for birthDot in sortedBirthDots.dropFirst() {
                     // Replica changed - reset
-                    if replica != birthDot.replicaId {
-                        replica = birthDot.replicaId
+                    if replica != birthDot.replicaID {
+                        replica = birthDot.replicaID
                         seenReplicaElements = []
                     }
 
@@ -203,7 +203,7 @@ extension CRDT.ActorOwned where DataType: ORSetOperations {
 
 extension CRDT.ORSet {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORSet<Element>> {
-        CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaId: .actorAddress(owner.address)))
+        CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaID: .actorAddress(owner.address)))
     }
 }
 

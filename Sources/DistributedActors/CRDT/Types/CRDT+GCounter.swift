@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -26,7 +26,7 @@ extension CRDT {
     public struct GCounter: NamedDeltaCRDT, Codable {
         public typealias Delta = GCounterDelta
 
-        public let replicaId: ReplicaID
+        public let replicaID: ReplicaID
 
         // State is a dictionary of replicas and the counter values they've observed.
         var state: [ReplicaID: Int]
@@ -37,8 +37,8 @@ extension CRDT {
             self.state.values.reduce(0, +)
         }
 
-        init(replicaId: ReplicaID) {
-            self.replicaId = replicaId
+        init(replicaID: ReplicaID) {
+            self.replicaID = replicaID
             self.state = [:]
         }
 
@@ -47,9 +47,9 @@ extension CRDT {
             precondition(amount > 0, "Amount must be greater than 0")
 
             let newCount: Int
-            if let currentCount = state[replicaId] {
+            if let currentCount = state[replicaID] {
                 guard case (let sum, let overflow) = currentCount.addingReportingOverflow(amount), !overflow else {
-                    fatalError("Incrementing GCounter(\(self.replicaId)) by [\(amount)] resulted in overflow")
+                    fatalError("Incrementing GCounter(\(self.replicaID)) by [\(amount)] resulted in overflow")
                 }
                 newCount = sum
             } else {
@@ -57,15 +57,15 @@ extension CRDT {
             }
 
             // Update state
-            self.state[self.replicaId] = newCount
+            self.state[self.replicaID] = newCount
 
             // Update/create delta
             switch self.delta {
             case .some(var delta):
-                delta.state[self.replicaId] = newCount
+                delta.state[self.replicaID] = newCount
                 self.delta = delta
             case .none:
-                self.delta = Delta(state: [replicaId: newCount])
+                self.delta = Delta(state: [replicaID: newCount])
             }
         }
 
@@ -124,7 +124,7 @@ extension CRDT {
 
 extension CRDT.GCounter: ResettableCRDT {
     public mutating func reset() {
-        self = .init(replicaId: self.replicaId)
+        self = .init(replicaID: self.replicaID)
     }
 }
 
@@ -145,7 +145,7 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
 
 extension CRDT.GCounter {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
-        CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaId: .actorAddress(owner.address)))
+        CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: .actorAddress(owner.address)))
     }
 }
 
