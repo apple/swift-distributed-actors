@@ -158,22 +158,7 @@ extension ClusterShell {
         state._latestGossip.incrementOwnerVersion()
         state.gossipControl.update(payload: state._latestGossip)
 
-        switch state.association(with: memberToRemove.node.node) {
-        case .some(.associated(let associated)):
-            self.terminateAssociation(system, state: &state, associated)
-        case .some(.tombstone(let tombstone)):
-            state.log.trace("Attempted to remove association but not associated (already tombstoned): \(memberToRemove), tombstone: \(tombstone)")
-        case .none:
-            // very carefully ensure that even though it was not associated, we DO store a tombstone for it -- this is in case
-            // we are racing against establishing an association with a node that we already know should be dead (and for some reason it'd reply to our handshake (zombie!)).
-            if let removed = state.removeAssociation(system, associatedNode: memberToRemove.node) {
-                self.finishTerminateAssociation(system, state: &state, removalDirective: removed)
-            } else {
-                let enforceTombstone = ClusterShellState.RemoveAssociationDirective(removedAssociation: nil, tombstone: .init(remoteNode: memberToRemove.node))
-                state.log.warning("Attempted to remove association but not associated NOR tombstoned: \(memberToRemove), attempting to tombstone: \(enforceTombstone)")
-                self.finishTerminateAssociation(system, state: &state, removalDirective: enforceTombstone)
-            }
-        }
+        self.terminateAssociation(system, state: &state, memberToRemove.node)
 
         state.log.info(
             "Leader removed member: \(memberToRemove), all nodes are certain to have seen it as [.down] before",

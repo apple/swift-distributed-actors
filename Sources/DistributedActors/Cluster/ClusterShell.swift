@@ -32,88 +32,93 @@ internal class ClusterShell {
     internal static let naming = ActorNaming.unique("cluster")
     public typealias Ref = ActorRef<ClusterShell.Message>
 
+    private let selfNode: UniqueNode
+
     // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // We do this to avoid "looping" any initial access of an actor ref through the cluster shell's mailbox
     // which would cause more latency to obtaining the association. refs cache the remote control once they have obtained it.
 
+    // TODO: consider ReadWriteLock lock, these accesses are very strongly read only biased
     private let _associationsLock: Lock
+
     /// Used by remote actor refs to obtain associations
     /// - Protected by: `_associationsLock`
-    private var _associationsRegistry: [UniqueNode: AssociationRemoteControl]
-    /// Tombstoned nodes are kept here in order to avoid attempting to associate if we get a reference to such node,
+    private var _activeAssociations: [UniqueNode: Association.AssociationState]
+    /// Node tombstones are kept here in order to avoid attempting to associate if we get a reference to such node,
     /// which would normally trigger an `ensureAssociated`.
     /// - Protected by: `_associationsLock`
-    private var _associationTombstones: Set<Association.TombstoneState>
+    private var _associationTombstones: [UniqueNode: Association.Tombstone]
 
-    private var _swimRef: SWIM.Ref?
-
-    private var clusterEvents: EventStream<Cluster.Event>!
-
-    // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
-    // any earlier access to the pool is a bug (in our library) and must be treated as such.
-    private var _serializationPool: SerializationPool?
-    internal var serializationPool: SerializationPool {
-        guard let pool = self._serializationPool else {
-            fatalError("BUG! Tried to access serializationPool on \(self) and it was nil! Please report this on the issue tracker.")
-        }
-        return pool
-    }
-
-    /// MUST be called while holding `_associationsLock`.
-    internal func _associationHasTombstone(node: UniqueNode) -> Bool {
-        self._associationTombstones.contains(.init(remoteNode: node))
-    }
-
-    /// Safe to concurrently access by privileged internals directly
-    internal func associationRemoteControl(with node: UniqueNode) -> AssociationRemoteControlState {
+    internal func getExistingAssociation(with node: Node) -> Association.AssociationState? {
         self._associationsLock.withLock {
-            guard !self._associationHasTombstone(node: node) else {
-                return .tombstone
-            }
-            guard let association = self._associationsRegistry[node] else {
-                return .unknown
-            }
-            return .associated(association)
+            // TODO: a bit terrible; perhaps we should key be Node and then confirm by UniqueNode?
+            // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
+            self._activeAssociations.first {
+                key, _ in key.node == node
+            }?.value
         }
     }
 
-    enum AssociationRemoteControlState {
-        case unknown
-        case associated(AssociationRemoteControl)
-        case tombstone
+    /// Get an existing association or ensure that a new one shall be stored and joining kicked off if the target node was not known yet.
+    /// Safe to concurrently access by privileged internals directly
+    internal func getEnsureAssociation(with node: UniqueNode) -> StoredAssociationState {
+        self._associationsLock.withLock {
+            if let tombstone = self._associationTombstones[node] {
+                return .tombstone(tombstone)
+            } else if let existing = self._activeAssociations[node] {
+                return .association(existing)
+            } else {
+                let association = Association.AssociationState(selfNode: self.selfNode, remoteNode: node)
+                self._activeAssociations[node] = association
+
+                /// We're trying to send to `node` yet it has no association (not even in progress),
+                /// thus we need to kick it off. Once it completes it will .completeAssociation() on the stored one (here in the field in Shell).
+                self.ref.tell(.command(.handshakeWith(node.node, replyTo: nil)))
+
+                return .association(association)
+            }
+        }
     }
 
-    /// Terminate an association including its connection, and store a tombstone for it
-    internal func terminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, _ associated: Association.AssociatedState) {
-        traceLog_Remote(system.cluster.node, "Terminate association [\(associated.remoteNode)]")
+    enum StoredAssociationState {
+        /// An existing (ready or being associated association) which can be used to send (or buffer buffer until associated/terminated)
+        case association(Association.AssociationState)
+        /// The association with the node existed, but is now a tombstone and no more messages shall be send to it.
+        case tombstone(Association.Tombstone)
+    }
 
-        if let removalDirective = state.removeAssociation(system, associatedNode: associated.remoteNode) {
-            self.finishTerminateAssociation(system, state: &state, removalDirective: removalDirective)
-        } else {
-            () // no association to remove, thus nothing to act on
+    /// To be invoked by cluster shell whenever an association is made.
+    /// Causes messages to be flushed onto the new associated channel.
+    private func storeCompleteAssociation(_ associated: ClusterShellState.AssociatedDirective) {
+        self._associationsLock.withLockVoid {
+            let association = self._activeAssociations[associated.handshake.remoteNode] ??
+                Association.AssociationState(selfNode: associated.handshake.localNode, remoteNode: associated.handshake.remoteNode)
+
+            association.completeAssociation(handshake: associated.handshake, over: associated.channel)
+
+            self._activeAssociations[associated.handshake.remoteNode] = association
         }
     }
 
     /// Performs all cleanups related to terminating an association:
     /// - cleans the Shell local Association cache
-    /// - sets a tombstone for the now-tombstoned UniqueNode
+    /// - sets a tombstone for the now-tombstone UniqueNode
     /// - ensures node is at least .down in the Membership
     ///
     /// Can be invoked as result of a direct .down being issued, or because of a node replacement happening.
-    internal func finishTerminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, removalDirective: ClusterShellState.RemoveAssociationDirective) {
-        traceLog_Remote(system.cluster.node, "Finish terminate association [\(removalDirective.tombstone.remoteNode)]")
-        let remoteNode = removalDirective.tombstone.remoteNode
+    internal func terminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, _ remoteNode: UniqueNode) {
+        traceLog_Remote(system.cluster.node, "Terminate association with [\(remoteNode)]")
 
-        // tombstone the association in the shell immediately.
-        // No more message sends to the system will be possible.
-        self._associationsLock.withLockVoid {
+        let removedAssociationOption: Association.AssociationState? = self._associationsLock.withLock {
+            // tombstone the association in the shell immediately.
+            // No more message sends to the system will be possible.
             traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Stored tombstone")
-            self._associationsRegistry.removeValue(forKey: remoteNode)
-            self._associationTombstones.insert(removalDirective.tombstone)
+            self._associationTombstones[remoteNode] = Association.Tombstone(remoteNode, settings: system.settings.cluster)
+            return self._activeAssociations.removeValue(forKey: remoteNode)
         }
 
-        // if the association was removed, we need to close it and ensure that other layers are synced up with this decision
-        guard let removedAssociation = removalDirective.removedAssociation else {
+        guard let removedAssociation = removedAssociationOption else {
+            system.log.warning("Attempted to terminate non-existing association [\(remoteNode)].")
             return
         }
 
@@ -127,16 +132,13 @@ internal class ClusterShell {
             // it was already removed, nothing to do
             state.log.trace(
                 "Finish association with \(remoteNode), yet node not in membership already?",
-                metadata: [
-                    "cluster/membership": "\(state.membership)",
-                ]
+                metadata: ["cluster/membership": "\(state.membership)"]
             )
         } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
 
-        // The lat thing we attempt to do with the other node is to shoot it, in case it's a "zombie" that still may
-        // receive messages for some reason.
-        let remoteControl = removedAssociation.makeRemoteControl()
-        ClusterShell.shootTheOtherNodeAndCloseConnection(system: system, targetNodeRemoteControl: remoteControl)
+        // The last thing we attempt to do with the other node is to shoot it,
+        // in case it's a "zombie" that still may receive messages for some reason.
+        ClusterShell.shootTheOtherNodeAndCloseConnection(system: system, targetNodeAssociation: removedAssociation)
     }
 
     /// Final action performed when severing ties with another node.
@@ -145,17 +147,17 @@ internal class ClusterShell {
     /// This is a best-effort message; as we may be downing it because we cannot communicate with it after all, in such situation (and many others)
     /// the other node would never receive this direct kill/down eager "gossip." We hope it will either receive the down via some means, or determine
     /// by itself that it should down itself.
-    internal static func shootTheOtherNodeAndCloseConnection(system: ActorSystem, targetNodeRemoteControl: AssociationRemoteControl) {
+    internal static func shootTheOtherNodeAndCloseConnection(system: ActorSystem, targetNodeAssociation: Association.AssociationState) {
         let log = system.log
-        let remoteNode = targetNodeRemoteControl.remoteNode
+        let remoteNode = targetNodeAssociation.remoteNode
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Shooting the other node a direct .gossip to down itself")
 
         // On purpose use the "raw" RemoteControl to send the message -- this way we avoid the association lookup (it may already be removed),
         // and directly hit the channel. It is also guaranteed that the message is flushed() before we close it in the next line.
-        let shootTheOtherNodePromise = system._eventLoopGroup.next().makePromise(of: Void.self)
+        let shootTheOtherNodePromise: EventLoopPromise<Void> = system._eventLoopGroup.next().makePromise(of: Void.self)
 
         let ripMessage = Envelope(payload: .message(ClusterShell.Message.inbound(.restInPeace(remoteNode, from: system.cluster.node))))
-        targetNodeRemoteControl.sendUserMessage(
+        targetNodeAssociation.sendUserMessage(
             envelope: ripMessage,
             recipient: ._clusterShell(on: remoteNode),
             promise: shootTheOtherNodePromise
@@ -166,32 +168,46 @@ internal class ClusterShell {
             shootTheOtherNodePromise.fail(TimeoutError(message: "Timed out writing final STONITH to \(remoteNode), should close forcefully.", timeout: .seconds(10))) // FIXME: same timeout but diff type
         }
 
-        shootTheOtherNodePromise.futureResult.flatMap { _ in
+        shootTheOtherNodePromise.futureResult.map { _ in
             // Only after the write has completed, we close the channel
-            targetNodeRemoteControl.closeChannel()
+            targetNodeAssociation.terminate(system)
         }.whenComplete { reason in
             log.trace("Closed connection with \(remoteNode): \(reason)")
         }
     }
 
+    /// For testing only.
     /// Safe to concurrently access by privileged internals.
-    internal var associationRemoteControls: [AssociationRemoteControl] {
+    internal var _testingOnly_associations: [Association.AssociationState] {
         self._associationsLock.withLock {
-            [AssociationRemoteControl](self._associationsRegistry.values)
+            [Association.AssociationState](self._activeAssociations.values)
         }
     }
 
-    /// To be invoked by cluster shell whenever an association is made;
-    /// The cache is used by remote actor refs to obtain means of sending messages into the pipeline,
-    /// without having to queue through the cluster shell's mailbox.
-    private func cacheAssociationRemoteControl(_ associationState: Association.AssociatedState) {
-        self._associationsLock.withLockVoid {
-            // TODO: or association ID rather than the remote id?
-            self._associationsRegistry[associationState.remoteNode] = associationState.makeRemoteControl()
+    /// For testing only.
+    internal func _associatedNodes() -> Set<UniqueNode> {
+        self._associationsLock.withLock {
+            Set(self._activeAssociations.keys)
         }
     }
 
     // ~~~~~~ END OF HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
+    // any earlier access to the pool is a bug (in our library) and must be treated as such.
+    private var _serializationPool: SerializationPool?
+    internal var serializationPool: SerializationPool {
+        guard let pool = self._serializationPool else {
+            fatalError("BUG! Tried to access serializationPool on \(self) and it was nil! Please report this on the issue tracker.")
+        }
+        return pool
+    }
+
+    // TODO: doc concurrency around this one (init in init)
+    private var _swimRef: SWIM.Ref?
+
+    // TODO: doc concurrency around this one (init in init)
+    private var clusterEvents: EventStream<Cluster.Event>!
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Shell, reference used for issuing commands to the cluster
@@ -206,10 +222,11 @@ internal class ClusterShell {
         return it
     }
 
-    init() {
+    init(selfNode: UniqueNode) {
+        self.selfNode = selfNode
         self._associationsLock = Lock()
-        self._associationsRegistry = [:]
-        self._associationTombstones = []
+        self._activeAssociations = [:]
+        self._associationTombstones = [:]
 
         // not enjoying this dance, but this way we can share the ClusterShell as the shell AND the container for the ref.
         // the single thing in the class it will modify is the associations registry, which we do to avoid actor queues when
@@ -285,7 +302,7 @@ internal class ClusterShell {
     }
 
     internal enum InboundMessage {
-        case handshakeOffer(Wire.HandshakeOffer, channel: Channel, replyTo: EventLoopPromise<Wire.HandshakeResponse>)
+        case handshakeOffer(Wire.HandshakeOffer, channel: Channel, replyInto: EventLoopPromise<Wire.HandshakeResponse>)
         case handshakeAccepted(Wire.HandshakeAccept, channel: Channel)
         case handshakeRejected(Wire.HandshakeReject)
         case handshakeFailed(Node, Error) // TODO: remove?
@@ -371,7 +388,9 @@ extension ClusterShell {
 
                 let gossipControl = try ConvergentGossip.start(
                     context, name: "\(ActorAddress._clusterGossip.name)", of: Cluster.Gossip.self,
-                    notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) { Optional.some(Message.gossipFromGossiper($0)) },
+                    notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) {
+                        Optional.some(Message.gossipFromGossiper($0))
+                    },
                     props: ._wellKnown
                 )
 
@@ -442,7 +461,7 @@ extension ClusterShell {
 
             switch query {
             case .associatedNodes(let replyTo):
-                replyTo.tell(state.associatedNodes()) // TODO: we'll want to put this into some nicer message wrapper?
+                replyTo.tell(self._associatedNodes())
                 return .same
             case .currentMembership(let replyTo):
                 replyTo.tell(state.membership)
@@ -512,7 +531,9 @@ extension ClusterShell {
                 "Local membership version is [.\(mergeDirective.causalRelation)] to incoming gossip; Merge resulted in \(mergeDirective.effectiveChanges.count) changes.",
                 metadata: [
                     "tag": "membership",
-                    "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map { Logger.MetadataValue.stringConvertible($0) }),
+                    "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map {
+                        Logger.MetadataValue.stringConvertible($0)
+                        }),
                     "gossip/incoming": "\(gossip)",
                     "gossip/before": "\(beforeGossipMerge)",
                     "gossip/now": "\(state.latestGossip)",
@@ -591,18 +612,28 @@ extension ClusterShell {
         guard remoteNode != state.myselfNode.node else {
             state.log.debug("Ignoring attempt to handshake with myself; Could have been issued as confused attempt to handshake as induced by discovery via gossip?")
             replyTo?.tell(.failure(.init(node: remoteNode, message: "Would have attempted handshake with self node, aborted handshake.")))
-            return .same // TODO: could be drop
+            return .same
         }
 
-        if let existingAssociation = state.association(with: remoteNode) {
+        // if an association exists for any UniqueNode that this Node represents, we can use this and abort the handshake dance here
+        if let existingAssociation = self.getExistingAssociation(with: remoteNode) {
             state.log.debug("Attempted associating with already associated node: \(reflecting: remoteNode), existing association: [\(existingAssociation)]")
-            switch existingAssociation {
-            case .associated(let associationState):
-                replyTo?.tell(.success(associationState.remoteNode))
+            switch existingAssociation.state {
+            case .associating:
+                () // ok, continue the association dance
+            case .associated:
+                // return , we've been successful already
+                replyTo?.tell(.success(existingAssociation.remoteNode))
+                return .same
             case .tombstone:
-                replyTo?.tell(.failure(HandshakeConnectionError(node: remoteNode, message: "Existing association for \(remoteNode) is already a tombstone! Must not complete association.")))
+                replyTo?.tell(.failure(
+                    HandshakeConnectionError(
+                        node: existingAssociation.remoteNode.node,
+                        message: "Existing association for \(existingAssociation.remoteNode) is already a tombstone! Must not complete association."
+                    )
+                ))
+                return .same
             }
-            return .same // TODO: could be drop
         }
 
         let whenHandshakeComplete = state.eventLoopGroup.next().makePromise(of: Wire.HandshakeResponse.self)
@@ -644,6 +675,7 @@ extension ClusterShell {
         var state = state
 
         state.log.info("Extending handshake offer to \(initiated.remoteNode))") // TODO: log retry stats?
+
         let offer: Wire.HandshakeOffer = initiated.makeOffer()
         self.tracelog(context, .send(to: initiated.remoteNode), message: offer)
 
@@ -677,7 +709,8 @@ extension ClusterShell {
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
     internal func onHandshakeOffer(
         _ context: ActorContext<Message>, _ state: ClusterShellState,
-        _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<Wire.HandshakeResponse>
+        _ offer: Wire.HandshakeOffer, channel: Channel,
+        replyInto promise: EventLoopPromise<Wire.HandshakeResponse>
     ) -> Behavior<Message> {
         var state = state
 
@@ -690,21 +723,36 @@ extension ClusterShell {
 
                 // create and store association
                 let directive = state.associate(context.system, completedHandshake, channel: channel)
-                let association = directive.association
-                self.cacheAssociationRemoteControl(association)
+                self.storeCompleteAssociation(directive)
 
                 // send accept to other node
                 let accept = completedHandshake.makeAccept()
                 self.tracelog(context, .send(to: offer.from.node), message: accept)
                 promise.succeed(.accept(accept))
 
-                if directive.membershipChange.replaced != nil,
-                    let removalDirective = directive.beingReplacedAssociationToTerminate {
-                    state.log.warning("Tombstone association: \(reflecting: removalDirective.tombstone.remoteNode)")
-                    self.finishTerminateAssociation(context.system, state: &state, removalDirective: removalDirective)
+                // TODO: This is a bit duplicated
+                // This association may mean that we've "replaced" a previously known node of the same host:port,
+                // In case of such replacement we must down and terminate the association of the previous node.
+                if let replacedMember = directive.membershipChange.replaced {
+                    // the change was a replacement and thus we need to down the old member (same host:port as the new one),
+                    // and terminate its association.
+
+                    state.log.info("Accepted handshake from [\(accept.from)] which replaces the previously known: \(reflecting: replacedMember).")
+
+                    // We MUST be careful to first terminate the association and then store the new one in 2)
+                    self.terminateAssociation(context.system, state: &state, replacedMember.node)
+
+                    // By emitting these `change`s, we not only let anyone interested know about this,
+                    // but we also enable the shell (or leadership) to update the leader if it needs changing.
+                    //
+                    // We MUST emit this `.down` before emitting the replacement's event
+                    state.events.publish(.membershipChange(.init(member: replacedMember, toStatus: .down)))
                 }
 
-                // TODO: try to pull off with receptionist the same dance
+                // publish any cluster events this association caused.
+                // As the new association is stored, any reactions to these events will use the right underlying connection
+                state.events.publish(.membershipChange(directive.membershipChange)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+
                 self.tryIntroduceGossipPeer(context, state, change: directive.membershipChange)
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
@@ -791,44 +839,55 @@ extension ClusterShell {
     private func onHandshakeAccepted(_ context: ActorContext<Message>, _ state: ClusterShellState, _ accept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
         var state = state // local copy for mutation
 
-        guard let completed = state.incomingHandshakeAccept(accept) else {
-            if state.associatedNodes().contains(accept.from) {
+        guard let handshakeCompleted = state.incomingHandshakeAccept(accept) else {
+            if self._associatedNodes().contains(accept.from) {
                 // this seems to be a re-delivered accept, we already accepted association with this node.
                 return .same
-
-                // TODO: check tombstones as well
             } else {
                 state.log.error("Illegal handshake accept received. No handshake was in progress with \(accept.from)") // TODO: tests and think this through more
                 return .same
             }
         }
 
-        let directive = state.associate(context.system, completed, channel: channel)
-        self.cacheAssociationRemoteControl(directive.association)
-        state.log.debug("Associated with: \(reflecting: completed.remoteNode); Membership change: \(directive.membershipChange), resulting in: \(state.membership)")
+        // 1) Associate the new node
+        let directive = state.associate(context.system, handshakeCompleted, channel: channel)
+
+        // 1.1) This association may mean that we've "replaced" a previously known node of the same host:port,
+        //   In case of such replacement we must down and terminate the association of the previous node.
+        if let replacedMember = directive.membershipChange.replaced {
+            // the change was a replacement and thus we need to down the old member (same host:port as the new one),
+            // and terminate its association.
+
+            state.log.info("Accepted handshake from [\(accept.from)] which replaces the previously known: \(reflecting: replacedMember).")
+
+            // We MUST be careful to first terminate the association and then store the new one in 2)
+            self.terminateAssociation(context.system, state: &state, replacedMember.node)
+
+            // By emitting these `change`s, we not only let anyone interested know about this,
+            // but we also enable the shell (or leadership) to update the leader if it needs changing.
+            //
+            // We MUST emit this `.down` before emitting the replacement's event
+            state.events.publish(.membershipChange(.init(member: replacedMember, toStatus: .down)))
+        }
+
+        // 2) Store the (now completed) association first, as it may be immediately used by remote ActorRefs attempting to send to the remoteNode
+        self.storeCompleteAssociation(directive) // we MUST store it outside the state
+        state.log.debug("Associated with: \(reflecting: handshakeCompleted.remoteNode); Membership change: \(directive.membershipChange), resulting in: \(state.membership)")
+
+        // 3) publish any cluster events this association caused.
+        //    As the new association is stored, any reactions to these events will use the right underlying connection
+        state.events.publish(.membershipChange(directive.membershipChange)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
 
         self.tryIntroduceGossipPeer(context, state, change: directive.membershipChange)
 
-        // by emitting these `change`s, we not only let anyone interested know about this,
-        // but we also enable the shell (or leadership) to update the leader if it needs changing.
-        if directive.membershipChange.replaced != nil,
-            let replacedNodeRemovalDirective = directive.beingReplacedAssociationToTerminate {
-            state.log.warning("Tombstone association: \(reflecting: replacedNodeRemovalDirective.tombstone.remoteNode)")
-            // MUST be finishTerminate... and not terminate... because if we started a full terminateAssociation here
-            // we would terminate the _current_ association which was already removed by the associate() because
-            // it already _replaced_ some existing association (held in beingReplacedAssociation)
-            self.finishTerminateAssociation(context.system, state: &state, removalDirective: replacedNodeRemovalDirective)
-        }
-
-        /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
+        // 4) Since a new node joined, if we are the leader, we should perform leader tasks to potentially move it to .up
         let actions = state.collectLeaderActions()
         state = self.interpretLeaderActions(context.system, state, actions)
 
-        // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)
-        /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
         self.recordMetrics(context.system.metrics, membership: state.membership)
 
-        completed.whenCompleted?.succeed(.accept(completed.makeAccept()))
+        // 5) Finally, signal the handshake future that we've accepted, and become with ready state
+        handshakeCompleted.whenCompleted?.succeed(.accept(handshakeCompleted.makeAccept()))
         return self.ready(state: state)
     }
 
@@ -1022,24 +1081,11 @@ extension ClusterShell {
         }
 
         // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        // Down(other node);
+        // Terminate association and Down the (other) node
 
-        guard let association = state.association(with: memberToDown.node.node) else {
-            context.log.warning("Received Down command for not associated node [\(reflecting: memberToDown.node.node)], ignoring.")
-            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
-            return state
-        }
-
-        switch association {
-        case .associated(let associated):
-            self.terminateAssociation(context.system, state: &state, associated)
-            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
-            return state
-        case .tombstone:
-            state.log.warning("Attempted to .down already tombstoned association/node: [\(memberToDown)]")
-            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
-            return state
-        }
+        self.terminateAssociation(context.system, state: &state, memberToDown.node)
+        state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
+        return state
     }
 }
 
@@ -1048,6 +1094,7 @@ extension ClusterShell {
 
 extension ActorAddress {
     internal static let _clusterShell: ActorAddress = ActorPath._clusterShell.makeLocalAddress(incarnation: .wellKnown)
+
     internal static func _clusterShell(on node: UniqueNode? = nil) -> ActorAddress {
         switch node {
         case .none:
@@ -1058,6 +1105,7 @@ extension ActorAddress {
     }
 
     internal static let _clusterGossip: ActorAddress = ActorPath._clusterGossip.makeLocalAddress(incarnation: .wellKnown)
+
     internal static func _clusterGossip(on node: UniqueNode? = nil) -> ActorAddress {
         switch node {
         case .none:

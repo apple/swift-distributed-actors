@@ -61,7 +61,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Joining into existing cluster
 
-    // FIXME: unlock this test
+    // FIXME: unlock this test // revisit
     func fixme_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
         try shouldNotThrow {
             let (first, second) = self.setUpPair()
@@ -195,8 +195,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         local.cluster.join(node: remote.cluster.node.node)
 
-        try assertNotAssociated(system: local, expectAssociatedNode: remote.cluster.node)
-        try assertNotAssociated(system: remote, expectAssociatedNode: local.cluster.node)
+        try assertNotAssociated(system: local, node: remote.cluster.node)
+        try assertNotAssociated(system: remote, node: local.cluster.node)
     }
 
     func test_handshake_shouldNotifyOnRejection() throws {
@@ -209,8 +209,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
-        try assertNotAssociated(system: local, expectAssociatedNode: remote.cluster.node)
-        try assertNotAssociated(system: remote, expectAssociatedNode: local.cluster.node)
+        try assertNotAssociated(system: local, node: remote.cluster.node)
+        try assertNotAssociated(system: remote, node: local.cluster.node)
 
         switch try p.expectMessage() {
         case ClusterShell.HandshakeResult.failure(let err):
@@ -239,7 +239,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         thirdSystem.cluster.join(node: local.cluster.node.node)
         try assertAssociated(local, withExactly: [remote.cluster.node, thirdSystem.settings.cluster.uniqueBindNode])
 
-        local._cluster?.associationRemoteControls.count.shouldEqual(2)
+        local._cluster?._testingOnly_associations.count.shouldEqual(2)
     }
 
     // FIXME: once initiated, handshake seem to retry until they succeed, that seems
@@ -261,6 +261,36 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         default:
             throw p.error()
         }
+    }
+
+    func test_sendingMessageToNotYetAssociatedNode_mustCauseAssociationAttempt() throws {
+        let first = self.setUpNode("first")
+        let second = self.setUpNode("second")
+
+        // actor on `second` node
+        let p2 = self.testKit(second).spawnTestProbe(expecting: String.self)
+        let secondOne: ActorRef<String> = try second.spawn("second-1", .receive { _, message in
+            p2.tell("Got:\(message)")
+            return .same
+        })
+        var secondFullAddress = secondOne.address
+        secondFullAddress.node = second.cluster.node
+
+        // we somehow obtained a ref to secondOne (on second node) without associating second yet
+        // e.g. another node sent us that ref; This must cause buffering of sends to second and an association to be created.
+
+        let resolveContext = ResolveContext<String>(address: secondFullAddress, system: first)
+        let ref = first._resolve(context: resolveContext)
+
+        try assertNotAssociated(system: first, node: second.cluster.node)
+        try assertNotAssociated(system: second, node: first.cluster.node)
+
+        ref.tell("Hello!") // will be buffered until associated, and then delivered
+
+        try p2.expectMessage("Got:Hello!")
+
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

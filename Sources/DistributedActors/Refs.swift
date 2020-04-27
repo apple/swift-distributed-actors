@@ -30,7 +30,7 @@ public struct ActorRef<Message: ActorMessage>: ReceivesMessages, _ReceivesSystem
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
     public enum Personality {
         case cell(ActorCell<Message>)
-        case remote(RemotePersonality<Message>)
+        case remote(RemoteClusterActorPersonality<Message>)
         case adapter(AbstractAdapter)
         case guardian(Guardian)
         case delegate(CellDelegate<Message>)
@@ -176,7 +176,7 @@ public protocol _ReceivesSystemMessages: Codable {
     )
 
     /// :nodoc: INTERNAL API
-    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> RemotePersonality<M>
+    func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type) -> RemoteClusterActorPersonality<M>
 }
 
 extension _ReceivesSystemMessages {
@@ -277,7 +277,7 @@ extension ActorRef {
         )
     }
 
-    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemoteClusterActorPersonality<M> {
         switch self.personality {
         case .remote(let personality):
             return personality._unsafeAssumeCast(to: type)
@@ -487,7 +487,7 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     }
 
     @usableFromInline
-    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
+    internal func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemoteClusterActorPersonality<M> {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT be interacted with directly!")
     }

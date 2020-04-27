@@ -116,7 +116,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
             self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]")
 
             let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)
-            self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyTo: promise)))
+            self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyInto: promise)))
 
             promise.futureResult.whenComplete { res in
                 switch res {
