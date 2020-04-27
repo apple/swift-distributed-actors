@@ -56,7 +56,6 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     let allocator: ByteBufferAllocator
 
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
-    private var _associations: [Node: Association.State] = [:]
 
     let gossipControl: ConvergentGossipControl<Cluster.Gossip>
 
@@ -109,23 +108,6 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         self.channel = channel
     }
 
-    func association(with node: Node) -> Association.State? {
-        self._associations[node]
-    }
-
-    func associatedNodes() -> Set<UniqueNode> {
-        var set: Set<UniqueNode> = .init(minimumCapacity: self._associations.count)
-
-        for asm in self._associations.values {
-            switch asm {
-            case .associated(let state): set.insert(state.remoteNode)
-            case .tombstone: ()
-            }
-        }
-
-        return set
-    }
-
     func handshakes() -> [HandshakeStateMachine.State] {
         self._handshakes.values.map { hsm -> HandshakeStateMachine.State in
             hsm
@@ -152,10 +134,6 @@ extension ClusterShellState {
             }
 
             return .inFlight(HandshakeStateMachine.InFlightState(state: self, whenCompleted: whenCompleted))
-        }
-
-        if let existingAssociation = self.association(with: remoteNode) {
-            fatalError("Beginning new handshake to [\(reflecting: remoteNode)], with already existing association: \(existingAssociation). Could this be a bug?")
         }
 
         let initiated = HandshakeStateMachine.InitiatedState(
@@ -350,6 +328,7 @@ extension ClusterShellState {
         // based on the stored member
         let changeOption: Cluster.MembershipChange? = self.membership.applyMembershipChange(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
             self.membership.uniqueMember(handshake.remoteNode).map { Cluster.MembershipChange(member: $0) }
+
         guard let change = changeOption else {
             fatalError("""
             Attempt to associate with \(reflecting: handshake.remoteNode) failed; It was neither a new node .joining, \
@@ -358,61 +337,16 @@ extension ClusterShellState {
             """)
         }
 
-        // Note: The following replace handling has to be done here - before we complete the association(!)
-        //       As otherwise querying the associations by node would return the new one, leaving the old "replaced one" hanging (and channel not-closed).
-        //
-        // If the change is a replacement of a previously associated note, i.e. the remote node died, we didn't notice yet,
-        // but a new instance was started on the same host:port and now has reached out to us to associate. We need to eject
-        // the previous "replaced" node, and mark it as down, while at the same time accepting the association from the new node.
-        let removalDirective = self.removeAssociation(system, associatedNode: handshake.remoteNode)
-        if let replacedMember = change.replaced {
-            if removalDirective != nil {
-                self.log.warning("Node \(reflecting: handshake.remoteNode) joining OVER existing associated node \(reflecting: replacedMember.node) as its replacement. Severing ties with previous incarnation of node.")
-                // we are fairly certain the old node is dead now, since the new node is taking its place and has same address,
-                // thus the channel is most likely pointing to an "already-dead" connection; we close it to cut off clean.
-                self.events.publish(.membershipChange(.init(member: replacedMember, toStatus: .down)))
-            } else {
-                self.log.warning("Membership change indicated node replacement, yet no 'old' association to replace found. Continuing with association of \(reflecting: handshake.remoteNode)")
-            }
-        }
-
-        self.events.publish(.membershipChange(change))
-
-        // Usual happy-path for an association; We associated a new node.
-        let association = Association.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
-        self._associations[handshake.remoteNode.node] = .associated(association)
-
-        return AssociatedDirective(membershipChange: change, association: association, beingReplacedAssociationToTerminate: removalDirective)
+        return AssociatedDirective(membershipChange: change, handshake: handshake, channel: channel)
     }
 
     struct AssociatedDirective {
         let membershipChange: Cluster.MembershipChange
-        let association: Association.AssociatedState
-
-        /// An association was replaced by the `membershipChange` and this "old" association must be terminated, pruned from caches, and tombstoned.
-        let beingReplacedAssociationToTerminate: RemoveAssociationDirective?
+        // let association: Association.AssociationState
+        let handshake: HandshakeStateMachine.CompletedState
+        let channel: Channel
     }
 
-    /// Performs only a removal of the association (if it is stored), and returns the tombstone for it.
-    /// It MAY happen that an association was already removed, e.g. in case of "replacement" joins.
-    mutating func removeAssociation(_ system: ActorSystem, associatedNode: UniqueNode) -> RemoveAssociationDirective? {
-        switch self._associations.removeValue(forKey: associatedNode.node) {
-        case .some(.associated(let associated)):
-            // if a value was NOT removed, we may have already replaced it with another association etc.
-            let tombstone = associated.makeTombstone(system: system)
-            return .init(removedAssociation: associated, tombstone: tombstone)
-        case .some(.tombstone(let tombstone)):
-            // TODO: this should rarely, if ever happen, why attempt to tombstone an existing tombstone, but people could issue many downs after all
-            return .init(removedAssociation: nil, tombstone: tombstone)
-        case .none:
-            return nil
-        }
-    }
-
-    struct RemoveAssociationDirective {
-        let removedAssociation: Association.AssociatedState?
-        let tombstone: Association.TombstoneState
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

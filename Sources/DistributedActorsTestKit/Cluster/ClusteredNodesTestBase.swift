@@ -292,7 +292,7 @@ extension ClusteredNodesTestBase {
     }
 
     public func assertNotAssociated(
-        system: ActorSystem, expectAssociatedNode node: UniqueNode,
+        system: ActorSystem, node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false
     ) throws {

@@ -383,7 +383,6 @@ internal struct SWIMShell {
 
         for suspect in self.swim.suspects {
             if case .suspect(_, let suspectedBy) = suspect.status {
-                // TODO: push more of logic into SWIM instance, the calculating
                 let suspicionTimeout = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
                 context.log.trace(
                     "Checking suspicion timeout for: \(suspect)...",
@@ -396,7 +395,8 @@ internal struct SWIMShell {
 
                 // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
                 // We don't use Deadline because tests can override TimeSource
-                guard let startTime = suspect.suspicionStartedAt, self.swim.isExpired(deadline: startTime + suspicionTimeout.nanoseconds) else {
+                guard let startTime = suspect.suspicionStartedAt,
+                      self.swim.isExpired(deadline: startTime + suspicionTimeout.nanoseconds) else {
                     continue // skip, this suspect is not timed-out yet
                 }
 
@@ -526,16 +526,9 @@ internal struct SWIMShell {
             return
         }
 
-        let associationState = clusterShell.associationRemoteControl(with: remoteNode)
+        let associationState = clusterShell.getEnsureAssociation(with: remoteNode)
         switch associationState {
-        case .unknown:
-            // This may mean that we noticed an actor on a not yet associated node in the SWIM gossip,
-            // and need to ensure we connect to that node in order to be able to monitor it; thus we need to kick off a handshake with that node.
-            //
-            // Note that we DO know the remote's `UniqueNode`, putting us in the interesting position that we know exactly which incarnation of a
-            // node we intend to talk to -- unlike a plain "join node" command.
-            () // continue
-        case .associated(let control):
+        case .association(let control):
             continueWithAssociation(.success(control.remoteNode))
         case .tombstone:
             let msg = "Association target node is already .tombstoned, not associating. Node \(reflecting: remoteNode) likely to be removed from gossip shortly."

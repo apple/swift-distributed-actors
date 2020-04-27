@@ -635,16 +635,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         return try self._spawn(naming, props: props, behavior)
     }
 
-//    public override func spawn<M>(
-//        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
-//        file: String = #file, line: UInt = #line,
-//        _ behavior: Behavior<M>
-//    ) throws -> ActorRef<M>
-//    where M: ActorMessage {
-//        try self.system.serialization._ensureCodableSerializer(type, file: file, line: line)
-//        return try self._spawn(naming, props: props, behavior)
-//    }
-
     public override func spawnWatch<Message>(
         _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props,
         file: String = #file, line: UInt = #line,
@@ -653,15 +643,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         where Message: ActorMessage {
         self.watch(try self.spawn(naming, props: props, behavior))
     }
-
-//    public override func spawnWatch<Message>(
-//        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props,
-//        file: String = #file, line: UInt = #line,
-//        _ behavior: Behavior<Message>
-//    ) throws -> ActorRef<Message>
-//        where Message: ActorMessage {
-//        self.watch(try self.spawn(naming, props: props, behavior))
-//    }
 
     public override func stop<Message: ActorMessage>(child ref: ActorRef<Message>) throws {
         try self._stop(child: ref)

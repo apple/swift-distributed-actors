@@ -34,12 +34,12 @@ final class ShootTheOtherNodeClusteredTests: ClusteredNodesTestBase {
         // also assures they are associated
         try self.joinNodes(node: local, with: remote, ensureWithin: .seconds(5), ensureMembers: .up)
 
-        let remoteAssociationControlState0 = local._cluster!.associationRemoteControl(with: remote.cluster.node)
-        guard case ClusterShell.AssociationRemoteControlState.associated(let remoteControl0) = remoteAssociationControlState0 else {
+        let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.node)
+        guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0 else {
             throw Boom("Expected the association to exist for \(remote.cluster.node)")
         }
 
-        ClusterShell.shootTheOtherNodeAndCloseConnection(system: local, targetNodeRemoteControl: remoteControl0)
+        ClusterShell.shootTheOtherNodeAndCloseConnection(system: local, targetNodeAssociation: remoteControl0)
 
         // the remote should get the "shot" and become down asap
         try self.testKit(local).eventually(within: .seconds(3)) {

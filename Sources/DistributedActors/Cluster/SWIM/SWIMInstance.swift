@@ -300,19 +300,19 @@ final class SWIMInstance {
         self._protocolPeriod
     }
 
-    /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
+    /// Debug only. Actual suspicion timeout depends on number of suspicions and calculated in `suspicionTimeout`
     /// This will only show current estimate of how many intervals should pass before suspicion is reached. May change when more data is coming
     var timeoutSuspectsBeforePeriodMax: Int64 {
         self.settings.lifeguard.suspicionTimeoutMax.nanoseconds / self.dynamicLHMProtocolInterval.nanoseconds + 1
     }
 
-    /// Debug only. Actual suspicion timeout depends on number of suspicsions and calculated in `suspicionTimeout`
+    /// Debug only. Actual suspicion timeout depends on number of suspicions and calculated in `suspicionTimeout`
     /// This will only show current estimate of how many intervals should pass before suspicion is reached. May change when more data is coming
     var timeoutSuspectsBeforePeriodMin: Int64 {
         self.settings.lifeguard.suspicionTimeoutMin.nanoseconds / self.dynamicLHMProtocolInterval.nanoseconds + 1
     }
 
-    /// The forumla is taken from Lifeguard whitepaper https://arxiv.org/abs/1707.00788
+    /// The suspicion timeout is calculated as defined in Lifeguard Section IV.B https://arxiv.org/abs/1707.00788
     /// According to it, suspicion timeout is logarithmically decaying from `suspicionTimeoutPeriodsMax` to `suspicionTimeoutPeriodsMin`
     /// depending on a number of suspicion confirmations.
     ///
@@ -340,6 +340,7 @@ final class SWIMInstance {
         return max(minTimeout, .nanoseconds(maxTimeout.nanoseconds - Int64(round(Double(maxTimeout.nanoseconds - minTimeout.nanoseconds) * (log2(Double(suspectedByCount + 1)) / log2(Double(self.settings.lifeguard.maxIndependentSuspicions + 1)))))))
     }
 
+    /// Checks if a deadline is expired (relating to current time).
     func isExpired(deadline: Int64) -> Bool {
         deadline < self.timeSourceNanos()
     }
@@ -374,7 +375,7 @@ final class SWIMInstance {
         self.members.mapValues { $0.status }
     }
 
-    /// Lists all suspect members, including myself if suspect.
+    /// Lists all suspect members.
     var suspects: SWIM.Members {
         self.members
             .lazy
@@ -476,6 +477,7 @@ extension SWIM.Instance {
         case .failure:
             // missed pingReq's nack may indicate a problem with local health
             self.adjustLHMultiplier(.probeWithMissedNack)
+
             switch lastKnownStatus {
             case .alive(let incarnation), .suspect(let incarnation, _):
                 switch self.mark(member, as: self.makeSuspicion(incarnation: incarnation)) {

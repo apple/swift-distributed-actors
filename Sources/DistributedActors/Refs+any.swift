@@ -110,12 +110,12 @@ extension AddressableActorRef: _ReceivesSystemMessages {
         self.ref._deserializeDeliver(messageBytes, using: manifest, on: pool, file: file, line: line)
     }
 
-    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemotePersonality<M> {
+    public func _unsafeGetRemotePersonality<M: ActorMessage>(_ type: M.Type = M.self) -> RemoteClusterActorPersonality<M> {
         self.ref._unsafeGetRemotePersonality(M.self)
     }
 }
 
-internal extension RemotePersonality {
+internal extension RemoteClusterActorPersonality {
     @usableFromInline
     func _tellUnsafe(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
@@ -140,7 +140,7 @@ internal extension ActorRef {
     }
 
     @usableFromInline
-    var _unsafeUnwrapRemote: RemotePersonality<Message> {
+    var _unsafeUnwrapRemote: RemoteClusterActorPersonality<Message> {
         switch self.personality {
         case .remote(let remote): return remote
         default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")

@@ -221,8 +221,7 @@ public final class ActorSystem {
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
 
         if settings.cluster.enabled {
-            // FIXME: make SerializationPoolSettings configurable
-            let cluster = ClusterShell()
+            let cluster = ClusterShell(selfNode: settings.cluster.uniqueBindNode)
             initializationLock.withWriterLockVoid {
                 self._cluster = cluster
             }

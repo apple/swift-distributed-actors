@@ -50,7 +50,7 @@ public enum Receptionist {
 
         internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Message> {
             if addressable.isRemote() {
-                let remoteWellTypedPersonality: RemotePersonality<Message> = addressable.ref._unsafeGetRemotePersonality(Message.self)
+                let remoteWellTypedPersonality: RemoteClusterActorPersonality<Message> = addressable.ref._unsafeGetRemotePersonality(Message.self)
                 return ActorRef(.remote(remoteWellTypedPersonality))
             } else {
                 guard let ref = addressable.ref as? ActorRef<Message> else {
