@@ -250,7 +250,7 @@ extension CRDT.ORSet: ProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.LWWRegister
 
-extension CRDT.LWWRegisterWithCustomClock: ProtobufRepresentable {
+extension CRDT.LWWRegister: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoCRDTLWWRegister
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
@@ -269,6 +269,10 @@ extension CRDT.LWWRegisterWithCustomClock: ProtobufRepresentable {
         proto.initialValue = try toProto(self.initialValue)
         proto.value = try toProto(self.value)
 
+        let serializedTimeSource = try context.serialization.serialize(self.timeSource)
+        proto.timeSource.manifest = try serializedTimeSource.manifest.toProto(context: context)
+        proto.timeSource.payload = serializedTimeSource.buffer.readData()
+
         let serializedClock = try context.serialization.serialize(self.clock)
         proto.clock.manifest = try serializedClock.manifest.toProto(context: context)
         proto.clock.payload = serializedClock.buffer.readData()
@@ -278,7 +282,7 @@ extension CRDT.LWWRegisterWithCustomClock: ProtobufRepresentable {
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.hasReplicaID else {
-            throw SerializationError.missingField("replicaID", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+            throw SerializationError.missingField("replicaID", type: String(describing: CRDT.LWWRegister<Value>.self))
         }
         self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
 
@@ -291,17 +295,26 @@ extension CRDT.LWWRegisterWithCustomClock: ProtobufRepresentable {
         }
 
         guard proto.hasInitialValue else {
-            throw SerializationError.missingField("initialValue", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+            throw SerializationError.missingField("initialValue", type: String(describing: CRDT.LWWRegister<Value>.self))
         }
         self.initialValue = try fromProto(proto.initialValue)
 
+        guard proto.hasTimeSource else {
+            throw SerializationError.missingField("timeSource", type: String(describing: CRDT.LWWRegister<Value>.self))
+        }
+        self.timeSource = try context.serialization.deserialize(
+            as: TimeSource.self,
+            from: .data(proto.timeSource.payload),
+            using: Serialization.Manifest(fromProto: proto.timeSource.manifest, context: context)
+        )
+
         guard proto.hasValue else {
-            throw SerializationError.missingField("value", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+            throw SerializationError.missingField("value", type: String(describing: CRDT.LWWRegister<Value>.self))
         }
         self.value = try fromProto(proto.value)
 
         guard proto.hasClock else {
-            throw SerializationError.missingField("clock", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+            throw SerializationError.missingField("clock", type: String(describing: CRDT.LWWRegister<Value>.self))
         }
         self.clock = try context.serialization.deserialize(
             as: Clock.self,
@@ -310,7 +323,7 @@ extension CRDT.LWWRegisterWithCustomClock: ProtobufRepresentable {
         )
 
         guard proto.hasUpdatedBy else {
-            throw SerializationError.missingField("updatedBy", type: String(describing: CRDT.LWWRegisterWithCustomClock<Value, Clock>.self))
+            throw SerializationError.missingField("updatedBy", type: String(describing: CRDT.LWWRegister<Value>.self))
         }
         self.updatedBy = try ReplicaID(fromProto: proto.updatedBy, context: context)
     }

@@ -166,8 +166,10 @@ public class Serialization {
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.register(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
-        // clocks
-        settings.register(WallTimeClock.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        // time sources
+        settings.register(TimeSource.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(Clock.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(WallTime.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         self.settings = settings
         self.metrics = system.metrics
@@ -302,13 +304,7 @@ extension Serialization {
             return serializer
 
         case Serialization.SerializerID.foundationJSON:
-            let encoder = JSONEncoder()
-            let decoder = JSONDecoder()
-            if #available(macOS 10.13, *) {
-                encoder.dateEncodingStrategy = .iso8601Custom
-                decoder.dateDecodingStrategy = .iso8601Custom
-            }
-            let serializer = JSONCodableSerializer<Message>(encoder: encoder, decoder: decoder)
+            let serializer = JSONCodableSerializer<Message>()
             serializer.setSerializationContext(self.context)
             return serializer
 
@@ -436,9 +432,6 @@ extension Serialization {
 
                 case .foundationJSON:
                     let encoder = JSONEncoder()
-                    if #available(macOS 10.13, *) {
-                        encoder.dateEncodingStrategy = .iso8601Custom
-                    }
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
@@ -567,9 +560,6 @@ extension Serialization {
 
                 case .foundationJSON:
                     let decoder = JSONDecoder()
-                    if #available(macOS 10.13, *) {
-                        decoder.dateDecodingStrategy = .iso8601Custom
-                    }
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder)
 

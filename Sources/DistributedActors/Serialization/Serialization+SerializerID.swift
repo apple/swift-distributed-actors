@@ -125,6 +125,8 @@ extension Serialization {
         internal static let ErrorEnvelope: SerializerID = .foundationJSON
         internal static let BestEffortStringError: SerializerID = .foundationJSON
 
-        internal static let WallTimeClock: SerializerID = .foundationJSON
+        internal static let TimeSource: SerializerID = .foundationJSON
+        internal static let Clock: SerializerID = .foundationJSON
+        internal static let WallTime: SerializerID = .foundationJSON
     }
 }
