@@ -180,14 +180,16 @@ extension ClusterShellState {
     ///
     /// - Faults: when called in wrong state of an ongoing handshake
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
-    mutating func abortOutgoingHandshake(with node: Node) -> HandshakeStateMachine.State? {
+    // THIS SIGNATURE IS SCARY; dont kill a Node, kill a specific channel (!)
+    mutating func closeOutboundHandshakeChannel_TODOBETTERNAME(with node: Node, file: String = #file, line: UInt = #line) -> HandshakeStateMachine.State? {
         guard let state = self._handshakes.removeValue(forKey: node) else {
             return nil
         }
-
         switch state {
         case .initiated(let initiated):
             if let channel = initiated.channel {
+                self.log.warning("ABORTING OUTBOUND handshake channel: \(channel) [AT: \(file):\(line)]")
+
                 channel.close().whenFailure { [log = self.log] error in
                     log.warning("Failed to abortOutgoingHandshake (close) channel [\(channel)], error: \(error)")
                 }
@@ -208,7 +210,9 @@ extension ClusterShellState {
     /// by node from the _handshakes.
     ///
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
-    mutating func abortIncomingHandshake(offer: Wire.HandshakeOffer, channel: Channel) {
+    mutating func closeHandshakeChannel(offer: Wire.HandshakeOffer, channel: Channel) {
+        self.log.warning("ABORTING INBOUND handshake channel: \(channel)")
+
         channel.close().whenFailure { [log = self.log, metadata = self.metadata] error in
             log.warning("Failed to abortIncomingHandshake (close) channel [\(channel)], error: \(error)", metadata: metadata)
         }
@@ -228,12 +232,12 @@ extension ClusterShellState {
     ///   Upon tie-break the nodes follow these two roles:
     ///     Winner: Keeps the outgoing connection, negotiates and replies accept/reject on the "incoming" connection from the remote node.
     ///     Loser: Drops the incoming connection and waits for Winner's decision.
-    mutating func onIncomingHandshakeOffer(offer: Wire.HandshakeOffer) -> OnIncomingHandshakeOfferDirective {
+    mutating func onIncomingHandshakeOffer(offer: Wire.HandshakeOffer, incomingChannel: Channel) -> OnIncomingHandshakeOfferDirective {
         func negotiate(promise: EventLoopPromise<Wire.HandshakeResponse>? = nil) -> OnIncomingHandshakeOfferDirective {
             let promise = promise ?? self.eventLoopGroup.next().makePromise(of: Wire.HandshakeResponse.self)
             let fsm = HandshakeStateMachine.HandshakeReceivedState(state: self, offer: offer, whenCompleted: promise)
             self._handshakes[offer.from.node] = .wasOfferedHandshake(fsm)
-            return .negotiate(fsm)
+            return .negotiateIncoming(fsm)
         }
 
         guard let inProgress = self._handshakes[offer.from.node] else {
@@ -243,14 +247,26 @@ extension ClusterShellState {
 
         switch inProgress {
         case .initiated(let initiated):
+
+            /// Since we MAY have 2 connections open at this point in time -- one we opened, and another that was opened
+            /// to us when the other node tried to associated, we'll perform a tie-breaker to ensure we predictably
+            /// only use _one_ of them, and close the other.
+            // let selectedChannel: Channel
+
             /// order on nodes is somewhat arbitrary, but that is fine, since we only need this for tiebreakers
             let tieBreakWinner = initiated.localNode < offer.from
             self.log.info("""
             Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.from)](remote) \
             detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
-            """)
+            """, metadata: [
+                "handshake/inProgress": "\(initiated)",
+                "handshake/incoming/offer": "\(offer)",
+                "handshake/incoming/channel": "\(incomingChannel)",
+            ])
+
             if tieBreakWinner {
-                if self.abortOutgoingHandshake(with: offer.from.node) != nil {
+
+                if self.closeOutboundHandshakeChannel_TODOBETTERNAME(with: offer.from.node) != nil {
                     self.log.debug(
                         "Aborted handshake, as concurrently negotiating another one with same node already",
                         metadata: [
@@ -265,7 +281,7 @@ extension ClusterShellState {
 
             } else {
                 // we "lost", the other node will send the accept; when it does, the will complete the future.
-                return .abortDueToConcurrentHandshake
+                return .abortIncomingDueToConcurrentHandshake
             }
         case .wasOfferedHandshake:
             // suspicious but but not wrong, so we were offered before, and now are being offered again?
@@ -283,10 +299,10 @@ extension ClusterShellState {
     }
 
     enum OnIncomingHandshakeOfferDirective {
-        case negotiate(HandshakeStateMachine.HandshakeReceivedState)
+        case negotiateIncoming(HandshakeStateMachine.HandshakeReceivedState)
         /// An existing handshake with given peer is already in progress,
         /// do not negotiate but rest assured that the association will be handled properly by the already ongoing process.
-        case abortDueToConcurrentHandshake
+        case abortIncomingDueToConcurrentHandshake
     }
 
     mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? {
@@ -423,6 +439,15 @@ extension ClusterShellState {
     var metadata: Logger.Metadata {
         [
             "membership/count": "\(String(describing: self.membership.count(atLeast: .joining)))",
+        ]
+    }
+
+    func metadataForHandshakes(node: Node, error: Error) -> Logger.Metadata {
+        [
+            "handshake/error": "\(error)",
+            "handshake/errorType": "\(String(reflecting: type(of: error as Any)))",
+            "handshake/peer": "\(node)",
+            "handshakes": "\(self.handshakes())"
         ]
     }
 }

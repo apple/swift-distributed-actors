@@ -173,17 +173,17 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
-            ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
+            ref1.tell(.greet(name: "Alice", _replyTo: replyProbe1.ref))
 
             let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-            ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
+            ref2.tell(.greet(name: "Bob", _replyTo: replyProbe2.ref))
 
             let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
             ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
 
             // `first` has the lowest address so it should be the leader and singleton
-            try replyProbe1.expectMessage("Hello-1 Charlie!")
-            try replyProbe2.expectMessage("Hello-1 Charlie!")
+            try replyProbe1.expectMessage("Hello-1 Alice!")
+            try replyProbe2.expectMessage("Hello-1 Bob!")
             try replyProbe3.expectMessage("Hello-1 Charlie!")
 
             // Take down the leader
@@ -200,8 +200,10 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
                 try self.assertLeaderNode(on: third, is: nil)
             }
 
+            // ~~~~ racy ~~~~
+
             // No leader so singleton is not available, messages sent should be stashed
-            ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
+            ref2.tell(.greet(name: "Bob-2", _replyTo: replyProbe2.ref))
             ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
 
             // `fourth` will become the new leader and singleton
@@ -210,7 +212,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             try self.ensureNodes(.up, on: second, within: .seconds(10), nodes: fourth.cluster.node, second.cluster.node, third.cluster.node)
 
             // The stashed messages get routed to new singleton running on `fourth`
-            try replyProbe2.expectMessage("Hello-4 Charlie-2!")
+            try replyProbe2.expectMessage("Hello-4 Bob-2!")
             try replyProbe3.expectMessage("Hello-4 Charlie-3!")
         }
     }

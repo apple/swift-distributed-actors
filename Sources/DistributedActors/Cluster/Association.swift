@@ -62,7 +62,12 @@ final class Association: CustomStringConvertible {
     /// Complete the association and drain any pending message sends onto the channel.
     // TODO: This style can only ever work since we lock around the entirety of enqueueing messages and this setting; make it such that we don't need the lock eventually
     func completeAssociation(handshake: HandshakeStateMachine.CompletedState, over channel: Channel) {
-        // TODO: assert that the channel is for the right remote node?
+        assert(self.remoteNode == handshake.remoteNode,
+                """
+                Complete association with wrong node was invoked. \
+                Association, remote node: \(self.remoteNode); \
+                Handshake, remote node: \(handshake.remoteNode)
+                """)
 
         self.lock.withLockVoid {
             switch self.state {
@@ -78,12 +83,11 @@ final class Association: CustomStringConvertible {
                     _ = channel.writeAndFlush(envelope)
                 }
 
-            case .associated(let existingAssociatedChannel):
-                fatalError("MUST NOT complete an association twice; Was \(existingAssociatedChannel) and tried to complete with \(channel) from \(handshake)")
+            case .associated:
+                _ = channel.close()
 
             case .tombstone:
                 _ = channel.close()
-                return
             }
         }
     }
@@ -118,6 +122,19 @@ final class Association: CustomStringConvertible {
     var description: String {
         "AssociatedState(\(self.state), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
     }
+
+    func whenComplete(_ promise: EventLoopPromise<Wire.HandshakeResponse>?) {
+        self.lock.withLockVoid {
+            switch self.state {
+            case .associating:
+                () // TODO trigger when it completes
+            case .associated:
+                () // promise?.succeed(.accept(HandshakeAccept()))
+            case .tombstone:
+                promise?.fail(HandshakeError.targetAlreadyTombstone(selfNode: self.selfNode, remoteNode: self.remoteNode))
+            }
+        }
+    }
 }
 
 extension Association {
@@ -139,12 +156,44 @@ extension Association {
         self.lock.withLockVoid {
             switch self.state {
             case .associating(let sendQueue):
+                pprint("SEND [ENQUEUE] = \(envelope.underlyingMessage) >>>> \(envelope.recipient)")
                 sendQueue.enqueue(envelope)
             case .associated(let channel):
+                // pprint("SEND [SEND]   = \(envelope.underlyingMessage) >>>> \(envelope.recipient)")
                 channel.writeAndFlush(envelope, promise: promise)
             case .tombstone(let deadLetters):
+                pprint("SEND [DEAD]   = \(envelope.underlyingMessage) >>>> \(envelope.recipient)")
                 deadLetters.tell(.init(envelope.underlyingMessage, recipient: envelope.recipient))
             }
+        }
+    }
+}
+
+extension Association {
+    public var isAssociating: Bool {
+        switch self.state {
+        case .associating:
+            return true
+        default:
+            return false
+        }
+    }
+
+    public var isAssociated: Bool {
+        switch self.state {
+        case .associated:
+            return true
+        default:
+            return false
+        }
+    }
+
+    public var isTombstone: Bool {
+        switch self.state {
+        case .tombstone:
+            return true
+        default:
+            return false
         }
     }
 }

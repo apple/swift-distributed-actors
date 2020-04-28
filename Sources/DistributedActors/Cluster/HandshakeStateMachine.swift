@@ -60,11 +60,11 @@ internal struct HandshakeStateMachine {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handshake Initiated
 
-    internal struct InitiatedState {
+    internal struct InitiatedState: Swift.CustomStringConvertible {
         var backoff: BackoffStrategy
         let settings: ClusterSettings
 
-        var protocolVersion: DistributedActors.Version {
+        var protocolVersion: Version {
             self.settings.protocolVersion
         }
 
@@ -97,7 +97,7 @@ internal struct HandshakeStateMachine {
             Wire.HandshakeOffer(version: self.protocolVersion, from: self.localNode, to: self.remoteNode)
         }
 
-        mutating func onHandshakeTimeout() -> HandshakeStateMachine.RetryDirective {
+        mutating func onHandshakeTimeout() -> RetryDirective {
             if let interval = self.backoff.next() {
                 return .scheduleRetryHandshake(delay: interval)
             } else {
@@ -109,13 +109,25 @@ internal struct HandshakeStateMachine {
             self.channel = channel
         }
 
-        mutating func onHandshakeError(_: Error) -> HandshakeStateMachine.RetryDirective {
+        mutating func onHandshakeError(_: Error) -> RetryDirective {
             switch self.backoff.next() {
             case .some(let amount):
                 return .scheduleRetryHandshake(delay: amount)
             case .none:
                 return .giveUpOnHandshake
             }
+        }
+
+        var description: Swift.String {
+            """
+            InitiatedState(\
+            remoteNode: \(remoteNode), \
+            localNode: \(localNode), \
+            backoff: \(backoff), \
+            whenCompleted: \(optional: whenCompleted), \
+            channel: \(optional: channel)\
+            )
+            """
         }
     }
 
@@ -296,4 +308,6 @@ enum HandshakeError: Error {
 
     /// Returned when an incoming handshake protocol version does not match what this node can understand.
     case incompatibleProtocolVersion(local: DistributedActors.Version, remote: DistributedActors.Version)
+
+    case targetAlreadyTombstone(selfNode: UniqueNode, remoteNode: UniqueNode)
 }

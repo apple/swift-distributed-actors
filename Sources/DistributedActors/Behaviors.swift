@@ -483,7 +483,12 @@ public extension Behavior {
         case .suspend:
             fatalError("Illegal to attempt to interpret message with .suspend behavior! Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
         case .suspended:
-            fatalError("No message should ever be delivered to a .suspended behavior! This is a bug, please open a ticket.", file: file, line: line)
+            fatalError("""
+                       No message should ever be delivered to a .suspended behavior!
+                       Message: \(message)
+                       Actor: \(context)
+                       This is a bug, please open a ticket.
+                       """, file: file, line: line)
         }
     }
 

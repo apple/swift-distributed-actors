@@ -60,11 +60,16 @@ internal enum Wire {
         internal let version: Version
         // TODO: Maybe offeringToSpeakAtVersion or something like that?
 
+        /// The node accepting the handshake.
+        ///
+        /// This will always be the "local" node where the accept is being made.
         internal let from: UniqueNode
 
-        /// In order to avoid confusion with from/to, we name the `origin` the node which an offer was sent "from",
+        /// In order to avoid confusion with from/to, we name the `origin` the node which an *offer* was sent from,
         /// and we now reply to this handshake to it. This value is carried so the origin can confirm it indeed was
         /// intended for it, and not a previous incarnation of a system on the same network address.
+        ///
+        /// This will always be the "remote" node, with regards to where the accept is created.
         internal let origin: UniqueNode
 
         init(version: Version, from: UniqueNode, origin: UniqueNode) {
