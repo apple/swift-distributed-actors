@@ -102,7 +102,7 @@ internal struct SWIMShell {
         self.processGossipPayload(context: context, payload: payload)
 
         if !self.swim.isMember(target) {
-            self.ensureAssociated(context, remoteNode: target.address.node) { result in
+            self.withEnsuredAssociation(context, remoteNode: target.address.node) { result in
                 switch result {
                 case .success:
                     // The case when member is a suspect is already handled in `processGossipPayload`, since
@@ -447,7 +447,7 @@ internal struct SWIMShell {
             switch self.swim.onGossipPayload(about: member) {
             case .connect(let node, let continueAddingMember):
                 // ensuring a connection is asynchronous, but executes callback in actor context
-                self.ensureAssociated(context, remoteNode: node) { uniqueAddressResult in
+                self.withEnsuredAssociation(context, remoteNode: node) { uniqueAddressResult in
                     switch uniqueAddressResult {
                     case .success(let uniqueAddress):
                         continueAddingMember(.success(uniqueAddress))
@@ -512,45 +512,46 @@ internal struct SWIMShell {
         self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(change.member.node, reachability)))
     }
 
-    /// Use to ensure an association to given remote node exists; as one may not always be sure a connection has been already established,
-    /// when a remote ref is discovered through other means (such as SWIM's gossiping).
-    func ensureAssociated(_ context: ActorContext<SWIM.Message>, remoteNode: UniqueNode?, continueWithAssociation: @escaping (Result<UniqueNode, Error>) -> Void) {
+    // TODO: remove this
+    /// Use to ensure an association to given remote node exists.
+    func withEnsuredAssociation(_ context: ActorContext<SWIM.Message>, remoteNode: UniqueNode?, continueWithAssociation: @escaping (Result<UniqueNode, Error>) -> Void) {
         // this is a local node, so we don't need to connect first
         guard let remoteNode = remoteNode else {
             continueWithAssociation(.success(context.system.cluster.node))
             return
         }
 
-        guard let clusterShell = context.system._cluster else {
-            continueWithAssociation(.failure(EnsureAssociationError("ClusterShell not available when trying to ensure associated with: \(reflecting: remoteNode)")))
-            return
-        }
+        // actor refs handle kicking off associations automatically when attempting to send to them; so we do nothing here (!!!)
+        continueWithAssociation(.success(remoteNode))
 
-        let associationState = clusterShell.getEnsureAssociation(with: remoteNode)
-        switch associationState {
-        case .association(let control):
-            continueWithAssociation(.success(control.remoteNode))
-        case .tombstone:
-            let msg = "Association target node is already .tombstoned, not associating. Node \(reflecting: remoteNode) likely to be removed from gossip shortly."
-            continueWithAssociation(.failure(EnsureAssociationError(msg)))
-            return // we shall not associate with this tombstoned node (!)
-        }
-
-        // ensure connection to new node ~~~
-        // TODO: might need a cache in the swim shell? // actual solution being a shared concurrent hashmap...
-        // FIXME: use reasonable timeout and back off? issue #141
-        let ref = context.messageAdapter(from: ClusterShell.HandshakeResult.self) { (result: ClusterShell.HandshakeResult) in
-            switch result {
-            case .success(let uniqueNode):
-                return SWIM.Message.local(.monitor(uniqueNode))
-            case .failure(let error):
-                context.log.debug("Did not associate with \(reflecting: remoteNode), reason: \(error)")
-                return nil // drop the message
-            }
-        }
-
-        context.log.trace("Requesting handshake with \(remoteNode.node)")
-        self.clusterRef.tell(.command(.handshakeWith(remoteNode.node, replyTo: ref)))
+//        guard let clusterShell = context.system._cluster else {
+//            continueWithAssociation(.failure(EnsureAssociationError("ClusterShell not available when trying to ensure associated with: \(reflecting: remoteNode)")))
+//            return
+//        }
+//
+//        let associationState = clusterShell.getEnsureAssociation(with: remoteNode)
+//        switch associationState {
+//        case .association(let control):
+//            continueWithAssociation(.success(control.remoteNode))
+//        case .tombstone:
+//            let msg = "Association target node is already .tombstoned, not associating. Node \(reflecting: remoteNode) likely to be removed from gossip shortly."
+//            continueWithAssociation(.failure(EnsureAssociationError(msg)))
+//            return // we shall not associate with this tombstoned node (!)
+//        }
+//
+//        // ensure connection to new node ~~~
+//        let ref = context.messageAdapter(from: ClusterShell.HandshakeResult.self) { (result: ClusterShell.HandshakeResult) in
+//            switch result {
+//            case .success(let uniqueNode):
+//                return SWIM.Message.local(.monitor(uniqueNode))
+//            case .failure(let error):
+//                context.log.debug("Did not associate with \(reflecting: remoteNode), reason: \(error)")
+//                return nil // drop the message
+//            }
+//        }
+//
+//        context.log.trace("Requesting handshake with \(remoteNode.node)")
+//        self.clusterRef.tell(.command(.handshakeWith(remoteNode.node, replyTo: ref)))
     }
 
     struct EnsureAssociationError: Error {

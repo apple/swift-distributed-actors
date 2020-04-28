@@ -40,7 +40,7 @@ private let moreThanCoresActors = cores * 2
 
 public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
-        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(twoActors)",
+        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(twoActors = 2)",
         runFunction: bench_actors_ping_pong(numActors: twoActors),
         tags: [.actor],
         setUpFunction: {
@@ -51,7 +51,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
-        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(lessThanCoresActors)",
+        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(lessThanCoresActors = \(lessThanCoresActors))",
         runFunction: bench_actors_ping_pong(numActors: lessThanCoresActors),
         tags: [.actor],
         setUpFunction: {
@@ -62,7 +62,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
-        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(sameAsCoresActors)",
+        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(sameAsCoresActors = \(sameAsCoresActors))",
         runFunction: bench_actors_ping_pong(numActors: sameAsCoresActors),
         tags: [.actor],
         setUpFunction: {
@@ -73,7 +73,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
-        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(moreThanCoresActors)",
+        name: "ActorPingPongBenchmarks.bench_actors_ping_pong(moreThanCoresActors = \(moreThanCoresActors))",
         runFunction: bench_actors_ping_pong(numActors: moreThanCoresActors),
         tags: [.actor],
         setUpFunction: {
@@ -239,7 +239,6 @@ private func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
             .startPingPong(
                 messagesPerPair: numMessagesPerActorPair,
                 numActors: numActors,
-                // dispatcher: "", // not used
                 throughput: 50,
                 shutdownTimeout: .seconds(30),
                 replyTo: benchmarkLatchRef

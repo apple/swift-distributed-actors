@@ -30,6 +30,32 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         try assertAssociated(remote, withExactly: local.cluster.node)
     }
 
+    func test_boundServer_shouldAcceptAssociate_raceFromBothNodes() throws {
+        let (local, remote) = self.setUpPair()
+        let n3 = self.setUpNode("node-3")
+        let n4 = self.setUpNode("node-4")
+        let n5 = self.setUpNode("node-5")
+        let n6 = self.setUpNode("node-6")
+
+        local.cluster.join(node: remote.cluster.node.node)
+        remote.cluster.join(node: local.cluster.node.node)
+
+        n3.cluster.join(node: local.cluster.node.node)
+        local.cluster.join(node: n3.cluster.node.node)
+
+        n4.cluster.join(node: local.cluster.node.node)
+        local.cluster.join(node: n4.cluster.node.node)
+
+        n5.cluster.join(node: local.cluster.node.node)
+        local.cluster.join(node: n5.cluster.node.node)
+
+        n6.cluster.join(node: local.cluster.node.node)
+        local.cluster.join(node: n6.cluster.node.node)
+
+        try assertAssociated(local, withAtLeast: remote.cluster.node)
+        try assertAssociated(remote, withAtLeast: local.cluster.node)
+    }
+
     func test_handshake_shouldNotifyOnSuccess() throws {
         let (local, remote) = self.setUpPair()
         let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
@@ -285,9 +311,14 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         try assertNotAssociated(system: first, node: second.cluster.node)
         try assertNotAssociated(system: second, node: first.cluster.node)
 
-        ref.tell("Hello!") // will be buffered until associated, and then delivered
+        // will be buffered until associated, and then delivered:
+        ref.tell("Hello 1") 
+        ref.tell("Hello 2") 
+        ref.tell("Hello 3") 
 
-        try p2.expectMessage("Got:Hello!")
+        try p2.expectMessage("Got:Hello 1")
+        try p2.expectMessage("Got:Hello 2")
+        try p2.expectMessage("Got:Hello 3")
 
         try assertAssociated(first, withExactly: second.cluster.node)
         try assertAssociated(second, withExactly: first.cluster.node)
