@@ -57,7 +57,11 @@ internal extension String.StringInterpolation {
 
 public extension String.StringInterpolation {
     mutating func appendInterpolation<T>(_ value: T?, orElse defaultValue: String) {
-        self.appendLiteral("[\(value.map { "\($0)" } ?? defaultValue)]")
+        self.appendLiteral("\(value.map { "\($0)" } ?? defaultValue)")
+    }
+
+    mutating func appendInterpolation<T>(optional value: T?) {
+        self.appendLiteral("\(value.map { "\($0)" } ?? "nil")")
     }
 }
 

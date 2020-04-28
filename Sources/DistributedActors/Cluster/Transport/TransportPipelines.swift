@@ -52,22 +52,27 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var bytes = self.unwrapInboundIn(data)
 
+        let metadata: Logger.Metadata = [
+            "handshake/channel": "\(context.channel)"
+        ]
+
         do {
             let response = try self.readHandshakeResponse(bytes: &bytes)
             switch response {
             case .accept(let accept):
-                self.log.debug("Received handshake accept from: [\(accept.from)]")
+                self.log.debug("Received handshake accept from: [\(accept.from)]", metadata: metadata)
                 self.cluster.tell(.inbound(.handshakeAccepted(accept, channel: context.channel)))
 
                 // handshake is completed, so we remove the handler from the pipeline
                 context.pipeline.removeHandler(self, promise: nil)
 
             case .reject(let reject):
-                self.log.debug("Received handshake reject from: [\(reject.from)] reason: [\(reject.reason)]")
+                self.log.debug("Received handshake reject from: [\(reject.from)] reason: [\(reject.reason)], closing channel.", metadata: metadata)
                 self.cluster.tell(.inbound(.handshakeRejected(reject)))
                 context.close(promise: nil)
             }
         } catch {
+            self.log.debug("Handshake failure, error [\(error)]:\(String(reflecting: type(of: error)))", metadata: metadata)
             self.cluster.tell(.inbound(.handshakeFailed(self.handshakeOffer.to, error)))
             context.fireErrorCaught(error)
         }
@@ -113,7 +118,9 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
             // TODO: formalize wire format...
             let offer = try self.readHandshakeOffer(bytes: &bytes)
 
-            self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]")
+            self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]", metadata: [
+                "handshake/channel": "\(context.channel)"
+            ])
 
             let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)
             self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyInto: promise)))

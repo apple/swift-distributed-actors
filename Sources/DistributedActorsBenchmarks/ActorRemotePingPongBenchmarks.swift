@@ -26,12 +26,32 @@ import Glibc
 
 // MARK: Remote Ping Pong Benchmark
 
-private let twoActors = 2
-
 public let ActorRemotePingPongBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
-        name: "ActorRemotePingPongBenchmarks.bench_actors_remote_ping_pong(twoActors)",
-        runFunction: bench_actors_remote_ping_pong(numActors: twoActors),
+        name: "ActorRemotePingPongBenchmarks.bench_actors_remote_ping_pong(2)",
+        runFunction: bench_actors_remote_ping_pong(numActors: 2),
+        tags: [.actor],
+        setUpFunction: {
+            setUp { () in
+                supervisor = try! system.spawn("supervisor", supervisorBehavior())
+            }
+        },
+        tearDownFunction: tearDown
+    ),
+    BenchmarkInfo(
+        name: "ActorRemotePingPongBenchmarks.bench_actors_remote_ping_pong(8)",
+        runFunction: bench_actors_remote_ping_pong(numActors: 8),
+        tags: [.actor],
+        setUpFunction: {
+            setUp { () in
+                supervisor = try! system.spawn("supervisor", supervisorBehavior())
+            }
+        },
+        tearDownFunction: tearDown
+    ),
+    BenchmarkInfo(
+        name: "ActorRemotePingPongBenchmarks.bench_actors_remote_ping_pong(16)",
+        runFunction: bench_actors_remote_ping_pong(numActors: 16),
         tags: [.actor],
         setUpFunction: {
             setUp { () in
