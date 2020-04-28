@@ -447,15 +447,4 @@ public struct WallTimeClock: ClockProtocol, CustomStringConvertible {
     public var description: String {
         "\(self.timestamp.description)"
     }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let timestamp = try container.decode(Date.self)
-        self = .init(timestamp: timestamp)
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(self.timestamp)
-    }
 }
