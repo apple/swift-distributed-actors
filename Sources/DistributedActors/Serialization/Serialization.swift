@@ -166,10 +166,8 @@ public class Serialization {
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.register(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
-        // time sources
-        settings.register(TimeSource.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-        settings.register(Clock.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
-        settings.register(WallTime.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        // clocks
+        settings.register(WallTimeClock.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         self.settings = settings
         self.metrics = system.metrics

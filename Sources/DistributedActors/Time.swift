@@ -415,74 +415,13 @@ public extension Deadline {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Time source
-
-public enum TimeSource: String, Equatable, Codable {
-    case wallTime
-
-    public func now() -> Clock {
-        switch self {
-        case .wallTime:
-            return .wallTime(WallTime())
-        }
-    }
-}
-
-/// Represents a timestamp with total order defined and therefore can be compared to establish causal order.
-public enum Clock {
-    case wallTime(WallTime)
-}
-
-extension Clock: Comparable {
-    public static func < (lhs: Clock, rhs: Clock) -> Bool {
-        switch (lhs, rhs) {
-        case (.wallTime(let l), .wallTime(let r)):
-            return l < r
-        }
-    }
-
-    public static func == (lhs: Clock, rhs: Clock) -> Bool {
-        switch (lhs, rhs) {
-        case (.wallTime(let l), .wallTime(let r)):
-            return l == r
-        }
-    }
-}
-
-extension Clock: Codable {
-    public enum DiscriminatorKeys: String, Decodable {
-        case wallTime
-    }
-
-    enum CodingKeys: CodingKey {
-        case _case
-        case wallTime
-    }
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
-        case .wallTime:
-            let wallTime = try container.decode(WallTime.self, forKey: .wallTime)
-            self = .wallTime(wallTime)
-        }
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
-        case .wallTime(let wallTime):
-            try container.encode(DiscriminatorKeys.wallTime.rawValue, forKey: ._case)
-            try container.encode(wallTime, forKey: .wallTime)
-        }
-    }
-}
+// MARK: Clock
 
 /// A `Clock` implementation using `Date`.
-public struct WallTime: Comparable, Codable, CustomStringConvertible {
+public struct WallTimeClock: Comparable, Codable, CustomStringConvertible {
     internal let timestamp: Date
 
-    public static let zero = WallTime(timestamp: Date.distantPast)
+    public static let zero = WallTimeClock(timestamp: Date.distantPast)
 
     public init() {
         self.init(timestamp: Date())
@@ -492,11 +431,11 @@ public struct WallTime: Comparable, Codable, CustomStringConvertible {
         self.timestamp = timestamp
     }
 
-    public static func < (lhs: WallTime, rhs: WallTime) -> Bool {
+    public static func < (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
         lhs.timestamp < rhs.timestamp
     }
 
-    public static func == (lhs: WallTime, rhs: WallTime) -> Bool {
+    public static func == (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
         lhs.timestamp == rhs.timestamp
     }
 

@@ -30,20 +30,14 @@ extension CRDT {
         public let replicaID: ReplicaID
 
         let initialValue: Value
-        let timeSource: TimeSource
 
         public internal(set) var value: Value
-        var clock: Clock
+        var clock: WallTimeClock
         var updatedBy: ReplicaID
 
-        init(replicaID: ReplicaID, initialValue: Value, timeSource: TimeSource = .wallTime) {
-            self.init(replicaID: replicaID, initialValue: initialValue, clock: timeSource.now(), timeSource: timeSource)
-        }
-
-        init(replicaID: ReplicaID, initialValue: Value, clock: Clock, timeSource: TimeSource = .wallTime) {
+        init(replicaID: ReplicaID, initialValue: Value, clock: WallTimeClock = WallTimeClock()) {
             self.replicaID = replicaID
             self.initialValue = initialValue
-            self.timeSource = timeSource
             self.value = initialValue
             self.clock = clock
             self.updatedBy = self.replicaID
@@ -52,7 +46,7 @@ extension CRDT {
         /// Assigns `value` to the register.
         public mutating func assign(_ value: Value) {
             self.value = value
-            self.clock = self.timeSource.now()
+            self.clock = WallTimeClock()
             self.updatedBy = self.replicaID
         }
 

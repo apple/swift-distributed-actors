@@ -57,7 +57,7 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: plist
+// MARK: PropertyList
 
 /// Allows for serialization of messages using the Foundation's `PropertyListEncoder` and `PropertyListDecoder`, using the specified format.
 ///

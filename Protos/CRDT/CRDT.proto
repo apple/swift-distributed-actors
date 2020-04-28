@@ -84,11 +84,6 @@ message CRDTLWWRegister {
         Manifest manifest = 1;
         bytes payload = 2;
     }
-    
-    message TimeSource {
-        Manifest manifest = 1;
-        bytes payload = 2;
-    }
 
     message Clock {
         Manifest manifest = 1;
@@ -97,8 +92,7 @@ message CRDTLWWRegister {
 
     VersionReplicaID replicaID = 1;
     Value initialValue = 2;
-    TimeSource timeSource = 3;
-    Value value = 4;
-    Clock clock = 5;
-    VersionReplicaID updatedBy = 6;
+    Value value = 3;
+    Clock clock = 4;
+    VersionReplicaID updatedBy = 5;
 }
