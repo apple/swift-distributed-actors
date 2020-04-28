@@ -232,17 +232,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             guard case .wallTime(let deserializedClock) = deserialized.clock else {
                 throw self.testKit.fail("Expected clock to be .wallTime, got \(deserialized.clock)")
             }
-//            print("\(fabs(deserializedClock.timestamp.timeIntervalSince1970 - clock.timestamp.timeIntervalSince1970))")
-//            (fabs(deserializedClock.timestamp.timeIntervalSince1970 - clock.timestamp.timeIntervalSince1970) < Double.ulpOfOne).shouldBeTrue()
+            // `TimeInterval` is `Double`
             XCTAssertEqual(deserializedClock.timestamp.timeIntervalSince1970, clock.timestamp.timeIntervalSince1970, accuracy: 1)
-
-            // The way `Date`/`Codable` handles fractional seconds makes it difficult
-            // to compare `Date` before and after serialization. We settle with comparing
-            // ISO-8601 representation of `Date`.
-//            if #available(macOS 10.13, *) {
-//                Formatter.iso8601WithFractionalSeconds.string(from: deserialized.clock.timestamp)
-//                    .shouldEqual(Formatter.iso8601WithFractionalSeconds.string(from: clock.timestamp))
-//            }
         }
     }
 }
