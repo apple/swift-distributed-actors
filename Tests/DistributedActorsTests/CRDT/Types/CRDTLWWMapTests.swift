@@ -20,7 +20,7 @@ final class CRDTLWWMapTests: XCTestCase {
     let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
     let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
-    func test_LWWMap_basicOperations() throws {
+    func test_basicOperations() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
 
         m1.underlying.shouldEqual([:])
@@ -91,7 +91,7 @@ final class CRDTLWWMapTests: XCTestCase {
         m1.isEmpty.shouldBeTrue()
     }
 
-    func test_LWWMap_update_remove_shouldUpdateDelta() throws {
+    func test_update_remove_shouldUpdateDelta() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
 
         m1.set(forKey: "foo", value: 5)
@@ -175,7 +175,7 @@ final class CRDTLWWMapTests: XCTestCase {
         d4foo.value.shouldEqual(6)
     }
 
-    func test_LWWMap_merge_shouldMutate() throws {
+    func test_merge_shouldMutate() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
 
         var m2 = CRDT.LWWMap<String, Int>(replicaID: self.replicaB, defaultValue: 0)
@@ -233,7 +233,7 @@ final class CRDTLWWMapTests: XCTestCase {
         m1.state._keys.state.elementByBirthDot[VersionDot(self.replicaB, 3)]!.shouldEqual("foo")
     }
 
-    func test_LWWMap_mergeDelta_shouldMutate() throws {
+    func test_mergeDelta_shouldMutate() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
         // ORSet `keys`: [(A,1): "foo", (A,2): "bar"]
         // `values`: ["foo": 8, "bar": 6]
@@ -281,7 +281,7 @@ final class CRDTLWWMapTests: XCTestCase {
         m1.state._keys.state.elementByBirthDot[VersionDot(self.replicaB, 2)]!.shouldEqual("baz")
     }
 
-    func test_LWWMap_resetValue_resetAllValues() throws {
+    func test_resetValue_resetAllValues() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)
         m1.set(forKey: "foo", value: 2)
         m1.set(forKey: "bar", value: 6) // (A,2)
@@ -314,5 +314,24 @@ final class CRDTLWWMapTests: XCTestCase {
             throw shouldNotHappen("Expect m1 to contain \"bar\", got \(m1)")
         }
         bar3.shouldEqual(0)
+    }
+
+    func test_clone() throws {
+        var m = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 5)
+        m.set(forKey: "foo", value: 2)
+
+        let clone = m.clone()
+        clone.replicaID.shouldEqual(m.replicaID)
+        clone.keys.shouldEqual(m.keys)
+
+        guard let mFoo = m["foo"] else {
+            throw shouldNotHappen("Expect m to contain \"foo\", got \(m)")
+        }
+        guard let cloneFoo = clone["foo"] else {
+            throw shouldNotHappen("Expect clone to contain \"foo\", got \(clone)")
+        }
+        cloneFoo.shouldEqual(mFoo)
+
+        clone.delta.shouldNotBeNil()
     }
 }

@@ -20,7 +20,7 @@ final class CRDTORSetTests: XCTestCase {
     let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
     let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
-    func test_ORSet_basicOperations() throws {
+    func test_basicOperations() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
 
         s1.elements.isEmpty.shouldBeTrue()
@@ -46,7 +46,7 @@ final class CRDTORSetTests: XCTestCase {
         s1.isEmpty.shouldBeTrue()
     }
 
-    func test_ORSet_add_remove_shouldUpdateDelta() throws {
+    func test_add_remove_shouldUpdateDelta() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
 
         // version 1
@@ -92,7 +92,7 @@ final class CRDTORSetTests: XCTestCase {
         d4.elementByBirthDot[VersionDot(s1.replicaID, 3)]!.shouldEqual(3)
     }
 
-    func test_ORSet_merge_shouldMutate() throws {
+    func test_merge_shouldMutate() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
         s1.add(1)
         s1.add(3)
@@ -116,7 +116,7 @@ final class CRDTORSetTests: XCTestCase {
         // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
     }
 
-    func test_ORSet_merge_shouldMutate_shouldCompact() throws {
+    func test_merge_shouldMutate_shouldCompact() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
 
         var s2 = CRDT.ORSet<Int>(replicaID: self.replicaB)
@@ -146,7 +146,7 @@ final class CRDTORSetTests: XCTestCase {
         s1.state.elementByBirthDot[VersionDot(s2.replicaID, 3)]!.shouldEqual(7) // (B,3): 7
     }
 
-    func test_ORSet_mergeDelta_shouldMutate() throws {
+    func test_mergeDelta_shouldMutate() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
         s1.add(1)
         s1.add(3)
@@ -173,7 +173,7 @@ final class CRDTORSetTests: XCTestCase {
         // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
     }
 
-    func test_ORSet_mergeDelta_shouldMutate_shouldCompact() throws {
+    func test_mergeDelta_shouldMutate_shouldCompact() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
 
         var s2 = CRDT.ORSet<Int>(replicaID: self.replicaB)
@@ -206,7 +206,7 @@ final class CRDTORSetTests: XCTestCase {
         s1.state.elementByBirthDot[VersionDot(s2.replicaID, 3)]!.shouldEqual(7) // (B,3): 7
     }
 
-    func test_ORSet_reset() throws {
+    func test_reset() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
         s1.add(1)
         s1.add(3)
@@ -214,5 +214,15 @@ final class CRDTORSetTests: XCTestCase {
 
         s1.reset()
         s1.isEmpty.shouldBeTrue()
+    }
+
+    func test_clone() throws {
+        var s = CRDT.ORSet<Int>(replicaID: self.replicaA)
+        s.add(3)
+
+        let clone = s.clone()
+        clone.replicaID.shouldEqual(s.replicaID)
+        clone.elements.shouldEqual(s.elements)
+        clone.delta.shouldNotBeNil()
     }
 }

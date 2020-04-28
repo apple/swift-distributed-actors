@@ -83,6 +83,20 @@ extension CRDT.LWWRegister: ResettableCRDT {
     }
 }
 
+extension CRDT.LWWRegister: CloneableCRDT {
+    private init(replicaID: ReplicaID, initialValue: Value, value: Value, clock: WallTimeClock, updatedBy: ReplicaID) {
+        self.replicaID = replicaID
+        self.initialValue = initialValue
+        self.value = value
+        self.clock = clock
+        self.updatedBy = updatedBy
+    }
+
+    public func clone() -> CRDT.LWWRegister<Value> {
+        CRDT.LWWRegister<Value>(replicaID: self.replicaID, initialValue: self.initialValue, value: self.value, clock: self.clock, updatedBy: self.updatedBy)
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned LWWRegister
 

@@ -20,7 +20,7 @@ final class CRDTLWWRegisterTests: XCTestCase {
     let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
     let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
-    func test_LWWRegister_assign_shouldSetValueAndTimestamp() throws {
+    func test_assign_shouldSetValueAndTimestamp() throws {
         var r1 = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3)
         r1.value.shouldEqual(3)
         r1.updatedBy.shouldEqual(self.replicaA)
@@ -36,7 +36,7 @@ final class CRDTLWWRegisterTests: XCTestCase {
         r1.initialValue.shouldEqual(3) // doesn't change
     }
 
-    func test_LWWRegister_merge_shouldMutateIfMoreRecentTimestamp() throws {
+    func test_merge_shouldMutateIfMoreRecentTimestamp() throws {
         let r1Clock = WallTimeClock()
         var r1 = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3, clock: r1Clock)
         // Make sure r2's assignment has a more recent timestamp
@@ -54,7 +54,7 @@ final class CRDTLWWRegisterTests: XCTestCase {
         r2.value.shouldEqual(5) // unchanged
     }
 
-    func test_LWWRegister_merge_shouldNotMutateIfOlderTimestamp() throws {
+    func test_merge_shouldNotMutateIfOlderTimestamp() throws {
         let r1Clock = WallTimeClock()
         var r1 = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3, clock: r1Clock)
         // Make sure r2's assignment has an older timestamp
@@ -70,7 +70,7 @@ final class CRDTLWWRegisterTests: XCTestCase {
         r1.updatedBy.shouldEqual(self.replicaA)
     }
 
-    func test_LWWRegister_merging_shouldNotMutate() throws {
+    func test_merging_shouldNotMutate() throws {
         let r1Clock = WallTimeClock()
         let r1 = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3, clock: r1Clock)
         // Make sure r2's assignment has a more recent timestamp
@@ -88,7 +88,7 @@ final class CRDTLWWRegisterTests: XCTestCase {
         r3.initialValue.shouldEqual(r1.initialValue) // r3 is built from r1
     }
 
-    func test_LWWRegister_reset() throws {
+    func test_reset() throws {
         var r1 = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 3)
         r1.initialValue.shouldEqual(3)
 
@@ -102,7 +102,20 @@ final class CRDTLWWRegisterTests: XCTestCase {
         r1.value.shouldEqual(3)
     }
 
-    func test_LWWRegister_optionalValueType() throws {
+    func test_clone() throws {
+        var r = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 6)
+        r.assign(8)
+
+        let clone = r.clone()
+        clone.replicaID.shouldEqual(r.replicaID)
+        clone.initialValue.shouldEqual(r.initialValue)
+        clone.value.shouldEqual(r.value)
+        // `TimeInterval` is `Double`
+        XCTAssertEqual(clone.clock.timestamp.timeIntervalSince1970, r.clock.timestamp.timeIntervalSince1970, accuracy: 1)
+        clone.updatedBy.shouldEqual(r.updatedBy)
+    }
+
+    func test_optionalValueType() throws {
         var r1 = CRDT.LWWRegister<Int?>(replicaID: self.replicaA)
         r1.initialValue.shouldBeNil()
         r1.value.shouldBeNil()

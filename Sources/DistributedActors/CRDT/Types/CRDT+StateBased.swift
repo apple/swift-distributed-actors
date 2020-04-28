@@ -133,3 +133,8 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
 public protocol ResettableCRDT {
     mutating func reset()
 }
+
+/// CRDT that can be cloned
+public protocol CloneableCRDT {
+    func clone() -> Self
+}

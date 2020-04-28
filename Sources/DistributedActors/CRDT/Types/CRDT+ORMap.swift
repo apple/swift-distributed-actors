@@ -51,15 +51,12 @@ extension CRDT {
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
     /// - SeeAlso: `CRDT.ORSet`
-    public struct ORMap<Key: Codable & Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
+    public struct ORMap<Key: Codable & Hashable, Value: CvRDT & CloneableCRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
         public let replicaID: ReplicaID
 
-        /// Creates a new `Value` instance. e.g., zero counter, empty set, etc.
-        /// The initializer should not close over mutable state as no strong guarantees are provided about
-        /// which context it will execute on.
-        private let valueInitializer: () -> Value
+        let defaultValue: Value
 
         /// ORSet to maintain causal history of the keys only; values keep their own causal history (if applicable).
         /// This is for tracking key additions and removals.
@@ -73,7 +70,7 @@ extension CRDT {
         public var delta: Delta? {
             // `_keys` should always be mutated whenever `self` is modified in any way.
             if let keysDelta = self._keys.delta {
-                return ORMapDelta(keys: keysDelta, values: self.updatedValues, valueInitializer: self.valueInitializer)
+                return ORMapDelta(keys: keysDelta, values: self.updatedValues, defaultValue: self.defaultValue)
             }
             // If `_keys` has not been mutated then assume `self` has not been modified either.
             return nil
@@ -99,9 +96,9 @@ extension CRDT {
             self._values.isEmpty
         }
 
-        init(replicaID: ReplicaID, valueInitializer: @escaping () -> Value) {
+        init(replicaID: ReplicaID, defaultValue: Value) {
             self.replicaID = replicaID
-            self.valueInitializer = valueInitializer
+            self.defaultValue = defaultValue
             self._keys = ORSet(replicaID: replicaID)
             self._values = [:]
         }
@@ -111,7 +108,7 @@ extension CRDT {
             self._keys.add(key)
 
             // Apply `mutator` to the value then save it to state. Create `Value` if needed.
-            var value = self._values[key] ?? self.valueInitializer()
+            var value = self._values[key] ?? self.defaultValue.clone()
             mutator(&value)
             self._values[key] = value
 
@@ -157,43 +154,34 @@ extension CRDT {
             self._keys.merge(other: other._keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: other._values, valueInitializer: self.valueInitializer)
+            self._values.merge(keys: self._keys.elements, other: other._values, defaultValue: self.defaultValue)
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
             self._keys.mergeDelta(delta.keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: delta.values, valueInitializer: self.valueInitializer)
+            self._values.merge(keys: self._keys.elements, other: delta.values, defaultValue: self.defaultValue)
         }
 
         public mutating func resetDelta() {
             self._keys.resetDelta()
             self.updatedValues.removeAll()
         }
-
-        public init(from decoder: Decoder) throws {
-            fatalError("TODO: implement serialization of ORMap") // FIXME: crdt serialization
-        }
-
-        public func encode(to encoder: Encoder) throws {
-            fatalError("TODO: implement serialization of ORMap") // FIXME: crdt serialization
-        }
     }
 
-    public struct ORMapDelta<Key: Codable & Hashable, Value: CvRDT>: CvRDT {
+    public struct ORMapDelta<Key: Codable & Hashable, Value: CvRDT & CloneableCRDT>: CvRDT {
         var keys: ORSet<Key>.Delta
         // TODO: potential optimization: send only the delta if Value is DeltaCRDT. i.e., instead of Value here we would use Value.Delta
         // TODO: `merge` defined in the Dictionary extension below should use `mergeDelta` when Value is DeltaCRDT
         var values: [Key: Value]
 
-        // FIXME: this is not serializable -- need to pick something rather than depend on the fn?
-        private let valueInitializer: () -> Value
+        let defaultValue: Value
 
-        init(keys: ORSet<Key>.Delta, values: [Key: Value], valueInitializer: @escaping () -> Value) {
+        init(keys: ORSet<Key>.Delta, values: [Key: Value], defaultValue: Value) {
             self.keys = keys
             self.values = values
-            self.valueInitializer = valueInitializer
+            self.defaultValue = defaultValue
         }
 
         public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
@@ -211,21 +199,13 @@ extension CRDT {
             self.keys.merge(other: other.keys)
             // Use the updated `keys` to merge `values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self.values.merge(keys: self.keys.elements, other: other.values, valueInitializer: self.valueInitializer)
-        }
-
-        public init(from decoder: Decoder) throws {
-            fatalError("TODO: implement serialization of ORMapDelta") // FIXME: crdt serialization
-        }
-
-        public func encode(to encoder: Encoder) throws {
-            fatalError("TODO: implement serialization of ORMapDelta") // FIXME: crdt serialization
+            self.values.merge(keys: self.keys.elements, other: other.values, defaultValue: self.defaultValue)
         }
     }
 }
 
-extension Dictionary where Key: Hashable, Value: CvRDT {
-    internal mutating func merge(keys: Set<Key>, other: [Key: Value], valueInitializer: () -> Value) {
+extension Dictionary where Key: Hashable, Value: CvRDT & CloneableCRDT {
+    internal mutating func merge(keys: Set<Key>, other: [Key: Value], defaultValue: Value) {
         // Remove from `self` and `other` keys that no longer exist
         self = self.filter { k, _ in keys.contains(k) }
         let other = other.filter { k, _ in keys.contains(k) }
@@ -234,7 +214,7 @@ extension Dictionary where Key: Hashable, Value: CvRDT {
         for (k, rv) in other {
             // If `k` is not found in `self` then create a new `Value` instance.
             // We must NOT copy `other`'s value directly to `self` because the two should have different replica IDs.
-            var lv: Value = self[k] ?? valueInitializer()
+            var lv: Value = self[k] ?? defaultValue.clone()
             lv.merge(other: rv)
             self[k] = lv
         }
@@ -258,6 +238,20 @@ extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
     /// Resets all values in the `ORMap`.
     public mutating func resetAllValues() {
         self._values.keys.forEach { self.resetValue(forKey: $0) }
+    }
+}
+
+extension CRDT.ORMap: CloneableCRDT {
+    private init(replicaID: ReplicaID, defaultValue: Value, keys: CRDT.ORSet<Key>, values: [Key: Value], updatedValues: [Key: Value]) {
+        self.replicaID = replicaID
+        self.defaultValue = defaultValue
+        self._keys = keys
+        self._values = values
+        self.updatedValues = updatedValues
+    }
+
+    public func clone() -> CRDT.ORMap<Key, Value> {
+        CRDT.ORMap<Key, Value>(replicaID: self.replicaID, defaultValue: self.defaultValue, keys: self._keys, values: self._values, updatedValues: self.updatedValues)
     }
 }
 
@@ -348,8 +342,8 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 }
 
 extension CRDT.ORMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, valueInitializer: @escaping () -> Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(owner.address), valueInitializer: valueInitializer))
+    public static func owned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
+        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(owner.address), defaultValue: defaultValue))
     }
 }
 

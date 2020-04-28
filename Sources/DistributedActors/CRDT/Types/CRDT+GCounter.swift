@@ -128,6 +128,18 @@ extension CRDT.GCounter: ResettableCRDT {
     }
 }
 
+extension CRDT.GCounter: CloneableCRDT {
+    private init(replicaID: ReplicaID, state: [ReplicaID: Int], delta: Delta?) {
+        self.replicaID = replicaID
+        self.state = state
+        self.delta = delta
+    }
+
+    public func clone() -> CRDT.GCounter {
+        CRDT.GCounter(replicaID: self.replicaID, state: self.state, delta: self.delta)
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned GCounter
 

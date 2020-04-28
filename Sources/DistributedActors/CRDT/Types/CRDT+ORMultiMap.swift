@@ -55,9 +55,7 @@ extension CRDT {
 
         init(replicaID: ReplicaID) {
             self.replicaID = replicaID
-            self.state = .init(replicaID: replicaID) {
-                ORSet<Value>(replicaID: replicaID)
-            }
+            self.state = .init(replicaID: replicaID, defaultValue: ORSet<Value>(replicaID: replicaID))
         }
 
         /// Gets the set of values, if any, associated with `key`.
@@ -119,6 +117,17 @@ extension CRDT {
         public mutating func resetDelta() {
             self.state.resetDelta()
         }
+    }
+}
+
+extension CRDT.ORMultiMap: CloneableCRDT {
+    private init(replicaID: ReplicaID, state: CRDT.ORMap<Key, CRDT.ORSet<Value>>) {
+        self.replicaID = replicaID
+        self.state = state
+    }
+
+    public func clone() -> CRDT.ORMultiMap<Key, Value> {
+        CRDT.ORMultiMap(replicaID: self.replicaID, state: self.state)
     }
 }
 
