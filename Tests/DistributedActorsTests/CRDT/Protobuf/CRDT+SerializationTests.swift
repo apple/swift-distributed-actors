@@ -229,7 +229,12 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             deserialized.value.shouldEqual(8)
             "\(deserialized.updatedBy)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
 
-//            deserialized.clock.shouldEqual(clock)
+            guard case .wallTime(let deserializedClock) = deserialized.clock else {
+                throw self.testKit.fail("Expected clock to be .wallTime, got \(deserialized.clock)")
+            }
+//            print("\(fabs(deserializedClock.timestamp.timeIntervalSince1970 - clock.timestamp.timeIntervalSince1970))")
+//            (fabs(deserializedClock.timestamp.timeIntervalSince1970 - clock.timestamp.timeIntervalSince1970) < Double.ulpOfOne).shouldBeTrue()
+            XCTAssertEqual(deserializedClock.timestamp.timeIntervalSince1970, clock.timestamp.timeIntervalSince1970, accuracy: 1)
 
             // The way `Date`/`Codable` handles fractional seconds makes it difficult
             // to compare `Date` before and after serialization. We settle with comparing
