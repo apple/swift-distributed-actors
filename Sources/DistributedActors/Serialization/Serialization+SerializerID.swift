@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -112,7 +112,9 @@ extension Serialization {
         internal static let CRDTDeleteResult: SerializerID = .protobufRepresentable
         internal static let CRDTGCounter: SerializerID = .protobufRepresentable
         internal static let CRDTGCounterDelta: SerializerID = .protobufRepresentable
-        internal static let CRDTDeltaBox: SerializerID = .protobufRepresentable
+        internal static let CRDTORSet: SerializerID = .protobufRepresentable
+        internal static let CRDTORSetDelta: SerializerID = .protobufRepresentable
+        internal static let CRDTLWWRegister: SerializerID = .protobufRepresentable
 
         internal static let ConvergentGossipMembership: SerializerID = .foundationJSON
 
@@ -122,5 +124,7 @@ extension Serialization {
 
         internal static let ErrorEnvelope: SerializerID = .foundationJSON
         internal static let BestEffortStringError: SerializerID = .foundationJSON
+
+        internal static let WallTimeClock: SerializerID = .foundationJSON
     }
 }

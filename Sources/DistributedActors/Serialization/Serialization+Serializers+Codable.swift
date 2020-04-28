@@ -17,6 +17,9 @@ import NIOFoundationCompat
 
 import Foundation // for Codable
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: JSON
+
 /// Allows for serialization of messages using the Foundation's `JSONEncoder` and `JSONDecoder`.
 ///
 /// - Note: Take care to ensure that both "ends" (sending and receiving members of a cluster)
@@ -52,6 +55,9 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
         self.decoder.userInfo[key] = value
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: PropertyList
 
 /// Allows for serialization of messages using the Foundation's `PropertyListEncoder` and `PropertyListDecoder`, using the specified format.
 ///

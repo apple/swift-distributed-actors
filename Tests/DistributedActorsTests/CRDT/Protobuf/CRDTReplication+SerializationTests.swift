@@ -17,6 +17,14 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTReplicationSerializationTests: ActorSystemTestBase {
+    override func setUp() {
+        _ = self.setUpNode(String(describing: type(of: self))) { settings in
+            // TODO: all this registering will go away with _mangledTypeName
+            settings.serialization.register(CRDT.ORSet<String>.self, serializerID: Serialization.ReservedID.CRDTORSet)
+            settings.serialization.register(CRDT.ORSet<String>.Delta.self, serializerID: Serialization.ReservedID.CRDTORSetDelta)
+        }
+    }
+
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
     let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 

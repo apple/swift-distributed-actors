@@ -18,6 +18,7 @@ option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
 import "Clocks/VersionVector.proto";
+import "Serialization/Serialization.proto";
 
 // ==== Common and Core CRDT parts -------------------------------------------------------------------------------------
 
@@ -76,9 +77,22 @@ message CRDTORSet {
     CRDTVersionedContainer state = 2;
 }
 
-// ***** CRDT.LWWRegistry *****
+// ***** CRDT.LWWRegister *****
 
-// TODO: NOT DONE: LWWRegistry
-message CRDTLWWRegistry {
+message CRDTLWWRegister {
+    message Value {
+        Manifest manifest = 1;
+        bytes payload = 2;
+    }
 
+    message Clock {
+        Manifest manifest = 1;
+        bytes payload = 2;
+    }
+
+    VersionReplicaID replicaID = 1;
+    Value initialValue = 2;
+    Value value = 3;
+    Clock clock = 4;
+    VersionReplicaID updatedBy = 5;
 }

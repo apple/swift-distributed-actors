@@ -64,7 +64,7 @@ extension CRDT {
                 // We don't need to worry about the usage of this and timestamp being too new in `ORMap.update` because
                 // a call to `LWWRegister.assign` immediately follows and the value is updated without comparing
                 // timestamps.
-                LWWRegister<Value>(replicaID: replicaID, initialValue: defaultValue, clock: .wallTime(WallTimeClock.zero))
+                LWWRegister<Value>(replicaID: replicaID, initialValue: defaultValue, clock: WallTimeClock.zero)
             }
         }
 
