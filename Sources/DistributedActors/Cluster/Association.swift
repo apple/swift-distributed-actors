@@ -41,6 +41,9 @@ final class Association: CustomStringConvertible {
     //       We'd prefer to have a lock-less way to implement this and we can achieve it but it's a pain to implement so will be done in a separate step.
     var state: State
 
+    /// Tasks to be executed when transitioning to completed/terminated state.
+    private var completionTasks: [() -> Void]
+
     enum State {
         case associating(queue: MPSCLinkedQueue<TransportEnvelope>)
         case associated(channel: Channel) // TODO: ActorTransport.Node/Peer/Target ???
@@ -57,6 +60,7 @@ final class Association: CustomStringConvertible {
         self.remoteNode = remoteNode
         self.lock = Lock()
         self.state = .associating(queue: .init())
+        self.completionTasks = []
     }
 
     /// Complete the association and drain any pending message sends onto the channel.
@@ -74,10 +78,7 @@ final class Association: CustomStringConvertible {
         self.lock.withLockVoid {
             switch self.state {
             case .associating(let sendQueue):
-                // 1) store associated channel
-                self.state = .associated(channel: channel)
-
-                // 2) we need to flush all the queued up messages
+                // 1) we need to flush all the queued up messages
                 //    - yes, we need to flush while holding the lock... it's an annoyance in this lock based design
                 //      but it ensures that once we've flushed, all other messages will be sent in the proper order "after"
                 //      the previously enqueued ones; A lockless design would not be able to get rid of the queue AFAIR,
@@ -85,11 +86,35 @@ final class Association: CustomStringConvertible {
                     _ = channel.writeAndFlush(envelope)
                 }
 
+                // 2) execute any pending tasks and clear them
+                self.runCompletionTasks()
+
+                // 3) store associated channel
+                self.state = .associated(channel: channel)
+
             case .associated:
-                _ = channel.close()
+                _ = channel.close() // TODO: throw instead of accepting a "double complete"?
 
             case .tombstone:
                 _ = channel.close()
+            }
+        }
+    }
+
+    /// Sometimes, while the association is still associating, we may need to enqueue tasks to be performed after it has completed.
+    /// This function ensures that once the `completeAssociation` is invoked and all messages flushed, the enqueued tasks will be executed (in same order as submitted).
+    ///
+    /// If the association is already associated or terminated, the task is executed immediately
+    // Implementation note:
+    // We can't use futures here because we may not have an event loop to hand it off;
+    // With enough weaving/exposing things inside ActorPersonality we could make it so, but not having to do so feel somewhat cleaner...
+    func enqueueCompletionTask(_ task: @escaping () -> Void) {
+        self.lock.withLockVoid {
+            switch self.state {
+            case .associating:
+                self.completionTasks.append(task)
+            default:
+                task()
             }
         }
     }
@@ -107,6 +132,7 @@ final class Association: CustomStringConvertible {
                 while let envelope = sendQueue.dequeue() {
                     system.deadLetters.tell(.init(envelope.underlyingMessage, recipient: envelope.recipient))
                 }
+                self.runCompletionTasks()
                 // in case someone stored a reference to this association in a ref, we swap it into a dead letter sink
                 self.state = .tombstone(system.deadLetters)
             case .associated(let channel):
@@ -121,21 +147,16 @@ final class Association: CustomStringConvertible {
         return Association.Tombstone(self.remoteNode, settings: system.settings.cluster)
     }
 
-    var description: String {
-        "AssociatedState(\(self.state), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
+    /// Runs and clears completion tasks.
+    private func runCompletionTasks() {
+        for task in self.completionTasks {
+            task()
+        }
+        self.completionTasks = []
     }
 
-    func whenComplete(_ promise: EventLoopPromise<Wire.HandshakeResponse>?) {
-        self.lock.withLockVoid {
-            switch self.state {
-            case .associating:
-                () // TODO: trigger when it completes
-            case .associated:
-                () // promise?.succeed(.accept(HandshakeAccept()))
-            case .tombstone:
-                promise?.fail(HandshakeError.targetAlreadyTombstone(selfNode: self.selfNode, remoteNode: self.remoteNode))
-            }
-        }
+    var description: String {
+        "AssociatedState(\(self.state), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
     }
 }
 

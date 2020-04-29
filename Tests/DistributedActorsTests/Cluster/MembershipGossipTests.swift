@@ -271,11 +271,7 @@ final class MembershipGossipTests: XCTestCase {
             """, owner: self.nodeB, nodes: self.allNodes
         )
 
-        pprint("membership = \(gossip)")
-        pprint("ahead = \(concurrent)")
-
         let directive = gossip.mergeForward(incoming: concurrent)
-        pprint("membership.version = \(gossip.version)")
 
         gossip.owner.shouldEqual(self.nodeA)
         directive.effectiveChanges.count.shouldEqual(0)
