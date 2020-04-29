@@ -50,10 +50,30 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        var bytes = self.unwrapInboundIn(data)
+        readHandshakeResponse(context: context, bytes: self.unwrapInboundIn(data))
+    }
 
+    private func initiateHandshake(context: ChannelHandlerContext) {
+        let proto = ProtoHandshakeOffer(self.handshakeOffer)
+        self.log.trace("Offering handshake [\(proto)]")
+
+        do {
+            let bytes: ByteBuffer = try proto.serializedByteBuffer(allocator: context.channel.allocator)
+            // TODO: should we use the serialization infra ourselves here? I guess so...
+
+            // FIXME: make the promise dance here
+            context.writeAndFlush(self.wrapOutboundOut(bytes), promise: nil)
+        } catch {
+            // TODO: change since serialization which can throw should be shipped of to a future
+            // ---- since now we blocked the actor basically with the serialization
+            context.fireErrorCaught(error)
+        }
+    }
+
+    private func readHandshakeResponse(context: ChannelHandlerContext, bytes: InboundIn) {
+        var bytes = bytes
         let metadata: Logger.Metadata = [
-            "handshake/channel": "\(context.channel)"
+            "handshake/channel": "\(context.channel)",
         ]
 
         do {
@@ -74,26 +94,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
         } catch {
             self.log.debug("Handshake failure, error [\(error)]:\(String(reflecting: type(of: error)))", metadata: metadata)
             self.cluster.tell(.inbound(.handshakeFailed(self.handshakeOffer.to, error)))
-            context.fireErrorCaught(error)
-        }
-    }
-
-    private func initiateHandshake(context: ChannelHandlerContext) {
-        let proto = ProtoHandshakeOffer(self.handshakeOffer)
-        self.log.trace("Offering handshake [\(proto)]")
-
-        do {
-            // TODO: allow allocating into existing buffer
-            // FIXME: serialization SHOULD be on dedicated part... put it into ELF already?
-            let bytes: ByteBuffer = try proto.serializedByteBuffer(allocator: context.channel.allocator)
-            // TODO: should we use the serialization infra ourselves here? I guess so...
-
-            // FIXME: make the promise dance here
-            context.writeAndFlush(self.wrapOutboundOut(bytes), promise: nil)
-        } catch {
-            // TODO: change since serialization which can throw should be shipped of to a future
-            // ---- since now we blocked the actor basically with the serialization
-            context.fireErrorCaught(error)
+            _ = context.close(mode: .all)
         }
     }
 }
@@ -119,7 +120,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
             let offer = try self.readHandshakeOffer(bytes: &bytes)
 
             self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]", metadata: [
-                "handshake/channel": "\(context.channel)"
+                "handshake/channel": "\(context.channel)",
             ])
 
             let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)

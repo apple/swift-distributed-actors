@@ -619,7 +619,7 @@ extension ClusterShell {
         if let existingAssociation = self.getExistingAssociation(with: remoteNode) {
             state.log.debug("Association already allocated for remote: \(reflecting: remoteNode), existing association: [\(existingAssociation)]")
             switch existingAssociation.state {
-            case .associating(_):
+            case .associating:
 //                whenComplete.futureResult.whenComplete { _ in
 //                    replyTo?.tell()
 //                }
@@ -714,9 +714,9 @@ extension ClusterShell {
 extension ClusterShell {
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
     internal func onHandshakeOffer(
-            _ context: ActorContext<Message>, _ state: ClusterShellState,
-            _ offer: Wire.HandshakeOffer, incomingChannel: Channel,
-            replyInto promise: EventLoopPromise<Wire.HandshakeResponse>
+        _ context: ActorContext<Message>, _ state: ClusterShellState,
+        _ offer: Wire.HandshakeOffer, incomingChannel: Channel,
+        replyInto promise: EventLoopPromise<Wire.HandshakeResponse>
     ) -> Behavior<Message> {
         var state = state
 
@@ -728,7 +728,7 @@ extension ClusterShell {
             switch hsm.negotiate() {
             case .acceptAndAssociate(let completedHandshake):
                 state.log.info("Accept association with \(reflecting: offer.from)!", metadata: [
-                    "handshake/channel": "\(incomingChannel)"
+                    "handshake/channel": "\(incomingChannel)",
                 ])
 
                 // accept handshake and store completed association
@@ -810,7 +810,7 @@ extension ClusterShell {
                     delay: delay
                 )
             case .giveUpOnHandshake:
-                if let hsmState = state.closeOutboundHandshakeChannel_TODOBETTERNAME(with: remoteNode) {
+                if let hsmState = state.closeOutboundHandshakeChannel(with: remoteNode) {
                     self.notifyHandshakeFailure(state: hsmState, node: remoteNode, error: error)
                 }
             }
@@ -868,8 +868,6 @@ extension ClusterShell {
         self.recordMetrics(context.system.metrics, membership: state.membership)
 
         // 5) Finally, signal the handshake future that we've accepted, and become with ready state
-        print("handshakeCompleted.makeAccept() === \(handshakeCompleted.makeAccept())")
-        print("                         accept === \(accept)")
         handshakeCompleted.whenCompleted?.succeed(.accept(handshakeCompleted.makeAccept()))
         return self.ready(state: state)
     }
@@ -877,10 +875,10 @@ extension ClusterShell {
     /// An accept may imply that it replaced a previously associated member.
     /// If so, this method will .down it in the membership and terminate the previous instances association.
     private func handlePotentialAssociatedMemberReplacement(
-            directive: ClusterShellState.AssociatedDirective,
-            accept: Wire.HandshakeAccept,
-            context: ActorContext<Message>,
-            state: inout ClusterShellState
+        directive: ClusterShellState.AssociatedDirective,
+        accept: Wire.HandshakeAccept,
+        context: ActorContext<Message>,
+        state: inout ClusterShellState
     ) {
         if let replacedMember = directive.membershipChange.replaced {
             // the change was a replacement and thus we need to down the old member (same host:port as the new one),
@@ -900,40 +898,55 @@ extension ClusterShell {
     }
 
     private func onHandshakeRejected(_ context: ActorContext<Message>, _ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
-        var state = state
-
-        state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
-
-        // TODO: back off intensely, give up after some attempts?
-
-        if let hsmState = state.closeOutboundHandshakeChannel_TODOBETTERNAME(with: reject.from) {
-            self.notifyHandshakeFailure(state: hsmState, node: reject.from, error: HandshakeConnectionError(node: reject.from, message: reject.reason))
+        // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
+        // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
+        // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
+        // however that error is harmless - as we associated with the "other" right connection.
+        if let existingAssociation = self.getExistingAssociation(with: reject.from),
+            existingAssociation.isAssociated || existingAssociation.isTombstone {
+            state.log.debug(
+                "Handshake rejected by [\(reject.from)], however existing association with node exists. Could be that a concurrent handshake was failed on purpose.",
+                metadata: state.metadataForHandshakes(node: reject.from, error: nil)
+            )
+            return .same
         }
 
-        self.recordMetrics(context.system.metrics, membership: state.membership)
-        return self.ready(state: state)
+        // TODO: back off intensely, give up after some attempts?
+        // TODO: backoffs and retries schedule one here
+
+        state.log.warning(
+            "Handshake rejected by [\(reject.from)], reason: \(reject.reason)",
+            metadata: state.metadataForHandshakes(node: reject.from, error: nil)
+        )
+
+        return .same
     }
 
     private func onHandshakeFailed(_ context: ActorContext<Message>, _ state: ClusterShellState, with node: Node, error: Error) -> Behavior<Message> {
-//        var state = state
-
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
         // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
         // however that error is harmless - as we associated with the "other" right connection.
         if let existingAssociation = self.getExistingAssociation(with: node),
-           existingAssociation.isAssociated || existingAssociation.isTombstone {
-            state.log.trace("Handshake failed, however existing association with node exists. Could be that a concurrent handshake was failed on purpose.", 
-                    metadata: state.metadataForHandshakes(node: node, error: error))
+            existingAssociation.isAssociated || existingAssociation.isTombstone {
+            state.log.debug(
+                "Handshake failed, however existing association with node exists. Could be that a concurrent handshake was failed on purpose.",
+                metadata: state.metadataForHandshakes(node: node, error: error)
+            )
             return .same
         }
 
-//        state.log.error("Handshake error while connecting [\(node)]: \(error)", metadata: state.metadataForHandshakes(node: node, error: error))
-//        if let hsmState = state.closeOutboundHandshakeChannel_TODOBETTERNAME(with: node) {
-//            self.notifyHandshakeFailure(state: hsmState, node: node, error: error)
-//        }
+        guard state.handshakeInProgress(with: node) != nil else {
+            state.log.debug("Received handshake failed notification, however handshake is not in progress, error: \(message: error)", metadata: [
+                "handshake/node": "\(node)",
+            ])
+            return .same
+        }
 
-        return self.ready(state: state)
+        // TODO: tweak logging some more, this is actually not scary in racy handshakes; so it may happen often
+        state.log.warning("Handshake error while connecting [\(node)]: \(error)", metadata: state.metadataForHandshakes(node: node, error: error))
+
+        return .same
     }
 
     private func onRestInPeace(_ context: ActorContext<Message>, _ state: ClusterShellState, intendedNode: UniqueNode, fromNode: UniqueNode) -> Behavior<Message> {

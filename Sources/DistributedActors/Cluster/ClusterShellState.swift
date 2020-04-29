@@ -181,7 +181,7 @@ extension ClusterShellState {
     /// - Faults: when called in wrong state of an ongoing handshake
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
     // THIS SIGNATURE IS SCARY; dont kill a Node, kill a specific channel (!)
-    mutating func closeOutboundHandshakeChannel_TODOBETTERNAME(with node: Node, file: String = #file, line: UInt = #line) -> HandshakeStateMachine.State? {
+    mutating func closeOutboundHandshakeChannel(with node: Node, file: String = #file, line: UInt = #line) -> HandshakeStateMachine.State? {
         guard let state = self._handshakes.removeValue(forKey: node) else {
             return nil
         }
@@ -265,8 +265,7 @@ extension ClusterShellState {
             ])
 
             if tieBreakWinner {
-
-                if self.closeOutboundHandshakeChannel_TODOBETTERNAME(with: offer.from.node) != nil {
+                if self.closeOutboundHandshakeChannel(with: offer.from.node) != nil {
                     self.log.debug(
                         "Aborted handshake, as concurrently negotiating another one with same node already",
                         metadata: [
@@ -442,12 +441,18 @@ extension ClusterShellState {
         ]
     }
 
-    func metadataForHandshakes(node: Node, error: Error) -> Logger.Metadata {
-        [
-            "handshake/error": "\(error)",
-            "handshake/errorType": "\(String(reflecting: type(of: error as Any)))",
-            "handshake/peer": "\(node)",
-            "handshakes": "\(self.handshakes())"
-        ]
+    func metadataForHandshakes(node: Node, error err: Error?) -> Logger.Metadata {
+        var metadata: Logger.Metadata =
+            [
+                "handshake/peer": "\(node)",
+                "handshakes": "\(self.handshakes())",
+            ]
+
+        if let error = err {
+            metadata["handshake/error"] = "\(error)"
+            metadata["handshake/errorType"] = "\(String(reflecting: type(of: error as Any)))"
+        }
+
+        return metadata
     }
 }

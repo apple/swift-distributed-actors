@@ -42,12 +42,11 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
     // MARK: Downing
 
     func shared_stoppingNode_shouldPropagateToOtherNodesAsDown(
-            stopMethod: NodeStopMethod,
-            stopNode: StopNodeSelection,
-            _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil
+        stopMethod: NodeStopMethod,
+        stopNode: StopNodeSelection,
+        _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil
     ) throws {
         try shouldNotThrow {
-
             let (first, second) = self.setUpPair(modifySettings)
             let thirdNeverDownSystem = self.setUpNode("third", modifySettings)
 
