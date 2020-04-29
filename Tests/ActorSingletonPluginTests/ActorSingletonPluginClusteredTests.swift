@@ -54,7 +54,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             third.cluster.join(node: second.cluster.node.node)
 
             // `first` will be the leader (lowest address) and runs the singleton
-            try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+            try self.ensureNodes(.up, within: .seconds(15), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
             ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
@@ -119,7 +119,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             third.cluster.join(node: second.cluster.node.node)
 
             // `first` becomes the leader (lowest address) and runs the singleton
-            try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+            try self.ensureNodes(.up, within: .seconds(15), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             try replyProbe1.expectMessage("Hello-1 Charlie-1!")
             try replyProbe2.expectMessage("Hello-1 Charlie-2!")
@@ -170,7 +170,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             third.cluster.join(node: second.cluster.node.node)
 
-            try self.ensureNodes(.up, within: .seconds(10), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+            try self.ensureNodes(.up, within: .seconds(15), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
             ref1.tell(.greet(name: "Alice", _replyTo: replyProbe1.ref))

@@ -34,6 +34,15 @@ internal extension String.StringInterpolation {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: String Interpolation: Message printing [contents]:type which is useful for enums
+
+internal extension String.StringInterpolation {
+    mutating func appendInterpolation(message: Any) {
+        self.appendLiteral("[\(message)]:\(String(reflecting: type(of: message)))")
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Interpolation: reflecting:
 
 internal extension String.StringInterpolation {

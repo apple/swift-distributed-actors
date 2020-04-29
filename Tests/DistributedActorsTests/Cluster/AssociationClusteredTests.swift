@@ -312,9 +312,9 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         try assertNotAssociated(system: second, node: first.cluster.node)
 
         // will be buffered until associated, and then delivered:
-        ref.tell("Hello 1") 
-        ref.tell("Hello 2") 
-        ref.tell("Hello 3") 
+        ref.tell("Hello 1")
+        ref.tell("Hello 2")
+        ref.tell("Hello 3")
 
         try p2.expectMessage("Got:Hello 1")
         try p2.expectMessage("Got:Hello 2")
