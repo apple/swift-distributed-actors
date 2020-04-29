@@ -96,17 +96,15 @@ message CRDTORMapKeyValue {
 
 message CRDTORMap {
     message Delta {
-        CRDTORMapValue defaultValue = 1;
-        CRDTVersionedContainerDelta keys = 2;
-        repeated CRDTORMapKeyValue values = 3;
+        CRDTVersionedContainerDelta keys = 1;
+        repeated CRDTORMapKeyValue values = 2;
     }
 
     VersionReplicaID replicaID = 1;
-    CRDTORMapValue defaultValue = 2;
-    CRDTORSet keys = 3;
-    repeated CRDTORMapKeyValue values = 4;
+    CRDTORSet keys = 2;
+    repeated CRDTORMapKeyValue values = 3;
     // Delta is derived from `updatedValues`
-    repeated CRDTORMapKeyValue updatedValues = 5;
+    repeated CRDTORMapKeyValue updatedValues = 4;
 }
 
 // ***** CRDT.LWWRegister *****

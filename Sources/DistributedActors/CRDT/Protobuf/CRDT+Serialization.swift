@@ -310,15 +310,9 @@ extension CRDT.ORMap: ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
         proto.replicaID = try self.replicaID.toProto(context: context)
-
-        let serializedDefaultValue = try context.serialization.serialize(self.defaultValue)
-        proto.defaultValue.manifest = try serializedDefaultValue.manifest.toProto(context: context)
-        proto.defaultValue.payload = serializedDefaultValue.buffer.readData()
-
         proto.keys = try self._keys.toProto(context: context)
         proto.values = try ORMapSerializationUtils.valuesToProto(self._values, context: context)
         proto.updatedValues = try ORMapSerializationUtils.valuesToProto(self.updatedValues, context: context)
-
         return proto
     }
 
@@ -328,11 +322,6 @@ extension CRDT.ORMap: ProtobufRepresentable {
         }
         self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
 
-        guard proto.hasDefaultValue else {
-            throw SerializationError.missingField("defaultValue", type: String(describing: CRDT.ORMap<Key, Value>.self))
-        }
-        self.defaultValue = try ORMapSerializationUtils.valueFromProto(proto.defaultValue, context: context)
-
         guard proto.hasKeys else {
             throw SerializationError.missingField("keys", type: String(describing: CRDT.ORMap<Key, Value>.self))
         }
@@ -340,6 +329,7 @@ extension CRDT.ORMap: ProtobufRepresentable {
 
         self._values = try ORMapSerializationUtils.valuesFromProto(proto.values, context: context)
         self.updatedValues = try ORMapSerializationUtils.valuesFromProto(proto.updatedValues, context: context)
+        self.defaultValue = nil // We don't need remote's default value for merge
     }
 }
 
@@ -348,29 +338,19 @@ extension CRDT.ORMapDelta: ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
-
-        let serializedDefaultValue = try context.serialization.serialize(self.defaultValue)
-        proto.defaultValue.manifest = try serializedDefaultValue.manifest.toProto(context: context)
-        proto.defaultValue.payload = serializedDefaultValue.buffer.readData()
-
         proto.keys = try self.keys.toProto(context: context)
         proto.values = try ORMapSerializationUtils.valuesToProto(self.values, context: context)
-
         return proto
     }
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        guard proto.hasDefaultValue else {
-            throw SerializationError.missingField("defaultValue", type: String(describing: CRDT.ORMapDelta<Key, Value>.self))
-        }
-        self.defaultValue = try ORMapSerializationUtils.valueFromProto(proto.defaultValue, context: context)
-
         guard proto.hasKeys else {
             throw SerializationError.missingField("keys", type: String(describing: CRDT.ORMapDelta<Key, Value>.self))
         }
         self.keys = try CRDT.ORSet<Key>.Delta(fromProto: proto.keys, context: context)
 
         self.values = try ORMapSerializationUtils.valuesFromProto(proto.values, context: context)
+        self.defaultValue = nil // We don't need remote's default value for merge
     }
 }
 

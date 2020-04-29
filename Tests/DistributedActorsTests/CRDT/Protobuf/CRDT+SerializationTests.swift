@@ -228,6 +228,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let deserialized = try system.serialization.deserialize(as: CRDT.ORMap<String, CRDT.ORSet<String>>.self, from: serialized)
 
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            deserialized.defaultValue.shouldBeNil()
             deserialized._keys.elements.shouldEqual(["s1", "s2"])
             deserialized._values.count.shouldEqual(2)
 
@@ -262,6 +263,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(map.delta!) // !-safe, must have a delta, we just checked it
             let deserialized = try system.serialization.deserialize(as: CRDT.ORMap<String, CRDT.ORSet<String>>.Delta.self, from: serialized)
 
+            deserialized.defaultValue.shouldBeNil()
             deserialized.keys.elementByBirthDot.count.shouldEqual(map.delta!.keys.elementByBirthDot.count)
             deserialized.values.count.shouldEqual(2)
 

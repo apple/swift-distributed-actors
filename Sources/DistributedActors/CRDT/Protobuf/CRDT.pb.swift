@@ -342,15 +342,6 @@ public struct ProtoCRDTORMap {
   /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
   public mutating func clearReplicaID() {_uniqueStorage()._replicaID = nil}
 
-  public var defaultValue: ProtoCRDTORMapValue {
-    get {return _storage._defaultValue ?? ProtoCRDTORMapValue()}
-    set {_uniqueStorage()._defaultValue = newValue}
-  }
-  /// Returns true if `defaultValue` has been explicitly set.
-  public var hasDefaultValue: Bool {return _storage._defaultValue != nil}
-  /// Clears the value of `defaultValue`. Subsequent reads from it will return its default value.
-  public mutating func clearDefaultValue() {_uniqueStorage()._defaultValue = nil}
-
   public var keys: ProtoCRDTORSet {
     get {return _storage._keys ?? ProtoCRDTORSet()}
     set {_uniqueStorage()._keys = newValue}
@@ -377,15 +368,6 @@ public struct ProtoCRDTORMap {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
-
-    public var defaultValue: ProtoCRDTORMapValue {
-      get {return _storage._defaultValue ?? ProtoCRDTORMapValue()}
-      set {_uniqueStorage()._defaultValue = newValue}
-    }
-    /// Returns true if `defaultValue` has been explicitly set.
-    public var hasDefaultValue: Bool {return _storage._defaultValue != nil}
-    /// Clears the value of `defaultValue`. Subsequent reads from it will return its default value.
-    public mutating func clearDefaultValue() {_uniqueStorage()._defaultValue = nil}
 
     public var keys: ProtoCRDTVersionedContainerDelta {
       get {return _storage._keys ?? ProtoCRDTVersionedContainerDelta()}
@@ -1231,15 +1213,13 @@ extension ProtoCRDTORMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   public static let protoMessageName: String = "CRDTORMap"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "replicaID"),
-    2: .same(proto: "defaultValue"),
-    3: .same(proto: "keys"),
-    4: .same(proto: "values"),
-    5: .same(proto: "updatedValues"),
+    2: .same(proto: "keys"),
+    3: .same(proto: "values"),
+    4: .same(proto: "updatedValues"),
   ]
 
   fileprivate class _StorageClass {
     var _replicaID: ProtoVersionReplicaID? = nil
-    var _defaultValue: ProtoCRDTORMapValue? = nil
     var _keys: ProtoCRDTORSet? = nil
     var _values: [ProtoCRDTORMapKeyValue] = []
     var _updatedValues: [ProtoCRDTORMapKeyValue] = []
@@ -1250,7 +1230,6 @@ extension ProtoCRDTORMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
     init(copying source: _StorageClass) {
       _replicaID = source._replicaID
-      _defaultValue = source._defaultValue
       _keys = source._keys
       _values = source._values
       _updatedValues = source._updatedValues
@@ -1270,10 +1249,9 @@ extension ProtoCRDTORMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._defaultValue)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._keys)
-        case 4: try decoder.decodeRepeatedMessageField(value: &_storage._values)
-        case 5: try decoder.decodeRepeatedMessageField(value: &_storage._updatedValues)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._keys)
+        case 3: try decoder.decodeRepeatedMessageField(value: &_storage._values)
+        case 4: try decoder.decodeRepeatedMessageField(value: &_storage._updatedValues)
         default: break
         }
       }
@@ -1285,17 +1263,14 @@ extension ProtoCRDTORMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       if let v = _storage._replicaID {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._defaultValue {
+      if let v = _storage._keys {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
-      if let v = _storage._keys {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-      }
       if !_storage._values.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._values, fieldNumber: 4)
+        try visitor.visitRepeatedMessageField(value: _storage._values, fieldNumber: 3)
       }
       if !_storage._updatedValues.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._updatedValues, fieldNumber: 5)
+        try visitor.visitRepeatedMessageField(value: _storage._updatedValues, fieldNumber: 4)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -1307,7 +1282,6 @@ extension ProtoCRDTORMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._replicaID != rhs_storage._replicaID {return false}
-        if _storage._defaultValue != rhs_storage._defaultValue {return false}
         if _storage._keys != rhs_storage._keys {return false}
         if _storage._values != rhs_storage._values {return false}
         if _storage._updatedValues != rhs_storage._updatedValues {return false}
@@ -1323,13 +1297,11 @@ extension ProtoCRDTORMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 extension ProtoCRDTORMap.Delta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = ProtoCRDTORMap.protoMessageName + ".Delta"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "defaultValue"),
-    2: .same(proto: "keys"),
-    3: .same(proto: "values"),
+    1: .same(proto: "keys"),
+    2: .same(proto: "values"),
   ]
 
   fileprivate class _StorageClass {
-    var _defaultValue: ProtoCRDTORMapValue? = nil
     var _keys: ProtoCRDTVersionedContainerDelta? = nil
     var _values: [ProtoCRDTORMapKeyValue] = []
 
@@ -1338,7 +1310,6 @@ extension ProtoCRDTORMap.Delta: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     private init() {}
 
     init(copying source: _StorageClass) {
-      _defaultValue = source._defaultValue
       _keys = source._keys
       _values = source._values
     }
@@ -1356,9 +1327,8 @@ extension ProtoCRDTORMap.Delta: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._defaultValue)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._keys)
-        case 3: try decoder.decodeRepeatedMessageField(value: &_storage._values)
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._keys)
+        case 2: try decoder.decodeRepeatedMessageField(value: &_storage._values)
         default: break
         }
       }
@@ -1367,14 +1337,11 @@ extension ProtoCRDTORMap.Delta: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._defaultValue {
+      if let v = _storage._keys {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._keys {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      }
       if !_storage._values.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._values, fieldNumber: 3)
+        try visitor.visitRepeatedMessageField(value: _storage._values, fieldNumber: 2)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -1385,7 +1352,6 @@ extension ProtoCRDTORMap.Delta: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._defaultValue != rhs_storage._defaultValue {return false}
         if _storage._keys != rhs_storage._keys {return false}
         if _storage._values != rhs_storage._values {return false}
         return true

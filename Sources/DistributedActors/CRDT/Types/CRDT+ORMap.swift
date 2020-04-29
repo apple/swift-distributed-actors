@@ -56,7 +56,11 @@ extension CRDT {
 
         public let replicaID: ReplicaID
 
-        let defaultValue: Value
+        /// We allow `defaultValue` to be `nil` when we reconstruct `ORMap` from a remote message,
+        /// but it **is** required in the initializer to ensure that **local** `ORMap` has `defaultValue`
+        /// for `merge`, `update`, etc. In those methods `defaultValue` is required in case **local**
+        /// `ORMap` does not have an existing value for the given `key`.
+        let defaultValue: Value?
 
         /// ORSet to maintain causal history of the keys only; values keep their own causal history (if applicable).
         /// This is for tracking key additions and removals.
@@ -104,11 +108,15 @@ extension CRDT {
         }
 
         public mutating func update(key: Key, mutator: (inout Value) -> Void) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             // Always add `key` to `_keys` set to track its causal history
             self._keys.add(key)
 
             // Apply `mutator` to the value then save it to state. Create `Value` if needed.
-            var value = self._values[key] ?? self.defaultValue
+            var value = self._values[key] ?? defaultValue
             mutator(&value)
             self._values[key] = value
 
@@ -151,17 +159,25 @@ extension CRDT {
         }
 
         public mutating func merge(other: ORMap<Key, Value>) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             self._keys.merge(other: other._keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: other._values, defaultValue: self.defaultValue)
+            self._values.merge(keys: self._keys.elements, other: other._values, defaultValue: defaultValue)
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             self._keys.mergeDelta(delta.keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: delta.values, defaultValue: self.defaultValue)
+            self._values.merge(keys: self._keys.elements, other: delta.values, defaultValue: defaultValue)
         }
 
         public mutating func resetDelta() {
@@ -176,9 +192,10 @@ extension CRDT {
         // TODO: `merge` defined in the Dictionary extension below should use `mergeDelta` when Value is DeltaCRDT
         var values: [Key: Value]
 
-        let defaultValue: Value
+        // See comment in `ORMap` on why this is optional
+        let defaultValue: Value?
 
-        init(keys: ORSet<Key>.Delta, values: [Key: Value], defaultValue: Value) {
+        init(keys: ORSet<Key>.Delta, values: [Key: Value], defaultValue: Value?) {
             self.keys = keys
             self.values = values
             self.defaultValue = defaultValue
@@ -195,11 +212,15 @@ extension CRDT {
         }
 
         public mutating func merge(other: ORMapDelta<Key, Value>) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             // Merge `keys` first--keys that have been deleted will be gone
             self.keys.merge(other: other.keys)
             // Use the updated `keys` to merge `values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self.values.merge(keys: self.keys.elements, other: other.values, defaultValue: self.defaultValue)
+            self.values.merge(keys: self.keys.elements, other: other.values, defaultValue: defaultValue)
         }
     }
 }

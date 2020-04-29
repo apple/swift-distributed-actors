@@ -20,7 +20,7 @@ import NIO
 
 /// Top-level protocol for any kind of state based CRDT (also known as `CvRDT`).
 ///
-/// ** Note: ** CRDT **must** have value semantics. Assumptions have been made in code with this being true,
+/// - Warning: CRDTs MUST have value semantics. Assumptions have been made in code with this being true,
 ///         and there might be undesirable consequences otherwise.
 public protocol StateBasedCRDT: Codable {
     /// Attempts to merge the state of the given data type instance into this data type instance.
