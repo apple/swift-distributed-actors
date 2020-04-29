@@ -230,7 +230,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
             deserialized._keys.elements.shouldEqual(["s1", "s2"])
             deserialized._values.count.shouldEqual(2)
-            
+
             guard let s1 = deserialized["s1"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
             }
@@ -264,7 +264,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
             deserialized.keys.elementByBirthDot.count.shouldEqual(map.delta!.keys.elementByBirthDot.count)
             deserialized.values.count.shouldEqual(2)
-            
+
             // delta contains the same elements as map
             guard let s1 = deserialized.values["s1"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
