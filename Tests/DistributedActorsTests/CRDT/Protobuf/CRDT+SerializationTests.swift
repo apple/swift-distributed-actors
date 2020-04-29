@@ -419,10 +419,10 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(register)
             let deserialized = try system.serialization.deserialize(as: CRDT.LWWRegister<Int>.self, from: serialized)
 
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.initialValue.shouldEqual(6)
             deserialized.value.shouldEqual(8)
-            "\(deserialized.updatedBy)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.updatedBy)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
 
             // `TimeInterval` is `Double`
             XCTAssertEqual(deserialized.clock.timestamp.timeIntervalSince1970, clock.timestamp.timeIntervalSince1970, accuracy: 1)
