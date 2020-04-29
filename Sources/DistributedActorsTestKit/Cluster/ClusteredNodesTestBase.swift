@@ -137,7 +137,7 @@ open class ClusteredNodesTestBase: XCTestCase {
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(10), nodes: UniqueNode...,
+        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(15), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {

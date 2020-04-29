@@ -94,7 +94,7 @@ internal struct HandshakeStateMachine {
 
         func makeOffer() -> Wire.HandshakeOffer {
             // TODO: maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
-            Wire.HandshakeOffer(version: self.protocolVersion, from: self.localNode, to: self.remoteNode)
+            Wire.HandshakeOffer(version: self.protocolVersion, originNode: self.localNode, targetNode: self.remoteNode)
         }
 
         mutating func onHandshakeTimeout() -> RetryDirective {
@@ -154,7 +154,7 @@ internal struct HandshakeStateMachine {
 
         let offer: Wire.HandshakeOffer
         var boundAddress: UniqueNode {
-            self.state.myselfNode
+            self.state.localNode
         }
 
         var protocolVersion: DistributedActors.Version {
@@ -169,52 +169,53 @@ internal struct HandshakeStateMachine {
             self.whenCompleted = whenCompleted
         }
 
-        // do not call directly, rather obtain the completed state via negotiate()
-        func _acceptAndMakeCompletedState() -> CompletedState {
-            let completed = CompletedState(fromReceived: self, remoteNode: offer.from)
-            self.whenCompleted?.succeed(.accept(completed.makeAccept()))
-            return completed
-        }
+//        // do not call directly, rather obtain the completed state via negotiate()
+//        func _acceptAndMakeCompletedState() -> CompletedState {
+//            let completed = CompletedState(fromReceived: self, remoteNode: offer.originNode)
+//            self.whenCompleted?.succeed(.accept(completed.makeAccept()))
+//            return completed
+//        }
 
         func negotiate() -> HandshakeStateMachine.NegotiateDirective {
-            guard self.boundAddress.node == self.offer.to else {
+            guard self.boundAddress.node == self.offer.targetNode else {
                 let error = HandshakeError.targetHandshakeAddressMismatch(self.offer, selfNode: self.boundAddress)
 
-                let rejectedState = RejectedState(fromReceived: self, remoteNode: self.offer.from, error: error)
-                self.whenCompleted?.succeed(.reject(rejectedState.makeReject()))
+                let rejectedState = RejectedState(fromReceived: self, remoteNode: self.offer.originNode, error: error)
+                self.whenCompleted?.succeed(.reject(rejectedState.makeReject(whenHandshakeReplySent: { () in
+                    self.state.log.trace("Done rejecting handshake.") // TODO: something more, terminate the association?
+                })))
                 return .rejectHandshake(rejectedState)
             }
 
             // negotiate version
-            if let negotiatedVersion = self.negotiateVersion(local: self.protocolVersion, remote: self.offer.version) {
-                switch negotiatedVersion {
-                case .rejectHandshake(let rejectedState):
-                    self.whenCompleted?.succeed(.reject(rejectedState.makeReject()))
-                    return negotiatedVersion
-                case .acceptAndAssociate:
-                    fatalError("Should not happen, only rejections or nothing should be yielded from negotiateVersion") // TODO: more typesafety would be nice
-                }
+            if let rejectedState = self.negotiateVersion(local: self.protocolVersion, remote: self.offer.version) {
+                self.whenCompleted?.succeed(.reject(rejectedState.makeReject(whenHandshakeReplySent: { () in
+                    self.state.log.trace("Done rejecting handshake.") // TODO: something more, terminate the association?
+                })))
+                return .rejectHandshake(rejectedState)
             }
 
             // negotiate capabilities
             // self.negotiateCapabilities(...) // TODO: We may want to negotiate other options
 
-            return .acceptAndAssociate(self._acceptAndMakeCompletedState())
+            let completed = CompletedState(fromReceived: self, remoteNode: offer.originNode)
+//            self.whenCompleted?.succeed(.accept(completed.makeAccept { () in
+//                self.
+//            }))
+//            return completed
+
+            return .acceptAndAssociate(completed)
         }
 
-        // TODO: determine the actual logic we'd want here, for now we accept anything except major changes; use semver?
-        /// - Returns `rejectHandshake` or `nil`
-        func negotiateVersion(local: DistributedActors.Version, remote: DistributedActors.Version) -> HandshakeStateMachine.NegotiateDirective? {
-            let accept: HandshakeStateMachine.NegotiateDirective? = nil
-
+        func negotiateVersion(local: DistributedActors.Version, remote: DistributedActors.Version) -> RejectedState? {
             guard local.major == remote.major else {
                 let error = HandshakeError.incompatibleProtocolVersion(
                     local: self.protocolVersion, remote: self.offer.version
                 )
-                return .rejectHandshake(RejectedState(fromReceived: self, remoteNode: self.offer.from, error: error))
+                return RejectedState(fromReceived: self, remoteNode: self.offer.originNode, error: error)
             }
 
-            return accept
+            return nil
         }
     }
 
@@ -251,26 +252,37 @@ internal struct HandshakeStateMachine {
             self.whenCompleted = state.whenCompleted
         }
 
-        func makeAccept() -> Wire.HandshakeAccept {
-            .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode)
+        func makeAccept(whenHandshakeReplySent: @escaping () -> Void) -> Wire.HandshakeAccept {
+            Wire.HandshakeAccept(
+                version: self.protocolVersion,
+                targetNode: self.localNode,
+                originNode: self.remoteNode,
+                whenHandshakeReplySent: whenHandshakeReplySent
+            )
         }
     }
 
     internal struct RejectedState {
         let protocolVersion: Version
-        let localNode: Node
+        let localNode: UniqueNode
         let remoteNode: UniqueNode
         let error: HandshakeError
 
         init(fromReceived state: HandshakeReceivedState, remoteNode: UniqueNode, error: HandshakeError) {
             self.protocolVersion = state.protocolVersion
-            self.localNode = state.boundAddress.node
+            self.localNode = state.boundAddress
             self.remoteNode = remoteNode
             self.error = error
         }
 
-        func makeReject() -> Wire.HandshakeReject {
-            .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode, reason: "\(self.error)")
+        func makeReject(whenHandshakeReplySent: @escaping () -> Void) -> Wire.HandshakeReject {
+            Wire.HandshakeReject(
+                version: self.protocolVersion,
+                targetNode: self.localNode,
+                originNode: self.remoteNode,
+                reason: "\(self.error)",
+                whenHandshakeReplySent: whenHandshakeReplySent
+            )
         }
     }
 
@@ -308,6 +320,8 @@ enum HandshakeError: Error {
 
     /// Returned when an incoming handshake protocol version does not match what this node can understand.
     case incompatibleProtocolVersion(local: DistributedActors.Version, remote: DistributedActors.Version)
+
+    case targetRejectedHandshake(selfNode: UniqueNode, remoteNode: UniqueNode, message: String)
 
     case targetAlreadyTombstone(selfNode: UniqueNode, remoteNode: UniqueNode)
 }

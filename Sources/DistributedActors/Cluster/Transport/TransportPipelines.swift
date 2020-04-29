@@ -50,7 +50,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        readHandshakeResponse(context: context, bytes: self.unwrapInboundIn(data))
+        self.readHandshakeResponse(context: context, bytes: self.unwrapInboundIn(data))
     }
 
     private func initiateHandshake(context: ChannelHandlerContext) {
@@ -80,22 +80,31 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
             let response = try self.readHandshakeResponse(bytes: &bytes)
             switch response {
             case .accept(let accept):
-                self.log.debug("Received handshake accept from: [\(accept.from)]", metadata: metadata)
+                self.log.debug("Received handshake accept from: [\(accept.targetNode)]", metadata: metadata)
                 self.cluster.tell(.inbound(.handshakeAccepted(accept, channel: context.channel)))
 
                 // handshake is completed, so we remove the handler from the pipeline
                 context.pipeline.removeHandler(self, promise: nil)
 
             case .reject(let reject):
-                self.log.debug("Received handshake reject from: [\(reject.from)] reason: [\(reject.reason)], closing channel.", metadata: metadata)
+                self.log.debug("Received handshake reject from: [\(reject.targetNode)] reason: [\(reject.reason)], closing channel.", metadata: metadata)
                 self.cluster.tell(.inbound(.handshakeRejected(reject)))
                 context.close(promise: nil)
             }
         } catch {
             self.log.debug("Handshake failure, error [\(error)]:\(String(reflecting: type(of: error)))", metadata: metadata)
-            self.cluster.tell(.inbound(.handshakeFailed(self.handshakeOffer.to, error)))
+            self.cluster.tell(.inbound(.handshakeFailed(self.handshakeOffer.targetNode, error)))
             _ = context.close(mode: .all)
         }
+    }
+
+    // length prefixed
+    private func readHandshakeResponse(bytes: inout ByteBuffer) throws -> Wire.HandshakeResponse {
+        guard let data = bytes.readData(length: bytes.readableBytes) else {
+            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake accept")
+        }
+        let proto = try ProtoHandshakeResponse(serializedData: data)
+        return try Wire.HandshakeResponse(proto)
     }
 }
 
@@ -116,51 +125,75 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         do {
             var bytes = self.unwrapInboundIn(data)
-            // TODO: formalize wire format...
             let offer = try self.readHandshakeOffer(bytes: &bytes)
 
-            self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]", metadata: [
+            self.log.debug("Received handshake offer from: [\(offer.originNode)] with protocol version: [\(offer.version)]", metadata: [
                 "handshake/channel": "\(context.channel)",
             ])
 
             let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)
-            self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyInto: promise)))
+            self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, handshakeReplyTo: promise)))
 
             promise.futureResult.whenComplete { res in
                 switch res {
+                case .success(.accept(let accept)):
+                    do {
+                        self.log.debug("Accepting handshake offer from: [\(offer.originNode)]")
+                        try self.writeHandshakeAccept(context, accept)
+                    } catch {
+                        self.log.error("Failed when sending Handshake.Accept: \(accept), error: \(error)")
+                        context.fireErrorCaught(error)
+                    }
+
+                case .success(.reject(let reject)):
+                    do {
+                        self.log.debug("Rejecting handshake offer from: [\(offer.originNode)] reason: [\(reject.reason)]")
+                        try self.writeHandshakeReject(context, reject)
+                    } catch {
+                        self.log.error("Failed when writing \(reject), error: \(error)")
+                        context.fireErrorCaught(error)
+                    }
+
                 case .failure(let err):
                     context.fireErrorCaught(err)
-                case .success(.accept(let accept)):
-                    self.log.debug("Accepting handshake offer from: [\(offer.from)]")
-                    let acceptProto = ProtoHandshakeAccept(accept)
-                    var proto = ProtoHandshakeResponse()
-                    proto.accept = acceptProto
-                    do {
-                        let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
-                        context.writeAndFlush(NIOAny(bytes), promise: nil)
-                        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
-                        context.pipeline.removeHandler(self, promise: nil)
-                    } catch {
-                        context.fireErrorCaught(error)
-                    }
-                case .success(.reject(let reject)):
-                    self.log.debug("Rejecting handshake offer from: [\(offer.from)] reason: [\(reject.reason)]")
-                    let rejectProto = ProtoHandshakeReject(reject)
-                    var proto = ProtoHandshakeResponse()
-                    proto.reject = rejectProto
-                    do {
-                        let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
-                        context.writeAndFlush(NIOAny(bytes), promise: nil)
-                        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
-                        context.pipeline.removeHandler(self, promise: nil)
-                    } catch {
-                        context.fireErrorCaught(error)
-                    }
+                    // _ = context.close() // TODO: maybe?
                 }
             }
         } catch {
             context.fireErrorCaught(error)
         }
+    }
+
+    private func readHandshakeOffer(bytes: inout ByteBuffer) throws -> Wire.HandshakeOffer {
+        guard let data = bytes.readData(length: bytes.readableBytes) else {
+            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake offer")
+        }
+        let proto = try ProtoHandshakeOffer(serializedData: data)
+        return try Wire.HandshakeOffer(fromProto: proto)
+    }
+
+    private func writeHandshakeAccept(_ context: ChannelHandlerContext, _ accept: Wire.HandshakeAccept) throws {
+        var proto = ProtoHandshakeResponse()
+        proto.accept = ProtoHandshakeAccept(accept)
+
+        let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
+        context.writeAndFlush(NIOAny(bytes), promise: nil)
+        accept.onHandshakeReplySent?()
+
+        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
+        context.pipeline.removeHandler(self, promise: nil)
+    }
+
+    private func writeHandshakeReject(_ context: ChannelHandlerContext, _ reject: Wire.HandshakeReject) throws {
+        var proto = ProtoHandshakeResponse()
+        proto.reject = ProtoHandshakeReject(reject)
+
+        let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
+        context.writeAndFlush(NIOAny(bytes), promise: nil)
+        reject.onHandshakeReplySent?()
+
+        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
+        context.pipeline.removeHandler(self, promise: nil)
     }
 }
 
@@ -606,30 +639,7 @@ private final class UserMessageHandler: ChannelInboundHandler {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Protobuf read... implementations
-
-extension InitiatingHandshakeHandler {
-    // length prefixed
-    func readHandshakeResponse(bytes: inout ByteBuffer) throws -> Wire.HandshakeResponse {
-        guard let data = bytes.readData(length: bytes.readableBytes) else {
-            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake accept")
-        }
-        let proto = try ProtoHandshakeResponse(serializedData: data)
-        return try Wire.HandshakeResponse(proto)
-    }
-}
-
-extension ReceivingHandshakeHandler {
-    /// Read length prefixed data
-    func readHandshakeOffer(bytes: inout ByteBuffer) throws -> Wire.HandshakeOffer {
-        guard let data = bytes.readData(length: bytes.readableBytes) else {
-            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake offer")
-        }
-        let proto = try ProtoHandshakeOffer(serializedData: data)
-        return try Wire.HandshakeOffer(fromProto: proto)
-    }
-}
+extension ReceivingHandshakeHandler {}
 
 private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer

@@ -47,28 +47,28 @@ struct ProtoHandshakeOffer {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var from: ProtoUniqueNode {
-    get {return _storage._from ?? ProtoUniqueNode()}
-    set {_uniqueStorage()._from = newValue}
+  var originNode: ProtoUniqueNode {
+    get {return _storage._originNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._originNode = newValue}
   }
-  /// Returns true if `from` has been explicitly set.
-  var hasFrom: Bool {return _storage._from != nil}
-  /// Clears the value of `from`. Subsequent reads from it will return its default value.
-  mutating func clearFrom() {_uniqueStorage()._from = nil}
+  /// Returns true if `originNode` has been explicitly set.
+  var hasOriginNode: Bool {return _storage._originNode != nil}
+  /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
+  mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
 
   /// In the future we may want to add additional information
   /// about certain capabilities here. E.g. when a node supports
   /// faster transport like InfiniBand and the likes, so we can
   /// upgrade the connection in case both nodes support the fast
   /// transport.
-  var to: ProtoNode {
-    get {return _storage._to ?? ProtoNode()}
-    set {_uniqueStorage()._to = newValue}
+  var targetNode: ProtoNode {
+    get {return _storage._targetNode ?? ProtoNode()}
+    set {_uniqueStorage()._targetNode = newValue}
   }
-  /// Returns true if `to` has been explicitly set.
-  var hasTo: Bool {return _storage._to != nil}
-  /// Clears the value of `to`. Subsequent reads from it will return its default value.
-  mutating func clearTo() {_uniqueStorage()._to = nil}
+  /// Returns true if `targetNode` has been explicitly set.
+  var hasTargetNode: Bool {return _storage._targetNode != nil}
+  /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
+  mutating func clearTargetNode() {_uniqueStorage()._targetNode = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -139,23 +139,23 @@ struct ProtoHandshakeAccept {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var origin: ProtoUniqueNode {
-    get {return _storage._origin ?? ProtoUniqueNode()}
-    set {_uniqueStorage()._origin = newValue}
+  var originNode: ProtoUniqueNode {
+    get {return _storage._originNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._originNode = newValue}
   }
-  /// Returns true if `origin` has been explicitly set.
-  var hasOrigin: Bool {return _storage._origin != nil}
-  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
-  mutating func clearOrigin() {_uniqueStorage()._origin = nil}
+  /// Returns true if `originNode` has been explicitly set.
+  var hasOriginNode: Bool {return _storage._originNode != nil}
+  /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
+  mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
 
-  var from: ProtoUniqueNode {
-    get {return _storage._from ?? ProtoUniqueNode()}
-    set {_uniqueStorage()._from = newValue}
+  var targetNode: ProtoUniqueNode {
+    get {return _storage._targetNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._targetNode = newValue}
   }
-  /// Returns true if `from` has been explicitly set.
-  var hasFrom: Bool {return _storage._from != nil}
-  /// Clears the value of `from`. Subsequent reads from it will return its default value.
-  mutating func clearFrom() {_uniqueStorage()._from = nil}
+  /// Returns true if `targetNode` has been explicitly set.
+  var hasTargetNode: Bool {return _storage._targetNode != nil}
+  /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
+  mutating func clearTargetNode() {_uniqueStorage()._targetNode = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -178,25 +178,23 @@ struct ProtoHandshakeReject {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var origin: ProtoUniqueNode {
-    get {return _storage._origin ?? ProtoUniqueNode()}
-    set {_uniqueStorage()._origin = newValue}
+  var originNode: ProtoUniqueNode {
+    get {return _storage._originNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._originNode = newValue}
   }
-  /// Returns true if `origin` has been explicitly set.
-  var hasOrigin: Bool {return _storage._origin != nil}
-  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
-  mutating func clearOrigin() {_uniqueStorage()._origin = nil}
+  /// Returns true if `originNode` has been explicitly set.
+  var hasOriginNode: Bool {return _storage._originNode != nil}
+  /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
+  mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
 
-  /// In the reject case this is an `Node` instead of a `UniqueNode`,
-  /// to explicitly prevent this from forming an association.
-  var from: ProtoNode {
-    get {return _storage._from ?? ProtoNode()}
-    set {_uniqueStorage()._from = newValue}
+  var targetNode: ProtoUniqueNode {
+    get {return _storage._targetNode ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._targetNode = newValue}
   }
-  /// Returns true if `from` has been explicitly set.
-  var hasFrom: Bool {return _storage._from != nil}
-  /// Clears the value of `from`. Subsequent reads from it will return its default value.
-  mutating func clearFrom() {_uniqueStorage()._from = nil}
+  /// Returns true if `targetNode` has been explicitly set.
+  var hasTargetNode: Bool {return _storage._targetNode != nil}
+  /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
+  mutating func clearTargetNode() {_uniqueStorage()._targetNode = nil}
 
   var reason: String {
     get {return _storage._reason}
@@ -346,14 +344,14 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   static let protoMessageName: String = "HandshakeOffer"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
-    2: .same(proto: "from"),
-    3: .same(proto: "to"),
+    2: .same(proto: "originNode"),
+    3: .same(proto: "targetNode"),
   ]
 
   fileprivate class _StorageClass {
     var _version: ProtoProtocolVersion? = nil
-    var _from: ProtoUniqueNode? = nil
-    var _to: ProtoNode? = nil
+    var _originNode: ProtoUniqueNode? = nil
+    var _targetNode: ProtoNode? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -361,8 +359,8 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _from = source._from
-      _to = source._to
+      _originNode = source._originNode
+      _targetNode = source._targetNode
     }
   }
 
@@ -379,8 +377,8 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._to)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
         default: break
         }
       }
@@ -392,10 +390,10 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if let v = _storage._version {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._from {
+      if let v = _storage._originNode {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
-      if let v = _storage._to {
+      if let v = _storage._targetNode {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
     }
@@ -408,8 +406,8 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._from != rhs_storage._from {return false}
-        if _storage._to != rhs_storage._to {return false}
+        if _storage._originNode != rhs_storage._originNode {return false}
+        if _storage._targetNode != rhs_storage._targetNode {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -504,14 +502,14 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   static let protoMessageName: String = "HandshakeAccept"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
-    2: .same(proto: "origin"),
-    3: .same(proto: "from"),
+    2: .same(proto: "originNode"),
+    3: .same(proto: "targetNode"),
   ]
 
   fileprivate class _StorageClass {
     var _version: ProtoProtocolVersion? = nil
-    var _origin: ProtoUniqueNode? = nil
-    var _from: ProtoUniqueNode? = nil
+    var _originNode: ProtoUniqueNode? = nil
+    var _targetNode: ProtoUniqueNode? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -519,8 +517,8 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _origin = source._origin
-      _from = source._from
+      _originNode = source._originNode
+      _targetNode = source._targetNode
     }
   }
 
@@ -537,8 +535,8 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._origin)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._from)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
         default: break
         }
       }
@@ -550,10 +548,10 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if let v = _storage._version {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._origin {
+      if let v = _storage._originNode {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
-      if let v = _storage._from {
+      if let v = _storage._targetNode {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
     }
@@ -566,8 +564,8 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._origin != rhs_storage._origin {return false}
-        if _storage._from != rhs_storage._from {return false}
+        if _storage._originNode != rhs_storage._originNode {return false}
+        if _storage._targetNode != rhs_storage._targetNode {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -581,15 +579,15 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   static let protoMessageName: String = "HandshakeReject"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
-    2: .same(proto: "origin"),
-    3: .same(proto: "from"),
+    2: .same(proto: "originNode"),
+    3: .same(proto: "targetNode"),
     4: .same(proto: "reason"),
   ]
 
   fileprivate class _StorageClass {
     var _version: ProtoProtocolVersion? = nil
-    var _origin: ProtoUniqueNode? = nil
-    var _from: ProtoNode? = nil
+    var _originNode: ProtoUniqueNode? = nil
+    var _targetNode: ProtoUniqueNode? = nil
     var _reason: String = String()
 
     static let defaultInstance = _StorageClass()
@@ -598,8 +596,8 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _origin = source._origin
-      _from = source._from
+      _originNode = source._originNode
+      _targetNode = source._targetNode
       _reason = source._reason
     }
   }
@@ -617,8 +615,8 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._origin)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._from)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._originNode)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._targetNode)
         case 4: try decoder.decodeSingularStringField(value: &_storage._reason)
         default: break
         }
@@ -631,10 +629,10 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if let v = _storage._version {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._origin {
+      if let v = _storage._originNode {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
-      if let v = _storage._from {
+      if let v = _storage._targetNode {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
       if !_storage._reason.isEmpty {
@@ -650,8 +648,8 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._origin != rhs_storage._origin {return false}
-        if _storage._from != rhs_storage._from {return false}
+        if _storage._originNode != rhs_storage._originNode {return false}
+        if _storage._targetNode != rhs_storage._targetNode {return false}
         if _storage._reason != rhs_storage._reason {return false}
         return true
       }

@@ -39,8 +39,8 @@ internal enum Wire {
     internal struct HandshakeOffer: WireMessage {
         internal var version: Version
 
-        internal var from: UniqueNode
-        internal var to: Node
+        internal var originNode: UniqueNode
+        internal var targetNode: Node
     }
 
     internal enum HandshakeResponse: WireMessage {
@@ -63,19 +63,23 @@ internal enum Wire {
         /// The node accepting the handshake.
         ///
         /// This will always be the "local" node where the accept is being made.
-        internal let from: UniqueNode
+        internal let targetNode: UniqueNode
 
         /// In order to avoid confusion with from/to, we name the `origin` the node which an *offer* was sent from,
         /// and we now reply to this handshake to it. This value is carried so the origin can confirm it indeed was
         /// intended for it, and not a previous incarnation of a system on the same network address.
         ///
         /// This will always be the "remote" node, with regards to where the accept is created.
-        internal let origin: UniqueNode
+        internal let originNode: UniqueNode
 
-        init(version: Version, from: UniqueNode, origin: UniqueNode) {
+        /// MUST be called after the reply is written to the wire; triggers messages being flushed from the association.
+        internal var onHandshakeReplySent: (() -> Void)?
+
+        init(version: Version, targetNode: UniqueNode, originNode: UniqueNode, whenHandshakeReplySent: (() -> Void)?) {
             self.version = version
-            self.from = from
-            self.origin = origin
+            self.targetNode = targetNode
+            self.originNode = originNode
+            self.onHandshakeReplySent = whenHandshakeReplySent
         }
     }
 
@@ -84,15 +88,18 @@ internal enum Wire {
         internal let version: Version
         internal let reason: String
 
-        /// not a UniqueNode, so we can't proceed into establishing an association - even by accident
-        internal let from: Node
-        internal let origin: UniqueNode
+        internal let targetNode: UniqueNode
+        internal let originNode: UniqueNode
 
-        init(version: Wire.Version, from: Node, origin: UniqueNode, reason: String) {
+        /// MUST be called after the reply is written to the wire; triggers messages being flushed from the association.
+        internal let onHandshakeReplySent: (() -> Void)?
+
+        init(version: Wire.Version, targetNode: UniqueNode, originNode: UniqueNode, reason: String, whenHandshakeReplySent: (() -> Void)?) {
             self.version = version
-            self.from = from
-            self.origin = origin
+            self.targetNode = targetNode
+            self.originNode = originNode
             self.reason = reason
+            self.onHandshakeReplySent = whenHandshakeReplySent
         }
     }
 }
