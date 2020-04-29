@@ -121,11 +121,11 @@ internal struct HandshakeStateMachine {
         var description: Swift.String {
             """
             InitiatedState(\
-            remoteNode: \(remoteNode), \
-            localNode: \(localNode), \
-            backoff: \(backoff), \
-            whenCompleted: \(optional: whenCompleted), \
-            channel: \(optional: channel)\
+            remoteNode: \(self.remoteNode), \
+            localNode: \(self.localNode), \
+            backoff: \(self.backoff), \
+            whenCompleted: \(optional: self.whenCompleted), \
+            channel: \(optional: self.channel)\
             )
             """
         }
