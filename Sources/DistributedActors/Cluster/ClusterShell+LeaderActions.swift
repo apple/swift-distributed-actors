@@ -22,7 +22,7 @@ import NIO
 extension ClusterShellState {
     /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.
     func collectLeaderActions() -> [LeaderAction] {
-        guard self.membership.isLeader(self.myselfNode) else {
+        guard self.membership.isLeader(self.localNode) else {
             return [] // since we are not the leader, we perform no tasks
         }
 

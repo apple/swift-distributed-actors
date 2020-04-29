@@ -141,7 +141,6 @@ final class ParentChildActorTests: ActorSystemTestBase {
         parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
 
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
-        pnote("Hello: \(child)")
 
         let unknownName = "capybara"
         parent.tell(.findByName(name: unknownName))
@@ -167,7 +166,6 @@ final class ParentChildActorTests: ActorSystemTestBase {
         parent.tell(.spawnAnonymousChild(behavior: self.childBehavior(probe: p.ref)))
 
         guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
-        pnote("Hello: \(child)")
 
         parent.tell(.findByName(name: child.address.name))
         try p.expectMessage(.childFound(name: child.address.name, ref: child)) // should return same (or equal) ref

@@ -18,7 +18,19 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
-    func test_singletonByClusterLeadership() throws {
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
+            "/system/cluster/swim",
+            "/system/cluster",
+            "/system/cluster/gossip",
+        ]
+    }
+
+//    override var alwaysPrintCaptureLogs: Bool {
+//        true
+//    }
+
+    func test_singletonByClusterLeadership_happyPath() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)
             singletonSettings.allocationStrategy = .byLeadership
@@ -51,23 +63,14 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
 
             first.cluster.join(node: second.cluster.node.node)
-            third.cluster.join(node: second.cluster.node.node)
+            third.cluster.join(node: first.cluster.node.node)
 
             // `first` will be the leader (lowest address) and runs the singleton
-            try self.ensureNodes(.up, within: .seconds(15), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+            try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
-            let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
-            ref1.tell(.greet(name: "Charlie", _replyTo: replyProbe1.ref))
-
-            let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-            ref2.tell(.greet(name: "Charlie", _replyTo: replyProbe2.ref))
-
-            let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
-            ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
-
-            try replyProbe1.expectMessage("Hello-1 Charlie!")
-            try replyProbe2.expectMessage("Hello-1 Charlie!")
-            try replyProbe3.expectMessage("Hello-1 Charlie!")
+            try self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expect: "Hello-1 Alice!")
+            try self.assertSingletonRequestReply(second, singletonRef: ref2, message: "Bob", expect: "Hello-1 Bob!")
+            try self.assertSingletonRequestReply(third, singletonRef: ref3, message: "Charlie", expect: "Hello-1 Charlie!")
         }
     }
 
@@ -101,11 +104,11 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             // No leader so singleton is not available, messages sent should be stashed
             let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
             let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
-            ref1.tell(.greet(name: "Charlie-1", _replyTo: replyProbe1.ref))
+            ref1.tell(.greet(name: "Alice-1", _replyTo: replyProbe1.ref))
 
             let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
             let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
-            ref2.tell(.greet(name: "Charlie-2", _replyTo: replyProbe2.ref))
+            ref2.tell(.greet(name: "Bob-2", _replyTo: replyProbe2.ref))
 
             let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
             let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
@@ -119,10 +122,10 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             third.cluster.join(node: second.cluster.node.node)
 
             // `first` becomes the leader (lowest address) and runs the singleton
-            try self.ensureNodes(.up, within: .seconds(15), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+            try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
-            try replyProbe1.expectMessage("Hello-1 Charlie-1!")
-            try replyProbe2.expectMessage("Hello-1 Charlie-2!")
+            try replyProbe1.expectMessage("Hello-1 Alice-1!")
+            try replyProbe2.expectMessage("Hello-1 Bob-2!")
             try replyProbe3.expectMessage("Hello-1 Charlie-3!")
         }
     }
@@ -170,25 +173,21 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             third.cluster.join(node: second.cluster.node.node)
 
-            try self.ensureNodes(.up, within: .seconds(15), nodes: first.cluster.node, second.cluster.node, third.cluster.node)
-
-            let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
-            ref1.tell(.greet(name: "Alice", _replyTo: replyProbe1.ref))
+            try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+            pinfo("Nodes up: \([first.cluster.node, second.cluster.node, third.cluster.node])")
 
             let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-            ref2.tell(.greet(name: "Bob", _replyTo: replyProbe2.ref))
-
             let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
-            ref3.tell(.greet(name: "Charlie", _replyTo: replyProbe3.ref))
 
             // `first` has the lowest address so it should be the leader and singleton
-            try replyProbe1.expectMessage("Hello-1 Alice!")
-            try replyProbe2.expectMessage("Hello-1 Bob!")
-            try replyProbe3.expectMessage("Hello-1 Charlie!")
+            try self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expect: "Hello-1 Alice!")
+            try self.assertSingletonRequestReply(second, singletonRef: ref2, message: "Bob", expect: "Hello-1 Bob!")
+            try self.assertSingletonRequestReply(third, singletonRef: ref3, message: "Charlie", expect: "Hello-1 Charlie!")
+            pinfo("All three nodes communicated with singleton")
 
-            // Take down the leader
             let firstNode = first.cluster.node
             first.cluster.leave()
+            pinfo("Node \(first.cluster.node) left cluster...")
 
             // Make sure that `second` and `third` see `first` as down and become leader-less
             try self.testKit(second).eventually(within: .seconds(10)) {
@@ -209,11 +208,36 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
             // `fourth` will become the new leader and singleton
             fourth.cluster.join(node: second.cluster.node.node)
 
-            try self.ensureNodes(.up, on: second, within: .seconds(10), nodes: fourth.cluster.node, second.cluster.node, third.cluster.node)
+            try self.ensureNodes(.up, on: second, nodes: fourth.cluster.node, second.cluster.node, third.cluster.node)
+            pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.node, second.cluster.node, third.cluster.node])")
 
             // The stashed messages get routed to new singleton running on `fourth`
             try replyProbe2.expectMessage("Hello-4 Bob-2!")
             try replyProbe3.expectMessage("Hello-4 Charlie-3!")
+
+            pinfo("Nodes communicated successfully with singleton on [fourth]")
+        }
+    }
+
+    /// Since during re-balancing it may happen that a message gets lost, we send messages a few times and only if none "got through" it would be a serious error.
+    private func assertSingletonRequestReply(_ system: ActorSystem, singletonRef: ActorRef<GreeterSingleton.Message>, message: String, expect: String) throws {
+        let testKit: ActorTestKit = self.testKit(system)
+        let replyProbe = testKit.spawnTestProbe(expecting: String.self)
+
+        var attempts = 0
+        try testKit.eventually(within: .seconds(10)) {
+            attempts += 1
+            singletonRef.tell(.greet(name: message, _replyTo: replyProbe.ref))
+
+            if let message = try replyProbe.maybeExpectMessage() {
+                message.shouldEqual(expect)
+            } else {
+                throw TestError(
+                    """
+                    Received no reply from singleton [\(singletonRef)] while sending from [\(system.cluster.node.node)], \
+                    perhaps request was lost. Sent [\(message)] and expected: [\(expect)] (attempts: \(attempts))
+                    """)
+            }
         }
     }
 }

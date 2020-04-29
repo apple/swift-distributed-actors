@@ -56,7 +56,7 @@ final class ProtobufRoundTripTests: XCTestCase {
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
         try self.check(
-            Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), from: self.node, to: self.node.node),
+            Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetNode: self.node.node),
             toProto: ProtoHandshakeOffer.init,
             fromProto: Wire.HandshakeOffer.init
         )
