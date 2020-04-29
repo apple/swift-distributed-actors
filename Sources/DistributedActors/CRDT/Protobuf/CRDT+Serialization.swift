@@ -267,7 +267,7 @@ private enum ORMapSerializationUtils {
         )
     }
 
-    static func valueToProto<Value: CvRDT & CloneableCRDT>(_ value: Value, context: Serialization.Context) throws -> ProtoCRDTORMapValue {
+    static func valueToProto<Value: CvRDT>(_ value: Value, context: Serialization.Context) throws -> ProtoCRDTORMapValue {
         let serialized = try context.serialization.serialize(value)
         var proto = ProtoCRDTORMapValue()
         proto.manifest = try serialized.manifest.toProto(context: context)
@@ -275,7 +275,7 @@ private enum ORMapSerializationUtils {
         return proto
     }
 
-    static func valueFromProto<Value: CvRDT & CloneableCRDT>(_ proto: ProtoCRDTORMapValue, context: Serialization.Context) throws -> Value {
+    static func valueFromProto<Value: CvRDT>(_ proto: ProtoCRDTORMapValue, context: Serialization.Context) throws -> Value {
         try context.serialization.deserialize(
             as: Value.self,
             from: .data(proto.payload),
@@ -283,7 +283,7 @@ private enum ORMapSerializationUtils {
         )
     }
 
-    static func valuesToProto<Key: Codable & Hashable, Value: CvRDT & CloneableCRDT>(_ values: [Key: Value], context: Serialization.Context) throws -> [ProtoCRDTORMapKeyValue] {
+    static func valuesToProto<Key: Codable & Hashable, Value: CvRDT>(_ values: [Key: Value], context: Serialization.Context) throws -> [ProtoCRDTORMapKeyValue] {
         try values.map { key, value in
             var proto = ProtoCRDTORMapKeyValue()
             proto.key = try keyToProto(key, context: context)
@@ -292,7 +292,7 @@ private enum ORMapSerializationUtils {
         }
     }
 
-    static func valuesFromProto<Key: Codable & Hashable, Value: CvRDT & CloneableCRDT>(_ proto: [ProtoCRDTORMapKeyValue], context: Serialization.Context) throws -> [Key: Value] {
+    static func valuesFromProto<Key: Codable & Hashable, Value: CvRDT>(_ proto: [ProtoCRDTORMapKeyValue], context: Serialization.Context) throws -> [Key: Value] {
         try proto.reduce(into: [Key: Value]()) { result, protoKeyValue in
             guard protoKeyValue.hasKey else {
                 throw SerializationError.missingField("key", type: String(describing: [Key: Value].self))

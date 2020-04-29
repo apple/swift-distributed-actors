@@ -19,6 +19,9 @@ import NIO
 // MARK: Core CRDT protocols
 
 /// Top-level protocol for any kind of state based CRDT (also known as `CvRDT`).
+///
+/// ** Note: ** CRDT **must** have value semantics. Assumptions have been made in code with this being true,
+///         and there might be undesirable consequences otherwise.
 public protocol StateBasedCRDT: Codable {
     /// Attempts to merge the state of the given data type instance into this data type instance.
     ///
@@ -132,9 +135,4 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
 /// CRDT that can be reset to "zero" value. e.g., zero counter, empty set, etc.
 public protocol ResettableCRDT {
     mutating func reset()
-}
-
-/// CRDT that can be cloned
-public protocol CloneableCRDT {
-    func clone() -> Self
 }

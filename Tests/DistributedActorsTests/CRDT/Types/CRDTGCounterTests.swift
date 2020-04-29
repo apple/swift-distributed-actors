@@ -106,15 +106,4 @@ final class CRDTGCounterTests: XCTestCase {
         g1.reset()
         g1.value.shouldEqual(0)
     }
-
-    func test_clone() throws {
-        var g = CRDT.GCounter(replicaID: self.replicaA)
-        g.increment(by: 3)
-
-        let clone = g.clone()
-        clone.replicaID.shouldEqual(g.replicaID)
-        clone.value.shouldEqual(g.value)
-        clone.state.shouldEqual(g.state)
-        clone.delta.shouldNotBeNil()
-    }
 }

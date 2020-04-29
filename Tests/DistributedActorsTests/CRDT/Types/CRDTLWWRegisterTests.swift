@@ -102,19 +102,6 @@ final class CRDTLWWRegisterTests: XCTestCase {
         r1.value.shouldEqual(3)
     }
 
-    func test_clone() throws {
-        var r = CRDT.LWWRegister<Int>(replicaID: self.replicaA, initialValue: 6)
-        r.assign(8)
-
-        let clone = r.clone()
-        clone.replicaID.shouldEqual(r.replicaID)
-        clone.initialValue.shouldEqual(r.initialValue)
-        clone.value.shouldEqual(r.value)
-        // `TimeInterval` is `Double`
-        XCTAssertEqual(clone.clock.timestamp.timeIntervalSince1970, r.clock.timestamp.timeIntervalSince1970, accuracy: 1)
-        clone.updatedBy.shouldEqual(r.updatedBy)
-    }
-
     func test_optionalValueType() throws {
         var r1 = CRDT.LWWRegister<Int?>(replicaID: self.replicaA)
         r1.initialValue.shouldBeNil()

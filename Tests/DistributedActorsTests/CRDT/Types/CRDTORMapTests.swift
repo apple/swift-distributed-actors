@@ -323,29 +323,6 @@ final class CRDTORMapTests: XCTestCase {
         ggg2.value.shouldEqual(0)
     }
 
-    func test_ORMap_GCounter_clone() throws {
-        var m = CRDT.ORMap<String, CRDT.GCounter>(replicaID: self.replicaA, defaultValue: CRDT.GCounter(replicaID: self.replicaA))
-        m.update(key: "g1") {
-            $0.increment(by: 2)
-        }
-
-        let clone = m.clone()
-        clone.replicaID.shouldEqual(m.replicaID)
-        clone.defaultValue.replicaID.shouldEqual(m.defaultValue.replicaID)
-        clone.defaultValue.value.shouldEqual(m.defaultValue.value)
-        clone.keys.shouldEqual(m.keys)
-
-        guard let mG1 = m["g1"] else {
-            throw shouldNotHappen("Expect m to contain \"g1\", got \(m)")
-        }
-        guard let cloneG1 = clone["g1"] else {
-            throw shouldNotHappen("Expect clone to contain \"g1\", got \(clone)")
-        }
-        cloneG1.value.shouldEqual(mG1.value)
-
-        clone.delta.shouldNotBeNil()
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ORMap + ORSet tests
 

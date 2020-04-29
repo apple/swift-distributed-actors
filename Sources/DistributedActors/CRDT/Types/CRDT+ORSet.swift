@@ -155,17 +155,6 @@ extension CRDT.ORSet: ResettableCRDT {
     }
 }
 
-extension CRDT.ORSet: CloneableCRDT {
-    private init(replicaID: ReplicaID, state: CRDT.VersionedContainer<Element>) {
-        self.replicaID = replicaID
-        self.state = state
-    }
-
-    public func clone() -> CRDT.ORSet<Element> {
-        CRDT.ORSet<Element>(replicaID: self.replicaID, state: self.state)
-    }
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORSet
 

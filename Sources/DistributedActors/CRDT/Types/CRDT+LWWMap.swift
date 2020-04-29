@@ -124,17 +124,6 @@ extension CRDT {
     }
 }
 
-extension CRDT.LWWMap: CloneableCRDT {
-    private init(replicaID: ReplicaID, state: CRDT.ORMap<Key, CRDT.LWWRegister<Value>>) {
-        self.replicaID = replicaID
-        self.state = state
-    }
-
-    public func clone() -> CRDT.LWWMap<Key, Value> {
-        CRDT.LWWMap<Key, Value>(replicaID: self.replicaID, state: state)
-    }
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned LWWMap
 

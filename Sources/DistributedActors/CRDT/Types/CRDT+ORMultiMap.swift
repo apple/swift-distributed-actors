@@ -120,17 +120,6 @@ extension CRDT {
     }
 }
 
-extension CRDT.ORMultiMap: CloneableCRDT {
-    private init(replicaID: ReplicaID, state: CRDT.ORMap<Key, CRDT.ORSet<Value>>) {
-        self.replicaID = replicaID
-        self.state = state
-    }
-
-    public func clone() -> CRDT.ORMultiMap<Key, Value> {
-        CRDT.ORMultiMap(replicaID: self.replicaID, state: self.state)
-    }
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORMultiMap
 

@@ -296,23 +296,4 @@ final class CRDTORMultiMapTests: XCTestCase {
         }
         ss2.shouldEqual([6]) // no change
     }
-
-    func test_clone() throws {
-        var m = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
-        m.add(forKey: "s1", 2)
-
-        let clone = m.clone()
-        clone.replicaID.shouldEqual(m.replicaID)
-        clone.keys.shouldEqual(m.keys)
-
-        guard let mS1 = m["s1"] else {
-            throw shouldNotHappen("Expect m to contain \"s1\", got \(m)")
-        }
-        guard let cloneS1 = clone["s1"] else {
-            throw shouldNotHappen("Expect clone to contain \"s1\", got \(clone)")
-        }
-        cloneS1.shouldEqual(mS1)
-
-        clone.delta.shouldNotBeNil()
-    }
 }

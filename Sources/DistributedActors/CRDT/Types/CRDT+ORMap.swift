@@ -51,7 +51,7 @@ extension CRDT {
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
     /// - SeeAlso: `CRDT.ORSet`
-    public struct ORMap<Key: Codable & Hashable, Value: CvRDT & CloneableCRDT>: NamedDeltaCRDT, ORMapOperations {
+    public struct ORMap<Key: Codable & Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
         public let replicaID: ReplicaID
@@ -108,7 +108,7 @@ extension CRDT {
             self._keys.add(key)
 
             // Apply `mutator` to the value then save it to state. Create `Value` if needed.
-            var value = self._values[key] ?? self.defaultValue.clone()
+            var value = self._values[key] ?? self.defaultValue
             mutator(&value)
             self._values[key] = value
 
@@ -170,7 +170,7 @@ extension CRDT {
         }
     }
 
-    public struct ORMapDelta<Key: Codable & Hashable, Value: CvRDT & CloneableCRDT>: CvRDT {
+    public struct ORMapDelta<Key: Codable & Hashable, Value: CvRDT>: CvRDT {
         var keys: ORSet<Key>.Delta
         // TODO: potential optimization: send only the delta if Value is DeltaCRDT. i.e., instead of Value here we would use Value.Delta
         // TODO: `merge` defined in the Dictionary extension below should use `mergeDelta` when Value is DeltaCRDT
@@ -204,7 +204,7 @@ extension CRDT {
     }
 }
 
-extension Dictionary where Key: Hashable, Value: CvRDT & CloneableCRDT {
+extension Dictionary where Key: Hashable, Value: CvRDT {
     internal mutating func merge(keys: Set<Key>, other: [Key: Value], defaultValue: Value) {
         // Remove from `self` and `other` keys that no longer exist
         self = self.filter { k, _ in keys.contains(k) }
@@ -214,7 +214,7 @@ extension Dictionary where Key: Hashable, Value: CvRDT & CloneableCRDT {
         for (k, rv) in other {
             // If `k` is not found in `self` then create a new `Value` instance.
             // We must NOT copy `other`'s value directly to `self` because the two should have different replica IDs.
-            var lv: Value = self[k] ?? defaultValue.clone()
+            var lv: Value = self[k] ?? defaultValue
             lv.merge(other: rv)
             self[k] = lv
         }
@@ -241,20 +241,6 @@ extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
     }
 }
 
-extension CRDT.ORMap: CloneableCRDT {
-    private init(replicaID: ReplicaID, defaultValue: Value, keys: CRDT.ORSet<Key>, values: [Key: Value], updatedValues: [Key: Value]) {
-        self.replicaID = replicaID
-        self.defaultValue = defaultValue
-        self._keys = keys
-        self._values = values
-        self.updatedValues = updatedValues
-    }
-
-    public func clone() -> CRDT.ORMap<Key, Value> {
-        CRDT.ORMap<Key, Value>(replicaID: self.replicaID, defaultValue: self.defaultValue, keys: self._keys, values: self._values, updatedValues: self.updatedValues)
-    }
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned - Common protocols and extensions for generic and specialized ORMap types (e.g., ORMap, LWWMap)
 
@@ -275,11 +261,12 @@ public protocol ORMapWithUnsafeRemove {
     mutating func unsafeRemoveAllValues()
 }
 
+/// Additional `ORMap` methods when `Value` type conforms to `ResettableCRDT`.
 public protocol ORMapWithResettableValue: ORMapWithUnsafeRemove {
-    /// Resets value for `key` to `defaultValue` provided in `init`.
+    /// Resets value for `key` by calling `ResettableCRDT.reset()`.
     mutating func resetValue(forKey key: Key)
 
-    /// Resets all values in the `LWWMap` to `defaultValue` provided in `init`.
+    /// Resets all values in the `ORMap` by calling `ResettableCRDT.reset()`.
     mutating func resetAllValues()
 }
 

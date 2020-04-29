@@ -215,14 +215,4 @@ final class CRDTORSetTests: XCTestCase {
         s1.reset()
         s1.isEmpty.shouldBeTrue()
     }
-
-    func test_clone() throws {
-        var s = CRDT.ORSet<Int>(replicaID: self.replicaA)
-        s.add(3)
-
-        let clone = s.clone()
-        clone.replicaID.shouldEqual(s.replicaID)
-        clone.elements.shouldEqual(s.elements)
-        clone.delta.shouldNotBeNil()
-    }
 }

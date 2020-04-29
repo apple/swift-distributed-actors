@@ -315,23 +315,4 @@ final class CRDTLWWMapTests: XCTestCase {
         }
         bar3.shouldEqual(0)
     }
-
-    func test_clone() throws {
-        var m = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 5)
-        m.set(forKey: "foo", value: 2)
-
-        let clone = m.clone()
-        clone.replicaID.shouldEqual(m.replicaID)
-        clone.keys.shouldEqual(m.keys)
-
-        guard let mFoo = m["foo"] else {
-            throw shouldNotHappen("Expect m to contain \"foo\", got \(m)")
-        }
-        guard let cloneFoo = clone["foo"] else {
-            throw shouldNotHappen("Expect clone to contain \"foo\", got \(clone)")
-        }
-        cloneFoo.shouldEqual(mFoo)
-
-        clone.delta.shouldNotBeNil()
-    }
 }
