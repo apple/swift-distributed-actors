@@ -395,6 +395,68 @@ public struct ProtoCRDTORMap {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct ProtoCRDTORMultiMap {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var replicaID: ProtoVersionReplicaID {
+    get {return _storage._replicaID ?? ProtoVersionReplicaID()}
+    set {_uniqueStorage()._replicaID = newValue}
+  }
+  /// Returns true if `replicaID` has been explicitly set.
+  public var hasReplicaID: Bool {return _storage._replicaID != nil}
+  /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
+  public mutating func clearReplicaID() {_uniqueStorage()._replicaID = nil}
+
+  /// Includes delta
+  public var state: ProtoCRDTORMap {
+    get {return _storage._state ?? ProtoCRDTORMap()}
+    set {_uniqueStorage()._state = newValue}
+  }
+  /// Returns true if `state` has been explicitly set.
+  public var hasState: Bool {return _storage._state != nil}
+  /// Clears the value of `state`. Subsequent reads from it will return its default value.
+  public mutating func clearState() {_uniqueStorage()._state = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct ProtoCRDTLWWMap {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var replicaID: ProtoVersionReplicaID {
+    get {return _storage._replicaID ?? ProtoVersionReplicaID()}
+    set {_uniqueStorage()._replicaID = newValue}
+  }
+  /// Returns true if `replicaID` has been explicitly set.
+  public var hasReplicaID: Bool {return _storage._replicaID != nil}
+  /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
+  public mutating func clearReplicaID() {_uniqueStorage()._replicaID = nil}
+
+  /// Includes delta
+  public var state: ProtoCRDTORMap {
+    get {return _storage._state ?? ProtoCRDTORMap()}
+    set {_uniqueStorage()._state = newValue}
+  }
+  /// Returns true if `state` has been explicitly set.
+  public var hasState: Bool {return _storage._state != nil}
+  /// Clears the value of `state`. Subsequent reads from it will return its default value.
+  public mutating func clearState() {_uniqueStorage()._state = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 public struct ProtoCRDTLWWRegister {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1354,6 +1416,144 @@ extension ProtoCRDTORMap.Delta: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let rhs_storage = _args.1
         if _storage._keys != rhs_storage._keys {return false}
         if _storage._values != rhs_storage._values {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoCRDTORMultiMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = "CRDTORMultiMap"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "replicaID"),
+    2: .same(proto: "state"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _replicaID: ProtoVersionReplicaID? = nil
+    var _state: ProtoCRDTORMap? = nil
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _replicaID = source._replicaID
+      _state = source._state
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._state)
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._replicaID {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if let v = _storage._state {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ProtoCRDTORMultiMap, rhs: ProtoCRDTORMultiMap) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._replicaID != rhs_storage._replicaID {return false}
+        if _storage._state != rhs_storage._state {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoCRDTLWWMap: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = "CRDTLWWMap"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "replicaID"),
+    2: .same(proto: "state"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _replicaID: ProtoVersionReplicaID? = nil
+    var _state: ProtoCRDTORMap? = nil
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _replicaID = source._replicaID
+      _state = source._state
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._state)
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._replicaID {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if let v = _storage._state {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ProtoCRDTLWWMap, rhs: ProtoCRDTLWWMap) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._replicaID != rhs_storage._replicaID {return false}
+        if _storage._state != rhs_storage._state {return false}
         return true
       }
       if !storagesAreEqual {return false}
