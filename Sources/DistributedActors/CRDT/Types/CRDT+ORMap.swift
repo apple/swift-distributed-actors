@@ -213,7 +213,7 @@ extension CRDT {
 
         public mutating func merge(other: ORMapDelta<Key, Value>) {
             guard let defaultValue = self.defaultValue else {
-                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+                preconditionFailure("Unable to merge [\(self)] with [\(other)] as 'defaultValue' is not set. This is a bug. Please report.")
             }
 
             // Merge `keys` first--keys that have been deleted will be gone
