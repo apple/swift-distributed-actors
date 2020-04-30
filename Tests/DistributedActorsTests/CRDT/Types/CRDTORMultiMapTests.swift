@@ -20,7 +20,7 @@ final class CRDTORMultiMapTests: XCTestCase {
     let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
     let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
-    func test_ORMultiMap_basicOperations() throws {
+    func test_basicOperations() throws {
         var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
 
         m1.keys.isEmpty.shouldBeTrue()
@@ -167,7 +167,7 @@ final class CRDTORMultiMapTests: XCTestCase {
         dsss1.elements.shouldEqual([16])
     }
 
-    func test_ORMultiMap_merge_shouldMutate() throws {
+    func test_merge_shouldMutate() throws {
         var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
         var m2 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaB)
 
@@ -222,7 +222,7 @@ final class CRDTORMultiMapTests: XCTestCase {
         m1.state._keys.state.elementByBirthDot[VersionDot(self.replicaB, 3)]!.shouldEqual("s1")
     }
 
-    func test_ORMultiMap_mergeDelta_shouldMutate() throws {
+    func test_mergeDelta_shouldMutate() throws {
         var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [8], "s2": [6]]
@@ -269,7 +269,7 @@ final class CRDTORMultiMapTests: XCTestCase {
         m1.state._keys.state.elementByBirthDot[VersionDot(self.replicaB, 3)]!.shouldEqual("s1")
     }
 
-    func test_ORMultiMap_removeAll() throws {
+    func test_removeAll() throws {
         var m1 = CRDT.ORMultiMap<String, Int>(replicaID: self.replicaA)
         m1.add(forKey: "s1", 2)
         m1.add(forKey: "s2", 6)

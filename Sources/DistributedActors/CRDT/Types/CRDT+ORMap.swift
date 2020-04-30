@@ -56,10 +56,11 @@ extension CRDT {
 
         public let replicaID: ReplicaID
 
-        /// Creates a new `Value` instance. e.g., zero counter, empty set, etc.
-        /// The initializer should not close over mutable state as no strong guarantees are provided about
-        /// which context it will execute on.
-        private let valueInitializer: () -> Value
+        /// We allow `defaultValue` to be `nil` when we reconstruct `ORMap` from a remote message,
+        /// but it **is** required in the initializer to ensure that **local** `ORMap` has `defaultValue`
+        /// for `merge`, `update`, etc. In those methods `defaultValue` is required in case **local**
+        /// `ORMap` does not have an existing value for the given `key`.
+        let defaultValue: Value?
 
         /// ORSet to maintain causal history of the keys only; values keep their own causal history (if applicable).
         /// This is for tracking key additions and removals.
@@ -73,7 +74,7 @@ extension CRDT {
         public var delta: Delta? {
             // `_keys` should always be mutated whenever `self` is modified in any way.
             if let keysDelta = self._keys.delta {
-                return ORMapDelta(keys: keysDelta, values: self.updatedValues, valueInitializer: self.valueInitializer)
+                return ORMapDelta(keys: keysDelta, values: self.updatedValues, defaultValue: self.defaultValue)
             }
             // If `_keys` has not been mutated then assume `self` has not been modified either.
             return nil
@@ -99,19 +100,23 @@ extension CRDT {
             self._values.isEmpty
         }
 
-        init(replicaID: ReplicaID, valueInitializer: @escaping () -> Value) {
+        init(replicaID: ReplicaID, defaultValue: Value) {
             self.replicaID = replicaID
-            self.valueInitializer = valueInitializer
+            self.defaultValue = defaultValue
             self._keys = ORSet(replicaID: replicaID)
             self._values = [:]
         }
 
         public mutating func update(key: Key, mutator: (inout Value) -> Void) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             // Always add `key` to `_keys` set to track its causal history
             self._keys.add(key)
 
             // Apply `mutator` to the value then save it to state. Create `Value` if needed.
-            var value = self._values[key] ?? self.valueInitializer()
+            var value = self._values[key] ?? defaultValue
             mutator(&value)
             self._values[key] = value
 
@@ -154,30 +159,30 @@ extension CRDT {
         }
 
         public mutating func merge(other: ORMap<Key, Value>) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             self._keys.merge(other: other._keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: other._values, valueInitializer: self.valueInitializer)
+            self._values.merge(keys: self._keys.elements, other: other._values, defaultValue: defaultValue)
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             self._keys.mergeDelta(delta.keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: delta.values, valueInitializer: self.valueInitializer)
+            self._values.merge(keys: self._keys.elements, other: delta.values, defaultValue: defaultValue)
         }
 
         public mutating func resetDelta() {
             self._keys.resetDelta()
             self.updatedValues.removeAll()
-        }
-
-        public init(from decoder: Decoder) throws {
-            fatalError("TODO: implement serialization of ORMap") // FIXME: crdt serialization
-        }
-
-        public func encode(to encoder: Encoder) throws {
-            fatalError("TODO: implement serialization of ORMap") // FIXME: crdt serialization
         }
     }
 
@@ -187,13 +192,13 @@ extension CRDT {
         // TODO: `merge` defined in the Dictionary extension below should use `mergeDelta` when Value is DeltaCRDT
         var values: [Key: Value]
 
-        // FIXME: this is not serializable -- need to pick something rather than depend on the fn?
-        private let valueInitializer: () -> Value
+        // See comment in `ORMap` on why this is optional
+        let defaultValue: Value?
 
-        init(keys: ORSet<Key>.Delta, values: [Key: Value], valueInitializer: @escaping () -> Value) {
+        init(keys: ORSet<Key>.Delta, values: [Key: Value], defaultValue: Value?) {
             self.keys = keys
             self.values = values
-            self.valueInitializer = valueInitializer
+            self.defaultValue = defaultValue
         }
 
         public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
@@ -207,25 +212,21 @@ extension CRDT {
         }
 
         public mutating func merge(other: ORMapDelta<Key, Value>) {
+            guard let defaultValue = self.defaultValue else {
+                preconditionFailure("Unable to merge [\(self)] with [\(other)] as 'defaultValue' is not set. This is a bug. Please report.")
+            }
+
             // Merge `keys` first--keys that have been deleted will be gone
             self.keys.merge(other: other.keys)
             // Use the updated `keys` to merge `values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self.values.merge(keys: self.keys.elements, other: other.values, valueInitializer: self.valueInitializer)
-        }
-
-        public init(from decoder: Decoder) throws {
-            fatalError("TODO: implement serialization of ORMapDelta") // FIXME: crdt serialization
-        }
-
-        public func encode(to encoder: Encoder) throws {
-            fatalError("TODO: implement serialization of ORMapDelta") // FIXME: crdt serialization
+            self.values.merge(keys: self.keys.elements, other: other.values, defaultValue: defaultValue)
         }
     }
 }
 
 extension Dictionary where Key: Hashable, Value: CvRDT {
-    internal mutating func merge(keys: Set<Key>, other: [Key: Value], valueInitializer: () -> Value) {
+    internal mutating func merge(keys: Set<Key>, other: [Key: Value], defaultValue: Value) {
         // Remove from `self` and `other` keys that no longer exist
         self = self.filter { k, _ in keys.contains(k) }
         let other = other.filter { k, _ in keys.contains(k) }
@@ -234,7 +235,7 @@ extension Dictionary where Key: Hashable, Value: CvRDT {
         for (k, rv) in other {
             // If `k` is not found in `self` then create a new `Value` instance.
             // We must NOT copy `other`'s value directly to `self` because the two should have different replica IDs.
-            var lv: Value = self[k] ?? valueInitializer()
+            var lv: Value = self[k] ?? defaultValue
             lv.merge(other: rv)
             self[k] = lv
         }
@@ -281,11 +282,12 @@ public protocol ORMapWithUnsafeRemove {
     mutating func unsafeRemoveAllValues()
 }
 
+/// Additional `ORMap` methods when `Value` type conforms to `ResettableCRDT`.
 public protocol ORMapWithResettableValue: ORMapWithUnsafeRemove {
-    /// Resets value for `key` to `defaultValue` provided in `init`.
+    /// Resets value for `key` by calling `ResettableCRDT.reset()`.
     mutating func resetValue(forKey key: Key)
 
-    /// Resets all values in the `LWWMap` to `defaultValue` provided in `init`.
+    /// Resets all values in the `ORMap` by calling `ResettableCRDT.reset()`.
     mutating func resetAllValues()
 }
 
@@ -348,8 +350,8 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 }
 
 extension CRDT.ORMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, valueInitializer: @escaping () -> Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(owner.address), valueInitializer: valueInitializer))
+    public static func owned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
+        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(owner.address), defaultValue: defaultValue))
     }
 }
 

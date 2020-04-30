@@ -114,6 +114,8 @@ extension Serialization {
         internal static let CRDTGCounterDelta: SerializerID = .protobufRepresentable
         internal static let CRDTORSet: SerializerID = .protobufRepresentable
         internal static let CRDTORSetDelta: SerializerID = .protobufRepresentable
+        internal static let CRDTORMap: SerializerID = .protobufRepresentable
+        internal static let CRDTORMapDelta: SerializerID = .protobufRepresentable
         internal static let CRDTLWWRegister: SerializerID = .protobufRepresentable
 
         internal static let ConvergentGossipMembership: SerializerID = .foundationJSON

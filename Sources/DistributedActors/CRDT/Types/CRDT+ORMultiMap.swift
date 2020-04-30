@@ -55,9 +55,7 @@ extension CRDT {
 
         init(replicaID: ReplicaID) {
             self.replicaID = replicaID
-            self.state = .init(replicaID: replicaID) {
-                ORSet<Value>(replicaID: replicaID)
-            }
+            self.state = .init(replicaID: replicaID, defaultValue: ORSet<Value>(replicaID: replicaID))
         }
 
         /// Gets the set of values, if any, associated with `key`.
