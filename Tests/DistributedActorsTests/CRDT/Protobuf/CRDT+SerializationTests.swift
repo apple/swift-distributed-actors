@@ -232,7 +232,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(map)
             let deserialized = try system.serialization.deserialize(as: CRDT.ORMap<String, CRDT.ORSet<String>>.self, from: serialized)
 
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.defaultValue.shouldBeNil()
             deserialized._keys.elements.shouldEqual(["s1", "s2"])
             deserialized._values.count.shouldEqual(2)
