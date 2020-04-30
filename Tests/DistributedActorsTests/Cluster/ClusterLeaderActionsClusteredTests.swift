@@ -241,6 +241,9 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
 
             // on the leader node, the other node noticed as up:
             let eventsOnFirstSub = try p1.expectMessages(count: 9)
+            for event in eventsOnFirstSub {
+                pinfo("Captured event: \(event)")
+            }
             eventsOnFirstSub.shouldContain(.snapshot(.empty))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, fromStatus: nil, toStatus: .joining)))
