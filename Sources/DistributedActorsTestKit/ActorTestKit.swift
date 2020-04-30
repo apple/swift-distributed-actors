@@ -57,7 +57,7 @@ public struct TestError: Error, Hashable {
 
 public struct ActorTestKitSettings {
     /// Timeout used by default by all the `expect...` and `within` functions defined on the testkit and test probes.
-    var expectationTimeout: TimeAmount = .seconds(3)
+    var expectationTimeout: TimeAmount = .seconds(5)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -292,7 +292,7 @@ extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(3)) throws -> ActorRef<Message> {
+    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> ActorRef<Message> {
         let context = ResolveContext<Message>(address: address, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
@@ -424,7 +424,7 @@ extension ActorTestKit {
     ///
     /// Examples:
     ///
-    ///     testKit.eventually(within: .seconds(1)) {
+    ///     testKit.eventually(within: .seconds(3)) {
     ///         guard ... else { throw testKit.error("failed to extract expected information") }
     ///     }
     public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {

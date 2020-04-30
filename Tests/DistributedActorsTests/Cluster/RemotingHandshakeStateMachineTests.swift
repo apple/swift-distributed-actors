@@ -41,8 +41,6 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
 
         // server
         let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO: test that it completes?
-//        _ = received._acceptAndMakeCompletedState() // TODO: hide this
-//        received.whenCompleted.
 
         let serverCompleted: HSM.CompletedState
         switch received.negotiate() {

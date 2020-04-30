@@ -180,15 +180,14 @@ extension ClusterShellState {
     ///
     /// - Faults: when called in wrong state of an ongoing handshake
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
-    // THIS SIGNATURE IS SCARY; dont kill a Node, kill a specific channel (!)
-    mutating func closeOutboundHandshakeChannel(with node: Node, file: String = #file, line: UInt = #line) -> HandshakeStateMachine.State? {
+    mutating func closeOutboundHandshakeChannel(with node: Node) -> HandshakeStateMachine.State? {
         guard let state = self._handshakes.removeValue(forKey: node) else {
             return nil
         }
         switch state {
         case .initiated(let initiated):
             if let channel = initiated.channel {
-                self.log.warning("ABORTING OUTBOUND handshake channel: \(channel) [AT: \(file):\(line)]")
+                self.log.trace("Aborting OUTBOUND handshake channel: \(channel)")
 
                 channel.close().whenFailure { [log = self.log] error in
                     log.warning("Failed to abortOutgoingHandshake (close) channel [\(channel)], error: \(error)")
@@ -211,7 +210,7 @@ extension ClusterShellState {
     ///
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
     mutating func closeHandshakeChannel(offer: Wire.HandshakeOffer, channel: Channel) {
-        self.log.warning("ABORTING INBOUND handshake channel: \(channel)")
+        self.log.trace("Aborting INBOUND handshake channel: \(channel)")
 
         channel.close().whenFailure { [log = self.log, metadata = self.metadata] error in
             log.warning("Failed to abortIncomingHandshake (close) channel [\(channel)], error: \(error)", metadata: metadata)
@@ -304,8 +303,10 @@ extension ClusterShellState {
 
     mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? {
         guard let inProgressHandshake = self._handshakes[accept.targetNode.node] else {
-            // TODO: what if node that sent handshake, has already terminated -- would we have removed the in progress handshake already causing this?
-            // fatalError("Accept incoming [\(accept)] for handshake which was not in progress! On node: \(self.myselfNode), cluster shell state: \(self), membership: \(self.membership)") // TODO: model differently
+            self.log.warning("Attempted to accept incoming [\(accept)] for handshake which was not in progress!", metadata: [
+                "clusterShell": "\(self)",
+                "membership": "\(self.membership)",
+            ])
             return nil
         }
 
