@@ -22,7 +22,7 @@ extension CRDT {
     /// - SeeAlso: Akka's [`LWWMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/LWWMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
     /// - SeeAlso: `CRDT.LWWRegister`
-    public struct LWWMap<Key: Codable & Hashable, Value: ActorMessage>: NamedDeltaCRDT, LWWMapOperations {
+    public struct LWWMap<Key: Codable & Hashable, Value: Codable>: NamedDeltaCRDT, LWWMapOperations {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
         public let replicaID: ReplicaID
@@ -56,16 +56,14 @@ extension CRDT {
 
         init(replicaID: ReplicaID, defaultValue: Value) {
             self.replicaID = replicaID
-            self.state = .init(replicaID: replicaID) {
-                // This is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self` and therefore we
-                // must create a "zero" value before merging `other` into it.
-                // The "zero" value's timestamp must happen-before `other`'s to allow `other` to win. If we just
-                // use the current time here `other` would never win.
-                // We don't need to worry about the usage of this and timestamp being too new in `ORMap.update` because
-                // a call to `LWWRegister.assign` immediately follows and the value is updated without comparing
-                // timestamps.
-                LWWRegister<Value>(replicaID: replicaID, initialValue: defaultValue, clock: WallTimeClock.zero)
-            }
+            // `defaultValue` is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self`
+            // and therefore we must create a "zero" value before merging `other` into it.
+            // The "zero" value's timestamp must happen-before `other`'s to allow `other` to win. If we just
+            // use the current time here `other` would never win.
+            // We don't need to worry about the usage of this and timestamp being too new in `ORMap.update`
+            // because a call to `LWWRegister.assign` immediately follows and the value is updated without
+            // comparing timestamps.
+            self.state = .init(replicaID: replicaID, defaultValue: LWWRegister<Value>(replicaID: replicaID, initialValue: defaultValue, clock: WallTimeClock.zero))
         }
 
         /// Gets the value, if any, associated with `key`.

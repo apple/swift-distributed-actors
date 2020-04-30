@@ -20,7 +20,7 @@ final class CRDTGCounterTests: XCTestCase {
     let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
     let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
-    func test_GCounter_increment_shouldUpdateDelta() throws {
+    func test_increment_shouldUpdateDelta() throws {
         var g1 = CRDT.GCounter(replicaID: self.replicaA)
 
         g1.increment(by: 1)
@@ -36,7 +36,7 @@ final class CRDTGCounterTests: XCTestCase {
         g1.delta!.state[g1.replicaID]!.shouldEqual(11) // 1 + 10
     }
 
-    func test_GCounter_merge_shouldMutate() throws {
+    func test_merge_shouldMutate() throws {
         var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaID: self.replicaB)
@@ -49,7 +49,7 @@ final class CRDTGCounterTests: XCTestCase {
         g2.value.shouldEqual(10) // unchanged
     }
 
-    func test_GCounter_merging_shouldNotMutate() throws {
+    func test_merging_shouldNotMutate() throws {
         var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaID: self.replicaB)
@@ -65,7 +65,7 @@ final class CRDTGCounterTests: XCTestCase {
         g3.value.shouldEqual(11) // 1 (g1) + 10 (g2)
     }
 
-    func test_GCounter_mergeDelta_shouldMutate() throws {
+    func test_mergeDelta_shouldMutate() throws {
         var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaID: self.replicaB)
@@ -80,7 +80,7 @@ final class CRDTGCounterTests: XCTestCase {
         g1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
     }
 
-    func test_GCounter_mergingDelta_shouldNotMutate() throws {
+    func test_mergingDelta_shouldNotMutate() throws {
         var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaID: self.replicaB)
@@ -97,7 +97,7 @@ final class CRDTGCounterTests: XCTestCase {
         g3.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
     }
 
-    func test_GCounter_reset() throws {
+    func test_reset() throws {
         var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)
         g1.increment(by: 5)

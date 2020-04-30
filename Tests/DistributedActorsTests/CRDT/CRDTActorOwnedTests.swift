@@ -338,7 +338,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
     private func actorOwnedORMapBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORMapCommand> {
         .setup { context in
-            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, valueInitializer: { CRDT.GCounter(replicaID: .actorAddress(context.address)) })
+            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, defaultValue: CRDT.GCounter(replicaID: .actorAddress(context.address)))
             m.onUpdate { id, mm in
                 context.log.trace("ORMap \(id) updated with new value: \(mm.underlying)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)

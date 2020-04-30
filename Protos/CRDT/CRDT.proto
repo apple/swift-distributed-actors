@@ -77,6 +77,36 @@ message CRDTORSet {
     CRDTVersionedContainer state = 2;
 }
 
+// ***** CRDT.ORMap *****
+
+message CRDTORMapKey {
+    Manifest manifest = 1;
+    bytes payload = 2;
+}
+
+message CRDTORMapValue {
+    Manifest manifest = 1;
+    bytes payload = 2;
+}
+
+message CRDTORMapKeyValue {
+    CRDTORMapKey key = 1;
+    CRDTORMapValue value = 2;
+}
+
+message CRDTORMap {
+    message Delta {
+        CRDTVersionedContainerDelta keys = 1;
+        repeated CRDTORMapKeyValue values = 2;
+    }
+
+    VersionReplicaID replicaID = 1;
+    CRDTORSet keys = 2;
+    repeated CRDTORMapKeyValue values = 3;
+    // Delta is derived from `updatedValues`
+    repeated CRDTORMapKeyValue updatedValues = 4;
+}
+
 // ***** CRDT.LWWRegister *****
 
 message CRDTLWWRegister {
