@@ -512,7 +512,7 @@ internal struct SWIMShell {
         self.clusterRef.tell(.command(.failureDetectorReachabilityChanged(change.member.node, reachability)))
     }
 
-    // TODO: remove this
+    // TODO: remove or simplify; SWIM/Associations: Simplify/remove withEnsuredAssociation #601
     /// Use to ensure an association to given remote node exists.
     func withEnsuredAssociation(_ context: ActorContext<SWIM.Message>, remoteNode: UniqueNode?, continueWithAssociation: @escaping (Result<UniqueNode, Error>) -> Void) {
         // this is a local node, so we don't need to connect first
@@ -523,35 +523,6 @@ internal struct SWIMShell {
 
         // actor refs handle kicking off associations automatically when attempting to send to them; so we do nothing here (!!!)
         continueWithAssociation(.success(remoteNode))
-
-//        guard let clusterShell = context.system._cluster else {
-//            continueWithAssociation(.failure(EnsureAssociationError("ClusterShell not available when trying to ensure associated with: \(reflecting: remoteNode)")))
-//            return
-//        }
-//
-//        let associationState = clusterShell.getEnsureAssociation(with: remoteNode)
-//        switch associationState {
-//        case .association(let control):
-//            continueWithAssociation(.success(control.remoteNode))
-//        case .tombstone:
-//            let msg = "Association target node is already .tombstoned, not associating. Node \(reflecting: remoteNode) likely to be removed from gossip shortly."
-//            continueWithAssociation(.failure(EnsureAssociationError(msg)))
-//            return // we shall not associate with this tombstoned node (!)
-//        }
-//
-//        // ensure connection to new node ~~~
-//        let ref = context.messageAdapter(from: ClusterShell.HandshakeResult.self) { (result: ClusterShell.HandshakeResult) in
-//            switch result {
-//            case .success(let uniqueNode):
-//                return SWIM.Message.local(.monitor(uniqueNode))
-//            case .failure(let error):
-//                context.log.debug("Did not associate with \(reflecting: remoteNode), reason: \(error)")
-//                return nil // drop the message
-//            }
-//        }
-//
-//        context.log.trace("Requesting handshake with \(remoteNode.node)")
-//        self.clusterRef.tell(.command(.handshakeWith(remoteNode.node, replyTo: ref)))
     }
 
     struct EnsureAssociationError: Error {

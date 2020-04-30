@@ -676,16 +676,6 @@ extension ClusterShell {
 
     func connectSendHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         var state = state
-
-//        if let existingAssociation = self.getExistingAssociation(with: initiated.remoteNode) {
-//            state.log.info("No need to extend handshake offer, node [\(existingAssociation.remoteNode)] is already associated.", metadata: [
-//                "handshake": "\(existingAssociation.state)"
-//            ])
-//            existingAssociation.whenComplete(initiated.whenCompleted)
-//            // TODO: ensure state has it as well; clear the handshake
-//            return self.ready(state: state)
-//        }
-
         state.log.info("Extending handshake offer to \(initiated.remoteNode))") // TODO: log retry stats?
 
         let offer: Wire.HandshakeOffer = initiated.makeOffer()
@@ -1152,8 +1142,8 @@ extension ClusterShell {
         // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Terminate association and Down the (other) node
 
-        self.terminateAssociation(context.system, state: &state, memberToDown.node)
         state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
+        self.terminateAssociation(context.system, state: &state, memberToDown.node)
         return state
     }
 }

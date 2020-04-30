@@ -169,13 +169,6 @@ internal struct HandshakeStateMachine {
             self.whenCompleted = whenCompleted
         }
 
-//        // do not call directly, rather obtain the completed state via negotiate()
-//        func _acceptAndMakeCompletedState() -> CompletedState {
-//            let completed = CompletedState(fromReceived: self, remoteNode: offer.originNode)
-//            self.whenCompleted?.succeed(.accept(completed.makeAccept()))
-//            return completed
-//        }
-
         func negotiate() -> HandshakeStateMachine.NegotiateDirective {
             guard self.boundAddress.node == self.offer.targetNode else {
                 let error = HandshakeError.targetHandshakeAddressMismatch(self.offer, selfNode: self.boundAddress)
