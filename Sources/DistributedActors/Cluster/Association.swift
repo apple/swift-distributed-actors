@@ -179,13 +179,10 @@ extension Association {
         self.lock.withLockVoid {
             switch self.state {
             case .associating(let sendQueue):
-                pprint("SEND ENQUEUE = \(envelope)")
                 sendQueue.enqueue(envelope)
             case .associated(let channel):
-                pprint("SEND NOW = \(envelope)")
                 channel.writeAndFlush(envelope, promise: promise)
             case .tombstone(let deadLetters):
-                pprint("SEND DEAD = \(envelope)")
                 deadLetters.tell(.init(envelope.underlyingMessage, recipient: envelope.recipient))
             }
         }

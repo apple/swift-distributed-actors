@@ -70,15 +70,23 @@ public struct ClusterControl {
         self.settings.uniqueBindNode
     }
 
+    /// Instructs the cluster to join the actor system located listening on the passed in host-port pair.
+    ///
+    /// There is no specific need to "wait until joined" before one can attempt to send to references located on the cluster member,
+    /// as message sends will be buffered until the node associates and joins.
     public func join(host: String, port: Int) {
         self.join(node: Node(systemName: "sact", host: host, port: port))
     }
 
+    /// Instructs the cluster to join the actor system located listening on the passed in host-port pair.
+    ///
+    /// There is no specific need to "wait until joined" before one can attempt to send to references located on the cluster member,
+    /// as message sends will be buffered until the node associates and joins.
     public func join(node: Node) {
-        self.ref.tell(.command(.initJoin(node)))
+        self.ref.tell(.command(.handshakeWith(node)))
     }
 
-    /// Usually NOT to be used, as having an instance of a `UniqueNode` in hand
+    /// Usually not to be used, as having an instance of a `UniqueNode` in hand
     /// is normally only possible after a handshake with the remote node has completed.
     ///
     /// However, in local testing scenarios, where the two nodes are executing in the same process (e.g. in a test),
@@ -89,15 +97,42 @@ public struct ClusterControl {
         self.join(node: node.node)
     }
 
+    /// Gracefully
+    ///
+    /// TODO: no graceful steps implemented today yet) leave the cluster.
+    /// TODO: leave should perhaps return a future or something to await on.
     public func leave() {
         self.ref.tell(.command(.downCommand(self.node.node)))
     }
 
-    /// Mark as `Cluster.MemberStatus.down` _any_ incarnation of a member matching the passed in `node`.
+    /// Mark *any* currently known member as `Cluster.MemberStatus.down`.
+    ///
+    /// Beware that this API is not very precise and, if possible, the `down(Cluster.Member)` is preferred, as it indicates
+    /// the downing intent of a *specific* actor system instance, rather than any system running on the given host-port pair.
+    ///
+    /// This action can be performed by any member of the cluster and is immediately effective locally, as well as spread
+    /// to other cluster members which will accept is as truth (even if they cal still reach the member and consider it as `.up` etc).
+    ///
+    /// Note that once all members have seen the downed node as `.down` it will be completely *removed* from the membership
+    /// and a tombstone will be stored to prevent it from ever "re-joining" the same cluster. New instances on the same host-port
+    /// pair however are accepted to join the cluster (though technically this is a newly joining node, not really a "re-join").
+    ///
+    /// - SeeAlso: `Cluster.MemberStatus` for more discussion about what the `.down` status implies.
+
     public func down(node: Node) {
         self.ref.tell(.command(.downCommand(node)))
     }
 
+    /// Mark the passed in `Cluster.Member` as `Cluster.MemberStatus` `.down`.
+    ///
+    /// This action can be performed by any member of the cluster and is immediately effective locally, as well as spread
+    /// to other cluster members which will accept is as truth (even if they cal still reach the member and consider it as `.up` etc).
+    ///
+    /// Note that once all members have seen the downed node as `.down` it will be completely *removed* from the membership
+    /// and a tombstone will be stored to prevent it from ever "re-joining" the same cluster. New instances on the same host-port
+    /// pair however are accepted to join the cluster (though technically this is a newly joining node, not really a "re-join").
+    ///
+    /// - SeeAlso: `Cluster.MemberStatus` for more discussion about what the `.down` status implies.
     public func down(member: Cluster.Member) {
         self.ref.tell(.command(.downCommandMember(member)))
     }

@@ -120,27 +120,24 @@ extension ClusterShellState {
     ///
     /// This MAY return `inFlight`, in which case it means someone already initiated a handshake with given node,
     /// and we should _do nothing_ and trust that our `whenCompleted` will be notified when the already in-flight handshake completes.
-    mutating func beginHandshake(with remoteNode: Node, whenCompleted: EventLoopPromise<Wire.HandshakeResponse>) -> HandshakeStateMachine.State {
+    mutating func initHandshake(with remoteNode: Node) -> HandshakeStateMachine.State {
         if let handshakeState = self.handshakeInProgress(with: remoteNode) {
             switch handshakeState {
-            case .initiated(let state):
-                state.whenCompleted?.futureResult.cascade(to: whenCompleted)
-            case .completed(let state):
-                state.whenCompleted?.futureResult.cascade(to: whenCompleted)
-            case .wasOfferedHandshake(let state):
-                state.whenCompleted?.futureResult.cascade(to: whenCompleted)
+            case .initiated:
+                return .inFlight(HandshakeStateMachine.InFlightState(state: self))
+            case .completed:
+                return .inFlight(HandshakeStateMachine.InFlightState(state: self))
+            case .wasOfferedHandshake:
+                return .inFlight(HandshakeStateMachine.InFlightState(state: self))
             case .inFlight:
                 fatalError("An inFlight may never be stored, yet seemingly was! Offending state: \(self) for node \(remoteNode)")
             }
-
-            return .inFlight(HandshakeStateMachine.InFlightState(state: self, whenCompleted: whenCompleted))
         }
 
         let initiated = HandshakeStateMachine.InitiatedState(
             settings: self.settings,
             localNode: self.localNode,
-            connectTo: remoteNode,
-            whenCompleted: whenCompleted
+            connectTo: remoteNode
         )
         let handshakeState = HandshakeStateMachine.State.initiated(initiated)
         self._handshakes[remoteNode] = handshakeState
@@ -153,10 +150,11 @@ extension ClusterShellState {
 
         if case .some(.initiated(let existingInitiated)) = handshakeInProgress {
             if existingInitiated.remoteNode != initiated.remoteNode {
-                fatalError("""
-                onHandshakeChannelConnected MUST be called with the existing ongoing initiated
-                handshake! Existing: \(existingInitiated), passed in: \(initiated).
-                """)
+                fatalError(
+                        """
+                        onHandshakeChannelConnected MUST be called with the existing ongoing initiated \
+                        handshake! Existing: \(existingInitiated), passed in: \(initiated).
+                        """)
             }
             if existingInitiated.channel != nil {
                 fatalError("onHandshakeChannelConnected should only be invoked once on an initiated state; yet seems the state already has a channel! Was: \(String(reflecting: handshakeInProgress))")
@@ -232,15 +230,15 @@ extension ClusterShellState {
     ///     Winner: Keeps the outgoing connection, negotiates and replies accept/reject on the "incoming" connection from the remote node.
     ///     Loser: Drops the incoming connection and waits for Winner's decision.
     mutating func onIncomingHandshakeOffer(offer: Wire.HandshakeOffer, incomingChannel: Channel) -> OnIncomingHandshakeOfferDirective {
-        func prepareNegotiation(promise: EventLoopPromise<Wire.HandshakeResponse>? = nil) -> OnIncomingHandshakeOfferDirective {
-            let fsm = HandshakeStateMachine.HandshakeReceivedState(state: self, offer: offer, whenCompleted: promise)
+        func prepareNegotiation0() -> OnIncomingHandshakeOfferDirective {
+            let fsm = HandshakeStateMachine.HandshakeOfferReceivedState(state: self, offer: offer)
             self._handshakes[offer.originNode.node] = .wasOfferedHandshake(fsm)
             return .negotiateIncoming(fsm)
         }
 
         guard let inProgress = self._handshakes[offer.originNode.node] else {
             // no other concurrent handshakes in progress; good, this is happy path, so we simply continue our negotiation
-            return prepareNegotiation()
+            return prepareNegotiation0()
         }
 
         switch inProgress {
@@ -273,7 +271,7 @@ extension ClusterShellState {
                     )
                 }
 
-                return prepareNegotiation(promise: initiated.whenCompleted)
+                return prepareNegotiation0()
 
             } else {
                 // we "lost", the other node will send the accept; when it does, the will complete the future.
@@ -284,7 +282,7 @@ extension ClusterShellState {
             // Situations:
             // - it could be that the remote re-sent their offer before it received our accept?
             // - maybe remote did not receive our accept/reject and is trying again?
-            return prepareNegotiation()
+            return prepareNegotiation0()
 
         // --- these are never stored ----
         case .inFlight(let inFlight):
@@ -295,7 +293,7 @@ extension ClusterShellState {
     }
 
     enum OnIncomingHandshakeOfferDirective {
-        case negotiateIncoming(HandshakeStateMachine.HandshakeReceivedState)
+        case negotiateIncoming(HandshakeStateMachine.HandshakeOfferReceivedState)
         /// An existing handshake with given peer is already in progress,
         /// do not negotiate but rest assured that the association will be handled properly by the already ongoing process.
         case abortIncomingDueToConcurrentHandshake
