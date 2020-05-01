@@ -18,6 +18,13 @@ import NIO
 import XCTest
 
 final class ClusterAssociationTests: ClusteredNodesTestBase {
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
+            "/system/replicator",
+            "/system/cluster/swim",
+        ]
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Happy path, accept association
 
@@ -87,8 +94,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Joining into existing cluster
 
-    // FIXME: unlock this test // revisit
-    func fixme_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
+    func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
         try shouldNotThrow {
             let (first, second) = self.setUpPair()
 
@@ -127,31 +133,32 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     func test_association_shouldAllowSendingToRemoteReference() throws {
-        let (local, remote) = self.setUpPair()
+        try shouldNotThrow {
+            let (local, remote) = self.setUpPair()
 
-        let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let refOnRemoteSystem: ActorRef<String> = try remote.spawn(
-            "remoteAcquaintance",
-            .receiveMessage { message in
-                probeOnRemote.tell("forwarded:\(message)")
-                return .same
-            }
-        )
+            let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
+            let refOnRemoteSystem: ActorRef<String> = try remote.spawn(
+                    "remoteAcquaintance",
+                    .receiveMessage { message in
+                        probeOnRemote.tell("forwarded:\(message)")
+                        return .same
+                    }
+            )
 
-        local.cluster.join(node: remote.cluster.node.node)
+            local.cluster.join(node: remote.cluster.node.node)
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+            try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
-        // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
-        // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let uniqueRemoteAddress = ActorAddress(node: remote.cluster.node, path: refOnRemoteSystem.path, incarnation: refOnRemoteSystem.address.incarnation)
-        // to then obtain a remote ref ON the `system`, meaning that the node within uniqueRemoteAddress is a remote one
-        let resolvedRef = self.resolveRef(local, type: String.self, address: uniqueRemoteAddress, on: remote)
-        // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
-        // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.
-        resolvedRef.tell("HELLO")
+            // first we manually construct the "right remote path"; Don't do this in normal production code
+            let uniqueRemoteAddress = ActorAddress(node: remote.cluster.node, path: refOnRemoteSystem.path, incarnation: refOnRemoteSystem.address.incarnation)
+            // to then obtain a remote ref ON the `system`, meaning that the node within uniqueRemoteAddress is a remote one
+            let resolvedRef = self.resolveRef(local, type: String.self, address: uniqueRemoteAddress, on: remote)
+            // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
+            // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.
+            resolvedRef.tell("HELLO")
 
-        try probeOnRemote.expectMessage("forwarded:HELLO")
+            try probeOnRemote.expectMessage("forwarded:HELLO")
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -168,8 +175,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node, replyTo: firstProbe.ref)))
         second.cluster.ref.tell(.command(.handshakeWith(first.cluster.node.node, replyTo: secondProbe.ref)))
 
-//        _ = try firstProbe.expectMessage()
-//        _ = try secondProbe.expectMessage()
+        _ = try firstProbe.expectMessage()
+        _ = try secondProbe.expectMessage()
 
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
         try assertAssociated(second, withExactly: first.settings.cluster.uniqueBindNode)

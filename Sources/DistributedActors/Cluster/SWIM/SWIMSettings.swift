@@ -49,7 +49,7 @@ public struct SWIMSettings {
     }
 
     /// Interval at which gossip messages should be issued.
-    /// This property sets only a base value of probe interval, which will later be multiplied by `localHealthMultiplier`.
+    /// This property sets only a base value of probe interval, which will later be multiplied by `SWIMInstance.localHealthMultiplier`.
     /// - SeeAlso: `maxLocalHealthMultiplier`
     /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
     public var probeInterval: TimeAmount = .seconds(1)

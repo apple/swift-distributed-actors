@@ -192,11 +192,6 @@ internal struct HandshakeStateMachine {
             // self.negotiateCapabilities(...) // TODO: We may want to negotiate other options
 
             let completed = CompletedState(fromReceived: self, remoteNode: offer.originNode)
-//            self.whenCompleted?.succeed(.accept(completed.makeAccept { () in
-//                self.
-//            }))
-//            return completed
-
             return .acceptAndAssociate(completed)
         }
 

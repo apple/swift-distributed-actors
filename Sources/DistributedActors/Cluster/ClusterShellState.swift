@@ -422,7 +422,7 @@ extension ClusterShellState {
         // TODO: actions may want to be acted upon, they're like directives, we currently have no such need though;
         // such actions be e.g. "kill association right away" or "asap tell that node .down" directly without waiting for gossip etc
 
-        self.log.trace("Membership updated \(self.membership.prettyDescription(label: "\(self.localNode)")),\n  by \(event)")
+        self.log.trace("Membership updated on [\(self.localNode)] by \(event): \(pretty: self.membership)")
         return .init(applied: changeWasApplied, leaderActions: leaderActions)
     }
 
