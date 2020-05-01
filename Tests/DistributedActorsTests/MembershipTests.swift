@@ -364,6 +364,21 @@ final class MembershipTests: XCTestCase {
         }
     }
 
+    func test_mark_status_whenReplacingWithNewNode() {
+        let one = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 1001), nid: .random()), status: .joining)
+        var two = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 2222), nid: .random()), status: .up)
+        let twoReplacement = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 2222), nid: .random()), status: .joining)
+
+        var membership: Cluster.Membership = [one, two]
+
+        let changed = membership.mark(twoReplacement.node, as: .joining)!
+        changed.member.node.shouldEqual(twoReplacement.node)
+        changed.toStatus.isJoining.shouldBeTrue()
+
+        two.status = .down
+        membership.shouldEqual([one, two, twoReplacement]) // `twoReplacement` replacement remains joining; is unchanged by mark performed to `two`
+    }
+
     func test_replacement_changeCreation() {
         var existing = self.memberA
         existing.status = .joining

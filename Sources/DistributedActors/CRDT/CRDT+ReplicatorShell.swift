@@ -84,13 +84,13 @@ extension CRDT.Replicator {
             switch event {
             case .membershipChange(let change) where change.toStatus == .up:
                 let member = change.member
-                if member.node != context.system.cluster.node { // exclude this (local) node
-                    self.tracelog(context, .addMember, message: member)
-                    let remoteReplicatorRef = makeReplicatorRef(member.node)
-                    self.remoteReplicators.insert(remoteReplicatorRef)
-                } else {
-                    context.log.trace("Skip adding member \(member) to replicator because it is the same as local node", metadata: self.metadata(context))
+                guard member.node != context.system.cluster.node else {
+                    return // Skip adding member to replicator because it is the same as local node
                 }
+
+                self.tracelog(context, .addMember, message: member)
+                let remoteReplicatorRef = makeReplicatorRef(member.node)
+                self.remoteReplicators.insert(remoteReplicatorRef)
 
             case .membershipChange(let change) where change.toStatus >= .down:
                 let member = change.member
@@ -106,7 +106,7 @@ extension CRDT.Replicator {
             case .membershipChange:
                 context.log.trace("Ignoring cluster event \(event), only interested in >= .up events", metadata: self.metadata(context))
             default:
-                () // ignore other events
+                return // ignore other events
             }
         }
 

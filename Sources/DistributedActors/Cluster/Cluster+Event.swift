@@ -34,7 +34,7 @@ extension Cluster {
     /// or may originate from local decisions (such as joining or downing).
     public struct MembershipChange: Hashable {
         /// Current member that is part of the membership after this change
-        public internal(set) var member: Cluster.Member
+        public internal(set) var member: Member
 
         /// The node which the change concerns.
         public var node: UniqueNode {
@@ -43,20 +43,20 @@ extension Cluster {
 
         /// Only set if the change is a "replacement", which can happen only if a node joins
         /// from the same physical address (host + port), however its UID has changed.
-        internal private(set) var replaced: Cluster.Member?
+        internal private(set) var replaced: Member?
 
         /// A replacement means that a new node appeared on the same host/port, and thus the old node must be assumed down.
-        internal var replacementDownPreviousNodeChange: Cluster.MembershipChange? {
+        internal var replacementDownPreviousNodeChange: MembershipChange? {
             guard let replacedMember = self.replaced else {
                 return nil
             }
             return .init(member: replacedMember, toStatus: .down)
         }
 
-        public internal(set) var fromStatus: Cluster.MemberStatus?
-        public let toStatus: Cluster.MemberStatus
+        public internal(set) var fromStatus: MemberStatus?
+        public let toStatus: MemberStatus
 
-        init(member: Cluster.Member, toStatus: Cluster.MemberStatus? = nil) {
+        init(member: Member, toStatus: MemberStatus? = nil) {
             // FIXME: enable these assertions
 //            assertBacktrace(
 //                toStatus == nil || !(toStatus == .removed && member.status != .down),
@@ -81,7 +81,7 @@ extension Cluster {
             }
         }
 
-        init(node: UniqueNode, fromStatus: Cluster.MemberStatus?, toStatus: Cluster.MemberStatus) {
+        init(node: UniqueNode, fromStatus: MemberStatus?, toStatus: MemberStatus) {
             // FIXME: enable these assertions
 //          assertBacktrace(
 //                !(toStatus == .removed && fromStatus != .down),
@@ -97,7 +97,7 @@ extension Cluster {
         }
 
         /// Use to create a "replacement", when the previousNode and node are different (i.e. they should only differ in ID, not host/port)
-        init(replaced: Cluster.Member, by newMember: Cluster.Member) {
+        init(replaced: Member, by newMember: Member) {
             assert(replaced.node.host == newMember.node.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
             assert(replaced.node.port == newMember.node.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
 
@@ -144,17 +144,13 @@ extension Cluster.MembershipChange {
     }
 }
 
-extension Cluster.MembershipChange: CustomStringConvertible, CustomDebugStringConvertible {
+extension Cluster.MembershipChange: CustomStringConvertible {
     public var description: String {
-        "Cluster.MembershipChange(node: \(node), replaced: \(replaced, orElse: "nil"), fromStatus: \(fromStatus.map { "\($0)" } ?? "nil"), toStatus: \(toStatus))"
-    }
-
-    public var debugDescription: String {
         let base: String
         if let replaced = self.replaced {
-            base = "[replaced:\(String(reflecting: replaced))] by \(reflecting: self.node)"
+            base = "[replaced:\(reflecting: replaced)] by \(reflecting: self.node)"
         } else {
-            base = "\(self.node)"
+            base = "\(reflecting: self.node)"
         }
         return base +
             " :: " +

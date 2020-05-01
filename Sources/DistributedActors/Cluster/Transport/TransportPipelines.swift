@@ -59,7 +59,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
 
         do {
             let bytes: ByteBuffer = try proto.serializedByteBuffer(allocator: context.channel.allocator)
-            // TODO: should we use the serialization infra ourselves here? I guess so...
+            // TODO: https://github.com/apple/swift-distributed-actors/issues/605 use the serialization infra from the system rather
 
             // FIXME: make the promise dance here
             context.writeAndFlush(self.wrapOutboundOut(bytes), promise: nil)
@@ -80,14 +80,14 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
             let response = try self.readHandshakeResponse(bytes: &bytes)
             switch response {
             case .accept(let accept):
-                self.log.debug("Received handshake accept from: [\(accept.targetNode)]", metadata: metadata)
+                self.log.debug("Received handshake accept from: [\(reflecting: accept.targetNode)]", metadata: metadata)
                 self.cluster.tell(.inbound(.handshakeAccepted(accept, channel: context.channel)))
 
                 // handshake is completed, so we remove the handler from the pipeline
                 context.pipeline.removeHandler(self, promise: nil)
 
             case .reject(let reject):
-                self.log.debug("Received handshake reject from: [\(reject.targetNode)] reason: [\(reject.reason)], closing channel.", metadata: metadata)
+                self.log.debug("Received handshake reject from: [\(reflecting: reject.targetNode)] reason: [\(reject.reason)], closing channel.", metadata: metadata)
                 self.cluster.tell(.inbound(.handshakeRejected(reject)))
                 context.close(promise: nil)
             }
@@ -127,9 +127,11 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
             var bytes = self.unwrapInboundIn(data)
             let offer = try self.readHandshakeOffer(bytes: &bytes)
 
-            self.log.debug("Received handshake offer from: [\(offer.originNode)] with protocol version: [\(offer.version)]", metadata: [
+            let metadata: Logger.Metadata = [
                 "handshake/channel": "\(context.channel)",
-            ])
+            ]
+
+            self.log.debug("Received handshake offer from: [\(reflecting: offer.originNode)] with protocol version: [\(offer.version)]", metadata: metadata)
 
             let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)
             self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, handshakeReplyTo: promise)))
@@ -138,7 +140,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
                 switch res {
                 case .success(.accept(let accept)):
                     do {
-                        self.log.debug("Accepting handshake offer from: [\(offer.originNode)]")
+                        self.log.debug("Write accept handshake to: [\(offer.originNode)]", metadata: metadata)
                         try self.writeHandshakeAccept(context, accept)
                     } catch {
                         self.log.error("Failed when sending Handshake.Accept: \(accept), error: \(error)")
@@ -147,10 +149,10 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
 
                 case .success(.reject(let reject)):
                     do {
-                        self.log.debug("Rejecting handshake offer from: [\(offer.originNode)] reason: [\(reject.reason)]")
+                        self.log.debug("Write reject handshake offer to: [\(offer.originNode)] reason: [\(reject.reason)]", metadata: metadata)
                         try self.writeHandshakeReject(context, reject)
                     } catch {
-                        self.log.error("Failed when writing \(reject), error: \(error)")
+                        self.log.error("Failed when writing \(reject), error: \(error)", metadata: metadata)
                         context.fireErrorCaught(error)
                     }
 

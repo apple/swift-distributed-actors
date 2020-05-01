@@ -24,7 +24,7 @@ enum WireEnvelopeError: Error {
     case emptyRecipient
 }
 
-// TODO: Implement these using ProtobufRepresentable
+// TODO: https://github.com/apple/swift-distributed-actors/issues/605 Implement these using ProtobufRepresentable
 
 extension Wire.Envelope {
     init(_ proto: ProtoEnvelope) throws {
