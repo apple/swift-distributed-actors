@@ -79,7 +79,7 @@ internal class ClusterShell {
 
                 /// We're trying to send to `node` yet it has no association (not even in progress),
                 /// thus we need to kick it off. Once it completes it will .completeAssociation() on the stored one (here in the field in Shell).
-                self.ref.tell(.command(.handshakeWith(node.node, replyTo: nil)))
+                self.ref.tell(.command(.handshakeWith(node.node)))
 
                 return .association(association)
             }
@@ -96,6 +96,7 @@ internal class ClusterShell {
     /// To be invoked by cluster shell whenever handshake is accepted, creating a completed association.
     /// Causes messages to be flushed onto the new associated channel.
     private func completeAssociation(_ associated: ClusterShellState.AssociatedDirective) {
+        // 1) Complete and store the association
         self._associationsLock.withLockVoid {
             let association = self._associations[associated.handshake.remoteNode] ??
                 Association(selfNode: associated.handshake.localNode, remoteNode: associated.handshake.remoteNode)
@@ -104,6 +105,9 @@ internal class ClusterShell {
 
             self._associations[associated.handshake.remoteNode] = association
         }
+
+        // 2) Ensure the failure detector knows about this node
+        self._swimRef?.tell(.local(.monitor(associated.handshake.remoteNode)))
     }
 
     /// Performs all cleanups related to terminating an association:
@@ -307,13 +311,11 @@ internal class ClusterShell {
 
     // this is basically our API internally for this system
     enum CommandMessage: NonTransportableActorMessage, SilentDeadLetter {
-        /// Initiate the joining procedure for the given `Node`, this will result in attempting a handshake,
-        /// as well as notifying the underlying failure detector (e.g. SWIM) about the node once shook hands with it.
-        case initJoin(Node)
-
         /// Connect and handshake with remote `Node`, obtaining an `UniqueNode` in the process.
         /// Once the handshake is completed, reply to `replyTo` with the handshake result, and also mark the unique node as `.joining`.
-        case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
+        ///
+        /// If one is present, the underlying failure detector will be asked to monitor this node as well.
+        case handshakeWith(Node)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
 
         case failureDetectorReachabilityChanged(UniqueNode, Cluster.MemberReachability)
@@ -453,11 +455,8 @@ extension ClusterShell {
             state.tracelog(.inbound, message: command)
 
             switch command {
-            case .initJoin(let node):
-                return self.onInitJoin(context, state: state, joining: node)
-
-            case .handshakeWith(let node, let replyTo):
-                return self.beginHandshake(context, state, with: node, replyTo: replyTo)
+            case .handshakeWith(let node):
+                return self.beginHandshake(context, state, with: node)
             case .retryHandshake(let initiated):
                 return self.retryHandshake(context, state, initiated: initiated)
 
@@ -636,12 +635,11 @@ extension ClusterShell {
     /// Upon successful handshake, the `replyTo` actor shall be notified with its result, as well as the handshaked-with node shall be marked as `.joining`.
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, replyTo: ActorRef<HandshakeResult>?) -> Behavior<Message> {
+    internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> Behavior<Message> {
         var state = state
 
         guard remoteNode != state.localNode.node else {
             state.log.debug("Ignoring attempt to handshake with myself; Could have been issued as confused attempt to handshake as induced by discovery via gossip?")
-            replyTo?.tell(.failure(.init(node: remoteNode, message: "Would have attempted handshake with self node, aborted handshake.")))
             return .same
         }
 
@@ -650,38 +648,27 @@ extension ClusterShell {
             state.log.debug("Association already allocated for remote: \(reflecting: remoteNode), existing association: [\(existingAssociation)]")
             switch existingAssociation.state {
             case .associating:
+                ()
                 // continue, we may be the first beginHandshake (as associations may be ensured outside of actor context)
-                existingAssociation.enqueueCompletionTask {
-                    replyTo?.tell(.success(state.localNode))
-                }
+////                existingAssociation.enqueueCompletionTask {
+//                    replyTo?.tell(.success(state.localNode))
+//                }
             case .associated:
                 // return , we've been successful already
-                replyTo?.tell(.success(existingAssociation.remoteNode))
+//                replyTo?.tell(.success(existingAssociation.remoteNode))
                 return .same
             case .tombstone:
-                replyTo?.tell(.failure(
-                    HandshakeConnectionError(
-                        node: existingAssociation.remoteNode.node,
-                        message: "Existing association for \(existingAssociation.remoteNode) is already a tombstone! Must not complete association."
-                    )
-                ))
+//                replyTo?.tell(.failure(
+//                    HandshakeConnectionError(
+//                        node: existingAssociation.remoteNode.node,
+//                        message: "Existing association for \(existingAssociation.remoteNode) is already a tombstone! Must not complete association."
+//                    )
+//                ))
                 return .same
             }
         }
 
-        let whenHandshakeComplete = state.eventLoopGroup.next().makePromise(of: Wire.HandshakeResponse.self)
-        whenHandshakeComplete.futureResult.whenComplete { result in
-            switch result {
-            case .success(.accept(let accept)):
-                replyTo?.tell(.success(accept.originNode))
-            case .success(.reject(let reject)):
-                replyTo?.tell(.failure(HandshakeConnectionError(node: remoteNode, message: reject.reason)))
-            case .failure(let error):
-                replyTo?.tell(HandshakeResult.failure(HandshakeConnectionError(node: remoteNode, message: "\(error)")))
-            }
-        }
-
-        let handshakeState = state.beginHandshake(with: remoteNode, whenCompleted: whenHandshakeComplete)
+        let handshakeState = state.initHandshake(with: remoteNode)
         // we MUST register the intention of shaking hands with remoteAddress before obtaining the connection,
         // in order to let the fsm handle any retry decisions in face of connection failures et al.
 
@@ -852,7 +839,7 @@ extension ClusterShell {
                 )
             case .giveUpOnHandshake:
                 if let hsmState = state.closeOutboundHandshakeChannel(with: remoteNode) {
-                    self.notifyHandshakeFailure(state: hsmState, node: remoteNode, error: error)
+                    state.log.warning("Giving up on handshake: \(hsmState)")
                 }
             }
 
@@ -947,6 +934,8 @@ extension ClusterShell {
     }
 
     private func onHandshakeRejected(_ context: ActorContext<Message>, _ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
+        var state = state
+
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
         // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
@@ -957,7 +946,6 @@ extension ClusterShell {
                 "Handshake rejected by [\(reject.targetNode)], it was associating and is now tombstoned",
                 metadata: state.metadataForHandshakes(uniqueNode: reject.targetNode, error: nil)
             )
-            var state = state
             self.terminateAssociation(context.system, state: &state, reject.targetNode)
             return self.ready(state: state)
         }
@@ -976,16 +964,7 @@ extension ClusterShell {
             metadata: state.metadataForHandshakes(uniqueNode: reject.targetNode, error: nil)
         )
 
-        // TODO: back off and retry, give up after some attempts; count which failure this was, update the handshake state
-
-        if let handshakeState = state.handshakeInProgress(with: reject.targetNode.node) {
-            self.notifyHandshakeFailure(
-                state: handshakeState,
-                node: reject.targetNode.node,
-                error: HandshakeError.targetRejectedHandshake(selfNode: state.localNode, remoteNode: reject.targetNode, message: reject.reason)
-            )
-        } // else, seems that node successfully associated and this may be for a previous connection
-
+        // FIXME: don't retry on rejections; those are final; just failures are not, clarify this
         return .same
     }
 
@@ -1055,18 +1034,18 @@ extension ClusterShell {
         return self.ready(state: self.onDownCommand(context, state: state, member: myselfMember))
     }
 
-    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, node: Node, error: Error) {
-        switch state {
-        case .initiated(let initiated):
-            initiated.whenCompleted?.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-        case .wasOfferedHandshake(let offered):
-            offered.whenCompleted?.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-        case .completed(let completed):
-            completed.whenCompleted?.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-        case .inFlight:
-            preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function)")
-        }
-    }
+//    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, node: Node, error: Error) {
+//        switch state {
+//        case .initiated(let initiated):
+//            initiated.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
+//        case .wasOfferedHandshake(let offered):
+//            offered.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
+//        case .completed(let completed):
+//            completed.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
+//        case .inFlight:
+//            preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function)")
+//        }
+//    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -1097,29 +1076,6 @@ extension ClusterShell {
 // MARK: Handling cluster membership changes
 
 extension ClusterShell {
-    /// Ensure an association, and let SWIM know about it
-    func onInitJoin(_ context: ActorContext<Message>, state _: ClusterShellState, joining node: Node) -> Behavior<Message> {
-        let handshakeResultAnswer: AskResponse<HandshakeResult> = context.myself.ask(for: HandshakeResult.self, timeout: .seconds(3)) {
-            Message.command(.handshakeWith(node, replyTo: $0))
-        }
-
-        context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { (res: Result<HandshakeResult, Error>) in
-            switch res {
-            case .success(.success(let uniqueNode)):
-                context.log.debug("Associated \(uniqueNode), informing SWIM to monitor this node.")
-                self._swimRef?.tell(.local(.monitor(uniqueNode)))
-                return .same // .same, since state was modified since inside the handshakeWith (!)
-            case .success(.failure(let error)):
-                context.log.debug("Handshake with \(reflecting: node) failed: \(error)")
-                return .same
-            case .failure(let error):
-                context.log.debug("Handshake with \(reflecting: node) failed: \(error)")
-                return .same
-            }
-        }
-
-        return .same
-    }
 
     func onReachabilityChange(
         _ context: ActorContext<Message>,
