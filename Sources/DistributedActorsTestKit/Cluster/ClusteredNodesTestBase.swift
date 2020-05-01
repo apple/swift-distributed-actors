@@ -167,7 +167,7 @@ extension ClusteredNodesTestBase {
 
         system.cluster.ref.tell(.query(.currentMembership(p.ref)))
         let membership = try! p.expectMessage()
-        let info = membership.prettyDescription(label: String(reflecting: system.cluster.node))
+        let info = "Membership on [\(reflecting: system.cluster.node)]: \(membership.prettyDescription)"
 
         p.stop()
 

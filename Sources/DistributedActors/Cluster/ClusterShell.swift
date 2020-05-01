@@ -51,7 +51,7 @@ internal class ClusterShell {
 
     internal func getAnyExistingAssociation(with node: Node) -> Association? {
         self._associationsLock.withLock {
-            // TODO: a bit terrible; perhaps we should key be Node and then confirm by UniqueNode?
+            // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
             // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
             self._associations.first {
                 key, _ in key.node == node
@@ -124,23 +124,47 @@ internal class ClusterShell {
         }
 
         guard let removedAssociation = removedAssociationOption else {
-            system.log.warning("Attempted to terminate non-existing association [\(remoteNode)].")
+            system.log.warning("Attempted to terminate non-existing association [\(reflecting: remoteNode)].")
             return
         }
+
+        system.log.warning("Terminate existing association [\(reflecting: remoteNode)].")
 
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
         self._swimRef?.tell(.local(.confirmDead(remoteNode)))
 
-        // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
-        if state.membership.mark(remoteNode, as: .down) == nil {
-            // it was already removed, nothing to do
-            state.log.trace(
-                "Finish association with \(remoteNode), yet node not in membership already?",
-                metadata: ["cluster/membership": "\(state.membership)"]
-            )
-        } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
+        let before = state.membership
+        // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
+        if state.membership.contains(remoteNode) {
+            // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
+            if state.membership.mark(remoteNode, as: .down) == nil {
+                // it was already removed, nothing to do
+                state.log.trace(
+                        "Terminate association with \(reflecting: remoteNode), yet node not in membership already?", metadata: [
+                            "cluster/membership": "\(pretty: state.membership)"
+                        ]
+                )
+            } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
+        }
+
+//  state.membership.mark(remoteNode, as: .down); remoteNode = sact://second:1026573596@127.0.0.1:9002
+//        BEFORE MARK DOWN = LEADER: Member(sact://first@127.0.0.1:9001, status: joining, reachability: reachable)
+//        sact://first:1954943626@127.0.0.1:9001 STATUS: [joining]
+//        sact://second-REPLACEMENT:3526768720@127.0.0.1:9002 STATUS: [joining]
+//
+//        AFTER MARK DOWN = LEADER: Member(sact://first@127.0.0.1:9001, status: joining, reachability: reachable)
+//        sact://first:1954943626@127.0.0.1:9001 STATUS: [joining]
+//        sact://second-REPLACEMENT:3526768720@127.0.0.1:9002 STATUS: [   down]
+//        sact://second:1026573596@127.0.0.1:9002 STATUS: [   down]
+
+
+        pprint("""
+               state.membership.mark(remoteNode, as: .down); remoteNode = \(reflecting: remoteNode)
+               BEFORE MARK DOWN = \(pretty: before)
+               AFTER MARK DOWN = \(pretty: state.membership)
+               """)
 
         // The last thing we attempt to do with the other node is to shoot it,
         // in case it's a "zombie" that still may receive messages for some reason.
@@ -435,7 +459,7 @@ extension ClusterShell {
             case .handshakeWith(let node, let replyTo):
                 return self.beginHandshake(context, state, with: node, replyTo: replyTo)
             case .retryHandshake(let initiated):
-                return self.connectSendHandshakeOffer(context, state, initiated: initiated)
+                return self.retryHandshake(context, state, initiated: initiated)
 
             case .failureDetectorReachabilityChanged(let node, let reachability):
                 guard let member = state.membership.uniqueMember(node) else {
@@ -673,6 +697,14 @@ extension ClusterShell {
             return self.ready(state: state)
         }
     }
+    internal func retryHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
+        state.log.info("Retry handshake with: \(initiated.remoteNode)")
+
+        // TODO: update retry counter, perhaps give up
+
+        return self.connectSendHandshakeOffer(context, state, initiated: initiated)
+
+    }
 
     func connectSendHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         var state = state
@@ -722,24 +754,32 @@ extension ClusterShell {
         case .negotiateIncoming(let hsm):
             // handshake is allowed to proceed
             switch hsm.negotiate() {
-            case .acceptAndAssociate(let completedHandshake):
+            case .acceptAndAssociate(let handshakeCompleted):
                 state.log.info("Accept handshake with \(reflecting: offer.originNode)!", metadata: [
                     "handshake/channel": "\(inboundChannel)",
                 ])
 
                 // accept handshake and store completed association
-                let directive = state.completeHandshakeAssociate(self, completedHandshake, channel: inboundChannel)
+                let directive = state.completeHandshakeAssociate(self, handshakeCompleted, channel: inboundChannel)
 
-                // send accept to other node
-                let accept = completedHandshake.makeAccept(whenHandshakeReplySent: { () in
+                // prepare accept
+                let accept = handshakeCompleted.makeAccept(whenHandshakeReplySent: { () in
                     self.completeAssociation(directive)
+                    state.log.debug("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
+                        "membership/change": "\(directive.membershipChange)",
+                        "membership": "\(state.membership)",
+                    ])
                 })
-                self.tracelog(context, .send(to: offer.originNode.node), message: accept)
-                promise.succeed(.accept(accept))
 
                 // This association may mean that we've "replaced" a previously known node of the same host:port,
                 // In case of such replacement we must down and terminate the association of the previous node.
+                //
+                // This MUST be called before we complete the new association as it may need to terminate the old one.
                 self.handlePotentialAssociatedMemberReplacement(directive: directive, accept: accept, context: context, state: &state)
+
+                // Only now we can succeed the accept promise (as the old one has been terminated and cleared)
+                self.tracelog(context, .send(to: offer.originNode.node), message: accept)
+                promise.succeed(.accept(accept))
 
                 // publish any cluster events this association caused.
                 // As the new association is stored, any reactions to these events will use the right underlying connection
@@ -856,11 +896,15 @@ extension ClusterShell {
 
         // 1.1) This association may mean that we've "replaced" a previously known node of the same host:port,
         //   In case of such replacement we must down and terminate the association of the previous node.
+        //                 // This MUST be called before we complete the new association as it may need to terminate the old one.
         self.handlePotentialAssociatedMemberReplacement(directive: directive, accept: inboundAccept, context: context, state: &state)
 
         // 2) Store the (now completed) association first, as it may be immediately used by remote ActorRefs attempting to send to the remoteNode
         self.completeAssociation(directive)
-        state.log.debug("Associated with: \(reflecting: handshakeCompleted.remoteNode); Membership change: \(directive.membershipChange), resulting in: \(state.membership)")
+        state.log.debug("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
+            "membership/change": "\(directive.membershipChange)",
+            "membership": "\(state.membership)",
+        ])
 
         // 3) publish any cluster events this association caused.
         //    As the new association is stored, any reactions to these events will use the right underlying connection
@@ -874,11 +918,6 @@ extension ClusterShell {
 
         self.recordMetrics(context.system.metrics, membership: state.membership)
 
-        // 5) Finally, signal the handshake future that we've accepted, and become with ready state
-        let accept: Wire.HandshakeAccept = handshakeCompleted.makeAccept(whenHandshakeReplySent: { () in
-            self.completeAssociation(directive)
-        })
-        handshakeCompleted.whenCompleted?.succeed(.accept(accept))
         return self.ready(state: state)
     }
 
@@ -894,7 +933,7 @@ extension ClusterShell {
             // the change was a replacement and thus we need to down the old member (same host:port as the new one),
             // and terminate its association.
 
-            state.log.info("Accepted handshake from [\(accept.targetNode)] which replaces the previously known: \(reflecting: replacedMember).")
+            state.log.info("Accepted handshake from [\(reflecting: directive.handshake.remoteNode)] which replaces the previously known: [\(reflecting: replacedMember)].")
 
             // We MUST be careful to first terminate the association and then store the new one in 2)
             self.terminateAssociation(context.system, state: &state, replacedMember.node)

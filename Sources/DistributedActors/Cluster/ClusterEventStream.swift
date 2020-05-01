@@ -60,6 +60,7 @@ internal enum ClusterEventStream {
                         context.log.trace(
                             "Published event \(event) to \(subscribers.count) subscribers",
                             metadata: [
+                                "eventStream/event": "\(reflecting: event)",
                                 "eventStream/subscribers": Logger.MetadataValue.array(subscribers.map {
                                     Logger.MetadataValue.stringConvertible($0.key)
                                 }),

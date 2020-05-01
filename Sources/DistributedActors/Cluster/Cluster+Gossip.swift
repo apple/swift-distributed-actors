@@ -25,6 +25,17 @@ extension Cluster {
         /// Each row in the table represents what versionVector we know the given node has observed recently.
         /// It may have in the mean time of course observed a new version already.
         // TODO: There is tons of compression opportunity about not having to send full tables around in general, but for now we will just send them around
+        // FIXME: ensure that we never have a seen entry for a non-member
+        // bad: "actor/message": Gossip(
+        //   owner: sact://first:2342486320@127.0.0.1:9001,
+        //   seen: Cluster.Gossip.SeenTable(
+        //     [sact://second:4264003847@127.0.0.1:9002: [uniqueNode:sact://second@127.0.0.1:9002: 2],
+        //      sact://first:2342486320@127.0.0.1:9001: [uniqueNode:sact://first@127.0.0.1:9001: 4, uniqueNode:sact://second@127.0.0.1:9002: 2]]
+        //   ),
+        //   membership: Membership(count: 2, leader: Member(sact://first@127.0.0.1:9001, status: joining, reachability: reachable),
+        //     members: [
+        //       Member(sact://first:2342486320@127.0.0.1:9001, status: joining, reachability: reachable),
+        //       Member(sact://second-REPLACEMENT:871659343@127.0.0.1:9002, status: joining, reachability: reachable)]))
         var seen: Cluster.Gossip.SeenTable
         /// The version vector of this gossip and the `Membership` state owned by it.
         var version: VersionVector {

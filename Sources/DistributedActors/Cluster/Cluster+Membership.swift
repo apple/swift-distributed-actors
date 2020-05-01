@@ -230,11 +230,10 @@ extension Cluster.Membership: Hashable {
     }
 }
 
-extension Cluster.Membership: CustomStringConvertible, CustomDebugStringConvertible {
+extension Cluster.Membership: CustomStringConvertible, CustomDebugStringConvertible, CustomPrettyStringConvertible {
     /// Pretty multi-line output of a membership, useful for manual inspection
-    public func prettyDescription(label: String) -> String {
-        var res = "Membership \(label):"
-        res += "\n  LEADER: \(self.leader, orElse: ".none")"
+    var prettyDescription: String {
+        var res = "LEADER: \(self.leader, orElse: ".none")"
         for member in self._members.values.sorted(by: { $0.node.node.port < $1.node.node.port }) {
             res += "\n  \(reflecting: member.node) STATUS: [\(member.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
         }
