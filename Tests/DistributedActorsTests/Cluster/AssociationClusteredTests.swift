@@ -137,11 +137,11 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
             let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
             let refOnRemoteSystem: ActorRef<String> = try remote.spawn(
-                    "remoteAcquaintance",
-                    .receiveMessage { message in
-                        probeOnRemote.tell("forwarded:\(message)")
-                        return .same
-                    }
+                "remoteAcquaintance",
+                .receiveMessage { message in
+                    probeOnRemote.tell("forwarded:\(message)")
+                    return .same
+                }
             )
 
             local.cluster.join(node: remote.cluster.node.node)
@@ -220,7 +220,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     func test_handshake_shouldNotifyOnRejection() throws {
-        let local = self.setUpNode("local") { settings in 
+        let local = self.setUpNode("local") { settings in
             settings.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
         }
         let remote = self.setUpNode("remote")

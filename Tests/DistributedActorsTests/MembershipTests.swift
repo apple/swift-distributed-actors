@@ -293,7 +293,7 @@ final class MembershipTests: XCTestCase {
         // as if the fromStatus is not set we may infer it from other places; but in such change, we definitely want it in the `from`
         change1?.fromStatus.shouldEqual(.joining)
         change1?.toStatus.shouldEqual(.up)
-        "\(change1!)".shouldContain("fromStatus: joining, toStatus: up)")
+        "\(change1!)".shouldContain("1001 :: [joining] -> [     up]")
 
         membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
         membership.mark(member.node, as: .up).shouldBeNil() // don't move to "same"
@@ -302,7 +302,7 @@ final class MembershipTests: XCTestCase {
         change2.shouldNotBeNil()
         change2?.fromStatus.shouldEqual(.up)
         change2?.toStatus.shouldEqual(.down)
-        "\(change2!)".shouldContain("fromStatus: up, toStatus: down)")
+        "\(change2!)".shouldContain("1001 :: [     up] -> [   down]")
 
         membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
         membership.mark(member.node, as: .up).shouldBeNil() // can't move "back", from down

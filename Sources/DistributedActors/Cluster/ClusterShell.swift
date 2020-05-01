@@ -145,9 +145,9 @@ internal class ClusterShell {
             if state.membership.mark(remoteNode, as: .down) == nil {
                 // it was already removed, nothing to do
                 state.log.trace(
-                        "Terminate association with \(reflecting: remoteNode), yet node not in membership already?", metadata: [
-                            "cluster/membership": "\(pretty: state.membership)"
-                        ]
+                    "Terminate association with \(reflecting: remoteNode), yet node not in membership already?", metadata: [
+                        "cluster/membership": "\(pretty: state.membership)",
+                    ]
                 )
             } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
         }
@@ -631,8 +631,8 @@ extension ClusterShell {
             switch existingAssociation.state {
             case .associating:
                 ()
-                // continue, we may be the first beginHandshake (as associations may be ensured outside of actor context)
-////                existingAssociation.enqueueCompletionTask {
+            // continue, we may be the first beginHandshake (as associations may be ensured outside of actor context)
+            ////                existingAssociation.enqueueCompletionTask {
 //                    replyTo?.tell(.success(state.localNode))
 //                }
             case .associated:
@@ -666,13 +666,13 @@ extension ClusterShell {
             return self.ready(state: state)
         }
     }
+
     internal func retryHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         state.log.info("Retry handshake with: \(initiated.remoteNode)")
 
         // TODO: update retry counter, perhaps give up
 
         return self.connectSendHandshakeOffer(context, state, initiated: initiated)
-
     }
 
     func connectSendHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
@@ -1058,7 +1058,6 @@ extension ClusterShell {
 // MARK: Handling cluster membership changes
 
 extension ClusterShell {
-
     func onReachabilityChange(
         _ context: ActorContext<Message>,
         state: ClusterShellState,

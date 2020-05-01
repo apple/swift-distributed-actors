@@ -151,10 +151,10 @@ extension ClusterShellState {
         if case .some(.initiated(let existingInitiated)) = handshakeInProgress {
             if existingInitiated.remoteNode != initiated.remoteNode {
                 fatalError(
-                        """
-                        onHandshakeChannelConnected MUST be called with the existing ongoing initiated \
-                        handshake! Existing: \(existingInitiated), passed in: \(initiated).
-                        """)
+                    """
+                    onHandshakeChannelConnected MUST be called with the existing ongoing initiated \
+                    handshake! Existing: \(existingInitiated), passed in: \(initiated).
+                    """)
             }
             if existingInitiated.channel != nil {
                 fatalError("onHandshakeChannelConnected should only be invoked once on an initiated state; yet seems the state already has a channel! Was: \(String(reflecting: handshakeInProgress))")
