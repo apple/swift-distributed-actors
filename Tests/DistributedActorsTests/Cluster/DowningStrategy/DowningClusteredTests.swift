@@ -97,7 +97,7 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
                         pinfo("MembershipChange on \(on.cluster.node.node): \(change)")
                         return .catchContinue(change)
                     case .reachabilityChange(let change) where change.member.node == expectedDownNode:
-                        pnote("ReachabilityChange on \(otherNotDownPairSystem.cluster.node.node) = \(change)")
+                        pnote("ReachabilityChange on \(otherNotDownPairSystem.cluster.node.node): \(change)")
                         return .ignore
                     default:
                         // pnote("Event on \(otherNotDownPairSystem.cluster.node.node) = \(event)")
