@@ -27,7 +27,12 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             settings.serialization.register(CRDT.ORSet<String>.Delta.self, serializerID: Serialization.ReservedID.CRDTORSetDelta)
             settings.serialization.register(CRDT.ORMap<String, CRDT.ORSet<String>>.self, serializerID: Serialization.ReservedID.CRDTORMap)
             settings.serialization.register(CRDT.ORMap<String, CRDT.ORSet<String>>.Delta.self, serializerID: Serialization.ReservedID.CRDTORMapDelta)
+            settings.serialization.register(CRDT.ORMultiMap<String, String>.self, serializerID: Serialization.ReservedID.CRDTORMultiMap)
+            settings.serialization.register(CRDT.ORMultiMap<String, String>.Delta.self, serializerID: Serialization.ReservedID.CRDTORMultiMapDelta)
+            settings.serialization.register(CRDT.LWWMap<String, String>.self, serializerID: Serialization.ReservedID.CRDTLWWMap)
+            settings.serialization.register(CRDT.LWWMap<String, String>.Delta.self, serializerID: Serialization.ReservedID.CRDTLWWMapDelta)
             settings.serialization.register(CRDT.LWWRegister<Int>.self, serializerID: Serialization.ReservedID.CRDTLWWRegister)
+            settings.serialization.register(CRDT.LWWRegister<String>.self, serializerID: Serialization.ReservedID.CRDTLWWRegister)
         }
     }
 
@@ -277,6 +282,128 @@ final class CRDTSerializationTests: ActorSystemTestBase {
                 throw shouldNotHappen("Expect deserialized to contain \"s2\", got \(deserialized)")
             }
             s2.elements.shouldEqual(["b"])
+        }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: ORMultiMap
+
+    func test_serializationOf_ORMultiMap() throws {
+        try shouldNotThrow {
+            var map = CRDT.ORMultiMap<String, String>(replicaID: .actorAddress(self.ownerAlpha))
+            map.add(forKey: "s1", "a")
+            map.add(forKey: "s2", "b")
+            map.add(forKey: "s1", "c")
+            map.delta.shouldNotBeNil()
+
+            let serialized = try system.serialization.serialize(map)
+            let deserialized = try system.serialization.deserialize(as: CRDT.ORMultiMap<String, String>.self, from: serialized)
+
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            deserialized.state._keys.elements.shouldEqual(["s1", "s2"])
+            deserialized.state._values.count.shouldEqual(2)
+
+            guard let s1 = deserialized["s1"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
+            }
+            s1.shouldEqual(["a", "c"])
+
+            guard let s2 = deserialized["s2"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"s2\", got \(deserialized)")
+            }
+            s2.shouldEqual(["b"])
+
+            deserialized.delta.shouldNotBeNil()
+            deserialized.delta!.keys.elementByBirthDot.count.shouldEqual(map.delta!.keys.elementByBirthDot.count) // same elements added to delta
+            deserialized.delta!.values.count.shouldEqual(2)
+        }
+    }
+
+    func test_serializationOf_ORMultiMap_delta() throws {
+        try shouldNotThrow {
+            var map = CRDT.ORMultiMap<String, String>(replicaID: .actorAddress(self.ownerAlpha))
+            map.add(forKey: "s1", "a")
+            map.add(forKey: "s2", "b")
+            map.add(forKey: "s1", "c")
+            map.delta.shouldNotBeNil()
+
+            let serialized = try system.serialization.serialize(map.delta!) // !-safe, must have a delta, we just checked it
+            let deserialized = try system.serialization.deserialize(as: CRDT.ORMultiMap<String, String>.Delta.self, from: serialized)
+
+            // Delta is just `ORMapDelta`
+            deserialized.keys.elementByBirthDot.count.shouldEqual(map.delta!.keys.elementByBirthDot.count)
+            deserialized.values.count.shouldEqual(2)
+
+            // delta contains the same elements as map
+            guard let s1 = deserialized.values["s1"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
+            }
+            s1.elements.shouldEqual(["a", "c"])
+
+            guard let s2 = deserialized.values["s2"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"s2\", got \(deserialized)")
+            }
+            s2.elements.shouldEqual(["b"])
+        }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: LWWMap
+
+    func test_serializationOf_LWWMap() throws {
+        try shouldNotThrow {
+            var map = CRDT.LWWMap<String, String>(replicaID: .actorAddress(self.ownerAlpha), defaultValue: "")
+            map.set(forKey: "foo", value: "a")
+            map.set(forKey: "bar", value: "b")
+            map.delta.shouldNotBeNil()
+
+            let serialized = try system.serialization.serialize(map)
+            let deserialized = try system.serialization.deserialize(as: CRDT.LWWMap<String, String>.self, from: serialized)
+
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            deserialized.state._keys.elements.shouldEqual(["foo", "bar"])
+            deserialized.state._values.count.shouldEqual(2)
+
+            guard let foo = deserialized["foo"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"foo\", got \(deserialized)")
+            }
+            foo.shouldEqual("a")
+
+            guard let bar = deserialized["bar"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"bar\", got \(deserialized)")
+            }
+            bar.shouldEqual("b")
+
+            deserialized.delta.shouldNotBeNil()
+            deserialized.delta!.keys.elementByBirthDot.count.shouldEqual(map.delta!.keys.elementByBirthDot.count) // same elements added to delta
+            deserialized.delta!.values.count.shouldEqual(2)
+        }
+    }
+
+    func test_serializationOf_LWWMap_delta() throws {
+        try shouldNotThrow {
+            var map = CRDT.LWWMap<String, String>(replicaID: .actorAddress(self.ownerAlpha), defaultValue: "")
+            map.set(forKey: "foo", value: "a")
+            map.set(forKey: "bar", value: "b")
+            map.delta.shouldNotBeNil()
+
+            let serialized = try system.serialization.serialize(map.delta!) // !-safe, must have a delta, we just checked it
+            let deserialized = try system.serialization.deserialize(as: CRDT.LWWMap<String, String>.Delta.self, from: serialized)
+
+            // Delta is just `ORMapDelta`
+            deserialized.keys.elementByBirthDot.count.shouldEqual(map.delta!.keys.elementByBirthDot.count)
+            deserialized.values.count.shouldEqual(2)
+
+            // delta contains the same elements as map
+            guard let foo = deserialized.values["foo"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"foo\", got \(deserialized)")
+            }
+            foo.value.shouldEqual("a")
+
+            guard let bar = deserialized.values["bar"] else {
+                throw shouldNotHappen("Expect deserialized to contain \"bar\", got \(deserialized)")
+            }
+            bar.value.shouldEqual("b")
         }
     }
 
