@@ -64,31 +64,30 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     func test_handshake_shouldNotifyOnSuccess() throws {
-        let (local, remote) = self.setUpPair()
-        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        try shouldNotThrow {
+            let (local, remote) = self.setUpPair()
 
-        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+            local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node)))
 
-        try assertAssociated(local, withExactly: remote.cluster.node)
-        try assertAssociated(remote, withExactly: local.cluster.node)
-
-        try p.expectMessage(.success(remote.cluster.node), within: .seconds(3))
+            try assertAssociated(local, withExactly: remote.cluster.node)
+            try assertAssociated(remote, withExactly: local.cluster.node)
+        }
     }
 
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
-        let (local, remote) = self.setUpPair()
-        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        try shouldNotThrow {
+            let (local, remote) = self.setUpPair()
 
-        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+            local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node)))
 
-        try assertAssociated(local, withExactly: remote.cluster.node)
-        try assertAssociated(remote, withExactly: local.cluster.node)
+            try assertAssociated(local, withExactly: remote.cluster.node)
+            try assertAssociated(remote, withExactly: local.cluster.node)
 
-        try p.expectMessage(.success(remote.cluster.node))
+            local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node)))
 
-        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
-
-        try p.expectMessage(.success(remote.cluster.node))
+            try assertAssociated(local, withExactly: remote.cluster.node)
+            try assertAssociated(remote, withExactly: local.cluster.node)
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -167,16 +166,10 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing() throws {
         let (first, second) = self.setUpPair()
 
-        let firstProbe = self.testKit(first).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-        let secondProbe = self.testKit(second).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-
         // here we attempt to make a race where the nodes race to join each other
         // again, only one association should be created.
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node, replyTo: firstProbe.ref)))
-        second.cluster.ref.tell(.command(.handshakeWith(first.cluster.node.node, replyTo: secondProbe.ref)))
-
-        _ = try firstProbe.expectMessage()
-        _ = try secondProbe.expectMessage()
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        second.cluster.ref.tell(.command(.handshakeWith(first.cluster.node.node)))
 
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
         try assertAssociated(second, withExactly: first.settings.cluster.uniqueBindNode)
@@ -185,15 +178,9 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_outgoing_outgoing() throws {
         let (first, second) = setUpPair()
 
-        let firstProbe = self.testKit(first).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-        let secondProbe = self.testKit(first).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-
         // we issue two handshakes quickly after each other, both should succeed but there should only be one association established (!)
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node, replyTo: firstProbe.ref)))
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node, replyTo: secondProbe.ref)))
-
-        _ = try firstProbe.expectMessage()
-        _ = try secondProbe.expectMessage()
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
 
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
         try assertAssociated(second, withExactly: first.settings.cluster.uniqueBindNode)
@@ -233,25 +220,17 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     func test_handshake_shouldNotifyOnRejection() throws {
-        let local = self.setUpNode("local") {
-            $0.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
+        let local = self.setUpNode("local") { settings in 
+            settings.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
         }
         let remote = self.setUpNode("remote")
 
-        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-
-        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node)))
 
         try assertNotAssociated(system: local, node: remote.cluster.node)
         try assertNotAssociated(system: remote, node: local.cluster.node)
 
-        switch try p.expectMessage() {
-        case ClusterShell.HandshakeResult.failure(let err):
-            "\(err)".shouldContain("incompatibleProtocolVersion(local:")
-            () // ok
-        default:
-            throw p.error()
-        }
+        try self.capturedLogs(of: local).awaitLogContaining(self.testKit(local), text: "incompatibleProtocolVersion(local:")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -273,27 +252,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         try assertAssociated(local, withExactly: [remote.cluster.node, thirdSystem.settings.cluster.uniqueBindNode])
 
         local._cluster?._testingOnly_associations.count.shouldEqual(2)
-    }
-
-    // FIXME: once initiated, handshake seem to retry until they succeed, that seems
-    //      like a problem and should be fixed. This test should be re-enabled,
-    //      once issue #724 (handshakes should not retry forever) is resolved
-    func disabled_test_handshake_shouldNotifyOnConnectionFailure() throws {
-        let local = setUpNode("local")
-
-        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-
-        var node = local.cluster.node.node
-        node.port = node.port + 10
-
-        local.cluster.ref.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO: nicer API
-
-        switch try p.expectMessage(within: .seconds(1)) {
-        case ClusterShell.HandshakeResult.failure:
-            () // ok
-        default:
-            throw p.error()
-        }
     }
 
     func test_sendingMessageToNotYetAssociatedNode_mustCauseAssociationAttempt() throws {
