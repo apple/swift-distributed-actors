@@ -72,24 +72,47 @@ internal func assertBacktrace(_ condition: @autoclosure () -> Bool, _ message: @
     assert(condition(), { () in sact_dump_backtrace(); return message() }(), file: file, line: line)
 }
 
+private func _createTimeFormatter() -> DateFormatter {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "H:m:ss.SSSS"
+    formatter.locale = Locale(identifier: "en_US")
+    formatter.calendar = Calendar(identifier: .gregorian)
+    return formatter
+}
+
 /// Short for "pretty print", useful for debug tracing
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
-    print("[pprint][\(file):\(line)][\(_hackyPThreadThreadId())]: \(message)")
-    //  print("[pprint][\(file):\(line)]: \(message)")
+    print("""
+    [pprint]\
+    [\(_createTimeFormatter().string(from: Date()))] \
+    [\(file):\(line)]\
+    [\(_hackyPThreadThreadId())]: \
+    \(message)
+    """)
 }
 
 /// Like [pprint] but yellow, use for things that are better not to miss.
 public func pnote(_ message: String, file: StaticString = #file, line: UInt = #line) {
     let yellow = "\u{001B}[0;33m"
     let reset = "\u{001B}[0;0m"
-    print("\(yellow)\(file):\(line) : \(message)\(reset)")
+    print("""
+    \(yellow)\
+    [\(_createTimeFormatter().string(from: Date()))] \
+    \(file):\(line) : \(message)\
+    \(reset)
+    """)
 }
 
 /// Like [pprint] but green, use for notable "good" output.
 public func pinfo(_ message: String, file: StaticString = #file, line: UInt = #line) {
     let green = "\u{001B}[0;32m"
     let reset = "\u{001B}[0;0m"
-    print("\(green)\(file):\(line) : \(message)\(reset)")
+    print("""
+    \(green)\
+    [\(_createTimeFormatter().string(from: Date()))] \
+    \(file):\(line) : \(message)\
+    \(reset)
+    """)
 }
 
 internal func _hackyPThreadThreadId() -> String {

@@ -240,10 +240,21 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             try self.ensureNodes(.down, on: third, nodes: secondNode)
 
             // on the leader node, the other node noticed as up:
-            let eventsOnFirstSub = try p1.expectMessages(count: 9)
-            for event in eventsOnFirstSub {
+            var eventsOnFirstSub: [Cluster.Event] = []
+            var downFound = false
+            while eventsOnFirstSub.count < 12, !downFound {
+                let event = try p1.expectMessage()
                 pinfo("Captured event: \(event)")
+                eventsOnFirstSub.append(event)
+
+                switch event {
+                case .membershipChange(let change) where change.toStatus.isDown:
+                    downFound = true
+                default:
+                    ()
+                }
             }
+
             eventsOnFirstSub.shouldContain(.snapshot(.empty))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, fromStatus: nil, toStatus: .joining)))
