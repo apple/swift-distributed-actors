@@ -355,6 +355,50 @@ extension CRDT.ORMapDelta: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT.ORMultiMap
+
+extension CRDT.ORMultiMap: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoCRDTORMultiMap
+
+    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
+        var proto = ProtobufRepresentation()
+        proto.replicaID = try self.replicaID.toProto(context: context)
+        proto.state = try self.state.toProto(context: context)
+        return proto
+    }
+
+    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
+        guard proto.hasReplicaID else {
+            throw SerializationError.missingField("replicaID", type: String(describing: CRDT.ORMultiMap<Key, Value>.self))
+        }
+        self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
+        self.state = try CRDT.ORMap<Key, CRDT.ORSet<Value>>(fromProto: proto.state, context: context)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT.LWWMap
+
+extension CRDT.LWWMap: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoCRDTLWWMap
+
+    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
+        var proto = ProtobufRepresentation()
+        proto.replicaID = try self.replicaID.toProto(context: context)
+        proto.state = try self.state.toProto(context: context)
+        return proto
+    }
+
+    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
+        guard proto.hasReplicaID else {
+            throw SerializationError.missingField("replicaID", type: String(describing: CRDT.LWWMap<Key, Value>.self))
+        }
+        self.replicaID = try ReplicaID(fromProto: proto.replicaID, context: context)
+        self.state = try CRDT.ORMap<Key, CRDT.LWWRegister<Value>>(fromProto: proto.state, context: context)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.LWWRegister
 
 extension CRDT.LWWRegister: ProtobufRepresentable {

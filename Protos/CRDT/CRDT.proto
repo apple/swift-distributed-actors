@@ -107,6 +107,22 @@ message CRDTORMap {
     repeated CRDTORMapKeyValue updatedValues = 4;
 }
 
+// ***** CRDT.ORMultiMap *****
+
+message CRDTORMultiMap {
+    VersionReplicaID replicaID = 1;
+    // Includes delta
+    CRDTORMap state = 2;
+}
+
+// ***** CRDT.LWWMap *****
+
+message CRDTLWWMap {
+    VersionReplicaID replicaID = 1;
+    // Includes delta
+    CRDTORMap state = 2;
+}
+
 // ***** CRDT.LWWRegister *****
 
 message CRDTLWWRegister {
