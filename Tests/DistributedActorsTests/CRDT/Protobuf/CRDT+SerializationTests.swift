@@ -299,7 +299,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(map)
             let deserialized = try system.serialization.deserialize(as: CRDT.ORMultiMap<String, String>.self, from: serialized)
 
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.state._keys.elements.shouldEqual(["s1", "s2"])
             deserialized.state._values.count.shouldEqual(2)
 
@@ -360,7 +360,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             let serialized = try system.serialization.serialize(map)
             let deserialized = try system.serialization.deserialize(as: CRDT.LWWMap<String, String>.self, from: serialized)
 
-            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@localhost:9001/user/alpha")
+            "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.state._keys.elements.shouldEqual(["foo", "bar"])
             deserialized.state._values.count.shouldEqual(2)
 
