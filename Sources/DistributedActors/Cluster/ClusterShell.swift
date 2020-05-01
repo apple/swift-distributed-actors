@@ -139,7 +139,6 @@ internal class ClusterShell {
         traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
         self._swimRef?.tell(.local(.confirmDead(remoteNode)))
 
-        let before = state.membership
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
         if state.membership.contains(remoteNode) {
             // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
@@ -152,23 +151,6 @@ internal class ClusterShell {
                 )
             } // else: Note that we CANNOT remove() just yet, as we only want to do this when all nodes have seen the down/leaving
         }
-
-//  state.membership.mark(remoteNode, as: .down); remoteNode = sact://second:1026573596@127.0.0.1:9002
-//        BEFORE MARK DOWN = LEADER: Member(sact://first@127.0.0.1:9001, status: joining, reachability: reachable)
-//        sact://first:1954943626@127.0.0.1:9001 STATUS: [joining]
-//        sact://second-REPLACEMENT:3526768720@127.0.0.1:9002 STATUS: [joining]
-//
-//        AFTER MARK DOWN = LEADER: Member(sact://first@127.0.0.1:9001, status: joining, reachability: reachable)
-//        sact://first:1954943626@127.0.0.1:9001 STATUS: [joining]
-//        sact://second-REPLACEMENT:3526768720@127.0.0.1:9002 STATUS: [   down]
-//        sact://second:1026573596@127.0.0.1:9002 STATUS: [   down]
-
-
-        pprint("""
-               state.membership.mark(remoteNode, as: .down); remoteNode = \(reflecting: remoteNode)
-               BEFORE MARK DOWN = \(pretty: before)
-               AFTER MARK DOWN = \(pretty: state.membership)
-               """)
 
         // The last thing we attempt to do with the other node is to shoot it,
         // in case it's a "zombie" that still may receive messages for some reason.
