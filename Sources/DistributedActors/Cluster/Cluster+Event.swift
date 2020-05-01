@@ -150,7 +150,7 @@ extension Cluster.MembershipChange: CustomStringConvertible {
         if let replaced = self.replaced {
             base = "[replaced:\(reflecting: replaced)] by \(reflecting: self.node)"
         } else {
-            base = "\(reflecting: self.node)"
+            base = "\(self.node)"
         }
         return base +
             " :: " +
