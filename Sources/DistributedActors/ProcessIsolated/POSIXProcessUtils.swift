@@ -42,7 +42,7 @@ internal enum POSIXProcessUtils {
 
         // env
 
-        var env: [String: String] = ProcessInfo.processInfo.environment
+        let env: [String: String] = ProcessInfo.processInfo.environment
 
         let nenv = env.count
         let envp = UnsafeMutablePointer<UnsafeMutablePointer<Int8>?>.allocate(capacity: 1 + nenv)
