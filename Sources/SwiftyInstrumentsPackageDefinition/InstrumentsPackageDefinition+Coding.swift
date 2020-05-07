@@ -45,9 +45,7 @@ extension PackageDefinition {
         try container.encode(self.id, forKey: .id)
         try container.encode(self.version, forKey: .version)
         try container.encode(self.title, forKey: .title)
-        if let owner = self.owner {
-            try container.encode(owner, forKey: .owner)
-        }
+        try container.encodeIfPresent(self.owner, forKey: .owner)
         try self.schemas.forEach { schema in
             switch schema {
             case let s as OSSignpostIntervalSchema:
@@ -167,12 +165,56 @@ extension PackageDefinition.Instrument.CreateTable {
     public enum CodingKeys: String, CodingKey {
         case id
         case schemaRef = "schema-ref"
+        case attribute = "attribute"
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.id, forKey: .id)
         try container.encode(self.schemaRef, forKey: .schemaRef)
+        for a in self.attributes {
+            try container.encode(a, forKey: .attribute)
+        }
+    }
+}
+
+extension TableAttribute {
+    public enum CodingKeys: String, CodingKey {
+        case name
+        case array
+        case parameterRef = "parameter-ref"
+        case boolean
+        case integer
+        case string
+    }
+
+    public enum ArrayCodingKeys: String, CodingKey {
+        case integer
+        case string
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.name, forKey: .name)
+        switch self.value {
+        case .bool(let value):
+            let v = value ? "true" : "false"
+            try container.encode(v, forKey: .boolean)
+        case .int(let int):
+            try container.encode(int, forKey: .integer)
+        case .string(let string):
+            try container.encode(string, forKey: .string)
+        case .arrayInt(let ints):
+            var valuesContainer = container.nestedContainer(keyedBy: ArrayCodingKeys.self, forKey: .array)
+            for int in ints {
+                try valuesContainer.encode(int, forKey: .integer)
+            }
+        case .arrayString(let strings):
+            var valuesContainer = container.nestedContainer(keyedBy: ArrayCodingKeys.self, forKey: .array)
+            for s in strings {
+                try valuesContainer.encode(s, forKey: .string)
+            }
+        }
     }
 }
 
@@ -187,9 +229,7 @@ extension PackageDefinition.Instrument.Graph {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.title, forKey: .title)
-        if let purpose = self.purpose {
-            try container.encode(purpose, forKey: .purpose)
-        }
+        try container.encodeIfPresent(self.purpose, forKey: .purpose)
         try container.encode(self.lanes, forKey: .lanes)
         try container.encode(self.laneTemplates, forKey: .laneTemplates)
     }
@@ -202,7 +242,7 @@ extension PackageDefinition.Instrument.Graph.Lane {
         case guide
         case baseColor = "base-color"
 
-        case plot = "plot"
+        case plot
         case plotTemplates = "plot-templates"
         case histograms = "histogram"
         case histogramsTemplates = "histogram-templates"
@@ -212,17 +252,30 @@ extension PackageDefinition.Instrument.Graph.Lane {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.title, forKey: .title)
         try container.encode(self.tableRef, forKey: .tableRef)
-        if let guide = self.guide {
-            try container.encode(guide, forKey: .guide)
-        }
-        if let baseColor = self.baseColor {
-            try container.encode(baseColor, forKey: .baseColor)
-        }
+        try container.encodeIfPresent(self.guide, forKey: .guide)
+        try container.encodeIfPresent(self.baseColor, forKey: .baseColor)
 
-        try self.plots.forEach { try container.encode($0, forKey: .plot)}
-        try self.plotTemplates.forEach { try container.encode($0, forKey: .plotTemplates)}
+        try self.plots.forEach { try container.encode($0, forKey: .plot) }
+        try self.plotTemplates.forEach { try container.encode($0, forKey: .plotTemplates) }
         // try self.histograms.forEach { try container.encode($0, forKey: .histograms)} // TODO: implement this
         // try self.histogramsTemplates.forEach { try container.encode($0, forKey: .histogramsTemplates)} // TODO: implement this
+    }
+}
+
+extension PackageDefinition.Instrument.Graph.Plot {
+    public enum CodingKeys: String, CodingKey {
+        case slice
+        case valueFrom = "value-from"
+        case colorFrom = "color-from"
+        case priorityFrom = "priority-from"
+        case labelFrom = "label-from"
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(valueFrom, forKey: .valueFrom)
+        try container.encodeIfPresent(self.labelFrom, forKey: .labelFrom)
+        // TODO: all others...
     }
 }
 
@@ -230,7 +283,7 @@ extension PackageDefinition.Instrument.Graph.PlotTemplate {
     public enum CodingKeys: String, CodingKey {
         case instanceBy = "instance-by"
         case labelFormat = "label-format"
-        case slice = "slice"
+        case slice
         case valueFrom = "value-from"
         case colorFrom = "color-from"
         case priorityFrom = "priority-from"
@@ -244,16 +297,10 @@ extension PackageDefinition.Instrument.Graph.PlotTemplate {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.instanceBy, forKey: .instanceBy)
-        if let labelFormat = self.labelFormat {
-            try container.encode(labelFormat, forKey: .labelFormat)
-        }
+        try container.encodeIfPresent(self.labelFormat, forKey: .labelFormat)
         try container.encode(valueFrom, forKey: .valueFrom)
-        if let colorFrom = self.colorFrom {
-            try container.encode(colorFrom, forKey: .colorFrom)
-        }
-        if let labelFrom = self.labelFrom {
-            try container.encode(labelFrom, forKey: .labelFrom)
-        }
+        try container.encodeIfPresent(self.colorFrom, forKey: .colorFrom)
+        try container.encodeIfPresent(self.labelFrom, forKey: .labelFrom)
         // TODO: all others...
     }
 }
@@ -302,7 +349,7 @@ extension GraphLaneElement {
 
 extension PackageDefinition.Instrument.List {
     public enum CodingKeys: String, CodingKey {
-        case title = "title"
+        case title
         case tableRef = "table-ref"
         case columns = "column"
     }

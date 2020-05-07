@@ -1,1 +1,428 @@
-<?xml version="1.0" encoding="UTF-8" ?><package><id>com.apple.dt.actors.ActorInstrumentsPackageDefinition</id><version>0.4.1</version><title>Actors</title><owner><name>Konrad &apos;ktoso&apos; Malawski</name><email>ktoso@apple.com</email></owner><os-signpost-interval-schema><id>actor-lifecycle-interval</id><title>Actor Lifecycle</title><subsystem>com.apple.actors</subsystem><category>Lifecycle</category><name>Actor Lifecycle</name><startPattern>spawned,node:%{public}s,path:%{public}s</startPattern><endPattern>stopped,reason:%{public}s</endPattern><column><mnemonic>actor-address</mnemonic><title>Actor Address</title><type>string</type><expression>(str-cat ?node ?path)</expression></column><column><mnemonic>actor-node</mnemonic><title>Actor Node</title><type>string</type><expression>?node</expression></column><column><mnemonic>actor-path</mnemonic><title>Actor Path</title><type>string</type><expression>?path</expression></column><column><mnemonic>actor-stop-reason</mnemonic><title>Stop Reason</title><type>string</type><expression>?reason</expression></column><column><mnemonic>actor-stop-reason-impact</mnemonic><title>Stop Reason (Impact)</title><type>string</type><expression>(if (eq ?reason &quot;stop&quot;) then &quot;Low&quot; else &quot;High&quot;)</expression></column></os-signpost-interval-schema><os-signpost-point-schema><id>actor-lifecycle-spawn</id><title>Actor Spawned</title><note /><subsystem>com.apple.actors</subsystem><category>Lifecycle</category><name>Actor Lifecycle</name><pattern>spawned,node:%{public}s,path:%{public}s</pattern><column><mnemonic>actor-node</mnemonic><title>Actor Node</title><type>string</type><expression>?node</expression></column><column><mnemonic>actor-path</mnemonic><title>Actor Path</title><type>string</type><expression>?path</expression></column><column><mnemonic>actor-address</mnemonic><title>Actor Address</title><type>string</type><expression>(str-cat ?node ?path)</expression></column></os-signpost-point-schema><os-signpost-point-schema><id>actor-message-received</id><title>Actor Messages</title><note /><subsystem>com.apple.actors</subsystem><category>Messages</category><name>Actor Messages (Received)</name><pattern>actor-message-received,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,message-type:%{public}s,</pattern><column><mnemonic>actor-recipient-node</mnemonic><title>Recipient Node</title><type>string</type><expression>?recipient-node</expression></column><column><mnemonic>actor-recipient-path</mnemonic><title>Recipient Path</title><type>string</type><expression>?recipient-path</expression></column><column><mnemonic>actor-recipient-address</mnemonic><title>Recipient Address</title><type>string</type><expression>(str-cat ?recipient-node ?recipient-path)</expression></column><column><mnemonic>actor-sender-node</mnemonic><title>Sender Node</title><type>string</type><expression>?sender-node</expression></column><column><mnemonic>actor-sender-path</mnemonic><title>Sender Path</title><type>string</type><expression>?sender-path</expression></column><column><mnemonic>actor-sender-address</mnemonic><title>Sender Address</title><type>string</type><expression>(str-cat ?sender-node ?sender-path)</expression></column><column><mnemonic>actor-message</mnemonic><title>Message</title><type>string</type><expression>?message</expression></column><column><mnemonic>actor-message-type</mnemonic><title>Message Type</title><type>string</type><expression>?message-type</expression></column></os-signpost-point-schema><os-signpost-point-schema><id>actor-message-told</id><title>Actor Messages</title><note /><subsystem>com.apple.actors</subsystem><category>Messages</category><name>Actor Messages (Told)</name><pattern>actor-message-told,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,message-type:%{public}s,</pattern><column><mnemonic>actor-recipient-node</mnemonic><title>Recipient Node</title><type>string</type><expression>?recipient-node</expression></column><column><mnemonic>actor-recipient-path</mnemonic><title>Recipient Path</title><type>string</type><expression>?recipient-path</expression></column><column><mnemonic>actor-recipient-address</mnemonic><title>Recipient Address</title><type>string</type><expression>(str-cat ?recipient-node ?recipient-path)</expression></column><column><mnemonic>actor-sender-node</mnemonic><title>Sender Node</title><type>string</type><expression>?sender-node</expression></column><column><mnemonic>actor-sender-path</mnemonic><title>Sender Path</title><type>string</type><expression>?sender-path</expression></column><column><mnemonic>actor-sender-address</mnemonic><title>Sender Address</title><type>string</type><expression>(str-cat ?sender-node ?sender-path)</expression></column><column><mnemonic>actor-message</mnemonic><title>Message</title><type>string</type><expression>?message</expression></column><column><mnemonic>actor-message-type</mnemonic><title>Message Type</title><type>string</type><expression>?message-type</expression></column></os-signpost-point-schema><os-signpost-interval-schema><id>actor-asked-interval</id><title>Actor Asks</title><subsystem>com.apple.actors</subsystem><category>Messages</category><name>Actor Message (Ask)</name><startPattern>actor-message-asked,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,message-type:%{public}s,</startPattern><endPattern>actor-message-ask-answered,message:%{public}s,message-type:%{public}s,error:%{public}s,error-type:%{public}s,</endPattern><column><mnemonic>actor-recipient-node</mnemonic><title>Recipient Node</title><type>string</type><expression>?recipient-node</expression></column><column><mnemonic>actor-recipient-path</mnemonic><title>Recipient Path</title><type>string</type><expression>?recipient-path</expression></column><column><mnemonic>actor-recipient-address</mnemonic><title>Recipient Address</title><type>string</type><expression>(str-cat ?recipient-node ?recipient-path)</expression></column><column><mnemonic>actor-sender-node</mnemonic><title>Sender Node</title><type>string</type><expression>?sender-node</expression></column><column><mnemonic>actor-sender-path</mnemonic><title>Sender Path</title><type>string</type><expression>?sender-path</expression></column><column><mnemonic>actor-sender-address</mnemonic><title>Sender Address</title><type>string</type><expression>(str-cat ?sender-node ?sender-path)</expression></column><column><mnemonic>actor-message</mnemonic><title>Message</title><type>string</type><expression>?message</expression></column><column><mnemonic>actor-message-type</mnemonic><title>Message Type</title><type>string</type><expression>?message-type</expression></column><column><mnemonic>actor-error</mnemonic><title>Error</title><type>string</type><expression>?error</expression></column><column><mnemonic>actor-error-type</mnemonic><title>Error Type</title><type>string</type><expression>?error-type</expression></column></os-signpost-interval-schema><instrument><id>com.apple.actors.instrument.lifecycles</id><version>1</version><category>Actor Lifecycle</category><purpose>Monitor lifecycle of actors (start, stop, fail, restart etc.)</purpose><icon>Activity Monitor</icon><create-table><id>actor-lifecycle-interval-table</id><schema-ref>actor-lifecycle-interval</schema-ref></create-table><create-table><id>actor-lifecycle-spawn-table</id><schema-ref>actor-lifecycle-spawn</schema-ref></create-table><graph><title>Lifecycles</title><lane><title>Spawns Lane</title><table-ref>actor-lifecycle-spawn</table-ref><base-color /><plot-templates><instance-by>actor-path</instance-by><value-from>actor-path</value-from></plot-templates></lane><lane><title>Spawns Lane</title><table-ref>actor-lifecycle-spawn</table-ref><base-color /><plot-templates><instance-by>actor-path</instance-by><label-format>%s</label-format><value-from>actor-path</value-from><color-from>actor-stop-reason-impact</color-from><label-from>actor-path</label-from></plot-templates></lane></graph><list><title>Spawns</title><table-ref>actor-lifecycle-spawn</table-ref><column>start</column><column>duration</column><column>actor-node</column><column>actor-path</column></list><list><title>Lifetimes</title><table-ref>actor-lifecycle-interval</table-ref><column>start</column><column>duration</column><column>actor-node</column><column>actor-path</column></list></instrument></package>
+<?xml version="1.0" encoding="UTF-8"?>
+<package>
+  <id>com.apple.dt.actors.ActorInstrumentsPackageDefinition</id>
+  <version>0.4.1</version>
+  <title>Actors</title>
+  <owner>
+    <name>Konrad 'ktoso' Malawski</name>
+    <email>ktoso@apple.com</email>
+  </owner>
+  <os-signpost-interval-schema>
+    <id>actor-lifecycle-interval</id>
+    <title>Actor Lifecycle</title>
+    <subsystem>com.apple.actors</subsystem>
+    <category>Lifecycle</category>
+    <name>Actor Lifecycle</name>
+    <startPattern>spawned,node:%{public}s,path:%{public}s</startPattern>
+    <endPattern>stopped,reason:%{public}s</endPattern>
+    <column>
+      <mnemonic>actor-address</mnemonic>
+      <title>Actor Address</title>
+      <type>string</type>
+      <expression>(str-cat ?node ?path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-node</mnemonic>
+      <title>Actor Node</title>
+      <type>string</type>
+      <expression>?node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-path</mnemonic>
+      <title>Actor Path</title>
+      <type>string</type>
+      <expression>?path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-stop-reason</mnemonic>
+      <title>Stop Reason</title>
+      <type>string</type>
+      <expression>?reason</expression>
+    </column>
+    <column>
+      <mnemonic>actor-stop-reason-impact</mnemonic>
+      <title>Stop Reason (Impact)</title>
+      <type>string</type>
+      <expression>(if (eq ?reason "stop") then "Low" else "High")</expression>
+    </column>
+  </os-signpost-interval-schema>
+  <os-signpost-point-schema>
+    <id>actor-lifecycle-spawn</id>
+    <title>Actor Spawned</title>
+    <note/>
+    <subsystem>com.apple.actors</subsystem>
+    <category>Lifecycle</category>
+    <name>Actor Lifecycle</name>
+    <pattern>spawned,node:%{public}s,path:%{public}s</pattern>
+    <column>
+      <mnemonic>actor-node</mnemonic>
+      <title>Actor Node</title>
+      <type>string</type>
+      <expression>?node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-path</mnemonic>
+      <title>Actor Path</title>
+      <type>string</type>
+      <expression>?path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-address</mnemonic>
+      <title>Actor Address</title>
+      <type>string</type>
+      <expression>(str-cat ?node ?path)</expression>
+    </column>
+  </os-signpost-point-schema>
+  <os-signpost-point-schema>
+    <id>actor-message-received</id>
+    <title>Actor Messages</title>
+    <note/>
+    <subsystem>com.apple.actors</subsystem>
+    <category>Messages</category>
+    <name>Actor Messages (Received)</name>
+    <pattern>actor-message-received,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,message-type:%{public}s,</pattern>
+    <column>
+      <mnemonic>actor-recipient-node</mnemonic>
+      <title>Recipient Node</title>
+      <type>string</type>
+      <expression>?recipient-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-path</mnemonic>
+      <title>Recipient Path</title>
+      <type>string</type>
+      <expression>?recipient-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-address</mnemonic>
+      <title>Recipient Address</title>
+      <type>string</type>
+      <expression>(str-cat ?recipient-node ?recipient-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-node</mnemonic>
+      <title>Sender Node</title>
+      <type>string</type>
+      <expression>?sender-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-path</mnemonic>
+      <title>Sender Path</title>
+      <type>string</type>
+      <expression>?sender-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-address</mnemonic>
+      <title>Sender Address</title>
+      <type>string</type>
+      <expression>(str-cat ?sender-node ?sender-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message</mnemonic>
+      <title>Message</title>
+      <type>string</type>
+      <expression>?message</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message-type</mnemonic>
+      <title>Message Type</title>
+      <type>string</type>
+      <expression>?message-type</expression>
+    </column>
+  </os-signpost-point-schema>
+  <os-signpost-point-schema>
+    <id>actor-message-told</id>
+    <title>Actor Messages</title>
+    <note/>
+    <subsystem>com.apple.actors</subsystem>
+    <category>Messages</category>
+    <name>Actor Messages (Told)</name>
+    <pattern>actor-message-told,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,message-type:%{public}s,</pattern>
+    <column>
+      <mnemonic>actor-recipient-node</mnemonic>
+      <title>Recipient Node</title>
+      <type>string</type>
+      <expression>?recipient-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-path</mnemonic>
+      <title>Recipient Path</title>
+      <type>string</type>
+      <expression>?recipient-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-address</mnemonic>
+      <title>Recipient Address</title>
+      <type>string</type>
+      <expression>(str-cat ?recipient-node ?recipient-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-node</mnemonic>
+      <title>Sender Node</title>
+      <type>string</type>
+      <expression>?sender-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-path</mnemonic>
+      <title>Sender Path</title>
+      <type>string</type>
+      <expression>?sender-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-address</mnemonic>
+      <title>Sender Address</title>
+      <type>string</type>
+      <expression>(str-cat ?sender-node ?sender-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message</mnemonic>
+      <title>Message</title>
+      <type>string</type>
+      <expression>?message</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message-type</mnemonic>
+      <title>Message Type</title>
+      <type>string</type>
+      <expression>?message-type</expression>
+    </column>
+  </os-signpost-point-schema>
+  <os-signpost-interval-schema>
+    <id>actor-asked-interval</id>
+    <title>Actor Asks</title>
+    <subsystem>com.apple.actors</subsystem>
+    <category>Messages</category>
+    <name>Actor Message (Ask)</name>
+    <startPattern>actor-message-asked,recipient-node:%{public}s,recipient-path:%{public}s,sender-node:%{public}s,sender-path:%{public}s,message:%{public}s,message-type:%{public}s,</startPattern>
+    <endPattern>actor-message-ask-answered,message:%{public}s,message-type:%{public}s,error:%{public}s,error-type:%{public}s,</endPattern>
+    <column>
+      <mnemonic>actor-recipient-node</mnemonic>
+      <title>Recipient Node</title>
+      <type>string</type>
+      <expression>?recipient-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-path</mnemonic>
+      <title>Recipient Path</title>
+      <type>string</type>
+      <expression>?recipient-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-address</mnemonic>
+      <title>Recipient Address</title>
+      <type>string</type>
+      <expression>(str-cat ?recipient-node ?recipient-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-node</mnemonic>
+      <title>Sender Node</title>
+      <type>string</type>
+      <expression>?sender-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-path</mnemonic>
+      <title>Sender Path</title>
+      <type>string</type>
+      <expression>?sender-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-address</mnemonic>
+      <title>Sender Address</title>
+      <type>string</type>
+      <expression>(str-cat ?sender-node ?sender-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message</mnemonic>
+      <title>Message</title>
+      <type>string</type>
+      <expression>?message</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message-type</mnemonic>
+      <title>Message Type</title>
+      <type>string</type>
+      <expression>?message-type</expression>
+    </column>
+    <column>
+      <mnemonic>actor-error</mnemonic>
+      <title>Error</title>
+      <type>string</type>
+      <expression>?error</expression>
+    </column>
+    <column>
+      <mnemonic>actor-error-type</mnemonic>
+      <title>Error Type</title>
+      <type>string</type>
+      <expression>?error-type</expression>
+    </column>
+  </os-signpost-interval-schema>
+  <instrument>
+    <id>com.apple.actors.instrument.lifecycles</id>
+    <version>1</version>
+    <category>Actor Lifecycle</category>
+    <purpose>Monitor lifecycle of actors (start, stop, fail, restart etc.)</purpose>
+    <icon>Activity Monitor</icon>
+    <create-table>
+      <id>actor-lifecycle-interval-table</id>
+      <schema-ref>actor-lifecycle-interval</schema-ref>
+    </create-table>
+    <create-table>
+      <id>actor-lifecycle-spawn-table</id>
+      <schema-ref>actor-lifecycle-spawn</schema-ref>
+    </create-table>
+    <graph>
+      <title>Lifecycles</title>
+      <lane>
+        <title>Spawns Lane</title>
+        <table-ref>actor-lifecycle-spawn</table-ref>
+        <plot-templates>
+          <instance-by>actor-path</instance-by>
+          <value-from>actor-path</value-from>
+        </plot-templates>
+      </lane>
+      <lane>
+        <title>Spawns Lane</title>
+        <table-ref>actor-lifecycle-spawn</table-ref>
+        <plot-templates>
+          <instance-by>actor-path</instance-by>
+          <label-format>%s</label-format>
+          <value-from>actor-path</value-from>
+          <color-from>actor-stop-reason-impact</color-from>
+          <label-from>actor-path</label-from>
+        </plot-templates>
+      </lane>
+    </graph>
+    <list>
+      <title>Spawns</title>
+      <table-ref>actor-lifecycle-spawn</table-ref>
+      <column>start</column>
+      <column>duration</column>
+      <column>actor-node</column>
+      <column>actor-path</column>
+    </list>
+    <list>
+      <title>Lifetimes</title>
+      <table-ref>actor-lifecycle-interval</table-ref>
+      <column>start</column>
+      <column>duration</column>
+      <column>actor-node</column>
+      <column>actor-path</column>
+    </list>
+  </instrument>
+  <instrument>
+    <id>com.apple.actors.instrument.messages.received</id>
+    <version>1</version>
+    <category>Actor Messages Received</category>
+    <purpose>Marks points in time where messages are received</purpose>
+    <icon>Network</icon>
+    <import-parameter>
+      <fromScope>trace</fromScope>
+      <name>target-pid</name>
+    </import-parameter>
+    <create-table>
+      <id>actor-message-received-table</id>
+      <schema-ref>actor-message-received</schema-ref>
+      <attribute>
+        <name>target-recipient</name>
+        <string>?target-pid</string>
+      </attribute>
+    </create-table>
+    <graph>
+      <title>Received</title>
+      <lane>
+        <title>Received</title>
+        <table-ref>actor-message-received</table-ref>
+        <plot-templates>
+          <instance-by>actor-recipient-path</instance-by>
+          <label-format>%s</label-format>
+          <value-from>actor-message-type</value-from>
+          <label-from>actor-recipient-path</label-from>
+        </plot-templates>
+      </lane>
+    </graph>
+    <list>
+      <title>List: Messages (Received)</title>
+      <table-ref>actor-message-received</table-ref>
+      <column>timestamp</column>
+      <column>actor-sender-node</column>
+      <column>actor-sender-path</column>
+      <column>actor-recipient-node</column>
+      <column>actor-recipient-path</column>
+      <column>actor-message</column>
+      <column>actor-message-type</column>
+    </list>
+  </instrument>
+  <instrument>
+    <id>com.apple.actors.instrument.messages.told</id>
+    <version>1</version>
+    <category>Actor Messages Told</category>
+    <purpose>Points in time where actor messages are told (sent)</purpose>
+    <icon>Network</icon>
+    <create-table>
+      <id>actor-message-told-table</id>
+      <schema-ref>actor-message-told</schema-ref>
+    </create-table>
+    <graph>
+      <title>Messages: Told</title>
+      <lane>
+        <title>Told</title>
+        <table-ref>actor-message-told</table-ref>
+        <plot-templates>
+          <instance-by>actor-recipient-path</instance-by>
+          <label-format>%s</label-format>
+          <value-from>actor-message-type</value-from>
+          <label-from>actor-recipient-path</label-from>
+        </plot-templates>
+      </lane>
+    </graph>
+    <list>
+      <title>List: Messages (Told)</title>
+      <table-ref>actor-message-told</table-ref>
+      <column>timestamp</column>
+      <column>actor-sender-node</column>
+      <column>actor-sender-path</column>
+      <column>actor-recipient-node</column>
+      <column>actor-recipient-path</column>
+      <column>actor-message</column>
+      <column>actor-message-type</column>
+    </list>
+  </instrument>
+  <instrument>
+    <id>com.apple.actors.instrument.messages.asked</id>
+    <version>1</version>
+    <category>Actor Messages Asked</category>
+    <purpose>Analyze ask (request/response) interactions</purpose>
+    <icon>Network</icon>
+    <create-table>
+      <id>actor-asked-interval-table</id>
+      <schema-ref>actor-asked-interval</schema-ref>
+    </create-table>
+    <graph>
+      <title>Messages Asked</title>
+      <lane>
+        <title>Asked</title>
+        <table-ref>actor-asked-interval</table-ref>
+        <plot>
+          <value-from>duration</value-from>
+          <label-from>actor-ask-question</label-from>
+        </plot>
+      </lane>
+    </graph>
+    <list>
+      <title>List: Messages (Asked)</title>
+      <table-ref>actor-asked-interval</table-ref>
+      <column>start</column>
+      <column>duration</column>
+      <column>actor-sender-node</column>
+      <column>actor-sender-path</column>
+      <column>actor-recipient-node</column>
+      <column>actor-recipient-path</column>
+      <column>actor-ask-question-type</column>
+      <column>actor-ask-question</column>
+      <column>actor-ask-answer</column>
+      <column>actor-ask-answer-type</column>
+      <column>actor-error</column>
+      <column>actor-error-type</column>
+    </list>
+  </instrument>
+</package>

@@ -234,6 +234,43 @@ public struct ActorInstrumentsPackageDefinition {
             expression: "?message-type"
         )
 
+        static let askQuestion = Column(
+            mnemonic: "actor-ask-question",
+            title: "Question",
+            type: .string,
+            expression: "?question"
+        )
+        static let askQuestionType = Column(
+            mnemonic: "actor-ask-question-type",
+            title: "Question Type",
+            type: .string,
+            expression: "?question-type"
+        )
+        static let askAnswer = Column(
+            mnemonic: "actor-ask-answer",
+            title: "Answer",
+            type: .string,
+            expression: "?answer"
+        )
+        static let askAnswerType = Column(
+            mnemonic: "actor-ask-answer-type",
+            title: "Answer Type",
+            type: .string,
+            expression: "?answer-type"
+        )
+        static let askError = Column(
+            mnemonic: "actor-ask-answer",
+            title: "Error",
+            type: .string,
+            expression: "?error"
+        )
+        static let askErrorType = Column(
+            mnemonic: "actor-ask-error-type",
+            title: "Error Type",
+            type: .string,
+            expression: "?error-type"
+        )
+
         static let error = Column(
             mnemonic: "actor-error",
             title: "Error",
@@ -248,7 +285,8 @@ public struct ActorInstrumentsPackageDefinition {
         )
     }
 
-    public init() {}
+    public init() {
+    }
 
     public var packageDefinition: PackageDefinition {
         // TODO: move into Instrument once able to; limitation:
@@ -257,6 +295,11 @@ public struct ActorInstrumentsPackageDefinition {
         //            ^
         let tableActorLifecycleIntervals = Schemas.actorLifecycleInterval.createTable()
         let tableActorLifecycleSpawns = Schemas.actorLifecycleSpawn.createTable()
+        let tableActorMessageReceived = Instrument.CreateTable(Schemas.actorMessageReceived) {
+            TableAttribute(name: "target-recipient", value: Mnemonic("target-pid"))
+        }
+        let tableActorMessageTold = Instrument.CreateTable(Schemas.actorMessageTold)
+        let tableActorAskedInterval = Instrument.CreateTable(Schemas.actorAskedInterval)
 
         return PackageDefinition(
             id: packageID,
@@ -264,24 +307,20 @@ public struct ActorInstrumentsPackageDefinition {
             title: packageTitle,
             owner: Owner(name: "Konrad 'ktoso' Malawski", email: "ktoso@apple.com")
         ) {
-            // ==== ----------------------------------------------------------------------------------------------------
-            // MARK: Schemas
+            // ==== Schemas --------------------------------------------------------------------------------------------
 
             // lifecycle
-            // - spawn -> (stop/crash)
             Schemas.actorLifecycleInterval
             Schemas.actorLifecycleSpawn
 
-            // messages
-            // - received
+            // messages (tell)
             Schemas.actorMessageReceived
-            // - told
             Schemas.actorMessageTold
-            // - asked
+
+            // messages (ask)
             Schemas.actorAskedInterval
 
-            // ==== ----------------------------------------------------------------------------------------------------
-            // MARK: Instruments
+            // ==== Instruments ----------------------------------------------------------------------------------------
 
             Instrument(
                 id: lifecycleInstrumentID,
@@ -290,34 +329,31 @@ public struct ActorInstrumentsPackageDefinition {
                 purpose: "Monitor lifecycle of actors (start, stop, fail, restart etc.)",
                 icon: "Activity Monitor"
             ) {
-                // TODO: do this once functionBuilders can support it
-//                let tableActorLifecycleIntervals = Schemas.actorLifecycleInterval.createTable()
-//                let tableActorLifecycleSpawns = Schemas.actorLifecycleSpawn.createTable()
-
+                // --- tables ---
                 tableActorLifecycleIntervals
                 tableActorLifecycleSpawns
 
-                Instrument.Graph(title: "Lifecycles") {
-                    Instrument.Graph.Lane(
+                Graph(title: "Lifecycles") {
+                    Graph.Lane(
                         title: "Spawns Lane",
                         table: tableActorLifecycleSpawns
                     ) {
-                        Instrument.Graph.PlotTemplate(
+                        Graph.PlotTemplate(
                             instanceBy: "actor-path", // TODO: more well typed
                             valueFrom: "actor-path"
                         )
                     }
 
-                    Instrument.Graph.Lane(
-                            title: "Spawns Lane",
-                            table: tableActorLifecycleSpawns
+                    Graph.Lane(
+                        title: "Spawns Lane",
+                        table: tableActorLifecycleSpawns
                     ) {
-                        Instrument.Graph.PlotTemplate(
-                                instanceBy: "actor-path", // TODO: more well typed
-                                labelFormat: "%s",
-                                valueFrom: "actor-path",
-                                colorFrom: "actor-stop-reason-impact",
-                                labelFrom: "actor-path"
+                        Graph.PlotTemplate(
+                            instanceBy: Columns.actorPath, // TODO: more well typed
+                            labelFormat: "%s",
+                            valueFrom: "actor-path",
+                            colorFrom: "actor-stop-reason-impact",
+                            labelFrom: "actor-path"
                         )
                     }
                 }
@@ -326,24 +362,129 @@ public struct ActorInstrumentsPackageDefinition {
                     title: "Spawns",
                     table: tableActorLifecycleSpawns
                 ) {
-                    [
-                        "start",
-                        "duration",
-                        "actor-node",
-                        "actor-path",
-                    ]
+                    "start"
+                    "duration"
+                    Columns.actorNode
+                    Columns.actorPath
                 }
 
                 Instrument.List(
                     title: "Lifetimes",
                     table: tableActorLifecycleIntervals
                 ) {
-                    [
-                        "start",
-                        "duration",
-                        "actor-node",
-                        "actor-path",
-                    ]
+                    "start"
+                    "duration"
+                    Columns.actorNode
+                    Columns.actorPath
+                }
+            }
+
+            Instrument(
+                id: "com.apple.actors.instrument.messages.received",
+                title: "Actor Messages Received",
+                category: "Behavior",
+                purpose: "Marks points in time where messages are received",
+                icon: "Network"
+            ) {
+                Instrument.ImportParameter(fromScope: "trace", name: "target-pid")
+
+                // --- tables ---
+                tableActorMessageReceived
+
+                Graph(title: "Received") {
+                    Graph.Lane(title: "Received", table: tableActorMessageReceived) {
+                        Graph.PlotTemplate(
+                            instanceBy: Columns.recipientPath,
+                            labelFormat: "%s",
+                            valueFrom: Columns.messageType,
+                            labelFrom: Columns.recipientPath
+                        )
+                    }
+                }
+
+                Instrument.List(
+                    title: "List: Messages (Received)",
+                    table: tableActorMessageReceived
+                ) {
+                    "timestamp"
+                    Columns.senderNode
+                    Columns.senderPath
+                    Columns.recipientNode
+                    Columns.recipientPath
+                    Columns.message
+                    Columns.messageType
+                }
+            }
+
+            Instrument(
+                id: "com.apple.actors.instrument.messages.told", 
+                title: "Actor Messages Told",
+                category: "Behavior",
+                purpose: "Points in time where actor messages are told (sent)", 
+                icon: "Network"
+            ) {
+                // --- tables ---
+                tableActorMessageTold
+
+                Graph(title: "Messages: Told") { 
+                    Graph.Lane(title: "Told", table: tableActorMessageTold) { 
+                        Graph.PlotTemplate(
+                            instanceBy: Columns.recipientPath,
+                            labelFormat: "%s",
+                            valueFrom: Columns.messageType,
+                            labelFrom: Columns.recipientPath
+                        )
+
+                        // TODO: unlock once we have sender propagation
+//                        Graph.PlotTemplate(
+//                            instanceBy: Columns.senderPath,
+//                            labelFormat: "%s",
+//                            valueFrom: Columns.messageType,
+//                            valueFrom: Columns.senderPath
+//                        )
+                    }
+                }
+
+                Instrument.List(title: "List: Messages (Told)", table: tableActorMessageTold) { 
+                    "timestamp"
+                    Columns.senderNode
+                    Columns.senderPath
+                    Columns.recipientNode
+                    Columns.recipientPath
+                    Columns.message
+                    Columns.messageType
+                }
+            }
+
+            Instrument(
+                id: "com.apple.actors.instrument.messages.asked",
+                title: "Actor Messages Asked",
+                category: "Behavior",
+                purpose: "Analyze ask (request/response) interactions",
+                icon: "Network"
+            ) {
+                tableActorAskedInterval
+
+                Graph(title: "Messages Asked") {
+                    Graph.Lane(title: "Asked", table: tableActorAskedInterval) {
+                        Graph.Plot(valueFrom: "duration", labelFrom: Columns.askQuestion)
+                        // TODO: for the plot, severity from if it was a timeout or not
+                    }
+                }
+
+                List(title: "List: Messages (Asked)", table: tableActorAskedInterval) { 
+                    "start"
+                    "duration"
+                    Columns.senderNode
+                    Columns.senderPath
+                    Columns.recipientNode
+                    Columns.recipientPath
+                    Columns.askQuestionType
+                    Columns.askQuestion
+                    Columns.askAnswer
+                    Columns.askAnswerType
+                    Columns.error
+                    Columns.errorType
                 }
             }
         }

@@ -17,9 +17,22 @@
 import Foundation
 
 public typealias Instrument = PackageDefinition.Instrument
+public typealias Graph = PackageDefinition.Instrument.Graph
+public typealias List = PackageDefinition.Instrument.List
+
 public typealias Template = PackageDefinition.Template
 public typealias Augmentation = PackageDefinition.Augmentation
+public typealias Modeler = PackageDefinition.Modeler
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: PackageDefinition
+
+/// Corresponds to an Instruments.app PackageDefinition, as defined in:
+/// https://help.apple.com/instruments/developer/mac/current/#/dev13041708
+///
+/// Used to construct using plain, reusable, Swift instrument package definitions.
+///
+// TODO: This is work in progress and may be missing elements still
 public struct PackageDefinition: Encodable {
     var id: String
     var version: String
@@ -82,7 +95,7 @@ public protocol Schema: Encodable {
     /// A note that can be extracted for user's guide documentation
     var note: String? { get set }
 
-    var attribute: PackageDefinition.Attribute? { get set }
+    var attribute: SchemaAttribute? { get set }
 
     var subsystem: String { get set }
     var category: String { get set }
@@ -106,7 +119,7 @@ extension PackageDefinition {
         public var required: Bool?
         public var note: String?
 
-        public var attribute: Attribute?
+        public var attribute: SchemaAttribute?
 
         public var subsystem: String
         public var category: String
@@ -123,7 +136,7 @@ extension PackageDefinition {
             title: String,
             required: Bool? = nil,
             note: String? = nil,
-            attribute: Attribute? = nil,
+            attribute: SchemaAttribute? = nil,
             subsystem: String,
             category: String,
             name: String,
@@ -151,7 +164,7 @@ extension PackageDefinition {
             title: String,
             required: Bool? = nil,
             note: String? = nil,
-            attribute: Attribute? = nil,
+            attribute: SchemaAttribute? = nil,
             subsystem: String,
             category: String,
             name: String,
@@ -204,7 +217,7 @@ extension PackageDefinition {
         public var required: Bool?
         public var note: String?
 
-        public var attribute: Attribute?
+        public var attribute: SchemaAttribute?
 
         public var subsystem: String
         public var category: String
@@ -220,7 +233,7 @@ extension PackageDefinition {
             title: String,
             required: Bool? = nil,
             note: String? = nil,
-            attribute: Attribute? = nil,
+            attribute: SchemaAttribute? = nil,
             subsystem: String,
             category: String,
             name: String,
@@ -246,7 +259,7 @@ extension PackageDefinition {
             title: String,
             required: Bool? = nil,
             note: String? = nil,
-            attribute: Attribute? = nil,
+            attribute: SchemaAttribute? = nil,
             subsystem: String,
             category: String,
             name: String,
@@ -412,6 +425,12 @@ public struct Mnemonic: Encodable, ExpressibleByStringLiteral {
     }
 }
 
+extension String: MnemonicConvertible {
+    public func asMnemonic() -> Mnemonic {
+        .init(stringLiteral: self)
+    }
+}
+
 public struct ClipsExpression: Encodable, ExpressibleByStringLiteral {
     // TODO: String interpolation
     public let expression: String
@@ -424,8 +443,8 @@ public struct ClipsExpression: Encodable, ExpressibleByStringLiteral {
         self.expression = expression
     }
 
-    public static func mnemonic(_ mnemonic: Mnemonic) -> ClipsExpression {
-        .init(expression: mnemonic.render())
+    public static func mnemonic(_ mnemonic: MnemonicConvertible) -> ClipsExpression {
+        .init(expression: mnemonic.asMnemonic().render())
     }
 
     public var referencedMnemonics: [Mnemonic] {
@@ -442,16 +461,14 @@ public struct ClipsExpression: Encodable, ExpressibleByStringLiteral {
     }
 }
 
-extension PackageDefinition {
-    public struct Attribute: Encodable {
-        var name: String
-        var required: Bool
-        var note: String
-        var valuePattern: String
-    }
+public struct SchemaAttribute: Encodable {
+    var name: String
+    var required: Bool
+    var note: String
+    var valuePattern: String
 }
 
-public struct Column: Encodable, SchemaElementConvertible {
+public struct Column: Encodable, SchemaElementConvertible, MnemonicConvertible {
     public let mnemonic: Mnemonic
     public let title: String
     /// The type of data this column will hold.
@@ -477,6 +494,10 @@ public struct Column: Encodable, SchemaElementConvertible {
 
     public func asSchemaElement() -> SchemaElement {
         .column(self)
+    }
+
+    public func asMnemonic() -> Mnemonic {
+        self.mnemonic
     }
 }
 
@@ -621,6 +642,14 @@ extension PackageDefinition {
 
 extension PackageDefinition.Instrument {
     public struct ImportParameter: Encodable, InstrumentElementConvertible {
+        var fromScope: String // TODO: enum?
+        var name: Mnemonic
+
+        public init(fromScope: String, name: MnemonicConvertible) {
+            self.fromScope = fromScope
+            self.name = name.asMnemonic()
+        }
+
         public func asInstrumentElement() -> InstrumentElement {
             .importParameter(self)
         }
@@ -649,10 +678,26 @@ extension PackageDefinition.Instrument {
     public struct CreateTable: Encodable, InstrumentElementConvertible {
         public var id: String
         public var schemaRef: SchemaRef
+        public var attributes: [TableAttribute] = []
 
-        public init(_ schema: Schema) {
+        public init(
+            _ schema: Schema,
+            @TableAttributesBuilder _ builder: () -> TableAttributeElementConvertible = { () in TableAttributeElement.fragment([]) }
+        ) {
             self.id = "\(schema.id.name)-table"
             self.schemaRef = .schema(schema)
+            self.gather(builder())
+        }
+
+        private mutating func gather(_ element: TableAttributeElementConvertible) {
+            switch element.asTableAttributeElement() {
+            case .attribute(let element):
+                self.attributes.append(element)
+            case .fragment(let fragments):
+                for f in fragments {
+                    self.gather(f)
+                }
+            }
         }
 
         public func asInstrumentElement() -> InstrumentElement {
@@ -725,23 +770,6 @@ extension PackageDefinition.Instrument {
             public var plotTemplates: [PackageDefinition.Instrument.Graph.PlotTemplate] = []
             // public var histograms: [PackageDefinition.Instrument.Graph.Histogram] = []
             // public var histogramTemplates: [PackageDefinition.Instrument.Graph.HistogramTemplate] = []
-
-            // TODO: workaround for https://bugs.swift.org/browse/SR-11628
-//            public init(
-//                    title: String,
-//                    table: PackageDefinition.Instrument.CreateTable,
-//                    guide: String? = nil,
-//                    baseColor: String? = nil,
-//                    single: () -> GraphLaneElementConvertible
-//            ) {
-//                self.init(
-//                        title: title,
-//                        table: table,
-//                        guide: guide,
-//                        baseColor: baseColor,
-//                        { () in single().asGraphLaneElement() }
-//                )
-//            }
 
             public init(
                 title: String,
@@ -832,27 +860,35 @@ extension PackageDefinition.Instrument {
         ///
         /// - SeeAlso: https://help.apple.com/instruments/developer/mac/current/#/dev326238583
         public struct Plot: Encodable, GraphLaneElementConvertible {
-            // public var slice*
+            // public var slice* // TODO:
 
-            // public var best-for-resolution{0, 3}
+            // public var best-for-resolution{0, 3} // TODO:
 
             /// The column where the value of the graph will be pulled.
             public var valueFrom: Mnemonic
 
-            // public var color-from?
+            // public var color-from? // TODO:
 
-            // public var priority-from?
+            // public var priority-from? // TODO:
 
             /// The column where the label text on hover-over should be pulled.
             public var labelFrom: Mnemonic?
 
             // public var (qualified-by | disable-implicit-qualifier)?
 
-            // public var qualifier-treatment*
+            // public var qualifier-treatment* // TODO:
 
-            // public var containment-level-from?
+            // public var containment-level-from? // TODO:
 
-            // public var (peer-group | ignore-peer-group)?
+            // public var (peer-group | ignore-peer-group)? // TODO: 
+
+            public init(
+                valueFrom: MnemonicConvertible,
+                labelFrom: MnemonicConvertible? = nil
+            ) {
+                self.valueFrom = valueFrom.asMnemonic()
+                self.labelFrom = labelFrom?.asMnemonic()
+            }
 
             public func asGraphLaneElement() -> GraphLaneElement {
                 .plot(self)
@@ -891,17 +927,17 @@ extension PackageDefinition.Instrument {
             // (peer-group | ignore-peer-group)?
 
             public init(
-                instanceBy: Mnemonic,
+                instanceBy: MnemonicConvertible,
                 labelFormat: String? = nil,
-                valueFrom: Mnemonic,
-                colorFrom: Mnemonic? = nil,
-                labelFrom: Mnemonic? = nil
+                valueFrom: MnemonicConvertible,
+                colorFrom: MnemonicConvertible? = nil,
+                labelFrom: MnemonicConvertible? = nil
             ) {
-                self.instanceBy = instanceBy
+                self.instanceBy = instanceBy.asMnemonic()
                 self.labelFormat = labelFormat
-                self.valueFrom = valueFrom
-                self.colorFrom = colorFrom
-                self.labelFrom = labelFrom
+                self.valueFrom = valueFrom.asMnemonic()
+                self.colorFrom = colorFrom?.asMnemonic()
+                self.labelFrom = labelFrom?.asMnemonic()
             }
 
             public func asGraphLaneElement() -> GraphLaneElement {
@@ -918,11 +954,11 @@ extension PackageDefinition.Instrument {
         public init(
             title: String,
             table: PackageDefinition.Instrument.CreateTable,
-            columns: () -> [Mnemonic]
+            @ColumnsBuilder columns: () -> [MnemonicConvertible]
         ) {
             self.title = title
             self.tableRef = .init(table)
-            self.columns = columns()
+            self.columns = columns().map { $0.asMnemonic() }
             precondition(self.columns.count > 0, "List MUST have at least one column: \(self)")
         }
 
@@ -1102,6 +1138,32 @@ public enum EngineeringType: String, Codable {
     case osLogMetadata = "os-log-metadata"
     case metadata
     case uint64Array = "uint64-array"
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Modeler
+
+extension PackageDefinition {
+    public struct Modeler {
+        public var id: String
+        public var title: String
+        public var owner: Owner?
+        public var purpose: String
+        public var modeler: ProdSystemOrBuiltIn
+
+        public var instanceParameters: [InstanceParameter]
+        public var output: [Output] // TODO: at least one
+
+        // (production-system | built-in)
+        public enum ProdSystemOrBuiltIn: String, Equatable, Encodable {
+            case productionSystem
+            case builtIn
+        }
+
+        public struct InstanceParameter {}
+
+        public struct Output {}
+    }
 }
 
 #endif

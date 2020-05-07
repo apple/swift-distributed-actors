@@ -705,7 +705,7 @@
 
     <instrument>
         <id>com.apple.actors.instrument.messages.asked</id>
-        <title>Actor Messages Asked</title>
+        <title>Actor Messages: Asked</title>
         <category>Behavior</category>
         <purpose>Analyze ask (request/response) interactions</purpose>
         <icon>Network</icon>
@@ -741,8 +741,10 @@
             <column>actor-sender-path</column>
             <column>actor-recipient-node</column>
             <column>actor-recipient-path</column>
+
             <column>actor-ask-question-type</column>
             <column>actor-ask-question</column>
+
             <column>actor-ask-answer</column>
             <column>actor-ask-error</column>
         </list>

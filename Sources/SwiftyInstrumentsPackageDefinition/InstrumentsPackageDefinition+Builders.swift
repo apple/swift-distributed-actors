@@ -18,12 +18,6 @@ public protocol PackageElementConvertible {
     func asPackageElement() -> PackageElement
 }
 
-extension PackageElement: PackageElementConvertible {
-    public func asPackageElement() -> PackageElement {
-        self
-    }
-}
-
 extension Array: PackageElementConvertible where Element: PackageElementConvertible {
     public func asPackageElement() -> PackageElement {
         .fragment(map {
@@ -58,11 +52,15 @@ public struct PackageDefinitionBuilder {
     }
 }
 
-public enum PackageElement: Encodable {
+public enum PackageElement: Encodable, PackageElementConvertible {
     case schema(Schema)
     case instrument(Instrument)
     case template(Template)
     case fragment([PackageElement])
+
+    public func asPackageElement() -> PackageElement {
+        self
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -111,6 +109,120 @@ public struct SchemaBuilder {
 
     public static func buildEither(second: SchemaElement) -> SchemaElement {
         second
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Mnemonic helpers
+
+public protocol MnemonicConvertible {
+    func asMnemonic() -> Mnemonic
+}
+
+@_functionBuilder
+public struct ColumnsBuilder {
+    public static func buildBlock(_ components: MnemonicConvertible...) -> [MnemonicConvertible] {
+        components
+    }
+
+    public static func buildIf(_ component: MnemonicConvertible?) -> [MnemonicConvertible] {
+        if let c = component {
+            return [c]
+        } else {
+            return []
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Attribute
+
+public enum TableAttributeElement: TableAttributeElementConvertible {
+    case attribute(TableAttribute)
+    case fragment([TableAttributeElement])
+
+    public func asTableAttributeElement() -> TableAttributeElement {
+        self
+    }
+}
+
+public struct TableAttribute: Encodable, TableAttributeElementConvertible {
+    var name: String
+    var value: Value
+
+    public init(name: String, value: Bool) {
+        self.name = name
+        self.value = .bool(value)
+    }
+
+    public init(name: String, value: Int) {
+        self.name = name
+        self.value = .int(value)
+    }
+
+    public init(name: String, value: String) {
+        self.name = name
+        self.value = .string(value)
+    }
+
+    public init(name: String, value: Mnemonic) {
+        self.name = name
+        self.value = .string(value.render())
+    }
+
+    public init(name: String, value: [Int]) {
+        self.name = name
+        self.value = .arrayInt(value)
+    }
+
+    public init(name: String, value: [String]) {
+        self.name = name
+        self.value = .arrayString(value)
+    }
+
+    public func asTableAttributeElement() -> TableAttributeElement {
+        .attribute(self)
+    }
+
+    enum Value {
+        case bool(Bool)
+        case int(Int)
+        case string(String)
+        case arrayInt([Int])
+        case arrayString([String])
+    }
+}
+
+public protocol TableAttributeElementConvertible {
+    func asTableAttributeElement() -> TableAttributeElement
+}
+
+extension Array: TableAttributeElementConvertible where Element: TableAttributeElementConvertible {
+    public func asTableAttributeElement() -> TableAttributeElement {
+        .fragment(map { $0.asTableAttributeElement() })
+    }
+}
+
+@_functionBuilder
+public struct TableAttributesBuilder {
+    public static func buildBlock(_ components: TableAttributeElementConvertible...) -> TableAttributeElement {
+        .fragment(components.map { $0.asTableAttributeElement() })
+    }
+
+    public static func buildIf(_ component: TableAttribute?) -> TableAttributeElement {
+        if let c = component {
+            return TableAttributeElement.attribute(c)
+        } else {
+            return TableAttributeElement.fragment([])
+        }
+    }
+
+    public static func buildEither(first: TableAttribute) -> TableAttributeElement {
+        .attribute(first)
+    }
+
+    public static func buildEither(second: TableAttribute) -> TableAttributeElement {
+        .attribute(second)
     }
 }
 
