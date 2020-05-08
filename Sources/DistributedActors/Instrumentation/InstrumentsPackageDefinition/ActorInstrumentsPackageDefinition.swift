@@ -31,6 +31,149 @@ fileprivate let categoryMessages = "Messages"
 fileprivate let lifecycleInstrumentID = "com.apple.actors.instrument.lifecycles"
 fileprivate let lifecycleInstrumentCategory = "Behavior"
 
+extension Column {
+    static let actorNode = Column(
+        mnemonic: "actor-node",
+        title: "Actor Node",
+        type: .string,
+        expression: .mnemonic("node")
+    )
+
+    static let actorPath = Column(
+        mnemonic: "actor-path",
+        title: "Actor Path",
+        type: .string,
+        expression: .mnemonic("path")
+    )
+
+    static let actorAddress = Column(
+        mnemonic: "actor-address",
+        title: "Actor Address",
+        type: .string,
+        expression: "(str-cat ?node ?path)"
+    )
+
+    static let actorStopReason = Column(
+        mnemonic: "actor-stop-reason",
+        title: "Stop Reason",
+        type: .string,
+        expression: .mnemonic("reason")
+    )
+
+    /// If the reason we stopped is `stop` it was graceful, otherwise it was a crash
+    static let actorStopReasonImpact = Column(
+        mnemonic: "actor-stop-reason-impact",
+        title: "Stop Reason (Impact)",
+        type: .string,
+        expression:
+        """
+        (if (eq ?reason "stop") then "Low" else "High")
+        """
+    )
+
+    static let recipientNode = Column(
+        mnemonic: "actor-recipient-node",
+        title: "Recipient Node",
+        type: .string,
+        expression: "?recipient-node"
+    )
+    static let recipientPath = Column(
+        mnemonic: "actor-recipient-path",
+        title: "Recipient Path",
+        type: .string,
+        expression: "?recipient-path"
+    )
+    static let recipientAddress = Column(
+        mnemonic: "actor-recipient-address",
+        title: "Recipient Address",
+        type: .string,
+        expression: "(str-cat ?recipient-node ?recipient-path)"
+    )
+
+    static let senderNode = Column(
+        mnemonic: "actor-sender-node",
+        title: "Sender Node",
+        type: .string,
+        expression: "?sender-node"
+    )
+    static let senderPath = Column(
+        mnemonic: "actor-sender-path",
+        title: "Sender Path",
+        type: .string,
+        expression: "?sender-path"
+    )
+    static let senderAddress = Column(
+        mnemonic: "actor-sender-address",
+        title: "Sender Address",
+        type: .string,
+        expression: "(str-cat ?sender-node ?sender-path)"
+    )
+
+    static let message = Column(
+        mnemonic: "actor-message",
+        title: "Message",
+        type: .string,
+        expression: "?message"
+    )
+    static let messageType = Column(
+        mnemonic: "actor-message-type",
+        title: "Message Type",
+        type: .string,
+        expression: "?message-type"
+    )
+
+    static let askQuestion = Column(
+        mnemonic: "actor-ask-question",
+        title: "Question",
+        type: .string,
+        expression: "?question"
+    )
+    static let askQuestionType = Column(
+        mnemonic: "actor-ask-question-type",
+        title: "Question Type",
+        type: .string,
+        expression: "?question-type"
+    )
+    static let askAnswer = Column(
+        mnemonic: "actor-ask-answer",
+        title: "Answer",
+        type: .string,
+        expression: "?answer"
+    )
+    static let askAnswerType = Column(
+        mnemonic: "actor-ask-answer-type",
+        title: "Answer Type",
+        type: .string,
+        expression: "?answer-type"
+    )
+    static let askError = Column(
+        mnemonic: "actor-ask-answer",
+        title: "Error",
+        type: .string,
+        expression: "?error"
+    )
+    static let askErrorType = Column(
+        mnemonic: "actor-ask-error-type",
+        title: "Error Type",
+        type: .string,
+        expression: "?error-type"
+    )
+
+    static let error = Column(
+        mnemonic: "actor-error",
+        title: "Error",
+        type: .string,
+        expression: "?error"
+    )
+    static let errorType = Column(
+        mnemonic: "actor-error-type",
+        title: "Error Type",
+        type: .string,
+        expression: "?error-type"
+    )
+
+}
+
 @available(OSX 10.14, *)
 @available(iOS 10.0, *)
 @available(tvOS 10.0, *)
@@ -48,13 +191,13 @@ public struct ActorInstrumentsPackageDefinition {
             startPattern: OSSignpostActorInstrumentation.actorSpawnedStartFormat,
             endPattern: OSSignpostActorInstrumentation.actorSpawnedEndFormat
         ) {
-            Columns.actorAddress
-            Columns.actorNode
-            Columns.actorPath
+            Column.actorAddress
+            Column.actorNode
+            Column.actorPath
             // is system
             // is user
-            Columns.actorStopReason
-            Columns.actorStopReasonImpact
+            Column.actorStopReason
+            Column.actorStopReasonImpact
         }
 
         static let actorLifecycleSpawn = PackageDefinition.OSSignpostPointSchema(
@@ -67,9 +210,9 @@ public struct ActorInstrumentsPackageDefinition {
 
             pattern: OSSignpostActorInstrumentation.actorSpawnedStartFormat
         ) {
-            Columns.actorNode
-            Columns.actorPath
-            Columns.actorAddress
+            Column.actorNode
+            Column.actorPath
+            Column.actorAddress
         }
 
         static let actorMessageReceived = PackageDefinition.OSSignpostPointSchema(
@@ -82,16 +225,16 @@ public struct ActorInstrumentsPackageDefinition {
 
             pattern: OSSignpostActorInstrumentation.actorReceivedEventPattern
         ) {
-            Columns.recipientNode
-            Columns.recipientPath
-            Columns.recipientAddress
+            Column.recipientNode
+            Column.recipientPath
+            Column.recipientAddress
 
-            Columns.senderNode
-            Columns.senderPath
-            Columns.senderAddress
+            Column.senderNode
+            Column.senderPath
+            Column.senderAddress
 
-            Columns.message
-            Columns.messageType
+            Column.message
+            Column.messageType
         }
 
         static let actorMessageTold = PackageDefinition.OSSignpostPointSchema(
@@ -104,16 +247,16 @@ public struct ActorInstrumentsPackageDefinition {
 
             pattern: OSSignpostActorInstrumentation.actorToldEventPattern
         ) {
-            Columns.recipientNode
-            Columns.recipientPath
-            Columns.recipientAddress
+            Column.recipientNode
+            Column.recipientPath
+            Column.recipientAddress
 
-            Columns.senderNode
-            Columns.senderPath
-            Columns.senderAddress
+            Column.senderNode
+            Column.senderPath
+            Column.senderAddress
 
-            Columns.message
-            Columns.messageType
+            Column.message
+            Column.messageType
         }
 
         static let actorAskedInterval = PackageDefinition.OSSignpostIntervalSchema(
@@ -127,166 +270,23 @@ public struct ActorInstrumentsPackageDefinition {
             startPattern: OSSignpostActorInstrumentation.actorAskedEventPattern,
             endPattern: OSSignpostActorInstrumentation.actorAskRepliedEventPattern
         ) {
-            Columns.recipientNode
-            Columns.recipientPath
-            Columns.recipientAddress
+            Column.recipientNode
+            Column.recipientPath
+            Column.recipientAddress
 
-            Columns.senderNode
-            Columns.senderPath
-            Columns.senderAddress
+            Column.senderNode
+            Column.senderPath
+            Column.senderAddress
 
-            Columns.message
-            Columns.messageType
+            Column.message
+            Column.messageType
 
-            Columns.error
-            Columns.errorType
+            Column.error
+            Column.errorType
         }
     }
 
-    struct Columns {
-        static let actorNode = Column(
-            mnemonic: "actor-node",
-            title: "Actor Node",
-            type: .string,
-            expression: .mnemonic("node")
-        )
-
-        static let actorPath = Column(
-            mnemonic: "actor-path",
-            title: "Actor Path",
-            type: .string,
-            expression: .mnemonic("path")
-        )
-
-        static let actorAddress = Column(
-            mnemonic: "actor-address",
-            title: "Actor Address",
-            type: .string,
-            expression: "(str-cat ?node ?path)"
-        )
-
-        static let actorStopReason = Column(
-            mnemonic: "actor-stop-reason",
-            title: "Stop Reason",
-            type: .string,
-            expression: .mnemonic("reason")
-        )
-
-        /// If the reason we stopped is `stop` it was graceful, otherwise it was a crash
-        static let actorStopReasonImpact = Column(
-            mnemonic: "actor-stop-reason-impact",
-            title: "Stop Reason (Impact)",
-            type: .string,
-            expression:
-            """
-            (if (eq ?reason "stop") then "Low" else "High")
-            """
-        )
-
-        static let recipientNode = Column(
-            mnemonic: "actor-recipient-node",
-            title: "Recipient Node",
-            type: .string,
-            expression: "?recipient-node"
-        )
-        static let recipientPath = Column(
-            mnemonic: "actor-recipient-path",
-            title: "Recipient Path",
-            type: .string,
-            expression: "?recipient-path"
-        )
-        static let recipientAddress = Column(
-            mnemonic: "actor-recipient-address",
-            title: "Recipient Address",
-            type: .string,
-            expression: "(str-cat ?recipient-node ?recipient-path)"
-        )
-
-        static let senderNode = Column(
-            mnemonic: "actor-sender-node",
-            title: "Sender Node",
-            type: .string,
-            expression: "?sender-node"
-        )
-        static let senderPath = Column(
-            mnemonic: "actor-sender-path",
-            title: "Sender Path",
-            type: .string,
-            expression: "?sender-path"
-        )
-        static let senderAddress = Column(
-            mnemonic: "actor-sender-address",
-            title: "Sender Address",
-            type: .string,
-            expression: "(str-cat ?sender-node ?sender-path)"
-        )
-
-        static let message = Column(
-            mnemonic: "actor-message",
-            title: "Message",
-            type: .string,
-            expression: "?message"
-        )
-        static let messageType = Column(
-            mnemonic: "actor-message-type",
-            title: "Message Type",
-            type: .string,
-            expression: "?message-type"
-        )
-
-        static let askQuestion = Column(
-            mnemonic: "actor-ask-question",
-            title: "Question",
-            type: .string,
-            expression: "?question"
-        )
-        static let askQuestionType = Column(
-            mnemonic: "actor-ask-question-type",
-            title: "Question Type",
-            type: .string,
-            expression: "?question-type"
-        )
-        static let askAnswer = Column(
-            mnemonic: "actor-ask-answer",
-            title: "Answer",
-            type: .string,
-            expression: "?answer"
-        )
-        static let askAnswerType = Column(
-            mnemonic: "actor-ask-answer-type",
-            title: "Answer Type",
-            type: .string,
-            expression: "?answer-type"
-        )
-        static let askError = Column(
-            mnemonic: "actor-ask-answer",
-            title: "Error",
-            type: .string,
-            expression: "?error"
-        )
-        static let askErrorType = Column(
-            mnemonic: "actor-ask-error-type",
-            title: "Error Type",
-            type: .string,
-            expression: "?error-type"
-        )
-
-        static let error = Column(
-            mnemonic: "actor-error",
-            title: "Error",
-            type: .string,
-            expression: "?error"
-        )
-        static let errorType = Column(
-            mnemonic: "actor-error-type",
-            title: "Error Type",
-            type: .string,
-            expression: "?error-type"
-        )
-    }
-
-    public init() {
-    }
+    public init() {}
 
     public var packageDefinition: PackageDefinition {
         // TODO: move into Instrument once able to; limitation:
@@ -349,7 +349,7 @@ public struct ActorInstrumentsPackageDefinition {
                         table: tableActorLifecycleSpawns
                     ) {
                         Graph.PlotTemplate(
-                            instanceBy: Columns.actorPath, // TODO: more well typed
+                            instanceBy: Column.actorPath, // TODO: more well typed
                             labelFormat: "%s",
                             valueFrom: "actor-path",
                             colorFrom: "actor-stop-reason-impact",
@@ -364,8 +364,8 @@ public struct ActorInstrumentsPackageDefinition {
                 ) {
                     "start"
                     "duration"
-                    Columns.actorNode
-                    Columns.actorPath
+                    Column.actorNode
+                    Column.actorPath
                 }
 
                 Instrument.List(
@@ -374,8 +374,8 @@ public struct ActorInstrumentsPackageDefinition {
                 ) {
                     "start"
                     "duration"
-                    Columns.actorNode
-                    Columns.actorPath
+                    Column.actorNode
+                    Column.actorPath
                 }
             }
 
@@ -394,10 +394,10 @@ public struct ActorInstrumentsPackageDefinition {
                 Graph(title: "Received") {
                     Graph.Lane(title: "Received", table: tableActorMessageReceived) {
                         Graph.PlotTemplate(
-                            instanceBy: Columns.recipientPath,
+                            instanceBy: Column.recipientPath,
                             labelFormat: "%s",
-                            valueFrom: Columns.messageType,
-                            labelFrom: Columns.recipientPath
+                            valueFrom: Column.messageType,
+                            labelFrom: Column.recipientPath
                         )
                     }
                 }
@@ -407,52 +407,52 @@ public struct ActorInstrumentsPackageDefinition {
                     table: tableActorMessageReceived
                 ) {
                     "timestamp"
-                    Columns.senderNode
-                    Columns.senderPath
-                    Columns.recipientNode
-                    Columns.recipientPath
-                    Columns.message
-                    Columns.messageType
+                    Column.senderNode
+                    Column.senderPath
+                    Column.recipientNode
+                    Column.recipientPath
+                    Column.message
+                    Column.messageType
                 }
             }
 
             Instrument(
-                id: "com.apple.actors.instrument.messages.told", 
+                id: "com.apple.actors.instrument.messages.told",
                 title: "Actor Messages Told",
                 category: "Behavior",
-                purpose: "Points in time where actor messages are told (sent)", 
+                purpose: "Points in time where actor messages are told (sent)",
                 icon: "Network"
             ) {
                 // --- tables ---
                 tableActorMessageTold
 
-                Graph(title: "Messages: Told") { 
-                    Graph.Lane(title: "Told", table: tableActorMessageTold) { 
+                Graph(title: "Messages: Told") {
+                    Graph.Lane(title: "Told", table: tableActorMessageTold) {
                         Graph.PlotTemplate(
-                            instanceBy: Columns.recipientPath,
+                            instanceBy: .recipientPath,
                             labelFormat: "%s",
-                            valueFrom: Columns.messageType,
-                            labelFrom: Columns.recipientPath
+                            valueFrom: .messageType,
+                            labelFrom: .recipientPath
                         )
 
                         // TODO: unlock once we have sender propagation
 //                        Graph.PlotTemplate(
-//                            instanceBy: Columns.senderPath,
+//                            instanceBy: Column.senderPath,
 //                            labelFormat: "%s",
-//                            valueFrom: Columns.messageType,
-//                            valueFrom: Columns.senderPath
+//                            valueFrom: Column.messageType,
+//                            valueFrom: Column.senderPath
 //                        )
                     }
                 }
 
-                Instrument.List(title: "List: Messages (Told)", table: tableActorMessageTold) { 
+                Instrument.List(title: "List: Messages (Told)", table: tableActorMessageTold) {
                     "timestamp"
-                    Columns.senderNode
-                    Columns.senderPath
-                    Columns.recipientNode
-                    Columns.recipientPath
-                    Columns.message
-                    Columns.messageType
+                    Column.senderNode
+                    Column.senderPath
+                    Column.recipientNode
+                    Column.recipientPath
+                    Column.message
+                    Column.messageType
                 }
             }
 
@@ -467,25 +467,35 @@ public struct ActorInstrumentsPackageDefinition {
 
                 Graph(title: "Messages Asked") {
                     Graph.Lane(title: "Asked", table: tableActorAskedInterval) {
-                        Graph.Plot(valueFrom: "duration", labelFrom: Columns.askQuestion)
+                        Graph.Plot(valueFrom: "duration", labelFrom: Column.askQuestion)
                         // TODO: for the plot, severity from if it was a timeout or not
                     }
                 }
 
-                List(title: "List: Messages (Asked)", table: tableActorAskedInterval) { 
+                let askedList = List(title: "List: Messages (Asked)", table: tableActorAskedInterval) {
                     "start"
                     "duration"
-                    Columns.senderNode
-                    Columns.senderPath
-                    Columns.recipientNode
-                    Columns.recipientPath
-                    Columns.askQuestionType
-                    Columns.askQuestion
-                    Columns.askAnswer
-                    Columns.askAnswerType
-                    Columns.error
-                    Columns.errorType
+                    Column.senderNode
+                    Column.senderPath
+                    Column.recipientNode
+                    Column.recipientPath
+                    Column.askQuestionType
+                    Column.askQuestion
+                    Column.askAnswer
+                    Column.askAnswerType
+                    Column.error
+                    Column.errorType
                 }
+                askedList
+
+                Aggregation(
+                    title: "Summary: By Message Type",
+                    table: tableActorAskedInterval,
+                    visitOnFocus: askedList,
+                    columns: [
+                        .count(.senderNode),
+                    ]
+                )
             }
         }
     }

@@ -424,5 +424,13 @@
       <column>actor-error</column>
       <column>actor-error-type</column>
     </list>
+    <aggregation>
+      <title>Summary: By Message Type</title>
+      <table-ref>actor-asked-interval</table-ref>
+      <visit-on-focus>List: Messages (Asked)</visit-on-focus>
+      <column>
+        <count>actor-sender-node</count>
+      </column>
+    </aggregation>
   </instrument>
 </package>

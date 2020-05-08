@@ -96,6 +96,8 @@ extension Instrument {
 
         case graphs = "graph"
         case lists = "list"
+        case aggregations = "aggregation"
+
         case engineeringTypeTrack = "engineering-type-track"
     }
 
@@ -114,6 +116,7 @@ extension Instrument {
 
         try container.encode(self.graphs, forKey: .graphs)
         try container.encode(self.lists, forKey: .lists)
+        try container.encode(self.aggregations, forKey: .aggregations)
 
         try container.encode(self.engineeringTypeTracks, forKey: .engineeringTypeTrack)
     }
@@ -128,6 +131,7 @@ extension InstrumentElement {
 
         case graph
         case list
+        case aggregation
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -147,6 +151,8 @@ extension InstrumentElement {
             try container.encode(element, forKey: .graph)
         case .list(let element):
             try container.encode(element, forKey: .list)
+        case .aggregation(let element):
+            try container.encode(element, forKey: .aggregation)
 
         case .fragment(let elements):
             fatalError("can't encode elements: \(elements)")
@@ -165,7 +171,7 @@ extension PackageDefinition.Instrument.CreateTable {
     public enum CodingKeys: String, CodingKey {
         case id
         case schemaRef = "schema-ref"
-        case attribute = "attribute"
+        case attribute
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -356,9 +362,95 @@ extension PackageDefinition.Instrument.List {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+
         try container.encode(self.title, forKey: .title)
         try container.encode(self.tableRef, forKey: .tableRef)
         try container.encode(self.columns, forKey: .columns)
+    }
+}
+
+extension PackageDefinition.Instrument.Aggregation {
+    public enum CodingKeys: String, CodingKey {
+        case title
+        case tableRef = "table-ref"
+        case slice
+        case emptyContentSuggestion = "empty-content-suggestion"
+        case guide
+        case hierarchy
+        case visitOnFocus = "visit-on-focus"
+        case graphsOnLane = "graph-on-lane"
+        case columns = "column"
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.tableRef, forKey: .tableRef)
+        try container.encodeIfPresent(self.emptyContentSuggestion, forKey: .emptyContentSuggestion)
+        try container.encode(self.visitOnFocus, forKey: .visitOnFocus)
+        try container.encode(self.columns, forKey: .columns) // TODO: render them specially, just the names
+        try container.encode(self.columnsHidden, forKey: .columns)
+    }
+}
+
+extension PackageDefinition.Instrument.Aggregation.AggregationColumn {
+    public enum CodingKeys: String, CodingKey {
+        case chooseAny = "choose-any"
+        case chooseUnique = "choose-unique"
+        case count
+        case sum
+        case min
+        case max
+        case average
+        case stdDev = "std-dev"
+        case range
+        case percentOfCapacity = "percent-of-capacity"
+
+        case title
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .chooseAny(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .chooseAny)
+        case .chooseUnique(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .chooseUnique)
+        case .count(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .count)
+        case .sum(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .sum)
+        case .min(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .min)
+        case .max(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .max)
+        case .average(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .average)
+        case .stdDev(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .stdDev)
+        case .range(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .range)
+        case .percentOfCapacity(let title, let column):
+            // FIXME: how to encode title?
+            try container.encode(column.mnemonic.name, forKey: .percentOfCapacity)
+        }
+    }
+}
+
+extension PackageDefinition.Instrument.Aggregation.VisitOnFocus {
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(self.detailViewTitle)
     }
 }
 

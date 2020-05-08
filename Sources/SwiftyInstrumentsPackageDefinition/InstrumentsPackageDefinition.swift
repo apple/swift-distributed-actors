@@ -19,6 +19,7 @@ import Foundation
 public typealias Instrument = PackageDefinition.Instrument
 public typealias Graph = PackageDefinition.Instrument.Graph
 public typealias List = PackageDefinition.Instrument.List
+public typealias Aggregation = PackageDefinition.Instrument.Aggregation
 
 public typealias Template = PackageDefinition.Template
 public typealias Augmentation = PackageDefinition.Augmentation
@@ -557,12 +558,12 @@ extension PackageDefinition {
         public var createTables: [Instrument.CreateTable]
         //    <id>actor-lifecycle-intervals</id>
         //    <schema-ref>actor-lifecycle-interval</schema-ref>
-        //    <!--
+        //
         //    <attribute>
         //    <name>include-system-actors</name>
         //    <parameter-ref>?includeSystemActors</parameter-ref>
         //    </attribute>
-        //    -->
+        //
         //    </create-table>
         //    <create-table>
         //    <id>actor-lifecycle-spawns</id>
@@ -578,6 +579,9 @@ extension PackageDefinition {
         ///
         /// There can be several.
         public var lists: [Instrument.List]
+
+        /// Creates an aggregate view (e.g. summary with totals and averages) in the detail area.
+        public var aggregations: [Instrument.Aggregation]
 
         /// Defines engineering type data track data source.
         /// When this Instrument is present in the trace document,
@@ -606,6 +610,7 @@ extension PackageDefinition {
 
             self.graphs = []
             self.lists = []
+            self.aggregations = []
             self.engineeringTypeTracks = []
 
             self.collect(builder())
@@ -626,6 +631,8 @@ extension PackageDefinition {
                 self.graphs.append(element)
             case .list(let element):
                 self.lists.append(element)
+            case .aggregation(let element):
+                self.aggregations.append(element)
 
             case .fragment(let elements):
                 elements.forEach { el in
@@ -880,7 +887,7 @@ extension PackageDefinition.Instrument {
 
             // public var containment-level-from? // TODO:
 
-            // public var (peer-group | ignore-peer-group)? // TODO: 
+            // public var (peer-group | ignore-peer-group)? // TODO:
 
             public init(
                 valueFrom: MnemonicConvertible,
@@ -940,6 +947,21 @@ extension PackageDefinition.Instrument {
                 self.labelFrom = labelFrom?.asMnemonic()
             }
 
+            // TODO need a lot of overloads here since any of the mnemonic convertibles may be a Column for the nice .syntax
+            public init(
+                instanceBy: Column,
+                labelFormat: String? = nil,
+                valueFrom: Column,
+                colorFrom: Column? = nil,
+                labelFrom: Column? = nil
+            ) {
+                self.instanceBy = instanceBy.asMnemonic()
+                self.labelFormat = labelFormat
+                self.valueFrom = valueFrom.asMnemonic()
+                self.colorFrom = colorFrom?.asMnemonic()
+                self.labelFrom = labelFrom?.asMnemonic()
+            }
+
             public func asGraphLaneElement() -> GraphLaneElement {
                 .plotTemplate(self)
             }
@@ -967,6 +989,131 @@ extension PackageDefinition.Instrument {
         }
     }
 
+    /// Creates an aggregate view (e.g. summary with totals and averages) in the detail area.
+    public struct Aggregation: Encodable, InstrumentElementConvertible {
+        public var title: String
+        public var tableRef: TableRef
+//        public var slice*
+        /// When a list is empty, this empty content suggestion helps explain why.
+        ///
+        /// - Example: Call kdebug_signpost() to report points of interest within your application
+        public var emptyContentSuggestion: String?
+//        public var guide?
+//        public var hierarchy?
+        public var visitOnFocus: VisitOnFocus
+//        public var graph-on-lane*
+        public var columns: [AggregationColumn]
+        public var columnsHidden: [Column]
+
+        public func asInstrumentElement() -> InstrumentElement {
+            .aggregation(self)
+        }
+
+        public init(
+            title: String,
+            table: PackageDefinition.Instrument.CreateTable,
+            emptyContentSuggestion: String? = nil,
+            visitOnFocus viewOnFocusTarget: VisitOnFocusTarget,
+            columns: [AggregationColumn],
+            columnsHidden: [Column] = []
+        ) {
+            self.title = title
+            self.tableRef = TableRef(table)
+            self.emptyContentSuggestion = emptyContentSuggestion
+            self.visitOnFocus = VisitOnFocus(viewOnFocusTarget)
+            self.columns = columns
+            self.columnsHidden = columnsHidden
+        }
+
+        public enum AggregationColumn: Encodable {
+            case chooseAny(title: String?, column: Column)
+            case chooseUnique(title: String?, column: Column)
+            case count(title: String?, column: Column)
+            case sum(title: String?, column: Column)
+            case min(title: String?, column: Column)
+            case max(title: String?, column: Column)
+            case average(title: String?, column: Column)
+            case stdDev(title: String?, column: Column)
+            case range(title: String?, column: Column)
+            case percentOfCapacity(title: String?, column: Column)
+
+            public static func chooseAny(_ column: Column) -> AggregationColumn {
+                .chooseAny(title: nil, column: column)
+            }
+
+            public static func chooseUnique(_ column: Column) -> AggregationColumn {
+                .chooseUnique(title: nil, column: column)
+            }
+
+            public static func count(_ column: Column) -> AggregationColumn {
+                .count(title: nil, column: column)
+            }
+
+            public static func sum(_ column: Column) -> AggregationColumn {
+                .sum(title: nil, column: column)
+            }
+
+            public static func min(_ column: Column) -> AggregationColumn {
+                .min(title: nil, column: column)
+            }
+
+            public static func max(_ column: Column) -> AggregationColumn {
+                .max(title: nil, column: column)
+            }
+
+            public static func average(_ column: Column) -> AggregationColumn {
+                .average(title: nil, column: column)
+            }
+
+            public static func stdDev(_ column: Column) -> AggregationColumn {
+                .stdDev(title: nil, column: column)
+            }
+
+            public static func range(_ column: Column) -> AggregationColumn {
+                .range(title: nil, column: column)
+            }
+
+            public static func percentOfCapacity(_ column: Column) -> AggregationColumn {
+                .percentOfCapacity(title: nil, column: column)
+            }
+        }
+
+        /// The title of another defined detail view, like a list, to visit when the user clicks the focus button of an aggregate.
+        ///
+        /// ### Example:
+        /// If a `List` view titled `"Events"` exists, you can `VisitOnFocus("Events")`.
+        ///
+        /// The user will see a round focus button next to each row of this aggregation
+        // and when they click it, the "Events" list will be pushed on to the detail
+        // view, and it will be filtered to just the events that correspond with the
+        // row of the aggregation being focused.  So, for example, if the events were
+        // context switches, then clicking the focus button on the thread in the
+        // outline view will push the list of events for that thread onto the view stack.
+        public struct VisitOnFocus: Encodable, VisitOnFocusTarget, ExpressibleByStringLiteral {
+            public let detailViewTitle: String
+
+            public var title: String {
+                self.detailViewTitle
+            }
+
+            public init(_ target: VisitOnFocusTarget) {
+                self.detailViewTitle = target.title
+            }
+
+            public init(stringLiteral value: StringLiteralType) {
+                if value.starts(with: "?") {
+                    fatalError("VisitOnFocus.detailViewTitle MUST be a Title and not a mnemonic, passed in value [\(value)] starts with '?' suggesting it is a mnemonic.")
+                }
+
+                self.self.detailViewTitle = value
+            }
+
+            public init(_ detailViewTitle: String) {
+                self.detailViewTitle = detailViewTitle
+            }
+        }
+    }
+
     public struct TableRef: Encodable {
         var schemaRef: SchemaRef
 
@@ -979,6 +1126,13 @@ extension PackageDefinition.Instrument {
         }
     }
 }
+
+public protocol VisitOnFocusTarget {
+    var title: String { get }
+}
+
+extension Instrument.List: VisitOnFocusTarget {}
+extension Instrument.Graph: VisitOnFocusTarget {}
 
 public enum EngineeringType: String, Codable {
     case invalid
