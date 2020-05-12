@@ -50,7 +50,8 @@ public struct EventStream<Event: ActorMessage> {
         self.ref.tell(.unsubscribe(ref))
     }
 
-    public func publish(_ event: Event) {
+    public func publish(_ event: Event, file: String = #file, line: UInt = #line) {
+        pprint("publishing [\(file):\(line)] = \(event)")
         self.ref.tell(.publish(event))
     }
 }

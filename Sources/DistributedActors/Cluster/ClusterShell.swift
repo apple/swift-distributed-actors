@@ -510,7 +510,7 @@ extension ClusterShell {
             var state = state
 
             let changeDirective = state.applyClusterEvent(event)
-            state = self.interpretLeaderActions(context.system, state, changeDirective.leaderActions)
+            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
 
             if case .membershipChange(let change) = event {
                 self.tryIntroduceGossipPeer(context, state, change: change)

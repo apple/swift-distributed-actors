@@ -412,23 +412,16 @@ extension ClusterShellState {
         }
 
         guard changeWasApplied else {
-            return .init(applied: changeWasApplied, leaderActions: [])
+            return .init(applied: changeWasApplied)
         }
 
-        // will be empty if myself node is NOT a leader
-        let leaderActions = self.collectLeaderActions()
-        // TODO: actions may want to be acted upon, they're like directives, we currently have no such need though;
-        // such actions be e.g. "kill association right away" or "asap tell that node .down" directly without waiting for gossip etc
-
         self.log.trace("Membership updated on [\(self.localNode)] by \(event): \(pretty: self.membership)")
-        return .init(applied: changeWasApplied, leaderActions: leaderActions)
+        return .init(applied: changeWasApplied)
     }
 
     struct AppliedClusterEventDirective {
         // True if the change was applied, modifying the Membership.
         let applied: Bool
-        // will be empty if myself node is NOT a Leader
-        let leaderActions: [LeaderAction]
     }
 }
 
