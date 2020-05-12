@@ -215,13 +215,20 @@ public extension ActorTestKit {
     }
 }
 
-public struct EventuallyError: Error {
+/// Thrown by `ActorTestKit.eventually` when the encapsulated assertion fails enough times that the eventually rethrows it.
+///
+/// Intended to be pretty printed in command line test output.
+public struct EventuallyError: Error, CustomStringConvertible {
     let message: String
     let lastError: Error?
 
     public init(message: String, lastError: Error?) {
         self.message = message
         self.lastError = lastError
+    }
+
+    public var description: String {
+        "EventuallyError(message: \(self.message.description), lastError: \(optional: self.lastError))"
     }
 }
 
@@ -230,7 +237,7 @@ public struct EventuallyError: Error {
 
 public extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
-    /// Throws an `AssertionHoldsError` when the block fails within the specified tiem amount.
+    /// Throws an `AssertionHoldsError` when the block fails within the specified time amount.
     func assertHolds(
         for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,

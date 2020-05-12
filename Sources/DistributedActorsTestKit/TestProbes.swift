@@ -393,8 +393,8 @@ extension ActorTestProbe {
 
         let deadline = Deadline.fromNow(timeout)
 
+        var receivedMessages: [Message] = []
         do {
-            var receivedMessages: [Message] = []
             receivedMessages.reserveCapacity(count)
 
             while deadline.hasTimeLeft() {
@@ -416,7 +416,7 @@ extension ActorTestProbe {
 
             throw ExpectationError.notEnoughMessagesInQueue(actualCount: receivedMessages.count, expectedCount: count)
         } catch {
-            let message = "Did not receive expected messages (count: \(count)) of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
+            let message = "Did not receive expected messages (count: \(count)) of type [\(Message.self)] within [\(timeout.prettyDescription)], got: \(lineByLine: receivedMessages)\nerror: \(error)"
             throw callSite.error(message)
         }
     }
