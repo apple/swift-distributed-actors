@@ -221,14 +221,14 @@ targets.append(
                 "DistributedActorsXPC",
                 "it_XPCActorable_echo_api",
             ],
-            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
+            path: "IntegrationTests/disabled_tests_03_xpc_actorable/it_XPCActorable_echo"
         ),
         .target(
             name: "it_XPCActorable_echo_api",
             dependencies: [
                 "DistributedActorsXPC",
             ],
-            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
+            path: "IntegrationTests/disabled_tests_03_xpc_actorable/it_XPCActorable_echo_api"
         ),
         .target(
             name: "it_XPCActorable_echo_service",
@@ -237,7 +237,7 @@ targets.append(
                 "it_XPCActorable_echo_api",
                 "Files",
             ],
-            path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
+            path: "IntegrationTests/disabled_tests_03_xpc_actorable/it_XPCActorable_echo_service"
         ),
     ]
 )
