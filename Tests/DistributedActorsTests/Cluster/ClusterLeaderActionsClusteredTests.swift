@@ -19,12 +19,6 @@ import NIOSSL
 import XCTest
 
 final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
-    override func configureLogCapture(settings: inout LogCapture.Settings) {
-        settings.filterActorPaths = [
-            "/system/cluster/swim",
-        ]
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 
@@ -180,8 +174,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
 
             // the following tests confirm that the manually subscribed actors, got all the events they expected
 
-            // on the leader node, the other node noticed as up:
-            let eventsOnFirstSub = try p1.expectMessages(count: 6)
+            // collect all events until we see leadership change; we should already have seen members become up then
+            let eventsOnFirstSub = try collectUntilAllMembers(p1, status: .up)
             eventsOnFirstSub.shouldContain(.snapshot(.empty))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
@@ -190,7 +184,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
 
             // on non-leader node
-            let eventsOnSecondSub = try p2.expectMessages(count: 6)
+            let eventsOnSecondSub = try collectUntilAllMembers(p2, status: .up)
             eventsOnSecondSub.shouldContain(.snapshot(.empty))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
@@ -198,6 +192,25 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
             eventsOnSecondSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
         }
+    }
+
+    private func collectUntilAllMembers(_ probe: ActorTestProbe<Cluster.Event>, status: Cluster.MemberStatus) throws -> [Cluster.Event] {
+        var events: [Cluster.Event] = []
+        var membership = Cluster.Membership.empty
+
+        var found = false
+        while events.count < 12, !found {
+            let event = try probe.expectMessage()
+            pinfo("Captured event: \(event)")
+            guard !events.contains(event) else {
+                throw self._testKits.first!.fail("Received DUPLICATE cluster event: \(event), while already received: \(lineByLine: events). Duplicate events are illegal, this is a bug.")
+            }
+            try membership.apply(event: event)
+            events.append(event)
+
+            found = membership.count > 0 && membership.members(atLeast: .joining).allSatisfy { $0.status == status }
+        }
+        return events
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

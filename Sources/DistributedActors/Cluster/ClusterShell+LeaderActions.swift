@@ -75,7 +75,7 @@ extension ClusterShell {
 
         guard previousState.latestGossip.converged() else {
             previousState.log.warning(
-                "SKIPPING LEADER ACTIONS, NOT CONVERGED",
+                "Skipping leader actions, gossip not converged",
                 metadata: [
                     "tag": "leader-action",
                     "leader/actions": "\(leaderActions)",
