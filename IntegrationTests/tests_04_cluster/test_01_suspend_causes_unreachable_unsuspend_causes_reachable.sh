@@ -37,14 +37,14 @@ declare -r second_pid=$(echo $!)
 wait_log_exists ${second_logs} 'Binding to: ' 200 # since it might be compiling again...
 
 echo "Waiting nodes to become .up..."
-wait_log_exists ${first_logs} 'membershipChange(sact://System@127.0.0.1:8228 :: \[joining\] -> \[     up\])' 50
+wait_log_exists ${first_logs} 'Event: membershipChange(sact://System@127.0.0.1:8228 :: \[joining\] -> \[     up\])' 50
 echo 'Second member seen .up, good...'
 
 # suspend the second process, causing unreachability
 kill -SIGSTOP ${second_pid}
 jobs
 
-wait_log_exists ${first_logs} 'reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: unreachable' 50
+wait_log_exists ${first_logs} 'Event: reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: unreachable' 50
 echo 'Second member seen .unreachable, good...'
 
 # resume it in the background
@@ -52,7 +52,7 @@ kill -SIGCONT ${second_pid}
 
 # it should become reachable again
 declare -r expected_second_member_unreachable=
-wait_log_exists ${first_logs} 'reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: reachable' 50
+wait_log_exists ${first_logs} 'Event: reachabilityChange(DistributedActors.Cluster.ReachabilityChange.*127.0.0.1:8228, status: up, reachability: reachable' 50
 echo 'Second member seen .unreachable, good...'
 
 
