@@ -99,15 +99,16 @@ final class InterceptorTests: ActorSystemTestBase {
             return .intercept(behavior: behavior, with: makeStringsLouderInterceptor)
         }
 
+        let depth = 50
         let ref: ActorRef<String> = try system.spawn(
             "theWallsHaveEars",
-            interceptionInceptionBehavior(currentDepth: 0, stopAt: 100)
+            interceptionInceptionBehavior(currentDepth: 0, stopAt: depth)
         )
 
         ref.tell("hello")
 
-        try p.expectMessage("received:hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        for j in 0 ... 100 {
+        try p.expectMessage("received:hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        for j in 0 ... depth {
             let m = "from-interceptor:hello\(String(repeating: "!", count: j))"
             try i.expectMessage(m)
         }
