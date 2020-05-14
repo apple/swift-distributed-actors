@@ -445,6 +445,8 @@ public struct SubReceiveId<SubMessage>: Hashable, Equatable {
 
     public init(_: SubMessage.Type) {
         let typeName = String(reflecting: SubMessage.self)
+            .replacingOccurrences(of: "()", with: "Void")
+            .replacingOccurrences(of: " ", with: "")
         self.id = typeName
     }
 

@@ -39,6 +39,28 @@ final class ActorSubReceiveTests: ActorSystemTestBase {
         try p.expectMessage("subreceive:test")
     }
 
+    struct TestSubReceiveType<Value>: Codable {}
+    func test_subReceive_notCrashWhenTypeIncludesVoidLiteral() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<TestSubReceiveType<()>>.self)
+
+        let behavior: Behavior<Never> = .setup { context in
+            let subRef = context.subReceive("test-sub", TestSubReceiveType<()>.self) { message in
+                p.tell("subreceive:\(message)")
+            }
+            refProbe.tell(subRef)
+
+            return .receiveMessage { _ in .same }
+        }
+
+        _ = try system.spawn("test-parent", behavior)
+
+        let subRef = try refProbe.expectMessage()
+
+        subRef.tell(TestSubReceiveType<()>())
+        try p.expectMessage("subreceive:\(TestSubReceiveType<()>())")
+    }
+
     func test_subReceiveId_fromGenericType_shouldNotBlowUp() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<Set<String>>.self)
