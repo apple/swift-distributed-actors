@@ -53,9 +53,9 @@ enum GossipRoundDirective<Metadata, Payload: Codable> {
 }
 
 extension GossipShell {
-    struct Settings {
+    public struct Settings {
         /// Interval at which gossip rounds should proceed.
-        var gossipInterval: TimeAmount = .seconds(1)
+        public var gossipInterval: TimeAmount = .seconds(1)
 
         // var delegate: GossipClientBox<Metadata, Payload> // TODO: express as delegate
 //
@@ -87,9 +87,11 @@ extension GossipShell {
         ///
         /// Peers may be added manually by sending the `introduce` message at any time, the gossiper will NOT reject such
         /// introduced peer, even if operating in an auto-discovery mode (may be useful to inject a test listener probe into the gossip group).
-        var peerDiscovery: PeerDiscovery = .manuallyIntroduced
-        enum PeerDiscovery {
-            case fromReceptionistListing(key: Receptionist.RegistrationKey<Message>)
+        public var peerDiscovery: PeerDiscovery = .manuallyIntroduced
+        public enum PeerDiscovery {
+            /// Automatically register this gossiper and subscribe for any others identifying under the same 
+            /// `Receptionist.RegistrationKey<GossipShell<Metadata, Payload>.Message>(id)`.
+            case fromReceptionistListing(id: String)
 //            /// Automatically discover and add cluster members to the gossip group when they become reachable in `atLeast` status.
 //            ///
 //            /// Note that by default `.leaving`, `.down` and `.removed` members are NOT added to the gossip group,

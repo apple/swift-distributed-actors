@@ -20,7 +20,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
     let logic: GossipLogic<Metadata, Payload>
 
     /// Payloads to be gossiped on gossip rounds
-    private var gossips: [GossipIdentifier.Key: GossipEnvelope<Metadata, Payload>]
+    private var gossips: [AnyGossipIdentifier: GossipEnvelope<Metadata, Payload>]
 
     private var peers: Set<PeerRef>
 
@@ -61,7 +61,9 @@ internal final class GossipShell<Metadata, Payload: Codable> {
                 self.peers = self.peers.filter {
                     $0.address != terminated.address
                 }
+                // if self.peers.isEmpty {
                 // TODO: could pause ticks since we have zero peers now?
+                // }
                 return .same
             }
         }
@@ -72,16 +74,22 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         identifier: GossipIdentifier,
         payload: Payload
     ) {
-        let existing = self.gossips[identifier.gossipIdentifier]
+        // FIXME: pick a gossip from the logics, apply the receive
 
+//        let existing = self.gossips[identifier.asAnyGossipIdentifier]
+//
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]: \(payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
-            "gossip/existing": "\(String(reflecting: existing))",
+//            "gossip/existing": "\(String(reflecting: existing))",
             "gossip/incoming": "\(payload)",
         ])
 
         // TODO we could handle some actions if it issued some
-        self.logic.receiveGossip(identifier: identifier, payload: payload)
+        // TODO: PICK THE LOGIC BY THE GOSSIP ID
+        // guard let logic = self.gossipLogics[identifier] ...
+
+        let logic: GossipLogic<Metadata, Payload> = self.logic
+        logic.receiveGossip(payload: payload)
     }
 
     private func onLocalPayloadUpdate(
@@ -90,30 +98,69 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         metadata: Metadata,
         payload: Payload
     ) {
+        let identifierKey = identifier.asAnyGossipIdentifier
         context.log.trace("Gossip payload [\(identifier)] updated: \(payload)", metadata: [
             "gossip/payload/identifier": "\(identifier)",
             "actor/message": "\(payload)",
-            "gossip/payload/previous": "\(self.gossips[identifier.gossipIdentifier], orElse: "nil")",
+            "gossip/payload/previous": "\(self.gossips[identifierKey], orElse: "nil")",
         ])
-        self.gossips[identifier.gossipIdentifier] = GossipEnvelope(metadata: metadata, payload: payload)
+        self.gossips[identifierKey] = GossipEnvelope(metadata: metadata, payload: payload)
         // TODO: bump local version vector; once it is in the envelope
     }
 
+    // TODO keep and remove logics
     private func onLocalPayloadRemove(_ context: ActorContext<Message>, identifier: GossipIdentifier) {
+        let identifierKey = identifier.asAnyGossipIdentifier
+        let removedEnvelope: GossipEnvelope<Metadata, Payload>? = self.gossips.removeValue(forKey: identifierKey)
         context.log.trace("Removing gossip identified by [\(identifier)]", metadata: [
             "gossip/identifier": "\(identifier)",
-            "gossip/payload/previous": "\(self.gossips.removeValue(forKey: identifier.gossipIdentifier), orElse: "nil")",
+            "gossip/payload/previous": "\(removedEnvelope, orElse: "nil")",
         ])
 
         // TODO: callback into client or not?
     }
 
     private func runGossipRound(_ context: ActorContext<Message>) {
-        for gossipIdentifierKey: GossipIdentifier.Key in self.gossips.keys {
-            context.log.warning("Gossip round: \(gossipIdentifierKey)")
+        // TODO: could pick only a number of keys to gossip in a round, so we avoid "bursts" of all gossip at the same intervals,
+        // so in this round we'd do [a-c] and then [c-f] keys for example.
+        for identifier: AnyGossipIdentifier in self.gossips.keys {
+            context.log.warning("Gossip[\(identifier.gossipIdentifier)]: Initiate gossip round")
 
-            context.log.warning("Targets: \(self.selectGossipTargets())")
+            // TODO PICK BY gossipIdentifierKey
+            let logic: GossipLogic<Metadata, Payload> = self.logic
 
+            let allPeers: Array<AddressableActorRef> = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
+            let selectedPeers = logic.selectPeers(peers: allPeers) // TODO: OrderedSet would be the right thing here...
+
+            context.log.warning("Gossip[\(identifier.gossipIdentifier)] Selected peers: \(selectedPeers), from offered \(allPeers.count)", metadata: [
+
+            ])
+
+            for selectedPeer in selectedPeers {
+                guard let payload: Payload = logic.makePayload(target: selectedPeer) else {
+                    context.log.trace("Skipping gossip to peer \(selectedPeer)", metadata: [
+                        "gossip/id": "\(identifier.gossipIdentifier)",
+                        "gossip/target": "\(selectedPeer)",
+                    ])
+                    continue
+                }
+
+                // a bit annoying that we have to do this dance, but we don't want to let the logic do the sending, 
+                // types would be wrong, and logging and more lost
+                guard let selectedRef = selectedPeer.ref as? PeerRef else {
+                    context.log.warning("Selected peer \(selectedPeer) is not of \(PeerRef.self) type! GossipLogic attempted to gossip to unknown actor?", metadata: [
+                        "gossip/id": "\(identifier.gossipIdentifier)",
+                        "gossip/target": "\(selectedPeer)",
+                    ])
+                    continue
+                }
+
+                self.sendGossip(context, identifier: identifier, payload, to: selectedRef)
+            }
+
+            // TODO: signal "gossip round complete" perhaps?
+            // it would allow for "speed up" rounds, as well as "remove me, we're done"
+            
 //            guard let gossipPayload = self.gossips[gossipIdentifierKey] else {
 //                continue
 //            }
@@ -136,17 +183,17 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         self.scheduleNextGossipRound(context: context)
     }
 
-    // TODO: invoke PeerSelection here
-    private func selectGossipTargets() -> [Ref] {
-        Array(self.peers.shuffled().prefix(1)) // TODO: allow the PeerSelection to pick multiple
-    }
+//    // TODO: invoke PeerSelection here
+//    private func selectGossipTargets() -> [Ref] {
+//        Array(self.peers.shuffled().prefix(1)) // TODO: allow the PeerSelection to pick multiple
+//    }
 
     private func sendGossip(_ context: ActorContext<Message>, identifier: GossipIdentifier, _ payload: Payload, to target: PeerRef) {
         // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them that's nicer for small clusters, I guess
 //        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
 
         // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
-        context.log.trace("Sending gossip to \(target)", metadata: [
+        context.log.warning("Sending gossip to \(target)", metadata: [
             "gossip/target": "\(target.address)",
             "gossip/peers/count": "\(self.peers.count)",
             "actor/message": "\(payload)",
@@ -167,12 +214,18 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension GossipShell {
+
+    public static func receptionKey(id: String) -> Receptionist.RegistrationKey<Message> {
+        Receptionist.RegistrationKey<Message>(id)
+    }
+
     private func initPeerDiscovery(_ context: ActorContext<Message>, settings: GossipShell.Settings) {
         switch self.settings.peerDiscovery {
         case .manuallyIntroduced:
             return // nothing to do, peers will be introduced manually
 
-        case .fromReceptionistListing(let key):
+        case .fromReceptionistListing(let id):
+            let key = Receptionist.RegistrationKey<Message>(id)
             context.system.receptionist.register(context.myself, key: key)
             context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
                 listing.refs.forEach {
@@ -191,8 +244,9 @@ extension GossipShell {
 
             // TODO: implement this rather as "high priority peer to gossip to"
             // TODO: remove this most likely
+            // TODO: or rather, ask the logic if it wants to eagerly push?
             for (key, envelope) in self.gossips {
-                self.sendGossip(context, identifier: StringGossipIdentifier(stringLiteral: key), envelope.payload, to: peer)
+                self.sendGossip(context, identifier: key.identifier, envelope.payload, to: peer)
             }
 
             // TODO: consider if we should do a quick gossip to any new peers etc
@@ -288,14 +342,42 @@ public struct GossipEnvelope<Metadata, Payload: Codable>: GossipEnvelopeProtocol
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Gossip Idenfitier
+// MARK: Gossip Identifier
 
 
 /// Used to identify which identity a payload is tied with.
 /// E.g. it could be used to mark the CRDT instance the gossip is carrying, or which "entity" a gossip relates to.
 public protocol GossipIdentifier {
-    typealias Key = String
-    var gossipIdentifier: Key { get }
+    var gossipIdentifier: String { get }
+
+    var asAnyGossipIdentifier: AnyGossipIdentifier { get }
+}
+
+public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
+    public let identifier: GossipIdentifier
+
+    public init(_ identifier: GossipIdentifier) {
+        if let any = identifier as? AnyGossipIdentifier {
+            self = any
+        } else {
+            self.identifier = identifier
+        }
+    }
+
+    public var gossipIdentifier: String {
+        self.identifier.gossipIdentifier
+    }
+    public var asAnyGossipIdentifier: AnyGossipIdentifier {
+        self
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        self.identifier.gossipIdentifier.hash(into: &hasher)
+    }
+
+    public static func ==(lhs: AnyGossipIdentifier, rhs: AnyGossipIdentifier) -> Bool {
+        lhs.identifier.gossipIdentifier == rhs.identifier.gossipIdentifier
+    }
 }
 
 public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByStringLiteral {
@@ -304,5 +386,10 @@ public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByS
     public init(stringLiteral gossipIdentifier: StringLiteralType) {
         self.gossipIdentifier = gossipIdentifier
     }
+
+    public var asAnyGossipIdentifier: AnyGossipIdentifier {
+        AnyGossipIdentifier(self)
+    }
+
 }
 

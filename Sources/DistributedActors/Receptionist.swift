@@ -44,6 +44,10 @@ public enum Receptionist {
             super.init(id: id, typeHint: _typeName(messageType as Any.Type))
         }
 
+        public init(_ value: String) {
+            super.init(id: value, typeHint: _typeName(Message.self as Any.Type))
+        }
+
         public required init(stringLiteral value: StringLiteralType) {
             super.init(id: value, typeHint: _typeName(Message.self as Any.Type))
         }

@@ -711,8 +711,8 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
             return .init(.adapter(ref))
         } catch {
             fatalError("""
-            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
-            generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
+            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names \
+            generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)? \
             Error: \(error)
             """)
         }

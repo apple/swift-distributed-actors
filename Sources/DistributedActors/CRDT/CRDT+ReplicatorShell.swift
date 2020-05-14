@@ -62,11 +62,11 @@ extension CRDT.Replicator {
                 // TODO: make it enabled by a plugin? opt-in to gossiping the crdts?
                 self.gossipReplication = try GossipShell.start(context,
                     name: "gossip",
-//                    of: CRDT.Gossip.self,
-//                    ofMetadata: Never.self,
-//                    props: Props(),
-                    settings: .init(gossipInterval: .seconds(1)),
-                    logic: CRDT.GossipReplicatorLogic()
+                    settings: GossipShell.Settings(
+                        gossipInterval: .seconds(1),
+                        peerDiscovery: .fromReceptionistListing(id: "crdt-gossip-replicator")
+                    ),
+                    logic: CRDT.GossipReplicatorLogic() // TODO: makeLogic: { id in CRDT.GossipReplicatorLogic(id) }
                 )
 
                 return .receive { context, message in

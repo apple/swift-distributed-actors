@@ -33,8 +33,8 @@
 // use multiple dots with a version vector instead--a notion that we will follow here.
 
 extension CRDT {
-    /// `VersionContext`'s internal structure is very similar to dotted version vector. The difference is that it keeps
-    /// track of a set of dots rather than just one.
+    /// `VersionContext`'s internal structure is very similar to dotted version vector.
+    /// The difference is that it keeps track of a set of dots rather than just one.
     ///
     /// Inspired by Bartosz Sypytkowski's [`DotContext`](https://github.com/Horusiath/crdt-examples/blob/master/convergent/delta/context.fsx).
     ///
@@ -122,7 +122,7 @@ extension CRDT {
     ///
     /// Important: Each replica must be associated with a single `VersionedContainer` instance only to ensure version is incremented properly.
     ///
-    /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
+    /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/) (Bartosz Sypytkowski, 2018)
     public struct VersionedContainer<Element: Codable & Hashable>: NamedDeltaCRDT {
         public typealias Delta = VersionedContainerDelta<Element>
 

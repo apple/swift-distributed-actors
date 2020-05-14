@@ -25,9 +25,9 @@ extension CRDT {
     /// same element are concurrent (i.e., we cannot determine which happens before another), `add` always "wins" since
     /// `remove` is concerned with *observed* events only (the concurrent `add` has not been observed yet).
     ///
-    /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf)
-    /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
-    /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
+    /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf) (Annette Bieniusa, Marek Zawirski, Nuno Preguiça, Marc Shapiro, Carlos Baquero, Valter Balegas, Sérgio Duarte, 2012)
+    /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/) (Bartosz Sypytkowski, 2018)
+    /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf) (Marc Shapiro, Nuno Preguiça, Carlos Baquero, Marek Zawirski, 2011)
     public struct ORSet<Element: Codable & Hashable>: NamedDeltaCRDT, ORSetOperations {
         public typealias ORSetDelta = VersionedContainerDelta<Element>
         public typealias Delta = ORSetDelta

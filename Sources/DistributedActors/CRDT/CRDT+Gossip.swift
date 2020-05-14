@@ -16,27 +16,50 @@ import struct Foundation.Data
 
 extension CRDT {
 
+    /// Gossip Replicator logic, it gossips CRDTs (and deltas) to other peers in the cluster.
+    ///
+    /// It collaborates with the Direct Replicator in order to avoid needlessly sending values to nodes which already know
+    /// about them (e.g. through direct replication).
     final class GossipReplicatorLogic: GossipLogicProtocol {
-        typealias Metadata = Void
+        typealias Metadata = Void // last metadata we have from the other peer?
         typealias Payload = CRDT.Gossip
 
         // v1) [node: state sent], te to gossip to everyone
         // v2) [node: [metadata = version vector, and compare if the target knows it already or not]]]
         // v3) [node: pending deltas to deliver]
+        // ...
+        /// The latest, most up-to-date, version of the gossip that will be spread when a gossip round happens.
+        private var latest: CRDT.Gossip?
 
 //        let peerSelector: PeerSelection = fatalError()
 
-        func selectPeers(membership: Cluster.Membership) -> [Cluster.Member] {
-            fatalError()
+        init() {
         }
 
-        func makePayload() -> Payload {
-            fatalError()
+        // ==== ------------------------------------------------------------------------------------------------------------
+        // MARK: Spreading gossip
+
+        func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+            peers // always gossip to everyone
         }
 
-        func receiveGossip(identifier: GossipIdentifier, payload: Payload) {
-            fatalError()
+        func makePayload(target _: AddressableActorRef) -> Payload? {
+            // v1, everyone gets the entire CRDT state, no optimizations
+            self.latest
         }
+
+        // TODO: back channel to eventually stop gossiping the value
+
+        // ==== ------------------------------------------------------------------------------------------------------------
+        // MARK: Receiving gossip
+
+        func receiveGossip(payload: Payload) {
+        // TODO; some context would be nice, I want to log here
+            pprint("Received gossip = \(payload)")
+        }
+
+        // ==== ------------------------------------------------------------------------------------------------------------
+        // MARK: Side-channel to Direct-replicator
 
         func subReceive(any: Any) {
             // receive ACKs from direct replicator
@@ -49,8 +72,12 @@ extension CRDT {
 // MARK: CRDT.Identity as GossipIdentifier
 
 extension CRDT.Identity: GossipIdentifier {
-    public var gossipIdentifier: Key {
+    public var gossipIdentifier: String {
         self.id
+    }
+
+    public var asAnyGossipIdentifier: AnyGossipIdentifier {
+        AnyGossipIdentifier(self)
     }
 }
 
