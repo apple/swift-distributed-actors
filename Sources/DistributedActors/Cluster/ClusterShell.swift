@@ -32,6 +32,8 @@ internal class ClusterShell {
     internal static let naming = ActorNaming.unique("cluster")
     public typealias Ref = ActorRef<ClusterShell.Message>
 
+    static let gossipID: StringGossipIdentifier = "membership"
+
     private let selfNode: UniqueNode
 
     // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -408,6 +410,26 @@ extension ClusterShell {
                     props: ._wellKnown
                 )
 
+//                let gossipControl = try GossipShell.start(
+//                    context, name: "\(ActorAddress._clusterGossip.name)",
+//                    of: Cluster.Gossip.self, ofMetadata: Cluster.Gossip.SeenTable.self,
+//                    props: ._wellKnown,
+//                    settings: .init(
+//                        gossipInterval: .seconds(1),
+//                        // TODO make a protocol to capture all those behaviors GossipLogic / GossipInstance
+//                        onGossipReceived: { identifier, payload, _ in
+//                            assert(identifier.gossipIdentifier == ClusterShell.gossipID.gossipIdentifier, "Received gossip with unexpected identifier [\(identifier)], expected: \(ClusterShell.gossipID)")
+//                            // note that this is on the gossiper's thread, the only thing we can do here is to forward the message
+//                            context.myself.tell(.gossipFromGossiper(payload))
+//                        },
+//                        onGossipRound: { identity, envelope in
+//                            // OMG need futures so badly...!
+//                            // we need to check with the actor what to do about this gossip round technically speaking
+//                            envelope
+//                        }
+//                    )
+//                )
+
                 let state = ClusterShellState(
                     settings: clusterSettings,
                     channel: chan,
@@ -563,12 +585,7 @@ extension ClusterShell {
 
             let leaderActions = state.collectLeaderActions()
             if !leaderActions.isEmpty {
-                state.log.trace(
-                    "Leadership actions upon gossip: \(leaderActions)",
-                    metadata: [
-                        "tag": "membership",
-                    ]
-                )
+                state.log.trace("Leadership actions upon gossip: \(leaderActions)", metadata: ["tag": "membership"])
             }
 
             state = self.interpretLeaderActions(context.system, state, leaderActions)
@@ -606,6 +623,7 @@ extension ClusterShell {
         // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...
         // today it can happen that a node goes down but we dont know yet so we add it again :O
         state.gossipControl.introduce(peer: gossipPeer)
+        //         state.gossipControl.introduce(ClusterShell.gossipID, peer: gossipPeer)
     }
 }
 

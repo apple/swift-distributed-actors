@@ -930,7 +930,7 @@ extension ActorShell {
 extension ActorShell: CustomStringConvertible {
     public var description: String {
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorShell<\(prettyTypeName)>(\(self.path))"
+        return "ActorContext<\(prettyTypeName)>(\(self.path))"
     }
 }
 

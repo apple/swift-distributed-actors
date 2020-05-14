@@ -38,7 +38,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
     private func actorOwnedGCounterBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<GCounterCommand> {
         .setup { context in
-            let g = CRDT.GCounter.owned(by: context, id: id)
+            let g = CRDT.GCounter.makeOwned(by: context, id: id)
             g.onUpdate { id, gg in
                 context.log.trace("GCounter \(id) updated with new value: \(gg.value)", metadata: gg.metadata(context))
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
@@ -92,7 +92,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
         let ownerEventPB = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
 
         let behavior: Behavior<String> = .setup { context in
-            let g = CRDT.GCounter.owned(by: context, id: "test-gcounter")
+            let g = CRDT.GCounter.makeOwned(by: context, id: "test-gcounter")
             g.onUpdate { _, _ in
                 ownerEventPA.tell(.ownerDefinedOnUpdate)
             }

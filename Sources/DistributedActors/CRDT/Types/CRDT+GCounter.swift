@@ -144,7 +144,7 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
 }
 
 extension CRDT.GCounter {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
         CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: .actorAddress(owner.address)))
     }
 }
