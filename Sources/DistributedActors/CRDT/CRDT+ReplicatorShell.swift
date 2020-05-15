@@ -214,9 +214,10 @@ extension CRDT.Replicator {
                             case .success:
                                 replyTo.tell(.success)
                                 self.notifyOwnersOnUpdate(context, id, updatedData)
-                            case .failure(let error):
-                                context.log.warning("Failed to write \(id) with consistency \(consistency): \(error)")
-                                throw error
+                            case .failure(let err): // : Error
+                                let error = CRDT.OperationConsistency.Error.wrap(err)
+                                context.log.warning("Failed to write [\(id.id)] \(type(of: data as Any)) with consistency \(consistency): \(error)")
+                                replyTo.tell(.failure(.consistencyError(error)))
                             }
                             return .same
                         }
@@ -331,9 +332,11 @@ extension CRDT.Replicator {
                             // We've read from the remote replicators, now merge their versions of the CRDT to local
                             for (_, remoteReadResult) in remoteResults {
                                 guard case .success(let data) = remoteReadResult else {
-                                    fatalError("Remote results should contain .success value only: \(remoteReadResult)")
+                                    // TODO: really sure that we want to crash?
+                                    fatalError("Remote results should contain .success value only: \(remoteReadResult)") 
                                 }
                                 guard case .applied = self.directReplicator.write(id, data) else {
+                                    // TODO: really sure that we want to crash?
                                     fatalError("Failed to update \(id) locally with remote data \(remoteReadResult). Replicator: \(self.debugDescription)")
                                 }
                             }
@@ -354,9 +357,10 @@ extension CRDT.Replicator {
                             // Notify owners since the CRDT might have been updated
                             // TODO: this notifies owners even when the CRDT hasn't changed
                             self.notifyOwnersOnUpdate(context, id, updatedData)
-                        case .failure(let error):
-                            context.log.warning("Failed to read \(id) with consistency \(consistency): \(error)")
-                            throw error
+                        case .failure(let err):
+                            let error = CRDT.OperationConsistency.Error.wrap(err)
+                            context.log.warning("Failed to read [\(id.id)] with consistency \(consistency): \(error)")
+                            replyTo.tell(.failure(.consistencyError(error)))
                         }
                         return .same
                     }
@@ -386,9 +390,10 @@ extension CRDT.Replicator {
                             case .success:
                                 replyTo.tell(.success)
                                 self.notifyOwnersOnDelete(context, id)
-                            case .failure(let error):
-                                context.log.warning("Failed to delete \(id) with consistency \(consistency): \(error)")
-                                throw error
+                            case .failure(let err):
+                                let error = CRDT.OperationConsistency.Error.wrap(err)
+                                context.log.warning("Failed to delete [\(id.id)] with consistency \(consistency): \(error)")
+                                replyTo.tell(.failure(.consistencyError(error)))
                             }
                             return .same
                         }
@@ -451,11 +456,11 @@ extension CRDT.Replicator {
                         if isSuccessful(remoteCommandResult) {
                             execution.confirm(from: remoteReplicator, result: remoteCommandResult)
                         } else {
-                            context.log.warning("Operation failed for \(id) at \(remoteReplicator): \(remoteCommandResult)")
+                            context.log.warning("Operation failed for [\(id.id)] at \(remoteReplicator): \(remoteCommandResult)")
                             execution.failed(at: remoteReplicator)
                         }
                     case .failure(let error):
-                        context.log.warning("Operation failed for \(id) at \(remoteReplicator): \(error)")
+                        context.log.warning("Operation failed for [\(id.id)] at \(remoteReplicator): \(error)")
                         execution.failed(at: remoteReplicator)
                     }
 
