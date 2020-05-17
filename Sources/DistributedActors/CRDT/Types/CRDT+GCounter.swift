@@ -150,6 +150,15 @@ extension CRDT.GCounter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.GCounter: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.value))"
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Aliases
 
 // TODO: find better home for these type aliases

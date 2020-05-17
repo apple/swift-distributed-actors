@@ -355,6 +355,16 @@ extension CRDT.ORMap {
     }
 }
 
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.ORMap: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.underlying))"
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Aliases
 

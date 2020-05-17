@@ -183,7 +183,7 @@ extension VersionVector: Comparable {
     }
 }
 
-extension VersionVector: CustomStringConvertible {
+extension VersionVector: CustomStringConvertible, CustomPrettyStringConvertible {
     public var description: String {
         "\(self.state)"
     }

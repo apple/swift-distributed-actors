@@ -20,6 +20,111 @@ protocol CustomPrettyStringConvertible {
     /// Pretty representation of the type, intended for inspection in command line and "visual" inspection.
     /// Not to be used in log statements or otherwise persisted formats.
     var prettyDescription: String { get }
+    func prettyDescription(depth: Int) -> String
+}
+
+extension CustomPrettyStringConvertible {
+    var prettyDescription: String { 
+        self.prettyDescription(depth: 0)
+    }
+    func prettyDescription(depth: Int) -> String {
+        self.prettyDescription(of: self, depth: depth)
+    }
+
+    public func prettyDescription(of value: Any, depth: Int) -> String {
+        let mirror = Mirror(reflecting: value)
+        let padding0 = String(repeating: " ", count: depth * 2)
+        let padding1 = String(repeating: " ", count: (depth + 1) * 2)
+
+        var res = "\(Self.self)(\n"
+        for member in mirror.children {
+            res += "\(padding1)"
+            res += "\(CONSOLE_BOLD)\(optional: member.label)\(CONSOLE_RESET): "
+            switch member.value {
+            case let v as CustomPrettyStringConvertible:
+                res += v.prettyDescription(depth: depth + 1)
+            case let v as ExpressibleByNilLiteral:
+                let description = "\(v)"
+                if description.starts(with: "Optional(") {
+                    var r = description.dropFirst("Optional(".count)
+                    r = r.dropLast(1)
+                    res += "\(r)"
+                } else {
+                    res += "nil"
+                }
+            case let v as CustomDebugStringConvertible:
+                res += v.debugDescription
+            default:
+                res += "\(member.value)"
+            }
+            res += ",\n"
+        }
+        res += "\(padding0))"
+
+        return res
+    }
+}
+
+extension Set: CustomPrettyStringConvertible {
+    var prettyDescription: String {
+        self.prettyDescription(depth: 0)
+    }
+    func prettyDescription(depth: Int) -> String {
+        self.prettyDescription(of: self, depth: depth)
+    }
+
+    public func prettyDescription(of value: Any, depth: Int) -> String {
+        let padding0 = String(repeating: " ", count: depth * 2)
+        let padding1 = String(repeating: " ", count: (depth + 1) * 2)
+
+        var res = "[\n"
+        for element in self {
+            res += "\(padding1)\(element),\n"
+        }
+        res += "\(padding0)]"
+        return res
+    }
+}
+
+extension Array: CustomPrettyStringConvertible {
+    var prettyDescription: String {
+        self.prettyDescription(depth: 0)
+    }
+    func prettyDescription(depth: Int) -> String {
+        self.prettyDescription(of: self, depth: depth)
+    }
+
+    public func prettyDescription(of value: Any, depth: Int) -> String {
+        let padding0 = String(repeating: " ", count: depth * 2)
+        let padding1 = String(repeating: " ", count: (depth + 1) * 2)
+
+        var res = "Set([\n"
+        for element in self {
+            res += "\(padding1)\(element),\n"
+        }
+        res += "\(padding0)])"
+        return res
+    }
+}
+extension Dictionary: CustomPrettyStringConvertible {
+    var prettyDescription: String {
+        self.prettyDescription(depth: 0)
+    }
+    func prettyDescription(depth: Int) -> String {
+        self.prettyDescription(of: self, depth: depth)
+    }
+
+    public func prettyDescription(of value: Any, depth: Int) -> String {
+        let padding0 = String(repeating: " ", count: depth * 2)
+        let padding1 = String(repeating: " ", count: (depth + 1) * 2)
+
+        var res = "[\n"
+        for (key, value) in self {
+            res += "\(padding1)\(key): \(value),\n"
+        }
+        res += "\(padding0)]"
+        return res
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

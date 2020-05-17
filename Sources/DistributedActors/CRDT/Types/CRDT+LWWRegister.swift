@@ -84,6 +84,15 @@ extension CRDT.LWWRegister: ResettableCRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.LWWRegister: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.value))"
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned LWWRegister
 
 public protocol LWWRegisterOperations {

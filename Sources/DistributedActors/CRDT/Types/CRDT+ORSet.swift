@@ -155,21 +155,13 @@ extension CRDT.ORSet: ResettableCRDT {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
 extension CRDT.ORSet: CustomStringConvertible, CustomPrettyStringConvertible {
     public var description: String {
         "ORSet(\(self.elements))"
     }
-
-    public var prettyDescription: String { 
-        var res = "CRDT.ORSet(\n"
-        res += "  replicaID: \(self.replicaID),\n"
-        res += "  elements(\(self.count)): \(self.elements),\n"
-        res += "  state: \(self.state),\n"
-        res += "  delta: \(optional: self.delta),\n"
-        res += ")"
-        return res
-    }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

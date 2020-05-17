@@ -152,6 +152,15 @@ extension CRDT.LWWMap {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.LWWMap: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.underlying))"
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Aliases
 
 // TODO: find better home for these type aliases

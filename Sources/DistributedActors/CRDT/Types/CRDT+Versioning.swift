@@ -105,6 +105,8 @@ extension CRDT {
     }
 }
 
+extension CRDT.VersionContext: CustomPrettyStringConvertible {}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: VersionedContainer
 
@@ -299,6 +301,9 @@ extension CRDT {
         }
     }
 }
+
+extension CRDT.VersionedContainer: CustomPrettyStringConvertible {}
+extension CRDT.VersionedContainerDelta: CustomPrettyStringConvertible {}
 
 extension CRDT {
     /// Factor out logic for reuse when merging two `VersionedContainer` or `VersionedContainerDelta` instances, or
