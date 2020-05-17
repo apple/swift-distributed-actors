@@ -26,10 +26,12 @@ struct DistributedLeaderboard {
 
     func run(for time: TimeAmount) throws {
         let first = ActorSystem("first") { settings in
+            settings.logging.defaultLevel = .error
             self.configureMessageSerializers(&settings)
             self.configureClustering(&settings, port: 1111)
         }
         let second = ActorSystem("second") { settings in
+            settings.logging.defaultLevel = .error
             self.configureMessageSerializers(&settings)
             self.configureClustering(&settings, port: 2222)
         }
@@ -84,9 +86,9 @@ extension DistributedLeaderboard {
                 case .scorePoints(let points):
                     myScore += points
                     _ = totalScore.increment(by: points, writeConsistency: .quorum, timeout: .seconds(1))
-                    context.log.info("Scored +\(points), my score: \(myScore), global total score: \(totalScore.lastObservedValue)"
+//                    context.log.info("Scored +\(points), my score: \(myScore), global total score: \(totalScore.lastObservedValue)"
                         //     , metadata: ["total/score": "\(totalScore.data)"]
-                    )
+//                    )
                 }
 
                 return .same
@@ -140,7 +142,7 @@ extension DistributedLeaderboard.GameEvent {
     }
 
     func encode(to encoder: Encoder) throws {
-        var container = try encoder.container(keyedBy: CodingKeys.self)
+        var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .scorePoints(let value):
             try container.encode(DiscriminatorKeys.scorePoints, forKey: ._case)

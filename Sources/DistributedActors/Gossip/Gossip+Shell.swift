@@ -14,20 +14,24 @@
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
 internal final class GossipShell<Metadata, Payload: Codable> {
-    typealias PeerRef = ActorRef<Message>
 
     let settings: Settings
-    let logic: GossipLogic<Metadata, Payload>
+
+    private let makeLogic: (GossipIdentifier) -> GossipLogic<Metadata, Payload>
 
     /// Payloads to be gossiped on gossip rounds
-    private var gossips: [AnyGossipIdentifier: GossipEnvelope<Metadata, Payload>]
+    private var gossipLogics: [AnyGossipIdentifier: GossipLogic<Metadata, Payload>]
 
+    typealias PeerRef = ActorRef<Message>
     private var peers: Set<PeerRef>
 
-    fileprivate init<Logic>(settings: Settings, logic: Logic) where Logic: GossipLogicProtocol, Logic.Metadata == Metadata, Logic.Payload == Payload {
+    fileprivate init<Logic>(
+        settings: Settings,
+        makeLogic: @escaping (GossipIdentifier) -> Logic
+    ) where Logic: GossipLogicProtocol, Logic.Metadata == Metadata, Logic.Payload == Payload {
         self.settings = settings
-        self.logic = GossipLogic<Metadata, Payload>(logic)
-        self.gossips = [:]
+        self.makeLogic = { id in GossipLogic(makeLogic(id))}
+        self.gossipLogics = [:]
         self.peers = []
     }
 
@@ -45,6 +49,12 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 
                 case .introducePeer(let peer):
                     self.onIntroducePeer(context, peer: peer)
+
+                case .sideChannelMessage(let identifier, let message):
+                    switch self.onSideChannelMessage(context, identifier: identifier, message) {
+                    case .received: () // ok
+                    case .unhandled: return .unhandled
+                    }
 
                 case .gossip(let identity, let payload):
                     self.receiveGossip(context, identifier: identity, payload: payload)
@@ -85,10 +95,13 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         ])
 
         // TODO we could handle some actions if it issued some
-        // TODO: PICK THE LOGIC BY THE GOSSIP ID
-        // guard let logic = self.gossipLogics[identifier] ...
+         guard let logic = self.gossipLogics[identifier.asAnyGossipIdentifier] else {
+             // FIXME: should we not rather create the record for the gossiped in value? OR NOT?
+             context.log.warning("No logic to receive the incoming gossip")
+             return
+         }
 
-        let logic: GossipLogic<Metadata, Payload> = self.logic
+        // TODO we could handle directives from the logic
         logic.receiveGossip(payload: payload)
     }
 
@@ -98,23 +111,33 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         metadata: Metadata,
         payload: Payload
     ) {
-        let identifierKey = identifier.asAnyGossipIdentifier
+        let logic: GossipLogic<Metadata, Payload>
+        if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
+            logic = existing
+        } else {
+            logic = self.makeLogic(identifier)
+            self.gossipLogics[identifier.asAnyGossipIdentifier] = logic
+        }
+
+        context.log.warning("PAYLOAD \(payload), \(logic)")
+        logic.receiveGossip(payload: payload) // TODO: metadata?
+
         context.log.trace("Gossip payload [\(identifier)] updated: \(payload)", metadata: [
-            "gossip/payload/identifier": "\(identifier)",
-            "actor/message": "\(payload)",
-            "gossip/payload/previous": "\(self.gossips[identifierKey], orElse: "nil")",
+            "gossip/identifier": "\(identifier)",
+            "actor/metadata": "\(metadata)",
+            "actor/payload": "\(payload)",
         ])
-        self.gossips[identifierKey] = GossipEnvelope(metadata: metadata, payload: payload)
+
         // TODO: bump local version vector; once it is in the envelope
     }
 
     // TODO keep and remove logics
     private func onLocalPayloadRemove(_ context: ActorContext<Message>, identifier: GossipIdentifier) {
         let identifierKey = identifier.asAnyGossipIdentifier
-        let removedEnvelope: GossipEnvelope<Metadata, Payload>? = self.gossips.removeValue(forKey: identifierKey)
+
+        _ = self.gossipLogics.removeValue(forKey: identifierKey)
         context.log.trace("Removing gossip identified by [\(identifier)]", metadata: [
             "gossip/identifier": "\(identifier)",
-            "gossip/payload/previous": "\(removedEnvelope, orElse: "nil")",
         ])
 
         // TODO: callback into client or not?
@@ -123,22 +146,21 @@ internal final class GossipShell<Metadata, Payload: Codable> {
     private func runGossipRound(_ context: ActorContext<Message>) {
         // TODO: could pick only a number of keys to gossip in a round, so we avoid "bursts" of all gossip at the same intervals,
         // so in this round we'd do [a-c] and then [c-f] keys for example.
-        for identifier: AnyGossipIdentifier in self.gossips.keys {
-            context.log.warning("Gossip[\(identifier.gossipIdentifier)]: Initiate gossip round")
-
-            // TODO PICK BY gossipIdentifierKey
-            let logic: GossipLogic<Metadata, Payload> = self.logic
+        for (identifier, logic) in self.gossipLogics {
+            context.log.warning("Initiate gossip round", metadata: [
+                "gossip/id": "\(identifier.gossipIdentifier)"
+            ])
 
             let allPeers: Array<AddressableActorRef> = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
             let selectedPeers = logic.selectPeers(peers: allPeers) // TODO: OrderedSet would be the right thing here...
 
-            context.log.warning("Gossip[\(identifier.gossipIdentifier)] Selected peers: \(selectedPeers), from offered \(allPeers.count)", metadata: [
-
+            context.log.warning("Selected peers: \(selectedPeers), from [\(allPeers.count)] offered", metadata: [
+                "gossip/id": "\(identifier.gossipIdentifier)",
             ])
 
             for selectedPeer in selectedPeers {
                 guard let payload: Payload = logic.makePayload(target: selectedPeer) else {
-                    context.log.trace("Skipping gossip to peer \(selectedPeer)", metadata: [
+                    context.log.warning("Skipping gossip to peer \(selectedPeer)", metadata: [
                         "gossip/id": "\(identifier.gossipIdentifier)",
                         "gossip/target": "\(selectedPeer)",
                     ])
@@ -242,16 +264,30 @@ extension GossipShell {
                 "gossip/peers": "\(self.peers.map { $0.address })",
             ])
 
-            // TODO: implement this rather as "high priority peer to gossip to"
-            // TODO: remove this most likely
-            // TODO: or rather, ask the logic if it wants to eagerly push?
-            for (key, envelope) in self.gossips {
-                self.sendGossip(context, identifier: key.identifier, envelope.payload, to: peer)
-            }
+//            // TODO: implement this rather as "high priority peer to gossip to"
+//            // TODO: remove this most likely
+//            // TODO: or rather, ask the logic if it wants to eagerly push?
+//            for (key, logic) in self.gossipLogics {
+//                self.sendGossip(context, identifier: key.identifier, logic.payload, to: peer)
+//            }
 
             // TODO: consider if we should do a quick gossip to any new peers etc
             // TODO: peers are removed when they die, no manual way to do it
         }
+    }
+
+    enum SideChannelDirective {
+        case received
+        case unhandled
+    }
+    private func onSideChannelMessage(_ context: ActorContext<Message>, identifier: GossipIdentifier, _ message: Any) -> SideChannelDirective {
+        guard let logic = self.gossipLogics[identifier.asAnyGossipIdentifier] else { 
+            return .unhandled
+        }
+
+        logic.receiveSideChannelMessage(message)
+
+        return .received
     }
 }
 
@@ -265,6 +301,8 @@ extension GossipShell {
 //        case updatePayload(identity: GossipIdentifier, GossipEnvelopeProtocol) // FIXME: would be much preferable if my type can conform to this already
         case removePayload(identifier: GossipIdentifier)
         case introducePeer(PeerRef)
+
+        case sideChannelMessage(identifier: GossipIdentifier, Any)
 
         // internal messages
         case _clusterEvent(Cluster.Event)
@@ -284,7 +322,7 @@ extension GossipShell {
         of type: Payload.Type = Payload.self,
         ofMetadata metadataType: Metadata.Type = Metadata.self,
         props: Props = .init(), settings: Settings = .init(),
-        logic: Logic
+        makeLogic: @escaping (GossipIdentifier) -> Logic // TODO could offer overload with just "one" logic and one id
     ) throws -> GossipControl<Metadata, Payload>
         where Logic: GossipLogicProtocol, Logic.Metadata == Metadata, Logic.Payload == Payload {
         let ref = try context.spawn(
@@ -292,20 +330,10 @@ extension GossipShell {
             of: GossipShell<Metadata, Payload>.Message.self,
             props: props,
             file: #file, line: #line,
-            GossipShell<Metadata, Payload>(settings: settings, logic: logic).behavior
+            GossipShell<Metadata, Payload>(settings: settings, makeLogic: makeLogic).behavior
         )
         return GossipControl(ref)
     }
-}
-
-protocol ConvergentGossipControlProtocol {
-    associatedtype Metadata
-    associatedtype Payload: Codable
-
-    func introduce(peer: GossipShell<Metadata, Payload>.Ref)
-
-    func update(_ identity: GossipIdentifier, metadata: Metadata, payload: Payload)
-    func remove(identity: String)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -330,6 +358,11 @@ internal struct GossipControl<Metadata, Payload: Codable> {
 
     func remove(_ identifier: GossipIdentifier) {
         self.ref.tell(.removePayload(identifier: identifier))
+    }
+
+    /// Side channel messages which may be piped into specific gossip logics.
+    func sideChannelTell(identifier: GossipIdentifier, message: Any) {
+        self.ref.tell(.sideChannelMessage(identifier: identifier, message))
     }
 }
 

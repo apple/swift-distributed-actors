@@ -66,8 +66,8 @@ final class CRDTReplicationSerializationTests: ActorSystemTestBase {
         try shouldNotThrow {
             let id = CRDT.Identity("set-1")
             var set = CRDT.ORSet<String>(replicaID: .actorAddress(self.ownerAlpha))
-            set.add("hello")
-            set.add("world")
+            set.insert("hello")
+            set.insert("world")
             set.delta.shouldNotBeNil()
 
             let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)

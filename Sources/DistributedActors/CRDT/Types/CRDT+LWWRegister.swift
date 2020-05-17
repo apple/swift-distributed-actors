@@ -108,7 +108,7 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
 }
 
 extension CRDT.LWWRegister {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
         CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaID: .actorAddress(owner.address), initialValue: initialValue))
     }
 }

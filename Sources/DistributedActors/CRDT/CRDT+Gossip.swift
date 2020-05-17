@@ -24,6 +24,9 @@ extension CRDT {
         typealias Metadata = Void // last metadata we have from the other peer?
         typealias Payload = CRDT.Gossip
 
+        let identity: CRDT.Identity
+        let control: CRDT.Replicator.Shell.LocalControl
+
         // v1) [node: state sent], te to gossip to everyone
         // v2) [node: [metadata = version vector, and compare if the target knows it already or not]]]
         // v3) [node: pending deltas to deliver]
@@ -33,7 +36,13 @@ extension CRDT {
 
 //        let peerSelector: PeerSelection = fatalError()
 
-        init() {
+        init(identifier: GossipIdentifier, _ control: CRDT.Replicator.Shell.LocalControl) {
+            guard let id = identifier as? CRDT.Identity else {
+                fatalError("\(identifier) MUST be \(CRDT.Identity.self)")
+            }
+
+            self.identity = id
+            self.control = control
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
@@ -54,16 +63,31 @@ extension CRDT {
         // MARK: Receiving gossip
 
         func receiveGossip(payload: Payload) {
-        // TODO; some context would be nice, I want to log here
-            pprint("Received gossip = \(payload)")
+            pprint("received gossip ... = \(payload)")
+            // TODO: some context would be nice, I want to log here
+            // TODO: metadata? who did send us this payload?
+            if var existing = self.latest {
+                if let error = existing._tryMerge(other: payload.payload) {
+                    _ = error // TODO: log the error
+                }
+                self.latest = existing
+            } else {
+                self.latest = payload
+            }
+
+            self.control.tellGossipWrite(id: self.identity, data: payload.payload)
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Side-channel to Direct-replicator
 
-        func subReceive(any: Any) {
-            // receive ACKs from direct replicator
+        enum SideChannelMessage {
         }
+
+        func receiveSideChannelMessage(message: Any) {
+            // TODO: receive ACKs from direct replicator
+        }
+
     }
 
 }
@@ -88,11 +112,20 @@ extension CRDT {
 
     /// The gossip to be spread about a specific CRDT (identity).
     struct Gossip: Codable {
-        let payload: StateBasedCRDT
+        var payload: StateBasedCRDT
 
         init(payload: StateBasedCRDT) {
             self.payload = payload
         }
+
+        mutating func tryMerge(other: CRDT.Gossip) -> CRDT.MergeError? {
+            self.tryMerge(other: other.payload)
+        }
+
+        mutating func tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
+            self.payload._tryMerge(other: other)
+        }
+
     }
 }
 

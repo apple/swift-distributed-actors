@@ -105,8 +105,6 @@ extension CRDT {
             replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data, replyTo: nil)))
         }
 
-        // TODO: handle error instead of throw? convert replicator error to something else?
-
         internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
             let id = self.id
             let data = self.data
@@ -429,6 +427,15 @@ extension CRDT.OperationConsistency {
         case unableToFulfill(consistency: CRDT.OperationConsistency, localConfirmed: Bool, required: Int, remaining: Int, obtainable: Int)
         case tooManyFailures(allowed: Int, actual: Int)
         case remoteReplicasRequired
+        indirect case unexpectedError(Swift.Error)
+
+        public static func wrap(_ error: Swift.Error) -> Error {
+            if let consistencyError = error as? CRDT.OperationConsistency.Error {
+                return consistencyError
+            } else {
+                return .unexpectedError(error)
+            }
+        }
     }
 }
 

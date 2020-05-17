@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 extension CRDT.Replicator {
+
+    // TODO: make it Direct Replicator
     internal final class Instance {
         typealias Identity = CRDT.Identity
         typealias OwnerMessage = CRDT.Replication.DataOwnerMessage

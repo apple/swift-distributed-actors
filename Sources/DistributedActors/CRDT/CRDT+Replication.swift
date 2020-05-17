@@ -59,8 +59,12 @@ extension CRDT {
             // Perform write to at least `consistency` members
             // `data` is expected to be the full CRDT. Do not send delta even if it is a delta-CRDT.
             case write(_ id: Identity, _ data: StateBasedCRDT, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<WriteResult>)
+            /// Accept a write from the gossip subsystem
+            case gossipWrite(_ id: Identity, _ data: StateBasedCRDT)
+
             // Perform read from at least `consistency` members
             case read(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<ReadResult>)
+
             // Perform delete to at least `consistency` members
             case delete(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<DeleteResult>)
 

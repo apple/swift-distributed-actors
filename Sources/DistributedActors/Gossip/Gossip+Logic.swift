@@ -30,7 +30,7 @@
 /// to process or delegate the message elsewhere. Receipt of gossip is also often correlated to updating the logic state,
 /// e.g. when we receive gossip from another node such that we know that it has already "seen all changes we could send to it",
 /// we may decide to not gossip with it anymore, but prefer other members (or stop gossiping this instance all together since it
-/// has fulfiled it's purpose).
+/// has fulfilled it's purpose).
 ///
 /// - SeeAlso: [Gossiping in Distributed Systems](https://www.distributed-systems.net/my-data/papers/2007.osr.pdf) (Anne-Marie Kermarrec, Maarten van Steen),
 ///   for a nice overview of the general concepts involved in gossip algorithms.
@@ -59,9 +59,19 @@ public protocol GossipLogicProtocol {
 
     mutating func receiveGossip(payload: Payload)
 
+    /// Extra side channel, allowing for arbitrary outside interactions with this gossip logic.
+    // TODO: We could consider making it typed perhaps...
+    mutating func receiveSideChannelMessage(message: Any)
+
 }
 
-public class GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
+extension GossipLogicProtocol {
+    mutating func receiveSideChannelMessage(message: Any) {
+        // ignore by default
+    }
+}
+
+struct GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
 
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
@@ -70,6 +80,9 @@ public class GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
     @usableFromInline
     let _receiveGossip: (Payload) -> ()
 
+    @usableFromInline
+    let _receiveSideChannelMessage: (Any) -> ()
+
     public init<Logic>(_ logic: Logic)
         where Logic: GossipLogicProtocol, Logic.Metadata == Metadata, Logic.Payload == Payload {
         var l = logic
@@ -77,6 +90,7 @@ public class GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
         self._makePayload = { l.makePayload(target: $0) }
 
         self._receiveGossip = { l.receiveGossip(payload: $0) }
+        self._receiveSideChannelMessage = { l.receiveSideChannelMessage(message: $0) }
     }
 
 
@@ -90,5 +104,9 @@ public class GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
 
     public func receiveGossip(payload: Payload) {
         self._receiveGossip(payload)
+    }
+
+    func receiveSideChannelMessage(_ message: Any) {
+        self._receiveSideChannelMessage(message)
     }
 }

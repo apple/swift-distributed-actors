@@ -261,9 +261,9 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
-    internal func makeAsynchronousCallback<T>(for type: T.Type, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+    internal func makeAsynchronousCallback<T>(for type: T.Type, file: String = #file, line: UInt = #line, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
         AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
-            selfRef?.sendClosure($0)
+            selfRef?.sendClosure(file: file, line: line, $0)
         }
     }
 
@@ -332,8 +332,8 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     ///   - timeout: time after which the asyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes.
     ///     It is safe to access and modify actor state from here.
-    public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
-        let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self) {
+    public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
+        let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self, file: file, line: line) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe
             shell.behavior = try shell.behavior.canonicalize(shell, next: nextBehavior)

@@ -68,7 +68,7 @@ extension CRDT {
 
         public mutating func add(forKey key: Key, _ value: Value) {
             self.state.update(key: key) { set in
-                set.add(value)
+                set.insert(value)
             }
         }
 
@@ -170,7 +170,7 @@ extension CRDT.ActorOwned where DataType: ORMultiMapOperations {
 }
 
 extension CRDT.ORMultiMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
         CRDT.ActorOwned<CRDT.ORMultiMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(owner.address)))
     }
 }

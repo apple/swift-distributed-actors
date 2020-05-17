@@ -35,20 +35,34 @@ extension CRDT.Replicator {
         private let directReplicator: CRDT.Replicator.Instance
         private var gossipReplication: GossipControl<Void, CRDT.Gossip>!
 
+        // TODO: better name; this is the control from Gossip -> Local
+        struct LocalControl {
+            private let ref: ActorRef<CRDT.Replicator.Message>
+
+            init(_ ref: ActorRef<Message>) {
+                self.ref = ref
+            }
+
+            func tellGossipWrite(id: CRDT.Identity, data: StateBasedCRDT) {
+                ref.tell(.localCommand(.gossipWrite(id, data)))
+            }
+        }
+
         var settings: Settings {
             self.directReplicator.settings
         }
 
         internal var remoteReplicators: Set<ActorRef<Message>> = []
 
-        init(_ replicator: Instance) {
+        convenience init(settings: Settings) {
+            self.init(CRDT.Replicator.Instance(settings)) // TODO make it Direct Replicator
+        }
+
+        init(_ replicator: CRDT.Replicator.Instance) {
             self.directReplicator = replicator
             self.gossipReplication = nil // will be initialized in setup {}
         }
 
-        convenience init(settings: Settings) {
-            self.init(CRDT.Replicator.Instance(settings)) // TODO make it Direct Replicator
-        }
 
         var behavior: Behavior<Message> {
             .setup { context in
@@ -66,7 +80,9 @@ extension CRDT.Replicator {
                         gossipInterval: .seconds(1),
                         peerDiscovery: .fromReceptionistListing(id: "crdt-gossip-replicator")
                     ),
-                    logic: CRDT.GossipReplicatorLogic() // TODO: makeLogic: { id in CRDT.GossipReplicatorLogic(id) }
+                    makeLogic: { id in
+                        CRDT.GossipReplicatorLogic(identifier: id, LocalControl(context.myself))
+                    }
                 )
 
                 return .receive { context, message in
@@ -130,7 +146,10 @@ extension CRDT.Replicator {
             case .register(let ownerRef, let id, let data, let replyTo):
                 self.handleLocalRegisterCommand(context, ownerRef: ownerRef, id: id, data: data, replyTo: replyTo)
             case .write(let id, let data, let consistency, let timeout, let replyTo):
-                self.handleLocalWriteCommand(context, id, data, consistency: consistency, timeout: timeout, replyTo: replyTo)
+                self.directReplicateLocalWrite(context, id, data, consistency: consistency, timeout: timeout, replyTo: replyTo)
+                self.gossipReplicateLocalWrite(context, id, data)
+            case .gossipWrite(let id, let data):
+                self.acceptGossipWrite(context, id, data)
             case .read(let id, let consistency, let timeout, let replyTo):
                 self.handleLocalReadCommand(context, id, consistency: consistency, timeout: timeout, replyTo: replyTo)
             case .delete(let id, let consistency, let timeout, let replyTo):
@@ -141,9 +160,10 @@ extension CRDT.Replicator {
         private func handleLocalRegisterCommand(
             _ context: ActorContext<Message>,
             ownerRef: ActorRef<OwnerMessage>,
-            id: Identity, data: StateBasedCRDT,
+            id: CRDT.Identity, data: StateBasedCRDT,
             replyTo: ActorRef<LocalRegisterResult>?
         ) {
+            // ==== Direct Replicate -----------------------------------------------------------------------------------
             // Register the owner first
             switch self.directReplicator.registerOwner(dataId: id, owner: ownerRef) {
             case .registered:
@@ -157,14 +177,17 @@ extension CRDT.Replicator {
                     replyTo?.tell(.failure(.unsupportedCRDT))
                 }
             }
-
             // We are initializing local store with the CRDT essentially, so there is no need to send `.updated` to
             // owners or propagate change to the cluster (i.e., local only).
+
+            // ==== Gossip Replicate -----------------------------------------------------------------------------------
+            // TODO: anything to do here? register with the gossiper?
         }
 
-        private func handleLocalWriteCommand(
+        private func directReplicateLocalWrite(
             _ context: ActorContext<Message>,
-            _ id: Identity, _ data: StateBasedCRDT,
+            _ id: CRDT.Identity,
+            _ data: StateBasedCRDT,
             consistency: OperationConsistency,
             timeout: TimeAmount,
             replyTo: ActorRef<LocalWriteResult>
@@ -228,6 +251,7 @@ extension CRDT.Replicator {
                     }
 
                     // ==== Gossip Replicate ---------------------------------------------------------------------------
+                    context.log.warning("UPDATE: \(updatedData)")
                     self.gossipReplication.update(id, metadata: (), payload: CRDT.Gossip(payload: updatedData)) // TODO: v2, allow tracking the deltas here
                 }
             case .inputAndStoredDataTypeMismatch(let stored):
@@ -237,9 +261,35 @@ extension CRDT.Replicator {
             }
         }
 
+        private func gossipReplicateLocalWrite(
+            _ context: ActorContext<Message>,
+            _ id: CRDT.Identity,
+            _ data: StateBasedCRDT
+        ) {
+            self.gossipReplication.update(id, metadata: (), payload: CRDT.Gossip(payload: data))
+        }
+
+        private func acceptGossipWrite(
+            _ context: ActorContext<Message>,
+            _ id: CRDT.Identity,
+            _ data: StateBasedCRDT
+        ) {
+            // TODO: keep track where we direct replicated, and we can de-prioritize gossip there (or don't at all even)
+            switch self.directReplicator.write(id, data, deltaMerge: true) {
+                // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
+            case .applied(let updatedData, _):
+                    self.notifyOwnersOnUpdate(context, id, updatedData)
+            case .inputAndStoredDataTypeMismatch(_):
+                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup
+            case .unsupportedCRDT:
+                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup
+            }
+        }
+
+
         private func makeRemoteWriteCommand(
             _ context: ActorContext<Message>,
-            _ id: Identity, _ data: StateBasedCRDT, isNewIdLocally: Bool,
+            _ id: CRDT.Identity, _ data: StateBasedCRDT, isNewIdLocally: Bool,
             replyTo: ActorRef<RemoteWriteResult>
         ) -> RemoteCommand {
             // Technically, `isNewIdLocally` should always be false because all CRDTs are `ActorOwned`, and therefore
@@ -287,7 +337,7 @@ extension CRDT.Replicator {
             return remoteCommand
         }
 
-        private func handleLocalReadCommand(_ context: ActorContext<Message>, _ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalReadResult>) {
+        private func handleLocalReadCommand(_ context: ActorContext<Message>, _ id: CRDT.Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalReadResult>) {
             switch consistency {
             case .local: // doesn't rely on remote members at all
                 switch self.directReplicator.read(id) {
@@ -372,7 +422,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleLocalDeleteCommand(_ context: ActorContext<Message>, _ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalDeleteResult>) {
+        private func handleLocalDeleteCommand(_ context: ActorContext<Message>, _ id: CRDT.Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalDeleteResult>) {
             switch self.directReplicator.delete(id) {
             case .applied:
                 switch consistency {
@@ -504,7 +554,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleRemoteWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: StateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
+        private func handleRemoteWriteCommand(_ context: ActorContext<Message>, _ id: CRDT.Identity, _ data: StateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
             switch self.directReplicator.write(id, data, deltaMerge: false) {
             case .applied(let updatedData, _):
                 replyTo.tell(.success)
@@ -516,7 +566,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleRemoteWriteDeltaCommand(_ context: ActorContext<Message>, _ id: Identity, _ delta: StateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
+        private func handleRemoteWriteDeltaCommand(_ context: ActorContext<Message>, _ id: CRDT.Identity, _ delta: StateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
             switch self.directReplicator.writeDelta(id, delta) {
             case .applied(let updatedData):
                 replyTo.tell(.success)
@@ -530,7 +580,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleRemoteReadCommand(_ context: ActorContext<Message>, _ id: Identity, replyTo: ActorRef<RemoteReadResult>) {
+        private func handleRemoteReadCommand(_ context: ActorContext<Message>, _ id: CRDT.Identity, replyTo: ActorRef<RemoteReadResult>) {
             switch self.directReplicator.read(id) {
             case .data(let stored):
                 // Send full CRDT back
@@ -542,7 +592,7 @@ extension CRDT.Replicator {
             // Read-only command; nothing has changed so no need to notify anyone
         }
 
-        private func handleRemoteDeleteCommand(_ context: ActorContext<Message>, _ id: Identity, replyTo: ActorRef<RemoteDeleteResult>) {
+        private func handleRemoteDeleteCommand(_ context: ActorContext<Message>, _ id: CRDT.Identity, replyTo: ActorRef<RemoteDeleteResult>) {
             switch self.directReplicator.delete(id) {
             case .applied:
                 replyTo.tell(.success)
@@ -553,7 +603,7 @@ extension CRDT.Replicator {
         // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Notify owners
 
-        private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: StateBasedCRDT) {
+        private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: CRDT.Identity, _ data: StateBasedCRDT) {
             if let owners = self.directReplicator.owners(for: id) {
                 let message: OwnerMessage = .updated(data)
                 for owner in owners {
@@ -562,7 +612,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func notifyOwnersOnDelete(_: ActorContext<Message>, _ id: Identity) {
+        private func notifyOwnersOnDelete(_: ActorContext<Message>, _ id: CRDT.Identity) {
             if let owners = self.directReplicator.owners(for: id) {
                 for owner in owners {
                     owner.tell(.deleted)

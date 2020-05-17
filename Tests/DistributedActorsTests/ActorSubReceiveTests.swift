@@ -40,12 +40,15 @@ final class ActorSubReceiveTests: ActorSystemTestBase {
     }
 
     struct TestSubReceiveType<Value>: Codable {}
-    func test_subReceive_notCrashWhenTypeIncludesVoidLiteral() throws {
+    func test_subReceive_notCrashWhenTypeIncludesSpecialChar() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<TestSubReceiveType<()>>.self)
 
         let behavior: Behavior<Never> = .setup { context in
             let subRef = context.subReceive("test-sub", TestSubReceiveType<()>.self) { message in
+                p.tell("subreceive:\(message)")
+            }
+            _  = context.subReceive("test-sub", TestSubReceiveType<String?>.self) { message in
                 p.tell("subreceive:\(message)")
             }
             refProbe.tell(subRef)

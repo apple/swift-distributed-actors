@@ -32,6 +32,7 @@ extension ActorTestProbeCommand: NonTransportableActorMessage {}
 ///
 /// - SeeAlso: `ActorableTestProbe` which is the equivalent API for `Actorable`s.
 public class ActorTestProbe<Message: ActorMessage> {
+
     /// Name of the test probe (and underlying actor).
     public let name: String
 

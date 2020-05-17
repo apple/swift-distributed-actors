@@ -213,7 +213,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
     private func actorOwnedORSetBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORSetCommand> {
         .setup { context in
-            let s = CRDT.ORSet<Int>.owned(by: context, id: id)
+            let s = CRDT.ORSet<Int>.makeOwned(by: context, id: id)
             s.onUpdate { id, ss in
                 context.log.trace("ORSet \(id) updated with new value: \(ss.elements)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
@@ -226,7 +226,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
             return .receiveMessage { message in
                 switch message {
                 case .add(let element, let consistency, let timeout, let replyTo):
-                    s.add(element, writeConsistency: consistency, timeout: timeout)._onComplete { result in
+                    s.insert(element, writeConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let s):
                             replyTo.tell(s.elements)
@@ -338,7 +338,7 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
     private func actorOwnedORMapBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORMapCommand> {
         .setup { context in
-            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, defaultValue: CRDT.GCounter(replicaID: .actorAddress(context.address)))
+            let m = CRDT.ORMap<String, CRDT.GCounter>.makeOwned(by: context, id: id, defaultValue: CRDT.GCounter(replicaID: .actorAddress(context.address)))
             m.onUpdate { id, mm in
                 context.log.trace("ORMap \(id) updated with new value: \(mm.underlying)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)

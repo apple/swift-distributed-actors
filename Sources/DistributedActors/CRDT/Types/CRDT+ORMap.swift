@@ -113,7 +113,7 @@ extension CRDT {
             }
 
             // Always add `key` to `_keys` set to track its causal history
-            self._keys.add(key)
+            self._keys.insert(key)
 
             // Apply `mutator` to the value then save it to state. Create `Value` if needed.
             var value = self._values[key] ?? defaultValue
@@ -248,7 +248,7 @@ extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
     public mutating func resetValue(forKey key: Key) {
         if var value = self._values[key] {
             // Always add `key` to `_keys` set to track its causal history
-            self._keys.add(key)
+            self._keys.insert(key)
             // Update state and delta
             value.reset()
             self._values[key] = value
@@ -350,7 +350,7 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 }
 
 extension CRDT.ORMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
         CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(owner.address), defaultValue: defaultValue))
     }
 }

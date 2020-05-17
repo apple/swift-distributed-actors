@@ -27,10 +27,10 @@ final class CRDTORSetTests: XCTestCase {
         s1.count.shouldEqual(0)
         s1.isEmpty.shouldBeTrue()
 
-        s1.add(1)
-        s1.add(3)
+        s1.insert(1)
+        s1.insert(3)
         s1.remove(1)
-        s1.add(5)
+        s1.insert(5)
 
         s1.elements.shouldEqual([3, 5])
         s1.count.shouldEqual(2)
@@ -50,7 +50,7 @@ final class CRDTORSetTests: XCTestCase {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
 
         // version 1
-        s1.add(1)
+        s1.insert(1)
         s1.elements.shouldEqual([1])
         guard let d1 = s1.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(s1)")
@@ -60,7 +60,7 @@ final class CRDTORSetTests: XCTestCase {
         d1.elementByBirthDot[VersionDot(s1.replicaID, 1)]!.shouldEqual(1)
 
         // version 2
-        s1.add(3)
+        s1.insert(3)
         s1.elements.shouldEqual([1, 3])
         guard let d2 = s1.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(s1)")
@@ -81,7 +81,7 @@ final class CRDTORSetTests: XCTestCase {
         d3.elementByBirthDot[VersionDot(s1.replicaID, 2)]!.shouldEqual(3)
 
         // version 3 - duplicate element, previous version(s) deleted
-        s1.add(3)
+        s1.insert(3)
         s1.elements.shouldEqual([3])
         guard let d4 = s1.delta else {
             throw shouldNotHappen("Expected delta to be non nil, got \(s1)")
@@ -94,12 +94,12 @@ final class CRDTORSetTests: XCTestCase {
 
     func test_merge_shouldMutate() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
-        s1.add(1)
-        s1.add(3)
+        s1.insert(1)
+        s1.insert(3)
         var s2 = CRDT.ORSet<Int>(replicaID: self.replicaB)
-        s2.add(3)
-        s2.add(5)
-        s2.add(1)
+        s2.insert(3)
+        s2.insert(5)
+        s2.insert(1)
 
         // s1 is mutated
         s1.merge(other: s2)
@@ -120,17 +120,17 @@ final class CRDTORSetTests: XCTestCase {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
 
         var s2 = CRDT.ORSet<Int>(replicaID: self.replicaB)
-        s2.add(7) // (B,1): 7
+        s2.insert(7) // (B,1): 7
 
         s1.merge(other: s2) // Now s1 has (B,1): 7
         s1.contains(7).shouldBeTrue()
         s1.state.elementByBirthDot[VersionDot(s2.replicaID, 1)]!.shouldEqual(7) // (B,1): 7
 
-        s1.add(1)
-        s1.add(3)
+        s1.insert(1)
+        s1.insert(3)
 
-        s2.add(3) // (B,2): 3
-        s2.add(7) // (B,3): 7; (B,1) deleted with this add
+        s2.insert(3) // (B,2): 3
+        s2.insert(7) // (B,3): 7; (B,1) deleted with this add
 
         // s1 is mutated
         s1.merge(other: s2)
@@ -148,12 +148,12 @@ final class CRDTORSetTests: XCTestCase {
 
     func test_mergeDelta_shouldMutate() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
-        s1.add(1)
-        s1.add(3)
+        s1.insert(1)
+        s1.insert(3)
         var s2 = CRDT.ORSet<Int>(replicaID: self.replicaB)
-        s2.add(3)
-        s2.add(5)
-        s2.add(1)
+        s2.insert(3)
+        s2.insert(5)
+        s2.insert(1)
 
         guard let d = s2.delta else {
             throw shouldNotHappen("s2.delta should not be nil after add")
@@ -177,17 +177,17 @@ final class CRDTORSetTests: XCTestCase {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
 
         var s2 = CRDT.ORSet<Int>(replicaID: self.replicaB)
-        s2.add(7) // (B,1): 7
+        s2.insert(7) // (B,1): 7
 
         s1.merge(other: s2) // Now s1 has (B,1): 7
         s1.contains(7).shouldBeTrue()
         s1.state.elementByBirthDot[VersionDot(s2.replicaID, 1)]!.shouldEqual(7) // (B,1): 7
 
-        s1.add(1)
-        s1.add(3)
+        s1.insert(1)
+        s1.insert(3)
 
-        s2.add(3) // (B,2): 3
-        s2.add(7) // (B,3): 7; (B,1) deleted with this add
+        s2.insert(3) // (B,2): 3
+        s2.insert(7) // (B,3): 7; (B,1) deleted with this add
 
         guard let d = s2.delta else {
             throw shouldNotHappen("s2.delta should not be nil after add")
@@ -208,8 +208,8 @@ final class CRDTORSetTests: XCTestCase {
 
     func test_reset() throws {
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
-        s1.add(1)
-        s1.add(3)
+        s1.insert(1)
+        s1.insert(3)
         s1.elements.shouldEqual([1, 3])
 
         s1.reset()
