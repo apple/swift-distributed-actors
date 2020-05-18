@@ -42,9 +42,16 @@ extension CRDT {
             self.state = [:]
         }
 
+        /// Increment the counter (using the stored owner `replicaID`) by the passed in `amount`.
+        ///
+        /// - Faults: when amount is negative
         /// - Faults: on overflow // TODO perhaps just saturate?
         mutating func increment(by amount: Int) {
-            precondition(amount > 0, "Amount must be greater than 0")
+            precondition(amount >= 0, "Amount must be greater than 0, was: \(amount)")
+
+            guard amount > 0 else {
+                return // adding 0 is a no-op, and we don't even perform the action (which would create deltas)
+            }
 
             let newCount: Int
             if let currentCount = state[replicaID] {

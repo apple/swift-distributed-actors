@@ -165,6 +165,7 @@ public class Serialization {
         // crdt gossip
         settings.register(GossipShell<(), DistributedActors.CRDT.Gossip>.Message.self)
         settings.register(GossipShell<Void, DistributedActors.CRDT.Gossip>.Message.self) // TODO: remove this, workaround since we ust strings rather than mangled names today
+        settings.register(CRDT.Gossip.self) // TODO: remove this, workaround since we ust strings rather than mangled names today
 
         // errors
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
@@ -342,7 +343,7 @@ extension Serialization {
 
 // TODO: shall we make those return something async-capable, or is our assumption that we invoke these in the serialization pools enough at least until proven wrong?
 extension Serialization {
-    /// Container for serializatoin output.
+    /// Container for serialization output.
     ///
     /// Describing what serializer was used to serialize the value, and its serialized bytes
     public struct Serialized {

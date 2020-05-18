@@ -371,7 +371,7 @@ extension CRDT.ActorOwned where DataType: DeltaCRDT {
 // MARK: CRDT.Identity
 
 extension CRDT {
-    public struct Identity: Hashable {
+    public struct Identity: Hashable, Codable {
         public let id: String
 
         public init(_ id: String) {

@@ -207,7 +207,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 //        Array(self.peers.shuffled().prefix(1)) // TODO: allow the PeerSelection to pick multiple
 //    }
 
-    private func sendGossip(_ context: ActorContext<Message>, identifier: GossipIdentifier, _ payload: Payload, to target: PeerRef) {
+    private func sendGossip(_ context: ActorContext<Message>, identifier: AnyGossipIdentifier, _ payload: Payload, to target: PeerRef) {
         // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them that's nicer for small clusters, I guess
 //        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
 
@@ -218,7 +218,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
             "actor/message": "\(payload)",
         ])
 
-        target.tell(.gossip(identity: identifier, payload))
+        target.tell(.gossip(identity: identifier.underlying, payload))
     }
 
     private func scheduleNextGossipRound(context: ActorContext<Message>) {
@@ -380,41 +380,76 @@ public struct GossipEnvelope<Metadata, Payload: Codable>: GossipEnvelopeProtocol
 
 /// Used to identify which identity a payload is tied with.
 /// E.g. it could be used to mark the CRDT instance the gossip is carrying, or which "entity" a gossip relates to.
-public protocol GossipIdentifier {
+// FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
+public protocol GossipIdentifier  {
     var gossipIdentifier: String { get }
+
+    init(_ gossipIdentifier: String)
 
     var asAnyGossipIdentifier: AnyGossipIdentifier { get }
 }
 
+//extension GossipIdentifier {
+//    public enum CodingKeys: CodingKey {
+//        case manifest
+//        case identifier
+//    }
+//
+//    public init(from decoder: Decoder) throws {
+//        guard let context: Serialization.Context = decoder.actorSerializationContext else {
+//            throw SerializationError.missingSerializationContext(decoder, GossipShell<Metadata, Payload>.Message.self)
+//        }
+//
+//        let container = try decoder.container(keyedBy: CodingKeys.self)
+//        let manifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
+//        let identifier = try container.decode(String.self, forKey: .identifier)
+//        if let T: GossipIdentifier = try context.summonType(from: manifest){
+//            T()
+//
+//        }
+//    }
+//
+//    public func encode(to encoder: Encoder) throws {
+//    }
+//}
+
 public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
-    public let identifier: GossipIdentifier
+    public let underlying: GossipIdentifier
+
+    public init(_ id: String) {
+        self.underlying = StringGossipIdentifier(stringLiteral: id)
+    }
 
     public init(_ identifier: GossipIdentifier) {
         if let any = identifier as? AnyGossipIdentifier {
             self = any
         } else {
-            self.identifier = identifier
+            self.underlying = identifier
         }
     }
 
     public var gossipIdentifier: String {
-        self.identifier.gossipIdentifier
+        self.underlying.gossipIdentifier
     }
     public var asAnyGossipIdentifier: AnyGossipIdentifier {
         self
     }
 
     public func hash(into hasher: inout Hasher) {
-        self.identifier.gossipIdentifier.hash(into: &hasher)
+        self.underlying.gossipIdentifier.hash(into: &hasher)
     }
 
     public static func ==(lhs: AnyGossipIdentifier, rhs: AnyGossipIdentifier) -> Bool {
-        lhs.identifier.gossipIdentifier == rhs.identifier.gossipIdentifier
+        lhs.underlying.gossipIdentifier == rhs.underlying.gossipIdentifier
     }
 }
 
 public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByStringLiteral {
     public let gossipIdentifier: String
+
+    public init(_ gossipIdentifier: StringLiteralType) {
+        self.gossipIdentifier = gossipIdentifier
+    }
 
     public init(stringLiteral gossipIdentifier: StringLiteralType) {
         self.gossipIdentifier = gossipIdentifier

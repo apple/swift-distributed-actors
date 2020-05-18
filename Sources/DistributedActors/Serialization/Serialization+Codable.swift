@@ -15,7 +15,8 @@
 import NIO
 import NIOFoundationCompat
 
-import Foundation // for Codable
+import Foundation // JSON and PList coders
+import struct Foundation.Data
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Decodable + _decode(bytes:using:SomeDecoder) extensions
@@ -74,3 +75,42 @@ extension Encodable {
         try encoder.encode(self)
     }
 }
+
+// TODO: could not get it to work
+//// ==== ----------------------------------------------------------------------------------------------------------------
+//// MARK: encode with manifest
+//
+//extension KeyedEncodingContainerProtocol {
+//    mutating func encode<T>(_ value: T, forKey key: Self.Key, forManifestKey manifestKey: Self.Key) throws where T: Encodable {
+//        let encoder = self.superEncoder()
+//        guard let context: Serialization.Context = encoder.actorSerializationContext else {
+//            throw SerializationError.missingSerializationContext(encoder, value)
+//        }
+//
+//        let serialized = try context.serialization.serialize(value)
+//
+//        try self.encode(serialized.manifest, forKey: manifestKey)
+//        try self.encode(serialized.buffer.readData(), forKey: key)
+//    }
+//
+//
+//}
+//
+//extension KeyedDecodingContainerProtocol {
+//    func decode<T>(
+//        _ type: T.Type, forKey key: Self.Key, forManifestKey manifestKey: Self.Key,
+//        file: String = #file, line: UInt = #line
+//    ) throws -> T where T: Decodable {
+//        let decoder = self.superEncoder()
+//
+//        guard let context: Serialization.Context = decoder.actorSerializationContext else {
+//            throw SerializationError.missingSerializationContext(T.self, details: "Missing context", file: file, line: line)
+//        }
+//
+//        let manifest = try self.decode(Serialization.Manifest.self, forKey: manifestKey)
+//        let data = try self.decode(Foundation.Data.self, forKey: manifestKey)
+//
+//        return try context.serialization.deserialize(as: T.self, from: .data(data), using: manifest)
+//    }
+//
+//}

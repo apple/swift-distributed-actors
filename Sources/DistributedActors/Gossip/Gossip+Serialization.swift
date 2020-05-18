@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import struct Foundation.Data
+
 extension GossipShell.Message: Codable {
 
     public enum DiscriminatorKeys: String, Codable {
@@ -21,44 +23,55 @@ extension GossipShell.Message: Codable {
     public enum CodingKeys: CodingKey {
         case _case
         case gossip_identifier
+        case gossip_identifier_manifest
         case gossip_payload
         case gossip_payload_manifest
     }
 
     public init(from decoder: Decoder) throws {
-//        guard let context: Serialization.Context = decoder.actorSerializationContext else {
-//            throw SerializationError.missingSerializationContext(decoder, GossipShell<Metadata, Payload>.Message.self)
-//        }
+        guard let context: Serialization.Context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(decoder, GossipShell<Metadata, Payload>.Message.self)
+        }
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .gossip:
-            let identifierString = try container.decode(String.self, forKey: .gossip_identifier)
-            let identifier = StringGossipIdentifier(stringLiteral: identifierString)
 
-            let payload: Payload = try container.decode(Payload.self, forKey: .gossip_payload)
+            let identifierManifest = try container.decode(Serialization.Manifest.self, forKey: .gossip_identifier_manifest)
+            let identifierPayload = try container.decode(Data.self, forKey: .gossip_identifier)
+            let identifierAny = try context.serialization.deserializeAny(from: .data(identifierPayload), using: identifierManifest)
+            guard let identifier = identifierAny as? GossipIdentifier else { // FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
+                fatalError("Cannot cast to GossipIdentifier, was: \(identifierAny)")
+            }
+
+            // FIXME: sometimes we could encode raw and not via the Data -- think about it and fix it
+            let payloadManifest = try container.decode(Serialization.Manifest.self, forKey: .gossip_payload_manifest)
+            let payloadPayload = try container.decode(Data.self, forKey: .gossip_payload)
+            let payload = try context.serialization.deserialize(as: Payload.self, from: .data(payloadPayload), using: payloadManifest)
 
             self = .gossip(identity: identifier, payload)
         }
     }
 
     public func encode(to encoder: Encoder) throws {
-//        guard let context: Serialization.Context = encoder.actorSerializationContext else {
-//            throw SerializationError.missingSerializationContext(encoder, self)
-//        }
+        guard let context: Serialization.Context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(encoder, self)
+        }
 
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {
         case .gossip(let identifier, let payload):
             try container.encode(DiscriminatorKeys.gossip, forKey: ._case)
-            try container.encode(identifier.gossipIdentifier, forKey: .gossip_identifier)
-            try container.encode(payload, forKey: .gossip_payload)
-            // try container.encode(String(reflecting: type(of: payload)), forKey: .gossip_payload_manifest)
-//            let serialized = try context.serialization.serialize(payload)
-//            // TODO consider if we really have to, or we can stick to just encode of payload
-//            try container.encode(serialized.manifest, forKey: .gossip_payload_manifest)
-//            try container.encode(serialized.buffer.readData(), forKey: .gossip_payload)
+
+            let serializedIdentifier = try context.serialization.serialize(identifier)
+            try container.encode(serializedIdentifier.manifest, forKey: .gossip_identifier_manifest)
+            try container.encode(serializedIdentifier.buffer.readData(), forKey: .gossip_identifier)
+
+            let serializedPayload = try context.serialization.serialize(payload)
+            try container.encode(serializedPayload.manifest, forKey: .gossip_payload_manifest)
+            try container.encode(serializedPayload.buffer.readData(), forKey: .gossip_payload)
+
         default:
             throw SerializationError.unableToSerialize(hint: "\(reflecting: Self.self)")
         }
