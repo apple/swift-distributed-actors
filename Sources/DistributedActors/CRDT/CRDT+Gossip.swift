@@ -20,7 +20,7 @@ extension CRDT {
     ///
     /// It collaborates with the Direct Replicator in order to avoid needlessly sending values to nodes which already know
     /// about them (e.g. through direct replication).
-    final class GossipReplicatorLogic: GossipLogicProtocol {
+    final class GossipReplicatorLogic: GossipLogic {
         typealias Metadata = Void // last metadata we have from the other peer?
         typealias Payload = CRDT.Gossip
 
@@ -62,30 +62,51 @@ extension CRDT {
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Receiving gossip
 
+        // FIXME: we need another "was updated locally" so we avoid causing an infinite update loop; perhaps use metadata for it -- source of the mutation etc?
         func receiveGossip(payload: Payload) {
-            pprint("received gossip ... = \(payload)")
-            // TODO: some context would be nice, I want to log here
-            // TODO: metadata? who did send us this payload?
-            if var existing = self.latest {
-                if let error = existing._tryMerge(other: payload.payload) {
-                    _ = error // TODO: log the error
-                }
-                self.latest = existing
-            } else {
-                self.latest = payload
-            }
-
+//            pprint("[\(identity)] received gossip ... = \(payload)")
+            self.mergeInbound(payload)
             self.control.tellGossipWrite(id: self.identity, data: payload.payload)
+        }
+
+        func localGossipUpdate(metadata: Metadata, payload: Payload) {
+//            pprint("[\(identity)] local gossip update ... \(metadata) = \(payload)")
+            self.mergeInbound(payload)
+            // during the next gossip round we'll gossip the latest most-up-to date version now;
+            // no need to schedule that, we'll be called when it's time.
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Side-channel to Direct-replicator
 
         enum SideChannelMessage {
+            case localUpdate(Payload)
         }
 
         func receiveSideChannelMessage(message: Any) {
+            guard let sideChannelMessage = message as? SideChannelMessage else {
+                return // TODO: dead letter it
+            }
+
             // TODO: receive ACKs from direct replicator
+            switch sideChannelMessage {
+            case .localUpdate(let payload):
+                self.mergeInbound(payload)
+            }
+        }
+
+
+        private func mergeInbound(_ payload: CRDT.GossipReplicatorLogic.Payload) {
+            // TODO: some context would be nice, I want to log here
+            // TODO: metadata? who did send us this payload?
+            if var existing = self.latest {
+                if let error = existing.tryMerge(other: payload.payload) {
+                    _ = error // TODO: log the error
+                }
+                self.latest = existing
+            } else {
+                self.latest = payload
+            }
         }
 
     }

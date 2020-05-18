@@ -35,7 +35,7 @@
 /// - SeeAlso: [Gossiping in Distributed Systems](https://www.distributed-systems.net/my-data/papers/2007.osr.pdf) (Anne-Marie Kermarrec, Maarten van Steen),
 ///   for a nice overview of the general concepts involved in gossip algorithms.
 /// - SeeAlso: `Cluster.Gossip` for the Actor System's own gossip mechanism for membership dissemination
-public protocol GossipLogicProtocol {
+public protocol GossipLogic {
     associatedtype Metadata
     associatedtype Payload: Codable
 
@@ -59,19 +59,21 @@ public protocol GossipLogicProtocol {
 
     mutating func receiveGossip(payload: Payload)
 
+    mutating func localGossipUpdate(metadata: Metadata, payload: Payload)
+
     /// Extra side channel, allowing for arbitrary outside interactions with this gossip logic.
     // TODO: We could consider making it typed perhaps...
     mutating func receiveSideChannelMessage(message: Any)
 
 }
 
-extension GossipLogicProtocol {
+extension GossipLogic {
     mutating func receiveSideChannelMessage(message: Any) {
         // ignore by default
     }
 }
 
-struct GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
+struct GossipLogicBox<Metadata, Payload: Codable>: GossipLogic, CustomStringConvertible {
 
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
@@ -79,17 +81,21 @@ struct GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
     let _makePayload: (AddressableActorRef) -> Payload?
     @usableFromInline
     let _receiveGossip: (Payload) -> ()
+    @usableFromInline
+    let _localGossipUpdate: (Metadata, Payload) -> ()
 
     @usableFromInline
     let _receiveSideChannelMessage: (Any) -> ()
 
     public init<Logic>(_ logic: Logic)
-        where Logic: GossipLogicProtocol, Logic.Metadata == Metadata, Logic.Payload == Payload {
+        where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
         var l = logic
         self._selectPeers =  { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
 
         self._receiveGossip = { l.receiveGossip(payload: $0) }
+        self._localGossipUpdate = { l.localGossipUpdate(metadata: $0, payload: $1) }
+
         self._receiveSideChannelMessage = { l.receiveSideChannelMessage(message: $0) }
     }
 
@@ -106,7 +112,15 @@ struct GossipLogic<Metadata, Payload: Codable>: GossipLogicProtocol {
         self._receiveGossip(payload)
     }
 
+    public func localGossipUpdate(metadata: Metadata, payload: Payload) {
+        self._localGossipUpdate(metadata, payload)
+    }
+
     func receiveSideChannelMessage(_ message: Any) {
         self._receiveSideChannelMessage(message)
+    }
+
+    var description: String {
+        "GossipLogicBox<\(reflecting: Metadata.self), \(reflecting: Payload.self)>(...)"
     }
 }

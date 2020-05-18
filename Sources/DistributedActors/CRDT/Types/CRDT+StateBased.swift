@@ -136,3 +136,8 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
 public protocol ResettableCRDT {
     mutating func reset()
 }
+
+internal enum AnyStateBasedCRDTError: Error {
+    case incompatibleTypesMergeAttempted(StateBasedCRDT, other: StateBasedCRDT)
+    case incompatibleDeltaTypeMergeAttempted(StateBasedCRDT, delta: StateBasedCRDT)
+}

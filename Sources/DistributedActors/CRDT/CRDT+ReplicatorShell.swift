@@ -251,7 +251,6 @@ extension CRDT.Replicator {
                     }
 
                     // ==== Gossip Replicate ---------------------------------------------------------------------------
-                    context.log.warning("UPDATE: \(updatedData)")
                     self.gossipReplication.update(id, metadata: (), payload: CRDT.Gossip(payload: updatedData)) // TODO: v2, allow tracking the deltas here
                 }
             case .inputAndStoredDataTypeMismatch(let stored):

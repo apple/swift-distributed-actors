@@ -17,10 +17,10 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 
     let settings: Settings
 
-    private let makeLogic: (GossipIdentifier) -> GossipLogic<Metadata, Payload>
+    private let makeLogic: (GossipIdentifier) -> GossipLogicBox<Metadata, Payload>
 
     /// Payloads to be gossiped on gossip rounds
-    private var gossipLogics: [AnyGossipIdentifier: GossipLogic<Metadata, Payload>]
+    private var gossipLogics: [AnyGossipIdentifier: GossipLogicBox<Metadata, Payload>]
 
     typealias PeerRef = ActorRef<Message>
     private var peers: Set<PeerRef>
@@ -28,9 +28,9 @@ internal final class GossipShell<Metadata, Payload: Codable> {
     fileprivate init<Logic>(
         settings: Settings,
         makeLogic: @escaping (GossipIdentifier) -> Logic
-    ) where Logic: GossipLogicProtocol, Logic.Metadata == Metadata, Logic.Payload == Payload {
+    ) where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
         self.settings = settings
-        self.makeLogic = { id in GossipLogic(makeLogic(id))}
+        self.makeLogic = { id in GossipLogicBox(makeLogic(id))}
         self.gossipLogics = [:]
         self.peers = []
     }
@@ -84,10 +84,6 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         identifier: GossipIdentifier,
         payload: Payload
     ) {
-        // FIXME: pick a gossip from the logics, apply the receive
-
-//        let existing = self.gossips[identifier.asAnyGossipIdentifier]
-//
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]: \(payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
 //            "gossip/existing": "\(String(reflecting: existing))",
@@ -95,11 +91,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         ])
 
         // TODO we could handle some actions if it issued some
-         guard let logic = self.gossipLogics[identifier.asAnyGossipIdentifier] else {
-             // FIXME: should we not rather create the record for the gossiped in value? OR NOT?
-             context.log.warning("No logic to receive the incoming gossip")
-             return
-         }
+         let logic: GossipLogicBox<Metadata, Payload> = self.getEnsureLogic(identifier: identifier)
 
         // TODO we could handle directives from the logic
         logic.receiveGossip(payload: payload)
@@ -111,16 +103,9 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         metadata: Metadata,
         payload: Payload
     ) {
-        let logic: GossipLogic<Metadata, Payload>
-        if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
-            logic = existing
-        } else {
-            logic = self.makeLogic(identifier)
-            self.gossipLogics[identifier.asAnyGossipIdentifier] = logic
-        }
+        let logic = getEnsureLogic(identifier: identifier)
 
-        context.log.warning("PAYLOAD \(payload), \(logic)")
-        logic.receiveGossip(payload: payload) // TODO: metadata?
+        logic.localGossipUpdate(metadata: metadata, payload: payload)
 
         context.log.trace("Gossip payload [\(identifier)] updated: \(payload)", metadata: [
             "gossip/identifier": "\(identifier)",
@@ -129,6 +114,17 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         ])
 
         // TODO: bump local version vector; once it is in the envelope
+    }
+
+    private func getEnsureLogic(identifier: GossipIdentifier) -> GossipLogicBox<Metadata, Payload> {
+        let logic: GossipLogicBox<Metadata, Payload>
+        if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
+            logic = existing
+        } else {
+            logic = self.makeLogic(identifier)
+            self.gossipLogics[identifier.asAnyGossipIdentifier] = logic
+        }
+        return logic
     }
 
     // TODO keep and remove logics
@@ -147,20 +143,21 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         // TODO: could pick only a number of keys to gossip in a round, so we avoid "bursts" of all gossip at the same intervals,
         // so in this round we'd do [a-c] and then [c-f] keys for example.
         for (identifier, logic) in self.gossipLogics {
-            context.log.warning("Initiate gossip round", metadata: [
+            context.log.trace("Initiate gossip round", metadata: [
                 "gossip/id": "\(identifier.gossipIdentifier)"
             ])
 
             let allPeers: Array<AddressableActorRef> = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
             let selectedPeers = logic.selectPeers(peers: allPeers) // TODO: OrderedSet would be the right thing here...
 
-            context.log.warning("Selected peers: \(selectedPeers), from [\(allPeers.count)] offered", metadata: [
+            context.log.trace("Selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
                 "gossip/id": "\(identifier.gossipIdentifier)",
+                "gossip/peers/selected": "\(selectedPeers)",
             ])
 
             for selectedPeer in selectedPeers {
                 guard let payload: Payload = logic.makePayload(target: selectedPeer) else {
-                    context.log.warning("Skipping gossip to peer \(selectedPeer)", metadata: [
+                    context.log.trace("Skipping gossip to peer \(selectedPeer)", metadata: [
                         "gossip/id": "\(identifier.gossipIdentifier)",
                         "gossip/target": "\(selectedPeer)",
                     ])
@@ -170,7 +167,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
                 // a bit annoying that we have to do this dance, but we don't want to let the logic do the sending, 
                 // types would be wrong, and logging and more lost
                 guard let selectedRef = selectedPeer.ref as? PeerRef else {
-                    context.log.warning("Selected peer \(selectedPeer) is not of \(PeerRef.self) type! GossipLogic attempted to gossip to unknown actor?", metadata: [
+                    context.log.trace("Selected peer \(selectedPeer) is not of \(PeerRef.self) type! GossipLogic attempted to gossip to unknown actor?", metadata: [
                         "gossip/id": "\(identifier.gossipIdentifier)",
                         "gossip/target": "\(selectedPeer)",
                     ])
@@ -215,7 +212,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 //        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
 
         // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
-        context.log.warning("Sending gossip to \(target)", metadata: [
+        context.log.trace("Sending gossip to \(target.address)", metadata: [
             "gossip/target": "\(target.address)",
             "gossip/peers/count": "\(self.peers.count)",
             "actor/message": "\(payload)",
@@ -249,9 +246,12 @@ extension GossipShell {
         case .fromReceptionistListing(let id):
             let key = Receptionist.RegistrationKey<Message>(id)
             context.system.receptionist.register(context.myself, key: key)
+            context.log.info("Registered with receptionist key: \(key)")
+
             context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
-                listing.refs.forEach {
-                    self.onIntroducePeer(context, peer: $0)
+                context.log.info("Receptionist listing update \(listing)")
+                for peer in listing.refs where peer != context.myself {
+                    self.onIntroducePeer(context, peer: peer)
                 }
             })
         }
@@ -259,7 +259,7 @@ extension GossipShell {
 
     private func onIntroducePeer(_ context: ActorContext<Message>, peer: PeerRef) {
         if self.peers.insert(context.watch(peer)).inserted {
-            context.log.trace("Got introduced to peer [\(peer)], pushing initial gossip immediately", metadata: [
+            context.log.trace("Got introduced to peer [\(peer)]", metadata: [
                 "gossip/peerCount": "\(self.peers.count)",
                 "gossip/peers": "\(self.peers.map { $0.address })",
             ])
@@ -324,7 +324,7 @@ extension GossipShell {
         props: Props = .init(), settings: Settings = .init(),
         makeLogic: @escaping (GossipIdentifier) -> Logic // TODO could offer overload with just "one" logic and one id
     ) throws -> GossipControl<Metadata, Payload>
-        where Logic: GossipLogicProtocol, Logic.Metadata == Metadata, Logic.Payload == Payload {
+        where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
         let ref = try context.spawn(
             naming,
             of: GossipShell<Metadata, Payload>.Message.self,

@@ -41,6 +41,7 @@ extension CRDT {
             self.state.delta
         }
 
+        // TODO: API naming, this is called "elements" which makes it sounds as if it was an iterator of elements...?
         public var elements: Set<Element> {
             self.state.elements
         }

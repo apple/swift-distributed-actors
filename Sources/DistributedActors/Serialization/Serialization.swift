@@ -162,6 +162,10 @@ public class Serialization {
         settings.register(CRDT.GCounter.self, serializerID: Serialization.ReservedID.CRDTGCounter)
         settings.register(CRDT.GCounterDelta.self, serializerID: Serialization.ReservedID.CRDTGCounterDelta)
 
+        // crdt gossip
+        settings.register(GossipShell<(), DistributedActors.CRDT.Gossip>.Message.self)
+        settings.register(GossipShell<Void, DistributedActors.CRDT.Gossip>.Message.self) // TODO: remove this, workaround since we ust strings rather than mangled names today
+
         // errors
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.register(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
@@ -200,6 +204,7 @@ public class Serialization {
         #endif
     }
 
+    @usableFromInline
     internal func debugPrintSerializerTable(header: String = "") {
         var p = "\(header)\n"
         let serializers = self._serializersLock.withReaderLock {

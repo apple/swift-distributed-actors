@@ -16,7 +16,7 @@
 // MARK: Pretty String Descriptions
 
 /// Marks a type that can be "pretty" printed, meaning often multi-line well formatted/aligned.
-protocol CustomPrettyStringConvertible {
+public protocol CustomPrettyStringConvertible {
     /// Pretty representation of the type, intended for inspection in command line and "visual" inspection.
     /// Not to be used in log statements or otherwise persisted formats.
     var prettyDescription: String { get }
@@ -24,10 +24,10 @@ protocol CustomPrettyStringConvertible {
 }
 
 extension CustomPrettyStringConvertible {
-    var prettyDescription: String { 
+    public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
-    func prettyDescription(depth: Int) -> String {
+    public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
 
@@ -66,10 +66,10 @@ extension CustomPrettyStringConvertible {
 }
 
 extension Set: CustomPrettyStringConvertible {
-    var prettyDescription: String {
+    public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
-    func prettyDescription(depth: Int) -> String {
+    public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
 
@@ -87,10 +87,10 @@ extension Set: CustomPrettyStringConvertible {
 }
 
 extension Array: CustomPrettyStringConvertible {
-    var prettyDescription: String {
+    public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
-    func prettyDescription(depth: Int) -> String {
+    public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
 
@@ -107,10 +107,10 @@ extension Array: CustomPrettyStringConvertible {
     }
 }
 extension Dictionary: CustomPrettyStringConvertible {
-    var prettyDescription: String {
+    public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
-    func prettyDescription(depth: Int) -> String {
+    public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
 

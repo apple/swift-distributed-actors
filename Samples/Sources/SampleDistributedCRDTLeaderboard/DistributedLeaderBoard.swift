@@ -26,12 +26,10 @@ struct DistributedLeaderboard {
 
     func run(for time: TimeAmount) throws {
         let first = ActorSystem("first") { settings in
-            settings.logging.defaultLevel = .error
             self.configureMessageSerializers(&settings)
             self.configureClustering(&settings, port: 1111)
         }
         let second = ActorSystem("second") { settings in
-            settings.logging.defaultLevel = .error
             self.configureMessageSerializers(&settings)
             self.configureClustering(&settings, port: 2222)
         }
@@ -64,6 +62,8 @@ struct DistributedLeaderboard {
     }
 }
 
+let roundsMax = 10
+
 extension DistributedLeaderboard {
 
     enum GameEvent: Codable {
@@ -77,17 +77,19 @@ extension DistributedLeaderboard {
             /// Local score, of how much this player has contributed to the total score
             var myScore: Int = 0
 
+            let consistency: CRDT.OperationConsistency = .local
+
             /// A cluster-wise distributed counter; each time we perform updates to it, the update will be replicated.
             let totalScore: CRDT.ActorOwned<CRDT.GCounter> = CRDT.GCounter.makeOwned(by: context, id: DataID.totalScore)
-            _ = totalScore.increment(by: 1, writeConsistency: .local, timeout: .seconds(1))
+            _ = totalScore.increment(by: 1, writeConsistency: consistency, timeout: .seconds(1))
 
             return .receiveMessage {
                 switch $0 {
                 case .scorePoints(let points):
                     myScore += points
-                    _ = totalScore.increment(by: points, writeConsistency: .quorum, timeout: .seconds(1))
+                    _ = totalScore.increment(by: points, writeConsistency: consistency, timeout: .seconds(1))
 //                    context.log.info("Scored +\(points), my score: \(myScore), global total score: \(totalScore.lastObservedValue)"
-                        //     , metadata: ["total/score": "\(totalScore.data)"]
+//                             , metadata: ["total/score": "\(totalScore.data)"]
 //                    )
                 }
 
@@ -99,19 +101,46 @@ extension DistributedLeaderboard {
     func game(with players: [ActorRef<GameEvent>]) -> Behavior<String> {
         .setup { context in
             context.timers.startPeriodic(key: "game-tick", message: "game-tick", interval: .milliseconds(200))
+            var round = 0
+            let roundsMax = 20
 
             func playerScored(_ player: ActorRef<GameEvent>) {
-                player.tell(.scorePoints(.random(in: 1 ... 10)))
+                let points: Int = .random(in: 1...10)
+                context.log.warning("[Round \(round)] Player [\(player.path.name)] scored: [\(points) points]")
+                player.tell(.scorePoints(points))
             }
 
             func onGameTick() {
                 if let playerScoredPoint = players.randomElement() {
-                    playerScored(playerScoredPoint)
+                    round += 1
+                    if round <= roundsMax {
+                        playerScored(playerScoredPoint)
+                    } else {
+                        context.timers.cancel(for: "game-tick")
+                        context.myself.tell("done")
+                    }
                 }
             }
 
-            return .receiveMessage { _ in
-                onGameTick()
+            func inspectScores() {
+                let counter = CRDT.GCounter.makeOwned(by: context, id: DataID.totalScore)
+                let readAll = counter.read(atConsistency: .all, timeout: .seconds(3))
+                readAll.onComplete { res in
+                    switch res {
+                    case .success(let counter):
+                        context.log.warning("Total score: \(counter.prettyDescription)")
+                    case .failure(let error):
+                        context.log.warning("Error reading scores! Error: \(error)")
+                    }
+                }
+            }
+
+            return .receiveMessage { message in
+                switch message {
+                case "game-tick": onGameTick()
+                case "done": inspectScores()
+                default: fatalError("unexpected message: \(message)")
+                }
                 return .same
             }
         }
