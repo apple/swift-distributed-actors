@@ -231,6 +231,36 @@ extension Optional {
     }
 }
 
+extension Set {
+    public func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let rhs = other()
+        if self == rhs {
+            ()
+        } else {
+            var message = "Set \(rhs) did not equal \(self)."
+
+            let rhsMinusSelf = rhs.subtracting(self)
+            if !rhsMinusSelf.isEmpty {
+                message += "\nElements present in `other` but not `self`:"
+                message += "\n    \(rhsMinusSelf)"
+            }
+
+            let selfMinusRhs = self.subtracting(rhs)
+            if !selfMinusRhs.isEmpty {
+                message += "\nElements present in `self` but not `other`:"
+                message += "\n    \(selfMinusRhs)"
+            }
+
+            XCTFail(callSiteInfo.detailedMessage(
+                message),
+                file: callSiteInfo.file, line: callSiteInfo.line
+            )
+        }
+    }
+
+}
+
 extension Equatable {
     /// Asserts that the value is equal to the `other` value
     public func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
