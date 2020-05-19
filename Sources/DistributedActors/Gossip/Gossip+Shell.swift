@@ -14,7 +14,6 @@
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
 internal final class GossipShell<Metadata, Payload: Codable> {
-
     let settings: Settings
 
     private let makeLogic: (GossipIdentifier) -> GossipLogicBox<Metadata, Payload>
@@ -30,7 +29,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         makeLogic: @escaping (GossipIdentifier) -> Logic
     ) where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
         self.settings = settings
-        self.makeLogic = { id in GossipLogicBox(makeLogic(id))}
+        self.makeLogic = { id in GossipLogicBox(makeLogic(id)) }
         self.gossipLogics = [:]
         self.peers = []
     }
@@ -90,10 +89,10 @@ internal final class GossipShell<Metadata, Payload: Codable> {
             "gossip/incoming": "\(payload)",
         ])
 
-        // TODO we could handle some actions if it issued some
-         let logic: GossipLogicBox<Metadata, Payload> = self.getEnsureLogic(identifier: identifier)
+        // TODO: we could handle some actions if it issued some
+        let logic: GossipLogicBox<Metadata, Payload> = self.getEnsureLogic(identifier: identifier)
 
-        // TODO we could handle directives from the logic
+        // TODO: we could handle directives from the logic
         logic.receiveGossip(payload: payload)
     }
 
@@ -103,7 +102,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         metadata: Metadata,
         payload: Payload
     ) {
-        let logic = getEnsureLogic(identifier: identifier)
+        let logic = self.getEnsureLogic(identifier: identifier)
 
         logic.localGossipUpdate(metadata: metadata, payload: payload)
 
@@ -127,7 +126,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         return logic
     }
 
-    // TODO keep and remove logics
+    // TODO: keep and remove logics
     private func onLocalPayloadRemove(_ context: ActorContext<Message>, identifier: GossipIdentifier) {
         let identifierKey = identifier.asAnyGossipIdentifier
 
@@ -144,10 +143,10 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         // so in this round we'd do [a-c] and then [c-f] keys for example.
         for (identifier, logic) in self.gossipLogics {
             context.log.trace("Initiate gossip round", metadata: [
-                "gossip/id": "\(identifier.gossipIdentifier)"
+                "gossip/id": "\(identifier.gossipIdentifier)",
             ])
 
-            let allPeers: Array<AddressableActorRef> = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
+            let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
             let selectedPeers = logic.selectPeers(peers: allPeers) // TODO: OrderedSet would be the right thing here...
 
             context.log.trace("Selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
@@ -164,7 +163,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
                     continue
                 }
 
-                // a bit annoying that we have to do this dance, but we don't want to let the logic do the sending, 
+                // a bit annoying that we have to do this dance, but we don't want to let the logic do the sending,
                 // types would be wrong, and logging and more lost
                 guard let selectedRef = selectedPeer.ref as? PeerRef else {
                     context.log.trace("Selected peer \(selectedPeer) is not of \(PeerRef.self) type! GossipLogic attempted to gossip to unknown actor?", metadata: [
@@ -179,7 +178,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 
             // TODO: signal "gossip round complete" perhaps?
             // it would allow for "speed up" rounds, as well as "remove me, we're done"
-            
+
 //            guard let gossipPayload = self.gossips[gossipIdentifierKey] else {
 //                continue
 //            }
@@ -233,7 +232,6 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension GossipShell {
-
     public static func receptionKey(id: String) -> Receptionist.RegistrationKey<Message> {
         Receptionist.RegistrationKey<Message>(id)
     }
@@ -280,8 +278,9 @@ extension GossipShell {
         case received
         case unhandled
     }
+
     private func onSideChannelMessage(_ context: ActorContext<Message>, identifier: GossipIdentifier, _ message: Any) -> SideChannelDirective {
-        guard let logic = self.gossipLogics[identifier.asAnyGossipIdentifier] else { 
+        guard let logic = self.gossipLogics[identifier.asAnyGossipIdentifier] else {
             return .unhandled
         }
 
@@ -322,7 +321,7 @@ extension GossipShell {
         of type: Payload.Type = Payload.self,
         ofMetadata metadataType: Metadata.Type = Metadata.self,
         props: Props = .init(), settings: Settings = .init(),
-        makeLogic: @escaping (GossipIdentifier) -> Logic // TODO could offer overload with just "one" logic and one id
+        makeLogic: @escaping (GossipIdentifier) -> Logic // TODO: could offer overload with just "one" logic and one id
     ) throws -> GossipControl<Metadata, Payload>
         where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
         let ref = try context.spawn(
@@ -377,11 +376,10 @@ public struct GossipEnvelope<Metadata, Payload: Codable>: GossipEnvelopeProtocol
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Gossip Identifier
 
-
 /// Used to identify which identity a payload is tied with.
 /// E.g. it could be used to mark the CRDT instance the gossip is carrying, or which "entity" a gossip relates to.
 // FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
-public protocol GossipIdentifier  {
+public protocol GossipIdentifier {
     var gossipIdentifier: String { get }
 
     init(_ gossipIdentifier: String)
@@ -389,7 +387,7 @@ public protocol GossipIdentifier  {
     var asAnyGossipIdentifier: AnyGossipIdentifier { get }
 }
 
-//extension GossipIdentifier {
+// extension GossipIdentifier {
 //    public enum CodingKeys: CodingKey {
 //        case manifest
 //        case identifier
@@ -411,7 +409,7 @@ public protocol GossipIdentifier  {
 //
 //    public func encode(to encoder: Encoder) throws {
 //    }
-//}
+// }
 
 public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
     public let underlying: GossipIdentifier
@@ -431,6 +429,7 @@ public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
     public var gossipIdentifier: String {
         self.underlying.gossipIdentifier
     }
+
     public var asAnyGossipIdentifier: AnyGossipIdentifier {
         self
     }
@@ -439,7 +438,7 @@ public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
         self.underlying.gossipIdentifier.hash(into: &hasher)
     }
 
-    public static func ==(lhs: AnyGossipIdentifier, rhs: AnyGossipIdentifier) -> Bool {
+    public static func == (lhs: AnyGossipIdentifier, rhs: AnyGossipIdentifier) -> Bool {
         lhs.underlying.gossipIdentifier == rhs.underlying.gossipIdentifier
     }
 }
@@ -458,6 +457,4 @@ public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByS
     public var asAnyGossipIdentifier: AnyGossipIdentifier {
         AnyGossipIdentifier(self)
     }
-
 }
-

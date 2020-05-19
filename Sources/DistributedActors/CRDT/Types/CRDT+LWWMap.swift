@@ -147,7 +147,8 @@ extension CRDT.ActorOwned where DataType: LWWMapOperations {
 
 extension CRDT.LWWMap {
     public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaID: .actorAddress(owner.address), defaultValue: defaultValue))
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaID: .actorAddress(ownerAddress), defaultValue: defaultValue))
     }
 }
 

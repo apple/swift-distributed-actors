@@ -197,7 +197,6 @@ public struct ActorOriginLogHandler: LogHandler {
                 }
             }
 
-
             var msg = ""
 
             // sort metadata to preserve sanity
@@ -219,33 +218,32 @@ public struct ActorOriginLogHandler: LogHandler {
             msg += "\(actorPathPart)"
             msg += " \(l.message)"
 
-
-        if ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil {
-            if let metadata = l.effectiveMetadata, !metadata.isEmpty {
-                var metadataString = "\n// metadata:\n"
-                for key in metadata.keys.sorted() where key != "label" {
-                    var allString = "\n// \"\(key)\": \(metadata[key]!)"
-                    if allString.contains("\n") {
-                        allString = String(
-                            allString.split(separator: "\n").map { valueLine in
-                                if valueLine.starts(with: "// ") {
-                                    return "\(valueLine)\n"
-                                } else {
-                                    return "// \(valueLine)\n"
-                                }
-                            }.joined(separator: "")
-                        )
+            if ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil {
+                if let metadata = l.effectiveMetadata, !metadata.isEmpty {
+                    var metadataString = "\n// metadata:\n"
+                    for key in metadata.keys.sorted() where key != "label" {
+                        var allString = "\n// \"\(key)\": \(metadata[key]!)"
+                        if allString.contains("\n") {
+                            allString = String(
+                                allString.split(separator: "\n").map { valueLine in
+                                    if valueLine.starts(with: "// ") {
+                                        return "\(valueLine)\n"
+                                    } else {
+                                        return "// \(valueLine)\n"
+                                    }
+                                }.joined(separator: "")
+                            )
+                        }
+                        metadataString.append(allString)
                     }
-                    metadataString.append(allString)
-                }
-                metadataString = String(metadataString.dropLast(1))
+                    metadataString = String(metadataString.dropLast(1))
 
-                msg += metadataString
+                    msg += metadataString
+                }
+                self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            } else {
+                self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
             }
-            self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
-        } else {
-            self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
-        }
 
         } else {
             self.loggingSystemSelectedLogger.log(level: logMessage.level, logMessage.message, metadata: self.metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)

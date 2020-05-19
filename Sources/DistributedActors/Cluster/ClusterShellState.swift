@@ -58,7 +58,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
 
 //    let gossipControl: GossipControl<Cluster.Gossip.SeenTable, Cluster.Gossip>
-     let gossipControl: ConvergentGossipControl<Cluster.Gossip>
+    let gossipControl: ConvergentGossipControl<Cluster.Gossip>
 
     /// Updating the `latestGossip` causes the gossiper to be informed about it, such that the next time it does a gossip round
     /// it uses the latest gossip available.
@@ -82,7 +82,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
                 self._latestGossip = next
             }
-             self.gossipControl.update(payload: self._latestGossip)
+            self.gossipControl.update(payload: self._latestGossip)
 //            self.gossipControl.update()
         }
     }

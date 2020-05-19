@@ -351,10 +351,10 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 
 extension CRDT.ORMap {
     public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(owner.address), defaultValue: defaultValue))
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(ownerAddress), defaultValue: defaultValue))
     }
 }
-
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT String Descriptions

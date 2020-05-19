@@ -27,6 +27,7 @@ extension CustomPrettyStringConvertible {
     public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
+
     public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
@@ -69,6 +70,7 @@ extension Set: CustomPrettyStringConvertible {
     public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
+
     public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
@@ -90,6 +92,7 @@ extension Array: CustomPrettyStringConvertible {
     public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
+
     public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }
@@ -106,10 +109,12 @@ extension Array: CustomPrettyStringConvertible {
         return res
     }
 }
+
 extension Dictionary: CustomPrettyStringConvertible {
     public var prettyDescription: String {
         self.prettyDescription(depth: 0)
     }
+
     public func prettyDescription(depth: Int) -> String {
         self.prettyDescription(of: self, depth: depth)
     }

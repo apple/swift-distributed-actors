@@ -190,7 +190,13 @@ extension CRDT.GCounter: ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtoCRDTGCounter {
         var proto = ProtoCRDTGCounter()
         proto.replicaID = try self.replicaID.toProto(context: context)
-        proto.state = try CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
+        let state: [ReplicaID: Int] = self.state
+        var newState: [ReplicaID: Int] = [:]
+        newState.reserveCapacity(state.count)
+        for (id, value) in state {
+            newState[id.ensuringNode(context.localNode)] = value
+        }
+        proto.state = try CRDT.GCounter.ProtoState(fromValue: newState, context: context)
         if let delta = self.delta {
             proto.delta = try delta.toProto(context: context)
         }

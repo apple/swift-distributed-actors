@@ -83,7 +83,6 @@ extension CRDT {
                 self.merge(other: wellTypedOther)
                 return nil
             } else if let wellTypedOtherDelta = other as? Self.Delta {
-                // TODO: what if we simplify and compute deltas...?
                 self.mergeDelta(wellTypedOtherDelta)
                 return nil
             } else {
@@ -152,7 +151,8 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
 
 extension CRDT.GCounter {
     public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
-        CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: .actorAddress(owner.address)))
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: .actorAddress(ownerAddress)))
     }
 }
 

@@ -15,7 +15,6 @@
 import struct Foundation.Data
 
 extension GossipShell.Message: Codable {
-
     public enum DiscriminatorKeys: String, Codable {
         case gossip
     }

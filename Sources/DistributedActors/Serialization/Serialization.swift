@@ -163,7 +163,7 @@ public class Serialization {
         settings.register(CRDT.GCounterDelta.self, serializerID: Serialization.ReservedID.CRDTGCounterDelta)
 
         // crdt gossip
-        settings.register(GossipShell<(), DistributedActors.CRDT.Gossip>.Message.self)
+        settings.register(GossipShell<Void, DistributedActors.CRDT.Gossip>.Message.self)
         settings.register(GossipShell<Void, DistributedActors.CRDT.Gossip>.Message.self) // TODO: remove this, workaround since we ust strings rather than mangled names today
         settings.register(CRDT.Gossip.self) // TODO: remove this, workaround since we ust strings rather than mangled names today
 

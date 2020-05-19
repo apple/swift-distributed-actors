@@ -171,7 +171,8 @@ extension CRDT.ActorOwned where DataType: ORMultiMapOperations {
 
 extension CRDT.ORMultiMap {
     public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMultiMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(owner.address)))
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.ORMultiMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(ownerAddress)))
     }
 }
 

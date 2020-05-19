@@ -213,7 +213,8 @@ extension CRDT.ActorOwned where DataType: ORSetOperations {
 
 extension CRDT.ORSet {
     public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORSet<Element>> {
-        CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaID: .actorAddress(owner.address)))
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaID: .actorAddress(ownerAddress)))
     }
 }
 

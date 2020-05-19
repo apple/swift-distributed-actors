@@ -44,7 +44,7 @@ extension CRDT.Replicator {
             }
 
             func tellGossipWrite(id: CRDT.Identity, data: StateBasedCRDT) {
-                ref.tell(.localCommand(.gossipWrite(id, data)))
+                self.ref.tell(.localCommand(.gossipWrite(id, data)))
             }
         }
 
@@ -55,14 +55,13 @@ extension CRDT.Replicator {
         internal var remoteReplicators: Set<ActorRef<Message>> = []
 
         convenience init(settings: Settings) {
-            self.init(CRDT.Replicator.Instance(settings)) // TODO make it Direct Replicator
+            self.init(CRDT.Replicator.Instance(settings)) // TODO: make it Direct Replicator
         }
 
         init(_ replicator: CRDT.Replicator.Instance) {
             self.directReplicator = replicator
             self.gossipReplication = nil // will be initialized in setup {}
         }
-
 
         var behavior: Behavior<Message> {
             .setup { context in
@@ -74,7 +73,8 @@ extension CRDT.Replicator {
                 )
 
                 // TODO: make it enabled by a plugin? opt-in to gossiping the crdts?
-                self.gossipReplication = try GossipShell.start(context,
+                self.gossipReplication = try GossipShell.start(
+                    context,
                     name: "gossip",
                     settings: GossipShell.Settings(
                         gossipInterval: .seconds(1),
@@ -275,16 +275,15 @@ extension CRDT.Replicator {
         ) {
             // TODO: keep track where we direct replicated, and we can de-prioritize gossip there (or don't at all even)
             switch self.directReplicator.write(id, data, deltaMerge: true) {
-                // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
+            // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
             case .applied(let updatedData, _):
-                    self.notifyOwnersOnUpdate(context, id, updatedData)
-            case .inputAndStoredDataTypeMismatch(_):
+                self.notifyOwnersOnUpdate(context, id, updatedData)
+            case .inputAndStoredDataTypeMismatch:
                 () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup
             case .unsupportedCRDT:
                 () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup
             }
         }
-
 
         private func makeRemoteWriteCommand(
             _ context: ActorContext<Message>,
@@ -382,7 +381,7 @@ extension CRDT.Replicator {
                             for (_, remoteReadResult) in remoteResults {
                                 guard case .success(let data) = remoteReadResult else {
                                     // TODO: really sure that we want to crash?
-                                    fatalError("Remote results should contain .success value only: \(remoteReadResult)") 
+                                    fatalError("Remote results should contain .success value only: \(remoteReadResult)")
                                 }
                                 guard case .applied = self.directReplicator.write(id, data) else {
                                     // TODO: really sure that we want to crash?

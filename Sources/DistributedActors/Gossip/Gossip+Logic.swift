@@ -48,7 +48,7 @@ public protocol GossipLogic {
     ///
     /// Useful to implement using `PeerSelection`
     // TODO: OrderedSet would be the right thing here to be honest...
-    mutating func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] // TODO make a directive here
+    mutating func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] // TODO: make a directive here
 
     /// Allows for customizing the payload for specific targets
     // gossipRoundPayload() // TODO: better name?
@@ -64,7 +64,6 @@ public protocol GossipLogic {
     /// Extra side channel, allowing for arbitrary outside interactions with this gossip logic.
     // TODO: We could consider making it typed perhaps...
     mutating func receiveSideChannelMessage(message: Any)
-
 }
 
 extension GossipLogic {
@@ -74,23 +73,22 @@ extension GossipLogic {
 }
 
 struct GossipLogicBox<Metadata, Payload: Codable>: GossipLogic, CustomStringConvertible {
-
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
     let _makePayload: (AddressableActorRef) -> Payload?
     @usableFromInline
-    let _receiveGossip: (Payload) -> ()
+    let _receiveGossip: (Payload) -> Void
     @usableFromInline
-    let _localGossipUpdate: (Metadata, Payload) -> ()
+    let _localGossipUpdate: (Metadata, Payload) -> Void
 
     @usableFromInline
-    let _receiveSideChannelMessage: (Any) -> ()
+    let _receiveSideChannelMessage: (Any) -> Void
 
     public init<Logic>(_ logic: Logic)
         where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
         var l = logic
-        self._selectPeers =  { l.selectPeers(peers: $0) }
+        self._selectPeers = { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
 
         self._receiveGossip = { l.receiveGossip(payload: $0) }
@@ -98,7 +96,6 @@ struct GossipLogicBox<Metadata, Payload: Codable>: GossipLogic, CustomStringConv
 
         self._receiveSideChannelMessage = { l.receiveSideChannelMessage(message: $0) }
     }
-
 
     public func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
         self._selectPeers(peers)

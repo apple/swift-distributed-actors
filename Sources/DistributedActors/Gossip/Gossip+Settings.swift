@@ -59,8 +59,8 @@ extension GossipShell {
 
         // var delegate: GossipClientBox<Metadata, Payload> // TODO: express as delegate
 //
-////        /// The "user" of this gossip instance, we notify it whenever we receive a new gossip message.
-////        private let notifyOnGossipRef: ActorRef<Payload>
+        ////        /// The "user" of this gossip instance, we notify it whenever we receive a new gossip message.
+        ////        private let notifyOnGossipRef: ActorRef<Payload>
 //        var onGossipReceived: (GossipIdentifier, Payload, GossipEnvelope<Metadata, Payload>?) -> Void = { _, _, _ in
 //            ()
 //        }
@@ -89,7 +89,7 @@ extension GossipShell {
         /// introduced peer, even if operating in an auto-discovery mode (may be useful to inject a test listener probe into the gossip group).
         public var peerDiscovery: PeerDiscovery = .manuallyIntroduced
         public enum PeerDiscovery {
-            /// Automatically register this gossiper and subscribe for any others identifying under the same 
+            /// Automatically register this gossiper and subscribe for any others identifying under the same
             /// `Receptionist.RegistrationKey<GossipShell<Metadata, Payload>.Message>(id)`.
             case fromReceptionistListing(id: String)
 //            /// Automatically discover and add cluster members to the gossip group when they become reachable in `atLeast` status.

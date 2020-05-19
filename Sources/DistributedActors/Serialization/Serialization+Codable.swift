@@ -80,7 +80,7 @@ extension Encodable {
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: encode with manifest
 //
-//extension KeyedEncodingContainerProtocol {
+// extension KeyedEncodingContainerProtocol {
 //    mutating func encode<T>(_ value: T, forKey key: Self.Key, forManifestKey manifestKey: Self.Key) throws where T: Encodable {
 //        let encoder = self.superEncoder()
 //        guard let context: Serialization.Context = encoder.actorSerializationContext else {
@@ -94,9 +94,9 @@ extension Encodable {
 //    }
 //
 //
-//}
+// }
 //
-//extension KeyedDecodingContainerProtocol {
+// extension KeyedDecodingContainerProtocol {
 //    func decode<T>(
 //        _ type: T.Type, forKey key: Self.Key, forManifestKey manifestKey: Self.Key,
 //        file: String = #file, line: UInt = #line
@@ -113,4 +113,4 @@ extension Encodable {
 //        return try context.serialization.deserialize(as: T.self, from: .data(data), using: manifest)
 //    }
 //
-//}
+// }

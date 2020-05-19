@@ -15,7 +15,6 @@
 import struct Foundation.Data
 
 extension CRDT {
-
     /// Gossip Replicator logic, it gossips CRDTs (and deltas) to other peers in the cluster.
     ///
     /// It collaborates with the Direct Replicator in order to avoid needlessly sending values to nodes which already know
@@ -95,7 +94,6 @@ extension CRDT {
             }
         }
 
-
         private func mergeInbound(_ payload: CRDT.GossipReplicatorLogic.Payload) {
             // TODO: some context would be nice, I want to log here
             // TODO: metadata? who did send us this payload?
@@ -108,9 +106,7 @@ extension CRDT {
                 self.latest = payload
             }
         }
-
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -130,7 +126,6 @@ extension CRDT.Identity: GossipIdentifier {
 // MARK: CRDT Gossip envelope
 
 extension CRDT {
-
     /// The gossip to be spread about a specific CRDT (identity).
     struct Gossip: Codable {
         var payload: StateBasedCRDT
@@ -146,7 +141,6 @@ extension CRDT {
         mutating func tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
             self.payload._tryMerge(other: other)
         }
-
     }
 }
 
@@ -155,6 +149,7 @@ extension CRDT.Gossip {
         case payload
         case payloadManifest
     }
+
     init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, CRDT.Gossip.self)

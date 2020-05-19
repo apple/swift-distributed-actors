@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 extension CRDT.Replicator {
-
     // TODO: make it Direct Replicator
     internal final class Instance {
         typealias Identity = CRDT.Identity
