@@ -15,13 +15,23 @@
 import DistributedActors
 
 struct DistributedLeaderboard {
-    private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
-    }
 
     /// Enable networking on this node, and select which port it should bind to.
     private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
         settings.cluster.enabled = true
         settings.cluster.bindPort = port
+    }
+
+    /// Register any types that should be trusted for serialization (messages which are sent across the wire).
+    /// 
+    /// Notice that we do not need to register the `GCounter` or similar types since they are built-in (and use Int, which is naturally assumed trusted).
+    /// If you wanted to gossip an `MyCustomType` e.g. in an `ORSet` rather than the plain GCounter you'd need to register MyCustomType here, like so:
+    ///
+    /// ```
+    /// serialization
+    /// ```
+    /// - Parameter settings:
+    private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
     }
 
     func run(for time: TimeAmount) throws {

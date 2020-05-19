@@ -28,7 +28,7 @@ extension DistributedLeaderboard {
                 if let player = players.randomElement() {
                     round += 1
                     if round <= roundsMax {
-                        context.log.warning("[Round \(round)] Player [\(player.path.name)] may take a turn.")
+                        context.log.notice("[Round \(round)] Player [\(player.path.name)] may take a turn.")
                         player.tell(.turn)
                     } else {
                         context.timers.cancel(for: "game-tick")
@@ -43,7 +43,7 @@ extension DistributedLeaderboard {
                 readAll.onComplete { res in
                     switch res {
                     case .success(let counter):
-                        context.log.warning("Total score: \(counter.prettyDescription)")
+                        context.log.notice("Total score: \(counter), details: \(counter.prettyDescription)")
                     case .failure(let error):
                         context.log.warning("Error reading scores! Error: \(error)")
                     }
