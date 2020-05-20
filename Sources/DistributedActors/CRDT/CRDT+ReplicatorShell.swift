@@ -203,7 +203,12 @@ extension CRDT.Replicator {
                 case .atLeast, .quorum, .all:
                     // ==== Direct Replicate ---------------------------------------------------------------------------
                     do {
-                        let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteWriteResult.success }) {
+                        let performWriteFuture = try self.performOnRemoteMembers(
+                            context,
+                            for: id, with: consistency,
+                            localConfirmed: true,
+                            isSuccessful: { $0.isSuccess }
+                        ) {
                             // Use `data`, NOT `updatedData`, to make `RemoteCommand`!!!
                             // We are replicating a specific change (e.g., `GCounter.increment`) made to a specific
                             // actor-owned CRDT (represented either by `data` as a whole or `data.delta`), not the
@@ -232,7 +237,7 @@ extension CRDT.Replicator {
                         // Opened https://github.com/apple/swift-distributed-actors/issues/136 to track in case we do in the future.
                         //
                         // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                        context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
+                        context.onResultAsync(of: performWriteFuture, timeout: timeout) { result in
                             switch result {
                             case .success:
                                 replyTo.tell(.success)
@@ -357,32 +362,28 @@ extension CRDT.Replicator {
 
                 do {
                     // swiftformat:disable indent unusedArguments wrapArguments
-                    let remoteFuture = try self.performOnRemoteMembers(
+                    let performReadFuture = try self.performOnRemoteMembers(
                         context,
-                        for: id,
-                        with: consistency,
+                        for: id, with: consistency,
                         localConfirmed: localConfirmed,
-                        isSuccessful: {
-                            // TODO: is there a way to make this less verbose?
-                            if case .success = $0 {
-                                return true
-                            } else {
-                                return false
-                            }
-                        }
+                        isSuccessful: { $0.isSuccess }
                     ) {
                         .remoteCommand(.read(id, replyTo: $0))
                     }
                     // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                    context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
+                    context.onResultAsync(of: performReadFuture, timeout: timeout) { result in
                         switch result {
                         case .success(let remoteResults):
                             // We've read from the remote replicators, now merge their versions of the CRDT to local
                             for (_, remoteReadResult) in remoteResults {
                                 guard case .success(let data) = remoteReadResult else {
-                                    // TODO: really sure that we want to crash?
-                                    fatalError("Remote results should contain .success value only: \(remoteReadResult)")
+                                    let msg = "Remote results should contain .success value only: \(remoteReadResult)"
+                                    replyTo.tell(.failure(.remoteReadFailure(msg)))
+                                    return .same
                                 }
+
+                                // Since we received read results, we take the opportunity to include their data in the values stored
+                                // in the direct replicator.
                                 guard case .applied = self.directReplicator.write(id, data) else {
                                     // TODO: really sure that we want to crash?
                                     fatalError("Failed to update \(id) locally with remote data \(remoteReadResult). Replicator: \(self.debugDescription)")
@@ -401,9 +402,15 @@ extension CRDT.Replicator {
                                 fatalError("Expected \(id) to be found locally but it is not. Remote results: \(remoteResults), replicator: \(self.debugDescription)")
                             }
 
+                            // Notify the initiator of this operation that it succeeded
                             replyTo.tell(.success(updatedData))
-                            // Notify owners since the CRDT might have been updated
+
+                            // Update the data stored in the replicator (yeah today we store 2 copies in the replicators, we could converge them into one with enough effort)
+                            self.gossipReplication.update(id, metadata: (), payload: CRDT.Gossip(payload: updatedData)) // TODO: v2, allow tracking the deltas here
+
+                            // Followed by notifying all owners since the CRDT might have been updated
                             // TODO: this notifies owners even when the CRDT hasn't changed
+                            // TODO: implement "notify delay" i.e. that there's a 500ms window where we can aggregate more writes and flush them once to Owned values
                             self.notifyOwnersOnUpdate(context, id, updatedData)
                         case .failure(let err):
                             let error = CRDT.OperationConsistency.Error.wrap(err)
@@ -502,6 +509,9 @@ extension CRDT.Replicator {
                     switch result {
                     case .success(let remoteCommandResult):
                         if isSuccessful(remoteCommandResult) {
+                            // TODO we could consider directly updating directReplicator with any received back data,
+                            // after all, it definitely "adds information"; rather than performing the adding data only the entire operation succeeds
+                            // this makes reusing this function a bit harder, but perhaps possible.
                             execution.confirm(from: remoteReplicator, result: remoteCommandResult)
                         } else {
                             context.log.warning("Operation failed for [\(id.id)] at \(remoteReplicator): \(remoteCommandResult)")

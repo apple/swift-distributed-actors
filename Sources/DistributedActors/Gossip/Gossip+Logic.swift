@@ -48,7 +48,8 @@ public protocol GossipLogic {
     ///
     /// Useful to implement using `PeerSelection`
     // TODO: OrderedSet would be the right thing here to be honest...
-    mutating func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] // TODO: make a directive here
+    mutating func selectPeers(peers: [AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence
+    // TODO: make a directive here
 
     /// Allows for customizing the payload for specific targets
     // gossipRoundPayload() // TODO: better name?
@@ -63,18 +64,18 @@ public protocol GossipLogic {
 
     /// Extra side channel, allowing for arbitrary outside interactions with this gossip logic.
     // TODO: We could consider making it typed perhaps...
-    mutating func receiveSideChannelMessage(message: Any)
+    mutating func receiveSideChannelMessage(message: Any) throws
 }
 
 extension GossipLogic {
-    mutating func receiveSideChannelMessage(message: Any) {
+    public mutating func receiveSideChannelMessage(message: Any) throws {
         // ignore by default
     }
 }
 
-struct GossipLogicBox<Metadata, Payload: Codable>: GossipLogic, CustomStringConvertible {
+public struct AnyGossipLogic<Metadata, Payload: Codable>: GossipLogic, CustomStringConvertible {
     @usableFromInline
-    let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
+    let _selectPeers: ([AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence
     @usableFromInline
     let _makePayload: (AddressableActorRef) -> Payload?
     @usableFromInline
@@ -83,7 +84,7 @@ struct GossipLogicBox<Metadata, Payload: Codable>: GossipLogic, CustomStringConv
     let _localGossipUpdate: (Metadata, Payload) -> Void
 
     @usableFromInline
-    let _receiveSideChannelMessage: (Any) -> Void
+    let _receiveSideChannelMessage: (Any) throws -> Void
 
     public init<Logic>(_ logic: Logic)
         where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
@@ -94,10 +95,10 @@ struct GossipLogicBox<Metadata, Payload: Codable>: GossipLogic, CustomStringConv
         self._receiveGossip = { l.receiveGossip(payload: $0) }
         self._localGossipUpdate = { l.localGossipUpdate(metadata: $0, payload: $1) }
 
-        self._receiveSideChannelMessage = { l.receiveSideChannelMessage(message: $0) }
+        self._receiveSideChannelMessage = { try l.receiveSideChannelMessage(message: $0) }
     }
 
-    public func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+    public func selectPeers(peers: [AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence {
         self._selectPeers(peers)
     }
 
@@ -113,11 +114,11 @@ struct GossipLogicBox<Metadata, Payload: Codable>: GossipLogic, CustomStringConv
         self._localGossipUpdate(metadata, payload)
     }
 
-    func receiveSideChannelMessage(_ message: Any) {
-        self._receiveSideChannelMessage(message)
+    public func receiveSideChannelMessage(_ message: Any) throws {
+        try self._receiveSideChannelMessage(message)
     }
 
-    var description: String {
+    public var description: String {
         "GossipLogicBox<\(reflecting: Metadata.self), \(reflecting: Payload.self)>(...)"
     }
 }

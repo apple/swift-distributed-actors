@@ -104,7 +104,7 @@ extension CRDT {
         }
     }
 
-    public struct GCounterDelta: CvRDT {
+    public struct GCounterDelta: CvRDT, Equatable {
         // State is a dictionary of replicas and their counter values.
         var state: [ReplicaID: Int]
 

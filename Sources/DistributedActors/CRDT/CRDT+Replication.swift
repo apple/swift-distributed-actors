@@ -98,6 +98,7 @@ extension CRDT {
             enum ReadError: Error, NonTransportableActorMessage {
                 case notFound
                 case consistencyError(CRDT.OperationConsistency.Error)
+                case remoteReadFailure(String)
             }
 
             enum DeleteResult: NonTransportableActorMessage {
@@ -123,6 +124,15 @@ extension CRDT {
             enum WriteResult: ActorMessage {
                 case success
                 case failure(WriteError)
+
+                var isSuccess: Bool {
+                    switch self {
+                    case .success:
+                        return true
+                    default:
+                        return false
+                    }
+                }
             }
 
             enum WriteError: Error, ActorMessage {
@@ -136,6 +146,15 @@ extension CRDT {
             enum ReadResult: ActorMessage {
                 case success(StateBasedCRDT)
                 case failure(ReadError)
+
+                var isSuccess: Bool {
+                    switch self {
+                    case .success:
+                        return true
+                    default:
+                        return false
+                    }
+                }
             }
 
             enum ReadError: Error, ActorMessage {

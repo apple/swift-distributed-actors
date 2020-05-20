@@ -16,10 +16,10 @@
 internal final class GossipShell<Metadata, Payload: Codable> {
     let settings: Settings
 
-    private let makeLogic: (GossipIdentifier) -> GossipLogicBox<Metadata, Payload>
+    private let makeLogic: (GossipIdentifier) -> AnyGossipLogic<Metadata, Payload>
 
     /// Payloads to be gossiped on gossip rounds
-    private var gossipLogics: [AnyGossipIdentifier: GossipLogicBox<Metadata, Payload>]
+    private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Metadata, Payload>]
 
     typealias PeerRef = ActorRef<Message>
     private var peers: Set<PeerRef>
@@ -29,7 +29,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         makeLogic: @escaping (GossipIdentifier) -> Logic
     ) where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
         self.settings = settings
-        self.makeLogic = { id in GossipLogicBox(makeLogic(id)) }
+        self.makeLogic = { id in AnyGossipLogic(makeLogic(id)) }
         self.gossipLogics = [:]
         self.peers = []
     }
@@ -83,14 +83,13 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         identifier: GossipIdentifier,
         payload: Payload
     ) {
-        context.log.trace("Received gossip [\(identifier.gossipIdentifier)]: \(payload)", metadata: [
+        context.log.warning("Received gossip [\(identifier.gossipIdentifier)]: \(payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
-//            "gossip/existing": "\(String(reflecting: existing))",
             "gossip/incoming": "\(payload)",
         ])
 
         // TODO: we could handle some actions if it issued some
-        let logic: GossipLogicBox<Metadata, Payload> = self.getEnsureLogic(identifier: identifier)
+        let logic: AnyGossipLogic<Metadata, Payload> = self.getEnsureLogic(identifier: identifier)
 
         // TODO: we could handle directives from the logic
         logic.receiveGossip(payload: payload)
@@ -115,8 +114,8 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         // TODO: bump local version vector; once it is in the envelope
     }
 
-    private func getEnsureLogic(identifier: GossipIdentifier) -> GossipLogicBox<Metadata, Payload> {
-        let logic: GossipLogicBox<Metadata, Payload>
+    private func getEnsureLogic(identifier: GossipIdentifier) -> AnyGossipLogic<Metadata, Payload> {
+        let logic: AnyGossipLogic<Metadata, Payload>
         if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
             logic = existing
         } else {
@@ -284,7 +283,12 @@ extension GossipShell {
             return .unhandled
         }
 
-        logic.receiveSideChannelMessage(message)
+        do {
+            try logic.receiveSideChannelMessage(message)
+        } catch {
+            context.log.error("Gossip logic \(logic) [\(identifier)] receiveSideChannelMessage failed: \(error)")
+            return .received
+        }
 
         return .received
     }

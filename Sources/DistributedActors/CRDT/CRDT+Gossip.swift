@@ -35,6 +35,8 @@ extension CRDT {
 
 //        let peerSelector: PeerSelection = fatalError()
 
+        var alreadyInformedPeers: Set<ActorAddress>
+
         init(identifier: GossipIdentifier, _ control: CRDT.Replicator.Shell.LocalControl) {
             guard let id = identifier as? CRDT.Identity else {
                 fatalError("\(identifier) MUST be \(CRDT.Identity.self)")
@@ -42,13 +44,21 @@ extension CRDT {
 
             self.identity = id
             self.control = control
+            self.alreadyInformedPeers = []
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Spreading gossip
 
-        func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
-            peers // always gossip to everyone
+        // we gossip only to peers we have not gossiped to yet.
+        func selectPeers(peers: [AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence {
+            // TODO: if swift had Scala style collect {} this would be a one-liner
+            let selectedPeers = peers.filter {
+                !self.alreadyInformedPeers.contains($0.address)
+            }.prefix(1)
+            selectedPeers.forEach { self.alreadyInformedPeers.insert($0.address) }
+
+            return selectedPeers
         }
 
         func makePayload(target _: AddressableActorRef) -> Payload? {
@@ -63,13 +73,11 @@ extension CRDT {
 
         // FIXME: we need another "was updated locally" so we avoid causing an infinite update loop; perhaps use metadata for it -- source of the mutation etc?
         func receiveGossip(payload: Payload) {
-//            pprint("[\(identity)] received gossip ... = \(payload)")
             self.mergeInbound(payload)
             self.control.tellGossipWrite(id: self.identity, data: payload.payload)
         }
 
         func localGossipUpdate(metadata: Metadata, payload: Payload) {
-//            pprint("[\(identity)] local gossip update ... \(metadata) = \(payload)")
             self.mergeInbound(payload)
             // during the next gossip round we'll gossip the latest most-up-to date version now;
             // no need to schedule that, we'll be called when it's time.
@@ -82,7 +90,7 @@ extension CRDT {
             case localUpdate(Payload)
         }
 
-        func receiveSideChannelMessage(message: Any) {
+        func receiveSideChannelMessage(message: Any) throws {
             guard let sideChannelMessage = message as? SideChannelMessage else {
                 return // TODO: dead letter it
             }
@@ -97,14 +105,24 @@ extension CRDT {
         private func mergeInbound(_ payload: CRDT.GossipReplicatorLogic.Payload) {
             // TODO: some context would be nice, I want to log here
             // TODO: metadata? who did send us this payload?
-            if var existing = self.latest {
-                if let error = existing.tryMerge(other: payload.payload) {
-                    _ = error // TODO: log the error
-                }
-                self.latest = existing
-            } else {
-                self.latest = payload
+            guard var existing = self.latest else {
+                self.latest = payload // we didn't have one stored, so direcly apply
+                self.alreadyInformedPeers = []
+                return
             }
+
+//            let previous = existing
+            if let error = existing.tryMerge(other: payload.payload) {
+                _ = error // FIXME: log the error
+            }
+
+            pprint("[\(self.identity)] merged inbound === \(payload)")
+
+            // FIXME: eh eh
+//            if previous != existing {
+//                self.latest = existing
+//                self.alreadyInformedPeers = []
+//            } // else, it was the same gossip as we store already, no need to gossip it more.
         }
     }
 }

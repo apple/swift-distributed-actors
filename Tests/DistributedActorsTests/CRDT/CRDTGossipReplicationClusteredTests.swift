@@ -69,6 +69,9 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
         }
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Local only direct writes, end up on other nodes via gossip
+
     func test_gossip_localUpdate_toOtherNode() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first")
@@ -94,7 +97,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
         }
     }
 
-    func test_gossip_multipleNodes_gossipedOwnerAlwaysIncludesAddress() throws {
+    func test_gossip_readAll_gossipedOwnerAlwaysIncludesAddress() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first")
             let second = self.setUpNode("second")
@@ -144,6 +147,34 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
                     throw p.error("Unexpected result \(other)")
                 }
             }
+        }
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Gossip stop conditions
+
+//    override var alwaysPrintCaptureLogs: Bool {
+//        true
+//    }
+
+    // FIXME: HAAAAARD
+    func test_gossip_shouldEventuallyStopSpreading() throws {
+        try shouldNotThrow {
+            let first = self.setUpNode("first")
+            let second = self.setUpNode("second")
+            let third = self.setUpNode("third")
+
+            try self.joinNodes(node: first, with: second, ensureMembers: .up)
+            try self.joinNodes(node: second, with: third, ensureMembers: .up)
+            try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+
+            let one = try first.spawn("one", ownsCounter(p: nil))
+            let two = try second.spawn("two", ownsCounter(p: nil))
+            let three = try third.spawn("three", ownsCounter(p: nil))
+
+            one.tell(1)
+            two.tell(2)
+            three.tell(3)
         }
     }
 
