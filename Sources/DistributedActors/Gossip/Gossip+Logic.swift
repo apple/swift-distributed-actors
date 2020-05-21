@@ -36,10 +36,9 @@
 ///   for a nice overview of the general concepts involved in gossip algorithms.
 /// - SeeAlso: `Cluster.Gossip` for the Actor System's own gossip mechanism for membership dissemination
 public protocol GossipLogic {
-    associatedtype Metadata
-    associatedtype Payload: Codable
+    associatedtype Envelope: GossipEnvelopeProtocol & Codable
 
-    // init(GossipIdentifier) // TODO: specific to an identifier
+    // init(_ gossiper: AddressableActorRef) // TODO: a form of context?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spreading gossip
@@ -52,15 +51,14 @@ public protocol GossipLogic {
     // TODO: make a directive here
 
     /// Allows for customizing the payload for specific targets
-    // gossipRoundPayload() // TODO: better name?
-    mutating func makePayload(target: AddressableActorRef) -> Payload?
+    mutating func makePayload(target: AddressableActorRef) -> Envelope?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    mutating func receiveGossip(payload: Payload)
+    mutating func receiveGossip(payload: Envelope)
 
-    mutating func localGossipUpdate(metadata: Metadata, payload: Payload)
+    mutating func localGossipUpdate(payload: Envelope)
 
     /// Extra side channel, allowing for arbitrary outside interactions with this gossip logic.
     // TODO: We could consider making it typed perhaps...
@@ -73,27 +71,27 @@ extension GossipLogic {
     }
 }
 
-public struct AnyGossipLogic<Metadata, Payload: Codable>: GossipLogic, CustomStringConvertible {
+public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol & Codable>: GossipLogic, CustomStringConvertible {
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
-    let _makePayload: (AddressableActorRef) -> Payload?
+    let _makePayload: (AddressableActorRef) -> Envelope?
     @usableFromInline
-    let _receiveGossip: (Payload) -> Void
+    let _receiveGossip: (Envelope) -> Void
     @usableFromInline
-    let _localGossipUpdate: (Metadata, Payload) -> Void
+    let _localGossipUpdate: (Envelope) -> Void
 
     @usableFromInline
     let _receiveSideChannelMessage: (Any) throws -> Void
 
     public init<Logic>(_ logic: Logic)
-        where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
+        where Logic: GossipLogic, Logic.Envelope == Envelope {
         var l = logic
         self._selectPeers = { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
 
         self._receiveGossip = { l.receiveGossip(payload: $0) }
-        self._localGossipUpdate = { l.localGossipUpdate(metadata: $0, payload: $1) }
+        self._localGossipUpdate = { l.localGossipUpdate(payload: $0) }
 
         self._receiveSideChannelMessage = { try l.receiveSideChannelMessage(message: $0) }
     }
@@ -102,16 +100,16 @@ public struct AnyGossipLogic<Metadata, Payload: Codable>: GossipLogic, CustomStr
         self._selectPeers(peers)
     }
 
-    public func makePayload(target: AddressableActorRef) -> Payload? {
+    public func makePayload(target: AddressableActorRef) -> Envelope? {
         self._makePayload(target)
     }
 
-    public func receiveGossip(payload: Payload) {
+    public func receiveGossip(payload: Envelope) {
         self._receiveGossip(payload)
     }
 
-    public func localGossipUpdate(metadata: Metadata, payload: Payload) {
-        self._localGossipUpdate(metadata, payload)
+    public func localGossipUpdate(payload: Envelope) {
+        self._localGossipUpdate(payload)
     }
 
     public func receiveSideChannelMessage(_ message: Any) throws {
@@ -119,6 +117,20 @@ public struct AnyGossipLogic<Metadata, Payload: Codable>: GossipLogic, CustomStr
     }
 
     public var description: String {
-        "GossipLogicBox<\(reflecting: Metadata.self), \(reflecting: Payload.self)>(...)"
+        "GossipLogicBox<\(reflecting: Envelope.self)>(...)"
     }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Envelope
+
+
+public protocol GossipEnvelopeProtocol {
+    associatedtype Metadata: Codable // TODO: do we need this?
+    associatedtype Payload: Codable
+
+    // Payload MAY contain the metadata, and we just expose it, or metadata is separate and we do NOT gossip it.
+
+    var metadata: Metadata { get }
+    var payload: Payload { get }
 }

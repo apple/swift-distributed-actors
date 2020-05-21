@@ -27,17 +27,3 @@ public protocol PeerSelection {
 
     func select() -> Peers
 }
-
-//open class AddressableActorRefPeerSelection<Peer: AddressableActorRef>: PeerSelection {
-//
-//    var peers: [AddressableActorRef] = []
-//    var alreadySelected: Set<AddressableActorRef> = []
-//
-//    public func onMembershipEvent(event: Cluster.Event) {
-//        // ignore
-//    }
-//
-//    public func select() -> Peers {
-//        self.peers.
-//    }
-//}

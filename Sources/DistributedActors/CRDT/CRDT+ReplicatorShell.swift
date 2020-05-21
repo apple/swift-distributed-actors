@@ -33,7 +33,7 @@ extension CRDT.Replicator {
         typealias RemoteDeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
 
         private let directReplicator: CRDT.Replicator.Instance
-        private var gossipReplication: GossipControl<Void, CRDT.Gossip>!
+        private var gossipReplication: GossipControl<CRDT.Gossip>!
 
         // TODO: better name; this is the control from Gossip -> Local
         struct LocalControl {
@@ -256,7 +256,7 @@ extension CRDT.Replicator {
                     }
 
                     // ==== Gossip Replicate ---------------------------------------------------------------------------
-                    self.gossipReplication.update(id, metadata: (), payload: CRDT.Gossip(payload: updatedData)) // TODO: v2, allow tracking the deltas here
+                    self.gossipReplicateLocalWrite(context, id, updatedData)
                 }
             case .inputAndStoredDataTypeMismatch(let stored):
                 replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored)))
@@ -270,7 +270,11 @@ extension CRDT.Replicator {
             _ id: CRDT.Identity,
             _ data: StateBasedCRDT
         ) {
-            self.gossipReplication.update(id, metadata: (), payload: CRDT.Gossip(payload: data))
+            let gossip = CRDT.Gossip(
+                metadata: .init(origin: nil), // TODO: local
+                payload: data  // TODO: v2, allow tracking the deltas here
+            )
+            self.gossipReplication.update(id, payload: gossip)
         }
 
         private func acceptGossipWrite(
@@ -284,9 +288,9 @@ extension CRDT.Replicator {
             case .applied(let updatedData, _):
                 self.notifyOwnersOnUpdate(context, id, updatedData)
             case .inputAndStoredDataTypeMismatch:
-                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup
+                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup, log instead
             case .unsupportedCRDT:
-                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup
+                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup, log instead
             }
         }
 
@@ -406,7 +410,11 @@ extension CRDT.Replicator {
                             replyTo.tell(.success(updatedData))
 
                             // Update the data stored in the replicator (yeah today we store 2 copies in the replicators, we could converge them into one with enough effort)
-                            self.gossipReplication.update(id, metadata: (), payload: CRDT.Gossip(payload: updatedData)) // TODO: v2, allow tracking the deltas here
+                            let gossip = CRDT.Gossip(
+                                metadata: .init(origin: nil),
+                                payload: updatedData
+                            )
+                            self.gossipReplication.update(id, payload: gossip) // TODO: v2, allow tracking the deltas here
 
                             // Followed by notifying all owners since the CRDT might have been updated
                             // TODO: this notifies owners even when the CRDT hasn't changed

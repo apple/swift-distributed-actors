@@ -13,13 +13,15 @@
 //===----------------------------------------------------------------------===//
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-internal final class GossipShell<Metadata, Payload: Codable> {
+internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
     let settings: Settings
 
-    private let makeLogic: (GossipIdentifier) -> AnyGossipLogic<Metadata, Payload>
+    typealias Metadata = Envelope.Metadata
+
+    private let makeLogic: (GossipIdentifier) -> AnyGossipLogic<Envelope>
 
     /// Payloads to be gossiped on gossip rounds
-    private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Metadata, Payload>]
+    private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Metadata, Envelope>]
 
     typealias PeerRef = ActorRef<Message>
     private var peers: Set<PeerRef>
@@ -27,7 +29,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
     fileprivate init<Logic>(
         settings: Settings,
         makeLogic: @escaping (GossipIdentifier) -> Logic
-    ) where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
+    ) where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Envelope == Envelope {
         self.settings = settings
         self.makeLogic = { id in AnyGossipLogic(makeLogic(id)) }
         self.gossipLogics = [:]
@@ -81,7 +83,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
     private func receiveGossip(
         _ context: ActorContext<Message>,
         identifier: GossipIdentifier,
-        payload: Payload
+        payload: Envelope
     ) {
         context.log.warning("Received gossip [\(identifier.gossipIdentifier)]: \(payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
@@ -89,7 +91,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         ])
 
         // TODO: we could handle some actions if it issued some
-        let logic: AnyGossipLogic<Metadata, Payload> = self.getEnsureLogic(identifier: identifier)
+        let logic: AnyGossipLogic<Metadata, Envelope> = self.getEnsureLogic(identifier: identifier)
 
         // TODO: we could handle directives from the logic
         logic.receiveGossip(payload: payload)
@@ -99,7 +101,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         _ context: ActorContext<Message>,
         identifier: GossipIdentifier,
         metadata: Metadata,
-        payload: Payload
+        payload: Envelope
     ) {
         let logic = self.getEnsureLogic(identifier: identifier)
 
@@ -114,8 +116,8 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         // TODO: bump local version vector; once it is in the envelope
     }
 
-    private func getEnsureLogic(identifier: GossipIdentifier) -> AnyGossipLogic<Metadata, Payload> {
-        let logic: AnyGossipLogic<Metadata, Payload>
+    private func getEnsureLogic(identifier: GossipIdentifier) -> AnyGossipLogic<Metadata, Envelope> {
+        let logic: AnyGossipLogic<Metadata, Envelope>
         if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
             logic = existing
         } else {
@@ -160,7 +162,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
             ])
 
             for selectedPeer in selectedPeers {
-                guard let payload: Payload = logic.makePayload(target: selectedPeer) else {
+                guard let payload: Envelope = logic.makePayload(target: selectedPeer) else {
                     context.log.trace("Skipping gossip to peer \(selectedPeer)", metadata: [
                         "gossip/id": "\(identifier.gossipIdentifier)",
                         "gossip/target": "\(selectedPeer)",
@@ -188,7 +190,7 @@ internal final class GossipShell<Metadata, Payload: Codable> {
         self.scheduleNextGossipRound(context: context)
     }
 
-    private func sendGossip(_ context: ActorContext<Message>, identifier: AnyGossipIdentifier, _ payload: Payload, to target: PeerRef) {
+    private func sendGossip(_ context: ActorContext<Message>, identifier: AnyGossipIdentifier, _ payload: Envelope, to target: PeerRef) {
         // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them that's nicer for small clusters, I guess
 //        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
 
@@ -280,11 +282,10 @@ extension GossipShell {
 extension GossipShell {
     enum Message {
         // gossip
-        case gossip(identity: GossipIdentifier, Payload)
+        case gossip(identity: GossipIdentifier, Envelope)
 
         // local messages
-        case updatePayload(identifier: GossipIdentifier, Metadata, Payload)
-//        case updatePayload(identity: GossipIdentifier, GossipEnvelopeProtocol) // FIXME: would be much preferable if my type can conform to this already
+        case updatePayload(identifier: GossipIdentifier, Envelope)
         case removePayload(identifier: GossipIdentifier)
         case introducePeer(PeerRef)
 
@@ -305,18 +306,18 @@ extension GossipShell {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
     static func start<Logic>(
         _ context: ActorRefFactory, name naming: ActorNaming,
-        of type: Payload.Type = Payload.self,
+        of type: Envelope.Type = Envelope.self,
         ofMetadata metadataType: Metadata.Type = Metadata.self,
         props: Props = .init(), settings: Settings = .init(),
         makeLogic: @escaping (GossipIdentifier) -> Logic // TODO: could offer overload with just "one" logic and one id
-    ) throws -> GossipControl<Metadata, Payload>
-        where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Payload == Payload {
+    ) throws -> GossipControl<Envelope>
+        where Logic: GossipLogic, Logic.Envelope == Envelope {
         let ref = try context.spawn(
             naming,
-            of: GossipShell<Metadata, Payload>.Message.self,
+            of: GossipShell<Metadata, Envelope>.Message.self,
             props: props,
             file: #file, line: #line,
-            GossipShell<Metadata, Payload>(settings: settings, makeLogic: makeLogic).behavior
+            GossipShell<Metadata, Envelope>(settings: settings, makeLogic: makeLogic).behavior
         )
         return GossipControl(ref)
     }
@@ -325,21 +326,21 @@ extension GossipShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: GossipControl
 
-internal struct GossipControl<Metadata, Payload: Codable> {
-    private let ref: GossipShell<Metadata, Payload>.Ref
+internal struct GossipControl<GossipEnvelope: GossipEnvelopeProtocol & Codable> {
+    private let ref: GossipShell<GossipEnvelope>.Ref
 
-    init(_ ref: GossipShell<Metadata, Payload>.Ref) {
+    init(_ ref: GossipShell<Metadata, GossipEnvelope>.Ref) {
         self.ref = ref
     }
 
     /// Introduce a peer to the gossip group
-    func introduce(peer: GossipShell<Metadata, Payload>.Ref) {
+    func introduce(peer: GossipShell<Metadata, GossipEnvelope>.Ref) {
         self.ref.tell(.introducePeer(peer))
     }
 
     // FIXME: is there some way to express that actually, Metadata is INSIDE Payload so I only want to pass the "envelope" myself...?
-    func update(_ identifier: GossipIdentifier, metadata: Metadata, payload: Payload) {
-        self.ref.tell(.updatePayload(identifier: identifier, metadata, payload))
+    func update(_ identifier: GossipIdentifier, payload: GossipEnvelope) {
+        self.ref.tell(.updatePayload(identifier: identifier, payload))
     }
 
     func remove(_ identifier: GossipIdentifier) {
@@ -373,30 +374,6 @@ public protocol GossipIdentifier {
 
     var asAnyGossipIdentifier: AnyGossipIdentifier { get }
 }
-
-// extension GossipIdentifier {
-//    public enum CodingKeys: CodingKey {
-//        case manifest
-//        case identifier
-//    }
-//
-//    public init(from decoder: Decoder) throws {
-//        guard let context: Serialization.Context = decoder.actorSerializationContext else {
-//            throw SerializationError.missingSerializationContext(decoder, GossipShell<Metadata, Payload>.Message.self)
-//        }
-//
-//        let container = try decoder.container(keyedBy: CodingKeys.self)
-//        let manifest = try container.decode(Serialization.Manifest.self, forKey: .manifest)
-//        let identifier = try container.decode(String.self, forKey: .identifier)
-//        if let T: GossipIdentifier = try context.summonType(from: manifest){
-//            T()
-//
-//        }
-//    }
-//
-//    public func encode(to encoder: Encoder) throws {
-//    }
-// }
 
 public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
     public let underlying: GossipIdentifier
