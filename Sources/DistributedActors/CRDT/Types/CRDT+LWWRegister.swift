@@ -26,10 +26,10 @@ extension CRDT {
     /// `WallTimeClock` is the default type for timestamps.
     ///
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct LWWRegister<Value: Codable>: CvRDT, LWWRegisterOperations {
+    public struct LWWRegister<Value: Codable & Equatable>: CvRDT, LWWRegisterOperations {
         public let replicaID: ReplicaID
 
-        let initialValue: Value
+        public let initialValue: Value
 
         public internal(set) var value: Value
         var clock: WallTimeClock
@@ -67,6 +67,17 @@ extension CRDT {
                 self.clock = other.clock
                 self.updatedBy = other.updatedBy
             }
+        }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.initialValue == other.initialValue &&
+                self.value == other.value &&
+                self.clock == self.clock &&
+                self.updatedBy == self.updatedBy // TODO: is this correct?
         }
     }
 }

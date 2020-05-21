@@ -31,7 +31,7 @@
 ///
 /// - SeeAlso: [Why Logical Clocks are Easy](https://queue.acm.org/detail.cfm?id=2917756)
 /// - SeeAlso: [Version Vectors are not Vector Clocks](https://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/)
-public struct VersionVector {
+public struct VersionVector: Equatable {
     // TODO: should we disallow mixing ReplicaID types somehow?
 
     public typealias Version = UInt64

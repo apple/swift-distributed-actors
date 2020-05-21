@@ -34,6 +34,9 @@ public protocol StateBasedCRDT: Codable {
     ///   This cannot be enforced in this protocol, since we cannot refer to `Self`, as it would make the protocol
     ///   not suitable for storage purposes.
     mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError?
+
+    /// This is a workaround in order to not use Equatable since then the Self requirement makes the types hard to use
+    func equalState(to other: StateBasedCRDT) -> Bool
 }
 
 extension StateBasedCRDT {

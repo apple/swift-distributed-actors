@@ -106,6 +106,14 @@ extension CRDT {
             self.compact()
         }
 
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state.equalState(to: other.state) // TODO: is this correct?
+        }
+
         /// Similar space reduction as described in the `add` method.
         private mutating func compact() {
             if self.state.elementByBirthDot.count > 1 {

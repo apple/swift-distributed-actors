@@ -66,7 +66,8 @@ extension CRDT {
         /// This is for tracking key additions and removals.
         var _keys: ORSet<Key>
         /// The underlying dictionary of key-value pairs.
-        var _values: [Key: Value]
+        var _storage: [Key: Value]
+
         /// A dictionary containing key-value pairs that have been updated since last `delta` reset.
         var updatedValues: [Key: Value] = [:]
 
@@ -81,30 +82,30 @@ extension CRDT {
         }
 
         public var underlying: [Key: Value] {
-            self._values
+            self._storage
         }
 
         public var keys: Dictionary<Key, Value>.Keys {
-            self._values.keys
+            self._storage.keys
         }
 
         public var values: Dictionary<Key, Value>.Values {
-            self._values.values
+            self._storage.values
         }
 
         public var count: Int {
-            self._values.count
+            self._storage.count
         }
 
         public var isEmpty: Bool {
-            self._values.isEmpty
+            self._storage.isEmpty
         }
 
         init(replicaID: ReplicaID, defaultValue: Value) {
             self.replicaID = replicaID
             self.defaultValue = defaultValue
             self._keys = ORSet(replicaID: replicaID)
-            self._values = [:]
+            self._storage = [:]
         }
 
         public mutating func update(key: Key, mutator: (inout Value) -> Void) {
@@ -116,9 +117,9 @@ extension CRDT {
             self._keys.insert(key)
 
             // Apply `mutator` to the value then save it to state. Create `Value` if needed.
-            var value = self._values[key] ?? defaultValue
+            var value = self._storage[key] ?? defaultValue
             mutator(&value)
-            self._values[key] = value
+            self._storage[key] = value
 
             // Update delta
             self.updatedValues[key] = value
@@ -126,14 +127,14 @@ extension CRDT {
 
         public mutating func unsafeRemoveValue(forKey key: Key) -> Value? {
             self._keys.remove(key)
-            let result = self._values.removeValue(forKey: key)
+            let result = self._storage.removeValue(forKey: key)
             self.updatedValues.removeValue(forKey: key)
             return result
         }
 
         public mutating func unsafeRemoveAllValues() {
             self._keys.removeAll()
-            self._values.removeAll()
+            self._storage.removeAll()
             self.updatedValues.removeAll()
         }
 
@@ -142,7 +143,7 @@ extension CRDT {
         /// The subscript is *read-only*--this is to ensure that updates are performed on the values so causal
         /// history is preserved.
         public subscript(key: Key) -> Value? {
-            self._values[key]
+            self._storage[key]
         }
 
         public mutating func _tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
@@ -166,7 +167,7 @@ extension CRDT {
             self._keys.merge(other: other._keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: other._values, defaultValue: defaultValue)
+            self._storage.merge(keys: self._keys.elements, other: other._storage, defaultValue: defaultValue)
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
@@ -177,17 +178,49 @@ extension CRDT {
             self._keys.mergeDelta(delta.keys)
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
-            self._values.merge(keys: self._keys.elements, other: delta.values, defaultValue: defaultValue)
+            self._storage.merge(keys: self._keys.elements, other: delta.values, defaultValue: defaultValue)
         }
 
         public mutating func resetDelta() {
             self._keys.resetDelta()
             self.updatedValues.removeAll()
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            switch (self.defaultValue, other.defaultValue) {
+            case (nil, nil):
+                () // continue checking
+            case (.some(let lhs), .some(let rhs)) where lhs.equalState(to: rhs):
+                () // continue checking
+            default:
+                return false // values not equal
+            }
+
+            guard self._storage.count == other._storage.count else {
+                return false
+            }
+
+            var allEqual = true
+            for key in self._storage.keys where allEqual {
+                if let lhs = self._storage[key],
+                   let rhs = other._storage[key] {
+                    allEqual = lhs.equalState(to: rhs)
+                } else {
+                    allEqual = false
+                }
+            }
+
+            return allEqual
+        }
     }
 
     public struct ORMapDelta<Key: Codable & Hashable, Value: CvRDT>: CvRDT {
         var keys: ORSet<Key>.Delta
+
         // TODO: potential optimization: send only the delta if Value is DeltaCRDT. i.e., instead of Value here we would use Value.Delta
         // TODO: `merge` defined in the Dictionary extension below should use `mergeDelta` when Value is DeltaCRDT
         var values: [Key: Value]
@@ -222,6 +255,37 @@ extension CRDT {
             // Keys that no longer exist will have their values deleted as well.
             self.values.merge(keys: self.keys.elements, other: other.values, defaultValue: defaultValue)
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            switch (self.defaultValue, other.defaultValue) {
+            case (nil, nil):
+                () // continue checking
+            case (.some(let lhs), .some(let rhs)) where lhs.equalState(to: rhs):
+                () // continue checking
+            default:
+                return false // values not equal
+            }
+
+            guard self.values.count == other.values.count else {
+                return false
+            }
+
+            var allEqual = true
+            for key in self.values.keys where allEqual {
+                if let lhs = self.values[key],
+                   let rhs = other.values[key] {
+                    allEqual = lhs.equalState(to: rhs)
+                } else {
+                    allEqual = false
+                }
+            }
+
+            return allEqual
+        }
     }
 }
 
@@ -246,19 +310,19 @@ extension Dictionary where Key: Hashable, Value: CvRDT {
 extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
     /// Resets value for `key` if exists.
     public mutating func resetValue(forKey key: Key) {
-        if var value = self._values[key] {
+        if var value = self._storage[key] {
             // Always add `key` to `_keys` set to track its causal history
             self._keys.insert(key)
             // Update state and delta
             value.reset()
-            self._values[key] = value
+            self._storage[key] = value
             self.updatedValues[key] = value
         }
     }
 
     /// Resets all values in the `ORMap`.
     public mutating func resetAllValues() {
-        self._values.keys.forEach { self.resetValue(forKey: $0) }
+        self._storage.keys.forEach { self.resetValue(forKey: $0) }
     }
 }
 

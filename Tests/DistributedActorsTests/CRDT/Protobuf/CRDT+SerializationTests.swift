@@ -235,7 +235,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.defaultValue.shouldBeNil()
             deserialized._keys.elements.shouldEqual(["s1", "s2"])
-            deserialized._values.count.shouldEqual(2)
+            deserialized._storage.count.shouldEqual(2)
 
             guard let s1 = deserialized["s1"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
@@ -301,7 +301,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.state._keys.elements.shouldEqual(["s1", "s2"])
-            deserialized.state._values.count.shouldEqual(2)
+            deserialized.state._storage.count.shouldEqual(2)
 
             guard let s1 = deserialized["s1"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
@@ -362,7 +362,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.state._keys.elements.shouldEqual(["foo", "bar"])
-            deserialized.state._values.count.shouldEqual(2)
+            deserialized.state._storage.count.shouldEqual(2)
 
             guard let foo = deserialized["foo"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"foo\", got \(deserialized)")

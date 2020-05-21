@@ -21,11 +21,23 @@
 /// // TODO: implement SWIMs selection in terms of this
 public protocol PeerSelection {
     associatedtype Peer: Hashable
-    associatedtype Payload: Equatable
-
-    typealias Peers = [Peer]
+    typealias Peers = Array<Peer>.SubSequence
 
     func onMembershipEvent(event: Cluster.Event)
 
-    func select(for payload: Payload?) -> Peers
+    func select() -> Peers
 }
+
+//open class AddressableActorRefPeerSelection<Peer: AddressableActorRef>: PeerSelection {
+//
+//    var peers: [AddressableActorRef] = []
+//    var alreadySelected: Set<AddressableActorRef> = []
+//
+//    public func onMembershipEvent(event: Cluster.Event) {
+//        // ignore
+//    }
+//
+//    public func select() -> Peers {
+//        self.peers.
+//    }
+//}

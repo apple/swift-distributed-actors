@@ -221,6 +221,7 @@ struct LogCaptureLogHandler: LogHandler {
 // MARK: Should matchers
 
 extension LogCapture {
+
     /// Asserts that a message matching the query requirements was captures *already* (without waiting for it to appear)
     ///
     /// - Parameter message: can be surrounded like `*what*` to query as a "contains" rather than an == on the captured logs.
@@ -305,5 +306,9 @@ extension LogCapture {
             }
             throw callSiteError
         }
+    }
+
+    public func grep(_ string: String) -> [CapturedLogMessage] {
+        self.logs.filter { "\($0)".contains(string) }
     }
 }

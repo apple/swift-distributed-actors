@@ -34,7 +34,7 @@ extension CRDT {
         }
 
         public var underlying: [Key: Set<Value>] {
-            self.state._values.mapValues { $0.elements }
+            self.state._storage.mapValues { $0.elements }
         }
 
         public var keys: Dictionary<Key, Set<Value>>.Keys {
@@ -117,6 +117,15 @@ extension CRDT {
         public mutating func resetDelta() {
             self.state.resetDelta()
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state.equalState(to: other.state)
+        }
+
     }
 }
 

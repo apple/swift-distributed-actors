@@ -157,7 +157,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 //        true
 //    }
 
-    // FIXME: HAAAAARD
     func test_gossip_shouldEventuallyStopSpreading() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first")
@@ -175,6 +174,20 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             one.tell(1)
             two.tell(2)
             three.tell(3)
+
+            let testKit: ActorTestKit = self.testKit(first)
+            guard let firstLogs = self._logCaptures.first else {
+                throw testKit.error("Can't get log capture")
+            }
+
+            try testKit.assertHolds(for: .seconds(10), interval: .seconds(1)) {
+                let logs = firstLogs.grep("Received gossip")
+                pinfo("LOGS: \(lineByLine: logs)")
+
+                guard logs.count < 5 else {
+                    throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
+                }
+            }
         }
     }
 

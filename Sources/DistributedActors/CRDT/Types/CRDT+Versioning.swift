@@ -76,6 +76,14 @@ extension CRDT {
             self.gaps.formUnion(other.gaps)
         }
 
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.vv == other.vv && self.gaps == other.gaps
+        }
+
         /// Check if any of the dots in `gaps` have become part of `vv` and as a result can be removed.
         ///
         /// This should be called after `gaps` is updated to reduce memory footprint.
@@ -111,6 +119,8 @@ extension CRDT.VersionContext: CustomPrettyStringConvertible {}
 // MARK: VersionedContainer
 
 extension CRDT {
+    /// A versioned container of codable elements.
+    ///
     /// Inspired by Bartosz Sypytkowski's [`DotKernel`](https://github.com/Horusiath/crdt-examples/blob/master/convergent/delta/kernel.fsx),
     /// `VersionedContainer` can be used as a building block for optimized `ORSet`, `MVRegister`, etc.
     ///
@@ -268,6 +278,16 @@ extension CRDT {
         public mutating func resetDelta() {
             self.delta = nil
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.versionContext.equalState(to: other.versionContext) &&
+                self.elementByBirthDot == other.elementByBirthDot // TODO: is this correct?
+        }
+
     }
 
     public struct VersionedContainerDelta<Element: Codable & Hashable>: CvRDT {
@@ -299,7 +319,17 @@ extension CRDT {
             self.versionContext = merged.versionContext
             self.elementByBirthDot = merged.elementByBirthDot
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.versionContext.equalState(to: other.versionContext) &&
+                self.elementByBirthDot == other.elementByBirthDot // TODO: is this correct?
+        }
     }
+
 }
 
 extension CRDT.VersionedContainer: CustomPrettyStringConvertible {}

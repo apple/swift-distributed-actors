@@ -24,26 +24,28 @@ extension CRDT {
         typealias Payload = CRDT.Gossip
 
         let identity: CRDT.Identity
-        let control: CRDT.Replicator.Shell.LocalControl
+        let replicatorControl: CRDT.Replicator.Shell.LocalControl
 
+        // TODO: This is a naive impl "v1" better gossip aware impls to follow soon:
         // v1) [node: state sent], te to gossip to everyone
         // v2) [node: [metadata = version vector, and compare if the target knows it already or not]]]
-        // v3) [node: pending deltas to deliver]
+        // v3) [node: pending deltas to deliver] - build a queue of gossips and spread them to others on "per need" bases;
+        //     as we receive incoming gossips, we notice at what VV they are, and can know "that node needs to know at-least from V4 vector time deltas"
         // ...
         /// The latest, most up-to-date, version of the gossip that will be spread when a gossip round happens.
+        /// TODO: perhaps keep the latest CRDT value instead, as the gossip will be per-peer determined.
         private var latest: CRDT.Gossip?
 
-//        let peerSelector: PeerSelection = fatalError()
-
+        // let peerSelector: PeerSelection // TODO: consider moving the existing logic into reusable?
         var alreadyInformedPeers: Set<ActorAddress>
 
-        init(identifier: GossipIdentifier, _ control: CRDT.Replicator.Shell.LocalControl) {
+        init(identifier: GossipIdentifier, _ replicatorControl: CRDT.Replicator.Shell.LocalControl) {
             guard let id = identifier as? CRDT.Identity else {
                 fatalError("\(identifier) MUST be \(CRDT.Identity.self)")
             }
 
             self.identity = id
-            self.control = control
+            self.replicatorControl = replicatorControl
             self.alreadyInformedPeers = []
         }
 
@@ -51,12 +53,16 @@ extension CRDT {
         // MARK: Spreading gossip
 
         // we gossip only to peers we have not gossiped to yet.
-        func selectPeers(peers: [AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence {
-            // TODO: if swift had Scala style collect {} this would be a one-liner
-            let selectedPeers = peers.filter {
-                !self.alreadyInformedPeers.contains($0.address)
-            }.prefix(1)
-            selectedPeers.forEach { self.alreadyInformedPeers.insert($0.address) }
+        func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+            let n = 1
+            var selectedPeers : [AddressableActorRef] = []
+            selectedPeers.reserveCapacity(n)
+
+            for peer in peers where selectedPeers.count < n {
+                if self.alreadyInformedPeers.insert(peer.address).inserted {
+                    selectedPeers.append(peer)
+                }
+            }
 
             return selectedPeers
         }
@@ -66,15 +72,13 @@ extension CRDT {
             self.latest
         }
 
-        // TODO: back channel to eventually stop gossiping the value
-
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Receiving gossip
 
         // FIXME: we need another "was updated locally" so we avoid causing an infinite update loop; perhaps use metadata for it -- source of the mutation etc?
         func receiveGossip(payload: Payload) {
             self.mergeInbound(payload)
-            self.control.tellGossipWrite(id: self.identity, data: payload.payload)
+            self.replicatorControl.tellGossipWrite(id: self.identity, data: payload.payload)
         }
 
         func localGossipUpdate(metadata: Metadata, payload: Payload) {
@@ -105,24 +109,30 @@ extension CRDT {
         private func mergeInbound(_ payload: CRDT.GossipReplicatorLogic.Payload) {
             // TODO: some context would be nice, I want to log here
             // TODO: metadata? who did send us this payload?
-            guard var existing = self.latest else {
+            guard var latest = self.latest else {
                 self.latest = payload // we didn't have one stored, so direcly apply
                 self.alreadyInformedPeers = []
                 return
             }
 
-//            let previous = existing
-            if let error = existing.tryMerge(other: payload.payload) {
+            let latestBeforeMerge = latest // CRDTs have value semantics
+            if let error = latest.tryMerge(other: payload.payload) {
                 _ = error // FIXME: log the error
             }
 
             pprint("[\(self.identity)] merged inbound === \(payload)")
+            self.latest = latest
 
-            // FIXME: eh eh
-//            if previous != existing {
-//                self.latest = existing
-//                self.alreadyInformedPeers = []
-//            } // else, it was the same gossip as we store already, no need to gossip it more.
+            guard latestBeforeMerge.payload.equalState(to: latest.payload) else {
+                pprint("N    latestBeforeMerge = \(latestBeforeMerge)")
+                pprint("N    latest            = \(latest)")
+                return
+            }
+
+            // it was the same gossip as we store already, no need to gossip it more.
+            pprint("    latestBeforeMerge = \(latestBeforeMerge)")
+            pprint("    latest            = \(latest)")
+            self.alreadyInformedPeers = []
         }
     }
 }

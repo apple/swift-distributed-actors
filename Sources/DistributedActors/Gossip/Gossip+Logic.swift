@@ -48,7 +48,7 @@ public protocol GossipLogic {
     ///
     /// Useful to implement using `PeerSelection`
     // TODO: OrderedSet would be the right thing here to be honest...
-    mutating func selectPeers(peers: [AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence
+    mutating func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef]
     // TODO: make a directive here
 
     /// Allows for customizing the payload for specific targets
@@ -75,7 +75,7 @@ extension GossipLogic {
 
 public struct AnyGossipLogic<Metadata, Payload: Codable>: GossipLogic, CustomStringConvertible {
     @usableFromInline
-    let _selectPeers: ([AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence
+    let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
     let _makePayload: (AddressableActorRef) -> Payload?
     @usableFromInline
@@ -98,7 +98,7 @@ public struct AnyGossipLogic<Metadata, Payload: Codable>: GossipLogic, CustomStr
         self._receiveSideChannelMessage = { try l.receiveSideChannelMessage(message: $0) }
     }
 
-    public func selectPeers(peers: [AddressableActorRef]) -> Array<AddressableActorRef>.SubSequence {
+    public func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
         self._selectPeers(peers)
     }
 

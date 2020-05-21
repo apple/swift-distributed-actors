@@ -102,6 +102,15 @@ extension CRDT {
         public mutating func resetDelta() {
             self.delta = nil
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state == other.state // TODO: is this correct?
+        }
+
     }
 
     public struct GCounterDelta: CvRDT, Equatable {
@@ -120,6 +129,14 @@ extension CRDT {
             } else {
                 return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
             }
+        }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state == other.state // TODO: is this correct?
         }
 
         public mutating func merge(other: GCounterDelta) {

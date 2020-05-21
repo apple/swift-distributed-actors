@@ -115,12 +115,12 @@ extension Serialization {
         //
         // We would eventually want "codingTypeName" or something similar
         let hint: String
-        let (ptr, count) = _getMangledTypeName(messageType)
-        if count > 0 {
-            hint = String(cString: ptr)
-        } else {
+//        let (ptr, count) = _getMangledTypeName(messageType)
+//        if count > 0 {
+//            hint = String(cString: ptr)
+//        } else {
             hint = _typeName(messageType)
-        }
+//        }
         #else
         // This is a workaround more or less, however it enables us to get a "stable-ish" name for messages,
         // and as long as both sides of a cluster register the same type this manifest will allow us to locate

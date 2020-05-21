@@ -140,14 +140,20 @@ internal final class GossipShell<Metadata, Payload: Codable> {
     private func runGossipRound(_ context: ActorContext<Message>) {
         // TODO: could pick only a number of keys to gossip in a round, so we avoid "bursts" of all gossip at the same intervals,
         // so in this round we'd do [a-c] and then [c-f] keys for example.
+        let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
+        guard !allPeers.isEmpty else {
+            // no members to gossip with, skip this round
+            return
+        }
+
         for (identifier, logic) in self.gossipLogics {
             context.log.trace("Initiate gossip round", metadata: [
                 "gossip/id": "\(identifier.gossipIdentifier)",
             ])
 
-            let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
             let selectedPeers = logic.selectPeers(peers: allPeers) // TODO: OrderedSet would be the right thing here...
 
+            pprint("[\(context.system.cluster.node)] Selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers: \(selectedPeers)")
             context.log.trace("Selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
                 "gossip/id": "\(identifier.gossipIdentifier)",
                 "gossip/peers/selected": "\(selectedPeers)",
@@ -177,33 +183,10 @@ internal final class GossipShell<Metadata, Payload: Codable> {
 
             // TODO: signal "gossip round complete" perhaps?
             // it would allow for "speed up" rounds, as well as "remove me, we're done"
-
-//            guard let gossipPayload = self.gossips[gossipIdentifierKey] else {
-//                continue
-//            }
-//
-//            guard let effectivePayload = settings.onGossipRound(gossipIdentifierKey, gossipPayload) else {
-//                // this payload should no longer be gossiped it seems
-//                continue
-//            }
-//
-//            // FIXME: This dance is incomplete!!!!!!!!!
-//
-//            // TODO: allow for transformation
-//            // let payload = settings.extractGossipPayload(envelope)
-//
-//            for target in self.selectGossipTargets() {
-//                self.sendGossip(context, identifier: StringGossipIdentifier(stringLiteral: gossipIdentifierKey), effectivePayload, to: target)
-//            }
         }
 
         self.scheduleNextGossipRound(context: context)
     }
-
-//    // TODO: invoke PeerSelection here
-//    private func selectGossipTargets() -> [Ref] {
-//        Array(self.peers.shuffled().prefix(1)) // TODO: allow the PeerSelection to pick multiple
-//    }
 
     private func sendGossip(_ context: ActorContext<Message>, identifier: AnyGossipIdentifier, _ payload: Payload, to target: PeerRef) {
         // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them that's nicer for small clusters, I guess
