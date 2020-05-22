@@ -268,13 +268,21 @@ extension CRDT.Replicator.Message {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Replicator settings
 
-extension CRDT.Replicator {
-    public struct Settings {
-        public static var `default`: Settings {
+extension CRDT {
+    public struct ReplicatorSettings {
+        public static var `default`: ReplicatorSettings {
             .init()
         }
 
+        /// The interval at which CRDTs are gossiped to other nodes.
+        /// This value denotes "one gossip round", i.e. each CRDT is given a chance to gossip
+        /// during this round
         public var gossipInterval: TimeAmount = .seconds(2)
+
+        // TODO: implement public var gossipIntervalNoise to add a bit more randomness
+
+        // TODO: gossipInterval - implement this
+        public var flushDelay: TimeAmount = .milliseconds(500)
 
         /// When enabled traces _all_ replicator messages.
         /// All logs will be prefixed using `[tracelog:replicator]`, for easier grepping and inspecting only logs related to the replicator.

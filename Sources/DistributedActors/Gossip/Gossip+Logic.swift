@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// Arbitrary gossip logic, used to drive the `GossipShell` which performs the actual gossiping.
 ///
 /// A gossip logic is generally responsible for a single gossip identifier, roughtly translating to a piece of information
@@ -36,9 +38,10 @@
 ///   for a nice overview of the general concepts involved in gossip algorithms.
 /// - SeeAlso: `Cluster.Gossip` for the Actor System's own gossip mechanism for membership dissemination
 public protocol GossipLogic {
-    associatedtype Envelope: GossipEnvelopeProtocol & Codable
+    associatedtype Envelope: GossipEnvelopeProtocol
+    typealias Context = GossipLogicContext<Envelope>
 
-    // init(_ gossiper: AddressableActorRef) // TODO: a form of context?
+    // init(context: Context) // TODO: a form of context?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spreading gossip
@@ -56,7 +59,7 @@ public protocol GossipLogic {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    mutating func receiveGossip(payload: Envelope)
+    mutating func receiveGossip(origin: AddressableActorRef, payload: Envelope)
 
     mutating func localGossipUpdate(payload: Envelope)
 
@@ -71,13 +74,34 @@ extension GossipLogic {
     }
 }
 
-public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol & Codable>: GossipLogic, CustomStringConvertible {
+public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol> {
+    public let gossipIdentifier: GossipIdentifier
+
+    private let ownerContext: ActorContext<GossipShell<Envelope>.Message>
+
+    internal init(ownerContext: ActorContext<GossipShell<Envelope>.Message>, gossipIdentifier: GossipIdentifier) {
+        self.ownerContext = ownerContext
+        self.gossipIdentifier = gossipIdentifier
+    }
+
+    public var log: Logger {
+        var l = self.ownerContext.log
+        l[metadataKey: "gossip/identifier"] = "\(self.gossipIdentifier)"
+        return l
+    }
+
+    public var gossiperAddress: ActorAddress {
+        self.ownerContext.myself.address
+    }
+}
+
+public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol>: GossipLogic, CustomStringConvertible {
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
     let _makePayload: (AddressableActorRef) -> Envelope?
     @usableFromInline
-    let _receiveGossip: (Envelope) -> Void
+    let _receiveGossip: (AddressableActorRef, Envelope) -> Void
     @usableFromInline
     let _localGossipUpdate: (Envelope) -> Void
 
@@ -90,7 +114,7 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol & Codable>: Gossip
         self._selectPeers = { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
 
-        self._receiveGossip = { l.receiveGossip(payload: $0) }
+        self._receiveGossip = { l.receiveGossip(origin: $0, payload: $1) }
         self._localGossipUpdate = { l.localGossipUpdate(payload: $0) }
 
         self._receiveSideChannelMessage = { try l.receiveSideChannelMessage(message: $0) }
@@ -104,8 +128,8 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol & Codable>: Gossip
         self._makePayload(target)
     }
 
-    public func receiveGossip(payload: Envelope) {
-        self._receiveGossip(payload)
+    public func receiveGossip(origin: AddressableActorRef, payload: Envelope) {
+        self._receiveGossip(origin, payload)
     }
 
     public func localGossipUpdate(payload: Envelope) {
@@ -125,9 +149,9 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol & Codable>: Gossip
 // MARK: Envelope
 
 
-public protocol GossipEnvelopeProtocol {
-    associatedtype Metadata: Codable // TODO: do we need this?
-    associatedtype Payload: Codable
+public protocol GossipEnvelopeProtocol: Codable {
+    associatedtype Metadata
+    associatedtype Payload
 
     // Payload MAY contain the metadata, and we just expose it, or metadata is separate and we do NOT gossip it.
 

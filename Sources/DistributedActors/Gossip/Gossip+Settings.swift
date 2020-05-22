@@ -18,12 +18,12 @@
 extension GossipShell {
     public struct Settings {
         /// Interval at which gossip rounds should proceed.
-        public var gossipInterval: TimeAmount = .seconds(1)
+        public var gossipInterval: TimeAmount = .seconds(2)
 
         public var peerDiscovery: PeerDiscovery = .manuallyIntroduced
         public enum PeerDiscovery {
             /// Automatically register this gossiper and subscribe for any others identifying under the same
-            /// `Receptionist.RegistrationKey<GossipShell<Metadata, Payload>.Message>(id)`.
+            /// `Receptionist.RegistrationKey<GossipShell<Envelope>.Message>(id)`.
             case fromReceptionistListing(id: String)
 
 //            /// Automatically discover and add cluster members to the gossip group when they become reachable in `atLeast` status.

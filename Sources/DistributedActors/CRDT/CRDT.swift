@@ -386,6 +386,12 @@ extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpol
     }
 }
 
+extension CRDT.Identity: CustomStringConvertible {
+    public var description: String {
+        "CRDT.Identity(\(id))"
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: OperationConsistency
 

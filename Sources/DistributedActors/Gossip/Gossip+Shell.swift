@@ -13,25 +13,27 @@
 //===----------------------------------------------------------------------===//
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
+internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
     let settings: Settings
 
-    typealias Metadata = Envelope.Metadata
-
-    private let makeLogic: (GossipIdentifier) -> AnyGossipLogic<Envelope>
+    private let makeLogic: (ActorContext<Message>, GossipIdentifier) -> AnyGossipLogic<Envelope>
 
     /// Payloads to be gossiped on gossip rounds
-    private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Metadata, Envelope>]
+    private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Envelope>]
 
     typealias PeerRef = ActorRef<Message>
     private var peers: Set<PeerRef>
 
     fileprivate init<Logic>(
         settings: Settings,
-        makeLogic: @escaping (GossipIdentifier) -> Logic
-    ) where Logic: GossipLogic, Logic.Metadata == Metadata, Logic.Envelope == Envelope {
+        makeLogic: @escaping (Logic.Context) -> Logic
+    ) where Logic: GossipLogic, Logic.Envelope == Envelope {
         self.settings = settings
-        self.makeLogic = { id in AnyGossipLogic(makeLogic(id)) }
+        self.makeLogic = { shellContext, id in
+            let logicContext = GossipLogicContext(ownerContext: shellContext, gossipIdentifier: id)
+            let logic = makeLogic(logicContext)
+            return AnyGossipLogic(logic)
+        }
         self.gossipLogics = [:]
         self.peers = []
     }
@@ -43,8 +45,8 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
 
             return Behavior<Message>.receiveMessage {
                 switch $0 {
-                case .updatePayload(let identifier, let metadata, let payload):
-                    self.onLocalPayloadUpdate(context, identifier: identifier, metadata: metadata, payload: payload)
+                case .updatePayload(let identifier, let payload):
+                    self.onLocalPayloadUpdate(context, identifier: identifier, payload: payload)
                 case .removePayload(let identifier):
                     self.onLocalPayloadRemove(context, identifier: identifier)
 
@@ -57,8 +59,8 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
                     case .unhandled: return .unhandled
                     }
 
-                case .gossip(let identity, let payload):
-                    self.receiveGossip(context, identifier: identity, payload: payload)
+                case .gossip(let identity, let origin, let payload):
+                    self.receiveGossip(context, identifier: identity, origin: origin, payload: payload)
 
                 case ._clusterEvent:
                     fatalError("automatic peer location is not implemented") // FIXME: implement this https://github.com/apple/swift-distributed-actors/issues/371
@@ -83,45 +85,45 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
     private func receiveGossip(
         _ context: ActorContext<Message>,
         identifier: GossipIdentifier,
+        origin: ActorRef<Message>,
         payload: Envelope
     ) {
         context.log.warning("Received gossip [\(identifier.gossipIdentifier)]: \(payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
+            "gossip/origin": "\(origin.address)",
             "gossip/incoming": "\(payload)",
         ])
 
         // TODO: we could handle some actions if it issued some
-        let logic: AnyGossipLogic<Metadata, Envelope> = self.getEnsureLogic(identifier: identifier)
+        let logic: AnyGossipLogic<Envelope> = self.getEnsureLogic(context, identifier: identifier)
 
         // TODO: we could handle directives from the logic
-        logic.receiveGossip(payload: payload)
+        logic.receiveGossip(origin: origin.asAddressable(), payload: payload)
     }
 
     private func onLocalPayloadUpdate(
         _ context: ActorContext<Message>,
         identifier: GossipIdentifier,
-        metadata: Metadata,
         payload: Envelope
     ) {
-        let logic = self.getEnsureLogic(identifier: identifier)
+        let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        logic.localGossipUpdate(metadata: metadata, payload: payload)
+        logic.localGossipUpdate(payload: payload)
 
         context.log.trace("Gossip payload [\(identifier)] updated: \(payload)", metadata: [
             "gossip/identifier": "\(identifier)",
-            "actor/metadata": "\(metadata)",
-            "actor/payload": "\(payload)",
+            "gossip/payload": "\(payload)",
         ])
 
         // TODO: bump local version vector; once it is in the envelope
     }
 
-    private func getEnsureLogic(identifier: GossipIdentifier) -> AnyGossipLogic<Metadata, Envelope> {
-        let logic: AnyGossipLogic<Metadata, Envelope>
+    private func getEnsureLogic(_ context: ActorContext<Message>, identifier: GossipIdentifier) -> AnyGossipLogic<Envelope> {
+        let logic: AnyGossipLogic<Envelope>
         if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
             logic = existing
         } else {
-            logic = self.makeLogic(identifier)
+            logic = self.makeLogic(context, identifier)
             self.gossipLogics[identifier.asAnyGossipIdentifier] = logic
         }
         return logic
@@ -149,14 +151,9 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
         }
 
         for (identifier, logic) in self.gossipLogics {
-            context.log.trace("Initiate gossip round", metadata: [
-                "gossip/id": "\(identifier.gossipIdentifier)",
-            ])
-
             let selectedPeers = logic.selectPeers(peers: allPeers) // TODO: OrderedSet would be the right thing here...
 
-            pprint("[\(context.system.cluster.node)] Selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers: \(selectedPeers)")
-            context.log.trace("Selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
+            context.log.trace("New gossip round, selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
                 "gossip/id": "\(identifier.gossipIdentifier)",
                 "gossip/peers/selected": "\(selectedPeers)",
             ])
@@ -180,6 +177,14 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
                     continue
                 }
 
+                pprint("""
+                       [\(context.system.cluster.node)] \
+                       Selected [\(selectedPeers.count)] peers, \
+                       from [\(allPeers.count)] peers: \(selectedPeers)\
+                       PAYLOAD: \(pretty: payload)
+                       """)
+
+
                 self.sendGossip(context, identifier: identifier, payload, to: selectedRef)
             }
 
@@ -191,9 +196,6 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
     }
 
     private func sendGossip(_ context: ActorContext<Message>, identifier: AnyGossipIdentifier, _ payload: Envelope, to target: PeerRef) {
-        // TODO: Optimization looking at seen table, decide who is not going to gain info form us anyway, and de-prioritize them that's nicer for small clusters, I guess
-//        let envelope = GossipEnvelope(payload: payload) // TODO: carry all the vector clocks here rather in the payload
-
         // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
         context.log.trace("Sending gossip to \(target.address)", metadata: [
             "gossip/target": "\(target.address)",
@@ -201,12 +203,11 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol & Codable> {
             "actor/message": "\(payload)",
         ])
 
-        target.tell(.gossip(identity: identifier.underlying, payload))
+        target.tell(.gossip(identity: identifier.underlying, origin: context.myself, payload))
     }
 
     private func scheduleNextGossipRound(context: ActorContext<Message>) {
-        // FIXME: configurable rounds
-        let delay = TimeAmount.seconds(1) // TODO: configuration
+        let delay = self.settings.gossipInterval
         context.log.trace("Schedule next gossip round in \(delay.prettyDescription)")
         context.timers.startSingle(key: "periodic-gossip", message: ._periodicGossipTick, delay: delay)
     }
@@ -232,7 +233,7 @@ extension GossipShell {
 
             context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
                 context.log.info("Receptionist listing update \(listing)")
-                for peer in listing.refs where peer != context.myself {
+                for peer in listing.refs {
                     self.onIntroducePeer(context, peer: peer)
                 }
             })
@@ -240,6 +241,10 @@ extension GossipShell {
     }
 
     private func onIntroducePeer(_ context: ActorContext<Message>, peer: PeerRef) {
+        guard peer != context.myself else {
+            return // there is never a need to gossip to myself
+        }
+
         if self.peers.insert(context.watch(peer)).inserted {
             context.log.trace("Got introduced to peer [\(peer)]", metadata: [
                 "gossip/peerCount": "\(self.peers.count)",
@@ -282,7 +287,7 @@ extension GossipShell {
 extension GossipShell {
     enum Message {
         // gossip
-        case gossip(identity: GossipIdentifier, Envelope)
+        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Envelope)
 
         // local messages
         case updatePayload(identifier: GossipIdentifier, Envelope)
@@ -307,17 +312,17 @@ extension GossipShell {
     static func start<Logic>(
         _ context: ActorRefFactory, name naming: ActorNaming,
         of type: Envelope.Type = Envelope.self,
-        ofMetadata metadataType: Metadata.Type = Metadata.self,
-        props: Props = .init(), settings: Settings = .init(),
-        makeLogic: @escaping (GossipIdentifier) -> Logic // TODO: could offer overload with just "one" logic and one id
+        props: Props = .init(),
+        settings: Settings = .init(),
+        makeLogic: @escaping (Logic.Context) -> Logic
     ) throws -> GossipControl<Envelope>
         where Logic: GossipLogic, Logic.Envelope == Envelope {
         let ref = try context.spawn(
             naming,
-            of: GossipShell<Metadata, Envelope>.Message.self,
+            of: GossipShell<Envelope>.Message.self,
             props: props,
             file: #file, line: #line,
-            GossipShell<Metadata, Envelope>(settings: settings, makeLogic: makeLogic).behavior
+            GossipShell<Envelope>(settings: settings, makeLogic: makeLogic).behavior
         )
         return GossipControl(ref)
     }
@@ -326,15 +331,15 @@ extension GossipShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: GossipControl
 
-internal struct GossipControl<GossipEnvelope: GossipEnvelopeProtocol & Codable> {
+internal struct GossipControl<GossipEnvelope: GossipEnvelopeProtocol> {
     private let ref: GossipShell<GossipEnvelope>.Ref
 
-    init(_ ref: GossipShell<Metadata, GossipEnvelope>.Ref) {
+    init(_ ref: GossipShell<GossipEnvelope>.Ref) {
         self.ref = ref
     }
 
     /// Introduce a peer to the gossip group
-    func introduce(peer: GossipShell<Metadata, GossipEnvelope>.Ref) {
+    func introduce(peer: GossipShell<GossipEnvelope>.Ref) {
         self.ref.tell(.introducePeer(peer))
     }
 
@@ -351,14 +356,6 @@ internal struct GossipControl<GossipEnvelope: GossipEnvelopeProtocol & Codable> 
     func sideChannelTell(identifier: GossipIdentifier, message: Any) {
         self.ref.tell(.sideChannelMessage(identifier: identifier, message))
     }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: GossipEnvelope
-
-public struct GossipEnvelope<Metadata, Payload: Codable>: GossipEnvelopeProtocol {
-    let metadata: Metadata // e.g. seen tables, sequence numbers, "send n more times"-numbers
-    let payload: Payload // the value to gossip
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

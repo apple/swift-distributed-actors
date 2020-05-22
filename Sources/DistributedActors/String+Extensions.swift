@@ -156,8 +156,12 @@ internal extension String.StringInterpolation {
 // MARK: String Interpolation: reflecting:
 
 internal extension String.StringInterpolation {
-    mutating func appendInterpolation(pretty subject: CustomPrettyStringConvertible) {
-        self.appendLiteral(subject.prettyDescription)
+    mutating func appendInterpolation(pretty subject: Any) {
+        if let prettySubject = subject as? CustomPrettyStringConvertible {
+            self.appendLiteral(prettySubject.prettyDescription)
+        } else {
+            self.appendLiteral("\(reflecting: subject)")
+        }
     }
 
     mutating func appendInterpolation(reflecting subject: Any?) {

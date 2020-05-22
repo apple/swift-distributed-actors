@@ -48,13 +48,13 @@ extension CRDT.Replicator {
             }
         }
 
-        var settings: Settings {
+        var settings: CRDT.ReplicatorSettings {
             self.directReplicator.settings
         }
 
         internal var remoteReplicators: Set<ActorRef<Message>> = []
 
-        convenience init(settings: Settings) {
+        convenience init(settings: CRDT.ReplicatorSettings) {
             self.init(CRDT.Replicator.Instance(settings)) // TODO: make it Direct Replicator
         }
 
@@ -80,8 +80,8 @@ extension CRDT.Replicator {
                         gossipInterval: .seconds(1),
                         peerDiscovery: .fromReceptionistListing(id: "crdt-gossip-replicator")
                     ),
-                    makeLogic: { id in
-                        CRDT.GossipReplicatorLogic(identifier: id, LocalControl(context.myself))
+                    makeLogic: { logicContext in
+                        CRDT.GossipReplicatorLogic(logicContext, LocalControl(context.myself))
                     }
                 )
 
@@ -271,7 +271,7 @@ extension CRDT.Replicator {
             _ data: StateBasedCRDT
         ) {
             let gossip = CRDT.Gossip(
-                metadata: .init(origin: nil), // TODO: local
+                metadata: .init(origin: nil),
                 payload: data  // TODO: v2, allow tracking the deltas here
             )
             self.gossipReplication.update(id, payload: gossip)
@@ -752,7 +752,7 @@ extension CRDT.Replicator.Shell: CustomDebugStringConvertible {
 
 extension CRDT.Replicator.Shell {
     /// Optional "dump all messages" logging.
-    /// Enabled by `CRDT.Replicator.Settings.traceLogLevel`
+    /// Enabled by `CRDT.ReplicatorSettings.traceLogLevel`
     func tracelog(_ context: ActorContext<CRDT.Replicator.Message>, _ type: TraceLogType, message: Any,
                   file: String = #file, function: String = #function, line: UInt = #line) {
         if let level = self.settings.traceLogLevel {

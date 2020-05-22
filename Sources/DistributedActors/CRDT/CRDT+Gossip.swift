@@ -21,9 +21,10 @@ extension CRDT {
     /// about them (e.g. through direct replication).
     final class GossipReplicatorLogic: GossipLogic {
         typealias Metadata = Void // last metadata we have from the other peer?
-        typealias Envelope = CRDT.Gossip<
+        typealias Envelope = CRDT.Gossip
 
         let identity: CRDT.Identity
+        let context: Context
         let replicatorControl: CRDT.Replicator.Shell.LocalControl
 
         // TODO: This is a naive impl "v1" better gossip aware impls to follow soon:
@@ -39,12 +40,13 @@ extension CRDT {
         // let peerSelector: PeerSelection // TODO: consider moving the existing logic into reusable?
         var alreadyInformedPeers: Set<ActorAddress>
 
-        init(identifier: GossipIdentifier, _ replicatorControl: CRDT.Replicator.Shell.LocalControl) {
-            guard let id = identifier as? CRDT.Identity else {
-                fatalError("\(identifier) MUST be \(CRDT.Identity.self)")
+        init(_ context: Context, _ replicatorControl: CRDT.Replicator.Shell.LocalControl) {
+            guard let identity = context.gossipIdentifier as? CRDT.Identity else {
+                fatalError("\(context.gossipIdentifier) MUST be \(CRDT.Identity.self)")
             }
 
-            self.identity = id
+            self.identity = identity
+            self.context = context
             self.replicatorControl = replicatorControl
             self.alreadyInformedPeers = []
         }
@@ -54,15 +56,29 @@ extension CRDT {
 
         // we gossip only to peers we have not gossiped to yet.
         func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+            guard let xxxx = self.latest else {
+                return [] // we have nothing to gossip
+            }
+
             let n = 1
             var selectedPeers : [AddressableActorRef] = []
             selectedPeers.reserveCapacity(n)
 
-            for peer in peers where selectedPeers.count < n {
-                if self.alreadyInformedPeers.insert(peer.address).inserted {
+            // we randomly pick peers; TODO: can be improved, in SWIM like peer selection (shuffle them once, then go round robin)
+            for peer in peers.shuffled() where selectedPeers.count < n {
+                if !self.alreadyInformedPeers.contains(peer.address) {
                     selectedPeers.append(peer)
                 }
             }
+
+            self.context.log.notice("""
+                                    [selectPeers] \(peers)
+                                    ALREADY SENT TO: \(pretty: self.alreadyInformedPeers)
+
+                                    SELECTED: \(optional: selectedPeers)
+
+                                    GOSSIP: \(pretty: xxxx)
+                                    """)
 
             return selectedPeers
         }
@@ -76,8 +92,8 @@ extension CRDT {
         // MARK: Receiving gossip
 
         // FIXME: we need another "was updated locally" so we avoid causing an infinite update loop; perhaps use metadata for it -- source of the mutation etc?
-        func receiveGossip(payload: CRDT.Gossip) {
-            self.mergeInbound(from: payload.metadata.origin, payload)
+        func receiveGossip(origin: AddressableActorRef, payload: CRDT.Gossip) {
+            self.mergeInbound(from: origin, payload)
             self.replicatorControl.tellGossipWrite(id: self.identity, data: payload.payload)
         }
 
@@ -89,6 +105,10 @@ extension CRDT {
 
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Side-channel to Direct-replicator
+
+        // TODO: It is likely that direct replicator will end up NOT storing any data and we use the gossip one as the storage
+        // this would change around interactions a bit; note that today we keep the CRDT in both places, in the direct replicator
+        // and gossip replicator, so that's a downside that we'll eventually want to address.
 
         enum SideChannelMessage {
             case localUpdate(CRDT.Gossip)
@@ -108,6 +128,12 @@ extension CRDT {
         }
 
         private func mergeInbound(from peer: AddressableActorRef?, _ payload: CRDT.Gossip) {
+            self.context.log.notice("""
+                                    [mergeInbound] INCOMING.....
+                                    INCOMING: \(pretty: payload)
+                                    CURRENT: \(optional: self.latest)
+                                    """)
+
             // TODO: some context would be nice, I want to log here
             // TODO: metadata? who did send us this payload?
             guard var latest = self.latest else {
@@ -116,27 +142,47 @@ extension CRDT {
                 return
             }
 
+            self.context.log.notice("""
+                                    [mergeInbound] 
+                                    CURRENT: \(pretty: latest)
+                                    """)
+
             let latestBeforeMerge = latest // CRDTs have value semantics
             if let error = latest.tryMerge(other: payload.payload) {
                 _ = error // FIXME: log the error
             }
 
-            pprint("[\(self.identity)] merged inbound === \(payload)")
             self.latest = latest
 
             guard latestBeforeMerge.payload.equalState(to: latest.payload) else {
-                pprint("N    latestBeforeMerge = \(latestBeforeMerge)")
-                pprint("N    latest            = \(latest)")
+                self.context.log.notice("""
+                       [mergeInbound] DIFF THAN LOCAL; RESET SENDS
+                           latestBeforeMerge = \(pretty: latestBeforeMerge) 
+                           latest= \(pretty: latest)
+                       """)
+                // The incoming gossip caused ours to change; this information was potentially not yet spread to other nodes
+                // thus we reset our set of who already khows about "our" (most recent observed by this node) state of the CRDT.
+                //
+                // TODO: This is a naive implementation and leads to much more gossip than necessary with delta tracking.
+                // In delta tracking, we'd add to the queue that the delta, and keep track which nodes know about which part of the state
+                // and if they need to see this delta or not. We'd then only gossip to them; and once we've seen everyone "seen"
+                // this delta, we drop it from our send queue. This is "v3" version we want to get to.
+                self.alreadyInformedPeers = []
                 return
             }
 
             // it was the same gossip as we store already, no need to gossip it more.
-            pprint("    latestBeforeMerge = \(latestBeforeMerge)")
-            pprint("    latest            = \(latest)")
-            pprint("    peer              = \(optional: peer)")
+            let b = self.alreadyInformedPeers
             if let p = peer {
                 self.alreadyInformedPeers.insert(p.address) // FIXME ensure if this is right
             }
+            self.context.log.notice("""
+                   [mergeInbound] SAME AS LOCAL, INSERT PEER \(optional: peer)
+                       latestBeforeMerge = \(pretty: latestBeforeMerge)
+                       latest            = \(pretty: latest)
+                       self.alreadyInformedPeers BEFORE = \(b)
+                       self.alreadyInformedPeers AFTER = \(self.alreadyInformedPeers)
+                   """)
         }
     }
 }
@@ -159,17 +205,26 @@ extension CRDT.Identity: GossipIdentifier {
 
 extension CRDT {
     /// The gossip to be spread about a specific CRDT (identity).
-    struct Gossip<Payload: StateBasedCRDT>: GossipEnvelopeProtocol, Codable {
+    struct Gossip: GossipEnvelopeProtocol, CustomPrettyStringConvertible {
         struct Metadata: Codable {
             let origin: AddressableActorRef? // FIXME
+
+            var isLocalWrite: Bool {
+                self.origin == nil
+            }
+            var isGossipWrite: Bool {
+                !self.isLocalWrite
+            }
         }
+        typealias Payload = StateBasedCRDT
 
         var metadata: Metadata
         var payload: Payload
 
-//        init(payload: StateBasedCRDT) {
-//            self.payload = payload
-//        }
+        init(metadata: CRDT.Gossip.Metadata, payload: CRDT.Gossip.Payload) {
+            self.metadata = metadata
+            self.payload = payload
+        }
 
         mutating func tryMerge(other: CRDT.Gossip) -> CRDT.MergeError? {
             self.tryMerge(other: other.payload)
@@ -183,6 +238,8 @@ extension CRDT {
 
 extension CRDT.Gossip {
     enum CodingKeys: CodingKey {
+        case metadata
+        case metadataManifest
         case payload
         case payloadManifest
     }
@@ -193,10 +250,14 @@ extension CRDT.Gossip {
         }
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let payloadData = try container.decode(Data.self, forKey: .payload)
-        let manifest = try container.decode(Serialization.Manifest.self, forKey: .payloadManifest)
 
-        self.payload = try context.serialization.deserialize(as: StateBasedCRDT.self, from: .data(payloadData), using: manifest)
+        let manifestData = try container.decode(Data.self, forKey: .metadata)
+        let manifestManifest = try container.decode(Serialization.Manifest.self, forKey: .metadataManifest)
+        self.metadata = try context.serialization.deserialize(as: Metadata.self, from: .data(manifestData), using: manifestManifest)
+
+        let payloadData = try container.decode(Data.self, forKey: .payload)
+        let payloadManifest = try container.decode(Serialization.Manifest.self, forKey: .payloadManifest)
+        self.payload = try context.serialization.deserialize(as: StateBasedCRDT.self, from: .data(payloadData), using: payloadManifest)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -206,8 +267,12 @@ extension CRDT.Gossip {
 
         var container = encoder.container(keyedBy: CodingKeys.self)
 
-        let serialized = try context.serialization.serialize(self.payload)
-        try container.encode(serialized.buffer.readData(), forKey: .payload)
-        try container.encode(serialized.manifest, forKey: .payloadManifest)
+        let serializedPayload = try context.serialization.serialize(self.payload)
+        try container.encode(serializedPayload.buffer.readData(), forKey: .payload)
+        try container.encode(serializedPayload.manifest, forKey: .payloadManifest)
+
+        let serializedMetadata = try context.serialization.serialize(self.metadata)
+        try container.encode(serializedMetadata.buffer.readData(), forKey: .metadata)
+        try container.encode(serializedMetadata.manifest, forKey: .metadataManifest)
     }
 }

@@ -244,7 +244,11 @@ public final class ActorSystem {
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionist = lazyReceptionist.ref
 
-        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, props: ._wellKnown)
+        let lazyReplicator = try! self._prepareSystemActor(
+            CRDT.Replicator.naming,
+            CRDT.Replicator.Shell(settings: settings.crdt).behavior,
+            props: ._wellKnown
+        )
         self._replicator = lazyReplicator.ref
 
         #if SACT_TESTS_LEAKS

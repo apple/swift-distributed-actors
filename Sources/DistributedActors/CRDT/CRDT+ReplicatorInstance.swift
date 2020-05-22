@@ -18,7 +18,7 @@ extension CRDT.Replicator {
         typealias Identity = CRDT.Identity
         typealias OwnerMessage = CRDT.Replication.DataOwnerMessage
 
-        let settings: Settings
+        let settings: CRDT.ReplicatorSettings
 
         // CRDT store
         private var dataStore: [Identity: StateBasedCRDT] = [:]
@@ -29,7 +29,7 @@ extension CRDT.Replicator {
         // CRDTs and their actor owners
         private var owners: [Identity: Set<ActorRef<OwnerMessage>>] = [:]
 
-        init(_ settings: Settings) {
+        init(_ settings: CRDT.ReplicatorSettings) {
             self.settings = settings
         }
 

@@ -867,7 +867,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
 
     // TODO: carry same data as Envelope -- baggage etc
 
-    init(envelope: Envelope, recipient: ActorAddress) {
+    init(envelope: Payload, recipient: ActorAddress) {
         assert(recipient.node != nil, "Attempted to send remote message, though recipient is local! Was envelope: \(envelope), recipient: \(recipient)")
         switch envelope.payload {
         case .message(let message):

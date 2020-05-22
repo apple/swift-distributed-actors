@@ -59,6 +59,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
         .setup { context in
             let counter: CRDT.ActorOwned<CRDT.GCounter> = CRDT.GCounter.makeOwned(by: context, id: "counter")
             counter.onUpdate { _, value in
+                pprint("CRDT STATE @ \(context.myself) = \(pretty: value)")
                 p?.ref.tell(value)
             }
 
@@ -153,15 +154,20 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Gossip stop conditions
 
-//    override var alwaysPrintCaptureLogs: Bool {
-//        true
-//    }
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
 
     func test_gossip_shouldEventuallyStopSpreading() throws {
         try shouldNotThrow {
-            let first = self.setUpNode("first")
-            let second = self.setUpNode("second")
-            let third = self.setUpNode("third")
+            let configure: (inout ActorSystemSettings) -> () = { settings in
+                settings.crdt.gossipInterval = .seconds(1)
+                settings.crdt.flushDelay = .milliseconds(100)
+            }
+            let first = self.setUpNode("first", configure)
+            let second = self.setUpNode("second", configure)
+            let third = self.setUpNode("third", configure)
+            let fourth = self.setUpNode("fourth", configure)
 
             try self.joinNodes(node: first, with: second, ensureMembers: .up)
             try self.joinNodes(node: second, with: third, ensureMembers: .up)
@@ -174,6 +180,8 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             one.tell(1)
             two.tell(2)
             three.tell(3)
+
+             // TODO: then join a 4th node
 
             let testKit: ActorTestKit = self.testKit(first)
             guard let firstLogs = self._logCaptures.first else {
@@ -188,6 +196,17 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
                     throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
                 }
             }
+
+            // ==== Join 4th node, it should gain the information ------------------------------------------------------
+            fourth.cluster.join(node: second.cluster.node.node)
+            fourth.cluster.join(node: first.cluster.node.node)
+            
+            let p4 = self.testKit(fourth).spawnTestProbe(expecting: CRDT.GCounter.self)
+            _ = try fourth.spawn("reader-4", ownsCounter(p: p4))
+
+            pprint("p4.expectMessage() = \(try p4.expectMessage())")
+            pprint("p4.expectMessage() = \(try p4.expectMessage())")
+            pprint("p4.expectMessage() = \(try p4.expectMessage())")
         }
     }
 
