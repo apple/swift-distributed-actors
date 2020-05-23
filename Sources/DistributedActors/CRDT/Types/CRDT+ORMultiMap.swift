@@ -125,7 +125,6 @@ extension CRDT {
 
             return self.state.equalState(to: other.state)
         }
-
     }
 }
 

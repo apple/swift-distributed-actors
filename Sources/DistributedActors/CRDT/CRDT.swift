@@ -344,6 +344,11 @@ extension CRDT {
 
         // `DataOwnerMessage.updated`
         func onUpdate(actorOwned: CRDT.ActorOwned<DataType>, data: DataType) {
+            // TODO: could we use equalState to prevent triggering more often than necessary? #633
+//            guard !actorOwned.data.equalState(to: data) else {
+//                actorOwned.data = data // merge because maybe deltas changed, but don't trigger onUpdate
+//            }
+            // state changed, notify the user handler
             actorOwned.data = data
             self.ownerDefinedOnUpdate?(actorOwned.id, data)
         }

@@ -1,4 +1,3 @@
-
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the Swift Distributed Actors open source project
@@ -38,7 +37,7 @@ extension DistributedLeaderboard {
                 case .turn:
                     let points = Int.random(in: 0...10)
                     myScore += points
-                    context.log.warning("Scored \(points), write consistency: \(consistency)")
+                    context.log.info("Scored \(points), write consistency: \(consistency)")
                     _ = totalScore.increment(by: points, writeConsistency: consistency, timeout: .seconds(1))
                 }
 

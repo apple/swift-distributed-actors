@@ -40,7 +40,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
 
     var behavior: Behavior<Message> {
         .setup { context in
-            self.scheduleNextGossipRound(context: context)
+            self.ensureNextGossipRound(context: context)
             self.initPeerDiscovery(context, settings: self.settings)
 
             return Behavior<Message>.receiveMessage {
@@ -59,8 +59,8 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
                     case .unhandled: return .unhandled
                     }
 
-                case .gossip(let identity, let origin, let payload):
-                    self.receiveGossip(context, identifier: identity, origin: origin, payload: payload)
+                case .gossip(let identity, let origin, let payload, let ackRef):
+                    self.receiveGossip(context, identifier: identity, origin: origin, payload: payload, ackRef: ackRef)
 
                 case ._clusterEvent:
                     fatalError("automatic peer location is not implemented") // FIXME: implement this https://github.com/apple/swift-distributed-actors/issues/371
@@ -86,9 +86,10 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         _ context: ActorContext<Message>,
         identifier: GossipIdentifier,
         origin: ActorRef<Message>,
-        payload: Envelope
+        payload: Envelope,
+        ackRef: ActorRef<Int> // TODO: better type
     ) {
-        context.log.warning("Received gossip [\(identifier.gossipIdentifier)]: \(payload)", metadata: [
+        context.log.warning("Received gossip [\(identifier.gossipIdentifier)]: \(pretty: payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
             "gossip/origin": "\(origin.address)",
             "gossip/incoming": "\(payload)",
@@ -99,6 +100,8 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
 
         // TODO: we could handle directives from the logic
         logic.receiveGossip(origin: origin.asAddressable(), payload: payload)
+
+        ackRef.tell(0)
     }
 
     private func onLocalPayloadUpdate(
@@ -142,9 +145,12 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
     }
 
     private func runGossipRound(_ context: ActorContext<Message>) {
-        // TODO: could pick only a number of keys to gossip in a round, so we avoid "bursts" of all gossip at the same intervals,
-        // so in this round we'd do [a-c] and then [c-f] keys for example.
+        defer {
+            self.ensureNextGossipRound(context: context)
+        }
+
         let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
+
         guard !allPeers.isEmpty else {
             // no members to gossip with, skip this round
             return
@@ -177,25 +183,30 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
                     continue
                 }
 
-                pprint("""
-                       [\(context.system.cluster.node)] \
-                       Selected [\(selectedPeers.count)] peers, \
-                       from [\(allPeers.count)] peers: \(selectedPeers)\
-                       PAYLOAD: \(pretty: payload)
-                       """)
+//                pprint("""
+//                       [\(context.system.cluster.node)] \
+//                       Selected [\(selectedPeers.count)] peers, \
+//                       from [\(allPeers.count)] peers: \(selectedPeers)\
+//                       PAYLOAD: \(pretty: payload)
+//                       """)
 
-
-                self.sendGossip(context, identifier: identifier, payload, to: selectedRef)
+                self.sendGossip(context, identifier: identifier, payload, to: selectedRef, onAck: {
+                    logic.receivePayloadACK(target: selectedPeer, confirmedDeliveryOf: payload)
+                })
             }
 
             // TODO: signal "gossip round complete" perhaps?
             // it would allow for "speed up" rounds, as well as "remove me, we're done"
         }
-
-        self.scheduleNextGossipRound(context: context)
     }
 
-    private func sendGossip(_ context: ActorContext<Message>, identifier: AnyGossipIdentifier, _ payload: Envelope, to target: PeerRef) {
+    private func sendGossip(
+        _ context: ActorContext<Message>,
+        identifier: AnyGossipIdentifier,
+        _ payload: Envelope,
+        to target: PeerRef,
+        onAck: @escaping () -> Void
+    ) {
         // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
         context.log.trace("Sending gossip to \(target.address)", metadata: [
             "gossip/target": "\(target.address)",
@@ -203,12 +214,34 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
             "actor/message": "\(payload)",
         ])
 
-        target.tell(.gossip(identity: identifier.underlying, origin: context.myself, payload))
+        // TODO: solving the two generals problem here with an ACK
+        // target.tell(.gossip(identity: identifier.underlying, origin: context.myself, payload))
+        let ack = target.ask(for: Int.self, timeout: .seconds(3)) { replyTo in
+            Message.gossip(identity: identifier.underlying, origin: context.myself, payload, ackRef: replyTo)
+        }
+
+        context.onResultAsync(of: ack, timeout: .effectivelyInfinite) { res in
+            switch res {
+            case .success(let ack):
+                context.log.trace("Gossip ACKed", metadata: [
+                    "gossip/ack": "\(ack)",
+
+                ])
+                onAck()
+            case .failure:
+                context.log.warning("Failed to ACK delivery [\(identifier.gossipIdentifier)] gossip \(payload) to \(target)")
+            }
+            return .same
+        }
     }
 
-    private func scheduleNextGossipRound(context: ActorContext<Message>) {
-        let delay = self.settings.gossipInterval
-        context.log.trace("Schedule next gossip round in \(delay.prettyDescription)")
+    private func ensureNextGossipRound(context: ActorContext<Message>) {
+        guard !self.peers.isEmpty else {
+            return // no need to schedule gossip ticks if we have no peers
+        }
+
+        let delay = self.settings.effectiveGossipInterval
+        context.log.trace("Schedule next gossip round in \(delay.prettyDescription) (\(self.settings.gossipInterval.prettyDescription) ± \(self.settings.gossipIntervalRandomFactor * 100)%)")
         context.timers.startSingle(key: "periodic-gossip", message: ._periodicGossipTick, delay: delay)
     }
 }
@@ -258,8 +291,7 @@ extension GossipShell {
 //                self.sendGossip(context, identifier: key.identifier, logic.payload, to: peer)
 //            }
 
-            // TODO: consider if we should do a quick gossip to any new peers etc
-            // TODO: peers are removed when they die, no manual way to do it
+            self.ensureNextGossipRound(context: context)
         }
     }
 
@@ -287,7 +319,7 @@ extension GossipShell {
 extension GossipShell {
     enum Message {
         // gossip
-        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Envelope)
+        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Envelope, ackRef: ActorRef<Int>)
 
         // local messages
         case updatePayload(identifier: GossipIdentifier, Envelope)

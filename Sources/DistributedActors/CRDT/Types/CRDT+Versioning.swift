@@ -287,7 +287,6 @@ extension CRDT {
             return self.versionContext.equalState(to: other.versionContext) &&
                 self.elementByBirthDot == other.elementByBirthDot // TODO: is this correct?
         }
-
     }
 
     public struct VersionedContainerDelta<Element: Codable & Hashable>: CvRDT {
@@ -329,7 +328,6 @@ extension CRDT {
                 self.elementByBirthDot == other.elementByBirthDot // TODO: is this correct?
         }
     }
-
 }
 
 extension CRDT.VersionedContainer: CustomPrettyStringConvertible {}

@@ -15,12 +15,11 @@
 import struct Foundation.Data
 
 extension CRDT {
-    /// Gossip Replicator logic, it gossips CRDTs (and deltas) to other peers in the cluster.
+    /// Gossip Replicator logic, it gossips CRDTs (and deltas NOT IMPLEMENTED YET) to other peers in the cluster.
     ///
     /// It collaborates with the Direct Replicator in order to avoid needlessly sending values to nodes which already know
     /// about them (e.g. through direct replication).
     final class GossipReplicatorLogic: GossipLogic {
-        typealias Metadata = Void // last metadata we have from the other peer?
         typealias Envelope = CRDT.Gossip
 
         let identity: CRDT.Identity
@@ -29,16 +28,17 @@ extension CRDT {
 
         // TODO: This is a naive impl "v1" better gossip aware impls to follow soon:
         // v1) [node: state sent], te to gossip to everyone
-        // v2) [node: [metadata = version vector, and compare if the target knows it already or not]]]
+        // ~~v2) [node: [metadata = version vector, and compare if the target knows it already or not]]]~~
+        //   (might want to jump right away to v3, it's not much harder but the "right thing" we want to end up with anyway)
         // v3) [node: pending deltas to deliver] - build a queue of gossips and spread them to others on "per need" bases;
         //     as we receive incoming gossips, we notice at what VV they are, and can know "that node needs to know at-least from V4 vector time deltas"
         // ...
         /// The latest, most up-to-date, version of the gossip that will be spread when a gossip round happens.
-        /// TODO: perhaps keep the latest CRDT value instead, as the gossip will be per-peer determined.
+        // TODO: perhaps keep the latest CRDT value instead, as the gossip will be per-peer determined.
         private var latest: CRDT.Gossip?
 
         // let peerSelector: PeerSelection // TODO: consider moving the existing logic into reusable?
-        var alreadyInformedPeers: Set<ActorAddress>
+        var peersAckedOurLatestGossip: Set<ActorAddress>
 
         init(_ context: Context, _ replicatorControl: CRDT.Replicator.Shell.LocalControl) {
             guard let identity = context.gossipIdentifier as? CRDT.Identity else {
@@ -48,52 +48,58 @@ extension CRDT {
             self.identity = identity
             self.context = context
             self.replicatorControl = replicatorControl
-            self.alreadyInformedPeers = []
+            self.peersAckedOurLatestGossip = []
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Spreading gossip
 
-        // we gossip only to peers we have not gossiped to yet.
         func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
-            guard let xxxx = self.latest else {
-                return [] // we have nothing to gossip
-            }
-
+            // how many peers we select in each gossip round,
+            // we could for example be dynamic and notice if we have 10+ nodes, we pick 2 members to speed up the dissemination etc.
             let n = 1
-            var selectedPeers : [AddressableActorRef] = []
+
+            var selectedPeers: [AddressableActorRef] = []
             selectedPeers.reserveCapacity(n)
 
             // we randomly pick peers; TODO: can be improved, in SWIM like peer selection (shuffle them once, then go round robin)
             for peer in peers.shuffled() where selectedPeers.count < n {
-                if !self.alreadyInformedPeers.contains(peer.address) {
+                if !self.peersAckedOurLatestGossip.contains(peer.address) {
                     selectedPeers.append(peer)
                 }
             }
-
-            self.context.log.notice("""
-                                    [selectPeers] \(peers)
-                                    ALREADY SENT TO: \(pretty: self.alreadyInformedPeers)
-
-                                    SELECTED: \(optional: selectedPeers)
-
-                                    GOSSIP: \(pretty: xxxx)
-                                    """)
 
             return selectedPeers
         }
 
         func makePayload(target _: AddressableActorRef) -> CRDT.Gossip? {
             // v1, everyone gets the entire CRDT state, no optimizations
+            // TODO: v3, here we'll want to filter the data we want to send to the target based on what data we already know it has seen
+            // e.g. if we know target has definitely seen A@3,B@4, and our state has A@3,B@6, we only need to send delta(B@5, B@6)
             self.latest
+        }
+
+        func receivePayloadACK(target: AddressableActorRef, confirmedDeliveryOf envelope: CRDT.Gossip) {
+            guard (self.latest.map { $0.payload.equalState(to: envelope.payload) } ?? false) else {
+                // received an ack for something, however it's not the "latest" anymore, so we need to gossip to target anyway
+                return
+            }
+
+            // TODO: in v3 this would translate to ACKing specific deltas for this target
+            // good, the latest gossip is still the same as was confirmed here, so we can mark it acked
+            self.peersAckedOurLatestGossip.insert(target.address)
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Receiving gossip
 
-        // FIXME: we need another "was updated locally" so we avoid causing an infinite update loop; perhaps use metadata for it -- source of the mutation etc?
         func receiveGossip(origin: AddressableActorRef, payload: CRDT.Gossip) {
+            // merge the datatype locally, and update our information about the origin's knowledge about this datatype
+            // (does it already know about our data/all-deltas-we-are-aware-of or not)
             self.mergeInbound(from: origin, payload)
+
+            // notify the direct replicator to update all local `actorOwned` CRDTs.
+            // TODO: the direct replicator may choose to delay flushing this information a bit to avoid much data churn see `settings.crdt.`
             self.replicatorControl.tellGossipWrite(id: self.identity, data: payload.payload)
         }
 
@@ -111,78 +117,83 @@ extension CRDT {
         // and gossip replicator, so that's a downside that we'll eventually want to address.
 
         enum SideChannelMessage {
-            case localUpdate(CRDT.Gossip)
+            case localUpdate(Envelope)
+            case ack(origin: AddressableActorRef, payload: Envelope)
         }
 
         func receiveSideChannelMessage(message: Any) throws {
             guard let sideChannelMessage = message as? SideChannelMessage else {
-                return // TODO: dead letter it
+                self.context.system.deadLetters.tell(DeadLetter(message, recipient: self.context.gossiperAddress))
+                return
             }
 
             // TODO: receive ACKs from direct replicator
             switch sideChannelMessage {
             case .localUpdate(let payload):
                 self.mergeInbound(from: nil, payload)
-                self.alreadyInformedPeers = [] // local update means we definitely need to share it with others
+                self.peersAckedOurLatestGossip = [] // local update means we definitely need to share it with others
+            case .ack(let origin, let ackedGossip):
+                if let latest = self.latest,
+                    latest.payload.equalState(to: ackedGossip.payload) {
+                    self.peersAckedOurLatestGossip.insert(origin.address)
+                }
             }
         }
 
-        private func mergeInbound(from peer: AddressableActorRef?, _ payload: CRDT.Gossip) {
+        private func mergeInbound(from peer: AddressableActorRef?, _ incoming: CRDT.Gossip) {
             self.context.log.notice("""
-                                    [mergeInbound] INCOMING.....
-                                    INCOMING: \(pretty: payload)
-                                    CURRENT: \(optional: self.latest)
-                                    """)
+            [mergeInbound] INCOMING from \(optional: incoming.metadata.origin)
+            INCOMING: \(pretty: incoming)
+            CURRENT: \(optional: self.latest)
+            """)
 
-            // TODO: some context would be nice, I want to log here
-            // TODO: metadata? who did send us this payload?
-            guard var latest = self.latest else {
-                self.latest = payload // we didn't have one stored, so direcly apply
-                self.alreadyInformedPeers = []
+            guard var current = self.latest else {
+                self.latest = incoming // we didn't have one stored, so directly apply
+                self.peersAckedOurLatestGossip = []
+                self.context.log.warning("BAILING OUT: self.peersAckedOurLatestGossip = []")
                 return
             }
 
-            self.context.log.notice("""
-                                    [mergeInbound] 
-                                    CURRENT: \(pretty: latest)
-                                    """)
-
-            let latestBeforeMerge = latest // CRDTs have value semantics
-            if let error = latest.tryMerge(other: payload.payload) {
-                _ = error // FIXME: log the error
+//            let latestBeforeMerge = current // CRDTs have value semantics
+            if let error = current.tryMerge(other: incoming.payload) {
+                context.log.warning("Failed incoming CRDT gossip, error: \(error)", metadata: [
+                    "crdt/incoming": "\(incoming)",
+                    "crdt/current": "\(current)",
+                ])
             }
 
-            self.latest = latest
+            self.latest = current
 
-            guard latestBeforeMerge.payload.equalState(to: latest.payload) else {
-                self.context.log.notice("""
-                       [mergeInbound] DIFF THAN LOCAL; RESET SENDS
-                           latestBeforeMerge = \(pretty: latestBeforeMerge) 
-                           latest= \(pretty: latest)
-                       """)
-                // The incoming gossip caused ours to change; this information was potentially not yet spread to other nodes
-                // thus we reset our set of who already khows about "our" (most recent observed by this node) state of the CRDT.
-                //
-                // TODO: This is a naive implementation and leads to much more gossip than necessary with delta tracking.
-                // In delta tracking, we'd add to the queue that the delta, and keep track which nodes know about which part of the state
-                // and if they need to see this delta or not. We'd then only gossip to them; and once we've seen everyone "seen"
-                // this delta, we drop it from our send queue. This is "v3" version we want to get to.
-                self.alreadyInformedPeers = []
-                return
-            }
-
-            // it was the same gossip as we store already, no need to gossip it more.
-            let b = self.alreadyInformedPeers
-            if let p = peer {
-                self.alreadyInformedPeers.insert(p.address) // FIXME ensure if this is right
-            }
-            self.context.log.notice("""
-                   [mergeInbound] SAME AS LOCAL, INSERT PEER \(optional: peer)
-                       latestBeforeMerge = \(pretty: latestBeforeMerge)
-                       latest            = \(pretty: latest)
-                       self.alreadyInformedPeers BEFORE = \(b)
-                       self.alreadyInformedPeers AFTER = \(self.alreadyInformedPeers)
-                   """)
+//            // did the incoming gossip change our state? if not then we don't need to communicate with that node anymore
+//            guard latestBeforeMerge.payload.equalState(to: current.payload) else {
+//                // The incoming gossip caused ours to change; this information was potentially not yet spread to other nodes
+//                // thus we reset our set of who already knows about "our" (most recent observed by this node) state of the CRDT.
+//                //
+//                // TODO: This is a naive implementation and leads to much more gossip than necessary with delta tracking.
+//                // In delta tracking, we'd add to the queue that the delta, and keep track which nodes know about which part of the state
+//                // and if they need to see this delta or not. We'd then only gossip to them; and once we've seen everyone "seen"
+//                // this delta, we drop it from our send queue. This is "v3" version we want to get to.
+//                self.context.log.notice("""
+//                       [mergeInbound] DIFF THAN LOCAL; RESET SENDS
+//                           latestBeforeMerge = \(pretty: latestBeforeMerge)
+//                           latest= \(pretty: current)
+//                       """)
+//                self.knownSameStatePeers = []
+//                return
+//            }
+//
+//            // it was the same gossip as we store already, no need to gossip it more.
+//            let b = self.knownSameStatePeers
+//            if let p = peer {
+//                self.knownSameStatePeers.insert(p.address) // FIXME ensure if this is right
+//            }
+//            self.context.log.notice("""
+//                   [mergeInbound] SAME AS LOCAL, INSERT PEER \(optional: peer)
+//                       latestBeforeMerge = \(pretty: latestBeforeMerge)
+//                       latest            = \(pretty: current)
+//                       self.alreadyInformedPeers BEFORE = \(b)
+//                       self.alreadyInformedPeers AFTER = \(self.knownSameStatePeers)
+//                   """)
         }
     }
 }
@@ -207,15 +218,17 @@ extension CRDT {
     /// The gossip to be spread about a specific CRDT (identity).
     struct Gossip: GossipEnvelopeProtocol, CustomPrettyStringConvertible {
         struct Metadata: Codable {
-            let origin: AddressableActorRef? // FIXME
+            let origin: AddressableActorRef? // FIXME:
 
             var isLocalWrite: Bool {
                 self.origin == nil
             }
+
             var isGossipWrite: Bool {
                 !self.isLocalWrite
             }
         }
+
         typealias Payload = StateBasedCRDT
 
         var metadata: Metadata

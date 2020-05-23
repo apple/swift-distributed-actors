@@ -266,6 +266,7 @@ extension AskResponse: AsyncResult {
 }
 
 extension AskResponse {
+    // FIXME: make this internal (!)
     /// Transforms successful response of `Value` type to `NewValue` type.
     public func map<NewValue>(_ callback: @escaping (Value) -> NewValue) -> AskResponse<NewValue> {
         switch self {

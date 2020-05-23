@@ -59,7 +59,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
         .setup { context in
             let counter: CRDT.ActorOwned<CRDT.GCounter> = CRDT.GCounter.makeOwned(by: context, id: "counter")
             counter.onUpdate { _, value in
-                pprint("CRDT STATE @ \(context.myself) = \(pretty: value)")
                 p?.ref.tell(value)
             }
 
@@ -75,8 +74,12 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
     func test_gossip_localUpdate_toOtherNode() throws {
         try shouldNotThrow {
-            let first = self.setUpNode("first")
-            let second = self.setUpNode("second")
+            let configure: (inout ActorSystemSettings) -> () = { settings in
+                settings.crdt.gossipInterval = .seconds(1)
+                settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
+            }
+            let first = self.setUpNode("first", configure)
+            let second = self.setUpNode("second", configure)
             try self.joinNodes(node: first, with: second, ensureMembers: .up)
 
             let p1 = self.testKit(first).spawnTestProbe("probe-one", expecting: CRDT.ORSet<String>.self)
@@ -88,22 +91,26 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             one.tell(.insert("a", .local))
             one.tell(.insert("aa", .local))
 
-            try expectSet(probe: p1, expected: ["a", "aa"])
-            try expectSet(probe: p2, expected: ["a", "aa"])
+            try self.expectSet(probe: p1, expected: ["a", "aa"])
+            try self.expectSet(probe: p2, expected: ["a", "aa"])
 
             two.tell(.insert("b", .local))
 
-            try expectSet(probe: p1, expected: ["a", "aa", "b"])
-            try expectSet(probe: p2, expected: ["a", "aa", "b"])
+            try self.expectSet(probe: p1, expected: ["a", "aa", "b"])
+            try self.expectSet(probe: p2, expected: ["a", "aa", "b"])
         }
     }
 
     func test_gossip_readAll_gossipedOwnerAlwaysIncludesAddress() throws {
         try shouldNotThrow {
-            let first = self.setUpNode("first")
-            let second = self.setUpNode("second")
-            let third = self.setUpNode("third")
-            let fourth = self.setUpNode("fourth")
+            let configure: (inout ActorSystemSettings) -> () = { settings in
+                settings.crdt.gossipInterval = .seconds(1)
+                settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
+            }
+            let first = self.setUpNode("first", configure)
+            let second = self.setUpNode("second", configure)
+            let third = self.setUpNode("third", configure)
+            let fourth = self.setUpNode("fourth", configure)
 
             try self.joinNodes(node: first, with: second, ensureMembers: .up)
             try self.joinNodes(node: second, with: third, ensureMembers: .up)
@@ -130,8 +137,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
                 case nil:
                     throw p.error("No message")
                 case .some(let .success(data as CRDT.GCounter)):
-                    pprint("Performed read form replicas: \(data.prettyDescription)")
-
                     // each of the owners has a row
                     data.state.count.shouldEqual(4)
 
@@ -161,8 +166,8 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     func test_gossip_shouldEventuallyStopSpreading() throws {
         try shouldNotThrow {
             let configure: (inout ActorSystemSettings) -> () = { settings in
-                settings.crdt.gossipInterval = .seconds(1)
-                settings.crdt.flushDelay = .milliseconds(100)
+                settings.crdt.gossipInterval = .milliseconds(300)
+                settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
             }
             let first = self.setUpNode("first", configure)
             let second = self.setUpNode("second", configure)
@@ -173,23 +178,32 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             try self.joinNodes(node: second, with: third, ensureMembers: .up)
             try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
 
-            let one = try first.spawn("one", ownsCounter(p: nil))
-            let two = try second.spawn("two", ownsCounter(p: nil))
-            let three = try third.spawn("three", ownsCounter(p: nil))
+            let p1 = self.testKit(first).spawnTestProbe(expecting: CRDT.GCounter.self)
+            let one = try first.spawn("one", ownsCounter(p: p1))
+
+            let p2 = self.testKit(second).spawnTestProbe(expecting: CRDT.GCounter.self)
+            let two = try second.spawn("two", ownsCounter(p: p2))
+
+            let p3 = self.testKit(third).spawnTestProbe(expecting: CRDT.GCounter.self)
+            let three = try third.spawn("three", ownsCounter(p: p3))
 
             one.tell(1)
             two.tell(2)
             three.tell(3)
 
-             // TODO: then join a 4th node
-
             let testKit: ActorTestKit = self.testKit(first)
-            guard let firstLogs = self._logCaptures.first else {
-                throw testKit.error("Can't get log capture")
+
+            _ = try p1.fishFor(Int.self, within: .seconds(5)) { counter in
+                pprint("\(p1) received = \(pretty: counter)")
+                if counter.value == 6 {
+                    return .complete
+                } else {
+                    return .ignore
+                }
             }
 
-            try testKit.assertHolds(for: .seconds(10), interval: .seconds(1)) {
-                let logs = firstLogs.grep("Received gossip")
+            try testKit.assertHolds(for: .seconds(5), interval: .seconds(1)) {
+                let logs = self.capturedLogs(of: first).grep("Received gossip")
                 pinfo("LOGS: \(lineByLine: logs)")
 
                 guard logs.count < 5 else {
@@ -204,9 +218,14 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             let p4 = self.testKit(fourth).spawnTestProbe(expecting: CRDT.GCounter.self)
             _ = try fourth.spawn("reader-4", ownsCounter(p: p4))
 
-            pprint("p4.expectMessage() = \(try p4.expectMessage())")
-            pprint("p4.expectMessage() = \(try p4.expectMessage())")
-            pprint("p4.expectMessage() = \(try p4.expectMessage())")
+            try testKit.assertHolds(for: .seconds(5), interval: .seconds(1)) {
+                let logs = self.capturedLogs(of: fourth).grep("Received gossip")
+                pinfo("LOGS: \(lineByLine: logs)")
+
+                guard logs.count < 5 else {
+                    throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
+                }
+            }
         }
     }
 
@@ -215,7 +234,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
         try testKit.eventually(within: .seconds(10)) {
             let replicated: CRDT.ORSet<String> = try probe.expectMessage(within: .seconds(10), file: file, line: line)
-            pinfo("\(probe.name) owned value, updated to: \(replicated)")
+            pinfo("[\(probe.name)] received updated crdt: \(replicated)")
 
             guard expected == replicated.elements else {
                 throw testKit.error("Expected: \(expected) but got \(replicated)", file: file, line: line)

@@ -124,8 +124,8 @@ extension Dictionary: CustomPrettyStringConvertible {
         let padding1 = String(repeating: " ", count: (depth + 1) * 2)
 
         var res = "[\n"
-        for (key, value) in self {
-            res += "\(padding1)\(key): \(value),\n"
+        for key in self.keys.sorted(by: { "\($0)" < "\($1)" }) {
+            res += "\(padding1)\(key): \(self[key]!),\n"
         }
         res += "\(padding0)]"
         return res

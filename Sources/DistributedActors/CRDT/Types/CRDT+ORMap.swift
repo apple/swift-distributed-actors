@@ -207,7 +207,7 @@ extension CRDT {
             var allEqual = true
             for key in self._storage.keys where allEqual {
                 if let lhs = self._storage[key],
-                   let rhs = other._storage[key] {
+                    let rhs = other._storage[key] {
                     allEqual = lhs.equalState(to: rhs)
                 } else {
                     allEqual = false
@@ -277,7 +277,7 @@ extension CRDT {
             var allEqual = true
             for key in self.values.keys where allEqual {
                 if let lhs = self.values[key],
-                   let rhs = other.values[key] {
+                    let rhs = other.values[key] {
                     allEqual = lhs.equalState(to: rhs)
                 } else {
                     allEqual = false

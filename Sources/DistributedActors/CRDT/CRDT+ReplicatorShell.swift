@@ -65,19 +65,18 @@ extension CRDT.Replicator {
 
         var behavior: Behavior<Message> {
             .setup { context in
-
                 context.system.cluster.events.subscribe(
                     context.subReceive(Cluster.Event.self) { event in
                         self.receiveClusterEvent(context, event: event)
                     }
                 )
 
-                // TODO: make it enabled by a plugin? opt-in to gossiping the crdts?
                 self.gossipReplication = try GossipShell.start(
                     context,
                     name: "gossip",
                     settings: GossipShell.Settings(
-                        gossipInterval: .seconds(1),
+                        gossipInterval: self.settings.gossipInterval,
+                        gossipIntervalRandomFactor: self.settings.gossipIntervalRandomFactor,
                         peerDiscovery: .fromReceptionistListing(id: "crdt-gossip-replicator")
                     ),
                     makeLogic: { logicContext in
@@ -272,7 +271,7 @@ extension CRDT.Replicator {
         ) {
             let gossip = CRDT.Gossip(
                 metadata: .init(origin: nil),
-                payload: data  // TODO: v2, allow tracking the deltas here
+                payload: data // TODO: v2, allow tracking the deltas here
             )
             self.gossipReplication.update(id, payload: gossip)
         }
@@ -517,7 +516,7 @@ extension CRDT.Replicator {
                     switch result {
                     case .success(let remoteCommandResult):
                         if isSuccessful(remoteCommandResult) {
-                            // TODO we could consider directly updating directReplicator with any received back data,
+                            // TODO: we could consider directly updating directReplicator with any received back data,
                             // after all, it definitely "adds information"; rather than performing the adding data only the entire operation succeeds
                             // this makes reusing this function a bit harder, but perhaps possible.
                             execution.confirm(from: remoteReplicator, result: remoteCommandResult)

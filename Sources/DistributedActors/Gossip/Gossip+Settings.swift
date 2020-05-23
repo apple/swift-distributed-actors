@@ -20,6 +20,25 @@ extension GossipShell {
         /// Interval at which gossip rounds should proceed.
         public var gossipInterval: TimeAmount = .seconds(2)
 
+        /// Adds a random factor to the gossip interval, which is useful to avoid an entire cluster ticking "synchronously"
+        /// at the same time, causing spikes in gossip traffic (as all nodes decide to gossip in the same second).
+        ///
+        /// - example: A random factor of `0.5` results in backoffs between 50% below and 50% above the base interval.
+        /// - warning: MUST be between: `<0; 1>` (inclusive)
+        public var gossipIntervalRandomFactor: Double = 0.2 {
+            willSet {
+                precondition(newValue >= 0, "settings.crdt.gossipIntervalRandomFactor MUST BE >= 0, was: \(newValue)")
+                precondition(newValue <= 1, "settings.crdt.gossipIntervalRandomFactor MUST BE <= 1, was: \(newValue)")
+            }
+        }
+
+        public var effectiveGossipInterval: TimeAmount {
+            let baseInterval = self.gossipInterval
+            let randomizeMultiplier = Double.random(in: (1 - self.gossipIntervalRandomFactor) ... (1 + self.gossipIntervalRandomFactor))
+            let randomizedInterval = baseInterval * randomizeMultiplier
+            return randomizedInterval
+        }
+
         public var peerDiscovery: PeerDiscovery = .manuallyIntroduced
         public enum PeerDiscovery {
             /// Automatically register this gossiper and subscribe for any others identifying under the same

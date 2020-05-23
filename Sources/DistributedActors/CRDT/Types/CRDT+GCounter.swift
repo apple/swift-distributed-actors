@@ -110,7 +110,6 @@ extension CRDT {
 
             return self.state == other.state // TODO: is this correct?
         }
-
     }
 
     public struct GCounterDelta: CvRDT, Equatable {

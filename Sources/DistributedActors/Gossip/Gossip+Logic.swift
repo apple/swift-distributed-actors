@@ -56,6 +56,17 @@ public protocol GossipLogic {
     /// Allows for customizing the payload for specific targets
     mutating func makePayload(target: AddressableActorRef) -> Envelope?
 
+    /// Invoked when the specific gossiped payload is acknowledged by the target.
+    ///
+    /// Note that acknowledgements may arrive in various orders, so make sure tracking them accounts for all possible orderings.
+    /// Eg. if gossip is sent to 2 peers, it is NOT deterministic which of the acks returns first (or at all!).
+    ///
+    /// - Parameters:
+    ///   - target: The target which has acknowlaged the gossiped payload.
+    ///     It corresponds to the parameter that was passed to the `makePayload(target:)` which created this gossip payload.
+    ///   - envelope:
+    mutating func receivePayloadACK(target: AddressableActorRef, confirmedDeliveryOf envelope: Envelope)
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
@@ -84,14 +95,22 @@ public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol> {
         self.gossipIdentifier = gossipIdentifier
     }
 
+    /// May be used as equivalent of "myself" for purposes of logging.
+    ///
+    /// Should not be used to arbitrarily allow sending messages to the gossiper from gossip logics,
+    /// which is why it is only an address and not full ActorRef to the gossiper.
+    public var gossiperAddress: ActorAddress {
+        self.ownerContext.myself.address
+    }
+
     public var log: Logger {
         var l = self.ownerContext.log
         l[metadataKey: "gossip/identifier"] = "\(self.gossipIdentifier)"
         return l
     }
 
-    public var gossiperAddress: ActorAddress {
-        self.ownerContext.myself.address
+    public var system: ActorSystem {
+        self.ownerContext.system
     }
 }
 
@@ -100,6 +119,8 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol>: GossipLogic, Cus
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
     let _makePayload: (AddressableActorRef) -> Envelope?
+    @usableFromInline
+    let _receivePayloadACK: (AddressableActorRef, Envelope) -> Void
     @usableFromInline
     let _receiveGossip: (AddressableActorRef, Envelope) -> Void
     @usableFromInline
@@ -113,6 +134,7 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol>: GossipLogic, Cus
         var l = logic
         self._selectPeers = { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
+        self._receivePayloadACK = { l.receivePayloadACK(target: $0, confirmedDeliveryOf: $1) }
 
         self._receiveGossip = { l.receiveGossip(origin: $0, payload: $1) }
         self._localGossipUpdate = { l.localGossipUpdate(payload: $0) }
@@ -126,6 +148,10 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol>: GossipLogic, Cus
 
     public func makePayload(target: AddressableActorRef) -> Envelope? {
         self._makePayload(target)
+    }
+
+    public func receivePayloadACK(target: AddressableActorRef, confirmedDeliveryOf envelope: Envelope) {
+        self._receivePayloadACK(target, envelope)
     }
 
     public func receiveGossip(origin: AddressableActorRef, payload: Envelope) {
@@ -147,7 +173,6 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol>: GossipLogic, Cus
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Envelope
-
 
 public protocol GossipEnvelopeProtocol: Codable {
     associatedtype Metadata

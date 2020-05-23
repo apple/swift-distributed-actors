@@ -26,6 +26,7 @@ extension GossipShell.Message: Codable {
         case origin
         case gossip_payload
         case gossip_payload_manifest
+        case ackRef
     }
 
     public init(from decoder: Decoder) throws {
@@ -52,7 +53,10 @@ extension GossipShell.Message: Codable {
             let payloadPayload = try container.decode(Data.self, forKey: .gossip_payload)
             let payload = try context.serialization.deserialize(as: Envelope.self, from: .data(payloadPayload), using: payloadManifest)
 
-            self = .gossip(identity: identifier, origin: origin, payload)
+            let ackRefAddress = try container.decode(ActorAddress.self, forKey: .ackRef)
+            let ackRef = context.resolveActorRef(Int.self, identifiedBy: ackRefAddress) // FIXME: the int
+
+            self = .gossip(identity: identifier, origin: origin, payload, ackRef: ackRef)
         }
     }
 
@@ -64,7 +68,7 @@ extension GossipShell.Message: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {
-        case .gossip(let identifier, let origin, let payload):
+        case .gossip(let identifier, let origin, let payload, let ackRef):
             try container.encode(DiscriminatorKeys.gossip, forKey: ._case)
 
             let serializedIdentifier = try context.serialization.serialize(identifier)
@@ -76,6 +80,8 @@ extension GossipShell.Message: Codable {
             let serializedPayload = try context.serialization.serialize(payload)
             try container.encode(serializedPayload.manifest, forKey: .gossip_payload_manifest)
             try container.encode(serializedPayload.buffer.readData(), forKey: .gossip_payload)
+
+            try container.encode(ackRef.address, forKey: .ackRef)
 
         default:
             throw SerializationError.unableToSerialize(hint: "\(reflecting: Self.self)")
