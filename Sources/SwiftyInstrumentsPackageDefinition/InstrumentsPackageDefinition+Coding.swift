@@ -89,6 +89,7 @@ extension Instrument {
         case category
         case purpose
         case icon
+        case beta
 
         case importParameters = "import-parameter"
         case createParameters = "create-parameter"
@@ -104,10 +105,11 @@ extension Instrument {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.id, forKey: .id)
-        try container.encode(self.version, forKey: .version)
+        try container.encodeIfPresent(self.version, forKey: .version)
         try container.encode(self.title, forKey: .category)
+        try container.encode(self.category.rawValue, forKey: .category)
         try container.encode(self.purpose, forKey: .purpose)
-        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.icon.rawValue, forKey: .icon)
 
         try container.encode(self.importParameters, forKey: .importParameters)
         try container.encode(self.createParameters, forKey: .createParameters)

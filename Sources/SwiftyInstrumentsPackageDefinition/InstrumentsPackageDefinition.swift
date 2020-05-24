@@ -537,12 +537,14 @@ extension PackageDefinition {
         public var id: String
         /// A version number that helps Instruments resolve conflicts.
         /// Higher versions overwrite lower versions.
-        public var version: UInt
+        public var version: UInt?
         /// Descriptive title that will appear in the Instruments library.
         public var title: String
-        public var category: String
+        /// Category identifier to help group this instrument in the library.
+        public var category: Category
         public var purpose: String
-        public var icon: String // TODO: enum?
+        public var icon: Icon
+        public var beta: Bool?
 
         /// Declares the name of a parameter that can be used in table definitions.
         public var importParameters: [Instrument.ImportParameter]
@@ -550,27 +552,10 @@ extension PackageDefinition {
         /// Creates a parameter specific to this instrument.
         /// Parameters show up in the UI and command line as recording options.
         public var createParameters: [Instrument.CreateParameter]
-        //    <name>?includeSystemActors</name>
-        //    <boolean-value>
-        //    <true-choice>Show /system Actors</true-choice>
-        //    </boolean-value>
 
         /// Tells the instrument, when it's added to a trace document, to create a named data table.
         public var createTables: [Instrument.CreateTable]
-        //    <id>actor-lifecycle-intervals</id>
-        //    <schema-ref>actor-lifecycle-interval</schema-ref>
-        //
-        //    <attribute>
-        //    <name>include-system-actors</name>
-        //    <parameter-ref>?includeSystemActors</parameter-ref>
-        //    </attribute>
-        //
-        //    </create-table>
-        //    <create-table>
-        //    <id>actor-lifecycle-spawns</id>
-        //    <schema-ref>actor-lifecycle-spawn</schema-ref>
-        //    </create-table>
-
+        
         /// Defines the graph, or track, that the instrument will present.
         ///
         /// There can be several.
@@ -591,11 +576,12 @@ extension PackageDefinition {
 
         public init(
             id: String,
-            version: UInt = 1,
+            version: UInt?,
             title: String,
-            category: String,
+            category: Category,
             purpose: String,
-            icon: String,
+            icon: Icon,
+            beta: Bool?,
             @InstrumentBuilder _ builder: () -> InstrumentElementConvertible = { InstrumentElement.fragment([]) }
         ) {
             self.id = id
@@ -604,6 +590,7 @@ extension PackageDefinition {
             self.category = category
             self.purpose = purpose
             self.icon = icon
+            self.beta = beta
 
             self.importParameters = []
             self.createParameters = []
@@ -640,6 +627,56 @@ extension PackageDefinition {
                     self.collect(el)
                 }
             }
+        }
+
+        public enum Category: String, Encodable {
+            case system = "System"
+            case graphics = "Graphics"
+            case energy = "Energy"
+            case behavior = "Behavior"
+            case memory = "Memory"
+            case cPU = "CPU"
+        }
+
+        public enum Icon: String, Encodable {
+            case generic = "Generic"
+            case coreLocation = "Core Location"
+            case timeProfiler = "Time Profiler"
+            case systemLoad = "System load"
+            case scheduling = "Scheduling"
+            case virtualMemory = "Virtual Memory"
+            case systemCalls = "System Calls"
+            case pointsOfInterest = "Points of Interest"
+            case signposts = "Signposts"
+            case activityMonitor = "Activity Monitor"
+            case sceneKit = "SceneKit"
+            case dispatch = "Dispatch"
+            case network = "Network"
+            case energy = "Energy"
+            case energySleepWake = "Energy:Sleep/Wake"
+            case energyCPUActivity = "Energy:CPU Activity"
+            case energyBrightness = "Energy:Brightness"
+            case energyWiFi = "Energy:Wi-Fi"
+            case energyGPS = "Energy:GPS"
+            case energyBluetooth = "Energy:Bluetooth"
+            case energyNetworking = "Energy:Networking"
+            case metalApplication = "Metal Application"
+            case graphicsDriverUtility = "Graphics Driver Utility"
+            case gPUHardware = "GPU Hardware"
+            case displaySurfaces = "Display Surfaces"
+            case coreAnimation = "Core Animation"
+            case coreDataSaves = "Core Data Saves"
+            case coreDataFetches = "Core Data Fetches"
+            case coreDataFaults = "Core Data Faults"
+            case diskUsage = "Disk Usage"
+            case diskIOLatency = "Disk IO Latency"
+            case filesystemActivity = "Filesystem Activity"
+            case filesystemSuggestions =  "Filesystem Suggestions"
+            case metalGPUAllocations = "Metal GPU Allocations"
+            case metalGPUCounters = "Metal GPU Counters"
+            case thermalState = "Thermal State"
+            case aRKit = "ARKit" 
+            case coreML = "CoreML"
         }
 
         public func asPackageElement() -> PackageElement {

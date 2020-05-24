@@ -289,19 +289,7 @@ public struct ActorInstrumentsPackageDefinition {
     public init() {}
 
     public var packageDefinition: PackageDefinition {
-        // TODO: move into Instrument once able to; limitation:
-        // error: closure containing a declaration cannot be used with function builder 'PackageDefinitionBuilder'
-        //            let tableActorLifecycleIntervals = Schemas.actorLifecycleInterval.createTable()
-        //            ^
-        let tableActorLifecycleIntervals = Schemas.actorLifecycleInterval.createTable()
-        let tableActorLifecycleSpawns = Schemas.actorLifecycleSpawn.createTable()
-        let tableActorMessageReceived = Instrument.CreateTable(Schemas.actorMessageReceived) {
-            TableAttribute(name: "target-recipient", value: Mnemonic("target-pid"))
-        }
-        let tableActorMessageTold = Instrument.CreateTable(Schemas.actorMessageTold)
-        let tableActorAskedInterval = Instrument.CreateTable(Schemas.actorAskedInterval)
-
-        return PackageDefinition(
+        PackageDefinition(
             id: packageID,
             version: packageVersion,
             title: packageTitle,
@@ -327,10 +315,13 @@ public struct ActorInstrumentsPackageDefinition {
                 title: "Actor Lifecycle",
                 category: lifecycleInstrumentCategory,
                 purpose: "Monitor lifecycle of actors (start, stop, fail, restart etc.)",
-                icon: "Activity Monitor"
+                icon: .activityMonitor
             ) {
                 // --- tables ---
+                let tableActorLifecycleIntervals = Schemas.actorLifecycleInterval.createTable()
                 tableActorLifecycleIntervals
+
+                let tableActorLifecycleSpawns = Schemas.actorLifecycleSpawn.createTable()
                 tableActorLifecycleSpawns
 
                 Graph(title: "Lifecycles") {
@@ -384,11 +375,13 @@ public struct ActorInstrumentsPackageDefinition {
                 title: "Actor Messages Received",
                 category: "Behavior",
                 purpose: "Marks points in time where messages are received",
-                icon: "Network"
+                icon: .network
             ) {
                 Instrument.ImportParameter(fromScope: "trace", name: "target-pid")
 
-                // --- tables ---
+                let tableActorMessageReceived = Instrument.CreateTable(Schemas.actorMessageReceived) {
+                    TableAttribute(name: "target-recipient", value: Mnemonic("target-pid"))
+                }
                 tableActorMessageReceived
 
                 Graph(title: "Received") {
@@ -421,9 +414,10 @@ public struct ActorInstrumentsPackageDefinition {
                 title: "Actor Messages Told",
                 category: "Behavior",
                 purpose: "Points in time where actor messages are told (sent)",
-                icon: "Network"
+                icon: .network
             ) {
                 // --- tables ---
+                let tableActorMessageTold = Schemas.actorMessageTold.createTable()
                 tableActorMessageTold
 
                 Graph(title: "Messages: Told") {
@@ -461,8 +455,9 @@ public struct ActorInstrumentsPackageDefinition {
                 title: "Actor Messages Asked",
                 category: "Behavior",
                 purpose: "Analyze ask (request/response) interactions",
-                icon: "Network"
+                icon: .network
             ) {
+                let tableActorAskedInterval = Instrument.CreateTable(Schemas.actorAskedInterval)
                 tableActorAskedInterval
 
                 Graph(title: "Messages Asked") {
