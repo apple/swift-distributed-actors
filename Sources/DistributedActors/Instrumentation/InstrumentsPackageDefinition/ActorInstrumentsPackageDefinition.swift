@@ -494,14 +494,17 @@ public struct ActorInstrumentsPackageDefinition {
                     hierarchy: [
                         .column(.askQuestionType),
                     ],
-//                    <hierarchy>
-//                <level>
-//                <column>actor-ask-question-type</column>
-//                </level>
-//                </hierarchy>
                     visitOnFocus: askedList,
                     columns: [
                         .count(.senderNode),
+                    ]
+                )
+
+                EngineeringTypeTrack(
+                    table: tableActorAskedInterval,
+                    hierarchy: [
+                        .column(.recipientNode),
+                        .column(.recipientPath)
                     ]
                 )
             }

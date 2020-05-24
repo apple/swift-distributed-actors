@@ -20,6 +20,7 @@ public typealias Instrument = PackageDefinition.Instrument
 public typealias Graph = PackageDefinition.Instrument.Graph
 public typealias List = PackageDefinition.Instrument.List
 public typealias Aggregation = PackageDefinition.Instrument.Aggregation
+public typealias EngineeringTypeTrack = PackageDefinition.Instrument.EngineeringTypeTrack
 
 public typealias Template = PackageDefinition.Template
 public typealias Augmentation = PackageDefinition.Augmentation
@@ -712,12 +713,6 @@ extension PackageDefinition.Instrument {
         }
     }
 
-    public struct EngineeringTypeTrack: Encodable, InstrumentElementConvertible {
-        public func asInstrumentElement() -> InstrumentElement {
-            .engineeringTypeTrack(self)
-        }
-    }
-
     /// Defines the graph, or track, that the instrument will present.
     public struct Graph: Encodable, InstrumentElementConvertible {
         public var title: String
@@ -1141,6 +1136,64 @@ extension PackageDefinition.Instrument {
 
             public init(_ detailViewTitle: String) {
                 self.detailViewTitle = detailViewTitle
+            }
+        }
+    }
+
+    /// Defines engineering type data track data source.
+    /// When this Instrument is present in the trace document, this data source is queried and matching engineering type tracks are created.
+    public struct EngineeringTypeTrack: Encodable, InstrumentElementConvertible {
+        /// The data table that the engineering types will be created from.
+        public var tableRef: TableRef
+        public var hierarchy: Hierarchy
+
+        public init(table: PackageDefinition.Instrument.CreateTable, hierarchy: Hierarchy) {
+            self.tableRef = .init(table)
+            self.hierarchy = hierarchy
+        }
+
+        public func asInstrumentElement() -> InstrumentElement {
+            .engineeringTypeTrack(self)
+        }
+
+        /// Defines table and hierarchy of columns that should be used to form a hierarchy.
+        public struct Hierarchy: Encodable, ExpressibleByArrayLiteral {
+            public typealias ArrayLiteralElement = Level
+            /// Describes each level in the hierarchy and how to roll up data from one level to the next.
+            let levels: [Level]
+
+            public init(arrayLiteral elements: Self.ArrayLiteralElement...) {
+                precondition(0 < elements.count, "engineeringTypeTrack.hierarchy.count MUST be > 0, was \(elements.count)")
+                precondition(elements.count <= 4, "engineeringTypeTrack.hierarchy.count MUST be <= 4, was \(elements.count)")
+                self.levels = elements
+            }
+
+            public struct Level: Encodable {
+                let type: LevelType
+                /// A priority that specifies what should be the order of the tracks, when multiple types are available on the same hierarchy level.
+                let typePriority: Int?
+
+                public init(_ type: LevelType, typePriority: Int? = nil) {
+                    self.type = type
+                    self.typePriority = typePriority
+                }
+
+                public static var `self`: Level {
+                    .init(.self)
+                }
+
+                public static func column(_ column: Column) -> Level {
+                    .init(.column(column))
+                }
+
+                public enum LevelType {
+                    /// Specifies that engineering type track parent is the defined instrument type. Only usable for the first level of hierarchy.
+                    case `self`
+                    /// A reference to the name of a column that will be queried for the engineering type track identity.
+                    case column(Column)
+                }
+
+
             }
         }
     }

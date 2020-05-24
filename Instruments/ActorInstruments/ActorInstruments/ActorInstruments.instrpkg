@@ -437,5 +437,16 @@
         <count>actor-sender-node</count>
       </column>
     </aggregation>
+    <engineering-type-track>
+      <table-ref>actor-asked-interval</table-ref>
+      <hierarchy>
+        <level>
+          <column>actor-recipient-node</column>
+        </level>
+        <level>
+          <column>actor-recipient-path</column>
+        </level>
+      </hierarchy>
+    </engineering-type-track>
   </instrument>
 </package>

@@ -483,6 +483,46 @@ extension PackageDefinition.Instrument.Aggregation.VisitOnFocus {
     }
 }
 
+extension PackageDefinition.Instrument.EngineeringTypeTrack {
+    public enum CodingKeys: String, CodingKey {
+        case tableRef = "table-ref"
+        case hierarchy
+    }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.tableRef, forKey: .tableRef)
+        try container.encode(self.hierarchy, forKey: .hierarchy)
+    }
+}
+
+extension PackageDefinition.Instrument.EngineeringTypeTrack.Hierarchy {
+    public enum CodingKeys: String, CodingKey {
+        case levels = "level"
+    }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.levels, forKey: .levels)
+    }
+}
+
+extension PackageDefinition.Instrument.EngineeringTypeTrack.Hierarchy.Level {
+    public enum CodingKeys: String, CodingKey {
+        case _self = "self"
+        case column
+        case typePriority = "type-priority"
+    }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self.type {
+        case .self:
+            try container.encode("", forKey: ._self)
+        case .column(let column):
+            try container.encode(column.mnemonic.name, forKey: .column)
+        }
+        try container.encodeIfPresent(self.typePriority, forKey: .typePriority)
+    }
+}
+
 extension PackageDefinition.Instrument.SchemaRef {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
