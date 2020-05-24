@@ -29,7 +29,6 @@ fileprivate let categoryMessages = "Messages"
 
 // instrument
 fileprivate let lifecycleInstrumentID = "com.apple.actors.instrument.lifecycles"
-fileprivate let lifecycleInstrumentCategory = "Behavior"
 
 extension Column {
     static let actorNode = Column(
@@ -284,6 +283,32 @@ public struct ActorInstrumentsPackageDefinition {
             Column.error
             Column.errorType
         }
+
+        static let actorTransportSerializationInterval = PackageDefinition.OSSignpostIntervalSchema(
+            id: "actor-transport-serialization-interval",
+            title: "Serialization",
+
+            subsystem: OSSignpostActorTransportInstrumentation.subsystem,
+            category: OSSignpostActorTransportInstrumentation.category,
+            name: "Actor Transport (Serialization)",
+
+            startPattern: OSSignpostActorTransportInstrumentation.actorMessageSerializeStartPattern,
+            endPattern: OSSignpostActorTransportInstrumentation.actorMessageSerializeEndPattern
+        ) {
+            Column.recipientNode
+            Column.recipientPath
+            Column.recipientAddress
+
+            Column.senderNode
+            Column.senderPath
+            Column.senderAddress
+
+            Column.message
+            Column.messageType
+
+            Column.error
+            Column.errorType
+        }
     }
 
     public init() {}
@@ -313,7 +338,7 @@ public struct ActorInstrumentsPackageDefinition {
             Instrument(
                 id: lifecycleInstrumentID,
                 title: "Actor Lifecycle",
-                category: lifecycleInstrumentCategory,
+                category: .behavior,
                 purpose: "Monitor lifecycle of actors (start, stop, fail, restart etc.)",
                 icon: .activityMonitor
             ) {
@@ -373,7 +398,7 @@ public struct ActorInstrumentsPackageDefinition {
             Instrument(
                 id: "com.apple.actors.instrument.messages.received",
                 title: "Actor Messages Received",
-                category: "Behavior",
+                category: .behavior,
                 purpose: "Marks points in time where messages are received",
                 icon: .network
             ) {
@@ -412,7 +437,7 @@ public struct ActorInstrumentsPackageDefinition {
             Instrument(
                 id: "com.apple.actors.instrument.messages.told",
                 title: "Actor Messages Told",
-                category: "Behavior",
+                category: .behavior,
                 purpose: "Points in time where actor messages are told (sent)",
                 icon: .network
             ) {
@@ -453,12 +478,66 @@ public struct ActorInstrumentsPackageDefinition {
             Instrument(
                 id: "com.apple.actors.instrument.messages.asked",
                 title: "Actor Messages Asked",
-                category: "Behavior",
+                category: .behavior,
                 purpose: "Analyze ask (request/response) interactions",
                 icon: .network
             ) {
                 let tableActorAskedInterval = Instrument.CreateTable(Schemas.actorAskedInterval)
                 tableActorAskedInterval
+
+                Graph(title: "Messages Asked") {
+                    Graph.Lane(title: "Asked", table: tableActorAskedInterval) {
+                        Graph.Plot(valueFrom: "duration", labelFrom: Column.askQuestion)
+                        // TODO: for the plot, severity from if it was a timeout or not
+                    }
+                }
+
+                let askedList = List(title: "List: Messages (Asked)", table: tableActorAskedInterval) {
+                    "start"
+                    "duration"
+                    Column.senderNode
+                    Column.senderPath
+                    Column.recipientNode
+                    Column.recipientPath
+                    Column.askQuestionType
+                    Column.askQuestion
+                    Column.askAnswer
+                    Column.askAnswerType
+                    Column.error
+                    Column.errorType
+                }
+                askedList
+
+                Aggregation(
+                    title: "Summary: By Message Type",
+                    table: tableActorAskedInterval,
+                    hierarchy: [
+                        .column(.askQuestionType),
+                    ],
+                    visitOnFocus: askedList,
+                    columns: [
+                        .count(.senderNode),
+                    ]
+                )
+
+                EngineeringTypeTrack(
+                    table: tableActorAskedInterval,
+                    hierarchy: [
+                        .column(.recipientNode),
+                        .column(.recipientPath)
+                    ]
+                )
+            }
+
+            Instrument(
+                id: "com.apple.actors.instrument.transport.serialization",
+                title: "Actors Transport Serialization",
+                category: .behavior,
+                purpose: "Observe sizes and time spent in serialization of remote messages",
+                icon: .virtualMemory
+            ) {
+                let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
+                actorTransportSerializationInterval
 
                 Graph(title: "Messages Asked") {
                     Graph.Lane(title: "Asked", table: tableActorAskedInterval) {

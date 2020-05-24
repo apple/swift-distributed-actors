@@ -25,7 +25,11 @@ import os.signpost
 @available(tvOS 10.0, *)
 @available(watchOS 3.0, *)
 public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumentation {
-    static let logTransportSerialization = OSLog(subsystem: "com.apple.actors", category: "Transport Serialization")
+    static let subsystem: StaticString = "com.apple.actors"
+    static let category: StaticString = "Transport Serialization"
+    static let name: StaticString = "Actor Transport (Serialization)"
+
+    static let logTransportSerialization = OSLog(subsystem: Self.subsystem, category: Self.category)
 
     let signpostID: OSSignpostID
 
@@ -44,6 +48,37 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
 @available(tvOS 10.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorTransportInstrumentation {
+
+
+    static let actorMessageSerializeStartPattern: StaticString =
+        """
+        serialize,\
+        recipient-node:%{public}s,\
+        recipient-path:%{public}s,\
+        type:%{public}s,\
+        message:%{public}s
+        """
+    static let actorMessageSerializeEndPattern: StaticString =
+        """
+        "serialized,\
+        bytes:%ld"
+        """
+
+    static let actorMessageDeserializeStartPattern: StaticString =
+        """
+        "deserialize,\
+        recipient-node:%{public}s,\
+        recipient-path:%{public}s,\
+        bytes:%ld"
+        """
+    static let actorMessageDeserializeEndPattern: StaticString =
+        """
+        "deserialized,\
+        message:%{public}s,\
+        type:%{public}s"
+        """
+
+
     public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {
         guard OSSignpostActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
@@ -52,9 +87,9 @@ extension OSSignpostActorTransportInstrumentation {
         os_signpost(
             .begin,
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
-            name: "Actor Transport (Serialization)",
+            name: Self.name,
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
-            "serialize,recipient-node:%{public}s,recipient-path:%{public}s,type:%{public}s,message:%{public}s",
+            Self.actorMessageSerializeStartPattern,
             "<node: todo>", "\(recipient)", String(reflecting: type(of: message)), "\(message)"
         )
     }
@@ -69,7 +104,7 @@ extension OSSignpostActorTransportInstrumentation {
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
             name: "Actor Transport (Serialization)",
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
-            "serialized,bytes:%ld",
+            Self.actorMessageSerializeEndPattern,
             bytes
         )
     }
@@ -82,9 +117,9 @@ extension OSSignpostActorTransportInstrumentation {
         os_signpost(
             .begin,
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
-            name: "Actor Transport (Deserialization)",
+            name: "Actor Transport (Serialization)",
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
-            "deserialize,recipient-node:%{public}s,recipient-path:%{public}s,bytes:%ld", // TODO: could carry type from manifest
+            Self.actorMessageDeserializeStartPattern,
             "<node: todo>", "\(recipient)", bytes
         )
     }
@@ -97,9 +132,9 @@ extension OSSignpostActorTransportInstrumentation {
         os_signpost(
             .end,
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
-            name: "Actor Transport (Deserialization)",
+            name: "Actor Transport (Serialization)",
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
-            "deserialized,message:%{public}s,type:%{public}s",
+            Self.actorMessageDeserializeEndPattern,
             "\(message.map { "\($0)" } ?? "<nil>")", "\(message.map { String(reflecting: type(of: $0)) } ?? "<unknown-type>")"
         )
     }

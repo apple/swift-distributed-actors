@@ -238,6 +238,7 @@ public enum InstrumentElement: Encodable {
     case graph(PackageDefinition.Instrument.Graph)
     case list(PackageDefinition.Instrument.List)
     case aggregation(PackageDefinition.Instrument.Aggregation)
+    case narrative(PackageDefinition.Instrument.Narrative)
 
     case fragment([InstrumentElement])
 }

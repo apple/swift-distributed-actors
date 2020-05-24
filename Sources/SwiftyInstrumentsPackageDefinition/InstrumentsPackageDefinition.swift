@@ -19,6 +19,7 @@ import Foundation
 public typealias Instrument = PackageDefinition.Instrument
 public typealias Graph = PackageDefinition.Instrument.Graph
 public typealias List = PackageDefinition.Instrument.List
+public typealias Narrative = PackageDefinition.Instrument.Narrative
 public typealias Aggregation = PackageDefinition.Instrument.Aggregation
 public typealias EngineeringTypeTrack = PackageDefinition.Instrument.EngineeringTypeTrack
 
@@ -566,6 +567,8 @@ extension PackageDefinition {
         /// There can be several.
         public var lists: [Instrument.List]
 
+        public var narratives: [Instrument.Narrative]
+
         /// Creates an aggregate view (e.g. summary with totals and averages) in the detail area.
         public var aggregations: [Instrument.Aggregation]
 
@@ -576,12 +579,12 @@ extension PackageDefinition {
 
         public init(
             id: String,
-            version: UInt?,
+            version: UInt? = nil,
             title: String,
             category: Category,
             purpose: String,
             icon: Icon,
-            beta: Bool?,
+            beta: Bool? = nil,
             @InstrumentBuilder _ builder: () -> InstrumentElementConvertible = { InstrumentElement.fragment([]) }
         ) {
             self.id = id
@@ -599,6 +602,7 @@ extension PackageDefinition {
             self.graphs = []
             self.lists = []
             self.aggregations = []
+            self.narratives = []
             self.engineeringTypeTracks = []
 
             self.collect(builder())
@@ -621,6 +625,8 @@ extension PackageDefinition {
                 self.lists.append(element)
             case .aggregation(let element):
                 self.aggregations.append(element)
+            case .narrative(let element):
+                self.narratives.append(element)
 
             case .fragment(let elements):
                 elements.forEach { el in
@@ -747,6 +753,41 @@ extension PackageDefinition.Instrument {
 
         public func asInstrumentElement() -> InstrumentElement {
             .createTable(self)
+        }
+    }
+
+    /// The title of another defined detail view, like a list, to visit when the user clicks the focus button of an aggregate.
+    ///
+    /// ### Example:
+    /// If a `List` view titled `"Events"` exists, you can `VisitOnFocus("Events")`.
+    ///
+    /// The user will see a round focus button next to each row of this aggregation
+    // and when they click it, the "Events" list will be pushed on to the detail
+    // view, and it will be filtered to just the events that correspond with the
+    // row of the aggregation being focused.  So, for example, if the events were
+    // context switches, then clicking the focus button on the thread in the
+    // outline view will push the list of events for that thread onto the view stack.
+    public struct VisitOnFocus: Encodable, VisitOnFocusTarget, ExpressibleByStringLiteral {
+        public let detailViewTitle: String
+
+        public var title: String {
+            self.detailViewTitle
+        }
+
+        public init(_ target: VisitOnFocusTarget) {
+            self.detailViewTitle = target.title
+        }
+
+        public init(stringLiteral value: StringLiteralType) {
+            if value.starts(with: "?") {
+                fatalError("VisitOnFocus.detailViewTitle MUST be a Title and not a mnemonic, passed in value [\(value)] starts with '?' suggesting it is a mnemonic.")
+            }
+
+            self.self.detailViewTitle = value
+        }
+
+        public init(_ detailViewTitle: String) {
+            self.detailViewTitle = detailViewTitle
         }
     }
 
@@ -1021,6 +1062,52 @@ extension PackageDefinition.Instrument {
         }
     }
 
+    /// Creates a view in the detail area optimized for the "narrative" engineering type.
+    public struct Narrative: Encodable, InstrumentElementConvertible {
+        /// The title that will be used to refer to this narrative detail view.
+        public let title: String?
+
+        /// The table that will provide the narrative data.
+        public let tableRef: TableRef
+
+        // /// A note that documentation tools may extract when creating a user's guide.
+        // public var guide: String?
+        
+        /// The title of a detail view to visit when the user attempts to focus on a specific row.
+        public var visitOnFocus: VisitOnFocus?
+
+        // /// When a narrative is empty, this empty content suggestion helps explain why.
+        // public var emptyContentSuggestion: String?
+
+        // /// Deprecated. Has no effect and will be removed in a future update.
+        // public var timeColumn: Mnemonic?
+
+        /// The column from the schema where the narrative text should be displayed from.
+        public var narrativeColumn: Mnemonic
+
+        /// Extra columns that should be displayed as longer-form annotations of the narrative, like a backtrace or long file path.
+        public var annotationColumns: [Mnemonic] //{0, 20}
+
+        public init(
+            title: String?,
+            table: PackageDefinition.Instrument.CreateTable,
+            visitOnFocus: VisitOnFocus? = nil,
+            narrativeColumn: Column,
+            annotationColumns: [Column] = []
+        ) {
+            precondition(annotationColumns.count <= 20, "annotationColumns.count MUST be <= 20, was: \(annotationColumns.count)")
+            self.title = title
+            self.tableRef = .init(table)
+            self.visitOnFocus = visitOnFocus
+            self.narrativeColumn = narrativeColumn.mnemonic
+            self.annotationColumns = annotationColumns.map { $0.mnemonic }
+        }
+
+        public func asInstrumentElement() -> InstrumentElement {
+            .narrative(self)
+        }
+    }
+
     /// Creates an aggregate view (e.g. summary with totals and averages) in the detail area.
     public struct Aggregation: Encodable, InstrumentElementConvertible {
         public var title: String
@@ -1138,41 +1225,6 @@ extension PackageDefinition.Instrument {
                 case column(Column)
                 /// Specifies that the value of the level should just be the process associated with a thread value at this column.
                 case processOfThread(String)
-            }
-        }
-
-        /// The title of another defined detail view, like a list, to visit when the user clicks the focus button of an aggregate.
-        ///
-        /// ### Example:
-        /// If a `List` view titled `"Events"` exists, you can `VisitOnFocus("Events")`.
-        ///
-        /// The user will see a round focus button next to each row of this aggregation
-        // and when they click it, the "Events" list will be pushed on to the detail
-        // view, and it will be filtered to just the events that correspond with the
-        // row of the aggregation being focused.  So, for example, if the events were
-        // context switches, then clicking the focus button on the thread in the
-        // outline view will push the list of events for that thread onto the view stack.
-        public struct VisitOnFocus: Encodable, VisitOnFocusTarget, ExpressibleByStringLiteral {
-            public let detailViewTitle: String
-
-            public var title: String {
-                self.detailViewTitle
-            }
-
-            public init(_ target: VisitOnFocusTarget) {
-                self.detailViewTitle = target.title
-            }
-
-            public init(stringLiteral value: StringLiteralType) {
-                if value.starts(with: "?") {
-                    fatalError("VisitOnFocus.detailViewTitle MUST be a Title and not a mnemonic, passed in value [\(value)] starts with '?' suggesting it is a mnemonic.")
-                }
-
-                self.self.detailViewTitle = value
-            }
-
-            public init(_ detailViewTitle: String) {
-                self.detailViewTitle = detailViewTitle
             }
         }
     }

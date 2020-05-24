@@ -98,6 +98,7 @@ extension Instrument {
         case graphs = "graph"
         case lists = "list"
         case aggregations = "aggregation"
+        case narratives = "narrative"
 
         case engineeringTypeTrack = "engineering-type-track"
     }
@@ -119,6 +120,7 @@ extension Instrument {
         try container.encode(self.graphs, forKey: .graphs)
         try container.encode(self.lists, forKey: .lists)
         try container.encode(self.aggregations, forKey: .aggregations)
+        try container.encode(self.narratives, forKey: .narratives)
 
         try container.encode(self.engineeringTypeTracks, forKey: .engineeringTypeTrack)
     }
@@ -134,6 +136,7 @@ extension InstrumentElement {
         case graph
         case list
         case aggregation
+        case narrative
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -155,6 +158,8 @@ extension InstrumentElement {
             try container.encode(element, forKey: .list)
         case .aggregation(let element):
             try container.encode(element, forKey: .aggregation)
+        case .narrative(let element):
+            try container.encode(element, forKey: .narrative)
 
         case .fragment(let elements):
             fatalError("can't encode elements: \(elements)")
@@ -371,6 +376,31 @@ extension PackageDefinition.Instrument.List {
     }
 }
 
+extension PackageDefinition.Instrument.Narrative {
+    public enum CodingKeys: String, CodingKey {
+        case title
+        case tableRef = "table-ref"
+        case guide
+        case visitOnFocus = "visit-on-focus"
+        case emptyContentSuggestion = "empty-content-suggestion"
+        case narrativeColumn = "narrative-column"
+        case annotationColumns = "annotation-column"
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encodeIfPresent(self.title, forKey: .title)
+        try container.encode(self.tableRef, forKey: .tableRef)
+        // try container.encodeIfPresent(self.guide, forKey: .guide)
+        try container.encodeIfPresent(self.visitOnFocus, forKey: .visitOnFocus)
+        // try container.encodeIfPresent(self.emptyContentSuggestion, forKey: .emptyContentSuggestion)
+        try container.encode(self.narrativeColumn, forKey: .narrativeColumn)
+        try container.encode(self.annotationColumns, forKey: .annotationColumns)
+
+    }
+}
+
 extension PackageDefinition.Instrument.Aggregation {
     public enum CodingKeys: String, CodingKey {
         case title
@@ -478,7 +508,7 @@ extension PackageDefinition.Instrument.Aggregation.AggregationHierarchy.Level {
     }
 }
 
-extension PackageDefinition.Instrument.Aggregation.VisitOnFocus {
+extension PackageDefinition.Instrument.VisitOnFocus {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(self.detailViewTitle)

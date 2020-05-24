@@ -258,8 +258,8 @@
   </os-signpost-interval-schema>
   <instrument>
     <id>com.apple.actors.instrument.lifecycles</id>
-    <version>1</version>
     <category>Actor Lifecycle</category>
+    <category>Behavior</category>
     <purpose>Monitor lifecycle of actors (start, stop, fail, restart etc.)</purpose>
     <icon>Activity Monitor</icon>
     <create-table>
@@ -311,8 +311,8 @@
   </instrument>
   <instrument>
     <id>com.apple.actors.instrument.messages.received</id>
-    <version>1</version>
     <category>Actor Messages Received</category>
+    <category>Behavior</category>
     <purpose>Marks points in time where messages are received</purpose>
     <icon>Network</icon>
     <import-parameter>
@@ -354,8 +354,8 @@
   </instrument>
   <instrument>
     <id>com.apple.actors.instrument.messages.told</id>
-    <version>1</version>
     <category>Actor Messages Told</category>
+    <category>Behavior</category>
     <purpose>Points in time where actor messages are told (sent)</purpose>
     <icon>Network</icon>
     <create-table>
@@ -389,8 +389,8 @@
   </instrument>
   <instrument>
     <id>com.apple.actors.instrument.messages.asked</id>
-    <version>1</version>
     <category>Actor Messages Asked</category>
+    <category>Behavior</category>
     <purpose>Analyze ask (request/response) interactions</purpose>
     <icon>Network</icon>
     <create-table>
@@ -437,6 +437,11 @@
         <count>actor-sender-node</count>
       </column>
     </aggregation>
+    <narrative>
+      <title>title</title>
+      <table-ref>actor-asked-interval</table-ref>
+      <narrative-column>actor-ask-question</narrative-column>
+    </narrative>
     <engineering-type-track>
       <table-ref>actor-asked-interval</table-ref>
       <hierarchy>
