@@ -491,6 +491,14 @@ public struct ActorInstrumentsPackageDefinition {
                 Aggregation(
                     title: "Summary: By Message Type",
                     table: tableActorAskedInterval,
+                    hierarchy: [
+                        .column(.askQuestionType),
+                    ],
+//                    <hierarchy>
+//                <level>
+//                <column>actor-ask-question-type</column>
+//                </level>
+//                </hierarchy>
                     visitOnFocus: askedList,
                     columns: [
                         .count(.senderNode),

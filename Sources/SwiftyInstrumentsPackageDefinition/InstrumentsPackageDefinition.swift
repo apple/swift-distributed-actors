@@ -999,7 +999,7 @@ extension PackageDefinition.Instrument {
         /// - Example: Call kdebug_signpost() to report points of interest within your application
         public var emptyContentSuggestion: String?
 //        public var guide?
-//        public var hierarchy?
+        public var hierarchy: AggregationHierarchy?
         public var visitOnFocus: VisitOnFocus
 //        public var graph-on-lane*
         public var columns: [AggregationColumn]
@@ -1013,6 +1013,7 @@ extension PackageDefinition.Instrument {
             title: String,
             table: PackageDefinition.Instrument.CreateTable,
             emptyContentSuggestion: String? = nil,
+            hierarchy: AggregationHierarchy? = nil,
             visitOnFocus viewOnFocusTarget: VisitOnFocusTarget,
             columns: [AggregationColumn],
             columnsHidden: [Column] = []
@@ -1020,61 +1021,91 @@ extension PackageDefinition.Instrument {
             self.title = title
             self.tableRef = TableRef(table)
             self.emptyContentSuggestion = emptyContentSuggestion
+            self.hierarchy = hierarchy
             self.visitOnFocus = VisitOnFocus(viewOnFocusTarget)
             self.columns = columns
             self.columnsHidden = columnsHidden
         }
 
         public enum AggregationColumn: Encodable {
-            case chooseAny(title: String?, column: Column)
-            case chooseUnique(title: String?, column: Column)
-            case count(title: String?, column: Column)
-            case sum(title: String?, column: Column)
-            case min(title: String?, column: Column)
-            case max(title: String?, column: Column)
-            case average(title: String?, column: Column)
-            case stdDev(title: String?, column: Column)
-            case range(title: String?, column: Column)
-            case percentOfCapacity(title: String?, column: Column)
+            case chooseAny(title: String?, Column)
+            case chooseUnique(title: String?, Column)
+            case count(title: String?, Column)
+            case sum(title: String?, Column)
+            case min(title: String?, Column)
+            case max(title: String?, Column)
+            case average(title: String?, Column)
+            case stdDev(title: String?, Column)
+            case range(title: String?, Column)
+            case percentOfCapacity(title: String?, Column)
 
+            /// Picks any value arbitrarily.
             public static func chooseAny(_ column: Column) -> AggregationColumn {
-                .chooseAny(title: nil, column: column)
+                .chooseAny(title: nil, column)
             }
 
+            /// If all the data is the same, choose it, else choose nothing.
             public static func chooseUnique(_ column: Column) -> AggregationColumn {
-                .chooseUnique(title: nil, column: column)
+                .chooseUnique(title: nil, column)
             }
 
+            /// The number of data points in the aggregation.
             public static func count(_ column: Column) -> AggregationColumn {
-                .count(title: nil, column: column)
+                .count(title: nil, column)
             }
 
+            /// Total the value in the column mnemonic supplied.
             public static func sum(_ column: Column) -> AggregationColumn {
-                .sum(title: nil, column: column)
+                .sum(title: nil, column)
             }
 
+            /// Minimum value in the column mnemonic supplied.
             public static func min(_ column: Column) -> AggregationColumn {
-                .min(title: nil, column: column)
+                .min(title: nil, column)
             }
 
+            /// Maximum value in the column mnemonic supplied.
             public static func max(_ column: Column) -> AggregationColumn {
-                .max(title: nil, column: column)
+                .max(title: nil, column)
             }
 
+            /// Average value in the column mnemonic supplied.
             public static func average(_ column: Column) -> AggregationColumn {
-                .average(title: nil, column: column)
+                .average(title: nil, column)
             }
 
+            /// Standard deviation (quick estimate) of the value in the column mnemonic supplied.
             public static func stdDev(_ column: Column) -> AggregationColumn {
-                .stdDev(title: nil, column: column)
+                .stdDev(title: nil, column)
             }
 
+            /// The distance between the first point in the aggregate and the last.
             public static func range(_ column: Column) -> AggregationColumn {
-                .range(title: nil, column: column)
+                .range(title: nil, column)
             }
 
+            /// Totals a column value, divides by the capacity constant, and multiplies by 100.
             public static func percentOfCapacity(_ column: Column) -> AggregationColumn {
-                .percentOfCapacity(title: nil, column: column)
+                .percentOfCapacity(title: nil, column)
+            }
+        }
+        
+        /// Defines an outline-style aggregation where each level can be a different column or mapping.
+        public struct AggregationHierarchy: Encodable, ExpressibleByArrayLiteral {
+            public typealias ArrayLiteralElement = Level
+            /// Describes each level in the hierarchy and how to roll up data from one level to the next.
+            let levels: [Level]
+
+            public init(arrayLiteral elements: Self.ArrayLiteralElement...) {
+                self.levels = elements
+            }
+
+
+            public enum Level: Encodable {
+                /// Specifies that the value of the level should just be the value at this column.
+                case column(Column)
+                /// Specifies that the value of the level should just be the process associated with a thread value at this column.
+                case processOfThread(String)
             }
         }
 

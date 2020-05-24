@@ -427,6 +427,11 @@
     <aggregation>
       <title>Summary: By Message Type</title>
       <table-ref>actor-asked-interval</table-ref>
+      <hierarchy>
+        <level>
+          <column>actor-ask-question-type</column>
+        </level>
+      </hierarchy>
       <visit-on-focus>List: Messages (Asked)</visit-on-focus>
       <column>
         <count>actor-sender-node</count>
