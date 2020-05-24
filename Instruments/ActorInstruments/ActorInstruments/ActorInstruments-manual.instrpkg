@@ -831,7 +831,6 @@
             <hierarchy>
                 <level>
                     <column>actor-recipient-node</column>
-                    <!-- TODO: could group on path elements (!!!!!) -->
                 </level>
                 <level>
                     <column>actor-recipient-path</column>
@@ -842,7 +841,6 @@
                 <title>Messages received (total)</title>
                 <count/>
             </column>
-
             <column>
                 <title>Serialized Messages Total (bytes)</title>
                 <sum>transport-message-serialized-bytes</sum>

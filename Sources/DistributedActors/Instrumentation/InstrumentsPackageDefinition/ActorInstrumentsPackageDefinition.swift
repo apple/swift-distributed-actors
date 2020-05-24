@@ -171,6 +171,22 @@ extension Column {
         expression: "?error-type"
     )
 
+    static let serializedBytes = Column(
+        mnemonic: "transport-message-serialized-bytes",
+        title: "Serialized Size (bytes)",
+        type: .sizeInBytes,
+        expression: "?bytes"
+    )
+    static let serializedBytesImpact = Column(
+        mnemonic: "transport-message-serialized-bytes-impact",
+        title: "Serialized Size (impact)",
+        type: .eventConcept,
+        expression:
+        """
+        (if (&gt; ?bytes 100000) then "High" else "Low")
+        """
+    )
+
 }
 
 @available(OSX 10.14, *)
@@ -288,9 +304,9 @@ public struct ActorInstrumentsPackageDefinition {
             id: "actor-transport-serialization-interval",
             title: "Serialization",
 
-            subsystem: OSSignpostActorTransportInstrumentation.subsystem,
-            category: OSSignpostActorTransportInstrumentation.category,
-            name: "Actor Transport (Serialization)",
+            subsystem: "\(OSSignpostActorTransportInstrumentation.subsystem)",
+            category: "\(OSSignpostActorTransportInstrumentation.category)",
+            name: "\(OSSignpostActorTransportInstrumentation.nameSerialization)",
 
             startPattern: OSSignpostActorTransportInstrumentation.actorMessageSerializeStartPattern,
             endPattern: OSSignpostActorTransportInstrumentation.actorMessageSerializeEndPattern
@@ -306,8 +322,35 @@ public struct ActorInstrumentsPackageDefinition {
             Column.message
             Column.messageType
 
-            Column.error
-            Column.errorType
+            Column.serializedBytes
+            Column.serializedBytesImpact
+        }
+
+        static let actorTransportDeserializationInterval = PackageDefinition.OSSignpostIntervalSchema(
+            id: "actor-transport-deserialization-interval",
+            title: "Deserialization",
+
+            subsystem: "\(OSSignpostActorTransportInstrumentation.subsystem)",
+            category: "\(OSSignpostActorTransportInstrumentation.category)",
+            name: "\(OSSignpostActorTransportInstrumentation.nameDeserialization)",
+
+            startPattern: OSSignpostActorTransportInstrumentation.actorMessageDeserializeStartPattern,
+            endPattern: OSSignpostActorTransportInstrumentation.actorMessageDeserializeEndPattern
+        ) {
+            Column.recipientNode
+            Column.recipientPath
+            Column.recipientAddress
+
+            // Column.senderNode
+            // Column.senderPath
+            // Column.senderAddress
+
+            // (incoming bytes)
+            Column.serializedBytes
+            Column.serializedBytesImpact
+
+            Column.message
+            Column.messageType
         }
     }
 
@@ -539,46 +582,54 @@ public struct ActorInstrumentsPackageDefinition {
                 let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
                 actorTransportSerializationInterval
 
-                Graph(title: "Messages Asked") {
-                    Graph.Lane(title: "Asked", table: tableActorAskedInterval) {
-                        Graph.Plot(valueFrom: "duration", labelFrom: Column.askQuestion)
-                        // TODO: for the plot, severity from if it was a timeout or not
-                    }
-                }
+                let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
+                actorTransportDeserializationInterval
 
-                let askedList = List(title: "List: Messages (Asked)", table: tableActorAskedInterval) {
+                List(title: "Remote Message Serialization (size)", table: actorTransportSerializationInterval) {
                     "start"
                     "duration"
                     Column.senderNode
                     Column.senderPath
-                    Column.recipientNode
-                    Column.recipientPath
-                    Column.askQuestionType
-                    Column.askQuestion
-                    Column.askAnswer
-                    Column.askAnswerType
-                    Column.error
-                    Column.errorType
+                    Column.messageType
+                    Column.serializedBytes
                 }
-                askedList
+                /* <!-- Define graph to draw for your Instrument (optional) -->
+        <graph>
+            <title></title>
+            <lane>
+                <title>Serialization</title>
+                <table-ref>actor-transport-serialization-intervals</table-ref>
+
+                <!-- TODO: plot-template for each of the threads in the serialization pool? -->
+                <plot>
+                    <value-from>transport-message-serialized-bytes</value-from>
+                    <color-from>transport-message-serialized-bytes-impact</color-from>
+
+                    <label-from>transport-message-serialized-bytes</label-from>
+                </plot>
+            </lane>
+        </graph>
+*/
+                Instrument.Graph(title: "Remote Message Serialization") { 
+                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) { 
+                        Graph.Plot(
+                            valueFrom: .serializedBytes,
+                            colorFrom: serializedBytesImpact,
+                            labelFrom: .serializedBytes
+                        )
+                    }
+                }
 
                 Aggregation(
-                    title: "Summary: By Message Type",
-                    table: tableActorAskedInterval,
-                    hierarchy: [
-                        .column(.askQuestionType),
-                    ],
-                    visitOnFocus: askedList,
-                    columns: [
-                        .count(.senderNode),
-                    ]
-                )
-
-                EngineeringTypeTrack(
-                    table: tableActorAskedInterval,
+                    title: "Total messages per Actor (by Recipient)", 
+                    table: actorTransportSerializationInterval,
                     hierarchy: [
                         .column(.recipientNode),
-                        .column(.recipientPath)
+                        .column(.recipientPath),
+                    ],
+                    columns: [
+                        .count0(title: "Messages received (total)"),
+                        .sum(title: "Serialized Messages Total (bytes)", .serializedBytes),
                     ]
                 )
             }

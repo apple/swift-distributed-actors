@@ -287,6 +287,7 @@ extension PackageDefinition.Instrument.Graph.Plot {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(valueFrom, forKey: .valueFrom)
+        try container.encodeIfPresent(self.colorFrom, forKey: .colorFrom)
         try container.encodeIfPresent(self.labelFrom, forKey: .labelFrom)
         // TODO: all others...
     }
@@ -447,34 +448,37 @@ extension PackageDefinition.Instrument.Aggregation.AggregationColumn {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .chooseAny(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .chooseAny)
         case .chooseUnique(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .chooseUnique)
+        case .count0(let title):
+            try container.encodeIfPresent(title, forKey: .title)
+            try container.encode("", forKey: .count) // <count/>
         case .count(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .count)
         case .sum(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .sum)
         case .min(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .min)
         case .max(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .max)
         case .average(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .average)
         case .stdDev(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .stdDev)
         case .range(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .range)
         case .percentOfCapacity(let title, let column):
-            // FIXME: how to encode title?
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encode(column.mnemonic.name, forKey: .percentOfCapacity)
         }
     }

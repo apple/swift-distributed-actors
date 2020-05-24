@@ -712,20 +712,6 @@ extension PackageDefinition.Instrument {
         }
     }
 
-    public enum SchemaRef: Encodable {
-        case schema(Schema)
-        case id(String)
-
-        public var schemaRefString: String {
-            switch self {
-            case .schema(let schema):
-                return schema.id.name
-            case .id(let id):
-                return id
-            }
-        }
-    }
-
     public struct CreateTable: Encodable, InstrumentElementConvertible {
         public var id: String
         public var schemaRef: SchemaRef
@@ -753,6 +739,20 @@ extension PackageDefinition.Instrument {
 
         public func asInstrumentElement() -> InstrumentElement {
             .createTable(self)
+        }
+    }
+
+    public enum SchemaRef: Encodable {
+        case schema(Schema)
+        case id(String)
+
+        public var schemaRefString: String {
+            switch self {
+            case .schema(let schema):
+                return schema.id.name
+            case .id(let id):
+                return id
+            }
         }
     }
 
@@ -947,7 +947,7 @@ extension PackageDefinition.Instrument {
             /// The column where the value of the graph will be pulled.
             public var valueFrom: Mnemonic
 
-            // public var color-from? // TODO:
+            public var colorFrom: Mnemonic?
 
             // public var priority-from? // TODO:
 
@@ -964,9 +964,21 @@ extension PackageDefinition.Instrument {
 
             public init(
                 valueFrom: MnemonicConvertible,
+                colorFrom: MnemonicConvertible? = nil,
                 labelFrom: MnemonicConvertible? = nil
             ) {
                 self.valueFrom = valueFrom.asMnemonic()
+                self.colorFrom = colorFrom?.asMnemonic()
+                self.labelFrom = labelFrom?.asMnemonic()
+            }
+
+            public init(
+                valueFrom: Column,
+                colorFrom: Column? = nil,
+                labelFrom: Column? = nil
+            ) {
+                self.valueFrom = valueFrom.asMnemonic()
+                self.colorFrom = colorFrom?.asMnemonic()
                 self.labelFrom = labelFrom?.asMnemonic()
             }
 
@@ -1119,7 +1131,7 @@ extension PackageDefinition.Instrument {
         public var emptyContentSuggestion: String?
 //        public var guide?
         public var hierarchy: AggregationHierarchy?
-        public var visitOnFocus: VisitOnFocus
+        public var visitOnFocus: VisitOnFocus?
 //        public var graph-on-lane*
         public var columns: [AggregationColumn]
         public var columnsHidden: [Column]
@@ -1133,7 +1145,7 @@ extension PackageDefinition.Instrument {
             table: PackageDefinition.Instrument.CreateTable,
             emptyContentSuggestion: String? = nil,
             hierarchy: AggregationHierarchy? = nil,
-            visitOnFocus viewOnFocusTarget: VisitOnFocusTarget,
+            visitOnFocus viewOnFocusTarget: VisitOnFocusTarget? = nil,
             columns: [AggregationColumn],
             columnsHidden: [Column] = []
         ) {
@@ -1141,7 +1153,7 @@ extension PackageDefinition.Instrument {
             self.tableRef = TableRef(table)
             self.emptyContentSuggestion = emptyContentSuggestion
             self.hierarchy = hierarchy
-            self.visitOnFocus = VisitOnFocus(viewOnFocusTarget)
+            self.visitOnFocus = viewOnFocusTarget.map { VisitOnFocus($0) }
             self.columns = columns
             self.columnsHidden = columnsHidden
         }
@@ -1149,6 +1161,7 @@ extension PackageDefinition.Instrument {
         public enum AggregationColumn: Encodable {
             case chooseAny(title: String?, Column)
             case chooseUnique(title: String?, Column)
+            case count0(title: String?)
             case count(title: String?, Column)
             case sum(title: String?, Column)
             case min(title: String?, Column)
@@ -1171,6 +1184,11 @@ extension PackageDefinition.Instrument {
             /// The number of data points in the aggregation.
             public static func count(_ column: Column) -> AggregationColumn {
                 .count(title: nil, column)
+            }
+
+            /// Renders a `<count/>` node
+            public static func count(title: String?) -> AggregationColumn {
+                .count0(title: title)
             }
 
             /// Total the value in the column mnemonic supplied.

@@ -22,8 +22,13 @@ import os.signpost
 @available(tvOS 10.0, *)
 @available(watchOS 3.0, *)
 public struct OSSignpostActorInstrumentation: ActorInstrumentation {
-    static let logLifecycle = OSLog(subsystem: "com.apple.actors", category: "Lifecycle")
-    static let logMessages = OSLog(subsystem: "com.apple.actors", category: "Messages")
+    static let subsystem: StaticString = "com.apple.actors"
+
+    static let categoryLifecycle: StaticString = "Lifecycle"
+    static let categoryMessages: StaticString = "Messages"
+
+    static let logLifecycle = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.categoryLifecycle)")
+    static let logMessages = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.categoryMessages)")
 
     let address: ActorAddress
     let signpostID: OSSignpostID

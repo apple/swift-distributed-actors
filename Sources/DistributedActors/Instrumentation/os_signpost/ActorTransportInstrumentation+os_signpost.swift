@@ -27,9 +27,12 @@ import os.signpost
 public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumentation {
     static let subsystem: StaticString = "com.apple.actors"
     static let category: StaticString = "Transport Serialization"
-    static let name: StaticString = "Actor Transport (Serialization)"
 
-    static let logTransportSerialization = OSLog(subsystem: Self.subsystem, category: Self.category)
+    static let logTransportSerialization = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.category)")
+
+    static let nameSerialization: StaticString = "Actor Transport (Serialization)"
+    static let nameDeserialization: StaticString = "Actor Transport (Deserialization)"
+
 
     let signpostID: OSSignpostID
 
@@ -48,7 +51,6 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
 @available(tvOS 10.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorTransportInstrumentation {
-
 
     static let actorMessageSerializeStartPattern: StaticString =
         """
@@ -87,7 +89,7 @@ extension OSSignpostActorTransportInstrumentation {
         os_signpost(
             .begin,
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
-            name: Self.name,
+            name: Self.nameSerialization,
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageSerializeStartPattern,
             "<node: todo>", "\(recipient)", String(reflecting: type(of: message)), "\(message)"
@@ -102,7 +104,7 @@ extension OSSignpostActorTransportInstrumentation {
         os_signpost(
             .end,
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
-            name: "Actor Transport (Serialization)",
+            name: Self.nameSerialization,
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageSerializeEndPattern,
             bytes
@@ -117,7 +119,7 @@ extension OSSignpostActorTransportInstrumentation {
         os_signpost(
             .begin,
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
-            name: "Actor Transport (Serialization)",
+            name: Self.nameDeserialization,
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageDeserializeStartPattern,
             "<node: todo>", "\(recipient)", bytes
@@ -132,7 +134,7 @@ extension OSSignpostActorTransportInstrumentation {
         os_signpost(
             .end,
             log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
-            name: "Actor Transport (Serialization)",
+            name: Self.nameDeserialization,
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageDeserializeEndPattern,
             "\(message.map { "\($0)" } ?? "<nil>")", "\(message.map { String(reflecting: type(of: $0)) } ?? "<unknown-type>")"

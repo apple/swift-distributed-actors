@@ -437,11 +437,6 @@
         <count>actor-sender-node</count>
       </column>
     </aggregation>
-    <narrative>
-      <title>title</title>
-      <table-ref>actor-asked-interval</table-ref>
-      <narrative-column>actor-ask-question</narrative-column>
-    </narrative>
     <engineering-type-track>
       <table-ref>actor-asked-interval</table-ref>
       <hierarchy>
@@ -453,5 +448,51 @@
         </level>
       </hierarchy>
     </engineering-type-track>
+  </instrument>
+  <instrument>
+    <id>com.apple.actors.instrument.transport.serialization</id>
+    <category>Actors Transport Serialization</category>
+    <category>Behavior</category>
+    <purpose>Observe sizes and time spent in serialization of remote messages</purpose>
+    <icon>Virtual Memory</icon>
+    <create-table>
+      <id>actor-transport-serialization-interval-table</id>
+      <schema-ref>actor-transport-serialization-interval</schema-ref>
+    </create-table>
+    <create-table>
+      <id>actor-transport-deserialization-interval-table</id>
+      <schema-ref>actor-transport-deserialization-interval</schema-ref>
+    </create-table>
+    <list>
+      <title>Remote Message Serialization (size)</title>
+      <table-ref>actor-transport-serialization-interval</table-ref>
+      <column>start</column>
+      <column>duration</column>
+      <column>actor-sender-node</column>
+      <column>actor-sender-path</column>
+      <column>actor-message-type</column>
+      <column>transport-message-serialized-bytes</column>
+    </list>
+    <aggregation>
+      <title>Total messages per Actor (by Recipient)</title>
+      <table-ref>actor-transport-serialization-interval</table-ref>
+      <hierarchy>
+        <level>
+          <column>actor-recipient-node</column>
+        </level>
+        <level>
+          <column>actor-recipient-path</column>
+        </level>
+      </hierarchy>
+      <visit-on-focus/>
+      <column>
+        <title>Messages received (total)</title>
+        <count/>
+      </column>
+      <column>
+        <title>Serialized Messages Total (bytes)</title>
+        <sum>transport-message-serialized-bytes</sum>
+      </column>
+    </aggregation>
   </instrument>
 </package>
