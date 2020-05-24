@@ -914,9 +914,6 @@
 
     <!--=============================================================================================================-->
     <!-- MARK: Embed Templates -->
-    <!-- Templates may be included and represent a collection of tools configured for a specific tracing workflow -->
-    <!-- Each 'template' element specifies the relative path to a .tracetemplate file in the project -->
-    <!-- To create a template: start with a com.apple.actors.augmentation.slice-lifecyclenk document, configure with instruments desired, and choose "File -> Save as Template" -->
     <template>
         <import-from-file>ActorInstruments.tracetemplate</import-from-file>
     </template>

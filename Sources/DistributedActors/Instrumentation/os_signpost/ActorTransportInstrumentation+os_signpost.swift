@@ -33,7 +33,6 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
     static let nameSerialization: StaticString = "Actor Transport (Serialization)"
     static let nameDeserialization: StaticString = "Actor Transport (Deserialization)"
 
-
     let signpostID: OSSignpostID
 
     public init() {
@@ -51,7 +50,6 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
 @available(tvOS 10.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorTransportInstrumentation {
-
     static let actorMessageSerializeStartPattern: StaticString =
         """
         serialize,\
@@ -79,7 +77,6 @@ extension OSSignpostActorTransportInstrumentation {
         message:%{public}s,\
         type:%{public}s"
         """
-
 
     public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {
         guard OSSignpostActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {

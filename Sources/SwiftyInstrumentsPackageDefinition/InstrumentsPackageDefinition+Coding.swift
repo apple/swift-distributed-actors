@@ -38,6 +38,7 @@ extension PackageDefinition {
         case schema_OSSignpostPointSchema = "os-signpost-point-schema"
 
         case instrument
+        case template
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -60,6 +61,8 @@ extension PackageDefinition {
         try self.instruments.forEach { instrument in
             try container.encode(instrument, forKey: .instrument)
         }
+
+        try container.encodeIfPresent(self.template, forKey: .template)
     }
 }
 
@@ -99,7 +102,6 @@ extension Instrument {
         case lists = "list"
         case aggregations = "aggregation"
         case narratives = "narrative"
-
         case engineeringTypeTrack = "engineering-type-track"
     }
 
@@ -121,7 +123,6 @@ extension Instrument {
         try container.encode(self.lists, forKey: .lists)
         try container.encode(self.aggregations, forKey: .aggregations)
         try container.encode(self.narratives, forKey: .narratives)
-
         try container.encode(self.engineeringTypeTracks, forKey: .engineeringTypeTrack)
     }
 }
@@ -170,7 +171,7 @@ extension InstrumentElement {
 extension PackageDefinition.Instrument.TableRef {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(self.schemaRef.schemaRefString)
+        try container.encode(self.id)
     }
 }
 
@@ -398,7 +399,6 @@ extension PackageDefinition.Instrument.Narrative {
         // try container.encodeIfPresent(self.emptyContentSuggestion, forKey: .emptyContentSuggestion)
         try container.encode(self.narrativeColumn, forKey: .narrativeColumn)
         try container.encode(self.annotationColumns, forKey: .annotationColumns)
-
     }
 }
 
@@ -507,7 +507,7 @@ extension PackageDefinition.Instrument.Aggregation.AggregationHierarchy.Level {
         case .column(let column):
             try container.encode(column.mnemonic.name, forKey: .column)
         case .processOfThread(let string):
-             try container.encode(string, forKey: .processOfThread)
+            try container.encode(string, forKey: .processOfThread)
         }
     }
 }
@@ -524,6 +524,7 @@ extension PackageDefinition.Instrument.EngineeringTypeTrack {
         case tableRef = "table-ref"
         case hierarchy
     }
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.tableRef, forKey: .tableRef)
@@ -535,6 +536,7 @@ extension PackageDefinition.Instrument.EngineeringTypeTrack.Hierarchy {
     public enum CodingKeys: String, CodingKey {
         case levels = "level"
     }
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.levels, forKey: .levels)
@@ -547,6 +549,7 @@ extension PackageDefinition.Instrument.EngineeringTypeTrack.Hierarchy.Level {
         case column
         case typePriority = "type-priority"
     }
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self.type {

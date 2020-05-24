@@ -27,9 +27,6 @@ fileprivate let subsystem = "com.apple.actors"
 fileprivate let categoryLifecycle = "Lifecycle"
 fileprivate let categoryMessages = "Messages"
 
-// instrument
-fileprivate let lifecycleInstrumentID = "com.apple.actors.instrument.lifecycles"
-
 extension Column {
     static let actorNode = Column(
         mnemonic: "actor-node",
@@ -186,7 +183,6 @@ extension Column {
         (if (&gt; ?bytes 100000) then "High" else "Low")
         """
     )
-
 }
 
 @available(OSX 10.14, *)
@@ -228,6 +224,9 @@ public struct ActorInstrumentsPackageDefinition {
             Column.actorNode
             Column.actorPath
             Column.actorAddress
+
+            Column.actorStopReason
+            Column.actorStopReasonImpact
         }
 
         static let actorMessageReceived = PackageDefinition.OSSignpostPointSchema(
@@ -376,10 +375,14 @@ public struct ActorInstrumentsPackageDefinition {
             // messages (ask)
             Schemas.actorAskedInterval
 
+            // serialization
+            Schemas.actorTransportSerializationInterval
+            Schemas.actorTransportDeserializationInterval
+
             // ==== Instruments ----------------------------------------------------------------------------------------
 
             Instrument(
-                id: lifecycleInstrumentID,
+                id: "com.apple.actors.instrument.lifecycles",
                 title: "Actor Lifecycle",
                 category: .behavior,
                 purpose: "Monitor lifecycle of actors (start, stop, fail, restart etc.)",
@@ -398,8 +401,8 @@ public struct ActorInstrumentsPackageDefinition {
                         table: tableActorLifecycleSpawns
                     ) {
                         Graph.PlotTemplate(
-                            instanceBy: "actor-path", // TODO: more well typed
-                            valueFrom: "actor-path"
+                            instanceBy: .actorPath,
+                            valueFrom: .actorPath
                         )
                     }
 
@@ -408,11 +411,11 @@ public struct ActorInstrumentsPackageDefinition {
                         table: tableActorLifecycleSpawns
                     ) {
                         Graph.PlotTemplate(
-                            instanceBy: Column.actorPath, // TODO: more well typed
+                            instanceBy: .actorPath,
                             labelFormat: "%s",
-                            valueFrom: "actor-path",
-                            colorFrom: "actor-stop-reason-impact",
-                            labelFrom: "actor-path"
+                            valueFrom: .actorPath,
+                            colorFrom: .actorStopReasonImpact,
+                            labelFrom: .actorPath
                         )
                     }
                 }
@@ -567,7 +570,7 @@ public struct ActorInstrumentsPackageDefinition {
                     table: tableActorAskedInterval,
                     hierarchy: [
                         .column(.recipientNode),
-                        .column(.recipientPath)
+                        .column(.recipientPath),
                     ]
                 )
             }
@@ -593,35 +596,19 @@ public struct ActorInstrumentsPackageDefinition {
                     Column.messageType
                     Column.serializedBytes
                 }
-                /* <!-- Define graph to draw for your Instrument (optional) -->
-        <graph>
-            <title></title>
-            <lane>
-                <title>Serialization</title>
-                <table-ref>actor-transport-serialization-intervals</table-ref>
 
-                <!-- TODO: plot-template for each of the threads in the serialization pool? -->
-                <plot>
-                    <value-from>transport-message-serialized-bytes</value-from>
-                    <color-from>transport-message-serialized-bytes-impact</color-from>
-
-                    <label-from>transport-message-serialized-bytes</label-from>
-                </plot>
-            </lane>
-        </graph>
-*/
-                Instrument.Graph(title: "Remote Message Serialization") { 
-                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) { 
+                Instrument.Graph(title: "Remote Message Serialization") {
+                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
                         Graph.Plot(
                             valueFrom: .serializedBytes,
-                            colorFrom: serializedBytesImpact,
+                            colorFrom: .serializedBytesImpact,
                             labelFrom: .serializedBytes
                         )
                     }
                 }
 
                 Aggregation(
-                    title: "Total messages per Actor (by Recipient)", 
+                    title: "Total messages per Actor (by Recipient)",
                     table: actorTransportSerializationInterval,
                     hierarchy: [
                         .column(.recipientNode),
@@ -633,6 +620,9 @@ public struct ActorInstrumentsPackageDefinition {
                     ]
                 )
             }
+
+            // ==== Template -------------------------------------------------------------------------------------------
+            Template(importFromFile: "ActorInstruments.tracetemplate")
         }
     }
 }

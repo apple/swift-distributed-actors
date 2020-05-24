@@ -167,7 +167,7 @@ public struct TableAttribute: Encodable, TableAttributeElementConvertible {
 
     public init(name: String, value: Mnemonic) {
         self.name = name
-        self.value = .string(value.render())
+        self.value = .string(value.mnemonicString())
     }
 
     public init(name: String, value: [Int]) {

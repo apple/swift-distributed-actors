@@ -72,6 +72,18 @@
       <type>string</type>
       <expression>(str-cat ?node ?path)</expression>
     </column>
+    <column>
+      <mnemonic>actor-stop-reason</mnemonic>
+      <title>Stop Reason</title>
+      <type>string</type>
+      <expression>?reason</expression>
+    </column>
+    <column>
+      <mnemonic>actor-stop-reason-impact</mnemonic>
+      <title>Stop Reason (Impact)</title>
+      <type>string</type>
+      <expression>(if (eq ?reason "stop") then "Low" else "High")</expression>
+    </column>
   </os-signpost-point-schema>
   <os-signpost-point-schema>
     <id>actor-message-received</id>
@@ -256,6 +268,126 @@
       <expression>?error-type</expression>
     </column>
   </os-signpost-interval-schema>
+  <os-signpost-interval-schema>
+    <id>actor-transport-serialization-interval</id>
+    <title>Serialization</title>
+    <subsystem>com.apple.actors</subsystem>
+    <category>Transport Serialization</category>
+    <name>Actor Transport (Serialization)</name>
+    <startPattern>serialize,recipient-node:%{public}s,recipient-path:%{public}s,type:%{public}s,message:%{public}s</startPattern>
+    <endPattern>"serialized,bytes:%ld"</endPattern>
+    <column>
+      <mnemonic>actor-recipient-node</mnemonic>
+      <title>Recipient Node</title>
+      <type>string</type>
+      <expression>?recipient-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-path</mnemonic>
+      <title>Recipient Path</title>
+      <type>string</type>
+      <expression>?recipient-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-address</mnemonic>
+      <title>Recipient Address</title>
+      <type>string</type>
+      <expression>(str-cat ?recipient-node ?recipient-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-node</mnemonic>
+      <title>Sender Node</title>
+      <type>string</type>
+      <expression>?sender-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-path</mnemonic>
+      <title>Sender Path</title>
+      <type>string</type>
+      <expression>?sender-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-sender-address</mnemonic>
+      <title>Sender Address</title>
+      <type>string</type>
+      <expression>(str-cat ?sender-node ?sender-path)</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message</mnemonic>
+      <title>Message</title>
+      <type>string</type>
+      <expression>?message</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message-type</mnemonic>
+      <title>Message Type</title>
+      <type>string</type>
+      <expression>?message-type</expression>
+    </column>
+    <column>
+      <mnemonic>transport-message-serialized-bytes</mnemonic>
+      <title>Serialized Size (bytes)</title>
+      <type>size-in-bytes</type>
+      <expression>?bytes</expression>
+    </column>
+    <column>
+      <mnemonic>transport-message-serialized-bytes-impact</mnemonic>
+      <title>Serialized Size (impact)</title>
+      <type>event-concept</type>
+      <expression>(if (&amp;gt; ?bytes 100000) then "High" else "Low")</expression>
+    </column>
+  </os-signpost-interval-schema>
+  <os-signpost-interval-schema>
+    <id>actor-transport-deserialization-interval</id>
+    <title>Deserialization</title>
+    <subsystem>com.apple.actors</subsystem>
+    <category>Transport Serialization</category>
+    <name>Actor Transport (Deserialization)</name>
+    <startPattern>"deserialize,recipient-node:%{public}s,recipient-path:%{public}s,bytes:%ld"</startPattern>
+    <endPattern>"deserialized,message:%{public}s,type:%{public}s"</endPattern>
+    <column>
+      <mnemonic>actor-recipient-node</mnemonic>
+      <title>Recipient Node</title>
+      <type>string</type>
+      <expression>?recipient-node</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-path</mnemonic>
+      <title>Recipient Path</title>
+      <type>string</type>
+      <expression>?recipient-path</expression>
+    </column>
+    <column>
+      <mnemonic>actor-recipient-address</mnemonic>
+      <title>Recipient Address</title>
+      <type>string</type>
+      <expression>(str-cat ?recipient-node ?recipient-path)</expression>
+    </column>
+    <column>
+      <mnemonic>transport-message-serialized-bytes</mnemonic>
+      <title>Serialized Size (bytes)</title>
+      <type>size-in-bytes</type>
+      <expression>?bytes</expression>
+    </column>
+    <column>
+      <mnemonic>transport-message-serialized-bytes-impact</mnemonic>
+      <title>Serialized Size (impact)</title>
+      <type>event-concept</type>
+      <expression>(if (&amp;gt; ?bytes 100000) then "High" else "Low")</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message</mnemonic>
+      <title>Message</title>
+      <type>string</type>
+      <expression>?message</expression>
+    </column>
+    <column>
+      <mnemonic>actor-message-type</mnemonic>
+      <title>Message Type</title>
+      <type>string</type>
+      <expression>?message-type</expression>
+    </column>
+  </os-signpost-interval-schema>
   <instrument>
     <id>com.apple.actors.instrument.lifecycles</id>
     <category>Actor Lifecycle</category>
@@ -274,7 +406,7 @@
       <title>Lifecycles</title>
       <lane>
         <title>Spawns Lane</title>
-        <table-ref>actor-lifecycle-spawn</table-ref>
+        <table-ref>actor-lifecycle-spawn-table</table-ref>
         <plot-templates>
           <instance-by>actor-path</instance-by>
           <value-from>actor-path</value-from>
@@ -282,7 +414,7 @@
       </lane>
       <lane>
         <title>Spawns Lane</title>
-        <table-ref>actor-lifecycle-spawn</table-ref>
+        <table-ref>actor-lifecycle-spawn-table</table-ref>
         <plot-templates>
           <instance-by>actor-path</instance-by>
           <label-format>%s</label-format>
@@ -294,7 +426,7 @@
     </graph>
     <list>
       <title>Spawns</title>
-      <table-ref>actor-lifecycle-spawn</table-ref>
+      <table-ref>actor-lifecycle-spawn-table</table-ref>
       <column>start</column>
       <column>duration</column>
       <column>actor-node</column>
@@ -302,7 +434,7 @@
     </list>
     <list>
       <title>Lifetimes</title>
-      <table-ref>actor-lifecycle-interval</table-ref>
+      <table-ref>actor-lifecycle-interval-table</table-ref>
       <column>start</column>
       <column>duration</column>
       <column>actor-node</column>
@@ -331,7 +463,7 @@
       <title>Received</title>
       <lane>
         <title>Received</title>
-        <table-ref>actor-message-received</table-ref>
+        <table-ref>actor-message-received-table</table-ref>
         <plot-templates>
           <instance-by>actor-recipient-path</instance-by>
           <label-format>%s</label-format>
@@ -342,7 +474,7 @@
     </graph>
     <list>
       <title>List: Messages (Received)</title>
-      <table-ref>actor-message-received</table-ref>
+      <table-ref>actor-message-received-table</table-ref>
       <column>timestamp</column>
       <column>actor-sender-node</column>
       <column>actor-sender-path</column>
@@ -366,7 +498,7 @@
       <title>Messages: Told</title>
       <lane>
         <title>Told</title>
-        <table-ref>actor-message-told</table-ref>
+        <table-ref>actor-message-told-table</table-ref>
         <plot-templates>
           <instance-by>actor-recipient-path</instance-by>
           <label-format>%s</label-format>
@@ -377,7 +509,7 @@
     </graph>
     <list>
       <title>List: Messages (Told)</title>
-      <table-ref>actor-message-told</table-ref>
+      <table-ref>actor-message-told-table</table-ref>
       <column>timestamp</column>
       <column>actor-sender-node</column>
       <column>actor-sender-path</column>
@@ -401,7 +533,7 @@
       <title>Messages Asked</title>
       <lane>
         <title>Asked</title>
-        <table-ref>actor-asked-interval</table-ref>
+        <table-ref>actor-asked-interval-table</table-ref>
         <plot>
           <value-from>duration</value-from>
           <label-from>actor-ask-question</label-from>
@@ -410,7 +542,7 @@
     </graph>
     <list>
       <title>List: Messages (Asked)</title>
-      <table-ref>actor-asked-interval</table-ref>
+      <table-ref>actor-asked-interval-table</table-ref>
       <column>start</column>
       <column>duration</column>
       <column>actor-sender-node</column>
@@ -426,7 +558,7 @@
     </list>
     <aggregation>
       <title>Summary: By Message Type</title>
-      <table-ref>actor-asked-interval</table-ref>
+      <table-ref>actor-asked-interval-table</table-ref>
       <hierarchy>
         <level>
           <column>actor-ask-question-type</column>
@@ -438,7 +570,7 @@
       </column>
     </aggregation>
     <engineering-type-track>
-      <table-ref>actor-asked-interval</table-ref>
+      <table-ref>actor-asked-interval-table</table-ref>
       <hierarchy>
         <level>
           <column>actor-recipient-node</column>
@@ -463,9 +595,21 @@
       <id>actor-transport-deserialization-interval-table</id>
       <schema-ref>actor-transport-deserialization-interval</schema-ref>
     </create-table>
+    <graph>
+      <title>Remote Message Serialization</title>
+      <lane>
+        <title>Serialization</title>
+        <table-ref>actor-transport-serialization-interval-table</table-ref>
+        <plot>
+          <value-from>transport-message-serialized-bytes</value-from>
+          <color-from>transport-message-serialized-bytes-impact</color-from>
+          <label-from>transport-message-serialized-bytes</label-from>
+        </plot>
+      </lane>
+    </graph>
     <list>
       <title>Remote Message Serialization (size)</title>
-      <table-ref>actor-transport-serialization-interval</table-ref>
+      <table-ref>actor-transport-serialization-interval-table</table-ref>
       <column>start</column>
       <column>duration</column>
       <column>actor-sender-node</column>
@@ -475,7 +619,7 @@
     </list>
     <aggregation>
       <title>Total messages per Actor (by Recipient)</title>
-      <table-ref>actor-transport-serialization-interval</table-ref>
+      <table-ref>actor-transport-serialization-interval-table</table-ref>
       <hierarchy>
         <level>
           <column>actor-recipient-node</column>
@@ -495,4 +639,7 @@
       </column>
     </aggregation>
   </instrument>
+  <template>
+    <importFromFile>ActorInstruments.tracetemplate</importFromFile>
+  </template>
 </package>

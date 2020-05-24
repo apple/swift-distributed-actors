@@ -37,18 +37,20 @@ public typealias Modeler = PackageDefinition.Modeler
 ///
 // TODO: This is work in progress and may be missing elements still
 public struct PackageDefinition: Encodable {
-    var id: String
-    var version: String
+    public var id: String
+    public var version: String
 
-    var title: String
+    public var title: String
 
-    var owner: Owner?
+    public var owner: Owner?
 
-    var schemas: [Schema]
+    public var schemas: [Schema]
 
-    var augmentations: [Augmentation]
+    public var augmentations: [Augmentation]
 
-    var instruments: [Instrument]
+    public var instruments: [Instrument]
+
+    public var template: Template?
 
     public init(
         id: String,
@@ -66,7 +68,11 @@ public struct PackageDefinition: Encodable {
         self.augmentations = []
         self.instruments = []
 
+        self.template = nil
+
         self.collect(builder())
+
+        self.validate()
     }
 
     mutating func collect(_ element: PackageElementConvertible) {
@@ -75,12 +81,31 @@ public struct PackageDefinition: Encodable {
             self.schemas.append(schema)
         case .instrument(let instrument):
             self.instruments.append(instrument)
-        case .template:
-            fatalError() // FIXME:
+        case .template(let template):
+            self.template = template
 
         case .fragment(let elements):
             elements.forEach { el in
                 self.collect(el)
+            }
+        }
+    }
+
+    public func validate() {
+        func undefinedSchemaMessage(_ schema: String, requiredByType: Any.Type, requiredBy: String) -> String {
+            """
+            Schema [\(schema)] required by [\(requiredBy)] \(requiredByType) is not defined. \
+            Existing schemas: \(self.schemas.map { $0.id }) in package definition [\(self.id)]
+            """
+        }
+
+        // inefficiently checking, but the amount of schemas and tables is usually small so we don't mind too much
+        for i in self.instruments {
+            for s in i.createTables {
+                precondition(
+                    self.schemas.contains { $0.id.name == s.schemaRef.schemaRefString },
+                    undefinedSchemaMessage(s.schemaRef.schemaRefString, requiredByType: type(of: i), requiredBy: i.id)
+                )
             }
         }
     }
@@ -103,6 +128,20 @@ public protocol Schema: Encodable {
     var subsystem: String { get set }
     var category: String { get set }
     var name: String { get set }
+
+    var columns: [Column] { get }
+    func column(_ mnemonic: Mnemonic) -> Column?
+    func hasColumn(_ mnemonic: Mnemonic) -> Bool
+}
+
+extension Schema {
+    public func column(_ mnemonic: Mnemonic) -> Column? {
+        self.columns.first(where: { $0.mnemonic == mnemonic })
+    }
+
+    public func hasColumn(_ mnemonic: Mnemonic) -> Bool {
+        self.column(mnemonic) != nil
+    }
 }
 
 extension Schema {
@@ -207,6 +246,10 @@ extension PackageDefinition {
 //
 //                }
 //            }
+        }
+
+        public func hasColumn(_ mnemonic: Mnemonic) -> Bool {
+            self.columns.contains { $0.mnemonic == mnemonic }
         }
 
         public func asPackageElement() -> PackageElement {
@@ -402,20 +445,25 @@ public struct Owner: Encodable, PackageElementConvertible {
     }
 }
 
-public struct Mnemonic: Encodable, ExpressibleByStringLiteral {
+public struct Mnemonic: Encodable, ExpressibleByStringLiteral, Hashable, CustomStringConvertible {
     public let name: String
+
+    /// The mnemonic was set via an explicit reference to a Column or similar,
+    /// and thus we should assume we can run sanity checks including it (e.g. if a targeted schema
+    /// includes a column identified with this mnemonic etc).
+    public var definedUsingWellTypedReference: Bool
 
     public init(stringLiteral value: StringLiteralType) {
         if value.starts(with: "?") {
             fatalError("Mnemonic values should not start with ?, this is prepended automatically.")
         }
 
-        // FIXME: validate what it can look like
-
         self.name = value
+        self.definedUsingWellTypedReference = false
     }
 
     public init(raw: String) {
+        self.definedUsingWellTypedReference = false
         if raw.starts(with: "?") {
             self.name = "\(raw.dropFirst())"
         } else {
@@ -423,8 +471,23 @@ public struct Mnemonic: Encodable, ExpressibleByStringLiteral {
         }
     }
 
-    func render() -> String {
+    func mnemonicString() -> String {
         "?\(self.name)"
+    }
+
+    public var description: String {
+        "\(self.name)"
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.name)
+    }
+
+    public static func == (lhs: Mnemonic, rhs: Mnemonic) -> Bool {
+        if lhs.definedUsingWellTypedReference != rhs.definedUsingWellTypedReference {
+            return false
+        }
+        return true
     }
 }
 
@@ -447,7 +510,7 @@ public struct ClipsExpression: Encodable, ExpressibleByStringLiteral {
     }
 
     public static func mnemonic(_ mnemonic: MnemonicConvertible) -> ClipsExpression {
-        .init(expression: mnemonic.asMnemonic().render())
+        .init(expression: mnemonic.asMnemonic().mnemonicString())
     }
 
     public var referencedMnemonics: [Mnemonic] {
@@ -472,15 +535,15 @@ public struct SchemaAttribute: Encodable {
 }
 
 public struct Column: Encodable, SchemaElementConvertible, MnemonicConvertible {
-    public let mnemonic: Mnemonic
-    public let title: String
+    public var mnemonic: Mnemonic
+    public var title: String
     /// The type of data this column will hold.
-    public let type: EngineeringType
-    public let guide: String? = nil
+    public var type: EngineeringType
+    public var guide: String?
     /// Defines how to map an integer expression to a string value.
     // public let `enum`: ColumnEnum
     /// An expression in the CLIPS language that will become the value of this column.
-    public let expression: ClipsExpression
+    public var expression: ClipsExpression
 
     public init(
         mnemonic: Mnemonic,
@@ -489,10 +552,11 @@ public struct Column: Encodable, SchemaElementConvertible, MnemonicConvertible {
         guide: String? = nil,
         expression: ClipsExpression
     ) {
-        self.mnemonic = mnemonic
         self.title = title
         self.type = type
         self.expression = expression
+        self.mnemonic = mnemonic
+        self.mnemonic.definedUsingWellTypedReference = true
     }
 
     public func asSchemaElement() -> SchemaElement {
@@ -520,10 +584,18 @@ extension PackageDefinition {
 
 extension PackageDefinition {
     public struct Template: Encodable, PackageElementConvertible {
-        var importFromFile: String
+        public var importFromFile: String
+
+        public init(importFromFile: String) {
+            precondition(
+                importFromFile.hasSuffix(".tracetemplate"),
+                "importFromFile value MUST end with .tracetemplate, was: \(importFromFile)"
+            )
+            self.importFromFile = importFromFile
+        }
 
         public func asPackageElement() -> PackageElement {
-            fatalError() // FIXME:
+            .template(self)
         }
     }
 }
@@ -556,7 +628,7 @@ extension PackageDefinition {
 
         /// Tells the instrument, when it's added to a trace document, to create a named data table.
         public var createTables: [Instrument.CreateTable]
-        
+
         /// Defines the graph, or track, that the instrument will present.
         ///
         /// There can be several.
@@ -677,11 +749,11 @@ extension PackageDefinition {
             case diskUsage = "Disk Usage"
             case diskIOLatency = "Disk IO Latency"
             case filesystemActivity = "Filesystem Activity"
-            case filesystemSuggestions =  "Filesystem Suggestions"
+            case filesystemSuggestions = "Filesystem Suggestions"
             case metalGPUAllocations = "Metal GPU Allocations"
             case metalGPUCounters = "Metal GPU Counters"
             case thermalState = "Thermal State"
-            case aRKit = "ARKit" 
+            case aRKit = "ARKit"
             case coreML = "CoreML"
         }
 
@@ -856,6 +928,7 @@ extension PackageDefinition.Instrument {
                 table: PackageDefinition.Instrument.CreateTable,
                 guide: String? = nil,
                 baseColor: String? = nil,
+                file: String = #file, line: UInt = #line,
                 @GraphLaneBuilder _ builder: () -> GraphLaneElementConvertible = { GraphLaneElement.fragment([]) }
             ) {
                 self.title = title
@@ -864,6 +937,8 @@ extension PackageDefinition.Instrument {
                 self.guide = guide
                 self.baseColor = baseColor
                 self.collect(builder())
+
+                self.validate(file: file, line: line)
             }
 
             private mutating func collect(_ element: GraphLaneElementConvertible) {
@@ -875,6 +950,48 @@ extension PackageDefinition.Instrument {
                 case .fragment(let fragments):
                     for f in fragments {
                         self.collect(f)
+                    }
+                }
+            }
+
+            public func validate(file: String, line: UInt) {
+                let schema: Schema
+                switch self.tableRef.schemaRef {
+                case .schema(let s):
+                    schema = s
+                default:
+                    return // stringly typed reference, cannot cross check mnemonics
+                }
+
+                func failureMessage(_ schema: Schema, _ type: Any.Type, missing: Mnemonic) -> String {
+                    """
+                    Error in Lane defined at [\(file):\(line)] \
+                    Schema [\(schema.id.name)] referred to by [\(type)], \
+                    does not define the required column [\(missing.name)]! \
+                    Available columns: \(schema.columns.map(\.mnemonic.name))
+                    """
+                }
+
+                for p in self.plots {
+                    if p.valueFrom.definedUsingWellTypedReference {
+                        precondition(schema.hasColumn(p.valueFrom), failureMessage(schema, type(of: p), missing: p.valueFrom))
+                    }
+                    if let m = p.colorFrom, m.definedUsingWellTypedReference {
+                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
+                    }
+                    if let m = p.labelFrom, m.definedUsingWellTypedReference {
+                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
+                    }
+                }
+                for p in self.plotTemplates {
+                    if p.valueFrom.definedUsingWellTypedReference {
+                        precondition(schema.hasColumn(p.valueFrom), failureMessage(schema, type(of: p), missing: p.valueFrom))
+                    }
+                    if let m = p.colorFrom, m.definedUsingWellTypedReference {
+                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
+                    }
+                    if let m = p.labelFrom, m.definedUsingWellTypedReference {
+                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
                     }
                 }
             }
@@ -1032,7 +1149,7 @@ extension PackageDefinition.Instrument {
                 self.labelFrom = labelFrom?.asMnemonic()
             }
 
-            // TODO need a lot of overloads here since any of the mnemonic convertibles may be a Column for the nice .syntax
+            // TODO: need a lot of overloads here since any of the mnemonic convertibles may be a Column for the nice .syntax
             public init(
                 instanceBy: Column,
                 labelFormat: String? = nil,
@@ -1084,7 +1201,7 @@ extension PackageDefinition.Instrument {
 
         // /// A note that documentation tools may extract when creating a user's guide.
         // public var guide: String?
-        
+
         /// The title of a detail view to visit when the user attempts to focus on a specific row.
         public var visitOnFocus: VisitOnFocus?
 
@@ -1098,7 +1215,7 @@ extension PackageDefinition.Instrument {
         public var narrativeColumn: Mnemonic
 
         /// Extra columns that should be displayed as longer-form annotations of the narrative, like a backtrace or long file path.
-        public var annotationColumns: [Mnemonic] //{0, 20}
+        public var annotationColumns: [Mnemonic] // {0, 20}
 
         public init(
             title: String?,
@@ -1226,7 +1343,7 @@ extension PackageDefinition.Instrument {
                 .percentOfCapacity(title: nil, column)
             }
         }
-        
+
         /// Defines an outline-style aggregation where each level can be a different column or mapping.
         public struct AggregationHierarchy: Encodable, ExpressibleByArrayLiteral {
             public typealias ArrayLiteralElement = Level
@@ -1236,7 +1353,6 @@ extension PackageDefinition.Instrument {
             public init(arrayLiteral elements: Self.ArrayLiteralElement...) {
                 self.levels = elements
             }
-
 
             public enum Level: Encodable {
                 /// Specifies that the value of the level should just be the value at this column.
@@ -1270,7 +1386,7 @@ extension PackageDefinition.Instrument {
             let levels: [Level]
 
             public init(arrayLiteral elements: Self.ArrayLiteralElement...) {
-                precondition(0 < elements.count, "engineeringTypeTrack.hierarchy.count MUST be > 0, was \(elements.count)")
+                precondition(elements.count > 0, "engineeringTypeTrack.hierarchy.count MUST be > 0, was \(elements.count)")
                 precondition(elements.count <= 4, "engineeringTypeTrack.hierarchy.count MUST be <= 4, was \(elements.count)")
                 self.levels = elements
             }
@@ -1299,21 +1415,18 @@ extension PackageDefinition.Instrument {
                     /// A reference to the name of a column that will be queried for the engineering type track identity.
                     case column(Column)
                 }
-
-
             }
         }
     }
 
+    /// A reference to a `Table` a given `Instrument` reads from.
     public struct TableRef: Encodable {
-        var schemaRef: SchemaRef
+        public var id: String
+        public var schemaRef: SchemaRef
 
         public init(_ table: PackageDefinition.Instrument.CreateTable) {
+            self.id = table.id
             self.schemaRef = table.schemaRef
-        }
-
-        public init(schema schemaRef: SchemaRef) {
-            self.schemaRef = schemaRef
         }
     }
 }
