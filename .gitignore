@@ -26,3 +26,5 @@ IntegrationTests/tests_04_cluster/.build
 /api/
 .swiftpm/
 Package.resolved
+
+.GenActorInstruments-sanity.instrpkg 
