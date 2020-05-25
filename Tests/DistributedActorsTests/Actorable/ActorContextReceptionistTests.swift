@@ -22,7 +22,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
             OwnerOfThings(context: $0, probe: self.system.deadLetters.adapted())
         }
 
-        let listing: Reception.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(1)) {
+        let listing: Reception.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(3)) {
             let readReply = owner.readLastObservedValue()
             guard let listing = try readReply.wait() else {
                 throw self.testKit.error()
