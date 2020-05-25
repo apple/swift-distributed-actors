@@ -14,6 +14,7 @@
 
 #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
 
+@testable import DistributedActors
 import SwiftyInstrumentsPackageDefinition
 
 // package

@@ -44,7 +44,7 @@ struct GenerateActorInstrumentsPackageDefinition {
 
             self.log.info("""
                           To generate package using Xcode: 
-                              ./Instruments/ActorInstruments/ActorInstruments.xcodeproj
+                              open ./Instruments/ActorInstruments/ActorInstruments.xcodeproj
                           """)
 
 
