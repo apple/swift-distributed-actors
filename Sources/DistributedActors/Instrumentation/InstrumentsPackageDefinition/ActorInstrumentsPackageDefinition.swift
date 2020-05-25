@@ -17,8 +17,8 @@
 import SwiftyInstrumentsPackageDefinition
 
 // package
-fileprivate let packageID = "com.apple.dt.actors.ActorInstrumentsPackageDefinition"
-fileprivate let packageVersion = "0.4.1"
+fileprivate let packageID = "com.apple.actors.ActorInstruments"
+fileprivate let packageVersion: DistributedActors.Version = DistributedActorsProtocolVersion
 fileprivate let packageTitle = "Actors"
 
 // schema
@@ -180,7 +180,7 @@ extension Column {
         type: .eventConcept,
         expression:
         """
-        (if (&gt; ?bytes 100000) then "High" else "Low")
+        (if (> ?bytes 100000) then "High" else "Low")
         """
     )
 }
@@ -202,9 +202,9 @@ public struct ActorInstrumentsPackageDefinition {
             startPattern: OSSignpostActorInstrumentation.actorSpawnedStartFormat,
             endPattern: OSSignpostActorInstrumentation.actorSpawnedEndFormat
         ) {
-            Column.actorAddress
             Column.actorNode
             Column.actorPath
+            Column.actorAddress
             // is system
             // is user
             Column.actorStopReason
@@ -224,9 +224,6 @@ public struct ActorInstrumentsPackageDefinition {
             Column.actorNode
             Column.actorPath
             Column.actorAddress
-
-            Column.actorStopReason
-            Column.actorStopReasonImpact
         }
 
         static let actorMessageReceived = PackageDefinition.OSSignpostPointSchema(
@@ -243,9 +240,9 @@ public struct ActorInstrumentsPackageDefinition {
             Column.recipientPath
             Column.recipientAddress
 
-            Column.senderNode
-            Column.senderPath
-            Column.senderAddress
+//            Column.senderNode
+//            Column.senderPath
+//            Column.senderAddress
 
             Column.message
             Column.messageType
@@ -265,9 +262,9 @@ public struct ActorInstrumentsPackageDefinition {
             Column.recipientPath
             Column.recipientAddress
 
-            Column.senderNode
-            Column.senderPath
-            Column.senderAddress
+//            Column.senderNode
+//            Column.senderPath
+//            Column.senderAddress
 
             Column.message
             Column.messageType
@@ -288,12 +285,15 @@ public struct ActorInstrumentsPackageDefinition {
             Column.recipientPath
             Column.recipientAddress
 
-            Column.senderNode
-            Column.senderPath
-            Column.senderAddress
+//            Column.senderNode
+//            Column.senderPath
+//            Column.senderAddress
 
-            Column.message
-            Column.messageType
+            Column.askQuestion
+            Column.askQuestionType
+
+            Column.askAnswer
+            Column.askAnswerType
 
             Column.error
             Column.errorType
@@ -314,9 +314,9 @@ public struct ActorInstrumentsPackageDefinition {
             Column.recipientPath
             Column.recipientAddress
 
-            Column.senderNode
-            Column.senderPath
-            Column.senderAddress
+//            Column.senderNode
+//            Column.senderPath
+//            Column.senderAddress
 
             Column.message
             Column.messageType
@@ -340,9 +340,9 @@ public struct ActorInstrumentsPackageDefinition {
             Column.recipientPath
             Column.recipientAddress
 
-            // Column.senderNode
-            // Column.senderPath
-            // Column.senderAddress
+//             Column.senderNode
+//             Column.senderPath
+//             Column.senderAddress
 
             // (incoming bytes)
             Column.serializedBytes
@@ -358,7 +358,7 @@ public struct ActorInstrumentsPackageDefinition {
     public var packageDefinition: PackageDefinition {
         PackageDefinition(
             id: packageID,
-            version: packageVersion,
+            version: packageVersion.versionString,
             title: packageTitle,
             owner: Owner(name: "Konrad 'ktoso' Malawski", email: "ktoso@apple.com")
         ) {
@@ -408,7 +408,7 @@ public struct ActorInstrumentsPackageDefinition {
 
                     Graph.Lane(
                         title: "Spawns Lane",
-                        table: tableActorLifecycleSpawns
+                        table: tableActorLifecycleIntervals
                     ) {
                         Graph.PlotTemplate(
                             instanceBy: .actorPath,
@@ -424,8 +424,6 @@ public struct ActorInstrumentsPackageDefinition {
                     title: "Spawns",
                     table: tableActorLifecycleSpawns
                 ) {
-                    "start"
-                    "duration"
                     Column.actorNode
                     Column.actorPath
                 }
@@ -448,11 +446,7 @@ public struct ActorInstrumentsPackageDefinition {
                 purpose: "Marks points in time where messages are received",
                 icon: .network
             ) {
-                Instrument.ImportParameter(fromScope: "trace", name: "target-pid")
-
-                let tableActorMessageReceived = Instrument.CreateTable(Schemas.actorMessageReceived) {
-                    TableAttribute(name: "target-recipient", value: Mnemonic("target-pid"))
-                }
+                let tableActorMessageReceived = Instrument.CreateTable(Schemas.actorMessageReceived)
                 tableActorMessageReceived
 
                 Graph(title: "Received") {
@@ -471,8 +465,8 @@ public struct ActorInstrumentsPackageDefinition {
                     table: tableActorMessageReceived
                 ) {
                     "timestamp"
-                    Column.senderNode
-                    Column.senderPath
+//                    Column.senderNode
+//                    Column.senderPath
                     Column.recipientNode
                     Column.recipientPath
                     Column.message
@@ -512,8 +506,8 @@ public struct ActorInstrumentsPackageDefinition {
 
                 Instrument.List(title: "List: Messages (Told)", table: tableActorMessageTold) {
                     "timestamp"
-                    Column.senderNode
-                    Column.senderPath
+//                    Column.senderNode
+//                    Column.senderPath
                     Column.recipientNode
                     Column.recipientPath
                     Column.message
@@ -541,16 +535,17 @@ public struct ActorInstrumentsPackageDefinition {
                 let askedList = List(title: "List: Messages (Asked)", table: tableActorAskedInterval) {
                     "start"
                     "duration"
-                    Column.senderNode
-                    Column.senderPath
+//                    Column.senderNode
+//                    Column.senderPath
                     Column.recipientNode
                     Column.recipientPath
                     Column.askQuestionType
                     Column.askQuestion
-                    Column.askAnswer
+
                     Column.askAnswerType
-                    Column.error
+                    Column.askAnswer
                     Column.errorType
+                    Column.error
                 }
                 askedList
 
@@ -562,7 +557,7 @@ public struct ActorInstrumentsPackageDefinition {
                     ],
                     visitOnFocus: askedList,
                     columns: [
-                        .count(.senderNode),
+                        .count(.recipientNode),
                     ]
                 )
 
@@ -591,8 +586,8 @@ public struct ActorInstrumentsPackageDefinition {
                 List(title: "Remote Message Serialization (size)", table: actorTransportSerializationInterval) {
                     "start"
                     "duration"
-                    Column.senderNode
-                    Column.senderPath
+//                    Column.senderNode
+//                    Column.senderPath
                     Column.messageType
                     Column.serializedBytes
                 }

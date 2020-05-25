@@ -16,8 +16,10 @@ import ArgumentParser
 import DistributedActors
 import Foundation
 import XMLCoder
+import Logging
 
 struct GenerateActorInstrumentsPackageDefinition {
+    let log: Logger = Logger(label: "gen-package-def")
     let settings: Command
 
     init(command settings: Self.Command) {
@@ -36,7 +38,19 @@ struct GenerateActorInstrumentsPackageDefinition {
 
             try renderedXML.write(toFile: self.settings.output, atomically: true, encoding: .utf8)
 
-            print(renderedXML)
+            self.log.info("Rendered: \(self.settings.output)")
+            self.log.info("To format the generates XML you may want to pipe through: xmllint --output Instruments/ActorInstruments/ActorInstruments/ActorInstruments.instrpkg --format -")
+
+
+            self.log.info("""
+                          To generate package using Xcode: 
+                              ./Instruments/ActorInstruments/ActorInstruments.xcodeproj
+                          """)
+
+
+            if self.settings.stdout {
+                print(renderedXML)
+            }
         }
     }
 
@@ -52,7 +66,16 @@ struct GenerateActorInstrumentsPackageDefinition {
 
 extension GenerateActorInstrumentsPackageDefinition {
     struct Command: ParsableCommand {
-        @Flag(name: .shortAndLong, help: "Print verbose information")
+        @Flag(
+            name: .shortAndLong,
+            help: "If true, the entire PackageDefinition XML is also printed to stdout"
+        )
+        var stdout: Bool
+
+        @Flag(
+            name: .shortAndLong,
+            help: "Print verbose information"
+        )
         var verbose: Bool
 
         @Option(

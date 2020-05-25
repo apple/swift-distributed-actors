@@ -224,8 +224,25 @@ extension PackageDefinition {
             self.name = name
             self.startPattern = startPattern
             self.endPattern = endPattern
-            self.columns = []
+            self.columns = [
+                Column(
+                    mnemonic: "start",
+                    title: "Start",
+                    type: .startTime,
+                    expression: "?start",
+                    hidden: true
+                ),
+                Column(
+                    mnemonic: "duration",
+                    title: "Duration",
+                    type: .duration, // TODO: is this right?
+                    expression: "?duration",
+                    hidden: true
+                )
+            ]
             self.collect(builder())
+
+            self.validate()
         }
 
         private mutating func collect(_ element: SchemaElementConvertible) {
@@ -239,13 +256,23 @@ extension PackageDefinition {
             }
         }
 
-        public func validate() throws {
-            // TODO: implement validation
-//            for col in self.columns {
-//                for mnemonic in col.expression.referencedMnemonics {
-//
-//                }
-//            }
+        public func validate() {
+            for col in self.columns where col.notHidden {
+                let variables = col.expression.referencedMnemonics
+
+                for v in variables {
+                    precondition(
+                        "\(self.startPattern)".contains("\(v)") ||
+                        "\(self.endPattern)".contains("\(v)"),
+                        """
+                        Variable '?\(v)' must appear in pattern to be used in a later expression.
+                        Start Pattern: \(self.startPattern)
+                        End Pattern: \(self.endPattern)
+                        Schema: \(self.id)
+                        """
+                    )
+                }
+            }
         }
 
         public func hasColumn(_ mnemonic: Mnemonic) -> Bool {
@@ -321,8 +348,18 @@ extension PackageDefinition {
             self.name = name
             precondition(!"\(pattern)".contains("\n"), "Pattern [\(pattern)] in schema [\(id)] contained illegal newlines!")
             self.pattern = pattern
-            self.columns = []
+            self.columns = [
+                Column(
+                    mnemonic: "timestamp",
+                    title: "Timestamp",
+                    type: .uint64,
+                    expression: "timestamp",
+                    hidden: true
+                ),
+            ]
+            
             self.collect(builder())
+            self.validate()
         }
 
         private mutating func collect(_ element: SchemaElementConvertible) {
@@ -336,97 +373,25 @@ extension PackageDefinition {
             }
         }
 
-        public func validate() throws {
-            // TODO: implement validation
-//            for col in self.columns {
-//                col.expression.referencedMnemonics
-//            }
+        public func validate() {
+            for col in self.columns {
+                let variables = col.expression.referencedMnemonics
+
+                for v in variables {
+                    precondition(
+                        "\(self.pattern)".contains("\(v)"),
+                        """
+                        Variable '?\(v)' must appear in pattern to be used in a later expression.
+                        Pattern: \(self.pattern)
+                        Schema: \(self.id)
+                        """
+                    )
+                }
+            }
         }
 
         public func asPackageElement() -> PackageElement {
             .schema(self)
-        }
-    }
-}
-
-extension PackageDefinition.OSSignpostIntervalSchema: Encodable {
-    enum CodingKeys: CodingKey {
-        case id
-        case title
-        case required
-        case note
-        case attribute
-
-        case subsystem
-        case category
-        case name
-
-        case startPattern
-        case endPattern
-
-        case column
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.id, forKey: .id)
-        try container.encode(self.title, forKey: .title)
-        if let required = self.required {
-            try container.encode(required, forKey: .required)
-        }
-        if let note = self.note {
-            try container.encode(note, forKey: .note)
-        }
-        if let attribute = self.attribute {
-            try container.encode(attribute, forKey: .attribute)
-        }
-        try container.encode(self.subsystem, forKey: .subsystem)
-        try container.encode(self.category, forKey: .category)
-        try container.encode(self.name, forKey: .name)
-        try container.encode(self.startPattern, forKey: .startPattern)
-        try container.encode(self.endPattern, forKey: .endPattern)
-
-        for col in self.columns {
-            try container.encode(col, forKey: .column)
-        }
-    }
-}
-
-extension PackageDefinition.OSSignpostPointSchema: Encodable {
-    enum CodingKeys: CodingKey {
-        case id
-        case title
-        case required
-        case note
-        case attribute
-
-        case subsystem
-        case category
-        case name
-
-        case pattern
-
-        case column
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.id, forKey: .id)
-        try container.encode(self.title, forKey: .title)
-        if let required = self.required {
-            try container.encode(required, forKey: .required)
-        }
-        try container.encode(self.note, forKey: .note)
-        if let attribute = self.attribute {
-            try container.encode(attribute, forKey: .attribute)
-        }
-        try container.encode(self.subsystem, forKey: .subsystem)
-        try container.encode(self.category, forKey: .category)
-        try container.encode(self.name, forKey: .name)
-        try container.encode(self.pattern, forKey: .pattern)
-
-        for col in self.columns {
-            try container.encode(col, forKey: .column)
         }
     }
 }
@@ -518,8 +483,11 @@ public struct ClipsExpression: Encodable, ExpressibleByStringLiteral {
         var remaining = self.expression[...]
         while let idx = remaining.firstIndex(of: "?") {
             remaining = remaining[idx...]
-            let to = remaining.firstIndex(of: " ") ?? remaining.endIndex
-            mnemonics.append(Mnemonic(raw: String(remaining[idx ... to])))
+            let to = min(
+                remaining.firstIndex(of: ")") ?? remaining.endIndex,
+                remaining.firstIndex(of: " ") ?? remaining.endIndex
+            )
+            mnemonics.append(Mnemonic(raw: String(remaining[idx ..< to])))
             remaining = remaining[to...]
         }
 
@@ -545,18 +513,26 @@ public struct Column: Encodable, SchemaElementConvertible, MnemonicConvertible {
     /// An expression in the CLIPS language that will become the value of this column.
     public var expression: ClipsExpression
 
+    internal var hidden: Bool
+
     public init(
         mnemonic: Mnemonic,
         title: String,
         type: EngineeringType,
         guide: String? = nil,
-        expression: ClipsExpression
+        expression: ClipsExpression,
+        hidden: Bool = false
     ) {
         self.title = title
         self.type = type
         self.expression = expression
         self.mnemonic = mnemonic
-        self.mnemonic.definedUsingWellTypedReference = true
+        self.mnemonic.definedUsingWellTypedReference = true // TODO: remove
+        self.hidden = hidden
+    }
+
+    var notHidden: Bool {
+        return !self.hidden
     }
 
     public func asSchemaElement() -> SchemaElement {
@@ -818,6 +794,34 @@ extension PackageDefinition.Instrument {
         case schema(Schema)
         case id(String)
 
+        var id: String {
+            switch self {
+            case .id(let i):
+                return i
+            case .schema(let s):
+                return s.id.name
+            }
+        }
+
+        // Attempts to validate, if a string id is used it always returns true.
+        func hasColumn(_ col: Mnemonic) -> Bool {
+            switch self {
+            case .schema(let s):
+                return s.hasColumn(col)
+            default:
+                return true // stringly typed reference, cannot cross check mnemonics
+            }
+        }
+
+        public var columnNames: [String] {
+            switch self {
+            case .schema(let schema):
+                return schema.columns.map(\.mnemonic.name)
+            default:
+                return []
+            }
+        }
+
         public var schemaRefString: String {
             switch self {
             case .schema(let schema):
@@ -955,43 +959,37 @@ extension PackageDefinition.Instrument {
             }
 
             public func validate(file: String, line: UInt) {
-                let schema: Schema
-                switch self.tableRef.schemaRef {
-                case .schema(let s):
-                    schema = s
-                default:
-                    return // stringly typed reference, cannot cross check mnemonics
-                }
+                let schemaRef = self.tableRef.schemaRef
 
-                func failureMessage(_ schema: Schema, _ type: Any.Type, missing: Mnemonic) -> String {
+                func failureMessage(_ ref: SchemaRef, _ type: Any.Type, missing: Mnemonic) -> String {
                     """
                     Error in Lane defined at [\(file):\(line)] \
-                    Schema [\(schema.id.name)] referred to by [\(type)], \
+                    Schema [\(ref.id)] referred to by [\(type)], \
                     does not define the required column [\(missing.name)]! \
-                    Available columns: \(schema.columns.map(\.mnemonic.name))
+                    Available columns: \(ref.columnNames)
                     """
                 }
 
                 for p in self.plots {
                     if p.valueFrom.definedUsingWellTypedReference {
-                        precondition(schema.hasColumn(p.valueFrom), failureMessage(schema, type(of: p), missing: p.valueFrom))
+                        precondition(schemaRef.hasColumn(p.valueFrom), failureMessage(schemaRef, type(of: p), missing: p.valueFrom))
                     }
                     if let m = p.colorFrom, m.definedUsingWellTypedReference {
-                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
+                        precondition(schemaRef.hasColumn(m), failureMessage(schemaRef, type(of: p), missing: m))
                     }
                     if let m = p.labelFrom, m.definedUsingWellTypedReference {
-                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
+                        precondition(schemaRef.hasColumn(m), failureMessage(schemaRef, type(of: p), missing: m))
                     }
                 }
                 for p in self.plotTemplates {
                     if p.valueFrom.definedUsingWellTypedReference {
-                        precondition(schema.hasColumn(p.valueFrom), failureMessage(schema, type(of: p), missing: p.valueFrom))
+                        precondition(schemaRef.hasColumn(p.valueFrom), failureMessage(schemaRef, type(of: p), missing: p.valueFrom))
                     }
                     if let m = p.colorFrom, m.definedUsingWellTypedReference {
-                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
+                        precondition(schemaRef.hasColumn(m), failureMessage(schemaRef, type(of: p), missing: m))
                     }
                     if let m = p.labelFrom, m.definedUsingWellTypedReference {
-                        precondition(schema.hasColumn(m), failureMessage(schema, type(of: p), missing: m))
+                        precondition(schemaRef.hasColumn(m), failureMessage(schemaRef, type(of: p), missing: m))
                     }
                 }
             }
@@ -1183,7 +1181,23 @@ extension PackageDefinition.Instrument {
             self.title = title
             self.tableRef = .init(table)
             self.columns = columns().map { $0.asMnemonic() }
-            precondition(self.columns.count > 0, "List MUST have at least one column: \(self)")
+
+            self.validate()
+        }
+
+        public func validate() {
+            precondition(self.columns.count > 0, "\(Self.self) MUST have at least one column: \(self)")
+
+            for col in self.columns {
+                precondition(
+                    "\(self.tableRef.schemaRef.columnNames)".contains("\(col.name)"),
+                    """
+                    Column '?\(col.name)' must be defined in table \(self.tableRef.id) used by \(Self.self).
+                    Available columns: \(self.tableRef.schemaRef.columnNames)
+                    List: \(self.title)
+                    """
+                )
+            }
         }
 
         public func asInstrumentElement() -> InstrumentElement {
@@ -1424,6 +1438,10 @@ extension PackageDefinition.Instrument {
         public var id: String
         public var schemaRef: SchemaRef
 
+        func hasColumn(_ col: Mnemonic) -> Bool {
+            self.schemaRef.hasColumn(col)
+        }
+        
         public init(_ table: PackageDefinition.Instrument.CreateTable) {
             self.id = table.id
             self.schemaRef = table.schemaRef

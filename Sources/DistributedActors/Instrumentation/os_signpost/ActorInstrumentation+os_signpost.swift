@@ -195,15 +195,15 @@ extension OSSignpostActorInstrumentation {
         recipient-path:%{public}s,\
         sender-node:%{public}s,\
         sender-path:%{public}s,\
-        message:%{public}s,\
-        message-type:%{public}s,
+        question:%{public}s,\
+        question-type:%{public}s,
         """
 
     static let actorAskRepliedEventPattern: StaticString =
         """
         actor-message-ask-answered,\
-        message:%{public}s,\
-        message-type:%{public}s,\
+        answer:%{public}s,\
+        answer-type:%{public}s,\
         error:%{public}s,\
         error-type:%{public}s,
         """

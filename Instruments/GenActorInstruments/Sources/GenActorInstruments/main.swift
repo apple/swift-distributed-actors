@@ -12,4 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
+LoggingSystem.bootstrap(StreamLogHandler.standardError)
+
 GenerateActorInstrumentsPackageDefinition.Command.main()

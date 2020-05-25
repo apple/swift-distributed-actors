@@ -55,27 +55,27 @@ extension OSSignpostActorTransportInstrumentation {
         serialize,\
         recipient-node:%{public}s,\
         recipient-path:%{public}s,\
-        type:%{public}s,\
-        message:%{public}s
+        message-type:%{public}s,\
+        message:%{public}s,
         """
     static let actorMessageSerializeEndPattern: StaticString =
         """
-        "serialized,\
-        bytes:%ld"
+        serialized,\
+        bytes:%ld",
         """
 
     static let actorMessageDeserializeStartPattern: StaticString =
         """
-        "deserialize,\
+        deserialize,\
         recipient-node:%{public}s,\
         recipient-path:%{public}s,\
-        bytes:%ld"
+        bytes:%ld,
         """
     static let actorMessageDeserializeEndPattern: StaticString =
         """
-        "deserialized,\
+        deserialized,\
         message:%{public}s,\
-        type:%{public}s"
+        message-type:%{public}s,
         """
 
     public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {

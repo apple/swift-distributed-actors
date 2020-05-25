@@ -78,9 +78,140 @@ extension ClipsExpression {
     }
 }
 
+extension Column {
+    public enum CodingKeys: String, CodingKey {
+        case mnemonic
+        case title
+        case type
+        case guide
+        case expression
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(mnemonic, forKey: .mnemonic)
+        try container.encode(title, forKey: .title)
+        try container.encode(type, forKey: .type)
+        try container.encodeIfPresent(guide, forKey: .guide)
+        try container.encode(expression, forKey: .expression)
+    }
+}
+
 extension StaticString: Encodable {
     public func encode(to encoder: Encoder) throws {
         try "\(self)".encode(to: encoder)
+    }
+}
+
+extension PackageDefinition.OSSignpostIntervalSchema: Encodable {
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case required
+        case note
+        case attribute
+
+        case subsystem
+        case category
+        case name
+
+        case startPattern = "start-pattern"
+        case endPattern = "end-pattern"
+
+        case column
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        if let required = self.required {
+            try container.encode(required, forKey: .required)
+        }
+        if let note = self.note {
+            try container.encode(note, forKey: .note)
+        }
+        if let attribute = self.attribute {
+            try container.encode(attribute, forKey: .attribute)
+        }
+        try container.encode("\"\(self.subsystem)\"", forKey: .subsystem)
+        try container.encode("\"\(self.category)\"", forKey: .category)
+        try container.encode("\"\(self.name)\"", forKey: .name)
+        try container.encode(SignpostPattern(self.startPattern), forKey: .startPattern)
+        try container.encode(SignpostPattern(self.endPattern), forKey: .endPattern)
+
+        for col in self.columns where col.notHidden {
+            try container.encode(col, forKey: .column)
+        }
+    }
+}
+
+struct SignpostPattern: Encodable {
+    var message: String
+
+    init(_ message: StaticString) {
+        var res: String = "\""
+        res.reserveCapacity(message.utf8CodeUnitCount)
+
+        let parts = "\(message)".split(separator: ",")
+        for part in parts {
+            if part.contains(":") {
+                let pp = part.split(separator: ":")
+                let p1 = pp.first!
+                // let p2 = pp.dropFirst().first!
+                res += ",\(p1):\" ?\(p1) \""
+            } else {
+                res += "\(part)"
+            }
+        }
+        if res.hasSuffix(" \"") {
+            res = "\(res.dropLast(2))"
+        }
+        if !res.contains(",") {
+            res += "\""
+        }
+
+        self.message = res
+    }
+}
+
+extension PackageDefinition.OSSignpostPointSchema: Encodable {
+    enum CodingKeys: CodingKey {
+        case id
+        case title
+        case required
+        case note
+        case attribute
+
+        case subsystem
+        case category
+        case name
+
+        case pattern
+
+        case column
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        if let required = self.required {
+            try container.encode(required, forKey: .required)
+        }
+        try container.encode(self.note, forKey: .note)
+        if let attribute = self.attribute {
+            try container.encode(attribute, forKey: .attribute)
+        }
+        try container.encode("\"\(self.subsystem)\"", forKey: .subsystem)
+        try container.encode("\"\(self.category)\"", forKey: .category)
+        try container.encode("\"\(self.name)\"", forKey: .name)
+        try container.encode(SignpostPattern(self.pattern), forKey: .pattern)
+
+        for col in self.columns where col.notHidden {
+            try container.encode(col, forKey: .column)
+        }
     }
 }
 
@@ -109,7 +240,7 @@ extension Instrument {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.id, forKey: .id)
         try container.encodeIfPresent(self.version, forKey: .version)
-        try container.encode(self.title, forKey: .category)
+        try container.encode(self.title, forKey: .title)
         try container.encode(self.category.rawValue, forKey: .category)
         try container.encode(self.purpose, forKey: .purpose)
         try container.encode(self.icon.rawValue, forKey: .icon)
@@ -173,6 +304,20 @@ extension PackageDefinition.Instrument.TableRef {
         var container = encoder.singleValueContainer()
         try container.encode(self.id)
     }
+}
+
+extension PackageDefinition.Instrument.ImportParameter {
+    public enum CodingKeys: String, CodingKey {
+        case fromScope = "from-scope"
+        case name
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.fromScope, forKey: .fromScope)
+        try container.encode(self.name, forKey: .name)
+    }
+
 }
 
 extension PackageDefinition.Instrument.CreateTable {
@@ -257,9 +402,9 @@ extension PackageDefinition.Instrument.Graph.Lane {
         case baseColor = "base-color"
 
         case plot
-        case plotTemplates = "plot-templates"
+        case plotTemplates = "plot-template"
         case histograms = "histogram"
-        case histogramsTemplates = "histogram-templates"
+        case histogramsTemplates = "histogram-template"
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -422,7 +567,7 @@ extension PackageDefinition.Instrument.Aggregation {
         try container.encode(self.tableRef, forKey: .tableRef)
         try container.encodeIfPresent(self.hierarchy, forKey: .hierarchy)
         try container.encodeIfPresent(self.emptyContentSuggestion, forKey: .emptyContentSuggestion)
-        try container.encode(self.visitOnFocus, forKey: .visitOnFocus)
+        try container.encodeIfPresent(self.visitOnFocus, forKey: .visitOnFocus)
         try container.encode(self.columns, forKey: .columns) // TODO: render them specially, just the names
         try container.encode(self.columnsHidden, forKey: .columns)
     }
@@ -566,6 +711,17 @@ extension PackageDefinition.Instrument.SchemaRef {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(self.schemaRefString)
+    }
+}
+
+extension PackageDefinition.Template {
+    public enum CodingKeys: String, CodingKey {
+        case importFromFile = "import-from-file"
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.importFromFile, forKey: .importFromFile)
     }
 }
 

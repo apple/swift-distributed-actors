@@ -27,7 +27,6 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
-            "SwiftyInstrumentsPackageDefinition",
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
@@ -53,23 +52,6 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: InstrumentsPackageDefinition
-
-    .target(
-        name: "GenActorInstruments",
-        dependencies: [
-            "DistributedActors",
-            "SwiftyInstrumentsPackageDefinition",
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            .product(name: "XMLCoder", package: "XMLCoder"),
-        ]
-    ),
-    .target(
-        name: "SwiftyInstrumentsPackageDefinition",
-        dependencies: []
-    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Plugins
@@ -282,10 +264,7 @@ var dependencies: [Package.Dependency] = [
     // swift-syntax is Swift version dependent, and added  as such below
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.1"), // BSD license
     .package(url: "https://github.com/JohnSundell/Files", from: "4.1.0"), // MIT license
-    .package(url: "https://github.com/apple/swift-argument-parser", .exact("0.0.1")), // not API stable, Apache v2
-
-    // ~~~ only for GenActorInstruments ~~~
-    .package(url: "https://github.com/MaxDesiatov/XMLCoder.git", from: "0.9.0"),
+    .package(url: "https://github.com/apple/swift-argument-parser", .exact("0.0.6")), // not API stable, Apache v2
 ]
 
 #if swift(>=5.2)
@@ -311,18 +290,6 @@ let products: [PackageDescription.Product] = [
     .executable(
         name: "GenActors",
         targets: ["GenActors"]
-    ),
-
-    /* --- GenActorInstruments --- */
-
-    .executable(
-        name: "GenActorInstruments",
-        targets: ["GenActorInstruments"]
-    ),
-
-    .library(
-        name: "SwiftyInstrumentsPackageDefinition",
-        targets: ["SwiftyInstrumentsPackageDefinition"]
     ),
 
     /* --- Plugins --- */
