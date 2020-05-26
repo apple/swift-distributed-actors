@@ -141,20 +141,12 @@ extension CRDT {
         }
 
         private func mergeInbound(from peer: AddressableActorRef?, _ incoming: CRDT.Gossip) {
-            self.context.log.notice("""
-            [mergeInbound] INCOMING from \(optional: incoming.metadata.origin)
-            INCOMING: \(pretty: incoming)
-            CURRENT: \(optional: self.latest)
-            """)
-
             guard var current = self.latest else {
                 self.latest = incoming // we didn't have one stored, so directly apply
                 self.peersAckedOurLatestGossip = []
-                self.context.log.warning("BAILING OUT: self.peersAckedOurLatestGossip = []")
                 return
             }
 
-//            let latestBeforeMerge = current // CRDTs have value semantics
             if let error = current.tryMerge(other: incoming.payload) {
                 context.log.warning("Failed incoming CRDT gossip, error: \(error)", metadata: [
                     "crdt/incoming": "\(incoming)",
@@ -163,37 +155,6 @@ extension CRDT {
             }
 
             self.latest = current
-
-//            // did the incoming gossip change our state? if not then we don't need to communicate with that node anymore
-//            guard latestBeforeMerge.payload.equalState(to: current.payload) else {
-//                // The incoming gossip caused ours to change; this information was potentially not yet spread to other nodes
-//                // thus we reset our set of who already knows about "our" (most recent observed by this node) state of the CRDT.
-//                //
-//                // TODO: This is a naive implementation and leads to much more gossip than necessary with delta tracking.
-//                // In delta tracking, we'd add to the queue that the delta, and keep track which nodes know about which part of the state
-//                // and if they need to see this delta or not. We'd then only gossip to them; and once we've seen everyone "seen"
-//                // this delta, we drop it from our send queue. This is "v3" version we want to get to.
-//                self.context.log.notice("""
-//                       [mergeInbound] DIFF THAN LOCAL; RESET SENDS
-//                           latestBeforeMerge = \(pretty: latestBeforeMerge)
-//                           latest= \(pretty: current)
-//                       """)
-//                self.knownSameStatePeers = []
-//                return
-//            }
-//
-//            // it was the same gossip as we store already, no need to gossip it more.
-//            let b = self.knownSameStatePeers
-//            if let p = peer {
-//                self.knownSameStatePeers.insert(p.address) // FIXME ensure if this is right
-//            }
-//            self.context.log.notice("""
-//                   [mergeInbound] SAME AS LOCAL, INSERT PEER \(optional: peer)
-//                       latestBeforeMerge = \(pretty: latestBeforeMerge)
-//                       latest            = \(pretty: current)
-//                       self.alreadyInformedPeers BEFORE = \(b)
-//                       self.alreadyInformedPeers AFTER = \(self.knownSameStatePeers)
-//                   """)
         }
     }
 }

@@ -14,7 +14,7 @@
 
 import DistributedActors
 
-extension DistributedLeaderboard {
+extension ScoreGame {
 
     enum GameEvent: Codable {
         case turn
@@ -47,7 +47,7 @@ extension DistributedLeaderboard {
     }
 }
 
-extension DistributedLeaderboard.GameEvent {
+extension ScoreGame.GameEvent {
     enum DiscriminatorKeys: String, Codable {
         case turn
     }

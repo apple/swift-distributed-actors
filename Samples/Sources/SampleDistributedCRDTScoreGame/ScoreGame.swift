@@ -14,7 +14,7 @@
 
 import DistributedActors
 
-struct DistributedLeaderboard {
+struct ScoreGame {
 
     /// Enable networking on this node, and select which port it should bind to.
     private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {

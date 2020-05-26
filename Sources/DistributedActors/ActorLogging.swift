@@ -198,20 +198,6 @@ public struct ActorOriginLogHandler: LogHandler {
             }
 
             var msg = ""
-
-            // sort metadata to preserve sanity
-//            if ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil {
-//                if let meta = l.effectiveMetadata, !meta.isEmpty {
-//                    let ms = meta
-//                        .lazy
-//                        .sorted(by: { $0.key < $1.key })
-//                        .map { "\"\($0)\":\($1)" }
-//                        .joined(separator: ",")
-//                    msg += "{\(ms)}" // forces any lazy metadata to be rendered
-//                }
-//                l.effectiveMetadata?.removeAll()
-//            }
-
             msg += "\(actorSystemIdentity)"
             msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
             msg += "\(dispatcherPart)"

@@ -74,7 +74,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
     func test_gossip_localUpdate_toOtherNode() throws {
         try shouldNotThrow {
-            let configure: (inout ActorSystemSettings) -> () = { settings in
+            let configure: (inout ActorSystemSettings) -> Void = { settings in
                 settings.crdt.gossipInterval = .seconds(1)
                 settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
             }
@@ -103,7 +103,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
     func test_gossip_readAll_gossipedOwnerAlwaysIncludesAddress() throws {
         try shouldNotThrow {
-            let configure: (inout ActorSystemSettings) -> () = { settings in
+            let configure: (inout ActorSystemSettings) -> Void = { settings in
                 settings.crdt.gossipInterval = .seconds(1)
                 settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
             }
@@ -159,13 +159,9 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Gossip stop conditions
 
-    override var alwaysPrintCaptureLogs: Bool {
-        true
-    }
-
     func test_gossip_shouldEventuallyStopSpreading() throws {
         try shouldNotThrow {
-            let configure: (inout ActorSystemSettings) -> () = { settings in
+            let configure: (inout ActorSystemSettings) -> Void = { settings in
                 settings.crdt.gossipInterval = .milliseconds(300)
                 settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
             }
@@ -214,7 +210,7 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             // ==== Join 4th node, it should gain the information ------------------------------------------------------
             fourth.cluster.join(node: second.cluster.node.node)
             fourth.cluster.join(node: first.cluster.node.node)
-            
+
             let p4 = self.testKit(fourth).spawnTestProbe(expecting: CRDT.GCounter.self)
             _ = try fourth.spawn("reader-4", ownsCounter(p: p4))
 

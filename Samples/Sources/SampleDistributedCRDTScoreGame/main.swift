@@ -12,4 +12,4 @@
 //
 //===----------------------------------------------------------------------===//
 
-try DistributedLeaderboard().run(for: .seconds(60))
+try ScoreGame().run(for: .seconds(60))

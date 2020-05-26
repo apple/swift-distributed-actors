@@ -252,13 +252,14 @@ extension Set {
                 message += "\n    \(selfMinusRhs)"
             }
 
-            XCTFail(callSiteInfo.detailedMessage(
-                message),
-                file: callSiteInfo.file, line: callSiteInfo.line
+            XCTFail(
+                callSiteInfo.detailedMessage(
+                    message),
+                file: callSiteInfo.file,
+                line: callSiteInfo.line
             )
         }
     }
-
 }
 
 extension Equatable {
