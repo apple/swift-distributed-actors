@@ -32,7 +32,6 @@ extension TestActorable.Message {
         case greet2
         case throwing
         case passMyself
-        case _ignoreInGenActor
         case parameterNames
         case greetReplyToActorRef
         case greetReplyToActor
@@ -89,8 +88,6 @@ extension TestActorable.Message {
         case .passMyself:
             let someone = try container.decode(ActorRef<Actor<TestActorable>>.self, forKey: CodingKeys.passMyself_someone)
             self = .passMyself(someone: someone)
-        case ._ignoreInGenActor:
-            self = ._ignoreInGenActor
         case .parameterNames:
             let second = try container.decode(String.self, forKey: CodingKeys.parameterNames_first)
             self = .parameterNames(first: second)
@@ -148,8 +145,6 @@ extension TestActorable.Message {
         case .passMyself(let someone):
             try container.encode(DiscriminatorKeys.passMyself.rawValue, forKey: CodingKeys._case)
             try container.encode(someone, forKey: CodingKeys.passMyself_someone)
-        case ._ignoreInGenActor:
-            try container.encode(DiscriminatorKeys._ignoreInGenActor.rawValue, forKey: CodingKeys._case)
         case .parameterNames(let second):
             try container.encode(DiscriminatorKeys.parameterNames.rawValue, forKey: CodingKeys._case)
             try container.encode(second, forKey: CodingKeys.parameterNames_first)

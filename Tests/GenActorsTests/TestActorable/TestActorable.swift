@@ -33,39 +33,46 @@ public struct TestActorable: Actorable {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving
 
+    // @actor
     public mutating func ping() {
         self.messages.append("\(#function)")
     }
 
+    // @actor
     public mutating func greet(name: String) {
         self.messages.append("\(#function):\(name)")
     }
 
+    // @actor
     public mutating func greetUnderscoreParam(_ name: String) {
         self.messages.append("\(#function):\(name)")
     }
 
+    // @actor
     public mutating func greet2(name: String, surname: String) {
         self.messages.append("\(#function):\(name),\(surname)")
     }
 
+    // @actor
     public func throwing() throws {
         try self.contextSpawnExample()
     }
 
+    // @actor
     func passMyself(someone: ActorRef<Actor<TestActorable>>) {
         someone.tell(self.context.myself)
     }
 
-    /// Underscored method names are ignored automatically
     public func _ignoreInGenActor() throws {
         // nothing
     }
 
+    // @actor
     private func privateFunc() {
         // nothing
     }
 
+    // @actor
     func parameterNames(first second: String) {
         // nothing
     }
@@ -73,11 +80,13 @@ public struct TestActorable: Actorable {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Replying
 
+    // @actor
     public mutating func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) {
         self.messages.append("\(#function):\(name),\(replyTo)")
         replyTo.tell("Hello \(name)!")
     }
 
+    // @actor
     public mutating func greetReplyToActor(name: String, replyTo: Actor<Self>) {
         self.messages.append("\(#function):\(name),\(replyTo)")
 
@@ -85,19 +94,23 @@ public struct TestActorable: Actorable {
     }
 
     // TODO: would be better served as `async` function; we'd want to forbid non async functions perhaps even?
+    // @actor
     public func greetReplyToReturnStrict(name: String) -> String {
         "Hello strict \(name)!"
     }
 
+    // @actor
     public func greetReplyToReturnStrictThrowing(name: String) throws -> String {
         "Hello strict \(name)!"
     }
 
+    // @actor
     public func greetReplyToReturnResult(name: String) -> Result<String, Error> {
         .success("Hello result \(name)!")
     }
 
     // TODO: would be better served as `async` function
+    // @actor
     public func greetReplyToReturnNIOFuture(name: String) -> EventLoopFuture<String> {
         let loop = self.context.system._eventLoopGroup.next()
         return loop.makeSucceededFuture("Hello NIO \(name)!")
@@ -106,6 +119,7 @@ public struct TestActorable: Actorable {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Become
 
+    // @actor
     func becomeStopped() -> Behavior<TestActorable.Message> {
         .stop
     }
@@ -113,6 +127,7 @@ public struct TestActorable: Actorable {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spawning from ActorableContext
 
+    // @actor
     func contextSpawnExample() throws {
         let child: Actor<TestActorable> = try self.context.spawn("child", TestActorable.init)
         self.context.log.info("Spawned: \(child)")
@@ -121,6 +136,7 @@ public struct TestActorable: Actorable {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Scheduling timers
 
+    // @actor
     func timer() {
         // This causes the actor to schedule invoking `ping()`
         self.context.timers.startSingle(key: "tick", message: Message.ping, delay: .seconds(2))

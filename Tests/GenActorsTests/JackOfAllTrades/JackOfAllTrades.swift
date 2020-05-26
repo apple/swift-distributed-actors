@@ -16,6 +16,7 @@ import DistributedActors
 import class NIO.EventLoopFuture
 
 public protocol Parking: Actorable {
+    // @actor
     func park()
 
     static func _boxParking(_ message: GeneratedActor.Messages.Parking) -> Self.Message
@@ -23,6 +24,7 @@ public protocol Parking: Actorable {
 
 // TODO: allow not public
 public protocol Ticketing: Actorable {
+    // @actor
     func makeTicket()
 
     static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> Self.Message
@@ -36,15 +38,18 @@ public struct JackOfAllTrades: Ticketing, Parking, Actorable {
         self.context = context
     }
 
+    // @actor
     public func hello(replyTo: ActorRef<String>) {
         context.log.info("hello")
         replyTo.tell("Hello")
     }
 
+    // @actor
     public func makeTicket() {
         context.log.info("makeTicket")
     }
 
+    // @actor
     public func park() {
         context.log.info("park")
     }

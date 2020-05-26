@@ -216,13 +216,12 @@ final class GatherActorables: SyntaxVisitor {
     // MARK: functions
 
     override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.log.trace("Visit function decl [\(self.wipActorable.name)].[\(node.identifier)]")
+        let name = "\(node.identifier)"
+
         guard self.wipActorable != nil else {
             // likely a top-level function, we skip those always
             return .skipChildren
         }
-
-        let name = "\(node.identifier)"
 
         let modifierTokenKinds = node.modifiers?.map {
             $0.name.tokenKind
@@ -230,6 +229,19 @@ final class GatherActorables: SyntaxVisitor {
 
         // is it our special boxing function
         var isBoxingFunc = false
+
+        // FIXME: class and struct MUST mark using @actor, Actorable protocol too?
+        guard "\(node)".contains("@actor") || "\(name)".starts(with: "_box") else {
+            // TODO: if receiveTerminated ot receiveSignal etc, FORCE them to be marked @actor
+
+            if self.settings.verbose {
+                print("  Skip [func \(name)]... (not marked as `@actor func`)")
+            }
+            return .skipChildren
+        }
+        if self.settings.verbose {
+            print("  @actor func \(name) ...")
+        }
 
         if self.wipActorable.type == .protocol,
             modifierTokenKinds.contains(.staticKeyword),

@@ -15,18 +15,21 @@
 import DistributedActors
 
 class ClassActorable: Actorable {
+    // @actor
     func hello() -> String {
         "Hello."
     }
 }
 
 struct StructActorable: Actorable {
+    // @actor
     func hello() -> String {
         "Hello."
     }
 }
 
 struct MutatingStructActorable: Actorable {
+    // @actor
     mutating func hello() -> String {
         "Hello."
     }

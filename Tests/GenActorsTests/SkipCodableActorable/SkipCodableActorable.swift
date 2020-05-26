@@ -20,6 +20,7 @@ extension SkipCodableActorable.Message: NonTransportableActorMessage {}
 public struct SkipCodableActorable: Actorable {
     public static let generateCodableConformance: Bool = false
 
+    // @actor
     func echo(text: String) -> String {
         text
     }

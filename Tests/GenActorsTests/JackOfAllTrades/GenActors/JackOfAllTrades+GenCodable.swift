@@ -47,10 +47,10 @@ extension JackOfAllTrades.Message {
             let replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.hello_replyTo)
             self = .hello(replyTo: replyTo)
         case ._boxParking:
-            let boxed = try container.decode(GeneratedActor.Messages.Parking.self, forKey: CodingKeys._boxParking)
+            let boxed: GeneratedActor.Messages.Parking = try container.decode(GeneratedActor.Messages.Parking.self, forKey: CodingKeys._boxParking)
             self = .parking(boxed)
         case ._boxTicketing:
-            let boxed = try container.decode(GeneratedActor.Messages.Ticketing.self, forKey: CodingKeys._boxTicketing)
+            let boxed: GeneratedActor.Messages.Ticketing = try container.decode(GeneratedActor.Messages.Ticketing.self, forKey: CodingKeys._boxTicketing)
             self = .ticketing(boxed)
 
         }

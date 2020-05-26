@@ -1,6 +1,6 @@
 import DistributedActors
 
-class Philosopher: Actorable {
+final class Philosopher: Actorable {
     private let context: Myself.Context
     private let leftFork: Actor<Fork>
     private let rightFork: Actor<Fork>
@@ -19,6 +19,7 @@ class Philosopher: Actorable {
         self.think()
     }
 
+    // @actor
     private func think() {
         if case .takingForks(let leftIsTaken, let rightIsTaken) = self.state {
             if leftIsTaken {
@@ -37,6 +38,7 @@ class Philosopher: Actorable {
         self.context.log.info("\(self.context.address.name) is thinking...")
     }
 
+    // @actor
     func attemptToTakeForks() {
         guard self.state == .thinking else {
             self.context.log.error("\(self.context.address.name) tried to take a fork but was not in the thinking state!")

@@ -12,7 +12,6 @@ extension Philosopher {
 
     public enum Message: ActorMessage { 
         case attemptToTakeForks 
-        case stopEating 
     }
     
 }
@@ -33,9 +32,6 @@ extension Philosopher {
                 
                 case .attemptToTakeForks:
                     instance.attemptToTakeForks()
- 
-                case .stopEating:
-                    instance.stopEating()
  
                 
                 }
@@ -71,11 +67,6 @@ extension Actor where A.Message == Philosopher.Message {
 
      func attemptToTakeForks() {
         self.ref.tell(Self.Message.attemptToTakeForks)
-    }
- 
-
-     func stopEating() {
-        self.ref.tell(Self.Message.stopEating)
     }
  
 

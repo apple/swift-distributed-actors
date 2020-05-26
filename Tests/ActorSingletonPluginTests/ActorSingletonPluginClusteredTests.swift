@@ -250,6 +250,7 @@ struct GreeterSingleton: Actorable {
         self.greeting = greeting
     }
 
+    // @actor
     func greet(name: String) -> String {
         "\(self.greeting) \(name)!"
     }

@@ -235,7 +235,7 @@ extension Rendering {
                 rendered.append(try Self.boxingForProtocolTemplate.render(context))
             }
 
-            if settings.verbose {
+            if settings.printGenerated {
                 print(rendered)
             }
 
@@ -386,6 +386,7 @@ extension ActorableMessageDecl {
                     .replacingOccurrences(of: "<Self,", with: "<\(self.actorableName),")
                     .replacingOccurrences(of: ",Self>", with: ",\(self.actorableName)>")
                     .replacingOccurrences(of: ", Self>", with: ", \(self.actorableName)>")
+                    .replacingOccurrences(of: "@escaping", with: "")
 
                 if let name = first, name == "_" {
                     return "\(type)"

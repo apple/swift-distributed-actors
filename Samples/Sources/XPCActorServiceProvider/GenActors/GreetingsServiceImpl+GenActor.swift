@@ -40,35 +40,6 @@ extension GreetingsServiceImpl {
                 switch message { 
                 
                 
-                case .greetingsService(.logGreeting(let name)):
-                    try instance.logGreeting(name: name)
- 
-                case .greetingsService(.greet(let name, let _replyTo)):
-                    do {
-                        let result = try instance.greet(name: name)
-                        _replyTo.tell(.success(result))
-                    } catch {
-                        context.log.warning("Error thrown while handling [\(message)], error: \(error)")
-                        _replyTo.tell(.failure(ErrorEnvelope(error)))
-                    }
- 
-                case .greetingsService(.fatalCrash):
-                    instance.fatalCrash()
- 
-                case .greetingsService(.greetDirect(let who)):
-                    instance.greetDirect(who: who)
- 
-                case .greetingsService(.greetFuture(let name, let _replyTo)):
-                    instance.greetFuture(name: name)
-                        .whenComplete { res in
-                            switch res {
-                            case .success(let value):
-                                _replyTo.tell(.success(value))
-                            case .failure(let error):
-                                _replyTo.tell(.failure(ErrorEnvelope(error)))
-                            }
-                        }
- 
                 }
                 return .same
             }.receiveSignal { _context, signal in 

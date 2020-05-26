@@ -28,16 +28,17 @@ struct ActorableWatcher: Actorable {
         context.watch(service)
     }
 
-    func noop() {
+    /* @actor */ func noop() {
         // do nothing
     }
 
-    func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
+    /* @actor */ func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
         context.log.info("Received \(#function): \(terminated)")
         return .stop
     }
 
-    func receiveSignal(context: Myself.Context, signal: Signal) {
+    // TODO: require that if those are present they should be actor marked
+    /* @actor */ func receiveSignal(context: Myself.Context, signal: Signal) {
         context.log.info("Received \(#function): \(signal)")
         exit(0)
     }

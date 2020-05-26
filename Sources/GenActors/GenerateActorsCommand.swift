@@ -22,6 +22,9 @@ struct GenerateActorsCommand: ParsableCommand {
     @Flag(name: .shortAndLong, help: "Print verbose information while analyzing and generating sources")
     var verbose: Bool
 
+    @Flag(name: .shortAndLong, help: "Print verbose all generated sources")
+    var printGenerated: Bool
+
     @Argument()
     var scanTargets: [String]
 }

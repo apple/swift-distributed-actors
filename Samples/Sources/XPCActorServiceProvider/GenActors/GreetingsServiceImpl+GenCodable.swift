@@ -29,7 +29,7 @@ extension GreetingsServiceImpl.Message {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case ._boxGreetingsService:
-            let boxed = try container.decode(GeneratedActor.Messages.GreetingsService.self, forKey: CodingKeys._boxGreetingsService)
+            let boxed: GeneratedActor.Messages.GreetingsService = try container.decode(GeneratedActor.Messages.GreetingsService.self, forKey: CodingKeys._boxGreetingsService)
             self = .greetingsService(boxed)
 
         }
