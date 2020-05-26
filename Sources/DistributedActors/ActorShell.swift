@@ -171,7 +171,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
         super.init()
 
-        let addr = address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode)
+        let addr = address.ensuringNode(system.settings.cluster.uniqueBindNode)
         self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, addr)
         self.instrumentation.actorSpawned()
         system.metrics.recordActorStart(self)
@@ -711,8 +711,8 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
             return .init(.adapter(ref))
         } catch {
             fatalError("""
-            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
-            generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
+            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names \
+            generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)? \
             Error: \(error)
             """)
         }
@@ -930,7 +930,7 @@ extension ActorShell {
 extension ActorShell: CustomStringConvertible {
     public var description: String {
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorShell<\(prettyTypeName)>(\(self.path))"
+        return "ActorContext<\(prettyTypeName)>(\(self.path))"
     }
 }
 

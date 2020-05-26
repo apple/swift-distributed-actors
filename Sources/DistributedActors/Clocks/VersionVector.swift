@@ -31,7 +31,7 @@
 ///
 /// - SeeAlso: [Why Logical Clocks are Easy](https://queue.acm.org/detail.cfm?id=2917756)
 /// - SeeAlso: [Version Vectors are not Vector Clocks](https://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/)
-public struct VersionVector {
+public struct VersionVector: Equatable {
     // TODO: should we disallow mixing ReplicaID types somehow?
 
     public typealias Version = UInt64
@@ -183,7 +183,7 @@ extension VersionVector: Comparable {
     }
 }
 
-extension VersionVector: CustomStringConvertible {
+extension VersionVector: CustomStringConvertible, CustomPrettyStringConvertible {
     public var description: String {
         "\(self.state)"
     }
@@ -237,14 +237,44 @@ extension VersionDot: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Replica ID
 
-public enum ReplicaID: Hashable {
-    case actorAddress(ActorAddress)
-    case uniqueNode(UniqueNode)
+public struct ReplicaID: Hashable {
+    internal enum Storage: Hashable {
+        case actorAddress(ActorAddress)
+        case uniqueNode(UniqueNode)
+    }
+
+    internal let storage: Storage
+
+    internal init(_ representation: Storage) {
+        self.storage = representation
+    }
+
+    public static func actor<M: Codable>(_ context: ActorContext<M>) -> ReplicaID {
+        .init(.actorAddress(context.address.ensuringNode(context.system.settings.cluster.uniqueBindNode)))
+    }
+
+    // FIXME: don't do this as much, it risks creating one without a node address
+    internal static func actorAddress(_ address: ActorAddress) -> ReplicaID {
+        .init(.actorAddress(address))
+    }
+
+    public static func uniqueNode(_ uniqueNode: UniqueNode) -> ReplicaID {
+        .init(.uniqueNode(uniqueNode))
+    }
+
+    func ensuringNode(_ node: UniqueNode) -> ReplicaID {
+        switch self.storage {
+        case .uniqueNode:
+            return self
+        case .actorAddress(let address):
+            return .actorAddress(address.ensuringNode(node))
+        }
+    }
 }
 
 extension ReplicaID: CustomStringConvertible {
     public var description: String {
-        switch self {
+        switch self.storage {
         case .actorAddress(let address):
             return "actor:\(address)"
         case .uniqueNode(let node):
@@ -255,7 +285,7 @@ extension ReplicaID: CustomStringConvertible {
 
 extension ReplicaID: Comparable {
     public static func < (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
-        switch (lhs, rhs) {
+        switch (lhs.storage, rhs.storage) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l < r
         case (.uniqueNode(let l), .uniqueNode(let r)):
@@ -266,7 +296,7 @@ extension ReplicaID: Comparable {
     }
 
     public static func == (lhs: ReplicaID, rhs: ReplicaID) -> Bool {
-        switch (lhs, rhs) {
+        switch (lhs.storage, rhs.storage) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l == r
         case (.uniqueNode(let l), .uniqueNode(let r)):
@@ -302,7 +332,7 @@ extension ReplicaID: Codable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        switch self {
+        switch self.storage {
         case .actorAddress(let address):
             try container.encode(DiscriminatorKeys.actorAddress, forKey: ._case)
             try container.encode(address, forKey: .actorAddress_value)

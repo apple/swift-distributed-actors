@@ -178,8 +178,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
     func test_serializationOf_ORSet() throws {
         try shouldNotThrow {
             var set: CRDT.ORSet<String> = CRDT.ORSet(replicaID: .actorAddress(self.ownerAlpha))
-            set.add("hello") // (alpha, 1)
-            set.add("world") // (alpha, 2)
+            set.insert("hello") // (alpha, 1)
+            set.insert("world") // (alpha, 2)
             set.remove("nein")
             set.delta.shouldNotBeNil()
 
@@ -202,8 +202,8 @@ final class CRDTSerializationTests: ActorSystemTestBase {
     func test_serializationOf_ORSet_delta() throws {
         try shouldNotThrow {
             var set: CRDT.ORSet<String> = CRDT.ORSet(replicaID: .actorAddress(self.ownerAlpha))
-            set.add("hello") // (alpha, 1)
-            set.add("world") // (alpha, 2)
+            set.insert("hello") // (alpha, 1)
+            set.insert("world") // (alpha, 2)
             set.remove("nein")
 
             let serialized = try system.serialization.serialize(set.delta!) // !-safe, must have a delta, we just changed it
@@ -224,9 +224,9 @@ final class CRDTSerializationTests: ActorSystemTestBase {
     func test_serializationOf_ORMap() throws {
         try shouldNotThrow {
             var map = CRDT.ORMap<String, CRDT.ORSet<String>>(replicaID: .actorAddress(self.ownerAlpha), defaultValue: CRDT.ORSet<String>(replicaID: .actorAddress(self.ownerAlpha)))
-            map.update(key: "s1") { $0.add("a") }
-            map.update(key: "s2") { $0.add("b") }
-            map.update(key: "s1") { $0.add("c") }
+            map.update(key: "s1") { $0.insert("a") }
+            map.update(key: "s2") { $0.insert("b") }
+            map.update(key: "s1") { $0.insert("c") }
             map.delta.shouldNotBeNil()
 
             let serialized = try system.serialization.serialize(map)
@@ -235,7 +235,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.defaultValue.shouldBeNil()
             deserialized._keys.elements.shouldEqual(["s1", "s2"])
-            deserialized._values.count.shouldEqual(2)
+            deserialized._storage.count.shouldEqual(2)
 
             guard let s1 = deserialized["s1"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
@@ -260,9 +260,9 @@ final class CRDTSerializationTests: ActorSystemTestBase {
     func test_serializationOf_ORMap_delta() throws {
         try shouldNotThrow {
             var map = CRDT.ORMap<String, CRDT.ORSet<String>>(replicaID: .actorAddress(self.ownerAlpha), defaultValue: CRDT.ORSet<String>(replicaID: .actorAddress(self.ownerAlpha)))
-            map.update(key: "s1") { $0.add("a") }
-            map.update(key: "s2") { $0.add("b") }
-            map.update(key: "s1") { $0.add("c") }
+            map.update(key: "s1") { $0.insert("a") }
+            map.update(key: "s2") { $0.insert("b") }
+            map.update(key: "s1") { $0.insert("c") }
             map.delta.shouldNotBeNil()
 
             let serialized = try system.serialization.serialize(map.delta!) // !-safe, must have a delta, we just checked it
@@ -301,7 +301,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.state._keys.elements.shouldEqual(["s1", "s2"])
-            deserialized.state._values.count.shouldEqual(2)
+            deserialized.state._storage.count.shouldEqual(2)
 
             guard let s1 = deserialized["s1"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"s1\", got \(deserialized)")
@@ -362,7 +362,7 @@ final class CRDTSerializationTests: ActorSystemTestBase {
 
             "\(deserialized.replicaID)".shouldContain("actor:sact://CRDTSerializationTests@127.0.0.1:9001/user/alpha")
             deserialized.state._keys.elements.shouldEqual(["foo", "bar"])
-            deserialized.state._values.count.shouldEqual(2)
+            deserialized.state._storage.count.shouldEqual(2)
 
             guard let foo = deserialized["foo"] else {
                 throw shouldNotHappen("Expect deserialized to contain \"foo\", got \(deserialized)")

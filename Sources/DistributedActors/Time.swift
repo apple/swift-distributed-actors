@@ -418,7 +418,7 @@ public extension Deadline {
 // MARK: Clock
 
 /// A `Clock` implementation using `Date`.
-public struct WallTimeClock: Comparable, Codable, CustomStringConvertible {
+public struct WallTimeClock: Codable, Comparable, CustomStringConvertible {
     internal let timestamp: Date
 
     public static let zero = WallTimeClock(timestamp: Date.distantPast)

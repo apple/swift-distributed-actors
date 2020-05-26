@@ -26,10 +26,10 @@ extension CRDT {
     /// `WallTimeClock` is the default type for timestamps.
     ///
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct LWWRegister<Value: Codable>: CvRDT, LWWRegisterOperations {
+    public struct LWWRegister<Value: Codable & Equatable>: CvRDT, LWWRegisterOperations {
         public let replicaID: ReplicaID
 
-        let initialValue: Value
+        public let initialValue: Value
 
         public internal(set) var value: Value
         var clock: WallTimeClock
@@ -68,6 +68,17 @@ extension CRDT {
                 self.updatedBy = other.updatedBy
             }
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.initialValue == other.initialValue &&
+                self.value == other.value &&
+                self.clock == self.clock &&
+                self.updatedBy == self.updatedBy // TODO: is this correct?
+        }
     }
 }
 
@@ -80,6 +91,15 @@ extension CRDT.LWWRegister where Value: ExpressibleByNilLiteral {
 extension CRDT.LWWRegister: ResettableCRDT {
     public mutating func reset() {
         self = .init(replicaID: self.replicaID, initialValue: self.initialValue)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.LWWRegister: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.value))"
     }
 }
 
@@ -108,8 +128,9 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
 }
 
 extension CRDT.LWWRegister {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
-        CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaID: .actorAddress(owner.address), initialValue: initialValue))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaID: .actorAddress(ownerAddress), initialValue: initialValue))
     }
 }
 

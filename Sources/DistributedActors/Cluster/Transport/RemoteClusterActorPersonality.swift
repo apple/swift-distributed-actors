@@ -72,7 +72,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
 
         switch self.association {
         case .association(let association):
-            association.sendUserMessage(envelope: Envelope(payload: .message(message)), recipient: self.address)
+            association.sendUserMessage(envelope: Payload(payload: .message(message)), recipient: self.address)
             self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)

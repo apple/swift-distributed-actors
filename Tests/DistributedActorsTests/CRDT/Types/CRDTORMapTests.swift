@@ -334,9 +334,9 @@ final class CRDTORMapTests: XCTestCase {
         m1.count.shouldEqual(0)
         m1.isEmpty.shouldBeTrue()
 
-        m1.update(key: "s1") { $0.add(1) }
-        m1.update(key: "s2") { $0.add(3) }
-        m1.update(key: "s1") { $0.add(5) }
+        m1.update(key: "s1") { $0.insert(1) }
+        m1.update(key: "s2") { $0.insert(3) }
+        m1.update(key: "s1") { $0.insert(5) }
 
         guard let s1 = m1["s1"] else {
             throw shouldNotHappen("Expect m1 to contain \"s1\", got \(m1)")
@@ -386,11 +386,11 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
-            $0.add(1)
-            $0.add(5)
+            $0.insert(1)
+            $0.insert(5)
         }
         m1.update(key: "s2") { // (A,2)
-            $0.add(3)
+            $0.insert(3)
         }
 
         var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaB, defaultValue: CRDT.ORSet<Int>(replicaID: self.replicaB))
@@ -450,11 +450,11 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
-            $0.add(1)
-            $0.add(5)
+            $0.insert(1)
+            $0.insert(5)
         }
         m1.update(key: "s2") { // (A,2)
-            $0.add(3)
+            $0.insert(3)
         }
 
         var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaB, defaultValue: CRDT.ORSet<Int>(replicaID: self.replicaB))
@@ -488,8 +488,8 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(B,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5, 7], "s2": [3]]
         m2.update(key: "s1") { // (B,1) replaces (A,1) because it's "newer"
-            $0.add(5) // re-add
-            $0.add(7) // new
+            $0.insert(5) // re-add
+            $0.insert(7) // new
         }
 
         // This will bring m2.s1 to m1 and since m1 doesn't have causal history of s1 it re-adds the deleted
@@ -525,11 +525,11 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
-            $0.add(1)
-            $0.add(5)
+            $0.insert(1)
+            $0.insert(5)
         }
         m1.update(key: "s2") { // (A,2)
-            $0.add(3)
+            $0.insert(3)
         }
 
         var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaB, defaultValue: CRDT.ORSet<Int>(replicaID: self.replicaB))
@@ -565,8 +565,8 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(B,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5, 7], "s2": [3]]
         m2.update(key: "s1") { // (B,1) replaces (A,1) because it's "newer"
-            $0.add(5) // re-add
-            $0.add(7) // new
+            $0.insert(5) // re-add
+            $0.insert(7) // new
         }
 
         // This will bring m2.s1 to m1 but deleted m1.s1 elements (i.e., 1, 5) should not be revived because
@@ -598,9 +598,9 @@ final class CRDTORMapTests: XCTestCase {
 
     func test_ORMap_ORSet_resetValue_resetAllValues() throws {
         var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaID: self.replicaA, defaultValue: CRDT.ORSet<Int>(replicaID: self.replicaA))
-        m1.update(key: "s1") { $0.add(1) }
-        m1.update(key: "s2") { $0.add(3) }
-        m1.update(key: "s1") { $0.add(5) }
+        m1.update(key: "s1") { $0.insert(1) }
+        m1.update(key: "s2") { $0.insert(3) }
+        m1.update(key: "s1") { $0.insert(5) }
 
         guard let s1 = m1["s1"] else {
             throw shouldNotHappen("Expect m1 to contain \"s1\", got \(m1)")

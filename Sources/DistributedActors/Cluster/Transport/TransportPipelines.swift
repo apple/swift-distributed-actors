@@ -326,6 +326,8 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
                 self.log.error(
                     "Serialization of outgoing message failed: \(error)",
                     metadata: [
+                        "message": "\(transportEnvelope.underlyingMessage)",
+                        "message/type": "\(reflecting: type(of: transportEnvelope.underlyingMessage as Any))",
                         "recipient": "\(transportEnvelope.recipient)",
                     ]
                 )
@@ -865,7 +867,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
 
     // TODO: carry same data as Envelope -- baggage etc
 
-    init(envelope: Envelope, recipient: ActorAddress) {
+    init(envelope: Payload, recipient: ActorAddress) {
         assert(recipient.node != nil, "Attempted to send remote message, though recipient is local! Was envelope: \(envelope), recipient: \(recipient)")
         switch envelope.payload {
         case .message(let message):

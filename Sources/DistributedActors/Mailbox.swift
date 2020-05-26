@@ -54,7 +54,7 @@ internal enum MailboxBitMasks {
 internal final class Mailbox<Message: ActorMessage> {
     weak var shell: ActorShell<Message>?
     let _status: Atomic<UInt64> = Atomic(value: 0)
-    let userMessages: MPSCLinkedQueue<Envelope>
+    let userMessages: MPSCLinkedQueue<Payload>
     let systemMessages: MPSCLinkedQueue<_SystemMessage>
     let capacity: UInt32
     let maxRunLength: UInt32
@@ -107,7 +107,7 @@ internal final class Mailbox<Message: ActorMessage> {
     }
 
     @inlinable
-    func sendMessage(envelope: Envelope, file: String, line: UInt) {
+    func sendMessage(envelope: Payload, file: String, line: UInt) {
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
@@ -156,7 +156,7 @@ internal final class Mailbox<Message: ActorMessage> {
     }
 
     @inlinable
-    func enqueueUserMessage(_ envelope: Envelope) -> EnqueueDirective {
+    func enqueueUserMessage(_ envelope: Payload) -> EnqueueDirective {
         let oldStatus = self.incrementMessageCount()
         guard oldStatus.messageCount < self.capacity else {
             // If we passed the maximum capacity of the user queue, we can't enqueue more
@@ -632,17 +632,15 @@ internal final class Mailbox<Message: ActorMessage> {
 // that it added some runtime overhead when retrieving the messages from the
 // queue, because additional metatype information was retrieved, therefore
 // we removed it
-internal enum WrappedMessage {
+internal enum WrappedMessage: NonTransportableActorMessage {
     case message(Any)
     case closure(ActorClosureCarry)
     case adaptedMessage(AdaptedMessageCarry)
     case subMessage(SubMessageCarry)
 }
 
-extension WrappedMessage: NonTransportableActorMessage {}
-
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
-internal struct Envelope {
+internal struct Payload {
     let payload: WrappedMessage
 
     // Note that we can pass around senders however we can not automatically get the type of them right.

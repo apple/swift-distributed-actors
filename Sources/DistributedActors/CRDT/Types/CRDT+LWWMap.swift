@@ -22,7 +22,7 @@ extension CRDT {
     /// - SeeAlso: Akka's [`LWWMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/LWWMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
     /// - SeeAlso: `CRDT.LWWRegister`
-    public struct LWWMap<Key: Codable & Hashable, Value: Codable>: NamedDeltaCRDT, LWWMapOperations {
+    public struct LWWMap<Key: Codable & Hashable, Value: Codable & Equatable>: NamedDeltaCRDT, LWWMapOperations {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
         public let replicaID: ReplicaID
@@ -35,7 +35,7 @@ extension CRDT {
         }
 
         public var underlying: [Key: Value] {
-            self.state._values.mapValues { $0.value }
+            self.state._storage.mapValues { $0.value }
         }
 
         public var keys: Dictionary<Key, Value>.Keys {
@@ -121,6 +121,14 @@ extension CRDT {
         public mutating func resetDelta() {
             self.state.resetDelta()
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state.equalState(to: other.state)
+        }
     }
 }
 
@@ -146,8 +154,18 @@ extension CRDT.ActorOwned where DataType: LWWMapOperations {
 }
 
 extension CRDT.LWWMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaID: .actorAddress(owner.address), defaultValue: defaultValue))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaID: .actorAddress(ownerAddress), defaultValue: defaultValue))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.LWWMap: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.underlying))"
     }
 }
 

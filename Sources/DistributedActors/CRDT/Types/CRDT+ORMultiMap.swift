@@ -27,14 +27,14 @@ extension CRDT {
         public let replicaID: ReplicaID
 
         /// Underlying ORMap for storing pairs of key and its set of values and managing causal history and delta
-        var state: ORMap<Key, ORSet<Value>>
+        internal var state: ORMap<Key, ORSet<Value>>
 
         public var delta: Delta? {
             self.state.delta
         }
 
         public var underlying: [Key: Set<Value>] {
-            self.state._values.mapValues { $0.elements }
+            self.state._storage.mapValues { $0.elements }
         }
 
         public var keys: Dictionary<Key, Set<Value>>.Keys {
@@ -68,7 +68,7 @@ extension CRDT {
 
         public mutating func add(forKey key: Key, _ value: Value) {
             self.state.update(key: key) { set in
-                set.add(value)
+                set.insert(value)
             }
         }
 
@@ -116,6 +116,14 @@ extension CRDT {
 
         public mutating func resetDelta() {
             self.state.resetDelta()
+        }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state.equalState(to: other.state)
         }
     }
 }
@@ -170,8 +178,18 @@ extension CRDT.ActorOwned where DataType: ORMultiMapOperations {
 }
 
 extension CRDT.ORMultiMap {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
-        CRDT.ActorOwned<CRDT.ORMultiMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(owner.address)))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.ORMultiMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(ownerAddress)))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.ORMultiMap: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.underlying))"
     }
 }
 

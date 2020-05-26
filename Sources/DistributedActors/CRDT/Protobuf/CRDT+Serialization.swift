@@ -190,7 +190,13 @@ extension CRDT.GCounter: ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtoCRDTGCounter {
         var proto = ProtoCRDTGCounter()
         proto.replicaID = try self.replicaID.toProto(context: context)
-        proto.state = try CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
+        let state: [ReplicaID: Int] = self.state
+        var newState: [ReplicaID: Int] = [:]
+        newState.reserveCapacity(state.count)
+        for (id, value) in state {
+            newState[id.ensuringNode(context.localNode)] = value
+        }
+        proto.state = try CRDT.GCounter.ProtoState(fromValue: newState, context: context)
         if let delta = self.delta {
             proto.delta = try delta.toProto(context: context)
         }
@@ -311,7 +317,7 @@ extension CRDT.ORMap: ProtobufRepresentable {
         var proto = ProtobufRepresentation()
         proto.replicaID = try self.replicaID.toProto(context: context)
         proto.keys = try self._keys.toProto(context: context)
-        proto.values = try ORMapSerializationUtils.valuesToProto(self._values, context: context)
+        proto.values = try ORMapSerializationUtils.valuesToProto(self._storage, context: context)
         proto.updatedValues = try ORMapSerializationUtils.valuesToProto(self.updatedValues, context: context)
         return proto
     }
@@ -327,7 +333,7 @@ extension CRDT.ORMap: ProtobufRepresentable {
         }
         self._keys = try CRDT.ORSet<Key>(fromProto: proto.keys, context: context)
 
-        self._values = try ORMapSerializationUtils.valuesFromProto(proto.values, context: context)
+        self._storage = try ORMapSerializationUtils.valuesFromProto(proto.values, context: context)
         self.updatedValues = try ORMapSerializationUtils.valuesFromProto(proto.updatedValues, context: context)
         self.defaultValue = nil // We don't need remote's default value for merge
     }

@@ -98,14 +98,17 @@ public protocol CodableSerializationContext {
     ///
     /// ## Example
     ///
+    /// Extracting the context from a `decoder`:
+    ///
     /// ```
     ///    guard let serializationContext = decoder.actorSerializationContext else {
     ///        throw SerializationError.missingSerializationContext(decoder, MyMessage.self)
     ///    }
     /// ```
     ///
+    /// Similarly, in case the context is extracted from an `encoder`:
     /// ```
-    ///    guard let serializationContext = decoder.actorSerializationContext else {
+    ///    guard let serializationContext = encoder.actorSerializationContext else {
     ///        throw SerializationError.missingSerializationContext(encoder, value)
     ///    }
     /// ```

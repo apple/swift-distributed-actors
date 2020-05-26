@@ -91,27 +91,28 @@ public func pprint(_ message: String, file: StaticString = #file, line: UInt = #
     """)
 }
 
+internal let CONSOLE_RESET = "\u{001B}[0;0m"
+internal let CONSOLE_BOLD = "\u{001B}[1m"
+internal let CONSOLE_YELLOW = "\u{001B}[0;33m"
+internal let CONSOLE_GREEN = "\u{001B}[0;32m"
+
 /// Like [pprint] but yellow, use for things that are better not to miss.
 public func pnote(_ message: String, file: StaticString = #file, line: UInt = #line) {
-    let yellow = "\u{001B}[0;33m"
-    let reset = "\u{001B}[0;0m"
     print("""
-    \(yellow)\
+    \(CONSOLE_YELLOW)\
     [\(_createTimeFormatter().string(from: Date()))] \
     \(file):\(line) : \(message)\
-    \(reset)
+    \(CONSOLE_RESET)
     """)
 }
 
 /// Like [pprint] but green, use for notable "good" output.
 public func pinfo(_ message: String, file: StaticString = #file, line: UInt = #line) {
-    let green = "\u{001B}[0;32m"
-    let reset = "\u{001B}[0;0m"
     print("""
-    \(green)\
+    \(CONSOLE_GREEN)\
     [\(_createTimeFormatter().string(from: Date()))] \
     \(file):\(line) : \(message)\
-    \(reset)
+    \(CONSOLE_RESET)
     """)
 }
 

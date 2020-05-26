@@ -240,7 +240,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
         }
 
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
-        s1.add(3)
+        s1.insert(3)
 
         // Cannot write data of different data under `id`
         guard case .inputAndStoredDataTypeMismatch(let error) = replicator.write(id, s1, deltaMerge: true) else {

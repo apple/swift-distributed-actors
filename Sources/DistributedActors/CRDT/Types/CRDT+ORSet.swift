@@ -25,9 +25,9 @@ extension CRDT {
     /// same element are concurrent (i.e., we cannot determine which happens before another), `add` always "wins" since
     /// `remove` is concerned with *observed* events only (the concurrent `add` has not been observed yet).
     ///
-    /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf)
-    /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
-    /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
+    /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf) (Annette Bieniusa, Marek Zawirski, Nuno Preguiça, Marc Shapiro, Carlos Baquero, Valter Balegas, Sérgio Duarte, 2012)
+    /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/) (Bartosz Sypytkowski, 2018)
+    /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf) (Marc Shapiro, Nuno Preguiça, Carlos Baquero, Marek Zawirski, 2011)
     public struct ORSet<Element: Codable & Hashable>: NamedDeltaCRDT, ORSetOperations {
         public typealias ORSetDelta = VersionedContainerDelta<Element>
         public typealias Delta = ORSetDelta
@@ -41,6 +41,7 @@ extension CRDT {
             self.state.delta
         }
 
+        // TODO: API naming, this is called "elements" which makes it sounds as if it was an iterator of elements...?
         public var elements: Set<Element> {
             self.state.elements
         }
@@ -58,7 +59,7 @@ extension CRDT {
             self.state = VersionedContainer(replicaID: replicaID)
         }
 
-        public mutating func add(_ element: Element) {
+        public mutating func insert(_ element: Element) {
             // From [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf)
             // on coalescing repeated adds: "for every combination of element and source replica, it is enough to keep
             // the identifier of the latest add, which subsumes previously added elements"
@@ -103,6 +104,14 @@ extension CRDT {
         public mutating func mergeDelta(_ delta: Delta) {
             self.state.mergeDelta(delta)
             self.compact()
+        }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state.equalState(to: other.state) // TODO: is this correct?
         }
 
         /// Similar space reduction as described in the `add` method.
@@ -156,6 +165,15 @@ extension CRDT.ORSet: ResettableCRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.ORSet: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "ORSet(\(self.elements))"
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORSet
 
 public protocol ORSetOperations {
@@ -163,7 +181,7 @@ public protocol ORSetOperations {
 
     var elements: Set<Element> { get }
 
-    mutating func add(_ element: Element)
+    mutating func insert(_ element: Element)
     mutating func remove(_ element: Element)
     mutating func removeAll()
 }
@@ -173,7 +191,7 @@ public protocol ORSetOperations {
 // to each method:
 //
 //     extension CRDT.ActorOwned {
-//         public func add<Element: Hashable>(_ element: Element, ...) -> Result<DataType> where DataType == CRDT.ORSet<Element> { ... }
+//         public func insert<Element: Hashable>(_ element: Element, ...) -> Result<DataType> where DataType == CRDT.ORSet<Element> { ... }
 //     }
 //
 // But this does not work for `lastObservedValue`, which is a computed property.
@@ -182,9 +200,9 @@ extension CRDT.ActorOwned where DataType: ORSetOperations {
         self.data.elements
     }
 
-    public func add(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    public func insert(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Add element locally then propagate
-        self.data.add(element)
+        self.data.insert(element)
         return self.write(consistency: consistency, timeout: timeout)
     }
 
@@ -202,8 +220,9 @@ extension CRDT.ActorOwned where DataType: ORSetOperations {
 }
 
 extension CRDT.ORSet {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORSet<Element>> {
-        CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaID: .actorAddress(owner.address)))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORSet<Element>> {
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaID: .actorAddress(ownerAddress)))
     }
 }
 

@@ -86,7 +86,7 @@ extension ActorRef: ReceivesQuestions {
         let promise = system._eventLoopGroup.next().makePromise(of: answerType)
 
         // TODO: maybe a specialized one... for ask?
-        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
+        let instrumentation = system.settings.instrumentation.makeActorInstrumentation(promise.futureResult, self.address.ensuringNode(system.settings.cluster.uniqueBindNode))
 
         do {
             // TODO: implement special actor ref instead of using real actor
@@ -105,7 +105,7 @@ extension ActorRef: ReceivesQuestions {
             let message = makeQuestion(askRef)
             self.tell(message, file: file, line: line)
 
-            instrumentation.actorAsked(message: message, from: askRef.address.fillNodeWhenEmpty(system.settings.cluster.uniqueBindNode))
+            instrumentation.actorAsked(message: message, from: askRef.address.ensuringNode(system.settings.cluster.uniqueBindNode))
             promise.futureResult.whenComplete {
                 switch $0 {
                 case .success(let answer):
@@ -266,6 +266,7 @@ extension AskResponse: AsyncResult {
 }
 
 extension AskResponse {
+    // FIXME: make this internal (!)
     /// Transforms successful response of `Value` type to `NewValue` type.
     public func map<NewValue>(_ callback: @escaping (Value) -> NewValue) -> AskResponse<NewValue> {
         switch self {

@@ -22,15 +22,15 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
         }
     }
 
-    let actorA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .wellKnown)
-    let actorB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .wellKnown)
+    let addressA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .wellKnown)
+    let addressB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector
 
     func test_serializationOf_VersionVector() throws {
         try shouldNotThrow {
-            let vv = VersionVector([(.actorAddress(self.actorA), 2), (.actorAddress(self.actorB), 5)])
+            let vv = VersionVector([(.actorAddress(self.addressA), 2), (.actorAddress(self.addressB), 5)])
 
             let serialized = try system.serialization.serialize(vv)
             let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
@@ -57,7 +57,7 @@ final class VersionVectorSerializationTests: ActorSystemTestBase {
 
     func test_serializationOf_VersionDot() throws {
         try shouldNotThrow {
-            let dot = VersionDot(.actorAddress(self.actorA), 2)
+            let dot = VersionDot(.actorAddress(self.addressA), 2)
 
             let serialized = try system.serialization.serialize(dot)
             let deserialized = try system.serialization.deserialize(as: VersionDot.self, from: serialized)
