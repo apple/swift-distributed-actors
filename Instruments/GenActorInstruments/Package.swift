@@ -41,7 +41,6 @@ var dependencies: [Package.Dependency] = [
     .package(path: "../../"),
 
     // ~~~ for rendering the PackageDefinition XML ~~~
-//    .package(url: "https://github.com/MaxDesiatov/XMLCoder.git", from: "0.9.0"), // MIT
     .package(url: "https://github.com/MaxDesiatov/XMLCoder.git", from: "0.11.1"), // MIT
     .package(url: "https://github.com/apple/swift-argument-parser", .exact("0.0.6")), // not API stable, Apache v2
 ]
