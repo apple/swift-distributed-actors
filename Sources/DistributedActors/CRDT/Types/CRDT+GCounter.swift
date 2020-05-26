@@ -42,9 +42,16 @@ extension CRDT {
             self.state = [:]
         }
 
+        /// Increment the counter (using the stored owner `replicaID`) by the passed in `amount`.
+        ///
+        /// - Faults: when amount is negative
         /// - Faults: on overflow // TODO perhaps just saturate?
         mutating func increment(by amount: Int) {
-            precondition(amount > 0, "Amount must be greater than 0")
+            precondition(amount >= 0, "Amount must be greater than 0, was: \(amount)")
+
+            guard amount > 0 else {
+                return // adding 0 is a no-op, and we don't even perform the action (which would create deltas)
+            }
 
             let newCount: Int
             if let currentCount = state[replicaID] {
@@ -76,7 +83,6 @@ extension CRDT {
                 self.merge(other: wellTypedOther)
                 return nil
             } else if let wellTypedOtherDelta = other as? Self.Delta {
-                // TODO: what if we simplify and compute deltas...?
                 self.mergeDelta(wellTypedOtherDelta)
                 return nil
             } else {
@@ -96,9 +102,17 @@ extension CRDT {
         public mutating func resetDelta() {
             self.delta = nil
         }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state == other.state // TODO: is this correct?
+        }
     }
 
-    public struct GCounterDelta: CvRDT {
+    public struct GCounterDelta: CvRDT, Equatable {
         // State is a dictionary of replicas and their counter values.
         var state: [ReplicaID: Int]
 
@@ -114,6 +128,14 @@ extension CRDT {
             } else {
                 return CRDT.MergeError(storedType: Self.self, incomingType: OtherType)
             }
+        }
+
+        public func equalState(to other: StateBasedCRDT) -> Bool {
+            guard let other = other as? Self else {
+                return false
+            }
+
+            return self.state == other.state // TODO: is this correct?
         }
 
         public mutating func merge(other: GCounterDelta) {
@@ -144,8 +166,18 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
 }
 
 extension CRDT.GCounter {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
-        CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: .actorAddress(owner.address)))
+    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
+        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        return CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: .actorAddress(ownerAddress)))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
+
+extension CRDT.GCounter: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.value))"
     }
 }
 

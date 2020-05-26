@@ -16,19 +16,17 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
+final class CRDTDirectReplicationTests: ClusteredNodesTestBase {
     var localSystem: ActorSystem!
     var localTestKit: ActorTestKit!
 
     var remoteSystem: ActorSystem!
     var remoteTestKit: ActorTestKit!
 
-    func setUpLocal() {
+    override func setUp() {
         self.localSystem = super.setUpNode("local")
         self.localTestKit = super.testKit(self.localSystem)
-    }
 
-    func setUpRemote() {
         self.remoteSystem = super.setUpNode("remote")
         self.remoteTestKit = super.testKit(self.remoteSystem)
     }
@@ -48,6 +46,21 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
     typealias RemoteReadResult = CRDT.Replicator.RemoteCommand.ReadResult
     typealias RemoteDeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
     typealias OperationExecution = CRDT.Replicator.OperationExecution
+
+    func test_directReplication_whenNoPeers() throws {
+        let p: ActorTestProbe<String> = self.localTestKit.spawnTestProbe(expecting: String.self)
+
+        _ = try self.localSystem.spawn("owner", of: String.self, .setup { context in
+            let set: CRDT.ActorOwned<CRDT.ORSet<Int>> = CRDT.ORSet.makeOwned(by: context, id: "s1")
+            let adding: CRDT.ActorOwned.OperationResult<CRDT.ORSet<Int>> = set.insert(1, writeConsistency: .quorum, timeout: .effectivelyInfinite)
+            adding.onComplete { result in
+                p.tell("\(result)")
+            }
+            return .receiveMessage { _ in .same }
+        })
+
+        try p.expectMessage().shouldContain("\(DistributedActors.CRDT.OperationConsistency.Error.remoteReplicasRequired)")
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Test utilities

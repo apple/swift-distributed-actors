@@ -173,8 +173,6 @@ public struct ActorOriginLogHandler: LogHandler {
         if self.context.useBuiltInFormatter {
             var l = logMessage
 
-            // TODO: decide if we want to use those "extract into known place in format" things or not
-            // It makes reading the logs more uniform, so I think yes.
             let dispatcherPart: String
             if let d = l.effectiveMetadata?.removeValue(forKey: "dispatcher") {
                 dispatcherPart = "[\(d)]"
@@ -200,28 +198,39 @@ public struct ActorOriginLogHandler: LogHandler {
             }
 
             var msg = ""
-
-            // sort metadata to preserve sanity
-            // TODO: we should not do this or hide this under an env flag or something?
-            if ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil {
-                if let meta = l.effectiveMetadata, !meta.isEmpty {
-                    let ms = meta
-                        .lazy
-                        .sorted(by: { $0.key < $1.key })
-                        .map { "\"\($0)\":\($1)" }
-                        .joined(separator: ",")
-                    msg += "{\(ms)}" // forces any lazy metadata to be rendered
-                }
-                l.effectiveMetadata?.removeAll()
-            }
-
             msg += "\(actorSystemIdentity)"
             msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
             msg += "\(dispatcherPart)"
             msg += "\(actorPathPart)"
             msg += " \(l.message)"
 
-            self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            if ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil {
+                if let metadata = l.effectiveMetadata, !metadata.isEmpty {
+                    var metadataString = "\n// metadata:\n"
+                    for key in metadata.keys.sorted() where key != "label" {
+                        var allString = "\n// \"\(key)\": \(metadata[key]!)"
+                        if allString.contains("\n") {
+                            allString = String(
+                                allString.split(separator: "\n").map { valueLine in
+                                    if valueLine.starts(with: "// ") {
+                                        return "\(valueLine)\n"
+                                    } else {
+                                        return "// \(valueLine)\n"
+                                    }
+                                }.joined(separator: "")
+                            )
+                        }
+                        metadataString.append(allString)
+                    }
+                    metadataString = String(metadataString.dropLast(1))
+
+                    msg += metadataString
+                }
+                self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            } else {
+                self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            }
+
         } else {
             self.loggingSystemSelectedLogger.log(level: logMessage.level, logMessage.message, metadata: self.metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
         }

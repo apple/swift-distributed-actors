@@ -122,6 +122,14 @@ public class Timers<Message: ActorMessage> {
         }
     }
 
+    /// Checks for the existence of a scheduler timer for given key (single or periodic).
+    ///
+    /// - Returns: true if timer exists, false otherwise
+    @inlinable
+    public func exists(key: TimerKey) -> Bool {
+        self.installedTimers[key] != nil
+    }
+
     /// Starts a timer that will send the given message to `myself` after the specified delay.
     ///
     /// - Parameters:

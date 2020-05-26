@@ -169,10 +169,6 @@ extension Cluster {
     }
 }
 
-// extension Cluster.Gossip: Codable {
-//    // Codable: synthesized conformance
-// }
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.Gossip.SeenTable
 

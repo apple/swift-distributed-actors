@@ -51,7 +51,6 @@ public struct EventStream<Event: ActorMessage> {
     }
 
     public func publish(_ event: Event, file: String = #file, line: UInt = #line) {
-        pprint("publishing [\(file):\(line)] = \(event)")
         self.ref.tell(.publish(event))
     }
 }

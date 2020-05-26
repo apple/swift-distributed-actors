@@ -49,6 +49,15 @@ final class CRDTGCounterTests: XCTestCase {
         g2.value.shouldEqual(10) // unchanged
     }
 
+    func test_increment_byZero_shouldBeNoop() throws {
+        var g1 = CRDT.GCounter(replicaID: self.replicaA)
+        g1.increment(by: 1)
+        g1.increment(by: 0)
+        g1.increment(by: 10)
+
+        g1.value.shouldEqual(11) // 1 (g1) + 10 (g2)
+    }
+
     func test_merging_shouldNotMutate() throws {
         var g1 = CRDT.GCounter(replicaID: self.replicaA)
         g1.increment(by: 1)

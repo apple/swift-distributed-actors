@@ -413,7 +413,7 @@ extension OperationLogClusterReceptionist {
         for replica in push.observedSeqNrs.replicaIDs
             where replica != peerReplicaId && replica != myselfReplicaID &&
             self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
-            switch replica {
+            switch replica.storage {
             case .actorAddress(let address):
                 self.sendAckOps(context, receptionistAddress: address)
             default:

@@ -306,4 +306,8 @@ extension LogCapture {
             throw callSiteError
         }
     }
+
+    public func grep(_ string: String) -> [CapturedLogMessage] {
+        self.logs.filter { "\($0)".contains(string) }
+    }
 }

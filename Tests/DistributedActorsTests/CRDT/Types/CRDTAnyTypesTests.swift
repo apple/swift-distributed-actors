@@ -150,7 +150,7 @@ final class CRDTAnyTypesTests: XCTestCase {
         g1.increment(by: 1)
 
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
-        s1.add(3)
+        s1.insert(3)
 
         let anyCvRDTs: [CRDT.Identity: StateBasedCRDT] = [
             "gcounter-1": g1,
@@ -186,7 +186,7 @@ final class CRDTAnyTypesTests: XCTestCase {
         g1.increment(by: 1)
 
         var s1 = CRDT.ORSet<Int>(replicaID: self.replicaA)
-        s1.add(3)
+        s1.insert(3)
 
         var gg1 = g1
 

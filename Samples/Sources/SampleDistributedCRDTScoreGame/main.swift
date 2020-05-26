@@ -12,7 +12,4 @@
 //
 //===----------------------------------------------------------------------===//
 
-internal enum AnyStateBasedCRDTError: Error {
-    case incompatibleTypesMergeAttempted(StateBasedCRDT, other: StateBasedCRDT)
-    case incompatibleDeltaTypeMergeAttempted(StateBasedCRDT, delta: StateBasedCRDT)
-}
+try ScoreGame().run(for: .seconds(60))

@@ -105,8 +105,6 @@ extension CRDT {
             replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data, replyTo: nil)))
         }
 
-        // TODO: handle error instead of throw? convert replicator error to something else?
-
         internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
             let id = self.id
             let data = self.data
@@ -346,6 +344,11 @@ extension CRDT {
 
         // `DataOwnerMessage.updated`
         func onUpdate(actorOwned: CRDT.ActorOwned<DataType>, data: DataType) {
+            // TODO: could we use equalState to prevent triggering more often than necessary? #633
+//            guard !actorOwned.data.equalState(to: data) else {
+//                actorOwned.data = data // merge because maybe deltas changed, but don't trigger onUpdate
+//            }
+            // state changed, notify the user handler
             actorOwned.data = data
             self.ownerDefinedOnUpdate?(actorOwned.id, data)
         }
@@ -373,7 +376,7 @@ extension CRDT.ActorOwned where DataType: DeltaCRDT {
 // MARK: CRDT.Identity
 
 extension CRDT {
-    public struct Identity: Hashable {
+    public struct Identity: Hashable, Codable {
         public let id: String
 
         public init(_ id: String) {
@@ -385,6 +388,12 @@ extension CRDT {
 extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: StringLiteralType) {
         self.init(value)
+    }
+}
+
+extension CRDT.Identity: CustomStringConvertible {
+    public var description: String {
+        "CRDT.Identity(\(id))"
     }
 }
 
@@ -429,6 +438,15 @@ extension CRDT.OperationConsistency {
         case unableToFulfill(consistency: CRDT.OperationConsistency, localConfirmed: Bool, required: Int, remaining: Int, obtainable: Int)
         case tooManyFailures(allowed: Int, actual: Int)
         case remoteReplicasRequired
+        indirect case unexpectedError(Swift.Error)
+
+        public static func wrap(_ error: Swift.Error) -> Error {
+            if let consistencyError = error as? CRDT.OperationConsistency.Error {
+                return consistencyError
+            } else {
+                return .unexpectedError(error)
+            }
+        }
     }
 }
 

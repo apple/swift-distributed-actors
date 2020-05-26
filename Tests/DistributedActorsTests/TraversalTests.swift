@@ -82,6 +82,7 @@ final class TraversalTests: ActorSystemTestBase {
                 "system",
                 "receptionist",
                 "replicator",
+                "gossip",
                 "user",
                 "other",
                 "inner-1",

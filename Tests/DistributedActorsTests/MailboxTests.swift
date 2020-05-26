@@ -21,10 +21,10 @@ final class MailboxTests: ActorSystemTestBase {
     func test_sendMessage_shouldDropMessagesWhenFull() {
         let mailbox: Mailbox<Int> = Mailbox(system: self.system, capacity: 2)
 
-        (mailbox.enqueueUserMessage(Envelope(payload: .message(1))) == .needsScheduling).shouldBeTrue()
-        (mailbox.enqueueUserMessage(Envelope(payload: .message(2))) == .alreadyScheduled).shouldBeTrue()
+        (mailbox.enqueueUserMessage(Payload(payload: .message(1))) == .needsScheduling).shouldBeTrue()
+        (mailbox.enqueueUserMessage(Payload(payload: .message(2))) == .alreadyScheduled).shouldBeTrue()
 
-        (mailbox.enqueueUserMessage(Envelope(payload: .message(3))) == .mailboxFull).shouldBeTrue()
+        (mailbox.enqueueUserMessage(Payload(payload: .message(3))) == .mailboxFull).shouldBeTrue()
 
         mailbox.status.messageCount.shouldEqual(2)
     }

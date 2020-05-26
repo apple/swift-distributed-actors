@@ -13,22 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 extension CRDT.Replicator {
+    // TODO: make it Direct Replicator
     internal final class Instance {
         typealias Identity = CRDT.Identity
         typealias OwnerMessage = CRDT.Replication.DataOwnerMessage
 
-        let settings: Settings
+        let settings: CRDT.ReplicatorSettings
 
         // CRDT store
-        // private var dataStore: [Identity: AnyStateBasedCRDT] = [:] // FIXME: ???
         private var dataStore: [Identity: StateBasedCRDT] = [:]
+
         // Tombstones for deleted CRDTs
         // TODO: tombstone should have TTL
         private var tombstones: Set<Identity> = []
         // CRDTs and their actor owners
         private var owners: [Identity: Set<ActorRef<OwnerMessage>>] = [:]
 
-        init(_ settings: Settings) {
+        init(_ settings: CRDT.ReplicatorSettings) {
             self.settings = settings
         }
 
@@ -79,8 +80,7 @@ extension CRDT.Replicator {
         /// - Parameter data: The full CRDT to write.
         /// - Parameter deltaMerge: True if merge can be done with the delta only; false if full state merge is required.
         /// - Returns: `WriteDirective` indicating if the write has succeeded or failed.
-        // func write(_ id: Identity, _ data: AnyStateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective { // TODO: used to be this, to be able to only write a delta
-        func write(_ id: Identity, _ data: StateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective { // TODO: used to be this, to be able to
+        func write(_ id: Identity, _ data: StateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective {
             switch self.dataStore[id] {
             case .none: // New CRDT; just add to store
 

@@ -20,7 +20,7 @@ extension ReplicaID: ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtoVersionReplicaID {
         var proto = ProtoVersionReplicaID()
-        switch self {
+        switch self.storage {
         case .actorAddress(let actorAddress):
             proto.actorAddress = try actorAddress.toProto(context: context)
         case .uniqueNode(let node):

@@ -18,7 +18,7 @@ import protocol NIO.EventLoop
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Addressable (but not tell-able) ActorRef
 
-/// Type erased form of `AddressableActorRef` in order to be used as existential type.
+/// Type erased form of `AddressableActorRef` in order to be used as existential type. // TODO: comment wrong?
 /// This form allows us to check for "is this the same actor?" yet not send messages to it.
 public struct AddressableActorRef: Hashable {
     @usableFromInline

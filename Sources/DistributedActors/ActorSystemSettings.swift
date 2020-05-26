@@ -36,6 +36,8 @@ public struct ActorSystemSettings {
         }
     }
 
+    public var crdt: CRDT.ReplicatorSettings = .default
+
     public var logging: LoggingSettings = .default
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var instrumentation: InstrumentationSettings = .default
