@@ -67,7 +67,6 @@ public struct TestActorable: Actorable {
         // nothing
     }
 
-    // @actor
     private func privateFunc() {
         // nothing
     }

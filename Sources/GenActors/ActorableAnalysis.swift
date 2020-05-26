@@ -57,7 +57,12 @@ final class GatherActorables: SyntaxVisitor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: types
 
-    func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntaxProtocol, name: String) -> SyntaxVisitorContinueKind {
+    func visit(
+        _ type: ActorableTypeDecl.DeclType,
+        node: DeclSyntaxProtocol,
+        name: String,
+        collectGenericDecls: @autoclosure () -> [ActorableTypeDecl.GenericDecl] = []
+    ) -> SyntaxVisitorContinueKind {
         self.log.trace("Visit \(type): \(name)")
 
         guard node.isActorable() else {
@@ -77,6 +82,7 @@ final class GatherActorables: SyntaxVisitor {
             name: name,
             generateCodableConformance: true
         )
+        self.wipActorable.genericTypes = collectGenericDecls()
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
         self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path) ...")
@@ -132,7 +138,12 @@ final class GatherActorables: SyntaxVisitor {
     }
 
     override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.visit(.class, node: node, name: node.identifier.text)
+        self.visit(
+            .class,
+            node: node,
+            name: node.identifier.text,
+            collectGenericDecls: self.collectGenericDecls(node.genericParameterClause)
+        )
     }
 
     override func visitPost(_ node: ClassDeclSyntax) {
@@ -140,7 +151,12 @@ final class GatherActorables: SyntaxVisitor {
     }
 
     override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.visit(.struct, node: node, name: node.identifier.text)
+        self.visit(
+            .struct,
+            node: node,
+            name: node.identifier.text,
+            collectGenericDecls: self.collectGenericDecls(node.genericParameterClause)
+        )
     }
 
     override func visitPost(_ node: StructDeclSyntax) {
@@ -170,6 +186,20 @@ final class GatherActorables: SyntaxVisitor {
 
     override func visitPost(_ node: EnumDeclSyntax) {
         self.visitPostDecl(node.identifier.text, completeWipActorable: node.isActorable())
+    }
+
+    private func collectGenericDecls(_ genericParameterClause: GenericParameterClauseSyntax?) -> [ActorableTypeDecl.GenericDecl] {
+        guard let genericParameterClause = genericParameterClause else {
+            return []
+        }
+
+        var genericDecls: [ActorableTypeDecl.GenericDecl]
+        genericDecls = genericParameterClause.genericParameterList.map { param in
+            .init("\(param)")
+        }
+        // TODO: pprint("genericWhereClause = \(node.genericWhereClause)")
+
+        return genericDecls
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

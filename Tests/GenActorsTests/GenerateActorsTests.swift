@@ -397,4 +397,18 @@ final class GenerateActorsTests: XCTestCase {
         let reply = nestedActor.echo("Hi!")
         try reply.wait().shouldEqual("Hi!")
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Generic actorable actors
+
+    func test_genericActor_echo() throws {
+        let echoString: Actor<GenericEcho<String>> = try self.system.spawn("string") { _ in GenericEcho() }
+        let echoInt: Actor<GenericEcho<Int>> = try self.system.spawn("int") { _ in GenericEcho() }
+
+        let stringReply = try self.testKit.expect(echoString.echo("hello"))
+        stringReply.shouldEqual("hello")
+
+        let intReply = try self.testKit.expect(echoInt.echo(42))
+        intReply.shouldEqual(42)
+    }
 }

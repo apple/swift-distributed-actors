@@ -32,6 +32,35 @@ struct ActorableTypeDecl {
     var access: String = ""
     var type: DeclType
 
+    var genericTypes: [GenericDecl] = []
+    struct GenericDecl {
+        let name: String
+        let parameterDecl: String
+
+        init(_ declaration: String) {
+            self.parameterDecl = declaration
+            if declaration.contains(":") {
+                self.name = String(declaration.split(separator: ":").first!)
+            } else {
+                self.name = declaration
+            }
+        }
+    }
+
+    var renderGenericTypes: String {
+        self.genericTypes.map { $0.parameterDecl } // TODO: must handle where clauses better
+            .joined(separator: ", ")
+    }
+
+    var renderGenericNames: String {
+        self.genericTypes.map { $0.name }
+            .joined(separator: ", ")
+    }
+
+    var isGeneric: Bool {
+        !self.genericTypes.isEmpty
+    }
+
     /// Contains type names within which this type is declared, e.g. `[Actorables.May.Be.Nested].MyActorable`.
     /// Empty for top level declarations.
     var declaredWithin: [String] = []
