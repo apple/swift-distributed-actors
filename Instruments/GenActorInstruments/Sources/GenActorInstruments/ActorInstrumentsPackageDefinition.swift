@@ -87,6 +87,7 @@ extension Column {
         expression: "(str-cat ?recipient-node ?recipient-path)"
     )
 
+    // Discussion about senders: https://github.com/apple/swift-distributed-actors/pull/516#discussion_r430109727
     static let senderNode = Column(
         mnemonic: "actor-sender-node",
         title: "Sender Node",
@@ -144,7 +145,7 @@ extension Column {
         expression: "?answer-type"
     )
     static let askError = Column(
-        mnemonic: "actor-ask-answer",
+        mnemonic: "actor-ask-error",
         title: "Error",
         type: .string,
         expression: "?error"
