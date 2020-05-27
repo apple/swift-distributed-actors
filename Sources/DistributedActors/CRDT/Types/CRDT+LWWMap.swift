@@ -54,7 +54,8 @@ extension CRDT {
             self.state.isEmpty
         }
 
-        init(replicaID: ReplicaID, defaultValue: Value) {
+        /// Creates a pure datatype that can be manually managed (passed around, merged, serialized), without involvement of the actor runtime.
+        public init(replicaID: ReplicaID, defaultValue: Value) {
             self.replicaID = replicaID
             // `defaultValue` is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self`
             // and therefore we must create a "zero" value before merging `other` into it.
