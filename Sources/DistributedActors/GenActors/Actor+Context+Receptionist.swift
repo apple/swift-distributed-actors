@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -83,7 +83,7 @@ extension Actor.Context {
         ///                      The invocation is made on the owning actor's context, meaning that it is safe to mutate actor state from the callback.
         ///
         /// SeeAlso: `autoUpdatedListing(_:)` for an automatically managed wrapped variable containing a `Reception.Listing<Act>`
-        public func subscribe<Act: Actorable>(_ key: Reception.Key<Act>, onListingChange: @escaping (Reception.Listing<Act>) -> Void) {
+        public func subscribe<Act: Actorable>(_ key: Reception.Key<Act>, onListingChange: @escaping (SystemReceptionist.Listing<Act>) -> Void) {
             // TODO: Implementing this without sub-receive would be preferable, as today we either create many subs or override them
             self.underlying.system.receptionist.subscribe(
                 key: key.underlying,
@@ -97,12 +97,12 @@ extension Actor.Context {
         ///
         /// SeeAlso: `ActorOwned<T>` for the general mechanism of actor owned values.
         /// SeeAlso: `subscribe(key:onListingChange:)` for a callback based version of this API.
-        public func autoUpdatedListing<Act: Actorable>(_ key: Reception.Key<Act>) -> ActorableOwned<Reception.Listing<Act>> {
-            let owned: ActorableOwned<Reception.Listing<Act>> = ActorableOwned(self.context)
+        public func autoUpdatedListing<Act: Actorable>(_ key: Reception.Key<Act>) -> ActorableOwned<SystemReceptionist.Listing<Act>> {
+            let owned: ActorableOwned<SystemReceptionist.Listing<Act>> = ActorableOwned(self.context)
             self.context.system.receptionist.subscribe(
                 key: key.underlying,
                 subscriber: self.context._underlying.subReceive(SystemReceptionist.Listing<Act.Message>.self) { listing in
-                    owned.update(newValue: Reception.Listing(refs: listing.refs))
+                    owned.update(newValue: .init(refs: listing.refs))
                 }
             )
 
@@ -113,11 +113,11 @@ extension Actor.Context {
         ///
         /// - Parameters:
         ///   - key: selects which actors we are interested in.
-        public func lookup<Act: Actorable>(_ key: Reception.Key<Act>, timeout: TimeAmount) -> Reply<Reception.Listing<Act>> {
-            let listingReply: AskResponse<Reception.Listing<Act>> = self.underlying.system.receptionist.ask(timeout: timeout) {
+        public func lookup<Act: Actorable>(_ key: Reception.Key<Act>, timeout: TimeAmount) -> Reply<SystemReceptionist.Listing<Act>> {
+            let listingReply: AskResponse<SystemReceptionist.Listing<Act>> = self.underlying.system.receptionist.ask(timeout: timeout) {
                 SystemReceptionist.Lookup(key: key.underlying, replyTo: $0)
             }.map { listing in
-                Reception.Listing(refs: listing.refs)
+                SystemReceptionist.Listing<Act>(refs: listing.refs)
             }
             return Reply.from(askResponse: listingReply)
         }
@@ -146,29 +146,46 @@ extension Reception {
             self.underlying.id
         }
     }
+}
 
-    /// Contains a list of actors looked up using a `Key`.
-    /// A listing MAY be empty.
-    ///
-    /// - See `Receptionist.RegistrationKey` for the low-level `ActorRef` compatible key API
-    public struct Listing<Act: Actorable>: ActorMessage, Equatable {
-        public let refs: Set<ActorRef<Act.Message>>
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actorable Receptionist Listing
 
-        public var isEmpty: Bool {
-            self.actors.isEmpty
+extension SystemReceptionist {
+    struct ActorableListing<Act: Actorable>: ReceptionistListing, CustomStringConvertible {
+        let refs: Set<ActorRef<Act.Message>>
+
+        var description: String {
+            "Listing<\(Act.self)>(\(self.refs.map { $0.address }))"
         }
+    }
+}
 
-        /// - Complexity: O(n)
-        public var actors: Set<Actor<Act>> {
-            Set(self.refs.map { Actor<Act>(ref: $0) })
-        }
+extension SystemReceptionist.Listing where T: Actorable {
+    public typealias Act = T
 
-        public func actor(named name: String) -> Actor<Act>? {
-            self.refs.first { $0.address.name == name }.map { Actor<Act>(ref: $0) }
-        }
+    public init(refs: Set<ActorRef<Act.Message>>) {
+        self.underlying = SystemReceptionist.ActorableListing<Act>(refs: refs)
+    }
 
-        public var first: Actor<Act>? {
-            self.refs.first.map { Actor<Act>(ref: $0) }
-        }
+    public var refs: Set<ActorRef<Act.Message>> {
+        self.underlying.unsafeUnwrapAs(SystemReceptionist.ActorableListing<Act>.self).refs
+    }
+
+    public var isEmpty: Bool {
+        self.refs.isEmpty
+    }
+
+    /// - Complexity: O(n)
+    public var actors: Set<Actor<Act>> {
+        Set(self.refs.map { Actor<Act>(ref: $0) })
+    }
+
+    public var first: Actor<Act>? {
+        self.refs.first.map { Actor<Act>(ref: $0) }
+    }
+
+    public func actor(named name: String) -> Actor<Act>? {
+        self.refs.first { $0.address.name == name }.map { Actor<Act>(ref: $0) }
     }
 }

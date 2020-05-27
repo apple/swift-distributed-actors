@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -193,21 +193,6 @@ public enum Receptionist {
 
         public var description: String {
             "Receptionist.Subscribe(key: \(self.key), replyTo: \(self.replyTo))"
-        }
-    }
-
-    /// Response to `Lookup` and `Subscribe` requests.
-    /// A listing MAY be empty.
-    ///
-    /// - See `Reception.Listing` for the high-level `Actorable`/`Actor` compatible key API
-    public struct Listing<Message: Codable>: Codable, Equatable, CustomStringConvertible {
-        public let refs: Set<ActorRef<Message>>
-        public var description: String {
-            "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
-        }
-
-        var first: ActorRef<Message>? {
-            self.refs.first
         }
     }
 
