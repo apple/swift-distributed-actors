@@ -51,4 +51,5 @@ asciidoctor \
 cp -r $root_path/Docs/images $target_dir/
 cp -r $root_path/Docs/stylesheets $target_dir/
 
-echo "Docs generated: $target_dir/index.html"
+echo "Docs generated!$target_dir/index.html"
+echo "    open $target_dir/index.html"

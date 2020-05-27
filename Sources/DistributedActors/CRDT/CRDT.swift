@@ -295,6 +295,9 @@ extension CRDT {
                 self.onComplete(callback)
             }
 
+            /// Executed when the operation completes.
+            ///
+            /// This callback executed on the owner actors context. It is safe to access the owner's internal state in this callback.
             public func onComplete(_ callback: @escaping (Result<DataType, Swift.Error>) -> Void) {
                 self._safeOnComplete(self.dataFuture) { result in
                     callback(result)
