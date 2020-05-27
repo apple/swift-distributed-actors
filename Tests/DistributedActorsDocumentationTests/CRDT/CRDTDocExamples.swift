@@ -23,6 +23,7 @@ import DistributedActorsTestKit
 import XCTest
 
 class Docs_quickstart_types {
+    func x() {
     func x(system: ActorSystem) {
         // tag::quickstart_types[]
         let node: UniqueNode = system.cluster.node
