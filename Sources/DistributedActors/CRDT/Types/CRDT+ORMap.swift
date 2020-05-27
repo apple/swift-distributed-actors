@@ -101,7 +101,8 @@ extension CRDT {
             self._storage.isEmpty
         }
 
-        init(replicaID: ReplicaID, defaultValue: Value) {
+        /// Creates a pure datatype that can be manually managed (passed around, merged, serialized), without involvement of the actor runtime.
+        public init(replicaID: ReplicaID, defaultValue: Value) {
             self.replicaID = replicaID
             self.defaultValue = defaultValue
             self._keys = ORSet(replicaID: replicaID)

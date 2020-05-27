@@ -37,7 +37,8 @@ extension CRDT {
             self.state.values.reduce(0, +)
         }
 
-        init(replicaID: ReplicaID) {
+        /// Creates a pure datatype that can be manually managed (passed around, merged, serialized), without involvement of the actor runtime.
+        public init(replicaID: ReplicaID) {
             self.replicaID = replicaID
             self.state = [:]
         }

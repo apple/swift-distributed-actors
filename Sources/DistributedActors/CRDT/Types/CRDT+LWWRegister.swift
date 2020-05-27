@@ -35,7 +35,8 @@ extension CRDT {
         var clock: WallTimeClock
         var updatedBy: ReplicaID
 
-        init(replicaID: ReplicaID, initialValue: Value, clock: WallTimeClock = WallTimeClock()) {
+        /// Creates a pure datatype that can be manually managed (passed around, merged, serialized), without involvement of the actor runtime.
+        public init(replicaID: ReplicaID, initialValue: Value, clock: WallTimeClock = WallTimeClock()) {
             self.replicaID = replicaID
             self.initialValue = initialValue
             self.value = initialValue
@@ -83,7 +84,8 @@ extension CRDT {
 }
 
 extension CRDT.LWWRegister where Value: ExpressibleByNilLiteral {
-    init(replicaID: ReplicaID) {
+    /// Creates a pure datatype that can be manually managed (passed around, merged, serialized), without involvement of the actor runtime.
+    public init(replicaID: ReplicaID) {
         self.init(replicaID: replicaID, initialValue: nil)
     }
 }
