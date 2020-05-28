@@ -16,11 +16,11 @@ import DistributedActors
 
 struct OwnerOfThings: Actorable {
     let context: Myself.Context
-    let ownedListing: ActorableOwned<Reception.Listing<OwnerOfThings>>!
+    let ownedListing: ActorableOwned<Receptionist.Listing<OwnerOfThings>>!
 
     init(
-        context: Myself.Context, probe: ActorRef<Reception.Listing<OwnerOfThings>>,
-        onListingUpdated: @escaping (ActorRef<Reception.Listing<OwnerOfThings>>, Reception.Listing<OwnerOfThings>) -> Void = { $0.tell($1) }
+        context: Myself.Context, probe: ActorRef<Receptionist.Listing<OwnerOfThings>>,
+        onListingUpdated: @escaping (ActorRef<Receptionist.Listing<OwnerOfThings>>, Receptionist.Listing<OwnerOfThings>) -> Void = { $0.tell($1) }
     ) {
         self.context = context
         context.receptionist.registerMyself(as: "all/owners")
@@ -33,13 +33,13 @@ struct OwnerOfThings: Actorable {
         context.receptionist.registerMyself(as: Self.key.id)
     }
 
-    func readLastObservedValue() -> Reception.Listing<OwnerOfThings>? {
+    func readLastObservedValue() -> Receptionist.Listing<OwnerOfThings>? {
         self.ownedListing.lastObservedValue
     }
 
     // we can delegate to another actor directly; the Actor<OwnerOfThings> signature will not change
     // it always remains Reply<T> to whomever calls us, and we may implement it with a strictly, with a Reply, or AskResponse.
-    func performLookup() -> Reply<Reception.Listing<OwnerOfThings>> {
+    func performLookup() -> Reply<Receptionist.Listing<OwnerOfThings>> {
         self.context.receptionist.lookup(.init(OwnerOfThings.self, id: "all/owners"), timeout: .effectivelyInfinite)
     }
 
@@ -51,7 +51,7 @@ struct OwnerOfThings: Actorable {
         }
     }
 
-    func performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) {
+    func performSubscribe(p: ActorRef<Receptionist.Listing<OwnerOfThings>>) {
         self.context.receptionist.subscribe(.init(OwnerOfThings.self, id: "all/owners")) {
             p.tell($0)
         }

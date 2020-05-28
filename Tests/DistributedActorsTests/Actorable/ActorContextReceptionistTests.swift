@@ -22,7 +22,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
             OwnerOfThings(context: $0, probe: self.system.deadLetters.adapted())
         }
 
-        let listing: Reception.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(3)) {
+        let listing: Receptionist.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(3)) {
             let readReply = owner.readLastObservedValue()
             guard let listing = try readReply.wait() else {
                 throw self.testKit.error()
@@ -34,19 +34,19 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
     }
 
     func test_autoUpdatedListing_invokesOnUpdate() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let p = self.testKit.spawnTestProbe(expecting: Receptionist.Listing<OwnerOfThings>.self)
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
             OwnerOfThings(context: $0, probe: p.ref)
         }
 
-        let listing0: Reception.Listing<OwnerOfThings> = Reception.Listing<OwnerOfThings>(refs: Set())
+        let listing0: Receptionist.Listing<OwnerOfThings> = Receptionist.Listing<OwnerOfThings>(refs: Set())
         try p.expectMessage(listing0)
-        let listing1: Reception.Listing<OwnerOfThings> = Reception.Listing<OwnerOfThings>(refs: Set([owner.ref]))
+        let listing1: Receptionist.Listing<OwnerOfThings> = Receptionist.Listing<OwnerOfThings>(refs: Set([owner.ref]))
         try p.expectMessage(listing1)
     }
 
     func test_lookup_ofGenericType() throws {
-        let notUsed = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let notUsed = self.testKit.spawnTestProbe(expecting: Receptionist.Listing<OwnerOfThings>.self)
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
             OwnerOfThings(context: $0, probe: notUsed.ref)
         }
@@ -56,7 +56,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
     }
 
     func test_lookup_ofGenericType_exposedAskResponse_stillIsAReply() throws {
-        let notUsed = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let notUsed = self.testKit.spawnTestProbe(expecting: Receptionist.Listing<OwnerOfThings>.self)
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
             OwnerOfThings(context: $0, probe: notUsed.ref)
         }
@@ -66,12 +66,12 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
     }
 
     func test_subscribe_genericType() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let p = self.testKit.spawnTestProbe(expecting: Receptionist.Listing<OwnerOfThings>.self)
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
             OwnerOfThings(context: $0, probe: p.ref)
         }
 
-        let ps = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let ps = self.testKit.spawnTestProbe(expecting: Receptionist.Listing<OwnerOfThings>.self)
 
         owner.performSubscribe(p: ps.ref)
         try ps.expectMessage(.init(refs: [owner.ref]))
@@ -84,7 +84,7 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
     // MARK: Performance
 
     func test_autoUpdatedListing_shouldQuicklyUpdateFromThousandsOfUpdates() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let p = self.testKit.spawnTestProbe(expecting: Receptionist.Listing<OwnerOfThings>.self)
         let n = 2000
 
         _ = try! self.system.spawn("owner") {
