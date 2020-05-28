@@ -176,9 +176,8 @@ extension SystemReceptionist.Listing where T: Actorable {
         self.refs.isEmpty
     }
 
-    /// - Complexity: O(n)
-    public var actors: Set<Actor<Act>> {
-        Set(self.refs.lazy.map { Actor<Act>(ref: $0) })
+    public var actors: LazyMapSequence<Set<ActorRef<Act.Message>>, Actor<Act>> {
+        self.refs.lazy.map { Actor<Act>(ref: $0) }
     }
 
     public var first: Actor<Act>? {
