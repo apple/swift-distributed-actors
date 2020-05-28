@@ -25,10 +25,10 @@ import DistributedActors
 extension OwnerOfThings {
 
     public enum Message: ActorMessage { 
-        case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
-        case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>>) 
+        case readLastObservedValue(_replyTo: ActorRef<Receptionist.Listing<OwnerOfThings>?>) 
+        case performLookup(_replyTo: ActorRef<Result<Receptionist.Listing<OwnerOfThings>, ErrorEnvelope>>) 
         case performAskLookup(_replyTo: ActorRef<Result<Receptionist.Listing<OwnerOfThings.Message>, ErrorEnvelope>>) 
-        case performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) 
+        case performSubscribe(p: ActorRef<Receptionist.Listing<OwnerOfThings>>) 
     }
     
 }
@@ -108,19 +108,19 @@ extension OwnerOfThings {
 
 extension Actor where A.Message == OwnerOfThings.Message {
 
-     func readLastObservedValue() -> Reply<Reception.Listing<OwnerOfThings>?> {
+     func readLastObservedValue() -> Reply<Receptionist.Listing<OwnerOfThings>?> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Reception.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Receptionist.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.readLastObservedValue(_replyTo: _replyTo)}
         )
     }
  
 
-     func performLookup() -> Reply<Reception.Listing<OwnerOfThings>> {
+     func performLookup() -> Reply<Receptionist.Listing<OwnerOfThings>> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<Reception.Listing<OwnerOfThings>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Result<Receptionist.Listing<OwnerOfThings>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.performLookup(_replyTo: _replyTo)}
         )
     }
@@ -135,7 +135,7 @@ extension Actor where A.Message == OwnerOfThings.Message {
     }
  
 
-     func performSubscribe(p: ActorRef<Reception.Listing<OwnerOfThings>>) {
+     func performSubscribe(p: ActorRef<Receptionist.Listing<OwnerOfThings>>) {
         self.ref.tell(Self.Message.performSubscribe(p: p))
     }
  
