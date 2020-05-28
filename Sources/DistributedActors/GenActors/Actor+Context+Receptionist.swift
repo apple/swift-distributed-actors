@@ -178,7 +178,7 @@ extension SystemReceptionist.Listing where T: Actorable {
 
     /// - Complexity: O(n)
     public var actors: Set<Actor<Act>> {
-        Set(self.refs.map { Actor<Act>(ref: $0) })
+        Set(self.refs.lazy.map { Actor<Act>(ref: $0) })
     }
 
     public var first: Actor<Act>? {
