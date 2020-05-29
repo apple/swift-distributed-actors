@@ -96,18 +96,6 @@ extension CRDT.LWWRegister: ResettableCRDT {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: CRDT String Descriptions
-
-extension CRDT.LWWRegister: CustomStringConvertible, CustomPrettyStringConvertible {
-    public var description: String {
-        "\(Self.self)(\(self.value))"
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorOwned LWWRegister
-
 public protocol LWWRegisterOperations {
     associatedtype Value
 
@@ -116,23 +104,12 @@ public protocol LWWRegisterOperations {
     mutating func assign(_ value: Value)
 }
 
-// See comments in CRDT.ORSet
-extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
-    public var lastObservedValue: DataType.Value {
-        self.data.value
-    }
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT String Descriptions
 
-    public func assign(_ value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
-        // Assign value locally then propagate
-        self.data.assign(value)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-extension CRDT.LWWRegister {
-    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
-        return CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaID: .actorAddress(ownerAddress), initialValue: initialValue))
+extension CRDT.LWWRegister: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "\(Self.self)(\(self.value))"
     }
 }
 

@@ -30,9 +30,7 @@ extension TestGCounterOwner {
     public enum Message: ActorMessage { 
         case increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount, _replyTo: ActorRef<Int>) 
         case read(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount, _replyTo: ActorRef<Result<Int, ErrorEnvelope>>) 
-        case delete(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount, _replyTo: ActorRef<String>) 
         case lastObservedValue(_replyTo: ActorRef<Int>) 
-        case status(_replyTo: ActorRef<CRDT.Status>) 
     }
     
 }
@@ -66,16 +64,8 @@ extension TestGCounterOwner {
                             }
                         }
  
-                case .delete(let consistency, let timeout, let _replyTo):
-                    let result = instance.delete(consistency: consistency, timeout: timeout)
-                    _replyTo.tell(result)
- 
                 case .lastObservedValue(let _replyTo):
                     let result = instance.lastObservedValue()
-                    _replyTo.tell(result)
- 
-                case .status(let _replyTo):
-                    let result = instance.status()
                     _replyTo.tell(result)
  
                 
@@ -128,29 +118,11 @@ extension Actor where A.Message == TestGCounterOwner.Message {
     }
  
 
-     func delete(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> Reply<String> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply.from(askResponse: 
-            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                Self.Message.delete(consistency: consistency, timeout: timeout, _replyTo: _replyTo)}
-        )
-    }
- 
-
      func lastObservedValue() -> Reply<Int> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.lastObservedValue(_replyTo: _replyTo)}
-        )
-    }
- 
-
-     func status() -> Reply<CRDT.Status> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply.from(askResponse: 
-            self.ref.ask(for: CRDT.Status.self, timeout: .effectivelyInfinite) { _replyTo in
-                Self.Message.status(_replyTo: _replyTo)}
         )
     }
  

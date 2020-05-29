@@ -126,7 +126,7 @@ func quickstart_bob_onUpdate(context: ActorContext<Never>, itemsToBuy: CRDT.Acto
 
 func quickstart_peek_state(context: ActorContext<Never>, itemsToBuy: CRDT.ActorableOwned<CRDT.ORSet<String>>) {
     // tag::quickstart_peek_state[]
-    let lastSeenValue: Set<String>?  = itemsToBuy.lastObservedValue
+    let lastSeenValue: Set<String>? = itemsToBuy.lastObservedValue
     // end::quickstart_peek_state[]
     _ = lastSeenValue
 }
