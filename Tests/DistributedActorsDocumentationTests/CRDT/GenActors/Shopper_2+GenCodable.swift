@@ -27,10 +27,10 @@ import DistributedActorsTestKit
 import XCTest
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for ActiveShoppingList_2.Message
+// MARK: DO NOT EDIT: Codable conformance for Shopper_2.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension ActiveShoppingList_2.Message {
+extension Shopper_2.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case add

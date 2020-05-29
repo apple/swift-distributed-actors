@@ -361,7 +361,7 @@ extension CRDT.ActorOwned where DataType: ORMapWithUnsafeRemove {
     /// `timeout` to be considered successful.
     ///
     /// - ***Warning**: This might cause anomalies! See `CRDT.ORMap` documentation for more details.
-    public func unsafeRemoveValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    public func unsafeRemoveValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
         // Remove value associated with the given key locally then propagate
         _ = self.data.unsafeRemoveValue(forKey: key)
         return self.write(consistency: consistency, timeout: timeout)
@@ -371,7 +371,7 @@ extension CRDT.ActorOwned where DataType: ORMapWithUnsafeRemove {
     /// considered successful.
     ///
     /// - ***Warning**: This might cause anomalies! See `CRDT.ORMap` documentation for more details.
-    public func unsafeRemoveAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    public func unsafeRemoveAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
         // Remove all values locally then propagate
         self.data.unsafeRemoveAllValues()
         return self.write(consistency: consistency, timeout: timeout)
@@ -379,13 +379,13 @@ extension CRDT.ActorOwned where DataType: ORMapWithUnsafeRemove {
 }
 
 extension CRDT.ActorOwned where DataType: ORMapWithResettableValue {
-    public func resetValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    public func resetValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
         // Reset value associated with the given key locally then propagate
         self.data.resetValue(forKey: key)
         return self.write(consistency: consistency, timeout: timeout)
     }
 
-    public func resetAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    public func resetAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
         // Reset all values locally then propagate
         self.data.resetAllValues()
         return self.write(consistency: consistency, timeout: timeout)
@@ -407,7 +407,7 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
         self.data.underlying
     }
 
-    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
+    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> CRDT.OperationResult<DataType> {
         // Apply mutator to the value associated with `key` locally then propagate
         self.data.update(key: key, mutator: mutator)
         return self.write(consistency: consistency, timeout: timeout)

@@ -164,6 +164,7 @@ Distributed Actors comes with a number of pre-defined https://en.wikipedia.org/w
 [[direct_replication]]
 === Direct Replication
 
+Direct replication is what happens when a write to an actor owned CRDT is performed using
 
 [[gossip_replication]]
 === Gossip Replication

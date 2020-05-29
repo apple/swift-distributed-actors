@@ -24,7 +24,7 @@ import struct NIO.TimeAmount
 /// Represents a time _interval_.
 ///
 /// - note: `TimeAmount` should not be used to represent a point in time.
-public struct TimeAmount {
+public struct TimeAmount: Codable {
     public typealias Value = Int64
 
     /// The nanoseconds representation of the `TimeAmount`.

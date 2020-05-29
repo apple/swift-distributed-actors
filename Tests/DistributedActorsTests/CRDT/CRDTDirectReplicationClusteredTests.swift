@@ -52,7 +52,7 @@ final class CRDTDirectReplicationTests: ClusteredNodesTestBase {
 
         _ = try self.localSystem.spawn("owner", of: String.self, .setup { context in
             let set: CRDT.ActorOwned<CRDT.ORSet<Int>> = CRDT.ORSet.makeOwned(by: context, id: "s1")
-            let adding: CRDT.ActorOwned.OperationResult<CRDT.ORSet<Int>> = set.insert(1, writeConsistency: .quorum, timeout: .effectivelyInfinite)
+            let adding: CRDT.OperationResult<CRDT.ORSet<Int>> = set.insert(1, writeConsistency: .quorum, timeout: .effectivelyInfinite)
             adding.onComplete { result in
                 p.tell("\(result)")
             }
