@@ -14,7 +14,6 @@
 
 @testable import DistributedActors
 import DistributedActorsTestKit
-import XCTest
 import NIO
 import XCTest
 
@@ -69,12 +68,13 @@ final class CRDTActorableOwnedTests: ActorSystemTestBase {
     }
 }
 
-struct TestGCounterOwner: Actorable {
-    enum OwnerEventProbeMessage: String, ActorMessage {
-        case ownerDefinedOnUpdate
-        case ownerDefinedOnDelete
-    }
+// FIXME: make this be inside the owner; https://github.com/apple/swift-distributed-actors/issues/404
+enum OwnerEventProbeMessage: String, ActorMessage {
+    case ownerDefinedOnUpdate
+    case ownerDefinedOnDelete
+}
 
+struct TestGCounterOwner: Actorable {
     let context: Myself.Context
     let counter: CRDT.ActorableOwned<CRDT.GCounter>
 
@@ -115,17 +115,7 @@ struct TestGCounterOwner: Actorable {
         return p.futureResult
     }
 
-    func delete(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> String {
-        fatalError()
-    }
-
     func lastObservedValue() -> Int {
-        pprint("lastObservedValue = \(lastObservedValue)")
         self.counter.lastObservedValue
     }
-
-    func status() -> CRDT.Status {
-        fatalError()
-    }
-
 }
