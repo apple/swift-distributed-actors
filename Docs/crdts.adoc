@@ -5,7 +5,7 @@
 > **C**onvergent **R**eplicated **D**ata **T**ypes are a category of data types that allow multiple peers to perform updates
 > concurrently, without coordination, yet guarantee that after merging the independently updated types, converge at a predictable end state.
 
-Distributed Actors provide built-in <<crdt_types, data types>>, and <<direct_replication>> as well as <<gossip_replication>>
+Distributed Actors provides built-in <<crdt_types, data types>>, and <<direct_replication>> as well as <<gossip_replication>>
 mechanisms which simplify their use in an actor system by handling all their replication _transparently_.
 
 CRDTs are a powerful building block for highly concurrent, distributed and--most interestingly--coordination-free systems.
@@ -13,7 +13,7 @@ Using them it is possible to build offline-first client applications (which sync
 or coordination-free backend systems such that multiple servers can independently update data types without having to coordinate
 (e.g. via consensus protocols) whether or not an update is to be accepted or not.
 
-CRDTs are https://en.wikipedia.org/wiki/Eventual_consistency[eventually consistent] meaning that they _eventually_ converge at a known expected result, intermediate states may transiently globally inconsistent.
+CRDTs are https://en.wikipedia.org/wiki/Eventual_consistency[eventually consistent] meaning that they _eventually_ converge at a known expected result, intermediate states may be transiently globally inconsistent.
 This is a trade-off these data structures take - being the "flip side" of strongly consistent mechanisms such as distributed consensus algorithms (which do require the participation of a quorum of peers in order to accept writes).
 
 In other words, CRDTs are very useful in situations where eventual consistency, and perhaps offline/online and multiple-concurrent edits are to be permitted.
@@ -111,7 +111,7 @@ data.insert(element, writeConsistency: .quorum, timeout: .seconds(3))
 
 This is already better if we were an on-line replicated shopping list that replicates its in memory state to multiple nodes members, e.g. by using `.atLeast(2)` or `.quorum`.
 However it would not handle spreading the data to members which join the cluster at a later time, nor would it spread the information to any not-directly-written to members.
-This is why _actor owned_ CRDTs also automatically participate in Gossip Replication.
+This is why _actor-owned_ CRDTs also automatically participate in Gossip Replication.
 
 Gossip Replication is a transparent, running in the background, process that runs on every node participating in a cluster (and using CRDTs) which ensures
 that all members (#TODO: with a given cluster role#) eventually get up-to-date with regards to the active data types.
@@ -137,7 +137,7 @@ TIP: All callbacks on `ActorOwned` types are actor-concurrency-safe, meaning tha
 and are guaranteed to not overlap with any other actor message handling. 🟢 In other words, they are completely thread safe and may
 access and modify the actor state without taking any locks or other means of synchronization.
 
-Alternatively, there exist functions to _peek_ at an _actor owned_ CRDT's last observed value and when it was most recently updated:
+Alternatively, there exist functions to _peek_ at an _actor-owned_ CRDT's last observed value:
 
 [source]
 ----
@@ -164,7 +164,7 @@ Distributed Actors comes with a number of pre-defined https://en.wikipedia.org/w
 [[direct_replication]]
 === Direct Replication
 
-Direct replication is what happens when a write to an actor owned CRDT is performed using the `write(writeConsistency:timeout:)`
+Direct replication is what happens when a write to an actor-owned CRDT is performed using the `write(writeConsistency:timeout:)`
 function, or its close cousins such as `ORSet.insert(:writeConsistency:timeout)` and similar.
 
 ==== Direct writes

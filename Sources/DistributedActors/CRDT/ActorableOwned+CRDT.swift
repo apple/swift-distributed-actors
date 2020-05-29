@@ -106,7 +106,6 @@ extension CRDT.LWWMap {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned LWWRegister
 
@@ -181,7 +180,6 @@ extension CRDT.ORMap {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORMultiMap
 
@@ -212,7 +210,6 @@ extension CRDT.ORMultiMap {
         return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(ownerAddress)))
     }
 }
-
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Owned ORSet
