@@ -30,7 +30,9 @@ extension TestGCounterOwner.Message {
     public enum DiscriminatorKeys: String, Decodable {
         case increment
         case read
+        case delete
         case lastObservedValue
+        case status
 
     }
 
@@ -43,7 +45,11 @@ extension TestGCounterOwner.Message {
         case read_consistency
         case read_timeout
         case read__replyTo
+        case delete_consistency
+        case delete_timeout
+        case delete__replyTo
         case lastObservedValue__replyTo
+        case status__replyTo
 
     }
 
@@ -61,9 +67,17 @@ extension TestGCounterOwner.Message {
             let timeout = try container.decode(DistributedActors.TimeAmount.self, forKey: CodingKeys.read_timeout)
             let _replyTo = try container.decode(ActorRef<Result<Int, ErrorEnvelope>>.self, forKey: CodingKeys.read__replyTo)
             self = .read(consistency: consistency, timeout: timeout, _replyTo: _replyTo)
+        case .delete:
+            let consistency = try container.decode(CRDT.OperationConsistency.self, forKey: CodingKeys.delete_consistency)
+            let timeout = try container.decode(DistributedActors.TimeAmount.self, forKey: CodingKeys.delete_timeout)
+            let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.delete__replyTo)
+            self = .delete(consistency: consistency, timeout: timeout, _replyTo: _replyTo)
         case .lastObservedValue:
             let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.lastObservedValue__replyTo)
             self = .lastObservedValue(_replyTo: _replyTo)
+        case .status:
+            let _replyTo = try container.decode(ActorRef<CRDT.Status>.self, forKey: CodingKeys.status__replyTo)
+            self = .status(_replyTo: _replyTo)
 
         }
     }
@@ -82,9 +96,17 @@ extension TestGCounterOwner.Message {
             try container.encode(consistency, forKey: CodingKeys.read_consistency)
             try container.encode(timeout, forKey: CodingKeys.read_timeout)
             try container.encode(_replyTo, forKey: CodingKeys.read__replyTo)
+        case .delete(let consistency, let timeout, let _replyTo):
+            try container.encode(DiscriminatorKeys.delete.rawValue, forKey: CodingKeys._case)
+            try container.encode(consistency, forKey: CodingKeys.delete_consistency)
+            try container.encode(timeout, forKey: CodingKeys.delete_timeout)
+            try container.encode(_replyTo, forKey: CodingKeys.delete__replyTo)
         case .lastObservedValue(let _replyTo):
             try container.encode(DiscriminatorKeys.lastObservedValue.rawValue, forKey: CodingKeys._case)
             try container.encode(_replyTo, forKey: CodingKeys.lastObservedValue__replyTo)
+        case .status(let _replyTo):
+            try container.encode(DiscriminatorKeys.status.rawValue, forKey: CodingKeys._case)
+            try container.encode(_replyTo, forKey: CodingKeys.status__replyTo)
 
         }
     }
