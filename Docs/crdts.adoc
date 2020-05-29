@@ -5,7 +5,7 @@
 > **C**onvergent **R**eplicated **D**ata **T**ypes are a category of data types that allow multiple peers to perform updates
 > concurrently, without coordination, yet guarantee that after merging the independently updated types, converge at a predictable end state.
 
-Distributed Actors provide built-in <<crdt_types, data types>>, and <<direct_replication>> as well as <<gossip_replication>>
+Distributed Actors provides built-in <<crdt_types, data types>>, and <<direct_replication>> as well as <<gossip_replication>>
 mechanisms which simplify their use in an actor system by handling all their replication _transparently_.
 
 CRDTs are a powerful building block for highly concurrent, distributed and--most interestingly--coordination-free systems.
