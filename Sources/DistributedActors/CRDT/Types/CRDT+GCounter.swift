@@ -33,7 +33,10 @@ extension CRDT {
 
         public var delta: Delta?
 
-        var value: Int {
+        /// Current value of the GCounter.
+        ///
+        /// It is a sum of all replicas counts.
+        public var value: Int {
             self.state.values.reduce(0, +)
         }
 
@@ -148,28 +151,6 @@ extension CRDT {
 extension CRDT.GCounter: ResettableCRDT {
     public mutating func reset() {
         self = .init(replicaID: self.replicaID)
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorOwned GCounter
-
-extension CRDT.ActorOwned where DataType == CRDT.GCounter {
-    public var lastObservedValue: Int {
-        self.data.value
-    }
-
-    public func increment(by amount: Int, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        // Increment locally then propagate
-        self.data.increment(by: amount)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-extension CRDT.GCounter {
-    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
-        return CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaID: .actorAddress(ownerAddress)))
     }
 }
 

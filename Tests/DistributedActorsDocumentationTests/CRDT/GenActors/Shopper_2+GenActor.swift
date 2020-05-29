@@ -27,10 +27,10 @@ import DistributedActorsTestKit
 import XCTest
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated ActiveShoppingList_2 messages 
+// MARK: DO NOT EDIT: Generated Shopper_2 messages 
 
-/// DO NOT EDIT: Generated ActiveShoppingList_2 messages
-extension ActiveShoppingList_2 {
+/// DO NOT EDIT: Generated Shopper_2 messages
+extension Shopper_2 {
 
     public enum Message: ActorMessage { 
         case add(item: String) 
@@ -39,13 +39,13 @@ extension ActiveShoppingList_2 {
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated ActiveShoppingList_2 behavior
+// MARK: DO NOT EDIT: Generated Shopper_2 behavior
 
-extension ActiveShoppingList_2 {
+extension Shopper_2 {
 
-    public static func makeBehavior(instance: ActiveShoppingList_2) -> Behavior<Message> {
+    public static func makeBehavior(instance: Shopper_2) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<ActiveShoppingList_2>.Context(underlying: _context)
+            let context = Actor<Shopper_2>.Context(underlying: _context)
             let instance = instance
 
             instance.preStart(context: context)
@@ -63,7 +63,7 @@ extension ActiveShoppingList_2 {
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<ActiveShoppingList_2>.Context(underlying: _context)
+                let context = Actor<Shopper_2>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -87,9 +87,9 @@ extension ActiveShoppingList_2 {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for ActiveShoppingList_2
+// MARK: Extend Actor for Shopper_2
 
-extension Actor where A.Message == ActiveShoppingList_2.Message {
+extension Actor where A.Message == Shopper_2.Message {
 
      func add(item: String) {
         self.ref.tell(Self.Message.add(item: item))

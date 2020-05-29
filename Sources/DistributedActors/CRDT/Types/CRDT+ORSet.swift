@@ -177,7 +177,7 @@ extension CRDT.ORSet: CustomStringConvertible, CustomPrettyStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORSet
 
-public protocol ORSetOperations {
+public protocol ORSetOperations: CvRDT {
     associatedtype Element: Hashable
 
     var elements: Set<Element> { get }
@@ -187,45 +187,107 @@ public protocol ORSetOperations {
     mutating func removeAll()
 }
 
-// `CRDT.ORSet` is a generic type and we are not allowed to have `extension CRDT.ActorOwned where DataType == ORSet`. As
-// a result we introduce the `ORSetOperations` in order to bind `Element`. A workaround would be to add generic parameter
-// to each method:
+//// ==== ----------------------------------------------------------------------------------------------------------------
+//// MARK: Actorable Owned ORSet
 //
-//     extension CRDT.ActorOwned {
-//         public func insert<Element: Hashable>(_ element: Element, ...) -> Result<DataType> where DataType == CRDT.ORSet<Element> { ... }
-//     }
 //
-// But this does not work for `lastObservedValue`, which is a computed property.
-extension CRDT.ActorOwned where DataType: ORSetOperations {
-    public var lastObservedValue: Set<DataType.Element> {
-        self.data.elements
-    }
-
-    public func insert(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        // Add element locally then propagate
-        self.data.insert(element)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-
-    public func remove(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        // Remove element locally then propagate
-        self.data.remove(element)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-
-    public func removeAll(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        // Remove all elements locally then propagate
-        self.data.removeAll()
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-extension CRDT.ORSet {
-    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORSet<Element>> {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
-        return CRDT.ActorOwned<CRDT.ORSet>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaID: .actorAddress(ownerAddress)))
-    }
-}
+//// ==== ----------------------------------------------------------------------------------------------------------------
+//// MARK: CRDT
+//
+// extension ActorableOwned where Value: CvRDT {
+//
+//    public typealias OperationResult = WWW.OperationResult
+//    typealias RegisterResult = CRDT.Replicator.LocalCommand.RegisterResult
+//    typealias WriteResult = CRDT.Replicator.LocalCommand.WriteResult
+//    typealias ReadResult = CRDT.Replicator.LocalCommand.ReadResult
+//    typealias DeleteResult = CRDT.Replicator.LocalCommand.DeleteResult
+//
+//    internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<Value> {
+//        fatalError("\(#function)")
+//    }
+//
+//    public func read(atConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<Value> {
+//        fatalError("\(#function)")
+//    }
+//
+//    // FIXME: delete always at .all perhaps?
+//    public func deleteFromCluster(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<Void> {
+//        fatalError("\(#function)")
+//    }
+//
+// }
+//
+// public enum WWW {
+//    public struct OperationResult<DataType>: AsyncResult {
+//        let dataFuture: EventLoopFuture<DataType>
+//
+//        private let _safeOnComplete: (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void
+//
+//        init(_ dataFuture: EventLoopFuture<DataType>, safeOnComplete: @escaping (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void) {
+//            self.dataFuture = dataFuture
+//            self._safeOnComplete = safeOnComplete
+//        }
+//
+//        public func _onComplete(_ callback: @escaping (Result<DataType, Swift.Error>) -> Void) {
+//            self.onComplete(callback)
+//        }
+//
+//        /// Executed when the operation completes.
+//        ///
+//        /// This callback executed on the owner actors context. It is safe to access the owner's internal state in this callback.
+//        public func onComplete(_ callback: @escaping (Result<DataType, Swift.Error>) -> Void) {
+//            self._safeOnComplete(self.dataFuture) { result in
+//                callback(result)
+//            }
+//        }
+//
+//        public func withTimeout(after timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
+//            OperationResult(self.dataFuture.withTimeout(after: timeout), safeOnComplete: self._safeOnComplete)
+//        }
+//    }
+//
+//    public enum Error: Swift.Error {
+//        case AnyStateBasedCRDTDoesNotMatchExpectedType
+//    }
+// }
+//
+//// ==== ----------------------------------------------------------------------------------------------------------------
+//// MARK: CRDT ORSet
+//
+// extension ActorableOwned where Value: ORSetOperations {
+//    public typealias DataType = Value
+//    public var lastObservedValue: Set<DataType.Element> {
+//        guard let data = self._storage else {
+//            return []
+//        }
+//
+//        return data.value.elements
+//    }
+//
+//    /// - Concurrency: invoke only from the owning actor.
+//    public func insert(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
+//        // TODO: assert(ActorContext.inActor(owner))
+//        // Add element locally then propagate
+//        self._storage?.value.insert(element)
+//        return self.write(consistency: consistency, timeout: timeout)
+//    }
+//
+//    /// - Concurrency: invoke only from the owning actor.
+//    public func remove(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
+//        // TODO: assert(ActorContext.inActor(owner))
+//        // Remove element locally then propagate
+//        self._storage?.value.remove(element)
+//        return self.write(consistency: consistency, timeout: timeout)
+//    }
+//
+//    /// - Concurrency: invoke only from the owning actor.
+//    public func removeAll(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
+//        // TODO: assert(ActorContext.inActor(owner))
+//        // Remove all elements locally then propagate
+//        self._storage?.value.removeAll()
+//        return self.write(consistency: consistency, timeout: timeout)
+//    }
+// }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Aliases
