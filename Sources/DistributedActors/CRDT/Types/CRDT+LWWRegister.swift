@@ -105,12 +105,6 @@ public protocol LWWRegisterOperations {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
-    public var lastObservedValue: DataType.Value {
-        self.data.value
-    }
-
-    public func assign(_ value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
 // MARK: CRDT String Descriptions
 
 extension CRDT.LWWRegister: CustomStringConvertible, CustomPrettyStringConvertible {
