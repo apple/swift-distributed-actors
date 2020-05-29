@@ -46,9 +46,11 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActors",
             .product(name: "SwiftSyntax", package: "SwiftSyntax"),
-            .product(name: "Stencil", package: "Stencil"),
-            .product(name: "Files", package: "Files"),
+            .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
+
+            .product(name: "Stencil", package: "Stencil"), // TODO: remove this dependency
+            .product(name: "Files", package: "Files"), // TODO: remove this dependency
         ]
     ),
 

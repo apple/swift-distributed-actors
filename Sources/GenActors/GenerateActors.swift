@@ -16,9 +16,11 @@ import ArgumentParser
 import DistributedActors
 import Files
 import Foundation
+import Logging
 import SwiftSyntax
 
 final class GenerateActors {
+    var log: Logger
     var filesToScan: [File] = []
     var foldersToScan: [Folder] = []
 
@@ -32,6 +34,9 @@ final class GenerateActors {
 
     public init(command: GenerateActorsCommand) {
         self.command = command
+
+        self.log = Logger(label: "\(GenerateActors.self)")
+        self.log.logLevel = command.verbose ? .trace : .info
 
         do {
             let passedInToScan: [String] = command.scanTargets
@@ -78,16 +83,6 @@ final class GenerateActors {
 
         try generateAll(resolvedActorables: resolvedActorables)
     }
-
-    func info(_ message: String) {
-        print("[gen-actors][INFO] \(message)")
-    }
-
-    func debug(_ message: String) {
-        if self.command.verbose {
-            print("[gen-actors][DEBUG] \(message)")
-        }
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -103,10 +98,10 @@ extension GenerateActors {
     private func cleanAll() {
         func delete(_ file: File) {
             do {
-                self.info("Cleaning up: [\(file.path)]...")
+                self.log.info("Cleaning up: [\(file.path)]...")
                 try file.delete()
             } catch {
-                self.info("Could not delete: \(file)")
+                self.log.warning("Could not delete file: \(file)")
             }
         }
 
@@ -132,7 +127,7 @@ extension GenerateActors {
         }
 
         try self.foldersToScan.forEach { folder in
-            self.debug("Scanning [\(folder.path)] for actorables...")
+            self.log.debug("Scanning [\(folder.path)] for actorables...")
             let actorFilesToScan = folder.files.recursive.filter { f in
                 f.name.hasSuffix(self.fileScanNameSuffixWithExtension)
             }.filter {
@@ -148,7 +143,7 @@ extension GenerateActors {
     }
 
     func parse(fileToParse: File) throws -> [ActorableTypeDecl] {
-        self.debug("Parsing: \(fileToParse.path)")
+        self.log.debug("Parsing: \(fileToParse.path)")
 
         let url = URL(fileURLWithPath: fileToParse.path)
         let sourceFile = try SyntaxParser.parse(url)
@@ -196,7 +191,7 @@ extension GenerateActors {
         let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable, stubGenBehavior: skipGenBehavior).render(self.command)
         try targetFile.append(renderedShell)
 
-        self.debug("Generated: \(targetFile.path)")
+        self.log.debug("Generated: \(targetFile.path)")
         return targetFile
     }
 
@@ -223,7 +218,7 @@ extension GenerateActors {
         let renderedShell = try Rendering.XPCProtocolStubTemplate(actorable: actorable).render(self.command)
         try targetFile.append(renderedShell)
 
-        self.info("Generated XPCActorableProtocol stub: \(targetFile.path)...")
+        self.log.info("Generated XPCActorableProtocol stub: \(targetFile.path)...")
 
         // parse and gen the generated file, as we need the actor functions more than we need the Stub actually (!)
         let stubActorables = try self.parse(fileToParse: targetFile)
@@ -239,10 +234,10 @@ extension GenerateActors {
 
         try resolvedStubActorables.forEach { stubActorable in
             let generatedGenActor = try self.generateGenActorFile(parent, actorable: stubActorable, skipGenBehavior: true)
-            self.debug("Generated \(self.fileGenActorNameSuffixWithExtension) for \(stubActorable.name): \(generatedGenActor.path)")
+            self.log.debug("Generated \(self.fileGenActorNameSuffixWithExtension) for \(stubActorable.name): \(generatedGenActor.path)")
 
             if let generatedGenCodable = try self.generateGenCodableFile(parent, actorable: stubActorable) {
-                self.debug("Generated \(self.fileGenCodableNameSuffixWithExtension) for \(stubActorable.name): \(generatedGenCodable.path)")
+                self.log.debug("Generated \(self.fileGenCodableNameSuffixWithExtension) for \(stubActorable.name): \(generatedGenCodable.path)")
             }
         }
 
@@ -269,7 +264,7 @@ extension GenerateActors {
         let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render(self.command)
         try targetFile.append(codableConformance)
 
-        self.debug("Generated: \(targetFile.path)")
+        self.log.debug("Generated: \(targetFile.path)")
         return targetFile
     }
 }
