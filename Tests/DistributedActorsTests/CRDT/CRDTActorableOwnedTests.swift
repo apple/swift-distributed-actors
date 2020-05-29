@@ -14,12 +14,11 @@
 
 @testable import DistributedActors
 import DistributedActorsTestKit
-import XCTest
 import NIO
+import XCTest
 
-// FIXME: de-duplicate with CRDTActorOwnedTests
+// FIXME: de-duplicate with CRDTActorOwnedTests? replicating all tests here is a bit annoying as they test the same but in diff API
 final class CRDTActorableOwnedTests: ActorSystemTestBase {
-
     func test_actorOwned_GCounter_increment_shouldNotifyOthers() throws {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
@@ -67,18 +66,15 @@ final class CRDTActorableOwnedTests: ActorSystemTestBase {
         // As a result owner should not have received any events
         try g2Owner1EventP.expectNoMessage(for: .milliseconds(100))
     }
-
 }
 
 // FIXME: make this be inside the owner; https://github.com/apple/swift-distributed-actors/issues/404
-    enum OwnerEventProbeMessage: String, ActorMessage {
-        case ownerDefinedOnUpdate
-        case ownerDefinedOnDelete
-    }
+enum OwnerEventProbeMessage: String, ActorMessage {
+    case ownerDefinedOnUpdate
+    case ownerDefinedOnDelete
+}
 
 struct TestGCounterOwner: Actorable {
-
-
     let context: Myself.Context
     let counter: CRDT.ActorableOwned<CRDT.GCounter>
 
@@ -86,7 +82,7 @@ struct TestGCounterOwner: Actorable {
 
     init(context: Myself.Context, id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) {
         self.context = context
-        self.counter =  CRDT.GCounter.makeOwned(by: context, id: id)
+        self.counter = CRDT.GCounter.makeOwned(by: context, id: id)
         self.ownerEventProbe = ownerEventProbe
     }
 
@@ -101,14 +97,13 @@ struct TestGCounterOwner: Actorable {
         }
     }
 
-
     func increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> Int {
         _ = self.counter.increment(by: amount, writeConsistency: consistency, timeout: timeout)
         return self.lastObservedValue()
     }
 
     func read(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> EventLoopFuture<Int> {
-        let p = context.system._eventLoopGroup.next().makePromise(of: Int.self)
+        let p = self.context.system._eventLoopGroup.next().makePromise(of: Int.self)
         self.counter.read(atConsistency: consistency, timeout: timeout).onComplete {
             switch $0 {
             case .success(let updatedCounter):
@@ -120,17 +115,7 @@ struct TestGCounterOwner: Actorable {
         return p.futureResult
     }
 
-    func delete(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> String {
-        fatalError()
-    }
-
     func lastObservedValue() -> Int {
-        pprint("lastObservedValue = \(lastObservedValue)")
-        return self.counter.lastObservedValue
+        self.counter.lastObservedValue
     }
-
-    func status() -> CRDT.Status {
-        fatalError()
-    }
-
 }

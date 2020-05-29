@@ -164,7 +164,62 @@ Distributed Actors comes with a number of pre-defined https://en.wikipedia.org/w
 [[direct_replication]]
 === Direct Replication
 
-Direct replication is what happens when a write to an actor owned CRDT is performed using
+Direct replication is what happens when a write to an actor owned CRDT is performed using the `write(writeConsistency:timeout:)`
+function, or its close cousins such as `ORSet.insert(:writeConsistency:timeout)` and similar.
+
+==== Direct writes
+
+Direct replication allows performing immediate writes (sends of the CRDT change/delta) to remote peers.
+
+When a write is issued, e.g. by invoking `ownedSet.insert("apples", writeConsistency: .quorum, timeout: .seconds(3))`
+the system's direct replicator is notified about this action, informs all other actors on the same node which may be owning
+the CRDT identified with the same `CRDT.Identity` (which is assigned at creation time), and then proceeds to notify other nodes.
+
+The number of nodes the replicator contacts is configured by the `writeConsistency:`api:CRDT.OperationConsistency[enum] parameter.
+Refer to it's API documentation for detailed explanation of the consistency levels, however in general it simply translates to a
+number of peers that will be notified about the change _and acknowlage this write back_ to the originator of the write.
+
+Once enough (e.g. `.quorum` or `.atLeast(2)`) acknowlagements have been received by the initiating direct replicator,
+it confirms the write as successful and the callback which can be assigned to the write's result is executed (🟢 `write.onComplete`).
+The `onComplete` is always safely executed on the owning actor's context, so you do not need to perform any additional synchronization
+and are free to modify the actor's internal state.
+
+A common pattern includes performing a write to at least a few nodes, and replying to whichever task has kicked off this
+write once the `onComplete` triggers -- thanks to this we can be sure that the piece of information has been replicated to
+at least some peers already, and even if _this_ cluster member were to crash immediately after the data would remain in the cluster.
+
+NOTE: The current implementation does not persist the replicated data types, however this is another natural extension
+to the replicator in which the writes would only be confirmed once peers have stored them on disk or some other storage.
+If this is a requirement for your use case, please get in touch and we can prioritize this work.
+
+Finally, as most tasks in Distributed Actors, an operation is bound by a timeout, after which the `onComplete` is triggered
+with a failure. The failure will include information about how many acknowledgements have been gathered, how many were missing (timed out),
+or perhaps if a write was incorrect because the identity did not match type-wise with the rest of the system. Do note however,
+that a write which was replicated to some (or even zero remote) peers, will still *eventually* spread to all nodes, thanks
+to the background actor which performs periodic gossip replication of all CRDTs.
+
+All peers in a cluster participate in the dissemination of CRDTs.
+(#TODO: cluster roles can give fine grained control over this# More fine grained control is something we'd like to add, but is not implemented currently.)
+
+==== Direct reads
+
+Similarity, one may perform a direct read, one may issue `read(atConsistency:timeout:)` which instructs
+the direct replicator to perform a read from as many peers as configured using the passed in api:CRDT.OperationConsistency[enum].
+
+Direct reads can be useful to aggressively "refresh" the state of an actor owned CRDT, without having to wait for gossip
+replication to spread any new information to our node. Such read is of course not "transactional" as one might think about
+those in a traditional database, however thanks to the properties of CRDTs it has some useful benefits:
+
+Given a 3 node cluster, of nodes `A`, `B` and `C` if node `A` performs a `.read(atConsistency: .all, timeout: .seconds(...))`,
+even if nodes `B` and `C` have their own local changes made to the CRDT the read from all will automatically gather them and
+_merge_ the CRDTs into one resulting value which is then passed as result to the `read`. In other words, the gathering and merging
+of CRDTs is done transparently and we can configure how many nodes we want to reach with such read.
+
+Quite often it is enough to read from just 2 or quorum of nodes, as the reads and nature of the CRDTs is eventually consistent in any case.
+A `.read(.all)` however can be useful if data is always written directly only locally, and gossip is taking care of its dissemination,
+however for some reason we'd like to increase the likelyhood of seeing "recent" updates.
+
+TIP: Usually performing operations at `.quorum` is a good default, unless you have other specific needs for the write's consistency.
 
 [[gossip_replication]]
 === Gossip Replication
@@ -173,6 +228,19 @@ WARNING: The Gossip replicator implementation is still very much work in progres
   which is prohibitive for larger CRDT types. We have previous experience building gossip delta replicated systems, and the
   current types will support it natively, however the replicator today has not been implemented to benefit from these yet.
   *This is a matter of prioritization more than anything, if you have an use case for delta CRDTs in your project, please reach out.*
+
+With https://en.wikipedia.org/wiki/Gossip_protocol[Gossip] Replication, clustered peers periodically exchange information
+and synchronize state of their owned CRDTs. This is done automatically and transparently in the background for _any_
+api:CRDT.ActorOwned[struct]/api:CRDT.ActorableOwned[struct] CRDTs registered in the actor system.
+
+The system runs a special actor called the gossip replicator which is responsible for synchronizing states of the owned CRDTs.
+Currently this replication is implemented in it's most naive form and has to gossip the entire payload to other peers,
+when a peer notices it is not up-to date with another's state. #TODO: This is not the final implementation of gossip replication
+and we will eventually implement delta-replication which the CRDT types themselfes are already prepared for.#
+
+In general, without diving into the dissimination protocol details, gossip replication means that even a `.local` write
+eventually ends up visible on _all_ cluster members. The exact timing of when it is going to be visible is not strongly guaranteed,
+but generally is an function of the cluster size, and gossip interval configuration (which can be set in the system's settings).
 
 TIP: Currently CRDTs are shared between all members of a cluster. Once cluster nodes gain "roles" it will be possible to
   control which members should participate in the replication of a specific CRDT. E.g. only "gameplay" nodes need to host

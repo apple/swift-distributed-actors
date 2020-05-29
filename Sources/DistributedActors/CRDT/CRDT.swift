@@ -52,6 +52,8 @@ extension CRDT.Identity: CustomStringConvertible {
 // MARK: OperationConsistency
 
 extension CRDT {
+    /// Used to configure how many peers a direct replication operation should reach and successfully apply at,
+    /// for a direct read or write operation to be considered successful.
     public enum OperationConsistency: Codable {
         /// Perform operation in the local replica only.
         case local

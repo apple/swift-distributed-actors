@@ -20,7 +20,6 @@ import Logging
 import XCTest
 
 extension ActorTestKit {
-
     public func expect<Value>(
         _ reply: Reply<Value>,
         within timeout: TimeAmount? = nil,

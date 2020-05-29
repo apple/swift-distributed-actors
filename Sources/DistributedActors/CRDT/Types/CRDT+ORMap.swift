@@ -327,9 +327,6 @@ extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorOwned - Common protocols and extensions for generic and specialized ORMap types (e.g., ORMap, LWWMap)
-
 public protocol ORMapWithUnsafeRemove {
     associatedtype Key: Hashable
     associatedtype Value
@@ -356,69 +353,10 @@ public protocol ORMapWithResettableValue: ORMapWithUnsafeRemove {
     mutating func resetAllValues()
 }
 
-extension CRDT.ActorOwned where DataType: ORMapWithUnsafeRemove {
-    /// Removes `key` and the associated value from the `ORMap`. Must achieve the given `writeConsistency` within
-    /// `timeout` to be considered successful.
-    ///
-    /// - ***Warning**: This might cause anomalies! See `CRDT.ORMap` documentation for more details.
-    public func unsafeRemoveValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
-        // Remove value associated with the given key locally then propagate
-        _ = self.data.unsafeRemoveValue(forKey: key)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-
-    /// Removes all entries from the `ORMap`. Must achieve the given `writeConsistency` within `timeout` to be
-    /// considered successful.
-    ///
-    /// - ***Warning**: This might cause anomalies! See `CRDT.ORMap` documentation for more details.
-    public func unsafeRemoveAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
-        // Remove all values locally then propagate
-        self.data.unsafeRemoveAllValues()
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-extension CRDT.ActorOwned where DataType: ORMapWithResettableValue {
-    public func resetValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
-        // Reset value associated with the given key locally then propagate
-        self.data.resetValue(forKey: key)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-
-    public func resetAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
-        // Reset all values locally then propagate
-        self.data.resetAllValues()
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorOwned ORMap
-
 public protocol ORMapOperations: ORMapWithUnsafeRemove where Value: CvRDT {
     /// Creates a new "zero" value using `valueInitializer` if the given `key` has no value, and passes this
     /// zero value to the `mutator`. Otherwise the value present for the `key` is passed in.
     mutating func update(key: Key, mutator: (inout Value) -> Void)
-}
-
-// See comments in CRDT.ORSet
-extension CRDT.ActorOwned where DataType: ORMapOperations {
-    public var lastObservedValue: [DataType.Key: DataType.Value] {
-        self.data.underlying
-    }
-
-    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> CRDT.OperationResult<DataType> {
-        // Apply mutator to the value associated with `key` locally then propagate
-        self.data.update(key: key, mutator: mutator)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-extension CRDT.ORMap {
-    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
-        return CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(ownerAddress), defaultValue: defaultValue))
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
