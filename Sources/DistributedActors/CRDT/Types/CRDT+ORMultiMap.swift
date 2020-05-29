@@ -129,9 +129,6 @@ extension CRDT {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorOwned ORMultiMap
-
 public protocol ORMultiMapOperations {
     associatedtype Key: Hashable
     associatedtype Value: Hashable
@@ -154,35 +151,6 @@ public protocol ORMultiMapOperations {
     ///
     /// - ***Warning**: this erases all of the values' causal histories and may cause anomalies!
     mutating func unsafeRemoveAllValues()
-}
-
-// See comments in CRDT.ORSet
-extension CRDT.ActorOwned where DataType: ORMultiMapOperations {
-    public var lastObservedValue: [DataType.Key: Set<DataType.Value>] {
-        self.data.underlying
-    }
-
-    public func add(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        self.data.add(forKey: key, value)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-
-    public func remove(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        self.data.remove(forKey: key, value)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-
-    public func removeAll(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        self.data.removeAll(forKey: key)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-extension CRDT.ORMultiMap {
-    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORMultiMap<Key, Value>> {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
-        return CRDT.ActorOwned<CRDT.ORMultiMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(ownerAddress)))
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

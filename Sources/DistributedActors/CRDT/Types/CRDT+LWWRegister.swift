@@ -122,7 +122,7 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
         self.data.value
     }
 
-    public func assign(_ value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    public func assign(_ value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> CRDT.OperationResult<DataType> {
         // Assign value locally then propagate
         self.data.assign(value)
         return self.write(consistency: consistency, timeout: timeout)

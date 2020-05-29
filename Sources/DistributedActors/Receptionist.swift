@@ -458,7 +458,7 @@ internal enum ReceptionistError: Error {
     case typeMismatch(expected: String)
 }
 
-internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable {
+internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable, CustomStringConvertible {
     enum CodingKeys: CodingKey {
         case id
         case typeHint
@@ -491,6 +491,10 @@ internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable {
 
     override var asAnyRegistrationKey: AnyRegistrationKey {
         self
+    }
+
+    var description: String {
+        "AnyRegistrationKey()\(self.id)"
     }
 
     func hash(into hasher: inout Hasher) {

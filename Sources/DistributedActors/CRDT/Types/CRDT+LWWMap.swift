@@ -133,32 +133,9 @@ extension CRDT {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorOwned LWWMap
-
 public protocol LWWMapOperations: ORMapWithResettableValue {
     /// Sets the `value` for `key`.
     mutating func set(forKey key: Key, value: Value)
-}
-
-// See comments in CRDT.ORSet
-extension CRDT.ActorOwned where DataType: LWWMapOperations {
-    public var lastObservedValue: [DataType.Key: DataType.Value] {
-        self.data.underlying
-    }
-
-    public func set(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
-        // Set value for key locally then propagate
-        self.data.set(forKey: key, value: value)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-}
-
-extension CRDT.LWWMap {
-    public static func makeOwned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
-        return CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaID: .actorAddress(ownerAddress), defaultValue: defaultValue))
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

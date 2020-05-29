@@ -322,7 +322,7 @@ extension OperationLogClusterReceptionist {
                 "Registered [\(ref.address)] for key [\(key)]",
                 metadata: [
                     "receptionist/key": "\(key)",
-                    "receptionist/registered": "\(ref)",
+                    "receptionist/registered": "\(ref.address)",
                     "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
                 ]
             )

@@ -23,14 +23,14 @@ import DistributedActorsTestKit
 import XCTest
 
 class Docs_quickstart_types {
-    func x() {
-        let system: ActorSystem
+    func x(system: ActorSystem) {
         // tag::quickstart_types[]
         let node: UniqueNode = system.cluster.node
         let replicaID: ReplicaID = .uniqueNode(node)
 
         let set: CRDT.ORSet<String> = CRDT.ORSet(replicaID: replicaID)
         // end::quickstart_types[]
+        _ = set
 
         // compilation sanity checks it works well in a different module
         _ = CRDT.GCounter(replicaID: replicaID)
@@ -48,11 +48,11 @@ enum ShoppingList {
 
 struct Shopper: Actorable {
     let context: Myself.Context
-    let itemsToBuy: CRDT.ActorOwned<CRDT.ORSet<String>>
+    let itemsToBuy: CRDT.ActorableOwned<CRDT.ORSet<String>>
 
     init(context: Myself.Context) {
         self.context = context
-        self.itemsToBuy = CRDT.ORSet.makeOwned(by: context, id: ShoppingList.ID) // <1>
+        self.itemsToBuy = CRDT.ORSet<String>.makeOwned(by: context, id: ShoppingList.ID) // <1>
     }
 
     func add(item: String) { /* ... */ }
@@ -61,10 +61,10 @@ struct Shopper: Actorable {
 
 // end::quickstart_owned_actorable[]
 
-struct ActiveShoppingList_2: Actorable {
+struct Shopper_2: Actorable {
     // tag::quickstart_direct_write_add[]
     let context: Myself.Context
-    let itemsToBuy: CRDT.ActorOwned<CRDT.ORSet<String>>
+    let itemsToBuy: CRDT.ActorableOwned<CRDT.ORSet<String>>
 
     func add(item: String) {
         let write = self.itemsToBuy.insert(
@@ -116,7 +116,7 @@ func quickstart_alice_bob_writes(oneSystem: ActorSystem, otherSystem: ActorSyste
     // end::quickstart_alice_bob_writes[]
 }
 
-func quickstart_bob_onUpdate(context: ActorContext<Never>, itemsToBuy: CRDT.ActorOwned<CRDT.ORSet<String>>) {
+func quickstart_bob_onUpdate(context: ActorContext<Never>, itemsToBuy: CRDT.ActorableOwned<CRDT.ORSet<String>>) {
     // tag::quickstart_bob_onUpdate[]
     itemsToBuy.onUpdate { id, updatedSet in
         context.log.info("Someone updated shopping list [\(id)], remaining items to buy: \(updatedSet)")
@@ -124,9 +124,9 @@ func quickstart_bob_onUpdate(context: ActorContext<Never>, itemsToBuy: CRDT.Acto
     // end::quickstart_bob_onUpdate[]
 }
 
-func quickstart_peek_state(context: ActorContext<Never>, itemsToBuy: CRDT.ActorOwned<CRDT.ORSet<String>>) {
+func quickstart_peek_state(context: ActorContext<Never>, itemsToBuy: CRDT.ActorableOwned<CRDT.ORSet<String>>) {
     // tag::quickstart_peek_state[]
-    let lastSeenValue: Set<String>? = itemsToBuy.lastObservedValue
-    let lastUpdatedAt: Foundation.Date? = itemsToBuy.lastUpdatedAt
+    let lastSeenValue: Set<String>?  = itemsToBuy.lastObservedValue
     // end::quickstart_peek_state[]
+    _ = lastSeenValue
 }
