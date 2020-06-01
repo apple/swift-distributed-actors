@@ -15,6 +15,10 @@
 import DistributedActors
 
 struct OwnerOfThings: Actorable {
+    enum Hello {
+        case breaksCodeGen
+    }
+
     let context: Myself.Context
     let ownedListing: ActorableOwned<Receptionist.Listing<OwnerOfThings>>!
 

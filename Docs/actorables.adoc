@@ -216,7 +216,7 @@ In other words, we have to define a special boxing methods in the protocols. If 
 asking us to provide the function declaration (without implementing it, as that is generated) to our protocol(s):
 
 ----
-[gen-actors] Actorable protocol [CoffeeMachine] MUST define a boxing function, in order to be adopted by other Actorables!
+Actorable protocol [CoffeeMachine] MUST define a boxing function, in order to be adopted by other Actorables!
 Please define a static boxing function in [CoffeeMachine]:
 
     static func _boxCoffeeMachine(_ message: GeneratedActor.Messages.CoffeeMachine) -> Self.Message
