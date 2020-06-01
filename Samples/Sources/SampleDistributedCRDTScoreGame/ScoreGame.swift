@@ -34,40 +34,41 @@ struct ScoreGame {
     private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
     }
 
-    func run(for time: TimeAmount) throws {
-        let first = ActorSystem("first") { settings in
-            self.configureMessageSerializers(&settings)
-            self.configureClustering(&settings, port: 1111)
-            settings.instrumentation.configure(with: OSSignpostInstrumentationProvider())
-        }
-        let second = ActorSystem("second") { settings in
-            self.configureMessageSerializers(&settings)
-            self.configureClustering(&settings, port: 2222)
-        }
-        let third = ActorSystem("third") { settings in
-            self.configureMessageSerializers(&settings)
-            self.configureClustering(&settings, port: 3333)
+    func run(nodes nodesN: Int, for time: TimeAmount) throws {
+        let nodes = (1...nodesN).map { n in
+            ActorSystem("\(n)") { settings in
+                self.configureMessageSerializers(&settings)
+                self.configureClustering(&settings, port: 1110 + n)
+
+                #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+                if n == 1 { // enough to instrument a single node
+                    settings.instrumentation.configure(with: OSSignpostInstrumentationProvider())
+                }
+                #endif
+            }
         }
 
-        print("~~~~~~~ started 3 actor systems ~~~~~~~")
-        first.cluster.join(node: second.settings.cluster.node)
-        first.cluster.join(node: third.settings.cluster.node)
-        third.cluster.join(node: second.settings.cluster.node)
+        print("~~~~~~~ started \(nodesN) actor systems ~~~~~~~")
+        let first: ActorSystem = nodes.first!
+
+        _ = nodes.reduce(first) { node, nextNode in
+            node.cluster.join(node: nextNode.cluster.node)
+            return nextNode
+        }
 
         while first.cluster.membershipSnapshot.members(atLeast: .up).count < 3 {
             Thread.sleep(.seconds(1))
         }
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
-        let player1 = try first.spawn("player-one", self.player())
-        let player2 = try second.spawn("player-two", self.player())
-        let player3 = try third.spawn("player-three", self.player())
+        let players = try nodes.map { system in
+            try system.spawn("player-\(system.name)", self.player())
+        }
 
         // The "game" is a form of waiting game -- sit back and relax, as the players (randomly) score points
         // and race to the top position. While they do so, they independently update a GCounter of the "total score"
         // which other non participants may observe as well.
-        _ = try first.spawn("game-engine", self.game(with: [player1, player2, player3]))
-
+        _ = try first.spawn("game-engine", self.game(with: players))
 
         first.park(atMost: time)
     }

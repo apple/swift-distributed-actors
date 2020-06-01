@@ -89,7 +89,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         payload: Envelope,
         ackRef: ActorRef<Int> // TODO: better type
     ) {
-        context.log.warning("Received gossip [\(identifier.gossipIdentifier)]: \(pretty: payload)", metadata: [
+        context.log.trace("Received gossip [\(identifier.gossipIdentifier)]: \(pretty: payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
             "gossip/origin": "\(origin.address)",
             "gossip/incoming": "\(payload)",

@@ -381,7 +381,7 @@ extension ClusterShellState {
         case .leadershipChange(let change):
             do {
                 if let appliedChange = try self.membership.applyLeadershipChange(to: change.newLeader) {
-                    self.log.info("Leader change: \(appliedChange)", metadata: self.metadata)
+                    self.log.debug("Leader change: \(appliedChange)", metadata: self.metadata)
                     changeWasApplied = true
                 } else {
                     changeWasApplied = false
