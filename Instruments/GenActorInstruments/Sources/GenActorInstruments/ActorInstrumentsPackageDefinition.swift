@@ -618,6 +618,37 @@ public struct ActorInstrumentsPackageDefinition {
                 )
             }
 
+            Instrument(
+                id: "com.apple.actors.instrument.transport.serialization",
+                title: "Actors Transport Serialization",
+                category: .behavior,
+                purpose: "Observe sizes and time spent in serialization of remote messages",
+                icon: .virtualMemory
+            ) {
+                let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
+                actorTransportSerializationInterval
+
+                let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
+                actorTransportDeserializationInterval
+
+                List(
+                    title: "CRDT Serialization (size)",
+                    slice: Slice(
+                        column: .recipientPath,
+                        "/system/replicator",
+                        "/system/replicator/gossip"
+                    ),
+                    table: actorTransportSerializationInterval
+                ) {
+                    "start"
+                    "duration"
+//                    Column.senderNode
+//                    Column.senderPath
+                    Column.messageType
+                    Column.serializedBytes
+                }
+            }
+
             // ==== Template -------------------------------------------------------------------------------------------
             Template(importFromFile: "ActorInstruments.tracetemplate")
         }
