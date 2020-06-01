@@ -38,6 +38,7 @@ struct ScoreGame {
         let first = ActorSystem("first") { settings in
             self.configureMessageSerializers(&settings)
             self.configureClustering(&settings, port: 1111)
+            settings.instrumentation.configure(with: OSSignpostInstrumentationProvider())
         }
         let second = ActorSystem("second") { settings in
             self.configureMessageSerializers(&settings)

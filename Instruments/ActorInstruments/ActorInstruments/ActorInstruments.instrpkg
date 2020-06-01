@@ -14,10 +14,10 @@
     <category>"Lifecycle"</category>
     <name>"Actor Lifecycle"</name>
     <start-pattern>
-      <message>"spawned,node:" ?node ",path:" ?path</message>
+      <message>"spawned;node:" ?node ";path:" ?path</message>
     </start-pattern>
     <end-pattern>
-      <message>"stopped,reason:" ?reason</message>
+      <message>"stopped;reason:" ?reason</message>
     </end-pattern>
     <column>
       <mnemonic>actor-node</mnemonic>
@@ -58,7 +58,7 @@
     <category>"Lifecycle"</category>
     <name>"Actor Lifecycle"</name>
     <pattern>
-      <message>"spawned,node:" ?node ",path:" ?path</message>
+      <message>"spawned;node:" ?node ";path:" ?path</message>
     </pattern>
     <column>
       <mnemonic>actor-node</mnemonic>
@@ -87,7 +87,7 @@
     <category>"Messages"</category>
     <name>"Actor Messages (Received)"</name>
     <pattern>
-      <message>"actor-message-received,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",sender-node:" ?sender-node ",sender-path:" ?sender-path ",message:" ?message ",message-type:" ?message-type</message>
+      <message>"actor-message-received;recipient-node:" ?recipient-node ";recipient-path:" ?recipient-path ";sender-node:" ?sender-node ";sender-path:" ?sender-path ";message:" ?message ";message-type:" ?message-type</message>
     </pattern>
     <column>
       <mnemonic>actor-recipient-node</mnemonic>
@@ -128,7 +128,7 @@
     <category>"Messages"</category>
     <name>"Actor Messages (Told)"</name>
     <pattern>
-      <message>"actor-message-told,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",sender-node:" ?sender-node ",sender-path:" ?sender-path ",message:" ?message ",message-type:" ?message-type</message>
+      <message>"actor-message-told;recipient-node:" ?recipient-node ";recipient-path:" ?recipient-path ";sender-node:" ?sender-node ";sender-path:" ?sender-path ";message:" ?message ";message-type:" ?message-type</message>
     </pattern>
     <column>
       <mnemonic>actor-recipient-node</mnemonic>
@@ -168,10 +168,10 @@
     <category>"Messages"</category>
     <name>"Actor Message (Ask)"</name>
     <start-pattern>
-      <message>"actor-message-asked,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",sender-node:" ?sender-node ",sender-path:" ?sender-path ",question:" ?question ",question-type:" ?question-type</message>
+      <message>"actor-message-asked;recipient-node:" ?recipient-node ";recipient-path:" ?recipient-path ";sender-node:" ?sender-node ";sender-path:" ?sender-path ";question:" ?question ";question-type:" ?question-type</message>
     </start-pattern>
     <end-pattern>
-      <message>"actor-message-ask-answered,answer:" ?answer ",answer-type:" ?answer-type ",error:" ?error ",error-type:" ?error-type</message>
+      <message>"actor-message-ask-answered;answer:" ?answer ";answer-type:" ?answer-type ";error:" ?error ";error-type:" ?error-type</message>
     </end-pattern>
     <column>
       <mnemonic>actor-recipient-node</mnemonic>
@@ -232,13 +232,13 @@
     <id>actor-transport-serialization-interval</id>
     <title>Serialization</title>
     <subsystem>"com.apple.actors"</subsystem>
-    <category>"Transport Serialization"</category>
-    <name>"Actor Transport (Serialization)"</name>
+    <category>"Serialization"</category>
+    <name>"Transport (Serialization)"</name>
     <start-pattern>
-      <message>"serialize,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",message-type:" ?message-type ",message:" ?message</message>
+      <message>"serialize;recipient-node:" ?recipient-node ";recipient-path:" ?recipient-path ";message-type:" ?message-type ";message:" ?message</message>
     </start-pattern>
     <end-pattern>
-      <message>"serialized,bytes:" ?bytes</message>
+      <message>"serialized;bytes:" ?bytes</message>
     </end-pattern>
     <column>
       <mnemonic>actor-recipient-node</mnemonic>
@@ -287,13 +287,13 @@
     <id>actor-transport-deserialization-interval</id>
     <title>Deserialization</title>
     <subsystem>"com.apple.actors"</subsystem>
-    <category>"Transport Serialization"</category>
-    <name>"Actor Transport (Deserialization)"</name>
+    <category>"Serialization"</category>
+    <name>"Transport (Deserialization)"</name>
     <start-pattern>
-      <message>"deserialize,recipient-node:" ?recipient-node ",recipient-path:" ?recipient-path ",bytes:" ?bytes</message>
+      <message>"deserialize;recipient-node:" ?recipient-node ";recipient-path:" ?recipient-path ";bytes:" ?bytes</message>
     </start-pattern>
     <end-pattern>
-      <message>"deserialized,message:" ?message ",message-type:" ?message-type</message>
+      <message>"deserialized;message:" ?message ";message-type:" ?message-type</message>
     </end-pattern>
     <column>
       <mnemonic>actor-recipient-node</mnemonic>
@@ -377,6 +377,7 @@
     <list>
       <title>Spawns</title>
       <table-ref>actor-lifecycle-spawn-table</table-ref>
+      <column>timestamp</column>
       <column>actor-node</column>
       <column>actor-path</column>
     </list>
@@ -530,7 +531,7 @@
       <schema-ref>actor-transport-deserialization-interval</schema-ref>
     </create-table>
     <graph>
-      <title>Remote Message Serialization</title>
+      <title>Message Serialization</title>
       <lane>
         <title>Serialization</title>
         <table-ref>actor-transport-serialization-interval-table</table-ref>
@@ -540,17 +541,38 @@
           <label-from>transport-message-serialized-bytes</label-from>
         </plot>
       </lane>
+      <lane>
+        <title>Deserialization</title>
+        <table-ref>actor-transport-deserialization-interval-table</table-ref>
+        <plot>
+          <value-from>transport-message-serialized-bytes</value-from>
+          <color-from>transport-message-serialized-bytes-impact</color-from>
+          <label-from>transport-message-serialized-bytes</label-from>
+        </plot>
+      </lane>
     </graph>
     <list>
-      <title>Remote Message Serialization (size)</title>
+      <title>Serialized Messages</title>
       <table-ref>actor-transport-serialization-interval-table</table-ref>
       <column>start</column>
       <column>duration</column>
+      <column>actor-recipient-node</column>
+      <column>actor-recipient-path</column>
       <column>actor-message-type</column>
       <column>transport-message-serialized-bytes</column>
     </list>
+    <list>
+      <title>Deserialized Messages</title>
+      <table-ref>actor-transport-deserialization-interval-table</table-ref>
+      <column>start</column>
+      <column>duration</column>
+      <column>actor-message-type</column>
+      <column>actor-recipient-node</column>
+      <column>actor-recipient-path</column>
+      <column>transport-message-serialized-bytes</column>
+    </list>
     <aggregation>
-      <title>Total messages per Actor (by Recipient)</title>
+      <title>Serialized Messages per Actor (Total, by Recipient)</title>
       <table-ref>actor-transport-serialization-interval-table</table-ref>
       <hierarchy>
         <level>
@@ -561,14 +583,85 @@
         </level>
       </hierarchy>
       <column>
-        <title>Messages received (total)</title>
+        <title>Count</title>
         <count/>
       </column>
       <column>
-        <title>Serialized Messages Total (bytes)</title>
+        <title>Total bytes</title>
         <sum>transport-message-serialized-bytes</sum>
       </column>
     </aggregation>
+    <aggregation>
+      <title>Deserialized Messages per Actor (Total, by Recipient)</title>
+      <table-ref>actor-transport-deserialization-interval-table</table-ref>
+      <hierarchy>
+        <level>
+          <column>actor-recipient-node</column>
+        </level>
+        <level>
+          <column>actor-recipient-path</column>
+        </level>
+      </hierarchy>
+      <column>
+        <title>Count</title>
+        <count/>
+      </column>
+      <column>
+        <title>Total bytes</title>
+        <sum>transport-message-serialized-bytes</sum>
+      </column>
+    </aggregation>
+  </instrument>
+  <instrument>
+    <id>com.apple.actors.instrument.transport.serialization.crdt</id>
+    <title>CRDT Serialization</title>
+    <category>Behavior</category>
+    <purpose>Observe sizes and time spent in serialization of CRDT replication</purpose>
+    <icon>Virtual Memory</icon>
+    <create-table>
+      <id>actor-transport-serialization-interval-table</id>
+      <schema-ref>actor-transport-serialization-interval</schema-ref>
+    </create-table>
+    <create-table>
+      <id>actor-transport-deserialization-interval-table</id>
+      <schema-ref>actor-transport-deserialization-interval</schema-ref>
+    </create-table>
+    <graph>
+      <title>Message Serialization</title>
+      <lane>
+        <title>Serialization</title>
+        <table-ref>actor-transport-serialization-interval-table</table-ref>
+        <plot>
+          <value-from>transport-message-serialized-bytes</value-from>
+          <color-from>transport-message-serialized-bytes-impact</color-from>
+          <label-from>transport-message-serialized-bytes</label-from>
+        </plot>
+      </lane>
+      <lane>
+        <title>Deserialization</title>
+        <table-ref>actor-transport-deserialization-interval-table</table-ref>
+        <plot>
+          <value-from>transport-message-serialized-bytes</value-from>
+          <color-from>transport-message-serialized-bytes-impact</color-from>
+          <label-from>transport-message-serialized-bytes</label-from>
+        </plot>
+      </lane>
+    </graph>
+    <list>
+      <title>CRDT Serialization (size)</title>
+      <table-ref>actor-transport-serialization-interval-table</table-ref>
+      <slice>
+        <column>actor-recipient-path</column>
+        <equals>
+          <string>/system/replicator</string>
+          <string>/system/replicator/gossip</string>
+        </equals>
+      </slice>
+      <column>start</column>
+      <column>duration</column>
+      <column>actor-message-type</column>
+      <column>transport-message-serialized-bytes</column>
+    </list>
   </instrument>
   <template>
     <import-from-file>ActorInstruments.tracetemplate</import-from-file>

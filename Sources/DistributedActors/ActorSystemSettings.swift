@@ -136,11 +136,7 @@ extension ActorSystemSettings {
         ///
         /// You may easily installing any kind of instrumentations, regardless of platform, by using `.none` instead of `.default`.
         public static var `default`: InstrumentationSettings {
-            var settings = InstrumentationSettings()
-            #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
-            settings.configure(with: OSSignpostInstrumentationProvider())
-            #endif
-            return settings
+            .init()
         }
 
         public static var none: InstrumentationSettings {
@@ -148,16 +144,16 @@ extension ActorSystemSettings {
         }
 
         /// - SeeAlso: `ActorInstrumentation`
-        var makeActorInstrumentation: (AnyObject, ActorAddress) -> ActorInstrumentation = { id, address in
+        public var makeActorInstrumentation: (AnyObject, ActorAddress) -> ActorInstrumentation = { id, address in
             NoopActorInstrumentation(id: id, address: address)
         }
 
         /// - SeeAlso: `ActorTransportInstrumentation`
-        var makeActorTransportInstrumentation: () -> ActorTransportInstrumentation = { () in
+        public var makeActorTransportInstrumentation: () -> ActorTransportInstrumentation = { () in
             NoopActorTransportInstrumentation()
         }
 
-        mutating func configure(with provider: ActorInstrumentationProvider) {
+        public mutating func configure(with provider: ActorInstrumentationProvider) {
             if let instrumentFactory = provider.actorInstrumentation {
                 self.makeActorInstrumentation = instrumentFactory
             }

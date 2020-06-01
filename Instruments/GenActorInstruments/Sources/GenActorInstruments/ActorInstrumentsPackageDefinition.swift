@@ -426,6 +426,7 @@ public struct ActorInstrumentsPackageDefinition {
                     title: "Spawns",
                     table: tableActorLifecycleSpawns
                 ) {
+                    "timestamp"
                     Column.actorNode
                     Column.actorPath
                 }
@@ -585,17 +586,15 @@ public struct ActorInstrumentsPackageDefinition {
                 let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
                 actorTransportDeserializationInterval
 
-                List(title: "Remote Message Serialization (size)", table: actorTransportSerializationInterval) {
-                    "start"
-                    "duration"
-//                    Column.senderNode
-//                    Column.senderPath
-                    Column.messageType
-                    Column.serializedBytes
-                }
-
-                Instrument.Graph(title: "Remote Message Serialization") {
+                Instrument.Graph(title: "Message Serialization") {
                     Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
+                        Graph.Plot(
+                            valueFrom: .serializedBytes,
+                            colorFrom: .serializedBytesImpact,
+                            labelFrom: .serializedBytes
+                        )
+                    }
+                    Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
                         Graph.Plot(
                             valueFrom: .serializedBytes,
                             colorFrom: .serializedBytesImpact,
@@ -604,36 +603,89 @@ public struct ActorInstrumentsPackageDefinition {
                     }
                 }
 
+                // Serialization ===
+
+                List(title: "Serialized Messages", table: actorTransportSerializationInterval) {
+                    "start"
+                    "duration"
+                    Column.recipientNode
+                    Column.recipientPath
+                    Column.messageType
+                    Column.serializedBytes
+                }
+
                 Aggregation(
-                    title: "Total messages per Actor (by Recipient)",
+                    title: "Serialized Messages per Actor (Total, by Recipient)",
                     table: actorTransportSerializationInterval,
                     hierarchy: [
                         .column(.recipientNode),
                         .column(.recipientPath),
                     ],
                     columns: [
-                        .count0(title: "Messages received (total)"),
-                        .sum(title: "Serialized Messages Total (bytes)", .serializedBytes),
+                        .count0(title: "Count"),
+                        .sum(title: "Total bytes", .serializedBytes),
+                    ]
+                )
+
+                // Deserialization ===
+
+                List(title: "Deserialized Messages", table: actorTransportDeserializationInterval) {
+                    "start"
+                    "duration"
+                    Column.messageType
+                    Column.recipientNode
+                    Column.recipientPath
+                    Column.serializedBytes
+                }
+
+                Aggregation(
+                    title: "Deserialized Messages per Actor (Total, by Recipient)",
+                    table: actorTransportDeserializationInterval,
+                    hierarchy: [
+                        .column(.recipientNode),
+                        .column(.recipientPath),
+                    ],
+                    columns: [
+                        .count0(title: "Count"),
+                        .sum(title: "Total bytes", .serializedBytes),
                     ]
                 )
             }
 
             Instrument(
-                id: "com.apple.actors.instrument.transport.serialization",
-                title: "Actors Transport Serialization",
+                id: "com.apple.actors.instrument.transport.serialization.crdt",
+                title: "CRDT Serialization",
                 category: .behavior,
-                purpose: "Observe sizes and time spent in serialization of remote messages",
+                purpose: "Observe sizes and time spent in serialization of CRDT replication",
                 icon: .virtualMemory
             ) {
                 let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
                 actorTransportSerializationInterval
-
+                
                 let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
                 actorTransportDeserializationInterval
 
+
+                Instrument.Graph(title: "Message Serialization") {
+                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
+                        Graph.Plot(
+                            valueFrom: .serializedBytes,
+                            colorFrom: .serializedBytesImpact,
+                            labelFrom: .serializedBytes
+                        )
+                    }
+                    Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
+                        Graph.Plot(
+                            valueFrom: .serializedBytes,
+                            colorFrom: .serializedBytesImpact,
+                            labelFrom: .serializedBytes
+                        )
+                    }
+                }
+
                 List(
                     title: "CRDT Serialization (size)",
-                    slice: Slice(
+                    slice: Instrument.Slice(
                         column: .recipientPath,
                         "/system/replicator",
                         "/system/replicator/gossip"
@@ -642,8 +694,6 @@ public struct ActorInstrumentsPackageDefinition {
                 ) {
                     "start"
                     "duration"
-//                    Column.senderNode
-//                    Column.senderPath
                     Column.messageType
                     Column.serializedBytes
                 }

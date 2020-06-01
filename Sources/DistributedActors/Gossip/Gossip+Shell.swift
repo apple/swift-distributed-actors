@@ -262,10 +262,10 @@ extension GossipShell {
         case .fromReceptionistListing(let id):
             let key = Receptionist.RegistrationKey<Message>(id)
             context.system.receptionist.register(context.myself, key: key)
-            context.log.info("Registered with receptionist key: \(key)")
+            context.log.debug("Registered with receptionist key: \(key)")
 
             context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
-                context.log.info("Receptionist listing update \(listing)")
+                context.log.trace("Receptionist listing update \(listing)")
                 for peer in listing.refs {
                     self.onIntroducePeer(context, peer: peer)
                 }
