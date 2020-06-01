@@ -15,12 +15,18 @@
 import DistributedActors
 import Files
 import Foundation
+import Logging
 import SwiftSyntax
+
+let BLUE = "\u{001B}[0;34m"
+let RST = "\u{001B}[0;0m"
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Find Actorables
 
 final class GatherActorables: SyntaxVisitor {
+    var log: Logger
+
     let path: File
     let settings: GenerateActorsCommand
 
@@ -35,6 +41,8 @@ final class GatherActorables: SyntaxVisitor {
     init(_ path: File, _ settings: GenerateActorsCommand) {
         self.path = path
         self.settings = settings
+        self.log = Logger(label: "\(GatherActorables.self)")
+        self.log.logLevel = settings.verbose ? .trace : .info
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -50,8 +58,11 @@ final class GatherActorables: SyntaxVisitor {
     // MARK: types
 
     func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntaxProtocol, name: String) -> SyntaxVisitorContinueKind {
+        self.log.trace("Visit \(type): \(name) ==== \(node)")
+
         guard node.isActorable() else {
             self.nestingStack.append("\(name)")
+            self.log.trace("Nesting, visit children: \(name)")
             return .visitChildren
         }
 
@@ -60,8 +71,6 @@ final class GatherActorables: SyntaxVisitor {
             return .skipChildren
         }
 
-        let BLUE = "\u{001B}[0;34m"
-        let RST = "\u{001B}[0;0m"
         self.wipActorable = ActorableTypeDecl(
             sourceFile: self.path,
             type: type,
@@ -70,19 +79,19 @@ final class GatherActorables: SyntaxVisitor {
         )
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
-        self.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path), analyzing...")
+        self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path), analyzing...")
 
         return .visitChildren
     }
 
-    func visitPostDecl(_ nodeName: String) {
+    func visitPostDecl(_ nodeName: String, completeWipActorable: Bool) {
+        self.log.trace("visitPostDecl: \(nodeName)")
         self.nestingStack = Array(self.nestingStack.reversed().drop(while: { $0 == nodeName })).reversed()
 
-        guard self.wipActorable != nil else {
-            return
+        if completeWipActorable, self.wipActorable != nil {
+            self.actorables.append(self.wipActorable)
+            self.wipActorable = nil
         }
-        self.actorables.append(self.wipActorable)
-        self.wipActorable = nil
     }
 
     override func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -119,7 +128,7 @@ final class GatherActorables: SyntaxVisitor {
     }
 
     override func visitPost(_ node: ProtocolDeclSyntax) {
-        self.visitPostDecl(node.identifier.text)
+        self.visitPostDecl(node.identifier.text, completeWipActorable: node.isActorable())
     }
 
     override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -127,7 +136,7 @@ final class GatherActorables: SyntaxVisitor {
     }
 
     override func visitPost(_ node: ClassDeclSyntax) {
-        self.visitPostDecl(node.identifier.text)
+        self.visitPostDecl(node.identifier.text, completeWipActorable: node.isActorable())
     }
 
     override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -135,7 +144,7 @@ final class GatherActorables: SyntaxVisitor {
     }
 
     override func visitPost(_ node: StructDeclSyntax) {
-        self.visitPostDecl(node.identifier.text)
+        self.visitPostDecl(node.identifier.text, completeWipActorable: node.isActorable())
     }
 
     override func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -144,23 +153,23 @@ final class GatherActorables: SyntaxVisitor {
     }
 
     override func visitPost(_ node: ExtensionDeclSyntax) {
-        self.visitPostDecl(node.extendedType.description.trim(character: " "))
+        let name = node.extendedType.description.trim(character: " ")
+        self.visitPostDecl(name, completeWipActorable: node.isActorable())
     }
 
     override func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "\(node.identifier.text)"
-
         guard node.isActorable() else {
             self.nestingStack.append("\(name)")
             return .visitChildren
         }
 
         // TODO: It could be interesting to express actors as enums, that would be their "states"
-        fatalError("Enums cannot (currently) be Actorable, define [\(name)] (in \(self.path)) as a struct instead. Offending node: \(node)")
+        fatalError("Enums cannot be Actorable, define [\(name)] (in \(self.path)) as a struct or class instead. Offending node: \(node)")
     }
 
     override func visitPost(_ node: EnumDeclSyntax) {
-        self.visitPostDecl(node.identifier.text)
+        self.visitPostDecl(node.identifier.text, completeWipActorable: node.isActorable())
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -207,6 +216,7 @@ final class GatherActorables: SyntaxVisitor {
     // MARK: functions
 
     override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.log.trace("Visit function decl [\(self.wipActorable.name)].[\(node.identifier)]")
         guard self.wipActorable != nil else {
             // likely a top-level function, we skip those always
             return .skipChildren
@@ -473,15 +483,5 @@ final class IsActorableVisitor: SyntaxVisitor {
 
     var shouldContinue: SyntaxVisitorContinueKind {
         self.actorable ? .visitChildren : .skipChildren
-    }
-}
-
-extension SyntaxVisitor {
-    func info(_ message: String) {
-        print("[gen-actors][INFO] \(message)")
-    }
-
-    func debug(_ message: String) {
-        print("[gen-actors][DEBUG] \(message)")
     }
 }
