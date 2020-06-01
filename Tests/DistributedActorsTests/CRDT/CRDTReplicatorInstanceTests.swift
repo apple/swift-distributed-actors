@@ -368,8 +368,7 @@ final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
     }
 
     func test_writeDelta_shouldFailIfNotDeltaCRDT() throws {
-        // FIXME: Enable test_writeDelta_shouldFailIfNotDeltaCRDT again
-        pinfo("SKIPPED: test_writeDelta_shouldFailIfNotDeltaCRDT FIXME!!!")
+        pnote("Skipping test \(#function)") // FIXME: https://github.com/apple/swift-distributed-actors/issues/519
         return
 
 //        let replicator = CRDT.Replicator.Instance(.default)
