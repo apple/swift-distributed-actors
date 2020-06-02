@@ -101,7 +101,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         // TODO: we could handle directives from the logic
         logic.receiveGossip(origin: origin.asAddressable(), payload: payload)
 
-        ackRef.tell(.init()) // TODO allow the user to return an ACK from receiveGossip
+        ackRef.tell(.init()) // TODO: allow the user to return an ACK from receiveGossip
     }
 
     private func onLocalPayloadUpdate(

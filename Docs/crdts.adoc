@@ -20,6 +20,12 @@ In other words, CRDTs are very useful in situations where eventual consistency, 
 
 TIP: For consistency-first use cases please reach out as we would like to provide implementations for consensus style Replicated State Machines in the future.
 
+WARNING: The current CRDT dissemination is only a stepping stone towards the real deal and still relies on full-state synchronization. +
+While correct, this incurs much more metadata and sending-known-data again than a full delta based replication engine. +
+Refer to <<crdt_caveats_limitations>> for more information on today's limitations and our plan moving forward. +
+Please do reach out if gossip / delta CRDT dissemination if of interest to you, and we'd prioritize this work.
+
+
 
 === CRDT QuickStart
 
@@ -245,3 +251,35 @@ but generally is an function of the cluster size, and gossip interval configurat
 TIP: Currently CRDTs are shared between all members of a cluster. Once cluster nodes gain "roles" it will be possible to
   control which members should participate in the replication of a specific CRDT. E.g. only "game-play" nodes need to host
   values relating to any game-play related things or similar. See: https://github.com/apple/swift-distributed-actors/issues/636
+
+[[crdt_caveats_limitations]]
+=== Caveats and Limitations of Work-in-Progress implementation
+
+The present implementation of the CRDT dissemination should be treated as a work-in-progress that semantically works,
+however is insufficient for larger workloads and/or clusters. Please get in touch if CRDTs in Swift and on the server are
+of interest to you so we can re-prioritize this work.
+
+Today's implementation is limited in the sense that it relies on full-state sync, which will exponentially grow metadata
+and payload sizes of messages used to spread the CRDT in a cluster which has adverse effects on the rest of the system
+as well as message throughput.
+
+Roughly, for direct replication today you can expect a few millisecond round trips for direct replication;
+The writes are performed in parallel to all targets of a write, once all writes are acknowledged the write is completed.
+The gossip replication takes place in the background, as configured in `settings.crdt.gossipInterval` (defaults to `.seconds(2)`,
+with some noise to avoid all peers gossiping in the same moment). The gossip replicator is aware which peers have been contacted directly
+and avoids targeting them. The gossip replication currently shares the full states, and stops gossiping a payload (CRDT identity),
+once it has seen a peer spread the same payload it owns - this is naive, and what we aim to improve in the follow up work).
+
+The payloads are serialized using protocol buffers, though since the full state is synchronized they can end up quite large as well,
+in situations spreading 2 writes each between 10 nodes, the metadata _today_ can reach a few kb. We understand this is not acceptable,
+and there are specific tickets to address this, including a more compact actor/owner representation (single number, rather than complete address string, repeated multiple times in the metadata).
+
+Most notable tickets to resolve:
+
+- https://github.com/apple/swift-distributed-actors/issues/628[CRDT: Update CRDT.GossipLogic to be Delta aware #628],
+  matters the most our of all remaining work; this enables the underlying delta infrastructure to be actually used for replication. This is the main remaining task.
+- https://github.com/apple/swift-distributed-actors/issues/629[CRDT: Implement flushDelay #629], matters for less churn locally when
+  lots of updates are performed;
+- https://github.com/apple/swift-distributed-actors/pull/650[CRDT Replicator: chunking updates #426], matters for new nodes joining
+  so even though they'd need the "full state" to be sent, we don't necessarily have to send it in one huge message, but we can chunk it up.
+
