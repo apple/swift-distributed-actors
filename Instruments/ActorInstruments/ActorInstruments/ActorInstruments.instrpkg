@@ -518,9 +518,9 @@
   </instrument>
   <instrument>
     <id>com.apple.actors.instrument.transport.serialization</id>
-    <title>Actors Transport Serialization</title>
+    <title>Message Serialization</title>
     <category>Behavior</category>
-    <purpose>Observe sizes and time spent in serialization of remote messages</purpose>
+    <purpose>Inspecting all actor message serialization</purpose>
     <icon>Virtual Memory</icon>
     <create-table>
       <id>actor-transport-serialization-interval-table</id>
@@ -531,7 +531,7 @@
       <schema-ref>actor-transport-deserialization-interval</schema-ref>
     </create-table>
     <graph>
-      <title>Message Serialization</title>
+      <title>Messages Message Serialization</title>
       <lane>
         <title>Serialization</title>
         <table-ref>actor-transport-serialization-interval-table</table-ref>
@@ -552,7 +552,7 @@
       </lane>
     </graph>
     <list>
-      <title>Serialized Messages</title>
+      <title>Serialized: Messages</title>
       <table-ref>actor-transport-serialization-interval-table</table-ref>
       <column>start</column>
       <column>duration</column>
@@ -562,7 +562,7 @@
       <column>transport-message-serialized-bytes</column>
     </list>
     <list>
-      <title>Deserialized Messages</title>
+      <title>Deserialized: Messages</title>
       <table-ref>actor-transport-deserialization-interval-table</table-ref>
       <column>start</column>
       <column>duration</column>
@@ -572,7 +572,7 @@
       <column>transport-message-serialized-bytes</column>
     </list>
     <aggregation>
-      <title>Serialized Messages per Actor (Total, by Recipient)</title>
+      <title>Serialized Messages (by Recipient)</title>
       <table-ref>actor-transport-serialization-interval-table</table-ref>
       <hierarchy>
         <level>
@@ -592,7 +592,7 @@
       </column>
     </aggregation>
     <aggregation>
-      <title>Deserialized Messages per Actor (Total, by Recipient)</title>
+      <title>Deserialized Messages (by Recipient)</title>
       <table-ref>actor-transport-deserialization-interval-table</table-ref>
       <hierarchy>
         <level>
@@ -616,7 +616,7 @@
     <id>com.apple.actors.instrument.transport.serialization.crdt</id>
     <title>CRDT Serialization</title>
     <category>Behavior</category>
-    <purpose>Observe sizes and time spent in serialization of CRDT replication</purpose>
+    <purpose>Inspecting all CRDT serialization</purpose>
     <icon>Virtual Memory</icon>
     <create-table>
       <id>actor-transport-serialization-interval-table</id>
@@ -627,7 +627,7 @@
       <schema-ref>actor-transport-deserialization-interval</schema-ref>
     </create-table>
     <graph>
-      <title>Message Serialization</title>
+      <title>CRDT Message Serialization</title>
       <lane>
         <title>Serialization</title>
         <table-ref>actor-transport-serialization-interval-table</table-ref>
@@ -648,7 +648,7 @@
       </lane>
     </graph>
     <list>
-      <title>CRDT Serialization (size)</title>
+      <title>Serialized: CRDT</title>
       <table-ref>actor-transport-serialization-interval-table</table-ref>
       <slice>
         <column>actor-recipient-path</column>
@@ -659,9 +659,68 @@
       </slice>
       <column>start</column>
       <column>duration</column>
+      <column>actor-recipient-node</column>
+      <column>actor-recipient-path</column>
       <column>actor-message-type</column>
       <column>transport-message-serialized-bytes</column>
     </list>
+    <list>
+      <title>Deserialized: CRDT</title>
+      <table-ref>actor-transport-deserialization-interval-table</table-ref>
+      <slice>
+        <column>actor-recipient-path</column>
+        <equals>
+          <string>/system/replicator</string>
+          <string>/system/replicator/gossip</string>
+        </equals>
+      </slice>
+      <column>start</column>
+      <column>duration</column>
+      <column>actor-message-type</column>
+      <column>actor-recipient-node</column>
+      <column>actor-recipient-path</column>
+      <column>transport-message-serialized-bytes</column>
+    </list>
+    <aggregation>
+      <title>Serialized Messages (by Recipient)</title>
+      <table-ref>actor-transport-serialization-interval-table</table-ref>
+      <hierarchy>
+        <level>
+          <column>actor-recipient-node</column>
+        </level>
+        <level>
+          <column>actor-recipient-path</column>
+        </level>
+      </hierarchy>
+      <column>
+        <title>Count</title>
+        <count/>
+      </column>
+      <column>
+        <title>Total bytes</title>
+        <sum>transport-message-serialized-bytes</sum>
+      </column>
+    </aggregation>
+    <aggregation>
+      <title>Deserialized Messages (by Recipient)</title>
+      <table-ref>actor-transport-deserialization-interval-table</table-ref>
+      <hierarchy>
+        <level>
+          <column>actor-recipient-node</column>
+        </level>
+        <level>
+          <column>actor-recipient-path</column>
+        </level>
+      </hierarchy>
+      <column>
+        <title>Count</title>
+        <count/>
+      </column>
+      <column>
+        <title>Total bytes</title>
+        <sum>transport-message-serialized-bytes</sum>
+      </column>
+    </aggregation>
   </instrument>
   <template>
     <import-from-file>ActorInstruments.tracetemplate</import-from-file>

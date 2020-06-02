@@ -183,3 +183,5 @@ public protocol GossipEnvelopeProtocol: Codable {
     var metadata: Metadata { get }
     var payload: Payload { get }
 }
+
+public struct GossipACK: Codable {} // TODO: Make Acknowlagement an associated type on GossipEnvelopeProtocol!

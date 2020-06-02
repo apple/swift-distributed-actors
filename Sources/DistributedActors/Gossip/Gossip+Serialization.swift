@@ -54,7 +54,7 @@ extension GossipShell.Message: Codable {
             let payload = try context.serialization.deserialize(as: Envelope.self, from: .data(payloadPayload), using: payloadManifest)
 
             let ackRefAddress = try container.decode(ActorAddress.self, forKey: .ackRef)
-            let ackRef = context.resolveActorRef(Int.self, identifiedBy: ackRefAddress) // FIXME: the int
+            let ackRef = context.resolveActorRef(GossipACK.self, identifiedBy: ackRefAddress)
 
             self = .gossip(identity: identifier, origin: origin, payload, ackRef: ackRef)
         }

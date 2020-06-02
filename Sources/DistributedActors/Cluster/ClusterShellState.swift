@@ -191,7 +191,7 @@ extension ClusterShellState {
                 self.log.trace("Aborting OUTBOUND handshake channel: \(channel)")
 
                 channel.close().whenFailure { [log = self.log] error in
-                    log.warning("Failed to abortOutgoingHandshake (close) channel [\(channel)], error: \(error)")
+                    log.debug("Failed to abortOutgoingHandshake (close) channel [\(channel)], error: \(error)")
                 }
             } // else, no channel to close?
         case .wasOfferedHandshake:
@@ -254,7 +254,7 @@ extension ClusterShellState {
 
             /// order on nodes is somewhat arbitrary, but that is fine, since we only need this for tiebreakers
             let tieBreakWinner = initiated.localNode < offer.originNode
-            self.log.info("""
+            self.log.debug("""
             Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.originNode)](remote) \
             detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
             """, metadata: [

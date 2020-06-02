@@ -127,22 +127,11 @@ extension ClusterShell {
         }
 
         if let downReplacedNodeChange = change.replacementDownPreviousNodeChange {
-            state.log.info(
-                "Downing replaced member: \(change)",
-                metadata: [
-                    "tag": "leader-action",
-                ]
-            )
+            state.log.debug("Downing replaced member: \(change)", metadata: ["tag": "leader-action"])
             state.events.publish(.membershipChange(downReplacedNodeChange))
         }
 
-        state.log.info(
-            "Leader moved member: \(change)",
-            metadata: [
-                "tag": "leader-action",
-            ]
-        )
-
+        state.log.debug("Leader moved member: \(change)", metadata: ["tag": "leader-action"])
         state.events.publish(.membershipChange(change))
     }
 

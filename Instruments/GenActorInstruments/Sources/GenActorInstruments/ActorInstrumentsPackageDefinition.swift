@@ -357,6 +357,107 @@ public struct ActorInstrumentsPackageDefinition {
 
     public init() {}
 
+    func serializationInstrument(
+        idSuffix: String?,
+        title: String,
+        purpose: String,
+        hint: String,
+        slice: Instrument.Slice?
+    ) -> Instrument {
+        var id: String = "com.apple.actors.instrument.transport.serialization"
+        if let suffix = idSuffix {
+            id += ".\(suffix)"
+        }
+
+        return Instrument(
+            id: id,
+            title: title,
+            category: .behavior,
+            purpose: purpose,
+            icon: .virtualMemory
+        ) {
+            let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
+            actorTransportSerializationInterval
+
+            let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
+            actorTransportDeserializationInterval
+
+            Instrument.Graph(title: "\(hint) Message Serialization") {
+                Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
+                    Graph.Plot(
+                        valueFrom: .serializedBytes,
+                        colorFrom: .serializedBytesImpact,
+                        labelFrom: .serializedBytes
+                    )
+                }
+                Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
+                    Graph.Plot(
+                        valueFrom: .serializedBytes,
+                        colorFrom: .serializedBytesImpact,
+                        labelFrom: .serializedBytes
+                    )
+                }
+            }
+
+            // Serialization ===
+
+            List(
+                title: "Serialized: \(hint)",
+                slice: slice,
+                table: actorTransportSerializationInterval
+            ) {
+                "start"
+                "duration"
+                Column.recipientNode
+                Column.recipientPath
+                Column.messageType
+                Column.serializedBytes
+            }
+
+            Aggregation(
+                title: "Serialized Messages (by Recipient)",
+                table: actorTransportSerializationInterval,
+                hierarchy: [
+                    .column(.recipientNode),
+                    .column(.recipientPath),
+                ],
+                columns: [
+                    .count0(title: "Count"),
+                    .sum(title: "Total bytes", .serializedBytes),
+                ]
+            )
+
+            // Deserialization ===
+
+            List(
+                title: "Deserialized: \(hint)",
+                slice: slice,
+                table: actorTransportDeserializationInterval
+            ) {
+                "start"
+                "duration"
+                Column.messageType
+                Column.recipientNode
+                Column.recipientPath
+                Column.serializedBytes
+            }
+
+            Aggregation(
+                title: "Deserialized Messages (by Recipient)",
+                table: actorTransportDeserializationInterval,
+                hierarchy: [
+                    .column(.recipientNode),
+                    .column(.recipientPath),
+                ],
+                columns: [
+                    .count0(title: "Count"),
+                    .sum(title: "Total bytes", .serializedBytes),
+                ]
+            )
+        }
+    }
+
+
     public var packageDefinition: PackageDefinition {
         PackageDefinition(
             id: packageID,
@@ -573,131 +674,68 @@ public struct ActorInstrumentsPackageDefinition {
                 )
             }
 
-            Instrument(
-                id: "com.apple.actors.instrument.transport.serialization",
-                title: "Actors Transport Serialization",
-                category: .behavior,
-                purpose: "Observe sizes and time spent in serialization of remote messages",
-                icon: .virtualMemory
-            ) {
-                let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
-                actorTransportSerializationInterval
+            serializationInstrument(
+                idSuffix: nil,
+                title: "Message Serialization",
+                purpose: "Inspecting all actor message serialization",
+                hint: "Messages",
+                slice: nil // "all"
+            )
 
-                let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
-                actorTransportDeserializationInterval
-
-                Instrument.Graph(title: "Message Serialization") {
-                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
-                        Graph.Plot(
-                            valueFrom: .serializedBytes,
-                            colorFrom: .serializedBytesImpact,
-                            labelFrom: .serializedBytes
-                        )
-                    }
-                    Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
-                        Graph.Plot(
-                            valueFrom: .serializedBytes,
-                            colorFrom: .serializedBytesImpact,
-                            labelFrom: .serializedBytes
-                        )
-                    }
-                }
-
-                // Serialization ===
-
-                List(title: "Serialized Messages", table: actorTransportSerializationInterval) {
-                    "start"
-                    "duration"
-                    Column.recipientNode
-                    Column.recipientPath
-                    Column.messageType
-                    Column.serializedBytes
-                }
-
-                Aggregation(
-                    title: "Serialized Messages per Actor (Total, by Recipient)",
-                    table: actorTransportSerializationInterval,
-                    hierarchy: [
-                        .column(.recipientNode),
-                        .column(.recipientPath),
-                    ],
-                    columns: [
-                        .count0(title: "Count"),
-                        .sum(title: "Total bytes", .serializedBytes),
-                    ]
-                )
-
-                // Deserialization ===
-
-                List(title: "Deserialized Messages", table: actorTransportDeserializationInterval) {
-                    "start"
-                    "duration"
-                    Column.messageType
-                    Column.recipientNode
-                    Column.recipientPath
-                    Column.serializedBytes
-                }
-
-                Aggregation(
-                    title: "Deserialized Messages per Actor (Total, by Recipient)",
-                    table: actorTransportDeserializationInterval,
-                    hierarchy: [
-                        .column(.recipientNode),
-                        .column(.recipientPath),
-                    ],
-                    columns: [
-                        .count0(title: "Count"),
-                        .sum(title: "Total bytes", .serializedBytes),
-                    ]
-                )
-            }
-
-            Instrument(
-                id: "com.apple.actors.instrument.transport.serialization.crdt",
+            serializationInstrument(
+                idSuffix: "crdt",
                 title: "CRDT Serialization",
-                category: .behavior,
-                purpose: "Observe sizes and time spent in serialization of CRDT replication",
-                icon: .virtualMemory
-            ) {
-                let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
-                actorTransportSerializationInterval
-                
-                let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
-                actorTransportDeserializationInterval
+                purpose: "Inspecting all CRDT serialization",
+                hint: "CRDT",
+                slice: Instrument.Slice(
+                    column: .recipientPath,
+                    "/system/replicator",
+                    "/system/replicator/gossip"
+                )
+            )
 
-
-                Instrument.Graph(title: "Message Serialization") {
-                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
-                        Graph.Plot(
-                            valueFrom: .serializedBytes,
-                            colorFrom: .serializedBytesImpact,
-                            labelFrom: .serializedBytes
-                        )
-                    }
-                    Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
-                        Graph.Plot(
-                            valueFrom: .serializedBytes,
-                            colorFrom: .serializedBytesImpact,
-                            labelFrom: .serializedBytes
-                        )
-                    }
-                }
-
-                List(
-                    title: "CRDT Serialization (size)",
-                    slice: Instrument.Slice(
-                        column: .recipientPath,
-                        "/system/replicator",
-                        "/system/replicator/gossip"
-                    ),
-                    table: actorTransportSerializationInterval
-                ) {
-                    "start"
-                    "duration"
-                    Column.messageType
-                    Column.serializedBytes
-                }
-            }
+//            Instrument(
+//                id: "com.apple.actors.instrument.transport.serialization.crdt",
+//                title: "CRDT Serialization",
+//                category: .behavior,
+//                purpose: "Observe sizes and time spent in serialization of CRDT replication",
+//                icon: .virtualMemory
+//            ) {
+//                let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
+//                actorTransportSerializationInterval
+//
+//                let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
+//                actorTransportDeserializationInterval
+//
+//
+//                Instrument.Graph(title: "Message Serialization") {
+//                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
+//                        Graph.Plot(
+//                            valueFrom: .serializedBytes,
+//                            colorFrom: .serializedBytesImpact,
+//                            labelFrom: .serializedBytes
+//                        )
+//                    }
+//                    Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
+//                        Graph.Plot(
+//                            valueFrom: .serializedBytes,
+//                            colorFrom: .serializedBytesImpact,
+//                            labelFrom: .serializedBytes
+//                        )
+//                    }
+//                }
+//
+//                List(
+//                    title: "CRDT Serialization (size)",
+//                    slice: ,
+//                    table: actorTransportSerializationInterval
+//                ) {
+//                    "start"
+//                    "duration"
+//                    Column.messageType
+//                    Column.serializedBytes
+//                }
+//            }
 
             // ==== Template -------------------------------------------------------------------------------------------
             Template(importFromFile: "ActorInstruments.tracetemplate")

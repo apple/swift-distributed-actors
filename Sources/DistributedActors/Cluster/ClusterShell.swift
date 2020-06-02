@@ -742,7 +742,7 @@ extension ClusterShell {
             // handshake is allowed to proceed
             switch hsm.negotiate() {
             case .acceptAndAssociate(let handshakeCompleted):
-                state.log.info("Accept handshake with \(reflecting: offer.originNode)!", metadata: [
+                state.log.trace("Accept handshake with \(reflecting: offer.originNode)!", metadata: [
                     "handshake/channel": "\(inboundChannel)",
                 ])
 
@@ -752,7 +752,7 @@ extension ClusterShell {
                 // prepare accept
                 let accept = handshakeCompleted.makeAccept(whenHandshakeReplySent: { () in
                     self.completeAssociation(directive)
-                    state.log.debug("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
+                    state.log.trace("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
                         "membership/change": "\(directive.membershipChange)",
                         "membership": "\(state.membership)",
                     ])
