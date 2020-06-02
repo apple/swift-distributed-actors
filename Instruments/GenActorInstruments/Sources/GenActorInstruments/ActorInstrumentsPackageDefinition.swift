@@ -694,49 +694,6 @@ public struct ActorInstrumentsPackageDefinition {
                 )
             )
 
-//            Instrument(
-//                id: "com.apple.actors.instrument.transport.serialization.crdt",
-//                title: "CRDT Serialization",
-//                category: .behavior,
-//                purpose: "Observe sizes and time spent in serialization of CRDT replication",
-//                icon: .virtualMemory
-//            ) {
-//                let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
-//                actorTransportSerializationInterval
-//
-//                let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
-//                actorTransportDeserializationInterval
-//
-//
-//                Instrument.Graph(title: "Message Serialization") {
-//                    Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
-//                        Graph.Plot(
-//                            valueFrom: .serializedBytes,
-//                            colorFrom: .serializedBytesImpact,
-//                            labelFrom: .serializedBytes
-//                        )
-//                    }
-//                    Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
-//                        Graph.Plot(
-//                            valueFrom: .serializedBytes,
-//                            colorFrom: .serializedBytesImpact,
-//                            labelFrom: .serializedBytes
-//                        )
-//                    }
-//                }
-//
-//                List(
-//                    title: "CRDT Serialization (size)",
-//                    slice: ,
-//                    table: actorTransportSerializationInterval
-//                ) {
-//                    "start"
-//                    "duration"
-//                    Column.messageType
-//                    Column.serializedBytes
-//                }
-//            }
-
             // ==== Template -------------------------------------------------------------------------------------------
             Template(importFromFile: "ActorInstruments.tracetemplate")
         }
