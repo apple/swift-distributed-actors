@@ -8,7 +8,7 @@ Sometimes it is necessary to require that there is only _one_ instance of an act
 - A single coordinator of actions across the cluster.
 - A centralized service.
 
-The singleton of an actor type may run on _any_ one of the candidate nodes based on api:AllocationStrategySettings[enum].
+The singleton of an actor type may run on _any_ one of the candidate nodes based on api:AllocationStrategySettings[enum,module=ActorSingletonPlugin].
 Keep in mind that this node may change due to cluster membership updates, and moving the actor singleton to the new designated node is done automatically.
 
 WARNING: Do not assume the actor singleton to be available at all times. When the node on which the actor singleton has
@@ -18,7 +18,7 @@ could be lost during the migration.
 Regardless of where an actor singleton is running, an actor on _any_ cluster node can send messages to it. This is
 because there is a _proxy_ on each node keeping track of the exact location of the singleton. The node selected to host
 the singleton also has a _manager_ responsible for spawning and stopping the actual singleton instance according to
-api:AllocationStrategySettings[enum]. Currently the only supported allocation strategy is by cluster leadership--i.e.,
+api:AllocationStrategySettings[enum,module=ActorSingletonPlugin]. Currently the only supported allocation strategy is by cluster leadership--i.e.,
 the leader of the cluster hosts all actor singletons.
 
 === Dependency

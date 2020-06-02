@@ -19,8 +19,6 @@ import struct NIO.ByteBuffer
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Public API
 
-/// :nodoc: INTERNAL API: May change without any prior notice.
-///
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
 public struct ActorRef<Message: ActorMessage>: ReceivesMessages, _ReceivesSystemMessages {

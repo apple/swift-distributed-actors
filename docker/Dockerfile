@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y lsof dnsutils netcat-openbsd net-tools 
 
 # ruby and jazzy for docs generation
 RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev
-RUN gem install jazzy --no-ri --no-rdoc
+RUN gem install jazzy --no-ri --docsno-rdoc -v 0.10.1
 RUN gem install asciidoctor -v 1.5.8 --no-ri --no-rdoc
 RUN gem install asciidoctor-pdf --pre --no-ri --no-rdoc
 RUN gem install asciidoctor-diagram -v 1.5.8 --no-ri --no-rdoc

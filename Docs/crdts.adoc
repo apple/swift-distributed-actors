@@ -34,7 +34,7 @@ in action first hand, perhaps without even being aware of it.
 Refer to the <<crdt_types>> to understand more about the provided types and their semantics.
 
 For this quickstart, we'll use an "Observed Removed Set" api:CRDT.ORSet[enum], which is a fairly common CRDT
-and is already slightly more complex than the simplest datatype available (a Grow-only api:CRDT.GCounter[struct]).
+and is already slightly more complex than the simplest datatype available (a Grow-only api:CRDT.GCounter[enum]).
 
 An ORSet is able to handle additions and removals from the set, and in case a conflict is detected (i.e. multiple nodes
 performed an add and remove concurrently) the _add_ operation _wins_. These semantics are useful for situations when it is
@@ -54,7 +54,7 @@ Because they are shopping in different stores, and have not discussed with each 
 ----
 include::{dir_sact_doc_tests}/CRDT/CRDTDocExamples.swift[tag=quickstart_owned_actorable]
 ----
-<1> Rather than creating a "plain" CRDT, we create an api:ActorOwned[class] version of it,
+<1> Rather than creating a "plain" CRDT, we create an api:CRDT.ActorOwned[class,nested_in=enum] version of it,
     which will handle all distribution aspects of writes and reads to it and its distributed counterparts.
 
 ==== Step 2: Adding and "Checking off" items from the shopping list (Direct Replication)
@@ -120,7 +120,7 @@ In our example, Alice and Bob only performed `.local` writes, which means their 
 unless gossip replication took them there (!). Local writes are a good way to see gossip replication do its magic - since we
 did not write to any other nodes, the only way those writes end up on other members is via gossip (which we will explore in depth in <<gossip_replication>>).
 
-In order to observe incoming writes to an api:ActorOwned[class] CRDT, we can use the `ActorOwned.onUpdate` function to install a listener,
+In order to observe incoming writes to an api:CRDT.ActorOwned[class,nested_in=enum] CRDT, we can use the `ActorOwned.onUpdate` function to install a listener,
 which will be fired every time the CRDT experiences a change in its state (e.g. via direct, or gossip replication):
 
 [source]
@@ -133,7 +133,7 @@ It also works the same way if you have multiple actors owning the same CRDT iden
 which is useful for testing - there is no need to change your programming model at all between programming in a single process
 and programming a highly distributed deployment of the same CRDT and Actor based system.
 
-TIP: All callbacks on `ActorOwned` types are actor-concurrency-safe, meaning that they will be executed on the actor's context,
+TIP: All callbacks on api:CRDT.ActorOwned[class,nested_in=enum] types are actor-concurrency-safe, meaning that they will be executed on the actor's context,
 and are guaranteed to not overlap with any other actor message handling. 🟢 In other words, they are completely thread safe and may
 access and modify the actor state without taking any locks or other means of synchronization.
 
@@ -151,15 +151,15 @@ include::{dir_sact_doc_tests}/CRDT/CRDTDocExamples.swift[tag=quickstart_peek_sta
 Distributed Actors comes with a number of pre-defined https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type#State-based_CRDTs[State-Based CRDT] types (also known as _CvRDTs_), such as:
 
 - Counters:
-  * Grow-only Counter api:CRDT.GCounter[struct]
+  * Grow-only Counter api:CRDT.GCounter[struct,nested_in=enum]
 - Sets:
-  * Observed Removed Set api:CRDT.ORSet[struct]
+  * Observed Removed Set api:CRDT.ORSet[struct,nested_in=enum]
 - Maps (Dictionaries):
-  * Observed Removed Map api:CRDT.ORMap[struct],
-  * Observed Removed MultiMap api:CRDT.ORMultiMap[struct] (a dictionary where values are of type `ORSet`),
-  * ⚠️ "Last Writer Wins" Map api:CRDT.LWWMAP[struct], which is wall-clock time sensitive and should be used only very infrequently
+  * Observed Removed Map api:CRDT.ORMap[struct,nested_in=enum],
+  * Observed Removed MultiMap api:CRDT.ORMultiMap[struct,nested_in=enum] (a dictionary where values are of type `ORSet`),
+  * ⚠️ "Last Writer Wins" Map api:CRDT.LWWMAP[struct,nested_in=enum], which is wall-clock time sensitive and should be used only very infrequently
 - Registers:
-  * ⚠️ "Last Writer Wins" Register api:CRDT.LWWRegister[struct], which is wall-clock time sensitive and should be used only very infrequently
+  * ⚠️ "Last Writer Wins" Register api:CRDT.LWWRegister[struct,nested_in=enum], which is wall-clock time sensitive and should be used only very infrequently
 
 [[direct_replication]]
 === Direct Replication
@@ -175,11 +175,11 @@ When a write is issued, e.g. by invoking `ownedSet.insert("apples", writeConsist
 the system's direct replicator is notified about this action, informs all other actors on the same node which may be owning
 the CRDT identified with the same `CRDT.Identity` (which is assigned at creation time), and then proceeds to notify other nodes.
 
-The number of nodes the replicator contacts is configured by the `writeConsistency:`api:CRDT.OperationConsistency[enum] parameter.
+The number of nodes the replicator contacts is configured by the `writeConsistency`: api:CRDT.OperationConsistency[enum] parameter.
 Refer to it's API documentation for detailed explanation of the consistency levels, however in general it simply translates to a
-number of peers that will be notified about the change _and acknowlage this write back_ to the originator of the write.
+number of peers that will be notified about the change _and acknowledge this write back_ to the originator of the write.
 
-Once enough (e.g. `.quorum` or `.atLeast(2)`) acknowlagements have been received by the initiating direct replicator,
+Once enough (e.g. `.quorum` or `.atLeast(2)`) acknowledgements have been received by the initiating direct replicator,
 it confirms the write as successful and the callback which can be assigned to the write's result is executed (🟢 `write.onComplete`).
 The `onComplete` is always safely executed on the owning actor's context, so you do not need to perform any additional synchronization
 and are free to modify the actor's internal state.
@@ -217,7 +217,7 @@ of CRDTs is done transparently and we can configure how many nodes we want to re
 
 Quite often it is enough to read from just 2 or quorum of nodes, as the reads and nature of the CRDTs is eventually consistent in any case.
 A `.read(.all)` however can be useful if data is always written directly only locally, and gossip is taking care of its dissemination,
-however for some reason we'd like to increase the likelyhood of seeing "recent" updates.
+however for some reason we'd like to increase the likelihood of seeing "recent" updates.
 
 TIP: Usually performing operations at `.quorum` is a good default, unless you have other specific needs for the write's consistency.
 
@@ -231,17 +231,17 @@ WARNING: The Gossip replicator implementation is still very much work in progres
 
 With https://en.wikipedia.org/wiki/Gossip_protocol[Gossip] Replication, clustered peers periodically exchange information
 and synchronize state of their owned CRDTs. This is done automatically and transparently in the background for _any_
-api:CRDT.ActorOwned[struct]/api:CRDT.ActorableOwned[struct] CRDTs registered in the actor system.
+api:CRDT.ActorOwned[class,nested_in=enum]/api:CRDT.ActorableOwned[enum] CRDTs registered in the actor system.
 
 The system runs a special actor called the gossip replicator which is responsible for synchronizing states of the owned CRDTs.
 Currently this replication is implemented in it's most naive form and has to gossip the entire payload to other peers,
 when a peer notices it is not up-to date with another's state. #TODO: This is not the final implementation of gossip replication
-and we will eventually implement delta-replication which the CRDT types themselfes are already prepared for.#
+and we will eventually implement delta-replication which the CRDT types themselves are already prepared for.#
 
-In general, without diving into the dissimination protocol details, gossip replication means that even a `.local` write
+In general, without diving into the dissemination protocol details, gossip replication means that even a `.local` write
 eventually ends up visible on _all_ cluster members. The exact timing of when it is going to be visible is not strongly guaranteed,
 but generally is an function of the cluster size, and gossip interval configuration (which can be set in the system's settings).
 
 TIP: Currently CRDTs are shared between all members of a cluster. Once cluster nodes gain "roles" it will be possible to
-  control which members should participate in the replication of a specific CRDT. E.g. only "gameplay" nodes need to host
-  values relating to any gameplay related things or similar. See: https://github.com/apple/swift-distributed-actors/issues/636
+  control which members should participate in the replication of a specific CRDT. E.g. only "game-play" nodes need to host
+  values relating to any game-play related things or similar. See: https://github.com/apple/swift-distributed-actors/issues/636

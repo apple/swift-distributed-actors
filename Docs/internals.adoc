@@ -17,7 +17,7 @@ image::internals/faultHandling_mailbox_poc.png[]
 
 ==== Gossip
 
-Membership gossip is implemented using "seen tables" and api:ConvergentGossip[class].
+Membership gossip is implemented using "seen tables" and `ConvergentGossip` (#TODO: use GossipLogic rather than this, and remove Convergent Gossip#).
 
 Membership is known to have "converged" if all members have at least seen the same - or later - version of a local membership.
 This is tremendously important e.g. for removing nodes, which may ONLY happen when a member was previously seen down.

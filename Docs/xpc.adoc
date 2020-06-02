@@ -31,7 +31,7 @@ The user experience is
 ==== Defining an XPC protocol
 
 The most common way of interacting with XPC services is through a known `protocol`.
-In Actors, this is expressible by defining an protocol conforming to api:XPCActorableProtocol[protocol],
+In Actors, this is expressible by defining an protocol conforming to `XPCActorableProtocol`,
 and generating the needed Actorable message passing infrastructure by invoking `swift run GenActors`.
 
 The following protocol defines an ipc interface that we will be able to invoke from the parent application:

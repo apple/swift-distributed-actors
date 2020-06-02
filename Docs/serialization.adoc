@@ -26,7 +26,7 @@ Having that said, there are a few more steps to take when deploying an actor sys
 [[serialization_production]]
 === Serialization considerations for Production Deployments
 
-By default in DEBUG mode, the system operates in `inboundSerializerManifestMappings` mode (see api:Serialization.Settings[struct]),
+By default in DEBUG mode, the system operates in `inboundSerializerManifestMappings` mode (see api:Serialization.Settings[class]),
 which will log warnings whenever a "not registered" type is sent or received; the system will however to attempt to (de-)serialize
 any such message.
 
@@ -198,7 +198,7 @@ WARNING: Due to this permissive style of sending messages, it technically is pos
 === Using Custom Serialization
 
 If for some reason `ProtobufRepresentable` and `Codable` are not the serialization mechanisms you want to employ to serialize your messages,
-it is possible to use any custom serialization mechanism by plugging it into Swift Distributed Actors' api:Serialization[struct] layer.
+it is possible to use any custom serialization mechanism by plugging it into Swift Distributed Actors' api:Serialization[class] layer.
 
 NOTE: Alternatively, you may also want to explore if it is possible and/or feasible to extend the alternative serialization engine to cooperate with `ProtobufRepresentable` or `Codable` types.
 
@@ -295,7 +295,7 @@ This will cause the _sending_ actor (or process, in case of sending messages fro
 
 === Internals: Serialization With Manifests
 
-The ActorSystem serialization infrastructure is based around so-called api:Serialization.Manifest[struct],
+The ActorSystem serialization infrastructure is based around so-called api:Serialization.Manifest[class],
 which carries both type "hint" as well as the serializer ID of the serializer (e.g. the _specific_ coder implementation)
 that was used to serialize the payload. Thanks to these two pieces of information, it is possible for the actor system
 to transparently pick the right serializer when deserializing messages on the receiving end.

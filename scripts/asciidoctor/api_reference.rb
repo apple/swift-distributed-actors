@@ -26,7 +26,7 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
   use_dsl
 
   named :api
-  name_positional_attributes ['tpe', 'module', 'alias']
+  name_positional_attributes ['tpe', 'module', 'alias', 'nested_in']
 
   def process parent, target, attrs
     text = type_name = target
@@ -50,11 +50,25 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
       attrs['tpe']
     end
 
+    # we have to allow specifying if we're nested in an enum or class, to get the link to the doc right
+    nested_in = if (nested_in = attrs['nested_in']) == "enum"
+      "Enums"
+    elsif nested_in == "class"
+      "Classes"
+    elsif nested_in == "protocol"
+      "Protocols"
+    elsif nested_in == "struct"
+      "Structs"
+    elsif nested_in == "extension"
+      "Extensions"
+    else
+      tpe # assume it's a `tpe` and not nested in a different type
+    end
 
     link = if (api_module = attrs['module'])
-      %(api/#{$lib_version}/#{api_module}/#{tpe}/#{type_path}.html)
+      %(api/#{$lib_version}/#{api_module}/#{nested_in}/#{type_path}.html)
     else
-      %(api/#{$lib_version}/DistributedActors/#{tpe}/#{type_path}.html)
+      %(api/#{$lib_version}/DistributedActors/#{nested_in}/#{type_path}.html)
     end
 
     text = if (nil != attrs['alias'])
