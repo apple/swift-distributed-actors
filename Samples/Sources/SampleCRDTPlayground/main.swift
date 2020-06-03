@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-try ScoreGame().run(
+try CRDTPlayground().run(
     nodes: 10,
-    for: .seconds(120)
+    for: .seconds(60 * 10)
 )

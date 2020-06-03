@@ -87,9 +87,9 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         identifier: GossipIdentifier,
         origin: ActorRef<Message>,
         payload: Envelope,
-        ackRef: ActorRef<Int> // TODO: better type
+        ackRef: ActorRef<GossipACK>
     ) {
-        context.log.warning("Received gossip [\(identifier.gossipIdentifier)]: \(pretty: payload)", metadata: [
+        context.log.trace("Received gossip [\(identifier.gossipIdentifier)]: \(pretty: payload)", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
             "gossip/origin": "\(origin.address)",
             "gossip/incoming": "\(payload)",
@@ -101,7 +101,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         // TODO: we could handle directives from the logic
         logic.receiveGossip(origin: origin.asAddressable(), payload: payload)
 
-        ackRef.tell(0)
+        ackRef.tell(.init()) // TODO: allow the user to return an ACK from receiveGossip
     }
 
     private func onLocalPayloadUpdate(
@@ -214,9 +214,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
             "actor/message": "\(payload)",
         ])
 
-        // TODO: solving the two generals problem here with an ACK
-        // target.tell(.gossip(identity: identifier.underlying, origin: context.myself, payload))
-        let ack = target.ask(for: Int.self, timeout: .seconds(3)) { replyTo in
+        let ack = target.ask(for: GossipACK.self, timeout: .seconds(3)) { replyTo in
             Message.gossip(identity: identifier.underlying, origin: context.myself, payload, ackRef: replyTo)
         }
 
@@ -225,7 +223,6 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
             case .success(let ack):
                 context.log.trace("Gossip ACKed", metadata: [
                     "gossip/ack": "\(ack)",
-
                 ])
                 onAck()
             case .failure:
@@ -262,10 +259,10 @@ extension GossipShell {
         case .fromReceptionistListing(let id):
             let key = Receptionist.RegistrationKey<Message>(id)
             context.system.receptionist.register(context.myself, key: key)
-            context.log.info("Registered with receptionist key: \(key)")
+            context.log.debug("Registered with receptionist key: \(key)")
 
             context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
-                context.log.info("Receptionist listing update \(listing)")
+                context.log.trace("Receptionist listing update \(listing)")
                 for peer in listing.refs {
                     self.onIntroducePeer(context, peer: peer)
                 }
@@ -319,7 +316,7 @@ extension GossipShell {
 extension GossipShell {
     enum Message {
         // gossip
-        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Envelope, ackRef: ActorRef<Int>)
+        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Envelope, ackRef: ActorRef<GossipACK>)
 
         // local messages
         case updatePayload(identifier: GossipIdentifier, Envelope)

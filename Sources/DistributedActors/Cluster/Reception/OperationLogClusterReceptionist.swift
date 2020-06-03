@@ -289,7 +289,7 @@ extension OperationLogClusterReceptionist {
         let key = AnyRegistrationKey(from: message._key)
         if self.storage.addSubscription(key: key, subscription: boxedMessage) {
             context.watch(message._addressableActorRef)
-            context.log.info("Subscribed \(message._addressableActorRef.address) to \(key)")
+            context.log.trace("Subscribed \(message._addressableActorRef.address) to \(key)")
             boxedMessage.replyWith(self.storage.registrations(forKey: key) ?? [])
         }
     }

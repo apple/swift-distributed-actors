@@ -85,13 +85,13 @@ the server can connect random chatters and they can talk to each other, completi
 === Cluster Member Lifecycle
 
 Multiple nodes can join each other to form a cluster. Nodes within a cluster are referred to as members
-and follow a specific lifecycle along their api:Cluster.MemberStatus[struct] as outlined on the diagram below:
+and follow a specific lifecycle along their api:Cluster.MemberStatus[enum] as outlined on the diagram below:
 
 image::cluster_lifecycle.svg[Cluster Member Lifecycle]
 
-Each api:Cluster.Member[struct] initially starts in `.joining` state and may proceed through next phases of the lifecycle
+Each api:Cluster.Member[enum] initially starts in `.joining` state and may proceed through next phases of the lifecycle
 it is able to. Note that a member's status can never "go back," i.e. it may only move forward across the `.joining
-[ -> .leaving] -> .up -> .down -> .removed` lifecycle. Refer to api:Cluster.MemberStatus[struct] for detailed discussion of the statuses.
+[ -> .leaving] -> .up -> .down -> .removed` lifecycle. Refer to api:Cluster.MemberStatus[enum] for detailed discussion of the statuses.
 
 In addition to the specific statuses carrying meaning with them, there are a few additional things to dive into in the above diagram:
 
@@ -102,7 +102,7 @@ be made consistently (i.e. when the cluster membership views are "converged", me
 
 *Reachability*: While outside of the progress along the lifecycle timeline of a member, another important part of membership information
 is _reachability_. A built-in distributed failure detection mechanism allows the cluster to determine if a node is unresponsive,
-and potentially should become down. These suspicions are surfaced from the failure detector as api:Cluster.ReachabilityChange[struct]s,
+and potentially should become down. These suspicions are surfaced from the failure detector as api:Cluster.ReachabilityChange[enum]s,
 and may be used by end users or an automatic api:DowningStrategy[protocol] to decide when to mark a node as `.down`.
 
 *Failure Detector*: The cluster provides a built-in distributed failure detector implementation, based on the SWIM membership protocol.
@@ -119,7 +119,7 @@ are multiple ways of electing leaders and you may adjust it depending on your sy
 of elections independently, to decide leaders for various tasks independently.
 
 *Cluster.MemberStatus*: Each cluster member is associated with a specific status at any given time. This information is
-spread throughout the cluster via a gossip protocol. Refer to api:Cluster.MemberStatus[struct] for a detailed description of each state.
+spread throughout the cluster via a gossip protocol. Refer to api:Cluster.MemberStatus[enum] for a detailed description of each state.
 Generally, a node should be considered "ready" to perform tasks when it is marked as `.up`, and not ready, or incapable of doing so
 in any other status.
 
@@ -224,7 +224,7 @@ for it via: `system.receptionist` or `context.receptionist`.
 
 Cluster events are the way application actors are able to stay informed about the state of the cluster, and potentially
 act on those events. For example by not sending more work to an `.unreachable` node, or migrating workloads away from
-a member which has declared api:Cluster.MemberStatus[struct]
+a member which has declared api:Cluster.MemberStatus[enum]
 
 There are four kinds of api:Cluster.Event[enum]:
 
@@ -362,7 +362,7 @@ we suggest using the <<actor_singleton>> or get in touch so we can implement a d
 
 The coordination-free part is very useful, as there is no need for additional consensus rounds when an existing leader dies,
 and all members need to decide on its replacement. Without coordination, yet thanks to being able to act on a resiliently
-eventually consistent replicated api:Cluster.Membership[struct].
+eventually consistent replicated api:Cluster.Membership[enum].
 
 For details regarding the implementation, see the API docs for this type: api:Leadership.LowestReachableMember[struct].
 

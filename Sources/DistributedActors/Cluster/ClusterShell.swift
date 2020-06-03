@@ -674,11 +674,11 @@ extension ClusterShell {
 
         switch handshakeState {
         case .initiated(let initiated):
-            state.log.info("Initiated handshake: \(initiated)")
+            state.log.debug("Initiated handshake: \(initiated)")
             return self.connectSendHandshakeOffer(context, state, initiated: initiated)
 
         case .wasOfferedHandshake, .inFlight, .completed:
-            state.log.info("Handshake in other state: \(handshakeState)")
+            state.log.debug("Handshake in other state: \(handshakeState)")
             // the reply will be handled already by the future.whenComplete we've set up above here
             // so nothing to do here, just become the next state
             return self.ready(state: state)
@@ -686,7 +686,7 @@ extension ClusterShell {
     }
 
     internal func retryHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
-        state.log.info("Retry handshake with: \(initiated.remoteNode)")
+        state.log.debug("Retry handshake with: \(initiated.remoteNode)")
 
         // TODO: update retry counter, perhaps give up
 
@@ -695,7 +695,7 @@ extension ClusterShell {
 
     func connectSendHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         var state = state
-        state.log.info("Extending handshake offer to \(initiated.remoteNode))") // TODO: log retry stats?
+        state.log.debug("Extending handshake offer to \(initiated.remoteNode))") // TODO: log retry stats?
 
         let offer: Wire.HandshakeOffer = initiated.makeOffer()
         self.tracelog(context, .send(to: initiated.remoteNode), message: offer)
@@ -742,7 +742,7 @@ extension ClusterShell {
             // handshake is allowed to proceed
             switch hsm.negotiate() {
             case .acceptAndAssociate(let handshakeCompleted):
-                state.log.info("Accept handshake with \(reflecting: offer.originNode)!", metadata: [
+                state.log.trace("Accept handshake with \(reflecting: offer.originNode)!", metadata: [
                     "handshake/channel": "\(inboundChannel)",
                 ])
 
@@ -752,7 +752,7 @@ extension ClusterShell {
                 // prepare accept
                 let accept = handshakeCompleted.makeAccept(whenHandshakeReplySent: { () in
                     self.completeAssociation(directive)
-                    state.log.debug("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
+                    state.log.trace("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
                         "membership/change": "\(directive.membershipChange)",
                         "membership": "\(state.membership)",
                     ])
@@ -862,7 +862,7 @@ extension ClusterShell {
     private func onHandshakeAccepted(_ context: ActorContext<Message>, _ state: ClusterShellState, _ inboundAccept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
         var state = state // local copy for mutation
 
-        state.log.info("Accept association with \(reflecting: inboundAccept.targetNode)!", metadata: [
+        state.log.debug("Accept association with \(reflecting: inboundAccept.targetNode)!", metadata: [
             "handshake/localNode": "\(inboundAccept.originNode)",
             "handshake/remoteNode": "\(inboundAccept.targetNode)",
             "handshake/channel": "\(channel)",

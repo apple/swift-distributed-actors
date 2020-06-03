@@ -69,6 +69,7 @@ extension ProtobufRepresentable {
         var container = encoder.singleValueContainer()
 
         let proto = try self.toProto(context: context)
+        // TODO: Thought; we could detect if we're nested in a top-level JSON that we should encode as json perhaps, since proto can do this?
         let data = try proto.serializedData()
 
         try container.encode(data)

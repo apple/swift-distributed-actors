@@ -26,12 +26,12 @@ import os.signpost
 @available(watchOS 3.0, *)
 public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumentation {
     static let subsystem: StaticString = "com.apple.actors"
-    static let category: StaticString = "Transport Serialization"
+    static let category: StaticString = "Serialization"
 
     static let logTransportSerialization = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.category)")
 
-    static let nameSerialization: StaticString = "Actor Transport (Serialization)"
-    static let nameDeserialization: StaticString = "Actor Transport (Deserialization)"
+    static let nameSerialization: StaticString = "Transport (Serialization)"
+    static let nameDeserialization: StaticString = "Transport (Deserialization)"
 
     let signpostID: OSSignpostID
 
@@ -52,30 +52,30 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
 extension OSSignpostActorTransportInstrumentation {
     static let actorMessageSerializeStartPattern: StaticString =
         """
-        serialize,\
-        recipient-node:%{public}s,\
-        recipient-path:%{public}s,\
-        message-type:%{public}s,\
-        message:%{public}s,
+        serialize;\
+        recipient-node:%{public}s;\
+        recipient-path:%{public}s;\
+        message-type:%{public}s;\
+        message:%{public}s
         """
     static let actorMessageSerializeEndPattern: StaticString =
         """
-        serialized,\
-        bytes:%ld",
+        serialized;\
+        bytes:%{public}d
         """
 
     static let actorMessageDeserializeStartPattern: StaticString =
         """
-        deserialize,\
-        recipient-node:%{public}s,\
-        recipient-path:%{public}s,\
-        bytes:%ld,
+        deserialize;\
+        recipient-node:%{public}s;\
+        recipient-path:%{public}s;\
+        bytes:%{public}d
         """
     static let actorMessageDeserializeEndPattern: StaticString =
         """
-        deserialized,\
-        message:%{public}s,\
-        message-type:%{public}s,
+        deserialized;\
+        message:%{public}s;\
+        message-type:%{public}s
         """
 
     public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {
@@ -89,7 +89,7 @@ extension OSSignpostActorTransportInstrumentation {
             name: Self.nameSerialization,
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageSerializeStartPattern,
-            "<node: todo>", "\(recipient)", String(reflecting: type(of: message)), "\(message)"
+            "todo", "\(recipient)", String(reflecting: type(of: message)), "\(message)"
         )
     }
 
@@ -119,7 +119,7 @@ extension OSSignpostActorTransportInstrumentation {
             name: Self.nameDeserialization,
             signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageDeserializeStartPattern,
-            "<node: todo>", "\(recipient)", bytes
+            "todo", "\(recipient)", bytes
         )
     }
 
