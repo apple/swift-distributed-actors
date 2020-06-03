@@ -331,7 +331,7 @@ TIP: We aim to simplify the serialization infrastructure to be able to infer mor
 === ActorTestKit and ActorableTestProbe
 
 An api:ActorTestKit[class,module=DistributedActorsTestKit] is offered to simplify the testing of actors and asynchronous code.
-The most important part of the test kit is api:ActorTestProbe[class,module=DistributedActorsTestKit] (for :ActorRef` / `Behavior` style)
+The most important part of the test kit is api:ActorTestProbe[class,module=DistributedActorsTestKit] (for `ActorRef` / `Behavior` style)
 and api:ActorableTestProbe[class,module=DistributedActorsTestKit] for actorables.
 
 #TODO: Write full docs for ActorTestKit (and reconsider naming... w discussed but are unsure still ActorTestTools was an option)#

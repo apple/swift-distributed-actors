@@ -21,9 +21,9 @@ In other words, CRDTs are very useful in situations where eventual consistency, 
 TIP: For consistency-first use cases please reach out as we would like to provide implementations for consensus style Replicated State Machines in the future.
 
 WARNING: The current CRDT dissemination is only a stepping stone towards the real deal and still relies on full-state synchronization. +
-While correct, this incurs much more metadata and sending-known-data again than a full delta based replication engine. +
+While correct, this incurs much more metadata and sending-known-data again than a fully delta-based replication engine. +
 Refer to <<crdt_caveats_limitations>> for more information on today's limitations and our plan moving forward. +
-Please do reach out if gossip / delta CRDT dissemination if of interest to you, and we'd prioritize this work.
+Please do reach out if gossip / delta CRDT dissemination is of interest to you, and we'd prioritize this work.
 
 
 
@@ -40,7 +40,7 @@ in action first hand, perhaps without even being aware of it.
 Refer to the <<crdt_types>> to understand more about the provided types and their semantics.
 
 For this quickstart, we'll use an "Observed Removed Set" api:CRDT.ORSet[enum], which is a fairly common CRDT
-and is already slightly more complex than the simplest datatype available (a Grow-only api:CRDT.GCounter[enum]).
+and is already slightly more complex than the simplest datatype available (a Grow-only api:CRDT.GCounter[struct,nested_in=enum]).
 
 An ORSet is able to handle additions and removals from the set, and in case a conflict is detected (i.e. multiple nodes
 performed an add and remove concurrently) the _add_ operation _wins_. These semantics are useful for situations when it is
@@ -263,7 +263,7 @@ Today's implementation is limited in the sense that it relies on full-state sync
 and payload sizes of messages used to spread the CRDT in a cluster which has adverse effects on the rest of the system
 as well as message throughput.
 
-Roughly, for direct replication today you can expect a few millisecond round trips for direct replication;
+Roughly, for direct replication today you can expect a few millisecond round trips for direct replication.
 The writes are performed in parallel to all targets of a write, once all writes are acknowledged the write is completed.
 The gossip replication takes place in the background, as configured in `settings.crdt.gossipInterval` (defaults to `.seconds(2)`,
 with some noise to avoid all peers gossiping in the same moment). The gossip replicator is aware which peers have been contacted directly
@@ -282,4 +282,3 @@ Most notable tickets to resolve:
   lots of updates are performed;
 - https://github.com/apple/swift-distributed-actors/pull/650[CRDT Replicator: chunking updates #426], matters for new nodes joining
   so even though they'd need the "full state" to be sent, we don't necessarily have to send it in one huge message, but we can chunk it up.
-

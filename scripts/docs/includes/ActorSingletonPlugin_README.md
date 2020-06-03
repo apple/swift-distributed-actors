@@ -2,7 +2,7 @@
 
 <small>Version $version</small>
 
-Welcome to the API documentation of Swift Distributed Actors TestKit!
+Welcome to the API documentation of Actor Singleton Plugin!
 
 This style of documentation is relatively raw and intended for quick lookups while working with actors. <br/>
 
