@@ -228,6 +228,35 @@
       <expression>?error-type</expression>
     </column>
   </os-signpost-interval-schema>
+  <os-signpost-point-schema>
+    <id>actor-system-message-watch</id>
+    <title>System Messages: Watch</title>
+    <note/>
+    <subsystem>"com.apple.actors"</subsystem>
+    <category>"System Messages"</category>
+    <name>"System Messages (Watch)"</name>
+    <pattern>
+      <message>"watch;action:" ?action ";watchee:" ?watchee ";watcher:" ?watcher</message>
+    </pattern>
+    <column>
+      <mnemonic>watch-action</mnemonic>
+      <title>Watch/Unwatch</title>
+      <type>string</type>
+      <expression>?action</expression>
+    </column>
+    <column>
+      <mnemonic>watchee</mnemonic>
+      <title>Watchee</title>
+      <type>string</type>
+      <expression>?watchee</expression>
+    </column>
+    <column>
+      <mnemonic>watcher</mnemonic>
+      <title>Watcher</title>
+      <type>string</type>
+      <expression>?watcher</expression>
+    </column>
+  </os-signpost-point-schema>
   <os-signpost-interval-schema>
     <id>actor-transport-serialization-interval</id>
     <title>Serialization</title>
@@ -454,6 +483,38 @@
       <column>actor-recipient-path</column>
       <column>actor-message</column>
       <column>actor-message-type</column>
+    </list>
+  </instrument>
+  <instrument>
+    <id>com.apple.actors.instrument.system.messages.watches</id>
+    <title>System Messages: Watch</title>
+    <category>Behavior</category>
+    <purpose>Events for when actors are (un-)watched by other actors. High watch churn can be cause of unexpected load on the cluster.</purpose>
+    <icon>Network</icon>
+    <create-table>
+      <id>actor-system-message-watch-table</id>
+      <schema-ref>actor-system-message-watch</schema-ref>
+    </create-table>
+    <graph>
+      <title>System Messages: Watch/Unwatch</title>
+      <lane>
+        <title>Watched/Unwatched</title>
+        <table-ref>actor-system-message-watch-table</table-ref>
+        <plot-template>
+          <instance-by>watchee</instance-by>
+          <label-format>%s</label-format>
+          <value-from>watchee</value-from>
+          <label-from>watchee</label-from>
+        </plot-template>
+      </lane>
+    </graph>
+    <list>
+      <title>List: Watches</title>
+      <table-ref>actor-system-message-watch-table</table-ref>
+      <column>timestamp</column>
+      <column>watch-action</column>
+      <column>watchee</column>
+      <column>watcher</column>
     </list>
   </instrument>
   <instrument>

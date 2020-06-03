@@ -770,7 +770,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 extension ActorShell {
     @inlinable internal func interpretSystemWatch(watcher: AddressableActorRef) {
         if self.behavior.isStillAlive {
-            // TODO: make DeathWatch methods available via extension
+            self.instrumentation.actorWatchReceived(watchee: self.address, watcher: watcher.address)
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
         } else {
             // so we are in the middle of terminating already anyway
@@ -779,7 +779,8 @@ extension ActorShell {
     }
 
     @inlinable internal func interpretSystemUnwatch(watcher: AddressableActorRef) {
-        self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself) // TODO: make DeathWatch methods available via extension
+        self.instrumentation.actorUnwatchReceived(watchee: self.address, watcher: watcher.address)
+        self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself)
     }
 
     /// Interpret incoming .terminated system message

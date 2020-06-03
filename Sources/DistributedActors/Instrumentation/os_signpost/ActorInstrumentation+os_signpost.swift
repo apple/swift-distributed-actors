@@ -26,9 +26,12 @@ public struct OSSignpostActorInstrumentation: ActorInstrumentation {
 
     static let categoryLifecycle: StaticString = "Lifecycle"
     static let categoryMessages: StaticString = "Messages"
+    static let categorySystemMessages: StaticString = "System Messages"
 
     static let logLifecycle = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.categoryLifecycle)")
     static let logMessages = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.categoryMessages)")
+
+    static let logSystemMessages = OSLog(subsystem: "\(Self.subsystem)", category: "\(Self.categorySystemMessages)")
 
     let address: ActorAddress
     let signpostID: OSSignpostID
@@ -264,7 +267,7 @@ extension OSSignpostActorInstrumentation {
         )
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Messages: Receive
 
     public static let actorReceivedEventPattern: StaticString =
@@ -300,6 +303,49 @@ extension OSSignpostActorInstrumentation {
 
     public func actorReceivedEnd(error: Error?) {
         // TODO: make interval so we know the length of how long an actor processes a message
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Watch signals
+    static let signpostNameActorWatches: StaticString =
+        "System Messages (Watch)"
+
+    public static let actorReceivedWatchesPattern: StaticString =
+        """
+        watch;\
+        action:%{public}s;\
+        watchee:%{public}s;\
+        watcher:%{public}s
+        """
+
+    public func actorWatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
+        guard Self.logSystemMessages.signpostsEnabled else {
+            return
+        }
+
+        os_signpost(
+            .event,
+            log: Self.logSystemMessages,
+            name: Self.signpostNameActorWatches,
+            signpostID: self.signpostID,
+            Self.actorReceivedWatchesPattern,
+            "watch", "\(watchee)", "\(watcher)"
+        )
+    }
+
+    public func actorUnwatchReceived(watchee: ActorAddress, watcher: ActorAddress) {
+        guard Self.logSystemMessages.signpostsEnabled else {
+            return
+        }
+
+        os_signpost(
+            .event,
+            log: Self.logSystemMessages,
+            name: Self.signpostNameActorWatches,
+            signpostID: self.signpostID,
+            Self.actorReceivedWatchesPattern,
+            "unwatch", "\(watchee)", "\(watcher)"
+        )
     }
 }
 

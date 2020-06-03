@@ -27,6 +27,7 @@ fileprivate let subsystem = "com.apple.actors"
 
 fileprivate let categoryLifecycle = "Lifecycle"
 fileprivate let categoryMessages = "Messages"
+fileprivate let categorySystemMessages = "System Messages"
 
 extension Column {
     static let actorNode = Column(
@@ -157,6 +158,25 @@ extension Column {
         expression: "?error-type"
     )
 
+    static let watchAction = Column(
+        mnemonic: "watch-action",
+        title: "Watch/Unwatch",
+        type: .string,
+        expression: "?action"
+    )
+    static let watcher = Column(
+        mnemonic: "watcher",
+        title: "Watcher",
+        type: .string,
+        expression: "?watcher"
+    )
+    static let watchee = Column(
+        mnemonic: "watchee",
+        title: "Watchee",
+        type: .string,
+        expression: "?watchee"
+    )
+
     static let error = Column(
         mnemonic: "actor-error",
         title: "Error",
@@ -270,6 +290,21 @@ public struct ActorInstrumentsPackageDefinition {
 
             Column.message
             Column.messageType
+        }
+
+        static let actorWatches = PackageDefinition.OSSignpostPointSchema(
+            id: "actor-system-message-watch",
+            title: "System Messages: Watch",
+
+            subsystem: subsystem,
+            category: categorySystemMessages,
+            name: "\(OSSignpostActorInstrumentation.signpostNameActorWatches)",
+
+            pattern: OSSignpostActorInstrumentation.actorReceivedWatchesPattern
+        ) {
+            Column.watchAction
+            Column.watchee
+            Column.watcher
         }
 
         static let actorAskedInterval = PackageDefinition.OSSignpostIntervalSchema(
@@ -477,6 +512,9 @@ public struct ActorInstrumentsPackageDefinition {
 
             // messages (ask)
             Schemas.actorAskedInterval
+            
+            // watches
+            Schemas.actorWatches
 
             // serialization
             Schemas.actorTransportSerializationInterval
@@ -616,6 +654,36 @@ public struct ActorInstrumentsPackageDefinition {
                     Column.recipientPath
                     Column.message
                     Column.messageType
+                }
+            }
+
+            Instrument(
+                id: "com.apple.actors.instrument.system.messages.watches",
+                title: "System Messages: Watch",
+                category: .behavior,
+                purpose: "Events for when actors are (un-)watched by other actors. High watch churn can be cause of unexpected load on the cluster.",
+                icon: .network
+            ) {
+                // --- tables ---
+                let actorWatches = Schemas.actorWatches.createTable()
+                actorWatches
+
+                Graph(title: "System Messages: Watch/Unwatch") {
+                    Graph.Lane(title: "Watched/Unwatched", table: actorWatches) {
+                        Graph.PlotTemplate(
+                            instanceBy: .watchee,
+                            labelFormat: "%s",
+                            valueFrom: .watchee,
+                            labelFrom: .watchee
+                        )
+                    }
+                }
+
+                Instrument.List(title: "List: Watches", table: actorWatches) {
+                    "timestamp"
+                    Column.watchAction
+                    Column.watchee
+                    Column.watcher
                 }
             }
 
