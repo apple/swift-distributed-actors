@@ -205,17 +205,21 @@ extension CRDT {
                 return false
             }
 
-            var allEqual = true
-            for key in self._storage.keys where allEqual {
+            guard self._keys.elements == other._keys.elements else {
+                return false
+            }
+
+            for key in self._storage.keys {
                 if let lhs = self._storage[key],
-                    let rhs = other._storage[key] {
-                    allEqual = lhs.equalState(to: rhs)
+                    let rhs = other._storage[key],
+                    lhs.equalState(to: rhs) {
+                    () // ok good, keep checking
                 } else {
-                    allEqual = false
+                    return false
                 }
             }
 
-            return allEqual
+            return true // all equal
         }
     }
 

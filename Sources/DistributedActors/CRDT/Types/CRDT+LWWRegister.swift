@@ -75,10 +75,9 @@ extension CRDT {
                 return false
             }
 
-            return self.initialValue == other.initialValue &&
-                self.value == other.value &&
+            return self.value == other.value &&
                 self.clock == self.clock &&
-                self.updatedBy == self.updatedBy // TODO: is this correct?
+                self.updatedBy == self.updatedBy
         }
     }
 }

@@ -104,7 +104,7 @@ extension CRDT {
         }
 
         func localGossipUpdate(payload: CRDT.Gossip) {
-            self.mergeInbound(from: payload.metadata.origin, payload)
+            self.mergeInbound(from: nil, payload)
             // during the next gossip round we'll gossip the latest most-up-to date version now;
             // no need to schedule that, we'll be called when it's time.
         }
@@ -178,17 +178,7 @@ extension CRDT.Identity: GossipIdentifier {
 extension CRDT {
     /// The gossip to be spread about a specific CRDT (identity).
     struct Gossip: GossipEnvelopeProtocol, CustomPrettyStringConvertible {
-        struct Metadata: Codable {
-            let origin: AddressableActorRef? // FIXME:
-
-            var isLocalWrite: Bool {
-                self.origin == nil
-            }
-
-            var isGossipWrite: Bool {
-                !self.isLocalWrite
-            }
-        }
+        struct Metadata: Codable {}
 
         typealias Payload = StateBasedCRDT
 
