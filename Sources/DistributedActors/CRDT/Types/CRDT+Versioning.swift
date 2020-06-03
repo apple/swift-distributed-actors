@@ -285,7 +285,7 @@ extension CRDT {
             }
 
             return self.versionContext.equalState(to: other.versionContext) &&
-                self.elementByBirthDot == other.elementByBirthDot // TODO: is this correct?
+                self.elementByBirthDot == other.elementByBirthDot
         }
     }
 
@@ -325,7 +325,7 @@ extension CRDT {
             }
 
             return self.versionContext.equalState(to: other.versionContext) &&
-                self.elementByBirthDot == other.elementByBirthDot // TODO: is this correct?
+                self.elementByBirthDot == other.elementByBirthDot
         }
     }
 }

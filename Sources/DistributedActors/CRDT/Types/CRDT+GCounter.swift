@@ -112,7 +112,7 @@ extension CRDT {
                 return false
             }
 
-            return self.state == other.state // TODO: is this correct?
+            return self.state == other.state
         }
     }
 
@@ -139,7 +139,7 @@ extension CRDT {
                 return false
             }
 
-            return self.state == other.state // TODO: is this correct?
+            return self.state == other.state
         }
 
         public mutating func merge(other: GCounterDelta) {

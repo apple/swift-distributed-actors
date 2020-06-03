@@ -27,7 +27,7 @@ import Logging
 /// Some gossip algorithms will customize the payload depending on their destination (e.g. including less delta updates
 /// if it is known that the target already has seen a number of them), while others will not (by returning the same `Payload`) instance.
 ///
-/// ### Receiving  gossip
+/// ### Receiving gossip
 /// Receiving gossip is simple as the gossiper will deliver any incoming gossip to this logic, which should lead the logic
 /// to process or delegate the message elsewhere. Receipt of gossip is also often correlated to updating the logic state,
 /// e.g. when we receive gossip from another node such that we know that it has already "seen all changes we could send to it",
