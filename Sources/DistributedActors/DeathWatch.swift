@@ -103,6 +103,7 @@ internal struct DeathWatch<Message: ActorMessage> {
         return self.watching[mockRefForEquality] != nil
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: react to watch or unwatch signals
 
     public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: ActorRef<Message>) {

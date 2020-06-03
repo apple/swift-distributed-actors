@@ -31,6 +31,9 @@ public protocol ActorInstrumentation {
 
     func actorReceivedStart(message: Any, from: ActorAddress?)
     func actorReceivedEnd(error: Error?)
+
+    func actorWatchReceived(watchee: ActorAddress, watcher: ActorAddress)
+    func actorUnwatchReceived(watchee: ActorAddress, watcher: ActorAddress)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -40,22 +43,20 @@ struct NoopActorInstrumentation: ActorInstrumentation {
     public init(id: AnyObject, address: ActorAddress) {}
 
     public func actorSpawned() {}
-
     public func actorStopped() {}
-
     public func actorFailed(failure: Supervision.Failure) {}
 
     public func actorMailboxRunStarted(mailboxCount: Int) {}
-
     public func actorMailboxRunCompleted(processed: Int) {}
 
     public func actorTold(message: Any, from: ActorAddress?) {}
 
     public func actorAsked(message: Any, from: ActorAddress?) {}
-
     public func actorAskReplied(reply: Any?, error: Error?) {}
 
     public func actorReceivedStart(message: Any, from: ActorAddress?) {}
-
     public func actorReceivedEnd(error: Error?) {}
+
+    func actorWatchReceived(watchee: ActorAddress, watcher: ActorAddress) {}
+    func actorUnwatchReceived(watchee: ActorAddress, watcher: ActorAddress) {}
 }
