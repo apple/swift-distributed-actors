@@ -270,7 +270,7 @@ extension CRDT.Replicator {
             _ data: StateBasedCRDT
         ) {
             let gossip = CRDT.Gossip(
-                metadata: .init(origin: nil),
+                metadata: .init(),
                 payload: data // TODO: v2, allow tracking the deltas here
             )
             self.gossipReplication.update(id, payload: gossip)
@@ -286,10 +286,10 @@ extension CRDT.Replicator {
             // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
             case .applied(let updatedData, _):
                 self.notifyOwnersOnUpdate(context, id, updatedData)
-            case .inputAndStoredDataTypeMismatch:
-                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup, log instead
+            case .inputAndStoredDataTypeMismatch(let error):
+                context.log.warning("Write failed, error: \(error)", metadata: ["crdt/id": "\(id)", "crdt/write": "\(data)", "error": "\(error)"])
             case .unsupportedCRDT:
-                () // replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored))) // FIXME: cleanup, log instead
+                context.log.warning("Unsupported CRDT", metadata: ["crdt/id": "\(id)", "crdt/write": "\(data)", "error": "unsupportedCRDT"])
             }
         }
 
@@ -410,7 +410,7 @@ extension CRDT.Replicator {
 
                             // Update the data stored in the replicator (yeah today we store 2 copies in the replicators, we could converge them into one with enough effort)
                             let gossip = CRDT.Gossip(
-                                metadata: .init(origin: nil),
+                                metadata: .init(),
                                 payload: updatedData
                             )
                             self.gossipReplication.update(id, payload: gossip) // TODO: v2, allow tracking the deltas here

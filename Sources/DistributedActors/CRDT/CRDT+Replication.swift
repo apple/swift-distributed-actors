@@ -126,12 +126,11 @@ extension CRDT {
                 case failure(WriteError)
 
                 var isSuccess: Bool {
-                    switch self {
-                    case .success:
-                        return true
-                    default:
-                        return false
-                    }
+                    self == .success
+                }
+
+                var isFailure: Bool {
+                    !self.isSuccess
                 }
             }
 
