@@ -14,7 +14,7 @@
 
 import DistributedActors
 
-struct ScoreGame {
+struct CRDTPlayground {
 
     /// Enable networking on this node, and select which port it should bind to.
     private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
@@ -22,16 +22,8 @@ struct ScoreGame {
         settings.cluster.bindPort = port
     }
 
-    /// Register any types that should be trusted for serialization (messages which are sent across the wire).
-    /// 
-    /// Notice that we do not need to register the `GCounter` or similar types since they are built-in (and use Int, which is naturally assumed trusted).
-    /// If you wanted to gossip an `MyCustomType` e.g. in an `ORSet` rather than the plain GCounter you'd need to register MyCustomType here, like so:
-    ///
-    /// ```
-    /// serialization
-    /// ```
-    /// - Parameter settings:
     private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
+        settings.serialization.register(CRDT.ORSet<String>.self)
     }
 
     func run(nodes nodesN: Int, for time: TimeAmount) throws {
@@ -39,6 +31,8 @@ struct ScoreGame {
             ActorSystem("\(n)") { settings in
                 self.configureMessageSerializers(&settings)
                 self.configureClustering(&settings, port: 1110 + n)
+
+                settings.crdt.gossipInterval = .milliseconds(500)
 
                 #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
                 if n == 1 { // enough to instrument a single node
@@ -61,14 +55,17 @@ struct ScoreGame {
         }
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
-        let players = try nodes.map { system in
-            try system.spawn("player-\(system.name)", self.player())
+        let peers = try nodes.map { system in
+            try system.spawn("peer-\(system.name)", self.peer(
+                writeConsistency: .quorum,
+                stopWhen: { set in set.count == nodes.count * 2 } // each node to perform 2 unique writes
+            ))
         }
 
-        // The "game" is a form of waiting game -- sit back and relax, as the players (randomly) score points
-        // and race to the top position. While they do so, they independently update a GCounter of the "total score"
-        // which other non participants may observe as well.
-        _ = try first.spawn("game-engine", self.game(with: players))
+        for peer in peers {
+            peer.tell("write-1-\(peer.path.name)")
+            peer.tell("write-2-\(peer.path.name)")
+        }
 
         first.park(atMost: time)
     }

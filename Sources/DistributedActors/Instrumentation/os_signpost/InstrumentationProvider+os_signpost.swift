@@ -15,6 +15,8 @@
 #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
 /// Provider of Instrumentation instances which use `os_signpost`.
 public struct OSSignpostInstrumentationProvider: ActorInstrumentationProvider {
+    public init() {}
+
     public var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? {
         if #available(OSX 10.14, *) {
             // TODO: how to guard in iOS etc here?

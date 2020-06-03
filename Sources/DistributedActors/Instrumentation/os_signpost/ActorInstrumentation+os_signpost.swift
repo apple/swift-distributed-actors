@@ -52,13 +52,13 @@ public struct OSSignpostActorInstrumentation: ActorInstrumentation {
 extension OSSignpostActorInstrumentation {
     static let actorSpawnedStartFormat: StaticString =
         """
-        spawned,\
-        node:%{public}s,\
+        spawned;\
+        node:%{public}s;\
         path:%{public}s
         """
     static let actorSpawnedEndFormat: StaticString =
         """
-        stopped,\
+        stopped;\
         reason:%{public}s
         """
 
@@ -155,13 +155,13 @@ extension OSSignpostActorInstrumentation {
 
     static let actorToldEventPattern: StaticString =
         """
-        actor-message-told,\
-        recipient-node:%{public}s,\
-        recipient-path:%{public}s,\
-        sender-node:%{public}s,\
-        sender-path:%{public}s,\
-        message:%{public}s,\
-        message-type:%{public}s,
+        actor-message-told;\
+        recipient-node:%{public}s;\
+        recipient-path:%{public}s;\
+        sender-node:%{public}s;\
+        sender-path:%{public}s;\
+        message:%{public}s;\
+        message-type:%{public}s
         """
 
     // FIXME: we need the sender() to attach properly
@@ -190,22 +190,22 @@ extension OSSignpostActorInstrumentation {
 
     static let actorAskedEventPattern: StaticString =
         """
-        actor-message-asked,\
-        recipient-node:%{public}s,\
-        recipient-path:%{public}s,\
-        sender-node:%{public}s,\
-        sender-path:%{public}s,\
-        question:%{public}s,\
-        question-type:%{public}s,
+        actor-message-asked;\
+        recipient-node:%{public}s;\
+        recipient-path:%{public}s;\
+        sender-node:%{public}s;\
+        sender-path:%{public}s;\
+        question:%{public}s;\
+        question-type:%{public}s
         """
 
     static let actorAskRepliedEventPattern: StaticString =
         """
-        actor-message-ask-answered,\
-        answer:%{public}s,\
-        answer-type:%{public}s,\
-        error:%{public}s,\
-        error-type:%{public}s,
+        actor-message-ask-answered;\
+        answer:%{public}s;\
+        answer-type:%{public}s;\
+        error:%{public}s;\
+        error-type:%{public}s
         """
 
     public func actorAsked(message: Any, from: ActorAddress?) {
@@ -269,13 +269,13 @@ extension OSSignpostActorInstrumentation {
 
     public static let actorReceivedEventPattern: StaticString =
         """
-        actor-message-received,\
-        recipient-node:%{public}s,\
-        recipient-path:%{public}s,\
-        sender-node:%{public}s,\
-        sender-path:%{public}s,\
-        message:%{public}s,\
-        message-type:%{public}s,
+        actor-message-received;\
+        recipient-node:%{public}s;\
+        recipient-path:%{public}s;\
+        sender-node:%{public}s;\
+        sender-path:%{public}s;\
+        message:%{public}s;\
+        message-type:%{public}s
         """
 
     public func actorReceivedStart(message: Any, from: ActorAddress?) {

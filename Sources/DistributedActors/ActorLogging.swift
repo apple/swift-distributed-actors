@@ -69,8 +69,7 @@ public class LoggingContext {
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 public struct ActorLogger {
     public static func make<T>(context: ActorContext<T>) -> Logger {
-        if let overriddenLoggerFactory = context.system.settings.logging.overrideLoggerFactory {
-            return overriddenLoggerFactory("\(context.path)")
+        if let overriddenLoggerFactory = context.system.settings.logging.overrideLoggerFactory { return overriddenLoggerFactory("\(context.path)")
         }
 
         var proxyHandler = ActorOriginLogHandler(context)

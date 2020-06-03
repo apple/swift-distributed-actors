@@ -116,7 +116,7 @@ Using the `ref.ask(for:timeout:makeQuestion:)` method, we send a message to the 
 a special ask-actor, which in turn completes the returned `AskResponse<ResponseType>` (similar to how completing a `Promise`
 would complete a `Future`, although by using messaging -- meaning that the reply can come from any actor in a cluster, also a remote one).
 
-An `AskResponse` can also be handled from outside of actor code, making it an useful integration pattern between actor and non-actor code.
+An api:AskResponse[enum] can also be handled from outside of actor code, making it an useful integration pattern between actor and non-actor code.
 
 Note that providing a `timeout` is _not_ optional, as in order to avoid potential deadlocks if a question was sent to an already dead actor.
 If no response is received within the specified `timeout`, the ask-response will fail with a `api:TimeoutError[struct]`.
@@ -132,7 +132,7 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask_outside]
 ----
 <1> `replyTo` is an actor ref of the type specified with the `for` parameter of ask and is used to receive the response
 <2> Create the message that will be sent to the ref that `ask` is called on
-<3> Retrieve the result from the `api:AskResponse[struct]`.
+<3> Retrieve the result from the `api:AskResponse[enum]`.
 
 WARNING: _Never_ invoke any kind of blocking operation such as `future.wait()` inside of an actor!
          Same as blocking an event loop, blocking inside actors will cause starvation for other actors sharing the same dispatcher.

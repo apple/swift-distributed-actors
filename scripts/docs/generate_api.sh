@@ -32,13 +32,16 @@ echo "Project version: ${version}"
 # all our public modules which we want to document, begin with `DistributedActors`
 modules=(
   DistributedActors
+  ActorSingletonPlugin
   DistributedActorsXPC
   DistributedActorsTestKit
 )
 
+declare -r build_path_linux='.build/x86_64-unknown-linux-gnu'
+
 if [[ "$(uname -s)" == "Linux" ]]; then
   # build code if required
-  if [[ ! -d "$root_path/.build/x86_64-unknown-linux" ]]; then
+  if [[ ! -d "$root_path/$build_path_linux" ]]; then
     swift build
   fi
   # setup source-kitten if required
@@ -47,17 +50,19 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   if [[ ! -d "$source_kitten_source_path" ]]; then
     git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
   fi
-  source_kitten_path="$source_kitten_source_path/.build/x86_64-unknown-linux/debug"
+  source_kitten_path="$source_kitten_source_path/$build_path_linux/release"
   if [[ ! -d "$source_kitten_path" ]]; then
     rm -rf "$source_kitten_source_path/.swift-version"
-    cd "$source_kitten_source_path" && swift build && cd "$root_path"
+    cd "$source_kitten_source_path" && swift build -c release && cd "$root_path"
   fi
   # generate
-  for module in "${modules[@]}"; do
-    if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
-      "$source_kitten_path/sourcekitten" doc --spm-module $module > "$root_path/.build/sourcekitten/$module.json"
-    fi
-  done
+#  for module in "${modules[@]}"; do
+##    if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
+#      # always generate, otherwise we miss things when we're iterating on adding docs.
+#      echo "Generating $root_path/.build/sourcekitten/$module.json ..."
+#      "$source_kitten_path/sourcekitten" doc --spm-module "$module" > "$root_path/.build/sourcekitten/$module.json"
+##    fi
+#  done
 fi
 
 # prep index

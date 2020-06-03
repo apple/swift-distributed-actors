@@ -867,6 +867,28 @@ extension PackageDefinition.Instrument {
         }
     }
 
+    /// Specifies a filter that should be applied to the input data in table-ref.
+    public struct Slice: Encodable {
+        // /// If supplied, only activates the selection predicate when the conditions are true.
+        var when: [When]
+
+        /// Column to set a constraint on.
+        var column: Column
+
+        /// The values that should be allowed in the column element to include this data in a table or graph.
+        var equals: [String]
+
+        public init(when: [When] = [], column: Column, _ equals: String...) {
+            self.when = when
+            self.column = column
+            self.equals = equals
+        }
+
+        public enum When: Encodable {
+            case parameterIsTrue(Mnemonic)
+        }
+    }
+
     /// Defines the graph, or track, that the instrument will present.
     public struct Graph: Encodable, InstrumentElementConvertible {
         public var title: String
@@ -1170,15 +1192,18 @@ extension PackageDefinition.Instrument {
 
     public struct List: Encodable, InstrumentElementConvertible {
         public let title: String
+        public let slice: Slice?
         public let tableRef: TableRef
         public var columns: [Mnemonic]
 
         public init(
             title: String,
+            slice: Slice? = nil,
             table: PackageDefinition.Instrument.CreateTable,
             @ColumnsBuilder columns: () -> [MnemonicConvertible]
         ) {
             self.title = title
+            self.slice = slice
             self.tableRef = .init(table)
             self.columns = columns().map { $0.asMnemonic() }
 
@@ -1456,7 +1481,7 @@ public protocol VisitOnFocusTarget {
 extension Instrument.List: VisitOnFocusTarget {}
 extension Instrument.Graph: VisitOnFocusTarget {}
 
-public enum EngineeringType: String, Codable {
+public enum EngineeringType: String, CodingKey, Codable {
     case invalid
     case rowNumber = "row-number"
     case eventCount = "event-count"

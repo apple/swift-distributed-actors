@@ -154,13 +154,13 @@ struct SignpostPattern: Encodable {
         var res: String = "\""
         res.reserveCapacity(message.utf8CodeUnitCount)
 
-        let parts = "\(message)".split(separator: ",")
+        let parts = "\(message)".split(separator: ";")
         for part in parts {
             if part.contains(":") {
                 let pp = part.split(separator: ":")
                 let p1 = pp.first!
                 // let p2 = pp.dropFirst().first!
-                res += ",\(p1):\" ?\(p1) \""
+                res += ";\(p1):\" ?\(p1) \""
             } else {
                 res += "\(part)"
             }
@@ -168,7 +168,7 @@ struct SignpostPattern: Encodable {
         if res.hasSuffix(" \"") {
             res = "\(res.dropLast(2))"
         }
-        if !res.contains(",") {
+        if !res.contains(";") {
             res += "\""
         }
 
@@ -511,6 +511,7 @@ extension PackageDefinition.Instrument.List {
     public enum CodingKeys: String, CodingKey {
         case title
         case tableRef = "table-ref"
+        case slice
         case columns = "column"
     }
 
@@ -519,7 +520,47 @@ extension PackageDefinition.Instrument.List {
 
         try container.encode(self.title, forKey: .title)
         try container.encode(self.tableRef, forKey: .tableRef)
+        try container.encodeIfPresent(self.slice, forKey: .slice)
         try container.encode(self.columns, forKey: .columns)
+    }
+}
+
+extension PackageDefinition.Instrument.Slice {
+    public enum CodingKeys: String, CodingKey {
+        case when
+        case column
+        case equals
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        var whenContainer = container.nestedUnkeyedContainer(forKey: .when)
+        for w in self.when {
+            try whenContainer.encode(w)
+        }
+
+        try container.encode(self.column.asMnemonic(), forKey: .column)
+
+        var equalsContainer = container.nestedContainer(keyedBy: EngineeringType.self, forKey: .equals)
+        for e in self.equals {
+            try equalsContainer.encode(e, forKey: self.column.type)
+        }
+    }
+}
+
+extension PackageDefinition.Instrument.Slice.When {
+    public enum CodingKeys: String, CodingKey {
+        case parameterIsTrue = "parameter-is-true"
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        switch self {
+        case .parameterIsTrue(let parameter):
+            try container.encode(parameter.mnemonicString(), forKey: .parameterIsTrue)
+        }
     }
 }
 

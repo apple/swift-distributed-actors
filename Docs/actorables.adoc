@@ -299,7 +299,7 @@ The project will be checked out and available in `.build/checkouts/swift-distrib
 swift run GenActors
 ----
 
-The GenActors command by default inspects the `Sources` directory for files and detects top level types conforming to the
+The GenActors command by default inspects the `Sources/` directory for files and detects top level types conforming to the
 api:Actorable[protocol] protocol. Optionally, you may pass folder paths or file names explicitly.
 
 === Actorables and Serialization
@@ -330,14 +330,14 @@ TIP: We aim to simplify the serialization infrastructure to be able to infer mor
 
 === ActorTestKit and ActorableTestProbe
 
-An `ActorTestKit` is offered to simplify the testing of actors and asynchronous code.
-The most important part of the test kit is api:ActorTestProbe[class] (for `ActorRef` / `Behavior` style)
-and api:ActorableTestProbe[class] for actorables.
+An api:ActorTestKit[class,module=DistributedActorsTestKit] is offered to simplify the testing of actors and asynchronous code.
+The most important part of the test kit is api:ActorTestProbe[class,module=DistributedActorsTestKit] (for `ActorRef` / `Behavior` style)
+and api:ActorableTestProbe[class,module=DistributedActorsTestKit] for actorables.
 
 #TODO: Write full docs for ActorTestKit (and reconsider naming... w discussed but are unsure still ActorTestTools was an option)#
 
-After creating an api:ActorTestKit[class] for an api:ActorSystem[class], one is able to `testKit.spawnActorableTestProbe` a probe for any given api:Actorable[protocol].
-The returned api:ActorableTestProbe[class] contains the "mocked" `.actor` reference as well as various `expectMessage`-style methods, which allow
+After creating an api:ActorTestKit[class,module=DistributedActorsTestKit] for an api:ActorSystem[class], one is able to `testKit.spawnActorableTestProbe` a probe for any given api:Actorable[protocol].
+The returned api:ActorableTestProbe[class,module=DistributedActorsTestKit] contains the "mocked" `.actor` reference as well as various `expectMessage`-style methods, which allow
 the test to block for a time, expecting a message to be send to the underlying test probe (configurable using the optional `within:` parameter).
 
 For example, in order to mock out a reference to such an `GreetMe` actorable:
@@ -357,4 +357,4 @@ include::{dir_sact_doc_tests}/Actorable/ActorableActorTestKitDocExamples.swift[t
 <2> Spawn a real `GreetMeGreeter` actor, and tell it to greet the probe actor
 <3> Expect that the probe gets the expected message, and that it's contents are indeed correct
 
-NOTE: To learn more about all the available expectations on test probes, refer to api:ActorableTestProbe[class] API documentation.
+NOTE: To learn more about all the available expectations on test probes, refer to api:ActorableTestProbe[class,module=DistributedActorsTestKit] API documentation.
