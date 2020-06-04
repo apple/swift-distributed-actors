@@ -214,7 +214,13 @@ extension ClusterShellState {
         self.log.trace("Aborting INBOUND handshake channel: \(channel)")
 
         channel.close().whenFailure { [log = self.log, metadata = self.metadata] error in
-            log.warning("Failed to abortIncomingHandshake (close) channel [\(channel)], error: \(error)", metadata: metadata)
+            switch error {
+            case ChannelError.alreadyClosed:
+                // this is less severe and we should not warn about it; most often it's just a race of closes when we're racing both sides connecting.
+                log.debug("Channel already closed [\(channel)], error: \(error)", metadata: metadata)
+            default:
+                log.warning("Failed to close channel [\(channel)], error: \(error)", metadata: metadata)
+            }
         }
     }
 
