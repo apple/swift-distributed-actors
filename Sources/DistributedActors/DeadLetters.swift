@@ -42,7 +42,6 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
     let sentAtFile: String?
     let sentAtLine: UInt?
 
-    // TODO: could be under a flag if we do carry the file/line or not?
     public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
         self.message = message
         self.recipient = recipient

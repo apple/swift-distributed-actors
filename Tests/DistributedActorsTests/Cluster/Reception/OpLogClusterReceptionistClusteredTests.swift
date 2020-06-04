@@ -41,7 +41,10 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
         settings.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(300)
     }
 
-    func test_opLogClusterReceptionist_shouldReplicateRegistrations() throws {
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Sync
+
+    func test_shouldReplicateRegistrations() throws {
         try shouldNotThrow {
             let (local, remote) = setUpPair()
             let testKit: ActorTestKit = self.testKit(local)
@@ -80,7 +83,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
         }
     }
 
-    func test_opLogClusterReceptionist_shouldSyncPeriodically() throws {
+    func test_shouldSyncPeriodically() throws {
         try shouldNotThrow {
             let (local, remote) = setUpPair {
                 $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
@@ -121,7 +124,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
         }
     }
 
-    func test_opLogClusterReceptionist_shouldMergeEntriesOnSync() throws {
+    func test_shouldMergeEntriesOnSync() throws {
         try shouldNotThrow {
             let (local, remote) = setUpPair {
                 $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
@@ -171,7 +174,15 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
         }
     }
 
-    func test_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies() throws {
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Remove dead actors
+
+    enum KillActorsMode {
+        case sendStop
+        case shutdownNode
+    }
+
+    func shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: KillActorsMode) throws {
         try shouldNotThrow {
             let (first, second) = setUpPair {
                 $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
@@ -197,14 +208,26 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             first.cluster.join(node: second.cluster.node.node)
             try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-            let remoteListing = try remoteLookupProbe.expectMessage()
-            remoteListing.refs.count.shouldEqual(2)
+            try remoteLookupProbe.eventuallyExpectListing(expected: [refA, refB], within: .seconds(3))
 
-            refA.tell("stop")
-            refB.tell("stop")
+            switch killActors {
+            case .sendStop:
+                refA.tell("stop")
+                refB.tell("stop")
+            case .shutdownNode:
+                first.shutdown().wait()
+            }
 
             try remoteLookupProbe.eventuallyExpectListing(expected: [], within: .seconds(3))
         }
+    }
+
+    func test_clusterReceptionist_shouldRemoveRemoteRefs_whenTheyStop() throws {
+        try self.shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .sendStop)
+    }
+
+    func test_clusterReceptionist_shouldRemoveRemoteRefs_whenNodeDies() throws {
+        try self.shared_clusterReceptionist_shouldRemoveRemoteRefsStop(killActors: .shutdownNode)
     }
 
     func test_clusterReceptionist_shouldRemoveRefFromAllListingsItWasRegisteredWith_ifTerminates() throws {
@@ -285,6 +308,9 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
             try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5))
         }
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Multi node / streaming
 
     func test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks() throws {
         try shouldNotThrow {
