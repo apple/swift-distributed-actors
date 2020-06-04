@@ -130,10 +130,8 @@ extension CRDT.Replicator {
                     self.receiveClusterEvent(context, event: .membershipChange(change))
                 }
 
-            case .membershipChange:
-                context.log.trace("Ignoring cluster event \(event), only interested in >= .up events", metadata: self.metadata(context))
             default:
-                return // ignore other events
+                return // ignore other events (including membership changes for events lesser than .up
             }
         }
 

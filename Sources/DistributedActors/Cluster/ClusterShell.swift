@@ -628,22 +628,13 @@ extension ClusterShell {
             state.log.debug("Association already allocated for remote: \(reflecting: remoteNode), existing association: [\(existingAssociation)]")
             switch existingAssociation.state {
             case .associating:
-                ()
-            // continue, we may be the first beginHandshake (as associations may be ensured outside of actor context)
-            ////                existingAssociation.enqueueCompletionTask {
-//                    replyTo?.tell(.success(state.localNode))
-//                }
+                // continue, we may be the first beginHandshake (as associations may be ensured outside of actor context)
+                return .same
             case .associated:
-                // return , we've been successful already
-//                replyTo?.tell(.success(existingAssociation.remoteNode))
+                // nothing to do, we already associated
                 return .same
             case .tombstone:
-//                replyTo?.tell(.failure(
-//                    HandshakeConnectionError(
-//                        node: existingAssociation.remoteNode.node,
-//                        message: "Existing association for \(existingAssociation.remoteNode) is already a tombstone! Must not complete association."
-//                    )
-//                ))
+                // TODO: sanity check if this isn't about handshaking with a replacement, then we should continue;
                 return .same
             }
         }
@@ -654,7 +645,9 @@ extension ClusterShell {
 
         switch handshakeState {
         case .initiated(let initiated):
-            state.log.debug("Initiated handshake: \(initiated)")
+            state.log.debug("Initiated handshake: \(initiated)", metadata: [
+                "cluster/associatedNodes": "\(self._associatedNodes())",
+            ])
             return self.connectSendHandshakeOffer(context, state, initiated: initiated)
 
         case .wasOfferedHandshake, .inFlight, .completed:
