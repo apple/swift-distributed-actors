@@ -245,7 +245,11 @@ internal struct SWIMShell {
                     ]
                 )
             } else {
-                context.log.warning("\(err) Did not receive ack from \(reflecting: pingedMember.address) within configured timeout. Sending ping requests to other members.")
+                context.log.debug(
+                    """
+                    Did not receive ack from \(reflecting: pingedMember.address) within configured timeout. \
+                    Sending ping requests to other members. Error: \(err)
+                    """)
             }
             if let pingReqOrigin = pingReqOrigin {
                 self.swim.adjustLHMultiplier(.probeWithMissedNack)

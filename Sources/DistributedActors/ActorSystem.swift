@@ -239,24 +239,9 @@ public final class ActorSystem {
             self.userProvider = effectiveUserProvider
         }
 
-        // receptionist
-        let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist)
-        let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
-        self._receptionist = lazyReceptionist.ref
-
-        let lazyReplicator = try! self._prepareSystemActor(
-            CRDT.Replicator.naming,
-            CRDT.Replicator.Shell(settings: settings.crdt).behavior,
-            props: ._wellKnown
-        )
-        self._replicator = lazyReplicator.ref
-
-        #if SACT_TESTS_LEAKS
-        _ = ActorSystem.actorSystemInitCounter.add(1)
-        #endif
-
-        var lazyCluster: LazyStart<ClusterShell.Message>?
+        // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
         var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
+        var lazyCluster: LazyStart<ClusterShell.Message>?
 
         if let cluster = self._cluster {
             // try!-safe, this will spawn under /system/... which we have full control over,
@@ -281,6 +266,22 @@ public final class ActorSystem {
             )
             self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
         }
+
+        // receptionist
+        let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist)
+        let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
+        self._receptionist = lazyReceptionist.ref
+
+        let lazyReplicator = try! self._prepareSystemActor(
+            CRDT.Replicator.naming,
+            CRDT.Replicator.Shell(settings: settings.crdt).behavior,
+            props: ._wellKnown
+        )
+        self._replicator = lazyReplicator.ref
+
+        #if SACT_TESTS_LEAKS
+        _ = ActorSystem.actorSystemInitCounter.add(1)
+        #endif
 
         _ = self.metrics // force init of metrics
 
