@@ -344,7 +344,8 @@ extension ClusterShellState {
         // In that case, the join will return a change; Though if the node is already known, e.g. we were told about it
         // via gossip from other nodes, though didn't yet complete associating until just now, so we can make a `change`
         // based on the stored member
-        let changeOption: Cluster.MembershipChange? = self.membership.applyMembershipChange(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
+        let changeOption: Cluster.MembershipChange? =
+            self.membership.applyMembershipChange(Cluster.MembershipChange(member: .init(node: handshake.remoteNode, status: .joining))) ??
             self.membership.uniqueMember(handshake.remoteNode).map { Cluster.MembershipChange(member: $0) }
 
         guard let change = changeOption else {

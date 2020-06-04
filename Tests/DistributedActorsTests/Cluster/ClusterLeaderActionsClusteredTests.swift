@@ -158,12 +158,12 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
-            let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
-            first.cluster.events.subscribe(p1.ref)
-
             let second = self.setUpNode("second") { settings in
                 settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             }
+
+            let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+            first.cluster.events.subscribe(p1.ref)
             let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
             second.cluster.events.subscribe(p2.ref)
 
@@ -173,28 +173,37 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
             try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
 
             // the following tests confirm that the manually subscribed actors, got all the events they expected
+            func assertExpectedClusterEvents(events: [Cluster.Event], probe: ActorTestProbe<Cluster.Event>) throws { // the specific type of snapshot we get is slightly racy: it could be .empty or contain already the node itself
+                guard case .some(Cluster.Event.snapshot) = events.first else {
+                    throw probe.error("First event always expected to be .snapshot, was: \(optional: events.first)")
+                }
+
+                // both nodes moved up
+                events.filter { event in
+                    switch event {
+                    case .membershipChange(let change) where change.isUp:
+                        return true
+                    default:
+                        return false
+                    }
+                }.count.shouldEqual(2) // both nodes moved to up
+
+                // the leader is the right node
+                events.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+            }
 
             // collect all events until we see leadership change; we should already have seen members become up then
             let eventsOnFirstSub = try collectUntilAllMembers(p1, status: .up)
-            eventsOnFirstSub.shouldContain(.snapshot(.empty))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+            try assertExpectedClusterEvents(events: eventsOnFirstSub, probe: p1)
 
             // on non-leader node
             let eventsOnSecondSub = try collectUntilAllMembers(p2, status: .up)
-            eventsOnSecondSub.shouldContain(.snapshot(.empty))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .up)))
-            eventsOnSecondSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))!)) // !-safe, since new/old leader known to be different
+            try assertExpectedClusterEvents(events: eventsOnSecondSub, probe: p2)
         }
     }
 
     private func collectUntilAllMembers(_ probe: ActorTestProbe<Cluster.Event>, status: Cluster.MemberStatus) throws -> [Cluster.Event] {
+        pinfo("Cluster.Events on \(probe)")
         var events: [Cluster.Event] = []
         var membership = Cluster.Membership.empty
 
