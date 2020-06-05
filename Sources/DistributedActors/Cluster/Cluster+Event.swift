@@ -121,8 +121,8 @@ extension Cluster {
             self.member.hash(into: &hasher)
         }
 
-        public static func ==(lhs: MembershipChange, rhs: MembershipChange) -> Bool {
-            return lhs.member == rhs.member &&
+        public static func == (lhs: MembershipChange, rhs: MembershipChange) -> Bool {
+            lhs.member == rhs.member &&
                 lhs.replaced == rhs.replaced &&
                 lhs.fromStatus == rhs.fromStatus &&
                 lhs.toStatus == rhs.toStatus
