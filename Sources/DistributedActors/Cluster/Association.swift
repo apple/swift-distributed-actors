@@ -127,7 +127,6 @@ final class Association: CustomStringConvertible {
                 let desc = "\(channel)"
                 _ = channel.close()
                 throw AssociationError.attemptToCompleteTombstonedAssociation(self, offendingChannelDescription: desc)
-
             }
         }
     }
@@ -252,7 +251,6 @@ extension Association {
 enum AssociationError: Error {
     case attemptToCompleteAlreadyCompletedAssociation(Association, offendingChannelDescription: String)
     case attemptToCompleteTombstonedAssociation(Association, offendingChannelDescription: String)
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

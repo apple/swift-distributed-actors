@@ -241,7 +241,7 @@ extension ClusterShellState {
             return .negotiateIncoming(fsm)
         }
 
-        if let existingAssociation = existingAssociation {
+        guard existingAssociation == nil else {
             let error = HandshakeStateMachine.HandshakeConnectionError(
                 node: offer.originNode.node,
                 message: "Terminating this connection, the node [\(offer.originNode)] is already associated. Possibly a delayed handshake retry message was delivered?"
@@ -292,9 +292,9 @@ extension ClusterShellState {
                 let error = HandshakeStateMachine.HandshakeConnectionError(
                     node: offer.originNode.node,
                     message: """
-                             Terminating this connection, as there is a concurrently established connection with same host [\(offer.originNode)] \
-                             which will be used to complete the handshake.
-                             """
+                    Terminating this connection, as there is a concurrently established connection with same host [\(offer.originNode)] \
+                    which will be used to complete the handshake.
+                    """
                 )
                 return .abortIncomingHandshake(error)
             }
@@ -362,46 +362,11 @@ extension ClusterShellState {
         let change: Cluster.MembershipChange? =
             self.membership.applyMembershipChange(Cluster.MembershipChange(member: .init(node: handshake.remoteNode, status: .joining)))
 
-        self.log.warning("COMPLETE ASSOCIATE @ \(file):\(line)", metadata: [
-            "handshake/change": "\(change)",
-            "handshake/local": "\(self.localNode)",
-            "handshake/remote": "\(handshake.remoteNode)",
-            "channel": "\(channel)",
-        ])
-
         return AssociatedDirective(
             membershipChange: change,
             handshake: handshake,
             channel: channel
         )
-
-//        // Membership may not know about the remote node yet, i.e. it reached out directly to this node;
-//        // In that case, the join will return a change; Though if the node is already known, e.g. we were told about it
-//        // via gossip from other nodes, though didn't yet complete associating until just now, so we can make a `change`
-//        // based on the stored member
-//        let changeOption: Cluster.MembershipChange? =
-//            self.membership.applyMembershipChange(Cluster.MembershipChange(member: .init(node: handshake.remoteNode, status: .joining))) ??
-//            self.membership.uniqueMember(handshake.remoteNode).map { Cluster.MembershipChange(member: $0) }
-//
-//        self.log.warning("COMPLETE ASSOCIATE", metadata: [
-//            "handshake/local": "\(self.localNode)",
-//            "handshake/remote": "\(handshake.remoteNode)",
-//            "channel": "\(channel)",
-//        ])
-//
-//        guard let change = changeOption else {
-//            fatalError("""
-//            Attempt to associate with \(reflecting: handshake.remoteNode) failed; It was neither a new node .joining, \
-//            nor was it a node that we already know. This should never happen as one of those two cases is always true. \
-//            Please report a bug.
-//            """)
-//        }
-//
-//        return AssociatedDirective(
-//            membershipChange: change,
-//            handshake: handshake,
-//            channel: channel
-//        )
     }
 
     struct AssociatedDirective {
