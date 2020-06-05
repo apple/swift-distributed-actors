@@ -146,6 +146,10 @@ final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
         }
     }
 
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
     func test_up_ensureAllSubscribersGetMovingUpEvents() throws {
         try shouldNotThrow {
             // it shall perform its duties. This tests however quickly shows that lack of letting the "third" node,

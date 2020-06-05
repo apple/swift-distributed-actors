@@ -91,7 +91,7 @@ final class Association: CustomStringConvertible {
 
     /// Complete the association and drain any pending message sends onto the channel.
     // TODO: This style can only ever work since we lock around the entirety of enqueueing messages and this setting; make it such that we don't need the lock eventually
-    func completeAssociation(handshake: HandshakeStateMachine.CompletedState, over channel: Channel) {
+    func completeAssociation(handshake: HandshakeStateMachine.CompletedState, over channel: Channel) throws {
         assert(
             self.remoteNode == handshake.remoteNode,
             """
@@ -101,7 +101,7 @@ final class Association: CustomStringConvertible {
             """
         )
 
-        self.lock.withLockVoid {
+        try self.lock.withLockVoid {
             switch self.state {
             case .associating(let sendQueue, _):
                 // 1) we need to flush all the queued up messages
@@ -119,10 +119,15 @@ final class Association: CustomStringConvertible {
                 self.state = .associated(channel: channel)
 
             case .associated:
-                _ = channel.close() // TODO: throw instead of accepting a "double complete"?
+                let desc = "\(channel)"
+                _ = channel.close()
+                throw AssociationError.attemptToCompleteAlreadyCompletedAssociation(self, offendingChannelDescription: desc)
 
             case .tombstone:
+                let desc = "\(channel)"
                 _ = channel.close()
+                throw AssociationError.attemptToCompleteTombstonedAssociation(self, offendingChannelDescription: desc)
+
             }
         }
     }
@@ -242,6 +247,12 @@ extension Association {
             return false
         }
     }
+}
+
+enum AssociationError: Error {
+    case attemptToCompleteAlreadyCompletedAssociation(Association, offendingChannelDescription: String)
+    case attemptToCompleteTombstonedAssociation(Association, offendingChannelDescription: String)
+
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
