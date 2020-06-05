@@ -151,26 +151,12 @@ R -[#red]-x L: HandshakeReject
  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+==== Handshake phases
 
-=== In memory core concepts
+Note that handshakes may "race" from both nodes to eachother concurrently, thus the system has to "pick one".
 
-==== Association
 
-Established between two nodes.
 
-Only "associated nodes" may talk to one another.
-
-Rules:
-
-  - don't talk to strangers
-    * nodes MUST handshake before exchanging any messages
-
-=== *RemoteControl
-
-Control objects allow performing actual actions onto the network layer.
-
-These are exposed to actual refs and used to e.g. send messages.
-There can be many remote controls, but always one association for a pair of nodes.
 
 ==== Watch and clustering
 
