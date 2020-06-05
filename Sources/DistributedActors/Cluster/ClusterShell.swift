@@ -55,7 +55,8 @@ internal class ClusterShell {
         self._associationsLock.withLock {
             // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
             // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
-            self._associations.first { $0.key.node == node }?.value
+            pprint("getAnyExistingAssociation === self._associations = \(self._associations.prettyDescription)")
+            return self._associations.first { $0.key.node == node }?.value
         }
     }
 
@@ -66,9 +67,11 @@ internal class ClusterShell {
             if let tombstone = self._associationTombstones[node] {
                 return .tombstone(tombstone)
             } else if let existing = self._associations[node] {
+//                pprint("getEnsureAssociation = \(node) >>>> EXISTING \(existing) ;;; ALL: \(self._associations)")
                 return .association(existing)
             } else {
                 let association = Association(selfNode: self.selfNode, remoteNode: node)
+//                pprint("getEnsureAssociation = \(node) >>>> NEW \(association) ;;; ALL: \(self._associations)")
                 self._associations[node] = association
 
                 /// We're trying to send to `node` yet it has no association (not even in progress),
@@ -83,21 +86,22 @@ internal class ClusterShell {
     /// As a retry we strongly assume that the association already exists, if not, it has to be a tombstone
     ///
     /// We also increment the retry counter.
-    internal func getRetryAssociation(with node: Node) -> StoredAssociationState {
+    /// - Returns: `nil` is already associated, so no reason to retry, otherwise the retry statistics
+    internal func retryAssociation(with node: Node) -> Association.Retries? {
         self._associationsLock.withLock {
             // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
             // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
             let maybeAssociation = self._associations.first { $0.key.node == node }?.value
 
             guard let association = maybeAssociation else {
-                fatalError("Can't retry a non existing association!") // TODO: return an error tombstone rather?
+                return nil // weird, we always should have one since were RE-trying, but ok, let's simply give up.
             }
 
-            if let shouldRetry = association.retryAssociating() {
-                return .association(association)
+            if let retries = association.retryAssociating() { // TODO sanity check locks and that we do count retries
+                return retries
             } else {
                 // no need to retry, seems it completed already!
-                return .association(association)
+                return nil
             }
         }
     }
@@ -117,15 +121,16 @@ internal class ClusterShell {
 
     /// To be invoked by cluster shell whenever handshake is accepted, creating a completed association.
     /// Causes messages to be flushed onto the new associated channel.
-    private func completeAssociation(_ associated: ClusterShellState.AssociatedDirective) {
+    private func completeAssociation(_ associated: ClusterShellState.AssociatedDirective, file: String = #file, line: UInt = #line) throws {
         // 1) Complete and store the association
-        self._associationsLock.withLockVoid {
-            let association = self._associations[associated.handshake.remoteNode] ??
-                Association(selfNode: associated.handshake.localNode, remoteNode: associated.handshake.remoteNode)
+        try self._associationsLock.withLockVoid {
+            let node: UniqueNode = associated.handshake.remoteNode
+            let association = self._associations[node] ??
+                Association(selfNode: associated.handshake.localNode, remoteNode: node)
 
-            association.completeAssociation(handshake: associated.handshake, over: associated.channel)
+            try association.completeAssociation(handshake: associated.handshake, over: associated.channel)
 
-            self._associations[associated.handshake.remoteNode] = association
+            self._associations[node] = association
         }
 
         // 2) Ensure the failure detector knows about this node
@@ -354,12 +359,7 @@ internal class ClusterShell {
     // TODO: reformulate as Wire.accept / reject?
     internal enum HandshakeResult: Equatable, NonTransportableActorMessage {
         case success(UniqueNode)
-        case failure(HandshakeConnectionError)
-    }
-
-    struct HandshakeConnectionError: Error, Equatable {
-        let node: Node // TODO: allow carrying UniqueNode
-        let message: String
+        case failure(HandshakeStateMachine.HandshakeConnectionError)
     }
 
     private var behavior: Behavior<Message> {
@@ -683,9 +683,9 @@ extension ClusterShell {
 
     internal func retryHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         state.log.debug("Retry handshake with: \(initiated.remoteNode)")
-
-        // FIXME: this needs more work...
-        let assoc = self.getRetryAssociation(with: initiated.remoteNode)
+//
+//        // FIXME: this needs more work...
+//        let assoc = self.getRetryAssociation(with: initiated.remoteNode)
 
         return self.connectSendHandshakeOffer(context, state, initiated: initiated)
     }
@@ -734,26 +734,52 @@ extension ClusterShell {
     ) -> Behavior<Message> {
         var state = state
 
-        switch state.onIncomingHandshakeOffer(offer: offer, incomingChannel: inboundChannel) {
+        // if there already is an existing association, we'll bail out and abort this "new" connection; there must only ever be one association
+        let maybeExistingAssociation: Association? = self.getSpecificExistingAssociation(with: offer.originNode)
+
+        switch state.onIncomingHandshakeOffer(offer: offer, existingAssociation: maybeExistingAssociation, incomingChannel: inboundChannel) {
         case .negotiateIncoming(let hsm):
-            // handshake is allowed to proceed
+            // 0) ensure, since it seems we're indeed going to negotiate it;
+            // otherwise another actor or something else could kick off the negotiation and we'd become the initiating (offering the handshake),
+            // needlessly causing the "both nodes racing the handshake offer" situation, which will be resolved, but there's no need for rhat race here,
+            // we'll simply accept (or not) the incoming offer.
+            let association = self.getEnsureAssociation(with: offer.originNode)
+
+            // 1) handshake is allowed to proceed
             switch hsm.negotiate() {
             case .acceptAndAssociate(let handshakeCompleted):
                 state.log.trace("Accept handshake with \(reflecting: offer.originNode)!", metadata: [
                     "handshake/channel": "\(inboundChannel)",
                 ])
 
-                // accept handshake and store completed association
-                let directive = state.completeHandshakeAssociate(self, handshakeCompleted, channel: inboundChannel)
+                // 1.1) we're accepting; prepare accept
+                let accept = handshakeCompleted.makeAccept(whenHandshakeReplySent: nil)
 
-                // prepare accept
-                let accept = handshakeCompleted.makeAccept(whenHandshakeReplySent: { () in
-                    self.completeAssociation(directive)
+                // 2) Only now we can succeed the accept promise (as the old one has been terminated and cleared)
+                self.tracelog(context, .send(to: offer.originNode.node), message: accept)
+                promise.succeed(.accept(accept))
+
+                // 3) Complete and store the association, we are now ready to flush writes onto the network
+                //
+                // it is VERY important that we do so BEFORE we emit any cluster events, since then actors are free to
+                // talk to other actors on the (now associated node) and if there is no `.associating` association yet
+                // their communication attempts could kick off a handshake attempt; there is no need for this, since we're already accepting here.
+                let directive = state.completeHandshakeAssociate(self, handshakeCompleted, channel: inboundChannel)
+                do {
+                    try self.completeAssociation(directive)
                     state.log.trace("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
                         "membership/change": "\(directive.membershipChange)",
                         "membership": "\(state.membership)",
                     ])
-                })
+                } catch {
+                    state.log.warning("Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)", metadata: [
+                        "membership/change": "\(directive.membershipChange)",
+                        "membership": "\(state.membership)",
+                        "association/error": "\(error)",
+                    ])
+                }
+
+                // 4) Emit all potential cluster events
 
                 // This association may mean that we've "replaced" a previously known node of the same host:port,
                 // In case of such replacement we must down and terminate the association of the previous node.
@@ -761,15 +787,12 @@ extension ClusterShell {
                 // This MUST be called before we complete the new association as it may need to terminate the old one.
                 self.handlePotentialAssociatedMemberReplacement(directive: directive, accept: accept, context: context, state: &state)
 
-                // Only now we can succeed the accept promise (as the old one has been terminated and cleared)
-                self.tracelog(context, .send(to: offer.originNode.node), message: accept)
-                promise.succeed(.accept(accept))
-
                 // publish any cluster events this association caused.
                 // As the new association is stored, any reactions to these events will use the right underlying connection
-                state.events.publish(.membershipChange(directive.membershipChange)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
-
-                self.tryIntroduceGossipPeer(context, state, change: directive.membershipChange)
+                if let change = directive.membershipChange {
+                    state.events.publish(.membershipChange(change)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+                    self.tryIntroduceGossipPeer(context, state, change: change)
+                }
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
                 let actions = state.collectLeaderActions()
@@ -794,17 +817,9 @@ extension ClusterShell {
                 return self.ready(state: state)
             }
 
-        case .abortIncomingDueToConcurrentHandshake:
-            // concurrent handshake and we should abort
-            let error = HandshakeConnectionError(
-                node: offer.originNode.node,
-                message: """
-                Terminating this connection, as there is a concurrently established connection with same host [\(offer.originNode)] \
-                which will be used to complete the handshake.
-                """
-            )
+        case .abortIncomingHandshake(let error):
+            state.log.warning("Aborting incoming handshake: \(error)") // TODO: remove
             promise.fail(error)
-
             state.closeHandshakeChannel(offer: offer, channel: inboundChannel)
             return .same
         }
@@ -826,7 +841,8 @@ extension ClusterShell {
 
         switch handshakeState {
         case .initiated(var initiated):
-            switch initiated.onHandshakeError(error) {
+            let retries = self.retryAssociation(with: remoteNode)
+            switch initiated.onHandshakeError(error, retries) {
             case .scheduleRetryHandshake(let delay):
                 state.log.debug("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
                 context.timers.startSingle(
@@ -884,17 +900,27 @@ extension ClusterShell {
         self.handlePotentialAssociatedMemberReplacement(directive: directive, accept: inboundAccept, context: context, state: &state)
 
         // 2) Store the (now completed) association first, as it may be immediately used by remote ActorRefs attempting to send to the remoteNode
-        self.completeAssociation(directive)
-        state.log.debug("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
-            "membership/change": "\(directive.membershipChange)",
-            "membership": "\(state.membership)",
-        ])
+        do {
+            try self.completeAssociation(directive)
+            state.log.trace("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
+                "membership/change": "\(directive.membershipChange)",
+                "membership": "\(state.membership)",
+            ])
+        } catch {
+            state.log.warning("Error while trying to complete association with: \(reflecting: handshakeCompleted.remoteNode), error: \(error)", metadata: [
+                "membership/change": "\(directive.membershipChange)",
+                "membership": "\(state.membership)",
+                "association/error": "\(error)",
+            ])
+        }
 
         // 3) publish any cluster events this association caused.
         //    As the new association is stored, any reactions to these events will use the right underlying connection
-        state.events.publish(.membershipChange(directive.membershipChange)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+        if let change = directive.membershipChange {
+            state.events.publish(.membershipChange(change)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+            self.tryIntroduceGossipPeer(context, state, change: change)
+        }
 
-        self.tryIntroduceGossipPeer(context, state, change: directive.membershipChange)
 
         // 4) Since a new node joined, if we are the leader, we should perform leader tasks to potentially move it to .up
         let actions = state.collectLeaderActions()
@@ -913,7 +939,7 @@ extension ClusterShell {
         context: ActorContext<Message>,
         state: inout ClusterShellState
     ) {
-        if let replacedMember = directive.membershipChange.replaced {
+        if let replacedMember = directive.membershipChange?.replaced {
             // the change was a replacement and thus we need to down the old member (same host:port as the new one),
             // and terminate its association.
 

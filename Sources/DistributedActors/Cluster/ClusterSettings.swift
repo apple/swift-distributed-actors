@@ -83,7 +83,8 @@ public struct ClusterSettings {
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var associationHandshakeBackoff: BackoffStrategy = Backoff.exponential(initialInterval: .milliseconds(100))
 
-    // public var associationHandshakeMaxAttempts: Int TODO: configure number of retries when connecting
+    /// Maximum number of attempts to reconnect to a node.
+    public var associationHandshakeMaxAttempts: Int = 10
 
     /// Defines the Time-To-Live of an association, i.e. when it shall be completely dropped from the tombstones list.
     /// An association ("unique connection identifier between two nodes") is kept as tombstone when severing a connection between nodes,

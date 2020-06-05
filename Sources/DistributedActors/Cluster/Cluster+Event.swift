@@ -56,7 +56,13 @@ extension Cluster {
         public internal(set) var fromStatus: MemberStatus?
         public let toStatus: MemberStatus
 
-        init(member: Member, toStatus: MemberStatus? = nil) {
+        public let file: String
+        public let line: UInt
+
+        init(member: Member, toStatus: MemberStatus? = nil, file: String = #file, line: UInt = #line) {
+            self.file = file
+            self.line = line
+
             // FIXME: enable these assertions
 //            assertBacktrace(
 //                toStatus == nil || !(toStatus == .removed && member.status != .down),
@@ -81,7 +87,9 @@ extension Cluster {
             }
         }
 
-        init(node: UniqueNode, fromStatus: MemberStatus?, toStatus: MemberStatus) {
+        init(node: UniqueNode, fromStatus: MemberStatus?, toStatus: MemberStatus, file: String = #file, line: UInt = #line) {
+            self.file = file
+            self.line = line
             // FIXME: enable these assertions
 //          assertBacktrace(
 //                !(toStatus == .removed && fromStatus != .down),
@@ -97,7 +105,9 @@ extension Cluster {
         }
 
         /// Use to create a "replacement", when the previousNode and node are different (i.e. they should only differ in ID, not host/port)
-        init(replaced: Member, by newMember: Member) {
+        init(replaced: Member, by newMember: Member, file: String = #file, line: UInt = #line) {
+            self.file = file
+            self.line = line
             assert(replaced.node.host == newMember.node.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
             assert(replaced.node.port == newMember.node.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
 
@@ -105,6 +115,17 @@ extension Cluster {
             self.member = newMember
             self.fromStatus = replaced.status
             self.toStatus = newMember.status
+        }
+
+        public func hash(into hasher: inout Hasher) {
+            self.member.hash(into: &hasher)
+        }
+
+        public static func ==(lhs: MembershipChange, rhs: MembershipChange) -> Bool {
+            return lhs.member == rhs.member &&
+                lhs.replaced == rhs.replaced &&
+                lhs.fromStatus == rhs.fromStatus &&
+                lhs.toStatus == rhs.toStatus
         }
     }
 }
@@ -156,7 +177,7 @@ extension Cluster.MembershipChange: CustomStringConvertible {
             " :: " +
             "[\(self.fromStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
             " -> " +
-            "[\(self.toStatus.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
+            "[\(self.toStatus.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)] AT: \(self.file):\(self.line)"
     }
 }
 
