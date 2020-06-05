@@ -55,21 +55,13 @@ internal class ClusterShell {
         self._associationsLock.withLock {
             // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
             // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
-            self._associations.first {
-                key, _ in key.node == node
-            }?.value
-        }
-    }
-
-    internal func getSpecificExistingAssociation(with node: UniqueNode) -> Association? {
-        self._associationsLock.withLock {
-            self._associations[node]
+            self._associations.first { $0.key.node == node }?.value
         }
     }
 
     /// Get an existing association or ensure that a new one shall be stored and joining kicked off if the target node was not known yet.
     /// Safe to concurrently access by privileged internals directly
-    internal func getEnsureAssociation(with node: UniqueNode) -> StoredAssociationState {
+    internal func getEnsureAssociation(with node: UniqueNode, file: String = #file, line: UInt = #line) -> StoredAssociationState {
         self._associationsLock.withLock {
             if let tombstone = self._associationTombstones[node] {
                 return .tombstone(tombstone)
@@ -81,10 +73,38 @@ internal class ClusterShell {
 
                 /// We're trying to send to `node` yet it has no association (not even in progress),
                 /// thus we need to kick it off. Once it completes it will .completeAssociation() on the stored one (here in the field in Shell).
-                self.ref.tell(.command(.handshakeWith(node.node)))
+                self.ref.tell(.command(.handshakeWithSpecific(node)))
 
                 return .association(association)
             }
+        }
+    }
+
+    /// As a retry we strongly assume that the association already exists, if not, it has to be a tombstone
+    ///
+    /// We also increment the retry counter.
+    internal func getRetryAssociation(with node: Node) -> StoredAssociationState {
+        self._associationsLock.withLock {
+            // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
+            // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
+            let maybeAssociation = self._associations.first { $0.key.node == node }?.value
+
+            guard let association = maybeAssociation else {
+                fatalError("Can't retry a non existing association!") // TODO: return an error tombstone rather?
+            }
+
+            if let shouldRetry = association.retryAssociating() {
+                return .association(association)
+            } else {
+                // no need to retry, seems it completed already!
+                return .association(association)
+            }
+        }
+    }
+
+    internal func getSpecificExistingAssociation(with node: UniqueNode) -> Association? {
+        self._associationsLock.withLock {
+            self._associations[node]
         }
     }
 
@@ -300,6 +320,7 @@ internal class ClusterShell {
         ///
         /// If one is present, the underlying failure detector will be asked to monitor this node as well.
         case handshakeWith(Node)
+        case handshakeWithSpecific(UniqueNode)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
 
         case failureDetectorReachabilityChanged(UniqueNode, Cluster.MemberReachability)
@@ -441,6 +462,8 @@ extension ClusterShell {
             switch command {
             case .handshakeWith(let node):
                 return self.beginHandshake(context, state, with: node)
+            case .handshakeWithSpecific(let uniqueNode):
+                return self.beginHandshake(context, state, with: uniqueNode.node)
             case .retryHandshake(let initiated):
                 return self.retryHandshake(context, state, initiated: initiated)
 
@@ -629,7 +652,7 @@ extension ClusterShell {
             switch existingAssociation.state {
             case .associating:
                 // continue, we may be the first beginHandshake (as associations may be ensured outside of actor context)
-                return .same
+                ()
             case .associated:
                 // nothing to do, we already associated
                 return .same
@@ -661,7 +684,8 @@ extension ClusterShell {
     internal func retryHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         state.log.debug("Retry handshake with: \(initiated.remoteNode)")
 
-        // TODO: update retry counter, perhaps give up
+        // FIXME: this needs more work...
+        let assoc = self.getRetryAssociation(with: initiated.remoteNode)
 
         return self.connectSendHandshakeOffer(context, state, initiated: initiated)
     }
