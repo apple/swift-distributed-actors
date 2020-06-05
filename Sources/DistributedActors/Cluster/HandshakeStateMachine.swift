@@ -106,7 +106,15 @@ internal struct HandshakeStateMachine {
             self.channel = channel
         }
 
-        mutating func onHandshakeError(_: Error) -> RetryDirective {
+        mutating func onHandshakeError(_: Error, _ retries: Association.Retries?) -> RetryDirective {
+            guard let retries = retries else {
+                return .giveUpOnHandshake
+            }
+
+            guard retries.attemptNr < self.settings.associationHandshakeMaxAttempts else {
+                return .giveUpOnHandshake
+            }
+
             switch self.backoff.next() {
             case .some(let amount):
                 return .scheduleRetryHandshake(delay: amount)
@@ -127,7 +135,12 @@ internal struct HandshakeStateMachine {
         }
     }
 
-//    // ==== ------------------------------------------------------------------------------------------------------------
+    struct HandshakeConnectionError: Error, Equatable {
+        let node: Node // TODO: allow carrying UniqueNode
+        let message: String
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handshake In-Flight, and should attach to existing negotiation
 
     internal struct InFlightState {
@@ -230,7 +243,7 @@ internal struct HandshakeStateMachine {
 //            self.whenCompleted = received.whenCompleted
         }
 
-        func makeAccept(whenHandshakeReplySent: @escaping () -> Void) -> Wire.HandshakeAccept {
+        func makeAccept(whenHandshakeReplySent: (() -> Void)?) -> Wire.HandshakeAccept {
             Wire.HandshakeAccept(
                 version: self.protocolVersion,
                 targetNode: self.localNode,
