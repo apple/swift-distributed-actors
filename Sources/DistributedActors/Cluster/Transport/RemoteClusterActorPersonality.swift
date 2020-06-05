@@ -97,7 +97,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     }
 
     private var association: ClusterShell.StoredAssociationState {
-        guard let remoteAddress = self.address.node else {
+        guard let uniqueNode = self.address.node else {
             fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug. The ref was: \(self)")
         }
 
@@ -105,7 +105,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
         // if let assoc = self._cachedAssociation.load() { return assoc }
         // else { get from shell and store here }
 
-        return self.clusterShell.getEnsureAssociation(with: remoteAddress)
+        return self.clusterShell.getEnsureAssociation(with: uniqueNode)
     }
 
     func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemoteClusterActorPersonality<NewMessage> {
