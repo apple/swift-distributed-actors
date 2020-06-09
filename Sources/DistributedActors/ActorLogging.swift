@@ -17,12 +17,15 @@ import Foundation
 import Logging
 
 /// - Warning: NOT thread safe! Only use from Actors, properly synchronize access, or create multiple instances for each execution context.
+// TODO: deprecate, we should not need this explicit type
 public class LoggingContext {
     let identifier: String
 
     // TODO: want to eventually not have this; also move to more structured logging perhaps...
     /// If `true` the built-in "pretty" formatter should be used, rather than passing verbatim to underlying `LogHandler`
     let useBuiltInFormatter: Bool
+
+    let logger: LoggerWithSource
 
     @usableFromInline
     internal var _storage: Logger.Metadata = [:]
@@ -36,7 +39,8 @@ public class LoggingContext {
         }
     }
 
-    public init(identifier: String, useBuiltInFormatter: Bool, dispatcher: (() -> String)?) {
+    public init(logger: Logger, identifier: String, useBuiltInFormatter: Bool, dispatcher: (() -> String)?) {
+        self.logger = LoggerWithSource(logger, source: identifier)
         self.identifier = identifier
         self.useBuiltInFormatter = useBuiltInFormatter
         if let makeDispatcherName = dispatcher {
@@ -68,42 +72,46 @@ public class LoggingContext {
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 public struct ActorLogger {
-    public static func make<T>(context: ActorContext<T>) -> Logger {
-        if let overriddenLoggerFactory = context.system.settings.logging.overrideLoggerFactory { return overriddenLoggerFactory("\(context.path)")
-        }
+    public static func make<T>(context: ActorContext<T>) -> LoggerWithSource {
+//        if let overriddenLoggerFactory = context.system.settings.logging.overrideLoggerFactory {
+//            return overriddenLoggerFactory("\(context.path)")
+//        }
 
-        var proxyHandler = ActorOriginLogHandler(context)
-        proxyHandler.metadata["actorPath"] = "\(context.path)"
-        if context.system.settings.cluster.enabled {
-            proxyHandler.metadata["node"] = "\(context.system.settings.cluster.node)"
-        } else {
-            proxyHandler.metadata["nodeName"] = "\(context.system.name)"
-        }
+        // var proxyHandler = ActorOriginLogHandler(context)
+//        proxyHandler.metadata["actorPath"] = "\(context.path)"
+//        if context.system.settings.cluster.enabled {
+//            proxyHandler.metadata["node"] = "\(context.system.settings.cluster.node)"
+//        } else {
+//            proxyHandler.metadata["nodeName"] = "\(context.system.name)"
+//        }
 
-        var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
-        log.logLevel = context.system.settings.logging.defaultLevel
-        return log
+        // var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
+        var log = context.system.log
+
+        log.logLevel = context.system.settings.logging.logLevel
+        return .init(log.logger, source: "\(context.path)")
     }
 
-    public static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
-        if let overriddenLoggerFactory = system.settings.logging.overrideLoggerFactory {
-            return overriddenLoggerFactory(identifier ?? system.name)
-        }
+    public static func make(system: ActorSystem, identifier: String? = nil) -> LoggerWithSource {
+//        if let overriddenLoggerFactory = system.settings.logging.overrideLoggerFactory {
+//            return overriddenLoggerFactory(identifier ?? system.name)
+//        }
 
-        // we need to add our own storage, and can't do so to Logger since it is a struct...
-        // so we need to make such "proxy log handler", that does out actor specific things.
-        var proxyHandler = ActorOriginLogHandler(system)
-        if system.settings.cluster.enabled {
-            proxyHandler.metadata["node"] = .lazyStringConvertible { () in
-                system.settings.cluster.node
-            }
-        } else {
-            proxyHandler.metadata["nodeName"] = .string(system.name)
-        }
+//        // we need to add our own storage, and can't do so to Logger since it is a struct...
+//        // so we need to make such "proxy log handler", that does out actor specific things.
+//        var proxyHandler = ActorOriginLogHandler(system)
+//        if system.settings.cluster.enabled {
+//            proxyHandler.metadata["node"] = .lazyStringConvertible { () in
+//                system.settings.cluster.node
+//            }
+//        } else {
+//            proxyHandler.metadata["nodeName"] = .string(system.name)
+//        }
 
-        var log = Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
-        log.logLevel = system.settings.logging.defaultLevel
-        return log
+//        var log = Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
+        var log = system.log
+        log.logLevel = system.settings.logging.logLevel
+        return .init(log.logger, source: identifier ?? system.name)
     }
 }
 
@@ -119,19 +127,20 @@ public struct ActorOriginLogHandler: LogHandler {
 
     private let context: LoggingContext
 
-    private var loggingSystemSelectedLogger: Logger
+    private var targetLogger: LoggerWithSource
 
     public init(_ context: LoggingContext) {
         self.context = context
 
-        self.loggingSystemSelectedLogger = Logger(label: context.identifier)
-        self.loggingSystemSelectedLogger.logLevel = self.logLevel
+        self.targetLogger = context.logger
+        self.targetLogger.logLevel = self.logLevel
     }
 
     public init<T>(_ context: ActorContext<T>) {
         let dispatcherName = context.props.dispatcher.name
         self.init(
             LoggingContext(
+                logger: context.log.logger,
                 identifier: context.path.description,
                 useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
                 dispatcher: { () in dispatcherName } // beware of closing over the context here (!)
@@ -142,6 +151,7 @@ public struct ActorOriginLogHandler: LogHandler {
     public init(_ system: ActorSystem, identifier: String? = nil) {
         self.init(
             LoggingContext(
+                logger: system.log.logger,
                 identifier: identifier ?? system.name,
                 useBuiltInFormatter: system.settings.logging.useBuiltInFormatter,
                 dispatcher: { () in _hackyPThreadThreadId() }
@@ -225,13 +235,13 @@ public struct ActorOriginLogHandler: LogHandler {
 
                     msg += metadataString
                 }
-                self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
+                self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
             } else {
-                self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+                self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
             }
 
         } else {
-            self.loggingSystemSelectedLogger.log(level: logMessage.level, logMessage.message, metadata: self.metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            self.targetLogger.log(level: logMessage.level, logMessage.message, metadata: self.metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
         }
     }
 
@@ -253,7 +263,7 @@ public struct ActorOriginLogHandler: LogHandler {
         }
         set {
             self._logLevel = newValue
-            self.loggingSystemSelectedLogger.logLevel = newValue
+            self.targetLogger.logLevel = newValue
         }
     }
 

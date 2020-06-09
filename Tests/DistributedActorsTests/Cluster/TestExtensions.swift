@@ -39,7 +39,7 @@ extension ClusterShellState {
             channel: EmbeddedChannel(),
             events: EventStream(ref: ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
             gossipControl: ConvergentGossipControl(ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
-            log: log
+            log: log.withSource("mock")
         )
     }
 }

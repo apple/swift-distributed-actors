@@ -240,7 +240,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     // access only from within actor
     private lazy var _log = ActorLogger.make(context: self)
-    public override var log: Logger {
+    public override var log: LoggerWithSource {
         get {
             self._log
         }

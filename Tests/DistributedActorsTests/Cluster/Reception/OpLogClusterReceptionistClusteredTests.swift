@@ -312,6 +312,10 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredNodesTestBase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Multi node / streaming
 
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
     func test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks() throws {
         try shouldNotThrow {
             let (first, second) = setUpPair {

@@ -60,7 +60,7 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     }
 
     /// Provides context metadata aware `Logger`
-    public var log: Logger {
+    public var log: LoggerWithSource {
         get {
             undefined()
         }

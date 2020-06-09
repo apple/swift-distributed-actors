@@ -35,7 +35,7 @@ import Foundation // for Codable
 /// for any kind of Message type that is possible to be received by any spawned `Actor`, sub-receive, `Gossip` instance etc.
 ///
 public class Serialization {
-    private let log: Logger
+    private let log: LoggerWithSource
     internal let settings: Serialization.Settings
     @usableFromInline
     internal let metrics: ActorSystemMetrics // TODO: rather, do this via instrumentation
@@ -180,16 +180,10 @@ public class Serialization {
 
         self.allocator = self.settings.allocator
 
-        var log = Logger(
-            label: "serialization",
-            factory: { id in
-                let context = LoggingContext(identifier: id, useBuiltInFormatter: system.settings.logging.useBuiltInFormatter, dispatcher: nil)
-                return ActorOriginLogHandler(context)
-            }
-        )
+        var log = LoggerWithSource(system.log.logger, source: "serialization")
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
-        log.logLevel = systemSettings.logging.defaultLevel
+        log.logLevel = systemSettings.logging.logLevel
         self.log = log
 
         self.context = Serialization.Context(

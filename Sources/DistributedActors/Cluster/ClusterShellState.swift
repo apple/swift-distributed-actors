@@ -19,12 +19,10 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Shell State
 
-// TODO: we hopefully will rather than this, end up with specialized protocols depending on what we need to expose,
-// and then types may require those specific capabilities from the shell; e.g. scheduling things or similar.
 internal protocol ReadOnlyClusterState {
-    var log: Logger { get }
+    var log: LoggerWithSource { get }
     var allocator: ByteBufferAllocator { get }
-    var eventLoopGroup: EventLoopGroup { get } // TODO: or expose the MultiThreaded one...?
+    var eventLoopGroup: EventLoopGroup { get }
 
     /// Base backoff strategy to use in handshake retries // TODO: move it around somewhere so only handshake cares?
     var handshakeBackoff: BackoffStrategy { get }
@@ -39,7 +37,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     typealias Messages = ClusterShell.Message
 
     // TODO: maybe move log and settings outside of state into the shell?
-    var log: Logger
+    var log: LoggerWithSource
     let settings: ClusterSettings
 
     let events: EventStream<Cluster.Event>
@@ -83,7 +81,6 @@ internal struct ClusterShellState: ReadOnlyClusterState {
                 self._latestGossip = next
             }
             self.gossipControl.update(payload: self._latestGossip)
-//            self.gossipControl.update()
         }
     }
 
@@ -96,8 +93,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         }
     }
 
-//     init(settings: ClusterSettings, channel: Channel, events: EventStream<Cluster.Event>, gossipControl: GossipControl<Cluster.Gossip.SeenTable, Cluster.Gossip>, log: Logger) {
-    init(settings: ClusterSettings, channel: Channel, events: EventStream<Cluster.Event>, gossipControl: ConvergentGossipControl<Cluster.Gossip>, log: Logger) {
+    init(settings: ClusterSettings, channel: Channel, events: EventStream<Cluster.Event>, gossipControl: ConvergentGossipControl<Cluster.Gossip>, log: LoggerWithSource) {
         self.log = log
         self.settings = settings
         self.allocator = settings.allocator

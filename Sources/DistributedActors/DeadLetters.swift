@@ -71,7 +71,7 @@ extension ActorSystem {
             ///
             /// We don't apply the special /dead path, as to not complicate diagnosing who actually terminated or if we were accidentally sent
             /// a remote actor ref that was dead(!)
-            return ActorRef(.deadLetters(.init(self.log, address: recipient, system: self))).adapt(from: Message.self)
+            return ActorRef(.deadLetters(.init(self.log.logger, address: recipient, system: self))).adapt(from: Message.self)
         }
 
         let localRecipient: ActorAddress
@@ -82,7 +82,7 @@ extension ActorSystem {
             // drop the node from the address; and prepend it as known-to-be-dead
             localRecipient = ActorAddress(path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
         }
-        return ActorRef(.deadLetters(.init(self.log, address: localRecipient, system: self))).adapt(from: Message.self)
+        return ActorRef(.deadLetters(.init(self.log.logger, address: localRecipient, system: self))).adapt(from: Message.self)
     }
 
     /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
@@ -140,11 +140,11 @@ extension ActorSystem {
 /// but not for anything more -- users shall assume that their communication is correct and only debug why a dead reference appeared if it indeed does happen.
 public final class DeadLetterOffice {
     let _address: ActorAddress
-    let log: Logger
+    let log: LoggerWithSource
     weak var system: ActorSystem?
 
     init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {
-        self.log = log
+        self.log = LoggerWithSource(log, source: "\(address.path)")
         self._address = address
         self.system = system
     }

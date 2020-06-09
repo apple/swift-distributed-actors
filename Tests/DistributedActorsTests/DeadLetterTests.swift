@@ -22,7 +22,7 @@ final class DeadLetterTests: ActorSystemTestBase {
     // MARK: DeadLetterOffice tests
 
     func test_deadLetters_logWithSourcePosition() throws {
-        let log = self.logCapture.loggerFactory(captureLabel: "/dead/letters")("/dead/letters")
+        let log = self.logCapture.logger(label: "/dead/letters")
 
         let address = try ActorAddress(path: ActorPath._user.appending("someone"), incarnation: .random())
         let office = DeadLetterOffice(log, address: address, system: system)

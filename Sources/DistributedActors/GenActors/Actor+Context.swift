@@ -79,7 +79,7 @@ extension Actor.Context {
     /// Provides context metadata aware `Logger`.
     ///
     /// - Concurrency: Must ONLY be accessed by the owning actor.
-    public var log: Logger {
+    public var log: LoggerWithSource {
         get {
             self._underlying.log
         }
