@@ -1,11 +1,12 @@
 # file options
 
---swiftversion 5.1
+--swiftversion 5.2
 --exclude .build
 --exclude "**/*.pb.swift"
 --exclude "**/*+GenActor.swift"
 --exclude "**/*+GenCodable.swift"
 --exclude "**/*+XPCProtocolStub.swift"
+--disable redundantParens # https://github.com/nicklockwood/SwiftFormat/issues/638
 
 # format options
 

@@ -108,11 +108,8 @@ public final class ActorSystem {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Logging
 
-    public var log: Logger {
-        var l = ActorLogger.make(system: self)
-        l.logLevel = self.settings.logging.defaultLevel
-        return l
-    }
+    /// Root logger of this actor system, as configured in `LoggingSettings`.
+    public let log: LoggerWithSource
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Shutdown
@@ -188,29 +185,22 @@ public final class ActorSystem {
         let initializationLock = ReadWriteLock()
         self.lazyInitializationLock = initializationLock
 
+        var rootLogger = settings.logging.logger
+        if settings.cluster.enabled {
+            rootLogger[metadataKey: "actor/node"] = "\(settings.cluster.uniqueBindNode)"
+        }
+        rootLogger[metadataKey: "actor/nodeName"] = "\(self.name)"
+        self.log = rootLogger.withSource("ActorSystem(\(self.name))")
+
+        // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
+
         // serialization
         initializationLock.withWriterLockVoid {
             self._serialization = Serialization(settings: settings, system: self)
         }
 
-        // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv
-
         // dead letters init
-        let overrideLogger: Logger? = settings.logging.overrideLoggerFactory.map { f in f("\(ActorPath._deadLetters)") }
-        var deadLogger = overrideLogger ?? Logger(
-            label: "\(ActorPath._deadLetters)",
-            factory: {
-                let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.logging.useBuiltInFormatter, dispatcher: nil)
-                if settings.cluster.enabled {
-                    context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindNode)
-                }
-                context[metadataKey: "nodeName"] = .stringConvertible(name)
-                return ActorOriginLogHandler(context)
-            }
-        )
-        deadLogger.logLevel = settings.logging.defaultLevel
-
-        self._deadLetters = ActorRef(.deadLetters(.init(deadLogger, address: ActorAddress._deadLetters, system: self)))
+        self._deadLetters = ActorRef(.deadLetters(.init(rootLogger, address: ActorAddress._deadLetters, system: self)))
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", system: self))

@@ -25,7 +25,7 @@ extension Serialization {
     ///
     /// Context MAY be accessed concurrently be encoders/decoders.
     public struct Context {
-        public let log: Logger
+        public let log: LoggerWithSource
         public let system: ActorSystem
 
         public var serialization: Serialization {
@@ -40,7 +40,7 @@ extension Serialization {
             self.system.cluster.node
         }
 
-        internal init(log: Logger, system: ActorSystem, allocator: NIO.ByteBufferAllocator) {
+        internal init(log: LoggerWithSource, system: ActorSystem, allocator: NIO.ByteBufferAllocator) {
             self.log = log
             self.system = system
             self.allocator = allocator

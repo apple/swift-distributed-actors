@@ -65,11 +65,24 @@ public struct LoggingSettings {
     public static let `default` = LoggingSettings()
 
     /// At what level should the library actually log and print logs // TODO: We'd want to replace this by proper log handlers which allow config by labels
-    public var defaultLevel: Logger.Level = .info // TODO: maybe remove this? should be up to logging library to configure for us as well
+    public var logLevel: Logger.Level { // TODO: deprecate
+        get {
+            self.logger.logLevel
+        }
+        set {
+            self.logger.logLevel = newValue
+        }
+    }
 
-    /// Optionally override Logger that shall be offered to actors and the system.
-    /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
-    public var overrideLoggerFactory: ((String) -> Logger)?
+    public var logger: Logger = LoggingSettings.makeDefaultLogger()
+
+    static func makeDefaultLogger() -> Logger {
+        Logger(label: "<<ActorSystem>>")
+    }
+
+//    /// Optionally override Logger that shall be offered to actors and the system.
+//    /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
+//    public var overrideLoggerFactory: ((String) -> Logger)?
 
     // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
     // logs are hard to follow with not consistent order of metadata etc (like system address etc).

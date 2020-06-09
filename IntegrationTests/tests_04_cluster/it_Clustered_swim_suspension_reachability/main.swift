@@ -26,7 +26,7 @@ guard args.count >= 1 else {
 }
 
 let system = ActorSystem("System") { settings in
-    settings.logging.defaultLevel = .info
+    settings.logging.logLevel = .info
 
     settings.cluster.enabled = true
     settings.cluster.bindPort = Int(args[0])!

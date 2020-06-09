@@ -17,6 +17,7 @@
 import Dispatch
 import DistributedActors
 import Files
+import Logging
 import XPC
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
@@ -76,8 +77,8 @@ internal final class XPCServiceCellDelegate<Message: ActorMessage>: CellDelegate
         master.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
 
         xpc_connection_set_event_handler(self.peer) { (xdict: xpc_object_t) in
-            var log = ActorLogger.make(system: system, identifier: "\(myself.address.name)")
-            log[metadataKey: "actorPath"] = "\(address)"
+            var log = system.log.logger.withSource("XPCService:\(myself.address.name)")
+            log[metadataKey: "actor/path"] = "\(address)"
             // TODO: connection id?
 
             switch xpc_get_type(xdict) {

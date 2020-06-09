@@ -34,11 +34,9 @@ public final class LogCapture {
         self.settings = settings
     }
 
-    public func loggerFactory(captureLabel: String) -> ((String) -> Logger) {
-        self.captureLabel = captureLabel
-        return { (label: String) in
-            Logger(label: "LogCapture(\(captureLabel) \(label))", LogCaptureLogHandler(label: label, self))
-        }
+    public func logger(label: String) -> Logger {
+        self.captureLabel = label
+        return Logger(label: "LogCapture(\(label))", LogCaptureLogHandler(label: label, self))
     }
 
     func append(_ log: CapturedLogMessage) {
@@ -105,23 +103,18 @@ extension LogCapture {
     public func printLogs() {
         for log in self.logs {
             var metadataString: String = ""
-            var label = "[/?]"
+            var actorPath: String = ""
             if var metadata = log.metadata {
-                if let labelMeta = metadata.removeValue(forKey: "label") {
-                    switch labelMeta {
-                    case .string(let l):
-                        label = "[\(l)]"
-                    case .stringConvertible(let c):
-                        label = "[\(c)]"
-                    default:
-                        label = "[/?]"
-                    }
+                if let path = metadata.removeValue(forKey: "actor/path") {
+                    actorPath = "[\(path)]"
                 }
 
                 if !metadata.isEmpty {
                     metadataString = "\n// metadata:\n"
                     for key in metadata.keys.sorted() where key != "label" {
-                        var allString = "\n// \"\(key)\": \(metadata[key]!)"
+                        let valueDescription = self.prettyPrint(metadata: metadata[key]!)
+
+                        var allString = "\n// \"\(key)\": \(valueDescription)"
                         if allString.contains("\n") {
                             allString = String(
                                 allString.split(separator: "\n").map { valueLine in
@@ -141,8 +134,31 @@ extension LogCapture {
             let date = ActorOriginLogHandler._createFormatter().string(from: log.date)
             let file = log.file.split(separator: "/").last ?? ""
             let line = log.line
-            print("Captured log [\(self.captureLabel)][\(date)] [\(file):\(line)]\(label) [\(log.level)] \(log.message)\(metadataString)")
+            print("Captured log [\(self.captureLabel)][\(date)] [\(file):\(line)]\(actorPath) [\(log.level)] \(log.message)\(metadataString)")
         }
+    }
+
+    internal func prettyPrint(metadata: Logger.MetadataValue) -> String {
+        let CONSOLE_RESET = "\u{001B}[0;0m"
+        let CONSOLE_BOLD = "\u{001B}[1m"
+
+        var valueDescription = ""
+        switch metadata {
+        case .string(let string):
+            valueDescription = string
+        case .stringConvertible(let convertible as CustomPrettyStringConvertible):
+            valueDescription = convertible.prettyDescription
+        case .stringConvertible(let convertible):
+            valueDescription = convertible.description
+        case .array(let array):
+            valueDescription = "\n  \(array.map { "\($0)" }.joined(separator: "\n  "))"
+        case .dictionary(let metadata):
+            for k in metadata.keys {
+                valueDescription += "\(CONSOLE_BOLD)\(k)\(CONSOLE_RESET): \(self.prettyPrint(metadata: metadata[k]!))"
+            }
+        }
+
+        return valueDescription
     }
 }
 
@@ -151,6 +167,7 @@ public struct CapturedLogMessage {
     let level: Logger.Level
     var message: Logger.Message
     var metadata: Logger.Metadata?
+    let source: String
     let file: String
     let function: String
     let line: UInt
@@ -168,7 +185,7 @@ struct LogCaptureLogHandler: LogHandler {
         self.capture = capture
     }
 
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
+    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
         guard self.capture.settings.filterActorPaths.contains(where: { path in self.label.starts(with: path) }) else {
             return // ignore this actor's logs, it was filtered out
         }
@@ -186,7 +203,7 @@ struct LogCaptureLogHandler: LogHandler {
         var _metadata: Logger.Metadata = metadata ?? [:]
         _metadata["label"] = "\(self.label)"
 
-        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
+        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, source: source, file: file, function: function, line: line))
     }
 
     public subscript(metadataKey _: String) -> Logger.Metadata.Value? {
