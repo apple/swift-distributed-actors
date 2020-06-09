@@ -494,7 +494,7 @@ internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable, CustomSt
     }
 
     var description: String {
-        "AnyRegistrationKey()\(self.id)"
+        "AnyRegistrationKey(\(self.id))"
     }
 
     func hash(into hasher: inout Hasher) {
