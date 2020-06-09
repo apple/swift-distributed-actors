@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
 internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
     let settings: Settings
@@ -211,7 +213,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         context.log.trace("Sending gossip to \(target.address)", metadata: [
             "gossip/target": "\(target.address)",
             "gossip/peers/count": "\(self.peers.count)",
-            "actor/message": "\(payload)",
+            "actor/message": Logger.Metadata.pretty(payload),
         ])
 
         let ack = target.ask(for: GossipACK.self, timeout: .seconds(3)) { replyTo in

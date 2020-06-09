@@ -577,7 +577,7 @@ public class Guardian {
                     let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ActorSystem! " +
                         "(This can be configured in `system.settings.failure.onGuardianFailure`). " +
                         "Failure was: \(failure)"
-                    system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
+                    system.log.error("\(message)", metadata: ["actor/path": "\(self.address.path)"])
 
                     _ = try! Thread {
                         system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
@@ -588,7 +588,7 @@ public class Guardian {
                     #else
                     case .systemExit(let code):
                         let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"
-                        system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
+                        system.log.error("\(message)", metadata: ["actor/path": "\(self.address.path)"])
                         print(message) // TODO: to stderr
 
                         POSIXProcessUtils._exit(Int32(code))

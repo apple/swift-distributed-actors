@@ -71,7 +71,7 @@ extension ActorSystem {
             ///
             /// We don't apply the special /dead path, as to not complicate diagnosing who actually terminated or if we were accidentally sent
             /// a remote actor ref that was dead(!)
-            return ActorRef(.deadLetters(.init(self.log, address: recipient, system: self))).adapt(from: Message.self)
+            return ActorRef(.deadLetters(.init(self.log.logger, address: recipient, system: self))).adapt(from: Message.self)
         }
 
         let localRecipient: ActorAddress
@@ -82,7 +82,7 @@ extension ActorSystem {
             // drop the node from the address; and prepend it as known-to-be-dead
             localRecipient = ActorAddress(path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
         }
-        return ActorRef(.deadLetters(.init(self.log, address: localRecipient, system: self))).adapt(from: Message.self)
+        return ActorRef(.deadLetters(.init(self.log.logger, address: localRecipient, system: self))).adapt(from: Message.self)
     }
 
     /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
@@ -140,11 +140,11 @@ extension ActorSystem {
 /// but not for anything more -- users shall assume that their communication is correct and only debug why a dead reference appeared if it indeed does happen.
 public final class DeadLetterOffice {
     let _address: ActorAddress
-    let log: Logger
+    let log: LoggerWithSource
     weak var system: ActorSystem?
 
     init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {
-        self.log = log
+        self.log = log.withSource("DeadLetters")
         self._address = address
         self.system = system
     }
@@ -178,10 +178,7 @@ public final class DeadLetterOffice {
         // as that may then change ordering; if multiple onDeadLetter executions are ongoing, we want
         // all of them to be piped to the exact same logging handler, do not create a new Logging.Logger() here (!)
 
-        var metadata: Logger.Metadata = [
-            "deadLetter": "1", // marker, can be used by logging tools to easily capture all dead letter logging
-            // TODO: could coalesce and bump a counter if many times the same dead letter is logged
-        ]
+        var metadata: Logger.Metadata = [:]
 
         let recipientString: String
         if let recipient = deadLetter.recipient {
@@ -199,7 +196,7 @@ public final class DeadLetterOffice {
                 }
             }
 
-            metadata["actorPath"] = Logger.MetadataValue.stringConvertible(deadAddress)
+            metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadAddress)
             recipientString = "to [\(String(reflecting: recipient.debugDescription))]"
         } else {
             recipientString = ""

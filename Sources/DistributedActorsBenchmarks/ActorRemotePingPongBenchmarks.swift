@@ -66,12 +66,12 @@ var _pongNode: ActorSystem?
 
 private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("PingNode") { settings in
-        settings.logging.defaultLevel = .error
+        settings.logging.logLevel = .error
         settings.cluster.enabled = true
         settings.cluster.node.port = 7111
     }
     _pongNode = ActorSystem("PongNode") { settings in
-        settings.logging.defaultLevel = .error
+        settings.logging.logLevel = .error
         settings.cluster.enabled = true
         settings.cluster.node.port = 7222
     }

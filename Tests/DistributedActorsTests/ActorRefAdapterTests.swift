@@ -233,9 +233,9 @@ class ActorRefAdapterTests: ActorSystemTestBase {
     }
 
     func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() throws {
-        let logCaptureHandler = LogCapture()
+        let logCapture = LogCapture()
         let system = ActorSystem("\(type(of: self))-2") { settings in
-            settings.logging.overrideLoggerFactory = logCaptureHandler.loggerFactory(captureLabel: settings.cluster.node.systemName)
+            settings.logging.logger = logCapture.logger(label: settings.cluster.node.systemName)
         }
         defer { system.shutdown().wait() }
 
@@ -268,7 +268,7 @@ class ActorRefAdapterTests: ActorSystemTestBase {
         let expectedLine = #line - 1
         let expectedFile = #file
 
-        try logCaptureHandler.shouldContain(
+        try logCapture.shouldContain(
             message: "*was not delivered to [*", at: .info,
             expectedFile: expectedFile, expectedLine: expectedLine
         )
