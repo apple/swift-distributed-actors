@@ -410,26 +410,6 @@ extension ClusterShell {
                     props: ._wellKnown
                 )
 
-//                let gossipControl = try GossipShell.start(
-//                    context, name: "\(ActorAddress._clusterGossip.name)",
-//                    of: Cluster.Gossip.self, ofMetadata: Cluster.Gossip.SeenTable.self,
-//                    props: ._wellKnown,
-//                    settings: .init(
-//                        gossipInterval: .seconds(1),
-//                        // TODO make a protocol to capture all those behaviors GossipLogic / GossipInstance
-//                        onGossipReceived: { identifier, payload, _ in
-//                            assert(identifier.gossipIdentifier == ClusterShell.gossipID.gossipIdentifier, "Received gossip with unexpected identifier [\(identifier)], expected: \(ClusterShell.gossipID)")
-//                            // note that this is on the gossiper's thread, the only thing we can do here is to forward the message
-//                            context.myself.tell(.gossipFromGossiper(payload))
-//                        },
-//                        onGossipRound: { identity, envelope in
-//                            // OMG need futures so badly...!
-//                            // we need to check with the actor what to do about this gossip round technically speaking
-//                            envelope
-//                        }
-//                    )
-//                )
-
                 let state = ClusterShellState(
                     settings: clusterSettings,
                     channel: chan,

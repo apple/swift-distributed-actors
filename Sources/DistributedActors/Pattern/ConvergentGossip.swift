@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
 internal final class ConvergentGossip<Payload: ActorMessage> {
     typealias GossipPeerRef = ActorRef<Message>
@@ -104,7 +106,7 @@ internal final class ConvergentGossip<Payload: ActorMessage> {
         context.log.trace(
             "Gossip payload updated: \(payload)",
             metadata: [
-                "actor/message": "\(payload)",
+                "actor/message": Logger.Metadata.pretty(payload),
                 "gossip/previousPayload": "\(self.payload, orElse: "nil")",
             ]
         )
@@ -141,7 +143,7 @@ internal final class ConvergentGossip<Payload: ActorMessage> {
                 "gossip/target": "\(target.address)",
                 "gossip/peerCount": "\(self.peers.count)",
                 "gossip/peers": "\(self.peers.map { $0.address })",
-                "actor/message": "\(envelope)",
+                "actor/message": Logger.Metadata.pretty(envelope),
             ]
         )
 

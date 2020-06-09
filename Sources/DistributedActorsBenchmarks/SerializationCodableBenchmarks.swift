@@ -41,7 +41,7 @@ public let SerializationCodableBenchmarks: [BenchmarkInfo] = [
 
 private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("SerializationCodableBenchmarks") { settings in
-        settings.logging.defaultLevel = .error
+        settings.logging.logLevel = .error
     }
     postSetUp()
 }
