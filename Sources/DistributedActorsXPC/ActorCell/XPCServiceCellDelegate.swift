@@ -77,7 +77,7 @@ internal final class XPCServiceCellDelegate<Message: ActorMessage>: CellDelegate
         master.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
 
         xpc_connection_set_event_handler(self.peer) { (xdict: xpc_object_t) in
-            var log = system.log.logger.withSource("XPCService:\(myself.address.name)")
+            var log = system.log
             log[metadataKey: "actor/path"] = "\(address)"
             // TODO: connection id?
 

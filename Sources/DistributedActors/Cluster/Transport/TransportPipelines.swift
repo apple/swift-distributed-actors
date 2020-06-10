@@ -35,11 +35,11 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
     typealias InboundOut = ByteBuffer
     typealias OutboundOut = ByteBuffer
 
-    private let log: LoggerWithSource
+    private let log: Logger
     private let handshakeOffer: Wire.HandshakeOffer
     private let cluster: ClusterShell.Ref
 
-    init(log: LoggerWithSource, handshakeOffer: Wire.HandshakeOffer, cluster: ClusterShell.Ref) {
+    init(log: Logger, handshakeOffer: Wire.HandshakeOffer, cluster: ClusterShell.Ref) {
         self.log = log
         self.handshakeOffer = handshakeOffer
         self.cluster = cluster
@@ -112,11 +112,11 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
     typealias InboundIn = ByteBuffer
     typealias InboundOut = Never
 
-    private let log: LoggerWithSource
+    private let log: Logger
     private let cluster: ClusterShell.Ref
     private let localNode: UniqueNode
 
-    init(log: LoggerWithSource, cluster: ClusterShell.Ref, localNode: UniqueNode) {
+    init(log: Logger, cluster: ClusterShell.Ref, localNode: UniqueNode) {
         self.log = log
         self.cluster = cluster
         self.localNode = localNode
@@ -251,9 +251,9 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = Wire.Envelope
 
-    let log: LoggerWithSource
+    let log: Logger
 
-    init(log: LoggerWithSource) {
+    init(log: Logger) {
         self.log = log
     }
 
@@ -290,10 +290,10 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
     typealias OutboundIn = TransportEnvelope
     typealias OutboundOut = Wire.Envelope
 
-    let log: LoggerWithSource
+    let log: Logger
     let serializationPool: SerializationPool
 
-    init(log: LoggerWithSource, serializationPool: SerializationPool) {
+    init(log: Logger, serializationPool: SerializationPool) {
         self.log = log
         self.serializationPool = serializationPool
     }
@@ -353,7 +353,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     typealias InboundIn = Wire.Envelope // we handle deserialization in case it is about a system message (since message == system message envelope)
     typealias InboundOut = Wire.Envelope // we pass along user messages; all system messages are handled in-place here (ack, nack), or delivered directly to the recipient from this handler
 
-    private let log: LoggerWithSource
+    private let log: Logger
     private let system: ActorSystem
     private let clusterShell: ClusterShell.Ref
 
@@ -366,7 +366,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     private var redeliveryScheduled: Scheduled<RedeliveryTick>?
 
     init(
-        log: LoggerWithSource,
+        log: Logger,
         system: ActorSystem,
         cluster: ClusterShell.Ref,
         serializationPool: SerializationPool,
@@ -602,12 +602,12 @@ private final class UserMessageHandler: ChannelInboundHandler {
     typealias InboundIn = Wire.Envelope
     typealias InboundOut = Never // we terminate here, by sending messages off to local actors
 
-    let log: LoggerWithSource
+    let log: Logger
 
     let system: ActorSystem
     let serializationPool: SerializationPool
 
-    init(log: LoggerWithSource, system: ActorSystem, serializationPool: SerializationPool) {
+    init(log: Logger, system: ActorSystem, serializationPool: SerializationPool) {
         self.log = log
         self.system = system
         self.serializationPool = serializationPool
@@ -649,9 +649,9 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
 
     let role: HandlerRole
-    var log: LoggerWithSource
+    var log: Logger
 
-    init(role: HandlerRole, log: LoggerWithSource) {
+    init(role: HandlerRole, log: Logger) {
         self.role = role
         self.log = log
     }
@@ -708,7 +708,8 @@ extension ClusterShell {
                     }
                 }
 
-                let log = LoggerWithSource(system.log.logger, source: "/system/transport.server")
+                var log = system.log
+                log[metadataKey: "actor/path"] = "/system/transport.server" // TODO: this is a fake path, we could use log source: here if it gets merged
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS! // TODO: tests about killing connections the hard way
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
@@ -771,7 +772,8 @@ extension ClusterShell {
                     }
                 }
 
-                let log = LoggerWithSource(system.log.logger, source: "/system/transport.client")
+                var log = system.log
+                log[metadataKey: "actor/path"] = "/system/transport.client" // TODO: this is a fake path, we could use log source: here if it gets merged
 
                 // FIXME: PASS IN FROM ASSOCIATION SINCE MUST SURVIVE CONNECTIONS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 let outboundSysMsgs = OutboundSystemMessageRedelivery(settings: .default)
