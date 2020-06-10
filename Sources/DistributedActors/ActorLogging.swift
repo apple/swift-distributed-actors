@@ -74,7 +74,7 @@ internal final class LoggingContext {
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 public struct ActorLogger {
     public static func make<T>(context: ActorContext<T>) -> Logger {
-        var log = context.system.log.logger
+        var log = context.system.log
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(context.path)
         return log
     }
@@ -116,7 +116,7 @@ public struct ActorOriginLogHandler: LogHandler {
     public init(_ system: ActorSystem, identifier: String? = nil) {
         self.init(
             LoggingContext(
-                logger: system.log.logger,
+                logger: system.log,
                 identifier: identifier ?? system.name,
                 useBuiltInFormatter: system.settings.logging.useBuiltInFormatter,
                 dispatcher: { () in _hackyPThreadThreadId() }

@@ -26,10 +26,6 @@ final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
         ]
     }
 
-//    override var alwaysPrintCaptureLogs: Bool {
-//        true
-//    }
-
     func test_singletonByClusterLeadership_happyPath() throws {
         try shouldNotThrow {
             var singletonSettings = ActorSingletonSettings(name: GreeterSingleton.name)

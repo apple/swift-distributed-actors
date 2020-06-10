@@ -109,7 +109,7 @@ public final class ActorSystem {
     // MARK: Logging
 
     /// Root logger of this actor system, as configured in `LoggingSettings`.
-    public let log: LoggerWithSource
+    public let log: Logger
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Shutdown
@@ -190,7 +190,7 @@ public final class ActorSystem {
             rootLogger[metadataKey: "actor/node"] = "\(settings.cluster.uniqueBindNode)"
         }
         rootLogger[metadataKey: "actor/nodeName"] = "\(self.name)"
-        self.log = rootLogger.withSource("ActorSystem(\(self.name))")
+        self.log = rootLogger
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 

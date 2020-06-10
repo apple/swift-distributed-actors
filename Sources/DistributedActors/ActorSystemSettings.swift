@@ -64,8 +64,12 @@ extension Array where Element == ActorTransport {
 public struct LoggingSettings {
     public static let `default` = LoggingSettings()
 
-    /// At what level should the library actually log and print logs // TODO: We'd want to replace this by proper log handlers which allow config by labels
-    public var logLevel: Logger.Level { // TODO: deprecate
+    /// Customize the default log level of the `system.log` (and `context.log`) loggers.
+    ///
+    /// This this modifies the current "base" logger which is `LoggingSettings.logger`,
+    /// it is also possible to change the logger itself, e.g. if you care about reusing a specific logger
+    /// or need to pass metadata through all loggers in the actor system.
+    public var logLevel: Logger.Level {
         get {
             self.logger.logLevel
         }
@@ -77,12 +81,8 @@ public struct LoggingSettings {
     public var logger: Logger = LoggingSettings.makeDefaultLogger()
 
     static func makeDefaultLogger() -> Logger {
-        Logger(label: "<<ActorSystem>>")
+        Logger(label: "<<ActorSystem>>") // replaced by specific system name during startup
     }
-
-//    /// Optionally override Logger that shall be offered to actors and the system.
-//    /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
-//    public var overrideLoggerFactory: ((String) -> Logger)?
 
     // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
     // logs are hard to follow with not consistent order of metadata etc (like system address etc).
