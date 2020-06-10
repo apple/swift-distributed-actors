@@ -363,8 +363,8 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
         self.system.deadLetters.adapted()
     }
 
-    private lazy var _log: LoggerWithSource = Logger(label: "\(type(of: self))").withSource("ActorTestKit/Logger")
-    override var log: LoggerWithSource {
+    private lazy var _log: Logger = Logger(label: "\(type(of: self))")
+    override var log: Logger {
         get {
             self._log
         }

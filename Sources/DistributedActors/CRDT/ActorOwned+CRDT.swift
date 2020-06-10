@@ -190,7 +190,7 @@ extension CRDT {
         }
 
         internal struct ActorOwnedContext<DataType: CvRDT> {
-            let log: LoggerWithSource
+            let log: Logger
             let eventLoopGroup: MultiThreadedEventLoopGroup
 
             let subReceive: ActorRef<CRDT.Replication.DataOwnerMessage>

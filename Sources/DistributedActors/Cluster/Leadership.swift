@@ -50,7 +50,7 @@ public protocol LeaderElection {
 }
 
 public struct LeaderElectionContext {
-    public var log: LoggerWithSource
+    public var log: Logger
     public let loop: EventLoop
 
     internal init<M>(_ ownerContext: ActorContext<M>) {
@@ -58,7 +58,7 @@ public struct LeaderElectionContext {
         self.loop = ownerContext.system._eventLoopGroup.next()
     }
 
-    internal init(log: LoggerWithSource, eventLoop: EventLoop) {
+    internal init(log: Logger, eventLoop: EventLoop) {
         self.log = log
         self.loop = eventLoop
     }

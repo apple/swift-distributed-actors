@@ -16,16 +16,17 @@ import DistributedActorsConcurrencyHelpers
 import Foundation
 import Logging
 
+/// :nodoc:
 /// - Warning: NOT thread safe! Only use from Actors, properly synchronize access, or create multiple instances for each execution context.
 // TODO: deprecate, we should not need this explicit type
-public class LoggingContext {
+internal final class LoggingContext {
     let identifier: String
 
     // TODO: want to eventually not have this; also move to more structured logging perhaps...
     /// If `true` the built-in "pretty" formatter should be used, rather than passing verbatim to underlying `LogHandler`
     let useBuiltInFormatter: Bool
 
-    let logger: LoggerWithSource
+    let logger: Logger
 
     @usableFromInline
     internal var _storage: Logger.Metadata = [:]
@@ -40,7 +41,7 @@ public class LoggingContext {
     }
 
     public init(logger: Logger, identifier: String, useBuiltInFormatter: Bool, dispatcher: (() -> String)?) {
-        self.logger = LoggerWithSource(logger, source: identifier)
+        self.logger = logger
         self.identifier = identifier
         self.useBuiltInFormatter = useBuiltInFormatter
         if let makeDispatcherName = dispatcher {
@@ -72,46 +73,10 @@ public class LoggingContext {
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 public struct ActorLogger {
-    public static func make<T>(context: ActorContext<T>) -> LoggerWithSource {
-//        if let overriddenLoggerFactory = context.system.settings.logging.overrideLoggerFactory {
-//            return overriddenLoggerFactory("\(context.path)")
-//        }
-
-        // var proxyHandler = ActorOriginLogHandler(context)
-//        proxyHandler.metadata["actorPath"] = "\(context.path)"
-//        if context.system.settings.cluster.enabled {
-//            proxyHandler.metadata["node"] = "\(context.system.settings.cluster.node)"
-//        } else {
-//            proxyHandler.metadata["nodeName"] = "\(context.system.name)"
-//        }
-
-        // var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
-        var log = context.system.log
-
-        log.logLevel = context.system.settings.logging.logLevel
-        return .init(log.logger, source: "\(context.path)")
-    }
-
-    public static func make(system: ActorSystem, identifier: String? = nil) -> LoggerWithSource {
-//        if let overriddenLoggerFactory = system.settings.logging.overrideLoggerFactory {
-//            return overriddenLoggerFactory(identifier ?? system.name)
-//        }
-
-//        // we need to add our own storage, and can't do so to Logger since it is a struct...
-//        // so we need to make such "proxy log handler", that does out actor specific things.
-//        var proxyHandler = ActorOriginLogHandler(system)
-//        if system.settings.cluster.enabled {
-//            proxyHandler.metadata["node"] = .lazyStringConvertible { () in
-//                system.settings.cluster.node
-//            }
-//        } else {
-//            proxyHandler.metadata["nodeName"] = .string(system.name)
-//        }
-
-//        var log = Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
-        var log = system.log
-        log.logLevel = system.settings.logging.logLevel
-        return .init(log.logger, source: identifier ?? system.name)
+    public static func make<T>(context: ActorContext<T>) -> Logger {
+        var log = context.system.log.logger
+        log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(context.path)
+        return log
     }
 }
 
@@ -127,20 +92,20 @@ public struct ActorOriginLogHandler: LogHandler {
 
     private let context: LoggingContext
 
-    private var targetLogger: LoggerWithSource
+    private var targetLogger: Logger
 
-    public init(_ context: LoggingContext) {
+    internal init(_ context: LoggingContext) {
         self.context = context
 
         self.targetLogger = context.logger
         self.targetLogger.logLevel = self.logLevel
     }
 
-    public init<T>(_ context: ActorContext<T>) {
+    internal init<T>(_ context: ActorContext<T>) {
         let dispatcherName = context.props.dispatcher.name
         self.init(
             LoggingContext(
-                logger: context.log.logger,
+                logger: context.log,
                 identifier: context.path.description,
                 useBuiltInFormatter: context.system.settings.logging.useBuiltInFormatter,
                 dispatcher: { () in dispatcherName } // beware of closing over the context here (!)
@@ -179,70 +144,74 @@ public struct ActorOriginLogHandler: LogHandler {
     internal func invokeConfiguredLoggingInfra(_ logMessage: LogMessage) {
         // TODO: here we can either log... or dispatch to actor... or invoke Logging. etc
 
-        if self.context.useBuiltInFormatter {
-            var l = logMessage
-
-            let dispatcherPart: String
-            if let d = l.effectiveMetadata?.removeValue(forKey: "dispatcher") {
-                dispatcherPart = "[\(d)]"
-            } else {
-                dispatcherPart = ""
-            }
-            let actorPathPart: String
-            if let d = l.effectiveMetadata?.removeValue(forKey: "actorPath") {
-                actorPathPart = "[\(d)]"
-            } else {
-                actorPathPart = ""
-            }
-
-            let actorSystemIdentity: String
-            if let d = l.effectiveMetadata?.removeValue(forKey: "node") {
-                actorSystemIdentity = "[\(d)]"
-            } else {
-                if let name = l.effectiveMetadata?.removeValue(forKey: "nodeName") {
-                    actorSystemIdentity = "[\(name)]"
-                } else {
-                    actorSystemIdentity = ""
-                }
-            }
-
-            var msg = ""
-            msg += "\(actorSystemIdentity)"
-            msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
-            msg += "\(dispatcherPart)"
-            msg += "\(actorPathPart)"
-            msg += " \(l.message)"
-
-            if ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil {
-                if let metadata = l.effectiveMetadata, !metadata.isEmpty {
-                    var metadataString = "\n// metadata:\n"
-                    for key in metadata.keys.sorted() where key != "label" {
-                        var allString = "\n// \"\(key)\": \(metadata[key]!)"
-                        if allString.contains("\n") {
-                            allString = String(
-                                allString.split(separator: "\n").map { valueLine in
-                                    if valueLine.starts(with: "// ") {
-                                        return "\(valueLine)\n"
-                                    } else {
-                                        return "// \(valueLine)\n"
-                                    }
-                                }.joined(separator: "")
-                            )
-                        }
-                        metadataString.append(allString)
-                    }
-                    metadataString = String(metadataString.dropLast(1))
-
-                    msg += metadataString
-                }
-                self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
-            } else {
-                self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
-            }
-
-        } else {
+        guard self.context.useBuiltInFormatter else {
             self.targetLogger.log(level: logMessage.level, logMessage.message, metadata: self.metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            return
         }
+
+        var l = logMessage
+
+        let dispatcherPart: String
+        if let d = l.effectiveMetadata?.removeValue(forKey: "dispatcher") {
+            dispatcherPart = "[\(d)]"
+        } else {
+            dispatcherPart = ""
+        }
+
+        let actorPathPart: String
+        if let d = l.effectiveMetadata?.removeValue(forKey: "actor/path") {
+            actorPathPart = "[\(d)]"
+        } else {
+            actorPathPart = ""
+        }
+
+        let actorSystemIdentity: String
+        if let d = l.effectiveMetadata?.removeValue(forKey: "actor/node") {
+            actorSystemIdentity = "[\(d)]"
+        } else {
+            if let name = l.effectiveMetadata?.removeValue(forKey: "actor/nodeName") {
+                actorSystemIdentity = "[\(name)]"
+            } else {
+                actorSystemIdentity = ""
+            }
+        }
+
+        var msg = ""
+        msg += "\(actorSystemIdentity)"
+        msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]" // we only print "file" rather than full path
+        msg += "\(dispatcherPart)"
+        msg += "\(actorPathPart)"
+        msg += " \(l.message)"
+
+        guard ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil else {
+            // no "pretty" logging
+            self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            return
+        }
+
+        // "pretty" logging
+        if let metadata = l.effectiveMetadata, !metadata.isEmpty {
+            var metadataString = "\n// metadata:\n"
+            for key in metadata.keys.sorted() where key != "label" {
+                var allString = "\n// \"\(key)\": \(metadata[key]!)"
+                if allString.contains("\n") {
+                    allString = String(
+                        allString.split(separator: "\n").map { valueLine in
+                            if valueLine.starts(with: "// ") {
+                                return "\(valueLine)\n"
+                            } else {
+                                return "// \(valueLine)\n"
+                            }
+                        }.joined(separator: "")
+                    )
+                }
+                metadataString.append(allString)
+            }
+            metadataString = String(metadataString.dropLast(1))
+
+            msg += metadataString
+        }
+        self.targetLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: [:], file: logMessage.file, function: logMessage.function, line: logMessage.line)
     }
 
     // TODO: hope to remove this one
@@ -255,14 +224,11 @@ public struct ActorOriginLogHandler: LogHandler {
         }
     }
 
-    private var _logLevel: Logger.Level = .info
-
     public var logLevel: Logger.Level {
         get {
-            self._logLevel
+            self.targetLogger.logLevel
         }
         set {
-            self._logLevel = newValue
             self.targetLogger.logLevel = newValue
         }
     }
@@ -310,8 +276,21 @@ public struct LogMessage {
 
 // MARK: Extend logging metadata storage capabilities
 
+extension Logger.Metadata {
+    public static func pretty<T>(_ value: T) -> Logger.Metadata.Value where T: CustomPrettyStringConvertible {
+        .string(value.prettyDescription)
+    }
+
+    public static func pretty<T>(_ value: T) -> Logger.Metadata.Value {
+        if let pretty = value as? CustomPrettyStringConvertible {
+            return .string(pretty.prettyDescription)
+        } else {
+            return .string("\(value)")
+        }
+    }
+}
+
 extension Optional where Wrapped == Logger.MetadataValue {
-    /// Delays rendering of value by boxing it in a `LazyMetadataBox`
     public static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
         .stringConvertible(LazyMetadataBox { makeValue() })
     }

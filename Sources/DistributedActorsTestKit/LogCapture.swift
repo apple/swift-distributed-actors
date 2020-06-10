@@ -103,7 +103,12 @@ extension LogCapture {
     public func printLogs() {
         for log in self.logs {
             var metadataString: String = ""
-            if let metadata = log.metadata {
+            var actorPath: String = ""
+            if var metadata = log.metadata {
+                if let path = metadata.removeValue(forKey: "actor/path") {
+                    actorPath = "[\(path)]"
+                }
+
                 if !metadata.isEmpty {
                     metadataString = "\n// metadata:\n"
                     for key in metadata.keys.sorted() where key != "label" {
@@ -129,7 +134,7 @@ extension LogCapture {
             let date = ActorOriginLogHandler._createFormatter().string(from: log.date)
             let file = log.file.split(separator: "/").last ?? ""
             let line = log.line
-            print("Captured log [\(self.captureLabel)][\(date)] [\(file):\(line)][\(log.source)] [\(log.level)] \(log.message)\(metadataString)")
+            print("Captured log [\(self.captureLabel)][\(date)] [\(file):\(line)]\(actorPath) [\(log.level)] \(log.message)\(metadataString)")
         }
     }
 

@@ -180,7 +180,7 @@ public class Serialization {
 
         self.allocator = self.settings.allocator
 
-        var log = LoggerWithSource(system.log.logger, source: "serialization")
+        var log = system.log.logger.withSource("serialization")
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
         log.logLevel = systemSettings.logging.logLevel

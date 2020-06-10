@@ -144,7 +144,7 @@ public final class DeadLetterOffice {
     weak var system: ActorSystem?
 
     init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {
-        self.log = LoggerWithSource(log, source: "\(address.path)")
+        self.log = log.withSource("DeadLetters")
         self._address = address
         self.system = system
     }
@@ -178,10 +178,7 @@ public final class DeadLetterOffice {
         // as that may then change ordering; if multiple onDeadLetter executions are ongoing, we want
         // all of them to be piped to the exact same logging handler, do not create a new Logging.Logger() here (!)
 
-        var metadata: Logger.Metadata = [
-            "deadLetter": "1", // marker, can be used by logging tools to easily capture all dead letter logging
-            // TODO: could coalesce and bump a counter if many times the same dead letter is logged
-        ]
+        var metadata: Logger.Metadata = [:]
 
         let recipientString: String
         if let recipient = deadLetter.recipient {
@@ -199,7 +196,7 @@ public final class DeadLetterOffice {
                 }
             }
 
-            metadata["actorPath"] = Logger.MetadataValue.stringConvertible(deadAddress)
+            metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadAddress)
             recipientString = "to [\(String(reflecting: recipient.debugDescription))]"
         } else {
             recipientString = ""

@@ -187,9 +187,9 @@ public final class ActorSystem {
 
         var rootLogger = settings.logging.logger
         if settings.cluster.enabled {
-            rootLogger[metadataKey: "node"] = "\(settings.cluster.uniqueBindNode)"
+            rootLogger[metadataKey: "actor/node"] = "\(settings.cluster.uniqueBindNode)"
         }
-        rootLogger[metadataKey: "nodeName"] = "\(self.name)"
+        rootLogger[metadataKey: "actor/nodeName"] = "\(self.name)"
         self.log = rootLogger.withSource("ActorSystem(\(self.name))")
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
@@ -200,19 +200,6 @@ public final class ActorSystem {
         }
 
         // dead letters init
-//        let overrideLogger: Logger? = settings.logging.overrideLoggerFactory.map { f in f("\(ActorPath._deadLetters)") }
-//        var deadLogger = overrideLogger ?? Logger(
-//            label: "\(ActorPath._deadLetters)",
-//            factory: {
-//                let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.logging.useBuiltInFormatter, dispatcher: nil)
-//                if settings.cluster.enabled {
-//                    context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindNode)
-//                }
-//                context[metadataKey: "nodeName"] = .stringConvertible(name)
-//                return ActorOriginLogHandler(context)
-//            }
-//        )
-//        deadLogger.logLevel = settings.logging.defaultLevel
         self._deadLetters = ActorRef(.deadLetters(.init(rootLogger, address: ActorAddress._deadLetters, system: self)))
 
         // actor providers

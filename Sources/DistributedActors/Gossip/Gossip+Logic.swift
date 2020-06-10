@@ -103,7 +103,7 @@ public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol> {
         self.ownerContext.myself.address
     }
 
-    public var log: LoggerWithSource {
+    public var log: Logger {
         var l = self.ownerContext.log
         l[metadataKey: "gossip/identifier"] = "\(self.gossipIdentifier)"
         return l

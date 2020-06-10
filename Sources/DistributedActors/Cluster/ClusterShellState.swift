@@ -20,7 +20,7 @@ import NIO
 // MARK: Shell State
 
 internal protocol ReadOnlyClusterState {
-    var log: LoggerWithSource { get }
+    var log: Logger { get }
     var allocator: ByteBufferAllocator { get }
     var eventLoopGroup: EventLoopGroup { get }
 
@@ -37,7 +37,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     typealias Messages = ClusterShell.Message
 
     // TODO: maybe move log and settings outside of state into the shell?
-    var log: LoggerWithSource
+    var log: Logger
     let settings: ClusterSettings
 
     let events: EventStream<Cluster.Event>
@@ -93,7 +93,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         }
     }
 
-    init(settings: ClusterSettings, channel: Channel, events: EventStream<Cluster.Event>, gossipControl: ConvergentGossipControl<Cluster.Gossip>, log: LoggerWithSource) {
+    init(settings: ClusterSettings, channel: Channel, events: EventStream<Cluster.Event>, gossipControl: ConvergentGossipControl<Cluster.Gossip>, log: Logger) {
         self.log = log
         self.settings = settings
         self.allocator = settings.allocator

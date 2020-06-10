@@ -624,7 +624,7 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onActorTerminated(_ context: ActorContext<Message>, address: ActorAddress) {
-        let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log.logger, address: address, system: nil)))
+        let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log, address: address, system: nil)))
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAddressable())
 
         for key in wasRegisteredWithKeys {
@@ -702,7 +702,7 @@ extension OperationLogClusterReceptionist {
 
     private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
         let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode)
-        let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(context.log.logger, address: terminatedReceptionistAddress, system: nil)))
+        let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
 
         guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {
             // we already removed it, so no need to keep scanning for it.
