@@ -109,10 +109,12 @@ extension LogCapture {
                     actorPath = "[\(path)]"
                 }
 
+                metadata.removeValue(forKey: "label")
                 if !metadata.isEmpty {
                     metadataString = "\n// metadata:\n"
-                    for key in metadata.keys.sorted() where key != "label" {
-                        let valueDescription = self.prettyPrint(metadata: metadata[key]!)
+                    for key in metadata.keys.sorted() {
+                        let value: Logger.MetadataValue = metadata[key]!
+                        let valueDescription = self.prettyPrint(metadata: value)
 
                         var allString = "\n// \"\(key)\": \(valueDescription)"
                         if allString.contains("\n") {
@@ -167,7 +169,6 @@ public struct CapturedLogMessage {
     let level: Logger.Level
     var message: Logger.Message
     var metadata: Logger.Metadata?
-    let source: String
     let file: String
     let function: String
     let line: UInt
@@ -185,7 +186,7 @@ struct LogCaptureLogHandler: LogHandler {
         self.capture = capture
     }
 
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
+    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         guard self.capture.settings.filterActorPaths.contains(where: { path in self.label.starts(with: path) }) else {
             return // ignore this actor's logs, it was filtered out
         }
@@ -203,7 +204,7 @@ struct LogCaptureLogHandler: LogHandler {
         var _metadata: Logger.Metadata = metadata ?? [:]
         _metadata["label"] = "\(self.label)"
 
-        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, source: source, file: file, function: function, line: line))
+        self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
     }
 
     public subscript(metadataKey _: String) -> Logger.Metadata.Value? {

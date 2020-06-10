@@ -278,7 +278,7 @@ final class ActorLeakingTests: ActorSystemTestBase {
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
 
         var system: ActorSystem? = ActorSystem("Test") { settings in
-            settings.logging.defaultLevel = .info
+            settings.logging.logLevel = .info
         }
         _ = try system?.spawn("logging", of: String.self, .setup { context in
             context.log.trace("Not going to be logged")
@@ -298,7 +298,7 @@ final class ActorLeakingTests: ActorSystemTestBase {
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
 
         var system: ActorSystem? = ActorSystem("Test") { settings in
-            settings.logging.defaultLevel = .info
+            settings.logging.logLevel = .info
         }
         _ = try system?.spawn("logging", of: String.self, .setup { context in
             context.log.warning("Not going to be logged")

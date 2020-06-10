@@ -35,7 +35,7 @@ import Foundation // for Codable
 /// for any kind of Message type that is possible to be received by any spawned `Actor`, sub-receive, `Gossip` instance etc.
 ///
 public class Serialization {
-    private let log: LoggerWithSource
+    private let log: Logger
     internal let settings: Serialization.Settings
     @usableFromInline
     internal let metrics: ActorSystemMetrics // TODO: rather, do this via instrumentation
@@ -180,9 +180,10 @@ public class Serialization {
 
         self.allocator = self.settings.allocator
 
-        var log = system.log.logger.withSource("serialization")
+        var log = system.log
         // TODO: Dry up setting this metadata
         log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
+        log[metadataKey: "actor/path"] = "/system/serialization" // TODO: this is a fake path, we could use log source: here if it gets merged
         log.logLevel = systemSettings.logging.logLevel
         self.log = log
 
