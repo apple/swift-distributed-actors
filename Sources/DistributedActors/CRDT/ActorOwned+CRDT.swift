@@ -313,6 +313,12 @@ extension CRDT {
     }
 }
 
+extension CRDT.ActorOwned: CustomStringConvertible, CustomPrettyStringConvertible {
+    public var description: String {
+        "CRDT.ActorOwned(id: \(self.id), data: \(self.data), status: \(self.status))"
+    }
+}
+
 extension CRDT.ActorOwned {
     /// Register callback for owning actor to be notified when the CRDT instance has been updated.
     ///

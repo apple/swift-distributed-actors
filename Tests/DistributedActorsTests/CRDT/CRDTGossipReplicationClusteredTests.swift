@@ -200,7 +200,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
             try testKit.assertHolds(for: .seconds(5), interval: .seconds(1)) {
                 let logs = self.capturedLogs(of: first).grep("Received gossip")
-                pinfo("LOGS: \(lineByLine: logs)")
 
                 guard logs.count < 5 else {
                     throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
@@ -216,7 +215,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
 
             try testKit.assertHolds(for: .seconds(5), interval: .seconds(1)) {
                 let logs = self.capturedLogs(of: fourth).grep("Received gossip")
-                pinfo("LOGS: \(lineByLine: logs)")
 
                 guard logs.count < 5 else {
                     throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
