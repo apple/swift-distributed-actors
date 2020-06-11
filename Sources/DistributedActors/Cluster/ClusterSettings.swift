@@ -82,7 +82,7 @@ public struct ClusterSettings {
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeReconnectBackoff: BackoffStrategy = Backoff.exponential(
-        initialInterval: .milliseconds(500),
+        initialInterval: .milliseconds(300),
         multiplier: 1.5,
         capInterval: .seconds(3),
         maxAttempts: 32
