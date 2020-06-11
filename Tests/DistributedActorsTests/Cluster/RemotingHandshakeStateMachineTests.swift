@@ -138,7 +138,8 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")
         }
-        guard case .scheduleRetryHandshake = clientInitiated.onHandshakeError(TestError("Boom!"), nil) else {
+
+        guard case .scheduleRetryHandshake = clientInitiated.onConnectionError(TestError("Boom!")) else {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")
         }
     }

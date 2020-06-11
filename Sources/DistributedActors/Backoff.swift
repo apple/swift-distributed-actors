@@ -65,13 +65,22 @@ public enum Backoff {
     ///         MUST be `>= initialInterval`.
     ///   - randomFactor: A random factor of `0.5` results in backoffs between 50% below and 50% above the base interval.
     ///         MUST be between: `<0; 1>` (inclusive)
+    ///   - maxAttempts: An optional maximum number of times backoffs shall be attempted.
+    ///         MUST be `> 0` if set (or `nil`).
     public static func exponential(
         initialInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.initialInterval,
         multiplier: Double = ExponentialBackoffStrategy.Defaults.multiplier,
         capInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.capInterval,
-        randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor
+        randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor,
+        maxAttempts: Int? = ExponentialBackoffStrategy.Defaults.maxAttempts
     ) -> ExponentialBackoffStrategy {
-        .init(initialInterval: initialInterval, multiplier: multiplier, capInterval: capInterval, randomFactor: randomFactor)
+        .init(
+            initialInterval: initialInterval,
+            multiplier: multiplier,
+            capInterval: capInterval,
+            randomFactor: randomFactor,
+            maxAttempts: maxAttempts
+        )
     }
 }
 
@@ -148,6 +157,8 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
 
         // TODO: We could also implement taking a Clock, and using it see if there's a total limit exceeded
         // public static let maxElapsedTime: TimeAmount = .minutes(30)
+
+        public static let maxAttempts: Int? = nil
     }
 
     let initialInterval: TimeAmount
@@ -155,23 +166,34 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
     let capInterval: TimeAmount
     let randomFactor: Double
 
+    var limitedRemainingAttempts: Int?
+
     // interval that will be used in the `next()` call, does NOT include the random noise component
     private var currentBaseInterval: TimeAmount
 
-    internal init(initialInterval: TimeAmount, multiplier: Double, capInterval: TimeAmount, randomFactor: Double) {
+    internal init(initialInterval: TimeAmount, multiplier: Double, capInterval: TimeAmount, randomFactor: Double, maxAttempts: Int?) {
         precondition(initialInterval.nanoseconds > 0, "initialInterval MUST be > 0ns, was: [\(initialInterval.prettyDescription)]")
         precondition(multiplier >= 1.0, "multiplier MUST be >= 1.0, was: [\(multiplier)]")
         precondition(initialInterval <= capInterval, "capInterval MUST be >= initialInterval, was: [\(capInterval)]")
         precondition(randomFactor >= 0.0 && randomFactor <= 1.0, "randomFactor MUST be within between 0 and 1, was: [\(randomFactor)]")
+        if let n = maxAttempts {
+            precondition(n > 0, "maxAttempts MUST be nil or > 0, was: [\(n)]")
+        }
 
         self.initialInterval = initialInterval
         self.currentBaseInterval = initialInterval
         self.multiplier = multiplier
         self.capInterval = capInterval
         self.randomFactor = randomFactor
+        self.limitedRemainingAttempts = maxAttempts
     }
 
     public mutating func next() -> TimeAmount? {
+        defer { self.limitedRemainingAttempts? -= 1 }
+        if let remainingAttempts = self.limitedRemainingAttempts, remainingAttempts <= 0 {
+            return nil
+        } // else, still attempts remaining, or no limit set
+
         let baseInterval = self.currentBaseInterval
         let randomizeMultiplier = Double.random(in: (1 - self.randomFactor) ... (1 + self.randomFactor))
 
