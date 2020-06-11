@@ -48,7 +48,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     let eventLoopGroup: EventLoopGroup
 
     var handshakeBackoff: BackoffStrategy {
-        self.settings.associationHandshakeBackoff
+        self.settings.handshakeReconnectBackoff
     }
 
     let allocator: ByteBufferAllocator
@@ -162,7 +162,7 @@ extension ClusterShellState {
         #endif
 
         var initiated = initiated
-        initiated.onChannelConnected(channel: channel)
+        initiated.onConnectionEstablished(channel: channel)
 
         self._handshakes[initiated.remoteNode] = .initiated(initiated)
         return self

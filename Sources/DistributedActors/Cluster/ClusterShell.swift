@@ -66,11 +66,9 @@ internal class ClusterShell {
             if let tombstone = self._associationTombstones[node] {
                 return .tombstone(tombstone)
             } else if let existing = self._associations[node] {
-//                pprint("getEnsureAssociation = \(node) >>>> EXISTING \(existing) ;;; ALL: \(self._associations)")
                 return .association(existing)
             } else {
                 let association = Association(selfNode: self.selfNode, remoteNode: node)
-//                pprint("getEnsureAssociation = \(node) >>>> NEW \(association) ;;; ALL: \(self._associations)")
                 self._associations[node] = association
 
                 /// We're trying to send to `node` yet it has no association (not even in progress),
@@ -82,28 +80,30 @@ internal class ClusterShell {
         }
     }
 
-    /// As a retry we strongly assume that the association already exists, if not, it has to be a tombstone
-    ///
-    /// We also increment the retry counter.
-    /// - Returns: `nil` is already associated, so no reason to retry, otherwise the retry statistics
-    internal func retryAssociation(with node: Node) -> Association.Retries? {
-        self._associationsLock.withLock {
-            // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
-            // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
-            let maybeAssociation = self._associations.first { $0.key.node == node }?.value
-
-            guard let association = maybeAssociation else {
-                return nil // weird, we always should have one since were RE-trying, but ok, let's simply give up.
-            }
-
-            if let retries = association.retryAssociating() { // TODO: sanity check locks and that we do count retries
-                return retries
-            } else {
-                // no need to retry, seems it completed already!
-                return nil
-            }
-        }
-    }
+//    /// As a retry we strongly assume that the association already exists, if not, it has to be a tombstone
+//    ///
+//    /// We also increment the retry counter.
+//    /// - Returns: `nil` is already associated, so no reason to retry, otherwise the retry statistics
+//    internal func retryAssociation(with node: Node) -> Association.Retries? {
+//        self._associationsLock.withLock {
+//            // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
+//            // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
+//            pprint("self._associations = \(self._associations)")
+//            let maybeAssociation = self._associations.first { $0.key.node == node }?.value
+//
+//            guard let association = maybeAssociation else {
+//                return nil // weird, we always should have one since were RE-trying, but ok, let's simply give up.
+//            }
+//
+//            if let retries = association.retryAssociating() {
+//                // TODO: sanity check locks and that we do count retries
+//                return retries
+//            } else {
+//                // no need to retry, seems it completed already!
+//                return nil
+//            }
+//        }
+//    }
 
     internal func getSpecificExistingAssociation(with node: UniqueNode) -> Association? {
         self._associationsLock.withLock {
@@ -691,7 +691,9 @@ extension ClusterShell {
 
     func connectSendHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         var state = state
-        state.log.debug("Extending handshake offer to \(initiated.remoteNode))") // TODO: log retry stats?
+        state.log.debug("Extending handshake offer", metadata: [
+            "handshake/remoteNode": "\(initiated.remoteNode)",
+        ])
 
         let offer: Wire.HandshakeOffer = initiated.makeOffer()
         self.tracelog(context, .send(to: initiated.remoteNode), message: offer)
@@ -705,8 +707,7 @@ extension ClusterShell {
             serializationPool: self.serializationPool
         )
 
-        // the timeout is being handled by the `connectTimeout` socket option
-        // in NIO, so it is safe to use an infinite timeout here
+        // the timeout is being handled by the `connectTimeout` socket option in NIO, so it is safe to use an infinite timeout here
         return context.awaitResult(of: outboundChanElf, timeout: .effectivelyInfinite) { result in
             switch result {
             case .success(let chan):
@@ -831,36 +832,60 @@ extension ClusterShell {
 extension ClusterShell {
     func onOutboundConnectionError(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, error: Error) -> Behavior<Message> {
         var state = state
-        state.log.warning("Failed await for outbound channel to \(remoteNode); Error was: \(error)")
+        state.log.debug("Failed to establish outbound channel to \(remoteNode), error: \(error)", metadata: [
+            "handshake/remoteNode": "\(remoteNode)",
+            "handshake/error": "\(error)",
+        ])
 
         guard let handshakeState = state.handshakeInProgress(with: remoteNode) else {
-            state.log.warning("Connection error for handshake which is not in progress, this should not happen, but is harmless.") // TODO: meh or fail hard
+            state.log.warning("Connection error for handshake which is not in progress, this should not happen, but is harmless.", metadata: [
+                "handshake/remoteNode": "\(remoteNode)",
+                "handshake/error": "\(error)",
+            ])
             return .same
         }
 
         switch handshakeState {
         case .initiated(var initiated):
-            let retries = self.retryAssociation(with: remoteNode)
-            switch initiated.onHandshakeError(error, retries) {
-            case .scheduleRetryHandshake(let delay):
-                state.log.debug("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
+            guard initiated.channel == nil else {
+                fatalError("Seems we DO have a channel already! \(initiated)\n \(state)")
+            }
+
+            switch initiated.onConnectionError(error) {
+            case .scheduleRetryHandshake(let retryDelay):
+                state.log.debug("Schedule handshake retry", metadata: [
+                    "handshake/remoteNote": "\(initiated.remoteNode)",
+                    "handshake/retryDelay": "\(retryDelay)",
+                ])
                 context.timers.startSingle(
                     key: TimerKey("handshake-timer-\(remoteNode)"),
                     message: .command(.retryHandshake(initiated)),
-                    delay: delay
+                    delay: retryDelay
                 )
+
+                // ensure we store the updated state; since retry attempts modify the backoff state
+                state._handshakes[remoteNode] = .initiated(initiated)
+
             case .giveUpOnHandshake:
                 if let hsmState = state.closeOutboundHandshakeChannel(with: remoteNode) {
-                    state.log.warning("Giving up on handshake: \(hsmState)")
+                    state.log.warning("Giving up on handshake with node [\(remoteNode)]", metadata: [
+                        "handshake/error": "\(error)",
+                        "handshake/state": "\(hsmState)",
+                    ])
                 }
             }
 
         case .wasOfferedHandshake(let state):
             preconditionFailure("Outbound connection error should never happen on receiving end. State was: [\(state)], error was: \(error)")
-        case .completed(let state):
-            preconditionFailure("Outbound connection error on already completed state handshake. This should not happen. State was: [\(state)], error was: \(error)")
+        case .completed(let completedState):
+            // this could mean that another (perhaps inbound, rather than the outbound handshake we're attempting here) actually succeeded
+            state.log.notice("Stored handshake state is .completed, while outbound connection establishment failed. Assuming existing completed association is correct.", metadata: [
+                "handshake/error": "\(error)",
+                "handshake/state": "\(state)",
+                "handshake/completed": "\(completedState)",
+            ])
         case .inFlight:
-            preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function)")
+            preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function). State was: [\(state)], error was: \(error)")
         }
 
         return self.ready(state: state)

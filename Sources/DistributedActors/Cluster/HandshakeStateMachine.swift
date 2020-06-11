@@ -61,7 +61,6 @@ internal struct HandshakeStateMachine {
     // MARK: Handshake Initiated
 
     internal struct InitiatedState: Swift.CustomStringConvertible {
-        var backoff: BackoffStrategy
         let settings: ClusterSettings
 
         var protocolVersion: Version {
@@ -71,22 +70,22 @@ internal struct HandshakeStateMachine {
         let remoteNode: Node
         let localNode: UniqueNode
 
+        var handshakeReconnectBackoff: BackoffStrategy
+
         /// Channel which was established when we initiated the handshake (outgoing connection),
         /// which may want to be closed when we `abortHandshake` and want to kill the related outgoing connection as we do so.
         ///
         /// This is ALWAYS set once the initial clientBootstrap has completed.
         var channel: Channel?
 
-        // TODO: counter for how many times to retry associating (timeouts)
-
         init(
             settings: ClusterSettings, localNode: UniqueNode, connectTo remoteNode: Node
         ) {
             precondition(localNode.node != remoteNode, "MUST NOT attempt connecting to own bind address. Address: \(remoteNode)")
             self.settings = settings
-            self.backoff = settings.associationHandshakeBackoff
             self.localNode = localNode
             self.remoteNode = remoteNode
+            self.handshakeReconnectBackoff = settings.handshakeReconnectBackoff // copy since we want to mutate it as the handshakes attempt retries
         }
 
         func makeOffer() -> Wire.HandshakeOffer {
@@ -94,31 +93,20 @@ internal struct HandshakeStateMachine {
             Wire.HandshakeOffer(version: self.protocolVersion, originNode: self.localNode, targetNode: self.remoteNode)
         }
 
-        mutating func onHandshakeTimeout() -> RetryDirective {
-            if let interval = self.backoff.next() {
-                return .scheduleRetryHandshake(delay: interval)
-            } else {
-                return .giveUpOnHandshake
-            }
-        }
-
-        mutating func onChannelConnected(channel: Channel) {
+        mutating func onConnectionEstablished(channel: Channel) {
             self.channel = channel
         }
 
-        mutating func onHandshakeError(_: Error, _ retries: Association.Retries?) -> RetryDirective {
-            guard let retries = retries else {
-                return .giveUpOnHandshake
-            }
+        // TODO: call into an connection error?
+        // TODO: the remote REJECTING must not trigger backoffs
+        mutating func onHandshakeTimeout() -> RetryDirective {
+            self.onConnectionError(HandshakeConnectionError(node: self.remoteNode, message: "Handshake timed out")) // TODO: improve msgs
+        }
 
-            guard retries.attemptNr < self.settings.associationHandshakeMaxAttempts else {
-                return .giveUpOnHandshake
-            }
-
-            switch self.backoff.next() {
-            case .some(let amount):
-                return .scheduleRetryHandshake(delay: amount)
-            case .none:
+        mutating func onConnectionError(_: Error) -> RetryDirective {
+            if let nextConnectionAttemptDelay = self.handshakeReconnectBackoff.next() {
+                return .scheduleRetryHandshake(delay: nextConnectionAttemptDelay)
+            } else {
                 return .giveUpOnHandshake
             }
         }
@@ -128,7 +116,6 @@ internal struct HandshakeStateMachine {
             InitiatedState(\
             remoteNode: \(self.remoteNode), \
             localNode: \(self.localNode), \
-            backoff: \(self.backoff), \
             channel: \(optional: self.channel)\
             )
             """
@@ -278,6 +265,7 @@ internal struct HandshakeStateMachine {
     }
 
     internal enum State {
+        /// Stored the moment a handshake is initiated; may not yet have an underlying connection yet.
         case initiated(InitiatedState)
         /// A handshake is already in-flight and was initiated by someone else previously.
         /// rather than creating another handshake dance, we will be notified along with the already initiated

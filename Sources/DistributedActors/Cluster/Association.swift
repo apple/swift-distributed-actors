@@ -46,19 +46,9 @@ final class Association: CustomStringConvertible {
     private var completionTasks: [() -> Void]
 
     enum State {
-        case associating(queue: MPSCLinkedQueue<TransportEnvelope>, retries: Retries)
+        case associating(queue: MPSCLinkedQueue<TransportEnvelope>)
         case associated(channel: Channel) // TODO: ActorTransport.Node/Peer/Target ???
         case tombstone(ActorRef<DeadLetter>)
-    }
-
-    struct Retries {
-        var attemptNr = 0
-        var previousAttemptDate: Date = .init()
-
-        mutating func nextAttempt() {
-            self.attemptNr += 1
-            self.previousAttemptDate = .init()
-        }
     }
 
     /// The address of this node, that was offered to the remote side for this association
@@ -70,23 +60,8 @@ final class Association: CustomStringConvertible {
         self.selfNode = selfNode
         self.remoteNode = remoteNode
         self.lock = Lock()
-        self.state = .associating(queue: .init(), retries: .init())
+        self.state = .associating(queue: .init())
         self.completionTasks = []
-    }
-
-    func retryAssociating() -> Retries? {
-        self.lock.withLock {
-            switch self.state {
-            case .associating(let queue, var retries):
-                retries.nextAttempt()
-                self.state = .associating(queue: queue, retries: retries)
-                return retries
-            case .associated:
-                return nil
-            case .tombstone:
-                return nil
-            }
-        }
     }
 
     /// Complete the association and drain any pending message sends onto the channel.
@@ -103,7 +78,7 @@ final class Association: CustomStringConvertible {
 
         try self.lock.withLockVoid {
             switch self.state {
-            case .associating(let sendQueue, _):
+            case .associating(let sendQueue):
                 // 1) we need to flush all the queued up messages
                 //    - yes, we need to flush while holding the lock... it's an annoyance in this lock based design
                 //      but it ensures that once we've flushed, all other messages will be sent in the proper order "after"
@@ -158,7 +133,7 @@ final class Association: CustomStringConvertible {
     func terminate(_ system: ActorSystem) -> Association.Tombstone {
         self.lock.withLockVoid {
             switch self.state {
-            case .associating(let sendQueue, _):
+            case .associating(let sendQueue):
                 while let envelope = sendQueue.dequeue() {
                     system.deadLetters.tell(.init(envelope.underlyingMessage, recipient: envelope.recipient))
                 }
@@ -208,7 +183,7 @@ extension Association {
     private func _send(_ envelope: TransportEnvelope, promise: EventLoopPromise<Void>?) {
         self.lock.withLockVoid {
             switch self.state {
-            case .associating(let sendQueue, _):
+            case .associating(let sendQueue):
                 sendQueue.enqueue(envelope)
             case .associated(let channel):
                 channel.writeAndFlush(envelope, promise: promise)
