@@ -118,11 +118,6 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
 
-        // TODO: remove after figuring out why tests are flakey (https://github.com/apple/swift-distributed-actors/issues/157)
-        defer {
-            self.logCapture.printLogs()
-        }
-
         // g1 has two owners
         let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
@@ -214,8 +209,12 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
     private func actorOwnedORSetBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORSetCommand> {
         .setup { context in
             let s = CRDT.ORSet<Int>.makeOwned(by: context, id: id)
-            s.onUpdate { id, ss in
-                context.log.trace("ORSet \(id) updated with new value: \(ss.elements)")
+
+            s.onUpdate { id, updated in
+                context.log.trace("ORSet \(id) updated with new value, count: \(updated.elements)", metadata: [
+                    "set/count": "\(updated.count)",
+                    "set": "\(updated.elements)",
+                ])
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
             }
             s.onDelete { id in
@@ -226,10 +225,22 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
             return .receiveMessage { message in
                 switch message {
                 case .add(let element, let consistency, let timeout, let replyTo):
+                    context.log.warning("add [\(element)] ... ", metadata: [
+                        "before": "\(s)",
+                        "add": "\(element)",
+                    ])
+                    let before = s.lastObservedValue
                     s.insert(element, writeConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
-                        case .success(let s):
-                            replyTo.tell(s.elements)
+                        case .success(let updated):
+                        context.log.warning("added [\(element)] ... \(updated.count)", metadata: [
+                        "before": "\(before)",
+                        "before/count": "\(before.count)",
+                        "updated": "\(updated.prettyDescription)",
+                        "updated/count": "\(updated.count)",
+                        "add": "\(element)",
+                        ])
+                            replyTo.tell(updated.elements)
                         case .failure(let error):
                             fatalError("add error \(error)")
                         }
@@ -317,12 +328,12 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
 
         // we issue many writes, and want to see that
         for i in 1 ... 100 {
-            owner.tell(.add(i, consistency: .local, timeout: .seconds(1), replyTo: ignore))
+            owner.tell(.add(i, consistency: .local, timeout: .seconds(3), replyTo: ignore))
         }
-        owner.tell(.add(1000, consistency: .local, timeout: .seconds(1), replyTo: probe.ref))
+        owner.tell(.add(1000, consistency: .local, timeout: .seconds(3), replyTo: probe.ref))
 
-        let msg = try probe.expectMessage()
-        msg.count.shouldEqual(101)
+        let set = try probe.expectMessage()
+        set.count.shouldEqual(101)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
