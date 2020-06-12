@@ -249,7 +249,10 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         try assertNotAssociated(system: first, node: second.cluster.node)
         try assertNotAssociated(system: second, node: first.cluster.node)
 
-        try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: "incompatibleProtocolVersion(first:")
+        try self.capturedLogs(of: first)
+            .awaitLogContaining(self.testKit(first),
+                text: "Handshake rejected by [sact://second@127.0.0.1:9002], reason: incompatibleProtocolVersion"
+            )
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
