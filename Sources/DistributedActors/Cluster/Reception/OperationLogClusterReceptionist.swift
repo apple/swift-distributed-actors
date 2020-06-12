@@ -265,7 +265,7 @@ public class OperationLogClusterReceptionist {
                 }
                 return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                context.log.warning("Terminated: \(terminated)")
+                context.log.debug("Remote receptionist terminated: \(terminated)")
                 if let node = terminated.address.node,
                     terminated.address == ActorAddress._receptionist(on: node) {
                     // receptionist terminated, need to prune it

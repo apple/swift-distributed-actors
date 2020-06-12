@@ -422,12 +422,27 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                let gossipControl = try ConvergentGossip.start(
-                    context, name: "\(ActorAddress._clusterGossip.name)", of: Cluster.Gossip.self,
-                    notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) {
-                        Optional.some(Message.gossipFromGossiper($0))
-                    },
-                    props: ._wellKnown
+                // TODO: Membership.Gossip?
+                let gossipControl: GossipControl<Cluster.Gossip> = try GossipShell.start(
+                    context,
+                    name: "\(ActorPath._clusterGossip.name)",
+                    props: ._wellKnown,
+                    settings: .init(
+                        gossipInterval: clusterSettings.membershipGossipInterval,
+                        gossipIntervalRandomFactor: clusterSettings.membershipGossipIntervalRandomFactor,
+                        peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
+                            let resolveContext = ResolveContext<GossipShell<Cluster.Gossip>.Message>(address: ._clusterGossip(on: member.node), system: context.system)
+                            return context.system._resolve(context: resolveContext).asAddressable()
+                    })
+                    ),
+                    makeLogic: {
+                        MembershipGossipLogic(
+                            $0,
+                            notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) {
+                                Optional.some(Message.gossipFromGossiper($0))
+                            }
+                        )
+                    }
                 )
 
                 let state = ClusterShellState(
@@ -441,8 +456,10 @@ extension ClusterShell {
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
                 var firstGossip = Cluster.Gossip(ownerNode: state.localNode)
                 _ = firstGossip.membership.join(state.localNode) // change will be put into effect by receiving the "self gossip"
-                context.system.cluster.updateMembershipSnapshot(state.membership)
                 firstGossip.incrementOwnerVersion()
+                context.system.cluster.updateMembershipSnapshot(state.membership)
+
+                gossipControl.update(payload: firstGossip) // ????
                 context.myself.tell(.gossipFromGossiper(firstGossip))
                 // TODO: are we ok if we received another gossip first, not our own initial? should be just fine IMHO
 
@@ -569,9 +586,9 @@ extension ClusterShell {
                     "membership/changes": Logger.MetadataValue.array(mergeDirective.effectiveChanges.map {
                         Logger.MetadataValue.stringConvertible($0)
                         }),
-                    "gossip/incoming": "\(gossip)",
-                    "gossip/before": "\(beforeGossipMerge)",
-                    "gossip/now": "\(state.latestGossip)",
+                    "gossip/incoming": "\(pretty: gossip)",
+                    "gossip/before": "\(pretty: beforeGossipMerge)",
+                    "gossip/now": "\(pretty: state.latestGossip)",
                 ]
             )
 
@@ -609,7 +626,7 @@ extension ClusterShell {
         }
     }
 
-    func tryIntroduceGossipPeer(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange, file: String = #file, line: UInt = #line) {
+    func tryIntroduceGossipPeer(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         guard change.toStatus < .down else {
             return
         }
@@ -619,13 +636,12 @@ extension ClusterShell {
         // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
 
         // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
-        let gossipPeer: ConvergentGossip<Cluster.Gossip>.Ref = context.system._resolve(
+        let gossipPeer: GossipShell<Cluster.Gossip>.Ref = context.system._resolve(
             context: .init(address: ._clusterGossip(on: change.member.node), system: context.system)
         )
         // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...
         // today it can happen that a node goes down but we dont know yet so we add it again :O
         state.gossipControl.introduce(peer: gossipPeer)
-        //         state.gossipControl.introduce(ClusterShell.gossipID, peer: gossipPeer)
     }
 }
 
@@ -1152,7 +1168,10 @@ extension ClusterShell {
             self.clusterEvents.publish(.membershipChange(change))
 
             if let logChangeLevel = state.settings.logMembershipChanges {
-                context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change), membership: \(state.membership)")
+                context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change)", metadata: [
+                    "cluster/membership/change": "\(change)",
+                    "cluster/membership": "\(state.membership)",
+                ])
             }
         }
 
@@ -1161,8 +1180,8 @@ extension ClusterShell {
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
             context.log.warning(
                 "Self node was marked [.down]!",
-                metadata: [ // TODO: carry reason why -- was it gossip, manual or other
-                    "cluster/membership": "\(state.membership)", // TODO: introduce state.metadata pattern?
+                metadata: [ // TODO: carry reason why -- was it gossip, manual or other?
+                    "cluster/membership": "\(state.membership)",
                 ]
             )
 

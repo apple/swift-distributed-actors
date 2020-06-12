@@ -233,13 +233,13 @@ final class CRDTActorOwnedTests: ActorSystemTestBase {
                     s.insert(element, writeConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let updated):
-                        context.log.warning("added [\(element)] ... \(updated.count)", metadata: [
-                        "before": "\(before)",
-                        "before/count": "\(before.count)",
-                        "updated": "\(updated.prettyDescription)",
-                        "updated/count": "\(updated.count)",
-                        "add": "\(element)",
-                        ])
+                            context.log.warning("added [\(element)] ... \(updated.count)", metadata: [
+                                "before": "\(before)",
+                                "before/count": "\(before.count)",
+                                "updated": "\(updated.prettyDescription)",
+                                "updated/count": "\(updated.count)",
+                                "add": "\(element)",
+                            ])
                             replyTo.tell(updated.elements)
                         case .failure(let error):
                             fatalError("add error \(error)")
