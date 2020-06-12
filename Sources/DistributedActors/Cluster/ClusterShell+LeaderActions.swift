@@ -48,8 +48,8 @@ extension ClusterShellState {
         }
 
         var leadershipActions: [LeaderAction] = []
-        leadershipActions.append(contentsOf: collectMemberUpMoves())
-        leadershipActions.append(contentsOf: collectDownMemberRemovals())
+        leadershipActions += collectMemberUpMoves()
+        leadershipActions += collectDownMemberRemovals()
 
         return leadershipActions
     }

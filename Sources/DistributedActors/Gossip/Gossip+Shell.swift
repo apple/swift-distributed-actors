@@ -14,6 +14,8 @@
 
 import Logging
 
+private let gossipTickKey: TimerKey = "gossip-tick"
+
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
 internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
     let settings: Settings
@@ -64,9 +66,6 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
                 case .gossip(let identity, let origin, let payload, let ackRef):
                     self.receiveGossip(context, identifier: identity, origin: origin, payload: payload, ackRef: ackRef)
 
-                case ._clusterEvent:
-                    fatalError("automatic peer location is not implemented") // FIXME: implement this https://github.com/apple/swift-distributed-actors/issues/371
-
                 case ._periodicGossipTick:
                     self.runGossipRound(context)
                 }
@@ -76,9 +75,10 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
                 self.peers = self.peers.filter {
                     $0.address != terminated.address
                 }
-                // if self.peers.isEmpty {
-                // TODO: could pause ticks since we have zero peers now?
-                // }
+                if self.peers.isEmpty {
+                    context.log.trace("No peers available, cancelling periodic gossip timer")
+                    context.timers.cancel(for: gossipTickKey)
+                }
                 return .same
             }
         }
@@ -115,9 +115,9 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
 
         logic.localGossipUpdate(payload: payload)
 
-        context.log.trace("Gossip payload [\(identifier)] updated: \(payload)", metadata: [
-            "gossip/identifier": "\(identifier)",
-            "gossip/payload": "\(payload)",
+        context.log.trace("Gossip payload [\(identifier.gossipIdentifier)] (locally) updated", metadata: [
+            "gossip/identifier": "\(identifier.gossipIdentifier)",
+            "gossip/payload": "\(pretty: payload)",
         ])
 
         // TODO: bump local version vector; once it is in the envelope
@@ -163,7 +163,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
 
             context.log.trace("New gossip round, selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
                 "gossip/id": "\(identifier.gossipIdentifier)",
-                "gossip/peers/selected": "\(selectedPeers)",
+                "gossip/peers/selected": Logger.MetadataValue.array(selectedPeers.map { "\($0)" }),
             ])
 
             for selectedPeer in selectedPeers {
@@ -209,7 +209,6 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         to target: PeerRef,
         onAck: @escaping () -> Void
     ) {
-        // TODO: if we have seen tables, we can use them to bias the gossip towards the "more behind" nodes
         context.log.trace("Sending gossip to \(target.address)", metadata: [
             "gossip/target": "\(target.address)",
             "gossip/peers/count": "\(self.peers.count)",
@@ -241,7 +240,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
 
         let delay = self.settings.effectiveGossipInterval
         context.log.trace("Schedule next gossip round in \(delay.prettyDescription) (\(self.settings.gossipInterval.prettyDescription) ± \(self.settings.gossipIntervalRandomFactor * 100)%)")
-        context.timers.startSingle(key: "periodic-gossip", message: ._periodicGossipTick, delay: delay)
+        context.timers.startSingle(key: gossipTickKey, message: ._periodicGossipTick, delay: delay)
     }
 }
 
@@ -257,6 +256,44 @@ extension GossipShell {
         switch self.settings.peerDiscovery {
         case .manuallyIntroduced:
             return // nothing to do, peers will be introduced manually
+
+        case .onClusterMember(let atLeastStatus, let resolvePeerOn):
+            func resolveInsertPeer(_ context: ActorContext<Message>, member: Cluster.Member) {
+                guard member.node != context.system.cluster.node else {
+                    return // ignore self node
+                }
+
+                guard atLeastStatus <= member.status else {
+                    return // too "early" status of the member
+                }
+
+                let resolved: AddressableActorRef = resolvePeerOn(member)
+                if let peer = resolved.ref as? PeerRef {
+                    if self.peers.insert(peer).inserted {
+                        context.log.debug("Automatically discovered peer", metadata: [
+                            "gossip/peer": "\(peer)",
+                            "gossip/peerCount": "\(self.peers.count)",
+                            "gossip/peers": "\(self.peers.map { $0.address })",
+                        ])
+                    }
+                } else {
+                    context.log.warning("Resolved reference \(resolved.ref) is not \(PeerRef.self), can not use it as peer for gossip.")
+                }
+            }
+
+            let onClusterEventRef = context.subReceive(Cluster.Event.self) { event in
+                switch event {
+                case .snapshot(let membership):
+                    for member in membership.members(atLeast: .joining) {
+                        resolveInsertPeer(context, member: member)
+                    }
+                case .membershipChange(let change):
+                    resolveInsertPeer(context, member: change.member)
+                case .leadershipChange, .reachabilityChange:
+                    () // ignore
+                }
+            }
+            context.system.cluster.events.subscribe(onClusterEventRef)
 
         case .fromReceptionistListing(let id):
             let key = Receptionist.RegistrationKey<Message>(id)
@@ -328,7 +365,6 @@ extension GossipShell {
         case sideChannelMessage(identifier: GossipIdentifier, Any)
 
         // internal messages
-        case _clusterEvent(Cluster.Event)
         case _periodicGossipTick
     }
 }
@@ -384,7 +420,7 @@ internal struct GossipControl<GossipEnvelope: GossipEnvelopeProtocol> {
     }
 
     /// Side channel messages which may be piped into specific gossip logics.
-    func sideChannelTell(identifier: GossipIdentifier, message: Any) {
+    func sideChannelTell(_ identifier: GossipIdentifier, message: Any) {
         self.ref.tell(.sideChannelMessage(identifier: identifier, message))
     }
 }
@@ -435,7 +471,7 @@ public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
     }
 }
 
-public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByStringLiteral {
+public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
     public let gossipIdentifier: String
 
     public init(_ gossipIdentifier: StringLiteralType) {
@@ -448,5 +484,9 @@ public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByS
 
     public var asAnyGossipIdentifier: AnyGossipIdentifier {
         AnyGossipIdentifier(self)
+    }
+
+    public var description: String {
+        "StringGossipIdentifier(\(self.gossipIdentifier))"
     }
 }
