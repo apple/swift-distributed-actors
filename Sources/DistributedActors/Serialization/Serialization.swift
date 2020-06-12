@@ -228,7 +228,6 @@ extension Serialization {
     private func _ensureAllRegisteredSerializers() throws {
         // all non-codable types are specialized types; register specific serializer instances for them early
         for typeKey in self.settings.typeToManifestRegistry.keys {
-            self.log.trace("Ensure serializer eagerly: \(typeKey)")
             try typeKey._ensureSerializer(self)
         }
 
