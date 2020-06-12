@@ -62,9 +62,7 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
 
             // should cause termination of all remote actors, observed by the local actors on [first]
             let termination1: Signals.Terminated = try p.expectMessage()
-            pinfo("termination 1: \(termination1)")
             let termination2: Signals.Terminated = try p.expectMessage()
-            pinfo("termination 2: \(termination2)")
             let terminations: [Signals.Terminated] = [termination1, termination2]
             terminations.shouldContain(where: { terminated in
                 (!terminated.existenceConfirmed) && terminated.address.name == "remote-1"
