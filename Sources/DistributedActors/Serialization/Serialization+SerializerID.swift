@@ -122,8 +122,6 @@ extension Serialization {
         internal static let CRDTLWWMapDelta: SerializerID = .protobufRepresentable
         internal static let CRDTLWWRegister: SerializerID = .protobufRepresentable
 
-        internal static let ConvergentGossipMembership: SerializerID = .foundationJSON
-
         // op log receptionist
         internal static let PushOps: SerializerID = .foundationJSON
         internal static let AckOps: SerializerID = .foundationJSON

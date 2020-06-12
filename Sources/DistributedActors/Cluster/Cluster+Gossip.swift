@@ -169,6 +169,21 @@ extension Cluster {
     }
 }
 
+extension Cluster.Gossip: GossipEnvelopeProtocol {
+    typealias Metadata = SeenTable
+    typealias Payload = Self
+
+    var metadata: Metadata {
+        self.seen
+    }
+
+    var payload: Payload {
+        self
+    }
+}
+
+extension Cluster.Gossip: CustomPrettyStringConvertible {}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.Gossip.SeenTable
 
@@ -290,10 +305,11 @@ extension Cluster.Gossip.SeenTable: CustomStringConvertible, CustomPrettyStringC
         "Cluster.Gossip.SeenTable(\(self.underlying))"
     }
 
-    public var prettyDescription: String {
+    public func prettyDescription(depth: Int) -> String {
         var s = "Cluster.Gossip.SeenTable(\n"
-        let entryHeadingPadding = String(repeating: " ", count: 4)
-        let entryPadding = String(repeating: " ", count: 4 * 2)
+        let entryHeadingPadding = String(repeating: " ", count: 4 * depth)
+        let entryPadding = String(repeating: " ", count: 4 * (depth + 1))
+
         underlying.sorted(by: { $0.key < $1.key }).forEach { node, vv in
             let entryHeader = "\(entryHeadingPadding)\(node) observed versions:\n"
 

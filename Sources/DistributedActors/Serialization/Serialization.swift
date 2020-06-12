@@ -114,7 +114,9 @@ public class Serialization {
         // cluster
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
-        settings.register(ConvergentGossip<Cluster.Gossip>.Message.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(Cluster.Gossip.self)
+        settings.register(GossipShell<Cluster.Gossip>.Message.self)
+        settings.register(StringGossipIdentifier.self)
 
         // receptionist needs some special casing
         // TODO: document how to deal with `protocol` message accepting actors, those should be very rare.

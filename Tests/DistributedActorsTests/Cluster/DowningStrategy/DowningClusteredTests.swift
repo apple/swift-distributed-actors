@@ -18,6 +18,15 @@ import XCTest
 
 // "Get down!"
 final class DowningClusteredTests: ClusteredNodesTestBase {
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
+            "/system/replicator",
+            "/system/replicator/gossip",
+            "/system/receptionist",
+            "/system/cluster/swim",
+        ]
+    }
+
     enum NodeStopMethod {
         case leaveSelfNode // TODO: eventually this one will be more graceful, ensure others see us leave etc
         case downSelf
@@ -87,20 +96,23 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
             case (.downFromOtherMember, .secondNonLeader): thirdNeverDownSystem.cluster.down(node: second.cluster.node.node)
             }
 
-            func expectedDownMemberEventsFishing(on: ActorSystem) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
+            func expectedDownMemberEventsFishing(
+                on: ActorSystem,
+                file: StaticString = #file, line: UInt = #line
+            ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
                 { event in
                     switch event {
                     case .membershipChange(let change) where change.node == expectedDownNode && change.isRemoval:
-                        pinfo("MembershipChange on \(on.cluster.node.node): \(change)")
+                        pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
                         return .catchComplete(change)
                     case .membershipChange(let change) where change.node == expectedDownNode:
-                        pinfo("MembershipChange on \(on.cluster.node.node): \(change)")
+                        pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
                         return .catchContinue(change)
                     case .reachabilityChange(let change) where change.member.node == expectedDownNode:
-                        pnote("ReachabilityChange on \(otherNotDownPairSystem.cluster.node.node): \(change)")
+                        pnote("\(on.cluster.node.node): \(change)", file: file, line: line)
                         return .ignore
                     default:
-                        // pnote("Event on \(otherNotDownPairSystem.cluster.node.node) = \(event)")
+                        pnote("\(on.cluster.node.node): \(event)", file: file, line: line)
                         return .ignore
                     }
                 }

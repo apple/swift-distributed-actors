@@ -108,7 +108,9 @@ public struct ClusterSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster.Membership Gossip
 
-    public var membershipGossipInterval: TimeAmount = .milliseconds(500)
+    public var membershipGossipInterval: TimeAmount = .seconds(1)
+
+    public var membershipGossipIntervalRandomFactor: Double = 0.2
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leader Election

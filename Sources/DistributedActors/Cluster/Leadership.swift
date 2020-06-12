@@ -111,7 +111,7 @@ extension Leadership {
 
         var behavior: Behavior<Cluster.Event> {
             .setup { context in
-                context.log.trace("Spawned \(context.path) to run \(self.election)")
+                context.log.trace("Configured with \(self.election)")
                 context.system.cluster.events.subscribe(context.myself)
 
                 // FIXME: we have to add "own node" since we're not getting the .snapshot... so we have to manually act as if..
