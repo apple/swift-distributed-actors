@@ -74,6 +74,7 @@ final class MembershipGossipLogic: GossipLogic {
             return true
         }
 
+        // FIXME: this is longer than may be necessary, optimize some more
         return true
 
         // TODO: optimize some more; but today we need to keep gossiping until all VVs are the same, because convergence depends on this

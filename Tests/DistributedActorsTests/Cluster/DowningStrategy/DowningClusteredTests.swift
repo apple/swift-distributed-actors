@@ -56,7 +56,10 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
         _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil
     ) throws {
         try shouldNotThrow {
-            let (first, second) = self.setUpPair(modifySettings)
+            let (first, second) = self.setUpPair { settings in
+                settings.cluster.swim.probeInterval = .milliseconds(500)
+                modifySettings?(&settings)
+            }
             let thirdNeverDownSystem = self.setUpNode("third", modifySettings)
 
             try self.joinNodes(node: first, with: second, ensureMembers: .up)
@@ -79,8 +82,6 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
             let eventsProbeOther = self.testKit(otherNotDownPairSystem).spawnEventStreamTestProbe(subscribedTo: otherNotDownPairSystem.cluster.events)
             let eventsProbeThird = self.testKit(thirdNeverDownSystem).spawnEventStreamTestProbe(subscribedTo: thirdNeverDownSystem.cluster.events)
 
-            pinfo("Expecting [\(expectedDownSystem)] to become [.down], method to stop the node [\(stopMethod)]")
-
             // we cause the stop of the target node as expected
             switch (stopMethod, stopNode) {
             case (.leaveSelfNode, .firstLeader): first.cluster.leave()
@@ -100,7 +101,9 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
                 on: ActorSystem,
                 file: StaticString = #file, line: UInt = #line
             ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
-                { event in
+                pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.node.node)], method to stop the node [\(stopMethod)]")
+
+                return { event in
                     switch event {
                     case .membershipChange(let change) where change.node == expectedDownNode && change.isRemoval:
                         pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
@@ -121,18 +124,17 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
             // collect all events regarding the expectedDownNode's membership lifecycle
             // (the timeout is fairly large here to tolerate slow CI and variations how the events get propagated, normally they propagate quite quickly)
             let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
-            let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
-
             eventsOnOther.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
             eventsOnOther.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
 
-            eventsOnOther.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
+            let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
+            eventsOnThird.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
             eventsOnThird.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
         }
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Stop by: cluster.leave()
+    // MARK: Stop by: cluster.leave() immediate
 
     func test_stopLeader_by_leaveSelfNode_shouldPropagateToOtherNodes() throws {
         try self.shared_stoppingNode_shouldPropagateToOtherNodesAsDown(stopMethod: .leaveSelfNode, stopNode: .firstLeader) { settings in
