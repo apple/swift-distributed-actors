@@ -24,7 +24,7 @@ final class LeadershipTests: XCTestCase {
     let memberC = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
     let newMember = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .up)
 
-    let fakeContext = LeaderElectionContext(log: Logger(label: "mock"), eventLoop: EmbeddedEventLoop())
+    let fakeContext = LeaderElectionContext(log: NoopLogger.make(), eventLoop: EmbeddedEventLoop())
 
     lazy var initialMembership: Cluster.Membership = [
         memberA, memberB, memberC,
