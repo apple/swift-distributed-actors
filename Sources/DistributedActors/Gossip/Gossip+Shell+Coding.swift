@@ -13,13 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 extension StringGossipIdentifier: Codable {
+    public enum CodingKeys: CodingKey {
+        case id
+    }
+
     public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        self.gossipIdentifier = try container.decode(String.self)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.gossipIdentifier = try container.decode(String.self, forKey: .id)
     }
 
     public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(self.gossipIdentifier)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.gossipIdentifier, forKey: .id)
     }
 }
