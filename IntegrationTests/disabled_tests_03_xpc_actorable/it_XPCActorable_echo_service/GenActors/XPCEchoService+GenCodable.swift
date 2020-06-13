@@ -42,7 +42,7 @@ extension XPCEchoService.Message {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case ._boxXPCEchoServiceProtocol:
-            let boxed = try container.decode(GeneratedActor.Messages.XPCEchoServiceProtocol.self, forKey: CodingKeys._boxXPCEchoServiceProtocol)
+            let boxed: GeneratedActor.Messages.XPCEchoServiceProtocol = try container.decode(GeneratedActor.Messages.XPCEchoServiceProtocol.self, forKey: CodingKeys._boxXPCEchoServiceProtocol)
             self = .xPCEchoServiceProtocol(boxed)
 
         }

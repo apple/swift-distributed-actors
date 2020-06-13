@@ -28,15 +28,18 @@ struct ActorableWatcher: Actorable {
         context.watch(service)
     }
 
+    // @actor
     func noop() {
         // do nothing
     }
 
+    // @actor
     func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
         context.log.info("Received \(#function): \(terminated)")
         return .stop
     }
 
+    // @actor
     func receiveSignal(context: Myself.Context, signal: Signal) {
         context.log.info("Received \(#function): \(signal)")
         exit(0)

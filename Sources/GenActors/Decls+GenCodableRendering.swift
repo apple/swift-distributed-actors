@@ -130,7 +130,9 @@ extension Rendering {
             actorableProtocols.forEach { proto in
                 decodeCases.print("case .\(proto.boxFuncName):") // case _boxParking:
                 decodeCases.indent()
-                decodeCases.print("let boxed = try container.decode(\(proto.messageFullyQualifiedName).self, forKey: CodingKeys.\(proto.boxFuncName))")
+                // note that the explicit `: Type` is necessary to avoid warnings/errors in case the actorable has zero messages
+                // which would result in: `constant 'boxed' inferred to have type '...', which is an enum with no cases`
+                decodeCases.print("let boxed: \(proto.messageFullyQualifiedName) = try container.decode(\(proto.messageFullyQualifiedName).self, forKey: CodingKeys.\(proto.boxFuncName))")
                 decodeCases.print("self = .\(proto.nameFirstLowercased)(boxed)")
                 decodeCases.outdent()
             }

@@ -51,10 +51,10 @@ extension AllInOneMachine.Message {
         case .clean:
             self = .clean
         case ._boxCoffeeMachine:
-            let boxed = try container.decode(GeneratedActor.Messages.CoffeeMachine.self, forKey: CodingKeys._boxCoffeeMachine)
+            let boxed: GeneratedActor.Messages.CoffeeMachine = try container.decode(GeneratedActor.Messages.CoffeeMachine.self, forKey: CodingKeys._boxCoffeeMachine)
             self = .coffeeMachine(boxed)
         case ._boxDiagnostics:
-            let boxed = try container.decode(GeneratedActor.Messages.Diagnostics.self, forKey: CodingKeys._boxDiagnostics)
+            let boxed: GeneratedActor.Messages.Diagnostics = try container.decode(GeneratedActor.Messages.Diagnostics.self, forKey: CodingKeys._boxDiagnostics)
             self = .diagnostics(boxed)
 
         }

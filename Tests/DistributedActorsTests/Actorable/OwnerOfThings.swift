@@ -37,24 +37,28 @@ struct OwnerOfThings: Actorable {
         context.receptionist.registerMyself(as: Self.key.id)
     }
 
+    // @actor
     func readLastObservedValue() -> Receptionist.Listing<OwnerOfThings>? {
         self.ownedListing.lastObservedValue
     }
 
     // we can delegate to another actor directly; the Actor<OwnerOfThings> signature will not change
     // it always remains Reply<T> to whomever calls us, and we may implement it with a strictly, with a Reply, or AskResponse.
+    // @actor
     func performLookup() -> Reply<Receptionist.Listing<OwnerOfThings>> {
         self.context.receptionist.lookup(.init(OwnerOfThings.self, id: "all/owners"), timeout: .effectivelyInfinite)
     }
 
     // if we HAD TO, we could still ask a ref directly and just expose this as well
     // for callers it still shows up as an Reply though.
+    // @actor
     func performAskLookup() -> AskResponse<Receptionist.Listing<OwnerOfThings.Message>> {
         self.context.system.receptionist.ask(for: Receptionist.Listing<OwnerOfThings.Message>.self, timeout: .effectivelyInfinite) { ref in
             Receptionist.Lookup(key: .init(messageType: OwnerOfThings.Message.self, id: "all/owners"), replyTo: ref)
         }
     }
 
+    // @actor
     func performSubscribe(p: ActorRef<Receptionist.Listing<OwnerOfThings>>) {
         self.context.receptionist.subscribe(.init(OwnerOfThings.self, id: "all/owners")) {
             p.tell($0)

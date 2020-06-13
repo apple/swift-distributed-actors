@@ -17,6 +17,7 @@ import DistributedActors
 struct Greeter: Actorable {
     let context: Actor<Self>.Context
 
+    // @actor
     func greet(name: String) {
         print("Hello \(name)")
     }

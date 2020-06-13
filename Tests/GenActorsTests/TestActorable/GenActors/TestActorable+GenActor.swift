@@ -32,7 +32,6 @@ extension TestActorable {
         case greet2(name: String, surname: String) 
         case throwing 
         case passMyself(someone: ActorRef<Actor<TestActorable>>) 
-        case _ignoreInGenActor 
         case parameterNames(first: String) 
         case greetReplyToActorRef(name: String, replyTo: ActorRef<String>) 
         case greetReplyToActor(name: String, replyTo: Actor<TestActorable>) 
@@ -78,9 +77,6 @@ extension TestActorable {
  
                 case .passMyself(let someone):
                     instance.passMyself(someone: someone)
- 
-                case ._ignoreInGenActor:
-                    try instance._ignoreInGenActor()
  
                 case .parameterNames(let second):
                     instance.parameterNames(first: second)
@@ -187,11 +183,6 @@ extension Actor where A.Message == TestActorable.Message {
 
      func passMyself(someone: ActorRef<Actor<TestActorable>>) {
         self.ref.tell(Self.Message.passMyself(someone: someone))
-    }
- 
-
-    public func _ignoreInGenActor() {
-        self.ref.tell(Self.Message._ignoreInGenActor)
     }
  
 

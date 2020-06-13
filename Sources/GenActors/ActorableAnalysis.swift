@@ -42,7 +42,7 @@ final class GatherActorables: SyntaxVisitor {
         self.path = path
         self.settings = settings
         self.log = Logger(label: "\(GatherActorables.self)")
-        self.log.logLevel = settings.verbose ? .trace : .info
+        self.log.logLevel = settings.logLevelValue
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ final class GatherActorables: SyntaxVisitor {
     // MARK: types
 
     func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntaxProtocol, name: String) -> SyntaxVisitorContinueKind {
-        self.log.trace("Visit \(type): \(name) ==== \(node)")
+        self.log.trace("Visit \(type): \(name)")
 
         guard node.isActorable() else {
             self.nestingStack.append("\(name)")
@@ -79,7 +79,7 @@ final class GatherActorables: SyntaxVisitor {
         )
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
-        self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path), analyzing...")
+        self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path) ...")
 
         return .visitChildren
     }
@@ -216,13 +216,12 @@ final class GatherActorables: SyntaxVisitor {
     // MARK: functions
 
     override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.log.trace("Visit function decl [\(self.wipActorable.name)].[\(node.identifier)]")
+        let name = "\(node.identifier)"
+
         guard self.wipActorable != nil else {
             // likely a top-level function, we skip those always
             return .skipChildren
         }
-
-        let name = "\(node.identifier)"
 
         let modifierTokenKinds = node.modifiers?.map {
             $0.name.tokenKind
@@ -230,6 +229,32 @@ final class GatherActorables: SyntaxVisitor {
 
         // is it our special boxing function
         var isBoxingFunc = false
+
+        // FIXME: class and struct MUST mark using @actor, Actorable protocol too?
+        guard "\(node)".contains("@actor") || "\(name)".starts(with: "_box") else {
+            if GatherActorables.actorableLifecycleMethods.contains(name) {
+                let message = """
+                Detected built-in [\(name)] actorable function but it is not marked // @actor
+                Mark the function as follows:
+
+                    // @actor
+                    \(("\(node)".split(separator: "\n").first { $0.contains("func \(name)") }?.description ?? "func \(name)(...) { ...").trim(character: " "))
+
+                """
+                self.log.error("\(message.split(separator: "\n").first!)")
+                preconditionFailure(message)
+            }
+
+            self.log.debug(
+                """
+                  Skip [func \(name)]. To include it include @actor in it's comment, e.g. like:
+                    // @actor
+                    func \(name)() ...
+                """)
+
+            return .skipChildren
+        }
+        self.log.debug("  @actor func \(name) ...")
 
         if self.wipActorable.type == .protocol,
             modifierTokenKinds.contains(.staticKeyword),
@@ -257,7 +282,15 @@ final class GatherActorables: SyntaxVisitor {
             }
 
             guard !modifierTokenKinds.contains(.privateKeyword),
-                !modifierTokenKinds.contains(.staticKeyword) else {
+                !modifierTokenKinds.contains(.fileprivateKeyword) else {
+                preconditionFailure("""
+                Function [\(name)] in [\(self.wipActorable.name)] can not be made into actor message, as it is `private` (or `fileprivate`).
+                Only internal or public functions can be actor messages, because the generated sources need
+                to be able to access the function in order to invoke it (which is impossible with `private`).
+                """)
+            }
+
+            guard !modifierTokenKinds.contains(.staticKeyword) else {
                 return .skipChildren
             }
         }

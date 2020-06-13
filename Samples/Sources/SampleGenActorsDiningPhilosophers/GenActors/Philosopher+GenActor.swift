@@ -11,6 +11,7 @@ import DistributedActors
 extension Philosopher {
 
     public enum Message: ActorMessage { 
+        case think 
         case attemptToTakeForks 
         case stopEating 
     }
@@ -31,6 +32,9 @@ extension Philosopher {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
+                case .think:
+                    instance.think()
+ 
                 case .attemptToTakeForks:
                     instance.attemptToTakeForks()
  
@@ -68,6 +72,11 @@ extension Philosopher {
 // MARK: Extend Actor for Philosopher
 
 extension Actor where A.Message == Philosopher.Message {
+
+     func think() {
+        self.ref.tell(Self.Message.think)
+    }
+ 
 
      func attemptToTakeForks() {
         self.ref.tell(Self.Message.attemptToTakeForks)

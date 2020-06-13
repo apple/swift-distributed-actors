@@ -18,12 +18,14 @@ import XCTest
 
 // tag::actorable[]
 struct GreetMe: Actorable {
+    // @actor
     func hello(greeting: String) {
         // aww, thanks!
     }
 }
 
 struct GreetMeGreeter: Actorable {
+    // @actor
     func greet(_ greetMe: Actor<GreetMe>) {
         greetMe.hello(greeting: "Hello there!")
     }

@@ -25,12 +25,14 @@ public struct AwaitingActorable: Actorable {
         false
     }
 
+    // @actor
     func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) -> Behavior<Myself.Message> {
         context.awaitResult(of: f, timeout: .effectivelyInfinite) { result in
             replyTo.tell(result.mapError { error in AwaitingActorableError.error(error) })
         }
     }
 
+    // @actor
     func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) {
         context.onResultAsync(of: f, timeout: .effectivelyInfinite) { result in
             replyTo.tell(result.mapError { error in AwaitingActorableError.error(error) })

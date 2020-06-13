@@ -24,6 +24,7 @@ public struct GreetingsServiceImpl: GreetingsService, Actorable {
 
     let context: Myself.Context
 
+    // @actor
     public func preStart(context: Myself.Context) {
         context.log.info("\(context.address.path) started.")
     }

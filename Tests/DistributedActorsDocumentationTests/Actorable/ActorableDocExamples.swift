@@ -23,6 +23,7 @@ import XCTest
 
 // tag::greeter_0[]
 struct Greeter: Actorable {
+    // @actor
     func greet(name: String) -> String {
         "Hello, \(name)!"
     }
@@ -51,6 +52,7 @@ struct ContextGreeter: Actorable {
         self.context = context
     }
 
+    // @actor
     func greet(name: String) -> String {
         "Hello, \(name)! I am \(self.context.name)." // <3>
     }
@@ -62,6 +64,7 @@ struct ContextGreeter: Actorable {
 public struct InvokeFuncs: Actorable {
     let context: Myself.Context
 
+    // @actor
     public func doThingsAndRunTask() -> Int {
         self.context.log.info("Doing things...")
 
@@ -71,12 +74,14 @@ public struct InvokeFuncs: Actorable {
         return result
     }
 
+    // @actor
     public func doThingsAsync() -> Reply<Int> { // <2>
         // send myself a message to handle internalTask() in the future
         let reply: Reply<Int> = self.context.myself.internalTask() // <3>
         return reply
     }
 
+    // @actor
     internal func internalTask() -> Int {
         42
     }
@@ -104,6 +109,7 @@ struct UseActorWithContext {
 
 // tag::compose_protocols_1[]
 public protocol CoffeeMachine: Actorable { // <1>
+    // @actor
     mutating func makeCoffee() -> Coffee
 
     // Boiler-plate for actorable protocols // <2>
@@ -111,6 +117,7 @@ public protocol CoffeeMachine: Actorable { // <1>
 }
 
 internal protocol Diagnostics: Actorable { // <3>
+    // @actor
     func printDiagnostics()
 
     // Boiler-plate for actorable protocols // <4>
@@ -122,18 +129,21 @@ struct AllInOneMachine: Actorable, CoffeeMachine, Diagnostics { // <5>
 
     init() {}
 
-    // message specific to the `CoffeeMachine`
+    /// message specific to the `CoffeeMachine`
+    // @actor
     mutating func makeCoffee() -> Coffee {
         self.madeCoffees += 1
         return Coffee()
     }
 
-    // message specific to the `Diagnostics`
+    /// message specific to the `Diagnostics`
+    // @actor
     func printDiagnostics() {
         print("Made coffees: \(self.madeCoffees)")
     }
 
-    // message specific to the `AllInOneMachine`
+    /// message specific to the `AllInOneMachine`
+    // @actor
     func clean() {}
 }
 
@@ -164,18 +174,22 @@ class UsingAllInOneMachine {
 
 // tag::lifecycle_callbacks[]
 struct LifecycleReacting: Actorable {
+    // @actor
     func preStart(context: Myself.Context) { // <1>
         context.log.info("Starting...") // <2>
     }
 
+    // @actor
     func postStop(context: Myself.Context) { // <3>
         context.log.info("Stopping...")
     }
 
+    // @actor
     func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective { // <4>
         .ignore
     }
 
+    // @actor
     func something() {
         // nothing
     }
@@ -188,10 +202,12 @@ public struct AccessControl: Actorable {
     // ==== -------------------------------------------------------------------
     // MARK: Messages are generated for the following funcs
 
+    // @actor
     public func greetPublicly() {
         // WILL be generated as message
     }
 
+    // @actor
     internal func greetInternal() {
         // WILL be generated as message
     }
@@ -199,13 +215,12 @@ public struct AccessControl: Actorable {
     // ==== -------------------------------------------------------------------
     // MARK: No messages generated for the following funcs
 
-    // TODO: technically we may want to allow private messages, e.g. scheduling a timer to yourself
-    private func greetPrivate() {
+    internal func greetPrivate() {
         // will NOT get generated as message
     }
 
-    func __internalButNotMessage() {
-        // will NOT get generated as message
+    public func greetPublic() {
+        // will NOT get generated as message, even though public
     }
 }
 
@@ -221,11 +236,15 @@ final class ActorableDocExamples: XCTestCase {}
 
 // tag::disable_codable_gen[]
 public struct DontConformMessageToCodable: Actorable {
+    /// none of this actors messages will cross the wire (get automatic Codable conformance)
     public static let generateCodableConformance = false
 
-    public func echo(text: String) -> String {
-        text
+    // @actor
+    public func echo(closure: @escaping (String) -> String) -> String {
+        closure("Hello")
     }
+
+    // TODO: more examples, also show how to make just one function opt-out (by making it NonTransportable)
 }
 
 // can provide a conformance manually, rather than relying on the built in Codable generated one
