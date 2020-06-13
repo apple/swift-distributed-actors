@@ -19,27 +19,33 @@ public struct LifecycleActor: Actorable {
     let context: Actor<LifecycleActor>.Context
     let probe: ActorRef<String>
 
+    // @actor
     public func preStart(context: Actor<Self>.Context) {
         probe.tell("\(#function):\(context.path)")
     }
 
+    // @actor
     public func postStop(context: Actor<Self>.Context) {
         probe.tell("\(#function):\(context.path)")
     }
 
+    // @actor
     public func hello() -> String {
         "hello"
     }
 
+    // @actor
     public func pleaseStopViaBehavior() -> Behavior<Message> {
         .stop
     }
 
+    // @actor
     public func pleaseStopViaContextStop() -> String {
         self.context.stop() // no further messages (after this one) will be processed by this actor
         return "stopping"
     }
 
+    // @actor
     public func pleaseStopViaContextStopCalledManyTimes() -> Myself.Behavior {
         self.context.stop() // no further messages (after this one) will be processed by this actor
         self.context.stop() // should be no-op
@@ -49,18 +55,21 @@ public struct LifecycleActor: Actorable {
         }
     }
 
+    // @actor
     func watchChildAndTellItToStop() throws {
         let child: Actor<LifecycleActor> = try self.context.spawn("child") { LifecycleActor(context: $0, probe: self.probe) }
         self.context.watch(child)
         child.pleaseStopViaBehavior()
     }
 
+    // @actor
     func watchChildAndStopIt() throws {
         let child: Actor<LifecycleActor> = try self.context.spawn("child") { LifecycleActor(context: $0, probe: self.probe) }
         self.context.watch(child)
         try self.context.stop(child: child)
     }
 
+    // @actor
     public func receiveTerminated(context: Actor<Self>.Context, terminated: Signals.Terminated) -> DeathPactDirective {
         self.probe.tell("terminated:\(terminated)")
         return .ignore
@@ -70,9 +79,7 @@ public struct LifecycleActor: Actorable {
         // noop
     }
 
-    // we treat _messages as "only this actor is sending those to themselves"
-    // FIXME: in reality what we want is: "this method, even though private do generate a message for it.
-    // We'd need some form of annotations for this...
+    // @actor
     internal func _doNOTSkipMe() {
         // noop
     }

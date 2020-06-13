@@ -1,6 +1,6 @@
 import DistributedActors
 
-class Philosopher: Actorable {
+final class Philosopher: Actorable {
     private let context: Myself.Context
     private let leftFork: Actor<Fork>
     private let rightFork: Actor<Fork>
@@ -12,6 +12,7 @@ class Philosopher: Actorable {
         self.rightFork = rightFork
     }
 
+    // @actor
     func preStart(context: Actor<Philosopher>.Context) {
         context.watch(self.leftFork)
         context.watch(self.rightFork)
@@ -19,7 +20,8 @@ class Philosopher: Actorable {
         self.think()
     }
 
-    private func think() {
+    // @actor
+    func think() {
         if case .takingForks(let leftIsTaken, let rightIsTaken) = self.state {
             if leftIsTaken {
                 leftFork.putBack()
@@ -37,6 +39,7 @@ class Philosopher: Actorable {
         self.context.log.info("\(self.context.address.name) is thinking...")
     }
 
+    // @actor
     func attemptToTakeForks() {
         guard self.state == .thinking else {
             self.context.log.error("\(self.context.address.name) tried to take a fork but was not in the thinking state!")
@@ -63,6 +66,15 @@ class Philosopher: Actorable {
 
         attemptToTake(fork: self.leftFork)
         attemptToTake(fork: self.rightFork)
+    }
+
+    /// Message sent to oneself after a timer exceeds and we're done `eating` and can become `thinking` again.
+    // @actor
+    func stopEating() {
+        self.leftFork.putBack()
+        self.rightFork.putBack()
+        self.context.log.info("\(self.context.address.name) is done eating and replaced both forks!")
+        self.think()
     }
 
     private func forkTaken(_ fork: Actor<Fork>) {
@@ -99,12 +111,6 @@ class Philosopher: Actorable {
         self.context.timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
     }
 
-    func stopEating() {
-        self.leftFork.putBack()
-        self.rightFork.putBack()
-        self.context.log.info("\(self.context.address.name) is done eating and replaced both forks!")
-        self.think()
-    }
 }
 
 extension Philosopher {

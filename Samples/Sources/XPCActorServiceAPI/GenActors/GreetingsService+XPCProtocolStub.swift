@@ -20,24 +20,4 @@ public struct GreetingsServiceStub: Actorable, GreetingsService {
         // Just a Stub, no-one should ever be instantiating it.
     }
 
-    public func logGreeting(name: String) {
-        fatalError("Function STUB for XPCActorableProtocol [logGreeting], function: \(#function).")
-    }
-
-    public func greet(name: String) -> String {
-        fatalError("Function STUB for XPCActorableProtocol [greet], function: \(#function).")
-    }
-
-    public func fatalCrash() {
-        fatalError("Function STUB for XPCActorableProtocol [fatalCrash], function: \(#function).")
-    }
-
-    public func greetDirect(who: ActorRef<String>) {
-        fatalError("Function STUB for XPCActorableProtocol [greetDirect], function: \(#function).")
-    }
-
-    public func greetFuture(name: String) -> EventLoopFuture<String> {
-        fatalError("Function STUB for XPCActorableProtocol [greetFuture], function: \(#function).")
-    }
-
 }

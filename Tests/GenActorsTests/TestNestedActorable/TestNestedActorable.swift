@@ -16,6 +16,7 @@ import DistributedActors
 
 enum TestActorableNamespace {
     struct TestActorableNamespaceDirectly: Actorable {
+        // @actor
         func echo(_ string: String) -> String {
             string
         }
@@ -26,6 +27,7 @@ enum TestActorableNamespace {
 
 extension TestActorableNamespace {
     struct TestActorableNamespaceInExtension: Actorable {
+        // @actor
         func echo(_ string: String) -> String {
             string
         }
@@ -37,6 +39,7 @@ extension TestActorableNamespace {
 extension TestActorableNamespace {
     enum InnerNamespace {
         struct TestActorableNamespaceExtensionEnumDirectly: Actorable {
+            // @actor
             func echo(_ string: String) -> String {
                 string
             }

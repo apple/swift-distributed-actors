@@ -32,7 +32,7 @@ import XCTest
 extension DontConformMessageToCodable {
 
     public enum Message: ActorMessage { 
-        case echo(text: String, _replyTo: ActorRef<String>) 
+        case echo(closure:  (String) -> String, _replyTo: ActorRef<String>) 
     }
     
 }
@@ -51,8 +51,8 @@ extension DontConformMessageToCodable {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .echo(let text, let _replyTo):
-                    let result = instance.echo(text: text)
+                case .echo(let closure, let _replyTo):
+                    let result = instance.echo(closure: closure)
                     _replyTo.tell(result)
  
                 
@@ -87,11 +87,11 @@ extension DontConformMessageToCodable {
 
 extension Actor where A.Message == DontConformMessageToCodable.Message {
 
-    public func echo(text: String) -> Reply<String> {
+    public func echo(closure: @escaping (String) -> String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                Self.Message.echo(text: text, _replyTo: _replyTo)}
+                Self.Message.echo(closure: closure, _replyTo: _replyTo)}
         )
     }
  

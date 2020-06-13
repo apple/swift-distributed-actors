@@ -86,6 +86,7 @@ struct TestGCounterOwner: Actorable {
         self.ownerEventProbe = ownerEventProbe
     }
 
+    // @actor
     func preStart(context: Myself.Context) {
         self.counter.onUpdate { id, gg in
             context.log.trace("GCounter \(id) updated with new value: \(gg.value)")
@@ -97,11 +98,13 @@ struct TestGCounterOwner: Actorable {
         }
     }
 
+    // @actor
     func increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> Int {
         _ = self.counter.increment(by: amount, writeConsistency: consistency, timeout: timeout)
         return self.lastObservedValue()
     }
 
+    // @actor
     func read(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> EventLoopFuture<Int> {
         let p = self.context.system._eventLoopGroup.next().makePromise(of: Int.self)
         self.counter.read(atConsistency: consistency, timeout: timeout).onComplete {
@@ -115,6 +118,7 @@ struct TestGCounterOwner: Actorable {
         return p.futureResult
     }
 
+    // @actor
     func lastObservedValue() -> Int {
         self.counter.lastObservedValue
     }

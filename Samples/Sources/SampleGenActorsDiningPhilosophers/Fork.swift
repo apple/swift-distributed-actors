@@ -8,6 +8,7 @@ struct Fork: Actorable {
         self.context = context
     }
 
+    // @actor
     mutating func take() -> Bool {
         if self.isTaken {
             return false
@@ -17,6 +18,7 @@ struct Fork: Actorable {
         return true
     }
 
+    // @actor
     mutating func putBack() {
         assert(self.isTaken, "Attempted to put back a fork that is not taken!")
         self.isTaken = false

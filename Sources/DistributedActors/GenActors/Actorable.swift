@@ -82,10 +82,12 @@ public protocol Actorable {
 }
 
 extension Actorable {
+    // @actor
     public func preStart(context: Myself.Context) {
         // noop
     }
 
+    // @actor
     public func postStop(context: Myself.Context) {
         // noop
     }
@@ -98,11 +100,13 @@ extension Actorable {
 }
 
 extension Actorable {
+    // @actor
     public func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) throws -> DeathPactDirective {
         // DeathWatch semantics are implemented in the behavior runtime, so we remain compatible with them here.
         .unhandled
     }
 
+    // @actor
     public func receiveSignal(context: Myself.Context, signal: Signal) throws {
         // do nothing by default
     }

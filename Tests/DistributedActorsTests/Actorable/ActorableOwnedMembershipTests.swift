@@ -53,6 +53,7 @@ struct TestMembershipOwner: Actorable {
         self.membership = context.system.cluster.autoUpdatedMembership(context)
     }
 
+    // @actor
     func replyMembership() -> Cluster.Membership? {
         self.membership.lastObservedValue
     }

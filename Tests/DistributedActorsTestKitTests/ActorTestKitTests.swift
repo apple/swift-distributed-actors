@@ -170,6 +170,7 @@ final class ActorTestKitTests: XCTestCase {
 }
 
 struct TestMeActorable: Actorable {
+    // @actor
     func hello() -> String {
         "Hello!"
     }

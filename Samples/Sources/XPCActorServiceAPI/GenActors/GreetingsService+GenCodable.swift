@@ -15,68 +15,25 @@ import NIO
 extension GeneratedActor.Messages.GreetingsService {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case logGreeting
-        case greet
-        case fatalCrash
-        case greetDirect
-        case greetFuture
-
+        
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case logGreeting_name
-        case greet_name
-        case greet__replyTo
-        case greetDirect_who
-        case greetFuture_name
-        case greetFuture__replyTo
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .logGreeting:
-            let name = try container.decode(String.self, forKey: CodingKeys.logGreeting_name)
-            self = .logGreeting(name: name)
-        case .greet:
-            let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greet__replyTo)
-            self = .greet(name: name, _replyTo: _replyTo)
-        case .fatalCrash:
-            self = .fatalCrash
-        case .greetDirect:
-            let who = try container.decode(ActorRef<String>.self, forKey: CodingKeys.greetDirect_who)
-            self = .greetDirect(who: who)
-        case .greetFuture:
-            let name = try container.decode(String.self, forKey: CodingKeys.greetFuture_name)
-            let _replyTo = try container.decode(ActorRef<Result<String, ErrorEnvelope>>.self, forKey: CodingKeys.greetFuture__replyTo)
-            self = .greetFuture(name: name, _replyTo: _replyTo)
-
+        
         }
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .logGreeting(let name):
-            try container.encode(DiscriminatorKeys.logGreeting.rawValue, forKey: CodingKeys._case)
-            try container.encode(name, forKey: CodingKeys.logGreeting_name)
-        case .greet(let name, let _replyTo):
-            try container.encode(DiscriminatorKeys.greet.rawValue, forKey: CodingKeys._case)
-            try container.encode(name, forKey: CodingKeys.greet_name)
-            try container.encode(_replyTo, forKey: CodingKeys.greet__replyTo)
-        case .fatalCrash:
-            try container.encode(DiscriminatorKeys.fatalCrash.rawValue, forKey: CodingKeys._case)
-        case .greetDirect(let who):
-            try container.encode(DiscriminatorKeys.greetDirect.rawValue, forKey: CodingKeys._case)
-            try container.encode(who, forKey: CodingKeys.greetDirect_who)
-        case .greetFuture(let name, let _replyTo):
-            try container.encode(DiscriminatorKeys.greetFuture.rawValue, forKey: CodingKeys._case)
-            try container.encode(name, forKey: CodingKeys.greetFuture_name)
-            try container.encode(_replyTo, forKey: CodingKeys.greetFuture__replyTo)
-
+        
         }
     }
 }

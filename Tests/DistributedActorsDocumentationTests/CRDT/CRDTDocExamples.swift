@@ -55,7 +55,9 @@ struct Shopper: Actorable {
         self.itemsToBuy = CRDT.ORSet<String>.makeOwned(by: context, id: ShoppingList.ID) // <1>
     }
 
+    // @actor
     func add(item: String) { /* ... */ }
+    // @actor
     func checkOff(item: String) { /* ... */ }
 }
 
@@ -66,6 +68,7 @@ struct Shopper_2: Actorable {
     let context: Myself.Context
     let itemsToBuy: CRDT.ActorableOwned<CRDT.ORSet<String>>
 
+    // @actor
     func add(item: String) {
         let write = self.itemsToBuy.insert(
             item, // <1>
@@ -86,6 +89,7 @@ struct Shopper_2: Actorable {
     // end::quickstart_direct_write_add[]
 
     // tag::quickstart_direct_write_remove[]
+    // @actor
     func checkOff(item: String) {
         let write = self.itemsToBuy.remove(item, writeConsistency: .local, timeout: .effectivelyInfinite)
 

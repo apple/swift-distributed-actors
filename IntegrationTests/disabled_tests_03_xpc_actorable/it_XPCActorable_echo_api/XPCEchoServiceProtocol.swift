@@ -16,9 +16,12 @@ import DistributedActors
 import DistributedActorsXPC
 
 public protocol XPCEchoServiceProtocol: XPCActorableProtocol {
+
+    // @actor
     func echo(string: String) -> String
 
     /// Causes a fault and the XPC service process to be killed
+    // @actor
     func letItCrash()
 
     static func _boxXPCEchoServiceProtocol(_ message: GeneratedActor.Messages.XPCEchoServiceProtocol) -> Self.Message

@@ -14,13 +14,30 @@
 
 import ArgumentParser
 import DistributedActors
+import Logging
 
 struct GenerateActorsCommand: ParsableCommand {
     @Flag(help: "Remove *all* +Gen... source files before generating a new batch of files")
     var clean: Bool
 
-    @Flag(name: .shortAndLong, help: "Print verbose information while analyzing and generating sources")
-    var verbose: Bool
+    @Option(default: "info", help: "Print verbose information while analyzing and generating sources")
+    var logLevel: String
+
+    var logLevelValue: Logger.Level {
+        switch self.logLevel {
+        case "trace": return .trace
+        case "debug": return .debug
+        case "info": return .info
+        case "notice": return .notice
+        case "warning": return .warning
+        case "error": return .error
+        case "critical": return .critical
+        default: return .info
+        }
+    }
+
+    @Flag(name: .shortAndLong, help: "Print verbose all generated sources")
+    var printGenerated: Bool
 
     @Argument()
     var scanTargets: [String]
