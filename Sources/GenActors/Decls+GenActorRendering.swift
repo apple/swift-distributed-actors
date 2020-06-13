@@ -427,7 +427,7 @@ extension ActorableMessageDecl {
         printer.print("(\(self.renderFuncParams))\(self.returnType.renderReturnTypeDeclPart)", skipNewline: true)
 
         if actor.isGeneric {
-            printer.print(" where Self.Message == GenericEcho<\(actor.renderGenericNames)>.Message", skipNewline: true)
+            printer.print(" where Self.Message == \(actor.fullName)<\(actor.renderGenericNames)>.Message", skipNewline: true)
         }
     }
 

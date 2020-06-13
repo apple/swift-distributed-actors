@@ -20,3 +20,15 @@ struct GenericEcho<M: Codable>: Actorable {
         message
     }
 }
+
+struct GenericEcho2<One: Codable, Two: Codable>: Actorable {
+    // @actor
+    func echoOne(_ one: One) -> One {
+        one
+    }
+
+    // @actor
+    func echoTwo(_ two: Two) -> Two {
+        two
+    }
+}

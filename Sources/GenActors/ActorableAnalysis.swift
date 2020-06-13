@@ -82,7 +82,7 @@ final class GatherActorables: SyntaxVisitor {
             name: name,
             generateCodableConformance: true
         )
-        self.wipActorable.genericTypes = collectGenericDecls()
+        self.wipActorable.genericInformation = collectGenericDecls()
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
         self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path) ...")

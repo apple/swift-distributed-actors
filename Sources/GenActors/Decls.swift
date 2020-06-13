@@ -32,33 +32,38 @@ struct ActorableTypeDecl {
     var access: String = ""
     var type: DeclType
 
-    var genericTypes: [GenericDecl] = []
+    var genericInformation: [GenericDecl] = []
     struct GenericDecl {
         let name: String
         let parameterDecl: String
 
         init(_ declaration: String) {
-            self.parameterDecl = declaration
+            let decl = declaration
+                .replacingOccurrences(of: ",", with: "")
+                .trim(character: " ")
+            self.parameterDecl = decl
             if declaration.contains(":") {
                 self.name = String(declaration.split(separator: ":").first!)
             } else {
                 self.name = declaration
             }
+
         }
     }
 
     var renderGenericTypes: String {
-        self.genericTypes.map { $0.parameterDecl } // TODO: must handle where clauses better
+        print("self.genericTypes = \(self.genericInformation)")
+        return self.genericInformation.map { $0.parameterDecl } // TODO: must handle where clauses better
             .joined(separator: ", ")
     }
 
     var renderGenericNames: String {
-        self.genericTypes.map { $0.name }
+        self.genericInformation.map { $0.name }
             .joined(separator: ", ")
     }
 
     var isGeneric: Bool {
-        !self.genericTypes.isEmpty
+        !self.genericInformation.isEmpty
     }
 
     /// Contains type names within which this type is declared, e.g. `[Actorables.May.Be.Nested].MyActorable`.

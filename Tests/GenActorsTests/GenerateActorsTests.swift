@@ -411,4 +411,14 @@ final class GenerateActorsTests: XCTestCase {
         let intReply = try self.testKit.expect(echoInt.echo(42))
         intReply.shouldEqual(42)
     }
+
+    func test_genericActor_echo2() throws {
+        let echoString: Actor<GenericEcho2<String, Int>> = try self.system.spawn("string") { _ in GenericEcho2() }
+
+        let stringReply = try self.testKit.expect(echoString.echoOne("hello"))
+        stringReply.shouldEqual("hello")
+
+        let intReply = try self.testKit.expect(echoString.echoTwo(42))
+        intReply.shouldEqual(42)
+    }
 }
