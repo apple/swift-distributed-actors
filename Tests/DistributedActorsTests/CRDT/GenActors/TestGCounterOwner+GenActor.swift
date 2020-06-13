@@ -28,6 +28,9 @@ import XCTest
 extension TestGCounterOwner {
 
     public enum Message: ActorMessage { 
+        case increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount, _replyTo: ActorRef<Int>) 
+        case read(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount, _replyTo: ActorRef<Result<Int, ErrorEnvelope>>) 
+        case lastObservedValue(_replyTo: ActorRef<Int>) 
     }
     
 }
@@ -46,6 +49,25 @@ extension TestGCounterOwner {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
+                case .increment(let amount, let consistency, let timeout, let _replyTo):
+                    let result = instance.increment(amount: amount, consistency: consistency, timeout: timeout)
+                    _replyTo.tell(result)
+ 
+                case .read(let consistency, let timeout, let _replyTo):
+                    instance.read(consistency: consistency, timeout: timeout)
+                        .whenComplete { res in
+                            switch res {
+                            case .success(let value):
+                                _replyTo.tell(.success(value))
+                            case .failure(let error):
+                                _replyTo.tell(.failure(ErrorEnvelope(error)))
+                            }
+                        }
+ 
+                case .lastObservedValue(let _replyTo):
+                    let result = instance.lastObservedValue()
+                    _replyTo.tell(result)
+ 
                 
                 }
                 return .same
@@ -77,5 +99,32 @@ extension TestGCounterOwner {
 // MARK: Extend Actor for TestGCounterOwner
 
 extension Actor where A.Message == TestGCounterOwner.Message {
+
+     func increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> Reply<Int> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.increment(amount: amount, consistency: consistency, timeout: timeout, _replyTo: _replyTo)}
+        )
+    }
+ 
+
+     func read(consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> Reply<Int> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: Result<Int, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.read(consistency: consistency, timeout: timeout, _replyTo: _replyTo)}
+        )
+    }
+ 
+
+     func lastObservedValue() -> Reply<Int> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply.from(askResponse: 
+            self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
+                Self.Message.lastObservedValue(_replyTo: _replyTo)}
+        )
+    }
+ 
 
 }

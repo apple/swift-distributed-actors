@@ -55,7 +55,9 @@ struct Shopper: Actorable {
         self.itemsToBuy = CRDT.ORSet<String>.makeOwned(by: context, id: ShoppingList.ID) // <1>
     }
 
+    // @actor
     func add(item: String) { /* ... */ }
+    // @actor
     func checkOff(item: String) { /* ... */ }
 }
 

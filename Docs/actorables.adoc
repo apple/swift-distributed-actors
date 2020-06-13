@@ -14,6 +14,10 @@ WARNING: api:Actorable[protocol] and `GenActors` are EXPERIMENTAL and may change
          which may perhaps be possible to implement using compiler features in the future.
 
 The api:Actorable[protocol] protocol allows for a no-hassle way for defining actor behavior.
+Any function in an actorable can be marked using the `@actor` (pseudo) "annotation" in its comment section in order to opt-in
+for source generation of any relevant actor runtime and message dispatch code for this message. It also serves as documentation,
+so you know which functions may be invoked as a result of remote message sends.
+
 By conforming to the protocol all public and internal functions defined directly (not in extensions) in a type
 are made available as messages.
 
@@ -21,6 +25,9 @@ are made available as messages.
 ----
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=greeter_0]
 ----
+
+TIP:: In order to make a `func` available as an Actor message, it must be marked using the `@actor` "annotation" in its comment. +
+We recommend a simple `// @actor` following any actual documentation (marked using the `///` style), such that this noise is not included in its documentation. +
 
 Such struct can be used as synchronous implementation, but can also be spawned as an actor.
 

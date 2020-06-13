@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import Logging
 import DistributedActors
+import Logging
 
 struct GenerateActorsCommand: ParsableCommand {
     @Flag(help: "Remove *all* +Gen... source files before generating a new batch of files")
@@ -34,7 +34,6 @@ struct GenerateActorsCommand: ParsableCommand {
         case "critical": return .critical
         default: return .info
         }
-
     }
 
     @Flag(name: .shortAndLong, help: "Print verbose all generated sources")

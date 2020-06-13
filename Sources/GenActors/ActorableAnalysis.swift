@@ -234,14 +234,13 @@ final class GatherActorables: SyntaxVisitor {
         guard "\(node)".contains("@actor") || "\(name)".starts(with: "_box") else {
             if GatherActorables.actorableLifecycleMethods.contains(name) {
                 let message = """
-                              Detected built-in [\(name)] actorable function but it is not marked // @actor
-                              Mark the function as follows:
+                Detected built-in [\(name)] actorable function but it is not marked // @actor
+                Mark the function as follows:
 
-                                  // @actor
-                                  \(("\(node)".split(separator: "\n").first { $0.contains("func \(name)") }?.description ?? "func \(name)(...) { ...").trim(character: " "))
+                    // @actor
+                    \(("\(node)".split(separator: "\n").first { $0.contains("func \(name)") }?.description ?? "func \(name)(...) { ...").trim(character: " "))
 
-
-                              """
+                """
                 self.log.error("\(message.split(separator: "\n").first!)")
                 preconditionFailure(message)
             }
@@ -283,7 +282,15 @@ final class GatherActorables: SyntaxVisitor {
             }
 
             guard !modifierTokenKinds.contains(.privateKeyword),
-                !modifierTokenKinds.contains(.staticKeyword) else {
+                !modifierTokenKinds.contains(.fileprivateKeyword) else {
+                preconditionFailure("""
+                Function [\(name)] in [\(self.wipActorable.name)] can not be made into actor message, as it is `private` (or `fileprivate`).
+                Only internal or public functions can be actor messages, because the generated sources need
+                to be able to access the function in order to invoke it (which is impossible with `private`).
+                """)
+            }
+
+            guard !modifierTokenKinds.contains(.staticKeyword) else {
                 return .skipChildren
             }
         }

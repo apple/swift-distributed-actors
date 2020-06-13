@@ -33,6 +33,8 @@ import XCTest
 extension Shopper {
 
     public enum Message: ActorMessage { 
+        case add(item: String) 
+        case checkOff(item: String) 
     }
     
 }
@@ -51,6 +53,12 @@ extension Shopper {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
+                case .add(let item):
+                    instance.add(item: item)
+ 
+                case .checkOff(let item):
+                    instance.checkOff(item: item)
+ 
                 
                 }
                 return .same
@@ -82,5 +90,15 @@ extension Shopper {
 // MARK: Extend Actor for Shopper
 
 extension Actor where A.Message == Shopper.Message {
+
+     func add(item: String) {
+        self.ref.tell(Self.Message.add(item: item))
+    }
+ 
+
+     func checkOff(item: String) {
+        self.ref.tell(Self.Message.checkOff(item: item))
+    }
+ 
 
 }

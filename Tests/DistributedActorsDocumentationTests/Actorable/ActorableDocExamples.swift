@@ -174,7 +174,6 @@ class UsingAllInOneMachine {
 
 // tag::lifecycle_callbacks[]
 struct LifecycleReacting: Actorable {
-
     // @actor
     func preStart(context: Myself.Context) { // <1>
         context.log.info("Starting...") // <2>

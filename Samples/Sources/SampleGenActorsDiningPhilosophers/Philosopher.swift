@@ -21,7 +21,7 @@ final class Philosopher: Actorable {
     }
 
     // @actor
-    private func think() {
+    func think() {
         if case .takingForks(let leftIsTaken, let rightIsTaken) = self.state {
             if leftIsTaken {
                 leftFork.putBack()
@@ -68,6 +68,15 @@ final class Philosopher: Actorable {
         attemptToTake(fork: self.rightFork)
     }
 
+    /// Message sent to oneself after a timer exceeds and we're done `eating` and can become `thinking` again.
+    // @actor
+    func stopEating() {
+        self.leftFork.putBack()
+        self.rightFork.putBack()
+        self.context.log.info("\(self.context.address.name) is done eating and replaced both forks!")
+        self.think()
+    }
+
     private func forkTaken(_ fork: Actor<Fork>) {
         if self.state == .thinking { // We couldn't get the first fork and have already gone back to thinking.
             fork.putBack()
@@ -102,12 +111,6 @@ final class Philosopher: Actorable {
         self.context.timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
     }
 
-    func stopEating() {
-        self.leftFork.putBack()
-        self.rightFork.putBack()
-        self.context.log.info("\(self.context.address.name) is done eating and replaced both forks!")
-        self.think()
-    }
 }
 
 extension Philosopher {

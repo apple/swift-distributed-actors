@@ -11,7 +11,9 @@ import DistributedActors
 extension Philosopher.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
+        case think
         case attemptToTakeForks
+        case stopEating
 
     }
 
@@ -23,8 +25,12 @@ extension Philosopher.Message {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
+        case .think:
+            self = .think
         case .attemptToTakeForks:
             self = .attemptToTakeForks
+        case .stopEating:
+            self = .stopEating
 
         }
     }
@@ -32,8 +38,12 @@ extension Philosopher.Message {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
+        case .think:
+            try container.encode(DiscriminatorKeys.think.rawValue, forKey: CodingKeys._case)
         case .attemptToTakeForks:
             try container.encode(DiscriminatorKeys.attemptToTakeForks.rawValue, forKey: CodingKeys._case)
+        case .stopEating:
+            try container.encode(DiscriminatorKeys.stopEating.rawValue, forKey: CodingKeys._case)
 
         }
     }
