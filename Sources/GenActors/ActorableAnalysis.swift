@@ -42,7 +42,7 @@ final class GatherActorables: SyntaxVisitor {
         self.path = path
         self.settings = settings
         self.log = Logger(label: "\(GatherActorables.self)")
-        self.log.logLevel = settings.verbose ? .trace : .info
+        self.log.logLevel = settings.logLevelValue
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ final class GatherActorables: SyntaxVisitor {
     // MARK: types
 
     func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntaxProtocol, name: String) -> SyntaxVisitorContinueKind {
-        self.log.trace("Visit \(type): \(name) ==== \(node)")
+        self.log.trace("Visit \(type): \(name)")
 
         guard node.isActorable() else {
             self.nestingStack.append("\(name)")
@@ -79,7 +79,7 @@ final class GatherActorables: SyntaxVisitor {
         )
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
-        self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path), analyzing...")
+        self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path) ...")
 
         return .visitChildren
     }
@@ -232,16 +232,30 @@ final class GatherActorables: SyntaxVisitor {
 
         // FIXME: class and struct MUST mark using @actor, Actorable protocol too?
         guard "\(node)".contains("@actor") || "\(name)".starts(with: "_box") else {
-            // TODO: if receiveTerminated ot receiveSignal etc, FORCE them to be marked @actor
+            if GatherActorables.actorableLifecycleMethods.contains(name) {
+                let message = """
+                              Detected built-in [\(name)] actorable function but it is not marked // @actor
+                              Mark the function as follows:
 
-            if self.settings.verbose {
-                print("  Skip [func \(name)]... (not marked as `@actor func`)")
+                                  // @actor
+                                  \(("\(node)".split(separator: "\n").first { $0.contains("func \(name)") }?.description ?? "func \(name)(...) { ...").trim(character: " "))
+
+
+                              """
+                self.log.error("\(message.split(separator: "\n").first!)")
+                preconditionFailure(message)
             }
+
+            self.log.debug(
+                """
+                  Skip [func \(name)]. To include it include @actor in it's comment, e.g. like:
+                    // @actor
+                    func \(name)() ...
+                """)
+
             return .skipChildren
         }
-        if self.settings.verbose {
-            print("  @actor func \(name) ...")
-        }
+        self.log.debug("  @actor func \(name) ...")
 
         if self.wipActorable.type == .protocol,
             modifierTokenKinds.contains(.staticKeyword),

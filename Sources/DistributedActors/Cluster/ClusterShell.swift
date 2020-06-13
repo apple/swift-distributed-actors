@@ -709,7 +709,7 @@ extension ClusterShell {
 extension ClusterShell {
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
     /// - parameter inboundChannel: the inbound connection channel that the other node has opened and is offering its handshake on,
-    ///   (as opposed to the channel which we may have opened when w e first extended a handshake to that node which would be stored in `state`)
+    ///   (as opposed to the channel which we may have opened when we first extended a handshake to that node which would be stored in `state`)
     internal func onHandshakeOffer(
         _ context: ActorContext<Message>, _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer, inboundChannel: Channel,

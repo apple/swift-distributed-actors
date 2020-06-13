@@ -28,64 +28,25 @@ import XCTest
 extension TestGCounterOwner.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case increment
-        case read
-        case lastObservedValue
-
+        
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case increment_amount
-        case increment_consistency
-        case increment_timeout
-        case increment__replyTo
-        case read_consistency
-        case read_timeout
-        case read__replyTo
-        case lastObservedValue__replyTo
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .increment:
-            let amount = try container.decode(Int.self, forKey: CodingKeys.increment_amount)
-            let consistency = try container.decode(CRDT.OperationConsistency.self, forKey: CodingKeys.increment_consistency)
-            let timeout = try container.decode(DistributedActors.TimeAmount.self, forKey: CodingKeys.increment_timeout)
-            let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.increment__replyTo)
-            self = .increment(amount: amount, consistency: consistency, timeout: timeout, _replyTo: _replyTo)
-        case .read:
-            let consistency = try container.decode(CRDT.OperationConsistency.self, forKey: CodingKeys.read_consistency)
-            let timeout = try container.decode(DistributedActors.TimeAmount.self, forKey: CodingKeys.read_timeout)
-            let _replyTo = try container.decode(ActorRef<Result<Int, ErrorEnvelope>>.self, forKey: CodingKeys.read__replyTo)
-            self = .read(consistency: consistency, timeout: timeout, _replyTo: _replyTo)
-        case .lastObservedValue:
-            let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.lastObservedValue__replyTo)
-            self = .lastObservedValue(_replyTo: _replyTo)
-
+        
         }
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .increment(let amount, let consistency, let timeout, let _replyTo):
-            try container.encode(DiscriminatorKeys.increment.rawValue, forKey: CodingKeys._case)
-            try container.encode(amount, forKey: CodingKeys.increment_amount)
-            try container.encode(consistency, forKey: CodingKeys.increment_consistency)
-            try container.encode(timeout, forKey: CodingKeys.increment_timeout)
-            try container.encode(_replyTo, forKey: CodingKeys.increment__replyTo)
-        case .read(let consistency, let timeout, let _replyTo):
-            try container.encode(DiscriminatorKeys.read.rawValue, forKey: CodingKeys._case)
-            try container.encode(consistency, forKey: CodingKeys.read_consistency)
-            try container.encode(timeout, forKey: CodingKeys.read_timeout)
-            try container.encode(_replyTo, forKey: CodingKeys.read__replyTo)
-        case .lastObservedValue(let _replyTo):
-            try container.encode(DiscriminatorKeys.lastObservedValue.rawValue, forKey: CodingKeys._case)
-            try container.encode(_replyTo, forKey: CodingKeys.lastObservedValue__replyTo)
-
+        
         }
     }
 }

@@ -40,7 +40,8 @@ swift run GenActors
 
 which by default generates actors for all api:Actorable[protocol] types located in the `Sources` directory.
 If you want to customize which folders or files to scan for actorables, you can pass them as parameters.
-You can also use `--verbose` to print more information about the source code generation.
+
+Use `--help` to learn about available extra options that can be passed to the source generator (including varying log levels etc).
 
 Once this is done, we are ready to spawn and communicate with our first api:Actor[struct].
 Spawning an api:Actor[struct] from an actorable is performed using the `system.spawn` method on api:ActorSystem[class]:
@@ -136,8 +137,6 @@ include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=self_myse
 <2> In this function we will send a `internalTask` _message_ and want to return its reply, thus the return type changes
 <3> We use `context.myself.internalTask()` to *send a message* to `myself`
 
-
-
 ==== Message Access-Control
 
 #Access control is fairly limited, as we'd realistically want more control, e.g. using some @Actorable on methods.#
@@ -172,6 +171,9 @@ The entire lifecycle is perhaps best explained using the following diagram illus
 which are delivered to an actor as it undergoes these transitions. Note that in normal situations, i.e. without faulty behaviors,
 the diagram is a simple linear transition from `Running` through `Stopped` to `Terminated`. All other states and transitions come
 into play only in face of faulty behaviors.
+
+NOTE:: Actor Lifecycle funcs, same as any other message-driven funcs, MUST be marked using the `// @actor` annotation.
+       The source generator will warn and fail if these functions are used without the proper annotation, to keep the look and feel of message driven funcs the same.
 
 #TODO: The diagram and wording are based on the <<behaviors>> documentation, and not yet completely remade for Actorable.#
 

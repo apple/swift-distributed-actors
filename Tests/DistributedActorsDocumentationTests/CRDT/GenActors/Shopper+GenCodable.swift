@@ -33,41 +33,25 @@ import XCTest
 extension Shopper.Message {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case add
-        case checkOff
-
+        
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case add_item
-        case checkOff_item
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .add:
-            let item = try container.decode(String.self, forKey: CodingKeys.add_item)
-            self = .add(item: item)
-        case .checkOff:
-            let item = try container.decode(String.self, forKey: CodingKeys.checkOff_item)
-            self = .checkOff(item: item)
-
+        
         }
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .add(let item):
-            try container.encode(DiscriminatorKeys.add.rawValue, forKey: CodingKeys._case)
-            try container.encode(item, forKey: CodingKeys.add_item)
-        case .checkOff(let item):
-            try container.encode(DiscriminatorKeys.checkOff.rawValue, forKey: CodingKeys._case)
-            try container.encode(item, forKey: CodingKeys.checkOff_item)
-
+        
         }
     }
 }

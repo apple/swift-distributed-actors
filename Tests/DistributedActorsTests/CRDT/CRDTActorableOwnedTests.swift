@@ -86,6 +86,7 @@ struct TestGCounterOwner: Actorable {
         self.ownerEventProbe = ownerEventProbe
     }
 
+    // @actor
     func preStart(context: Myself.Context) {
         self.counter.onUpdate { id, gg in
             context.log.trace("GCounter \(id) updated with new value: \(gg.value)")

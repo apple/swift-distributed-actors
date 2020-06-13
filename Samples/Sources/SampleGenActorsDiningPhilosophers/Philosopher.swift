@@ -12,6 +12,7 @@ final class Philosopher: Actorable {
         self.rightFork = rightFork
     }
 
+    // @actor
     func preStart(context: Actor<Philosopher>.Context) {
         context.watch(self.leftFork)
         context.watch(self.rightFork)

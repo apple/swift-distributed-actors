@@ -36,7 +36,7 @@ final class GenerateActors {
         self.command = command
 
         self.log = Logger(label: "\(GenerateActors.self)")
-        self.log.logLevel = command.verbose ? .trace : .info
+        self.log.logLevel = command.logLevelValue
 
         do {
             let passedInToScan: [String] = command.scanTargets

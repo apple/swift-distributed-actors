@@ -286,7 +286,7 @@ extension Rendering {
                 break
             }
 
-            if settings.verbose {
+            if settings.printGenerated {
                 print(rendered)
             }
 
