@@ -45,9 +45,10 @@ extension GenericEcho {
                 switch message { 
                 
                 case .echo(let message, let _replyTo):
-                    let result = instance.echo(message)
+                    let result =                     instance.echo(message)
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same
@@ -80,7 +81,8 @@ extension GenericEcho {
 
 extension Actor {
 
-     func echo<M: Codable>(_ message: M) -> Reply<M> where Self.Message == GenericEcho<M>.Message {
+     func echo<M: Codable>(_ message: M) -> Reply<M>
+        where Self.Message == GenericEcho<M>.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: M.self, timeout: .effectivelyInfinite) { _replyTo in

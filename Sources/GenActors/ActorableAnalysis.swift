@@ -61,7 +61,7 @@ final class GatherActorables: SyntaxVisitor {
         _ type: ActorableTypeDecl.DeclType,
         node: DeclSyntaxProtocol,
         name: String,
-        collectGenericDecls: @autoclosure () -> [ActorableTypeDecl.GenericDecl] = []
+        collectGenericDecls: @autoclosure () -> ActorableTypeDecl.GenericInformation? = nil
     ) -> SyntaxVisitorContinueKind {
         self.log.trace("Visit \(type): \(name)")
 
@@ -82,7 +82,10 @@ final class GatherActorables: SyntaxVisitor {
             name: name,
             generateCodableConformance: true
         )
-        self.wipActorable.genericInformation = collectGenericDecls()
+        if let genericInformation = collectGenericDecls() {
+            self.wipActorable.genericParameterDecls = genericInformation.genericParameterDecls
+            self.wipActorable.genericWhereClauses = genericInformation.genericWhereClauses
+        }
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
         self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path) ...")
@@ -142,7 +145,10 @@ final class GatherActorables: SyntaxVisitor {
             .class,
             node: node,
             name: node.identifier.text,
-            collectGenericDecls: self.collectGenericDecls(node.genericParameterClause)
+            collectGenericDecls: self.collectGenericDecls(
+                node.genericParameterClause,
+                node.genericWhereClause
+            )
         )
     }
 
@@ -155,7 +161,10 @@ final class GatherActorables: SyntaxVisitor {
             .struct,
             node: node,
             name: node.identifier.text,
-            collectGenericDecls: self.collectGenericDecls(node.genericParameterClause)
+            collectGenericDecls: self.collectGenericDecls(
+                node.genericParameterClause,
+                node.genericWhereClause
+            )
         )
     }
 
@@ -188,18 +197,27 @@ final class GatherActorables: SyntaxVisitor {
         self.visitPostDecl(node.identifier.text, completeWipActorable: node.isActorable())
     }
 
-    private func collectGenericDecls(_ genericParameterClause: GenericParameterClauseSyntax?) -> [ActorableTypeDecl.GenericDecl] {
+    private func collectGenericDecls(
+        _ genericParameterClause: GenericParameterClauseSyntax?,
+        _ genericWhereClause: GenericWhereClauseSyntax?
+    ) -> ActorableTypeDecl.GenericInformation? {
         guard let genericParameterClause = genericParameterClause else {
-            return []
+            return nil
+        }
+        guard let genericWhereClause = genericWhereClause else {
+            return nil
         }
 
-        var genericDecls: [ActorableTypeDecl.GenericDecl]
-        genericDecls = genericParameterClause.genericParameterList.map { param in
-            .init("\(param)")
-        }
-        // TODO: pprint("genericWhereClause = \(node.genericWhereClause)")
+        var genericDecls: [ActorableTypeDecl.GenericDecl] = genericParameterClause
+            .genericParameterList.map { param in
+                .init("\(param)")
+            }
 
-        return genericDecls
+        var whereDecls: [ActorableTypeDecl.WhereClauseDecl] = genericWhereClause.requirementList.map { requirement in
+            .init("\(requirement)")
+        }
+
+        return .init(genericDecls, whereDecls)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

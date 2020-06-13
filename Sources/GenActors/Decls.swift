@@ -32,40 +32,6 @@ struct ActorableTypeDecl {
     var access: String = ""
     var type: DeclType
 
-    var genericInformation: [GenericDecl] = []
-    struct GenericDecl {
-        let name: String
-        let parameterDecl: String
-
-        init(_ declaration: String) {
-            let decl = declaration
-                .replacingOccurrences(of: ",", with: "")
-                .trim(character: " ")
-            self.parameterDecl = decl
-            if declaration.contains(":") {
-                self.name = String(declaration.split(separator: ":").first!)
-            } else {
-                self.name = declaration
-            }
-
-        }
-    }
-
-    var renderGenericTypes: String {
-        print("self.genericTypes = \(self.genericInformation)")
-        return self.genericInformation.map { $0.parameterDecl } // TODO: must handle where clauses better
-            .joined(separator: ", ")
-    }
-
-    var renderGenericNames: String {
-        self.genericInformation.map { $0.name }
-            .joined(separator: ", ")
-    }
-
-    var isGeneric: Bool {
-        !self.genericInformation.isEmpty
-    }
-
     /// Contains type names within which this type is declared, e.g. `[Actorables.May.Be.Nested].MyActorable`.
     /// Empty for top level declarations.
     var declaredWithin: [String] = []
@@ -124,6 +90,74 @@ struct ActorableTypeDecl {
     /// The default is true since the protocols signature is such, however if users implement it without throws
     /// we must not invoke it with `try` prefixed.
     var receiveSignalIsThrowing = true
+
+    /// Captures any generic parameters of the actorable
+    /// like `Hello` and `Who: Codable` from `Hello<World, Who>`
+    ///
+    /// See also: `whereClauses` for the where clauses
+    var genericParameterDecls: [GenericDecl] = []
+    struct GenericDecl {
+        let name: String
+        let parameterDecl: String
+
+        init(_ declaration: String) {
+            let decl = declaration
+                .replacingOccurrences(of: ",", with: "")
+                .trim(character: " ")
+            self.parameterDecl = decl
+            if declaration.contains(":") {
+                self.name = String(declaration.split(separator: ":").first!)
+                    .replacingOccurrences(of: ",", with: "")
+                    .trim(character: " ")
+            } else {
+                self.name = declaration
+                    .replacingOccurrences(of: ",", with: "")
+                    .trim(character: " ")
+            }
+        }
+    }
+
+    var renderGenericTypes: String {
+        self.genericParameterDecls.map { $0.parameterDecl } // TODO: must handle where clauses better
+            .joined(separator: ", ")
+    }
+
+    var renderGenericNames: String {
+        print("self.genericParameterDecls = \(self.genericParameterDecls)")
+        return self.genericParameterDecls.map { $0.name }
+            .joined(separator: ", ")
+    }
+
+    var isGeneric: Bool {
+        !self.genericParameterDecls.isEmpty
+    }
+
+    var genericWhereClauses: [WhereClauseDecl] = []
+    struct WhereClauseDecl {
+        let name: String
+        let clause: String
+
+        init(_ clause: String) {
+            self.clause = clause.replacingOccurrences(of: ",", with: "")
+                .trim(character: " ")
+            if clause.contains(":") {
+                self.name = String(clause.split(separator: ":").first!)
+                    .trim(character: " ")
+            } else {
+                fatalError("Not supported where clause: \(clause), please file a ticket.")
+            }
+        }
+    }
+
+    struct GenericInformation {
+        let genericParameterDecls: [GenericDecl]
+        let genericWhereClauses: [WhereClauseDecl]
+
+        init(_ genericParameterDecls: [GenericDecl], _ genericWhereClauses: [WhereClauseDecl]) {
+            self.genericParameterDecls = genericParameterDecls
+            self.genericWhereClauses = genericWhereClauses
+        }
+    }
 }
 
 // TODO: Identity should include module name

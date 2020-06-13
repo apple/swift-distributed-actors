@@ -19,10 +19,10 @@
 import DistributedActors
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GenericEcho2 messages 
+// MARK: DO NOT EDIT: Generated GenericEchoWhere messages 
 
-/// DO NOT EDIT: Generated GenericEcho2 messages
-extension GenericEcho2 {
+/// DO NOT EDIT: Generated GenericEchoWhere messages
+extension GenericEchoWhere {
 
     public enum Message: ActorMessage { 
         case echoOne(One, _replyTo: ActorRef<One>) 
@@ -31,13 +31,13 @@ extension GenericEcho2 {
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GenericEcho2 behavior
+// MARK: DO NOT EDIT: Generated GenericEchoWhere behavior
 
-extension GenericEcho2 {
+extension GenericEchoWhere {
 
-    public static func makeBehavior(instance: GenericEcho2) -> Behavior<Message> {
+    public static func makeBehavior(instance: GenericEchoWhere) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<GenericEcho2>.Context(underlying: _context)
+            let context = Actor<GenericEchoWhere>.Context(underlying: _context)
             let instance = instance
 
             instance.preStart(context: context)
@@ -59,7 +59,7 @@ extension GenericEcho2 {
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<GenericEcho2>.Context(underlying: _context)
+                let context = Actor<GenericEchoWhere>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -83,12 +83,14 @@ extension GenericEcho2 {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for GenericEcho2
+// MARK: Extend Actor for GenericEchoWhere
 
 extension Actor {
 
-     func echoOne<One: Codable, Two: Codable>(_ one: One) -> Reply<One>
-        where Self.Message == GenericEcho2<One, Two>.Message {
+     func echoOne<One, Two: Codable>(_ one: One) -> Reply<One>
+        where Self.Message == GenericEchoWhere<One, Two>.Message,
+            One: Codable,
+            One: Hashable {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: One.self, timeout: .effectivelyInfinite) { _replyTo in
@@ -97,8 +99,10 @@ extension Actor {
     }
  
 
-     func echoTwo<One: Codable, Two: Codable>(_ two: Two) -> Reply<Two>
-        where Self.Message == GenericEcho2<One, Two>.Message {
+     func echoTwo<One, Two: Codable>(_ two: Two) -> Reply<Two>
+        where Self.Message == GenericEchoWhere<One, Two>.Message,
+            One: Codable,
+            One: Hashable {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Two.self, timeout: .effectivelyInfinite) { _replyTo in

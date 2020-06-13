@@ -402,8 +402,8 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Generic actorable actors
 
     func test_genericActor_echo() throws {
-        let echoString: Actor<GenericEcho<String>> = try self.system.spawn("string") { _ in GenericEcho() }
-        let echoInt: Actor<GenericEcho<Int>> = try self.system.spawn("int") { _ in GenericEcho() }
+        let echoString: Actor<GenericEcho<String>> = try self.system.spawn("string") { _ in .init() }
+        let echoInt: Actor<GenericEcho<Int>> = try self.system.spawn("int") { _ in .init() }
 
         let stringReply = try self.testKit.expect(echoString.echo("hello"))
         stringReply.shouldEqual("hello")
@@ -413,12 +413,22 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_genericActor_echo2() throws {
-        let echoString: Actor<GenericEcho2<String, Int>> = try self.system.spawn("string") { _ in GenericEcho2() }
+        let echoString: Actor<GenericEcho2<String, Int>> = try self.system.spawn("string") { _ in .init() }
 
         let stringReply = try self.testKit.expect(echoString.echoOne("hello"))
         stringReply.shouldEqual("hello")
 
         let intReply = try self.testKit.expect(echoString.echoTwo(42))
         intReply.shouldEqual(42)
+    }
+
+    func test_genericActor_echo_whereClauses() throws {
+        let echo: Actor<GenericEchoWhere<Int, String>> = try self.system.spawn("echo") { _ in .init() }
+
+        let oneReply = try self.testKit.expect(echo.echoOne(1))
+        oneReply.shouldEqual(1)
+
+        let twoReply = try self.testKit.expect(echo.echoTwo("hey"))
+        twoReply.shouldEqual("hey")
     }
 }

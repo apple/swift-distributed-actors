@@ -427,7 +427,23 @@ extension ActorableMessageDecl {
         printer.print("(\(self.renderFuncParams))\(self.returnType.renderReturnTypeDeclPart)", skipNewline: true)
 
         if actor.isGeneric {
-            printer.print(" where Self.Message == \(actor.fullName)<\(actor.renderGenericNames)>.Message", skipNewline: true)
+            printer.indent()
+            printer.print("") // force a newline
+
+            // this generic clause replaces what would normally be done on the `extension ...` itself,
+            // but we dont have parameterized extensions today, so we need to do it on all functions instead;
+            // See also: https://forums.swift.org/t/parameterized-extensions/25563
+            printer.print("where Self.Message == \(actor.fullName)<\(actor.renderGenericNames)>.Message", skipNewline: true)
+
+            // if the actorable had any additional where clauses we need to carry them here as well
+            if !actor.genericWhereClauses.isEmpty {
+                actor.genericWhereClauses.forEach {
+                    printer.print(",")
+                    printer.print($0.clause, skipNewline: true)
+                }
+            }
+
+            printer.outdent()
         }
     }
 
