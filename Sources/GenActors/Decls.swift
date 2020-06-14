@@ -123,8 +123,7 @@ struct ActorableTypeDecl {
     }
 
     var renderGenericNames: String {
-        print("self.genericParameterDecls = \(self.genericParameterDecls)")
-        return self.genericParameterDecls.map { $0.name }
+        self.genericParameterDecls.map { $0.name }
             .joined(separator: ", ")
     }
 

@@ -201,20 +201,23 @@ final class GatherActorables: SyntaxVisitor {
         _ genericParameterClause: GenericParameterClauseSyntax?,
         _ genericWhereClause: GenericWhereClauseSyntax?
     ) -> ActorableTypeDecl.GenericInformation? {
-        guard let genericParameterClause = genericParameterClause else {
-            return nil
-        }
-        guard let genericWhereClause = genericWhereClause else {
-            return nil
+        let genericDecls: [ActorableTypeDecl.GenericDecl]
+        if let genericParameterClause = genericParameterClause {
+            genericDecls = genericParameterClause
+                .genericParameterList.map { param in
+                    .init("\(param)")
+                }
+        } else {
+            genericDecls = []
         }
 
-        let genericDecls: [ActorableTypeDecl.GenericDecl] = genericParameterClause
-            .genericParameterList.map { param in
-                .init("\(param)")
+        let whereDecls: [ActorableTypeDecl.WhereClauseDecl]
+        if let genericWhereClause = genericWhereClause {
+            whereDecls = genericWhereClause.requirementList.map { requirement in
+                .init("\(requirement)")
             }
-
-        let whereDecls: [ActorableTypeDecl.WhereClauseDecl] = genericWhereClause.requirementList.map { requirement in
-            .init("\(requirement)")
+        } else {
+            whereDecls = []
         }
 
         return .init(genericDecls, whereDecls)
