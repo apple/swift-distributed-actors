@@ -65,7 +65,7 @@ extension Receptionist {
         let refs: Set<ActorRef<Message>>
 
         var description: String {
-            "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
+            "Listing<\(reflecting: Message.self)>(\(self.refs.map { $0.address }))"
         }
     }
 }

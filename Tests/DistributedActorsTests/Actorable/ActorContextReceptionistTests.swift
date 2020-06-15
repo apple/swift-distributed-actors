@@ -17,6 +17,7 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorContextReceptionTests: ActorSystemTestBase {
+
     func test_autoUpdatedListing_updatesAutomatically() throws {
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
             OwnerOfThings(context: $0, probe: self.system.deadLetters.adapted())
@@ -25,7 +26,10 @@ final class ActorContextReceptionTests: ActorSystemTestBase {
         let listing: Receptionist.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(3)) {
             let readReply = owner.readLastObservedValue()
             guard let listing = try readReply.wait() else {
-                throw self.testKit.error()
+                throw self.testKit.error("No listing received")
+            }
+            guard listing.actors.first != nil else {
+                throw self.testKit.error("Listing received, but it is empty (\(listing))")
             }
             return listing
         }

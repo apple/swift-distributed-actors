@@ -131,7 +131,7 @@ extension CRDT.Replicator {
                 }
 
             default:
-                return // ignore other events (including membership changes for events lesser than .up
+                return // ignore other events (including membership changes for events lesser than .up)
             }
         }
 
