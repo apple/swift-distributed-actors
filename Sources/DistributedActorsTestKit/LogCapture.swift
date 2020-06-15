@@ -187,10 +187,12 @@ struct LogCaptureLogHandler: LogHandler {
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
-        guard self.capture.settings.filterActorPaths.contains(where: { path in self.label.starts(with: path) }) else {
+        let actorPath = self.metadata["actor/path"].map({ "\($0)" }) ?? ""
+
+        guard self.capture.settings.filterActorPaths.contains(where: { path in actorPath.starts(with: path) }) else {
             return // ignore this actor's logs, it was filtered out
         }
-        guard !self.capture.settings.excludeActorPaths.contains(self.label) else {
+        guard !self.capture.settings.excludeActorPaths.contains(actorPath) else {
             return // actor was excluded explicitly
         }
         guard self.capture.settings.grep.isEmpty || self.capture.settings.grep.contains(where: { "\(message)".contains($0) }) else {
@@ -201,29 +203,24 @@ struct LogCaptureLogHandler: LogHandler {
         }
 
         let date = Date()
-        var _metadata: Logger.Metadata = metadata ?? [:]
+        var _metadata: Logger.Metadata = self.metadata
+        _metadata.merge(metadata ?? [:], uniquingKeysWith: { l, r in r })
         _metadata["label"] = "\(self.label)"
 
         self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
     }
 
-    public subscript(metadataKey _: String) -> Logger.Metadata.Value? {
+    public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
-            nil
+            self.metadata[metadataKey]
         }
         set {
-            // ignore
+            pprint("newValue = \(newValue)")
+            self.metadata[metadataKey] = newValue
         }
     }
 
-    public var metadata: Logging.Logger.Metadata {
-        get {
-            [:]
-        }
-        set {
-            // ignore
-        }
-    }
+    public var metadata: Logging.Logger.Metadata = [:]
 
     public var logLevel: Logger.Level {
         get {
