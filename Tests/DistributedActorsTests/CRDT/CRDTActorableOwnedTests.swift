@@ -23,11 +23,6 @@ final class CRDTActorableOwnedTests: ActorSystemTestBase {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
 
-        // TODO: remove after figuring out why tests are flakey (https://github.com/apple/swift-distributed-actors/issues/157)
-        defer {
-            self.logCapture.printLogs()
-        }
-
         // g1 has two owners
         let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1") { context in
