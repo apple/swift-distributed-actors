@@ -140,9 +140,8 @@ extension Cluster.MembershipChange {
         self.toStatus.isDown
     }
 
-    /// Matches when a change is to: `.down`, `.leaving` or `.removed`.
-    public var isAtLeastDown: Bool {
-        self.toStatus >= .down
+    public func isAtLeast(_ status: Cluster.MemberStatus) -> Bool {
+        self.toStatus >= status
     }
 
     public var isLeaving: Bool {

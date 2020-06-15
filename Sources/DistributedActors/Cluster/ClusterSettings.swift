@@ -102,7 +102,7 @@ public struct ClusterSettings {
         self._protocolVersion
     }
 
-    // Exposed for testing handshake negotiation while joining nodes of different versions
+    /// FOR TESTING ONLY: Exposed for testing handshake negotiation while joining nodes of different versions
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
 
     // ==== ------------------------------------------------------------------------------------------------------------

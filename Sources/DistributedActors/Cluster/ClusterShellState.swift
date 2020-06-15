@@ -29,6 +29,7 @@ internal protocol ReadOnlyClusterState {
 
     /// Unique address of the current node.
     var localNode: UniqueNode { get }
+    var localMember: Cluster.Member? { get } // TODO: enforce that we always have the localMember
     var settings: ClusterSettings { get }
 }
 
@@ -42,8 +43,12 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     let events: EventStream<Cluster.Event>
 
-    let localNode: UniqueNode
     let channel: Channel
+
+    let localNode: UniqueNode
+    var localMember: Cluster.Member? {
+        self.membership.uniqueMember(self.localNode)
+    }
 
     let eventLoopGroup: EventLoopGroup
 
