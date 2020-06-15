@@ -18,7 +18,9 @@ private let gossipTickKey: TimerKey = "gossip-tick"
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
 internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
-    let settings: Settings
+    typealias Ref = ActorRef<Message>
+
+    let settings: Gossiper.Settings
 
     private let makeLogic: (ActorContext<Message>, GossipIdentifier) -> AnyGossipLogic<Envelope>
 
@@ -29,7 +31,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
     private var peers: Set<PeerRef>
 
     fileprivate init<Logic>(
-        settings: Settings,
+        settings: Gossiper.Settings,
         makeLogic: @escaping (Logic.Context) -> Logic
     ) where Logic: GossipLogic, Logic.Envelope == Envelope {
         self.settings = settings
@@ -44,8 +46,8 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
 
     var behavior: Behavior<Message> {
         .setup { context in
-            self.ensureNextGossipRound(context: context)
-            self.initPeerDiscovery(context, settings: self.settings)
+            self.ensureNextGossipRound(context)
+            self.initPeerDiscovery(context)
 
             return Behavior<Message>.receiveMessage {
                 switch $0 {
@@ -91,10 +93,10 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         payload: Envelope,
         ackRef: ActorRef<GossipACK>
     ) {
-        context.log.trace("Received gossip [\(identifier.gossipIdentifier)]: \(pretty: payload)", metadata: [
+        context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
             "gossip/origin": "\(origin.address)",
-            "gossip/incoming": "\(payload)",
+            "gossip/incoming": Logger.MetadataValue.pretty(payload),
         ])
 
         // TODO: we could handle some actions if it issued some
@@ -148,7 +150,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
 
     private func runGossipRound(_ context: ActorContext<Message>) {
         defer {
-            self.ensureNextGossipRound(context: context)
+            self.ensureNextGossipRound(context)
         }
 
         let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
@@ -212,7 +214,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         context.log.trace("Sending gossip to \(target.address)", metadata: [
             "gossip/target": "\(target.address)",
             "gossip/peers/count": "\(self.peers.count)",
-            "actor/message": Logger.Metadata.pretty(payload),
+            "actor/message": Logger.MetadataValue.pretty(payload),
         ])
 
         let ack = target.ask(for: GossipACK.self, timeout: .seconds(3)) { replyTo in
@@ -233,7 +235,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol> {
         }
     }
 
-    private func ensureNextGossipRound(context: ActorContext<Message>) {
+    private func ensureNextGossipRound(_ context: ActorContext<Message>) {
         guard !self.peers.isEmpty else {
             return // no need to schedule gossip ticks if we have no peers
         }
@@ -252,7 +254,7 @@ extension GossipShell {
         Receptionist.RegistrationKey<Message>(id)
     }
 
-    private func initPeerDiscovery(_ context: ActorContext<Message>, settings: GossipShell.Settings) {
+    private func initPeerDiscovery(_ context: ActorContext<Message>) {
         switch self.settings.peerDiscovery {
         case .manuallyIntroduced:
             return // nothing to do, peers will be introduced manually
@@ -327,7 +329,7 @@ extension GossipShell {
 //                self.sendGossip(context, identifier: key.identifier, logic.payload, to: peer)
 //            }
 
-            self.ensureNextGossipRound(context: context)
+            self.ensureNextGossipRound(context)
         }
     }
 
@@ -370,13 +372,12 @@ extension GossipShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: GossipControl
+// MARK: Gossiper
 
-extension GossipShell {
-    typealias Ref = ActorRef<Message>
-
+/// A Gossiper
+public enum Gossiper {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
-    static func start<Logic>(
+    static func start<Envelope, Logic>(
         _ context: ActorRefFactory, name naming: ActorNaming,
         of type: Envelope.Type = Envelope.self,
         props: Props = .init(),
