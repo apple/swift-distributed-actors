@@ -65,6 +65,15 @@ struct CodePrinter {
     }
 
     mutating func print(_ block: String, skipNewline: Bool = false) {
+        guard block != "" else {
+            self.content.append(skipNewline ? "" : "\n")
+            self.content.append(self.padding)
+            if self._debug {
+                Swift.print("", terminator: skipNewline ? "" : "\n")
+            }
+            return
+        }
+
         let lines = block.split(separator: "\n")
         lines.forEach { line in
             var printMe = ""

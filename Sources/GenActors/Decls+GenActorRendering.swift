@@ -158,7 +158,7 @@ extension Rendering {
             // ==== ----------------------------------------------------------------------------------------------------------------
             // MARK: Extend Actor for {{baseName}}
 
-            extension Actor where A.Message == {{baseName}}.Message {
+            extension Actor{{extensionWhereClause}} {
             {% for tell in funcTells %}
             {{ tell }} 
             {% endfor %}
@@ -180,6 +180,10 @@ extension Rendering {
 
                 "funcCases": self.actorable.renderCaseDecls,
 
+                "extensionWhereClause": self.actorable.isGeneric ?
+                    "" :
+                    " where A.Message == \(self.actorable.fullName).Message",
+
                 "funcSwitchCases": try self.actorable.funcs.map { funcDecl in
                     try CodePrinter.content { printer in
                         try funcDecl.renderFuncSwitchCase(partOfProtocol: nil, printer: &printer)
@@ -200,7 +204,7 @@ extension Rendering {
                 "funcTells": try self.actorable.funcs.map { funcDecl in
                     try CodePrinter.content { printer in
                         printer.indent()
-                        try funcDecl.renderFuncTell(printer: &printer)
+                        try funcDecl.renderFuncTell(self.actorable, printer: &printer)
                     }
                 },
                 "funcBoxTells": self.actorable.type == .protocol ? try self.actorable.funcs.map { actorableFunc in
@@ -402,8 +406,8 @@ extension ActorableMessageDecl {
         return ret
     }
 
-    func renderFunc(printer: inout CodePrinter, printBody: (inout CodePrinter) -> Void) {
-        self.renderTellFuncDecl(printer: &printer)
+    func renderFunc(printer: inout CodePrinter, actor: ActorableTypeDecl, printBody: (inout CodePrinter) -> Void) {
+        self.renderTellFuncDecl(printer: &printer, actor: actor)
         printer.print(" {")
         printer.indent()
         printBody(&printer)
@@ -411,12 +415,36 @@ extension ActorableMessageDecl {
         printer.print("}")
     }
 
-    func renderTellFuncDecl(printer: inout CodePrinter) {
-        let access = self.access.map {
-            "\($0) "
-        } ?? ""
+    func renderTellFuncDecl(printer: inout CodePrinter, actor: ActorableTypeDecl) {
+        let access = self.access.map { "\($0) " } ?? ""
 
-        printer.print("\(access)func \(self.name)(\(self.renderFuncParams))\(self.returnType.renderReturnTypeDeclPart)", skipNewline: true)
+        printer.print("\(access)func \(self.name)", skipNewline: true)
+
+        if actor.isGeneric {
+            printer.print("<\(actor.renderGenericTypes)>", skipNewline: true)
+        }
+
+        printer.print("(\(self.renderFuncParams))\(self.returnType.renderReturnTypeDeclPart)", skipNewline: true)
+
+        if actor.isGeneric {
+            printer.indent()
+            printer.print("") // force a newline
+
+            // this generic clause replaces what would normally be done on the `extension ...` itself,
+            // but we dont have parameterized extensions today, so we need to do it on all functions instead;
+            // See also: https://forums.swift.org/t/parameterized-extensions/25563
+            printer.print("where Self.Message == \(actor.fullName)<\(actor.renderGenericNames)>.Message", skipNewline: true)
+
+            // if the actorable had any additional where clauses we need to carry them here as well
+            if !actor.genericWhereClauses.isEmpty {
+                actor.genericWhereClauses.forEach {
+                    printer.print(",")
+                    printer.print($0.clause, skipNewline: true)
+                }
+            }
+
+            printer.outdent()
+        }
     }
 
     func renderStubFunc(printer: inout CodePrinter, printBody: (inout CodePrinter) -> Void) {
@@ -676,8 +704,8 @@ extension ActorableMessageDecl.ReturnType {
 }
 
 extension ActorFuncDecl {
-    func renderFuncTell(printer: inout CodePrinter) throws {
-        self.message.renderFunc(printer: &printer) { printer in
+    func renderFuncTell(_ actor: ActorableTypeDecl, printer: inout CodePrinter) throws {
+        self.message.renderFunc(printer: &printer, actor: actor) { printer in
             message.renderTellOrAskMessage(boxWith: nil, printer: &printer)
         }
     }
@@ -693,7 +721,7 @@ extension ActorFuncDecl {
     func renderBoxFuncTell(_ actorableProtocol: ActorableTypeDecl, printer: inout CodePrinter) throws {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
 
-        self.message.renderFunc(printer: &printer) { printer in
+        self.message.renderFunc(printer: &printer, actor: actorableProtocol) { printer in
             self.message.renderTellOrAskMessage(boxWith: actorableProtocol, printer: &printer)
         }
     }
