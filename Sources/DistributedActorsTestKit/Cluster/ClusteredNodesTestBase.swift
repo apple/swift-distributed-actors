@@ -140,6 +140,13 @@ open class ClusteredNodesTestBase: XCTestCase {
         _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(15), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
+        try self.ensureNodes(status, on: system, within: within, nodes: nodes, file: file, line: line)
+    }
+
+    public func ensureNodes(
+        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(15), nodes: [UniqueNode],
+        file: StaticString = #file, line: UInt = #line
+    ) throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
             fatalError("Must at least have 1 system present to use [\(#function)]")
         }
