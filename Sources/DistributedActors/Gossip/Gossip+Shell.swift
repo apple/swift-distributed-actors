@@ -303,7 +303,11 @@ extension GossipShell {
             context.log.debug("Registered with receptionist key: \(key)")
 
             context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
-                context.log.trace("Receptionist listing update \(listing)")
+                context.log.trace("Peer listing update via receptionist", metadata: [
+                    "peer/listing": Logger.MetadataValue.array(
+                        listing.refs.map { ref in Logger.MetadataValue.stringConvertible(ref) }
+                    ),
+                ])
                 for peer in listing.refs {
                     self.onIntroducePeer(context, peer: peer)
                 }

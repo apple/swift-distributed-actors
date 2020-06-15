@@ -80,7 +80,6 @@ extension Logger {
     internal static func make(_ base: Logger, path: ActorPath) -> Logger {
         var log = base
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
-        pprint("log[metadataKey: \"actor/path\"] = \(log[metadataKey: "actor/path"])")
         return log
     }
 }

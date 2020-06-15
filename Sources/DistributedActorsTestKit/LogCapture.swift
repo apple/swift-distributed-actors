@@ -187,7 +187,7 @@ struct LogCaptureLogHandler: LogHandler {
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
-        let actorPath = self.metadata["actor/path"].map({ "\($0)" }) ?? ""
+        let actorPath = self.metadata["actor/path"].map { "\($0)" } ?? ""
 
         guard self.capture.settings.filterActorPaths.contains(where: { path in actorPath.starts(with: path) }) else {
             return // ignore this actor's logs, it was filtered out
@@ -204,7 +204,7 @@ struct LogCaptureLogHandler: LogHandler {
 
         let date = Date()
         var _metadata: Logger.Metadata = self.metadata
-        _metadata.merge(metadata ?? [:], uniquingKeysWith: { l, r in r })
+        _metadata.merge(metadata ?? [:], uniquingKeysWith: { _, r in r })
         _metadata["label"] = "\(self.label)"
 
         self.capture.append(CapturedLogMessage(date: date, level: level, message: message, metadata: _metadata, file: file, function: function, line: line))
@@ -215,7 +215,6 @@ struct LogCaptureLogHandler: LogHandler {
             self.metadata[metadataKey]
         }
         set {
-            pprint("newValue = \(newValue)")
             self.metadata[metadataKey] = newValue
         }
     }
