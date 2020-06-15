@@ -135,7 +135,7 @@ enum NodeDeathWatcherShell {
 
             context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
                 switch event {
-                case .membershipChange(let change) where change.isAtLeastDown:
+                case .membershipChange(let change) where change.isAtLeast(.down):
                     instance.handleAddressDown(change)
                 default:
                     () // ignore other changes, we only need to react on nodes becoming DOWN

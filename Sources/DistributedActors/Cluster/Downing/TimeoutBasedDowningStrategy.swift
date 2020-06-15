@@ -52,7 +52,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
                 return .none
             }
 
-            if change.isAtLeastDown {
+            if change.isAtLeast(.down) {
                 // it was marked as down by someone, we don't need to track it anymore
                 _ = self._markAsDown.remove(change.member)
                 _ = self._unreachable.remove(change.member)

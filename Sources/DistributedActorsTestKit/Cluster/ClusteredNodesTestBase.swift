@@ -351,7 +351,7 @@ extension ClusteredNodesTestBase {
         let events = try eventStreamProbe.fishFor(Cluster.Event.self, within: .seconds(5)) {
             switch $0 {
             case .membershipChange(let change)
-                where change.node == node && change.toStatus.isAtLeastDown:
+                where change.node == node && change.toStatus.isAtLeast(.down):
                 return .catchComplete($0)
             default:
                 return .ignore

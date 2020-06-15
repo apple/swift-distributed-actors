@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class ActorContextReceptionTests: ActorSystemTestBase {
-
     func test_autoUpdatedListing_updatesAutomatically() throws {
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
             OwnerOfThings(context: $0, probe: self.system.deadLetters.adapted())

@@ -83,7 +83,7 @@ extension Cluster {
             case .some(let locallyKnownMember) where locallyKnownMember.status.isDown:
                 // we have NOT removed it yet, but it is down, so we ignore it
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
-            case .none where incomingOwnerMember.status.isAtLeastDown:
+            case .none where incomingOwnerMember.status.isAtLeast(.down):
                 // we have likely removed it, and it is down anyway, so we ignore it completely
                 return .init(causalRelation: causalRelation, effectiveChanges: [])
             default:
