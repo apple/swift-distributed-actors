@@ -423,7 +423,7 @@ extension ClusterShell {
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
                 // TODO: Membership.Gossip?
-                let gossipControl: GossipControl<Cluster.Gossip> = try GossipShell.start(
+                let gossipControl: GossipControl<Cluster.Gossip> = try Gossiper.start(
                     context,
                     name: "\(ActorPath._clusterGossip.name)",
                     props: ._wellKnown,

@@ -165,13 +165,13 @@ extension LogCapture {
 }
 
 public struct CapturedLogMessage {
-    let date: Date
-    let level: Logger.Level
-    var message: Logger.Message
-    var metadata: Logger.Metadata?
-    let file: String
-    let function: String
-    let line: UInt
+    public let date: Date
+    public let level: Logger.Level
+    public var message: Logger.Message
+    public var metadata: Logger.Metadata?
+    public let file: String
+    public let function: String
+    public let line: UInt
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -325,7 +325,31 @@ extension LogCapture {
         }
     }
 
-    public func grep(_ string: String) -> [CapturedLogMessage] {
-        self.logs.filter { "\($0)".contains(string) }
+    public func grep(_ string: String, metadata metadataQuery: [String: String] = [:]) -> [CapturedLogMessage] {
+        self.logs.filter {
+            guard "\($0)".contains(string) else {
+                // mismatch, exclude it
+                return false
+            }
+
+            if metadataQuery.isEmpty {
+                return true
+            }
+
+            let metas = $0.metadata ?? [:]
+            for (queryKey, queryValue) in metadataQuery {
+                if let value = metas[queryKey] {
+                    if queryValue != "\(value)" {
+                        // mismatch, exclude it
+                        return false
+                    } // ok, continue checking other keys
+                } else {
+                    // key did not exist
+                    return false
+                }
+            }
+
+            return true
+        }
     }
 }

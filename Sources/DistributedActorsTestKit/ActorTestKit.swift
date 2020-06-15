@@ -253,10 +253,19 @@ public extension ActorTestKit {
                 polledTimes += 1
                 try block()
                 usleep(useconds_t(interval.microseconds))
+            } catch CallSiteError.error(let errorDetails) {
+                let message = callSite.detailedMessage("""
+                Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
+                Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
+                Error: \(errorDetails)
+                """)
+                XCTFail(message, file: callSite.file, line: callSite.line)
+                throw AssertionHoldsError(message: message)
             } catch {
                 let message = callSite.detailedMessage("""
                 Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                Queried \(polledTimes) times, within \(timeAmount.prettyDescription).
+                Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
+                Error: \(error)
                 """)
                 XCTFail(message, file: callSite.file, line: callSite.line)
                 throw AssertionHoldsError(message: message)

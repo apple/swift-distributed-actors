@@ -71,10 +71,10 @@ extension CRDT.Replicator {
                     }
                 )
 
-                self.gossipReplication = try GossipShell.start(
+                self.gossipReplication = try Gossiper.start(
                     context,
                     name: "gossip",
-                    settings: GossipShell.Settings(
+                    settings: Gossiper.Settings(
                         gossipInterval: self.settings.gossipInterval,
                         gossipIntervalRandomFactor: self.settings.gossipIntervalRandomFactor,
                         peerDiscovery: .fromReceptionistListing(id: "crdt-gossip-replicator")
