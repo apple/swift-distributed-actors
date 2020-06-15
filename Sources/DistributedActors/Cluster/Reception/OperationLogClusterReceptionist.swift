@@ -665,7 +665,7 @@ extension OperationLogClusterReceptionist {
             if effectiveChange.fromStatus == nil {
                 // a new member joined, let's store and contact its receptionist
                 self.onNewClusterMember(context, change: effectiveChange)
-            } else if effectiveChange.toStatus.isAtLeastDown {
+            } else if effectiveChange.toStatus.isAtLeast(.down) {
                 // a member was removed, we should prune it from our observations
                 self.pruneClusterMember(context, removedNode: effectiveChange.node)
             }

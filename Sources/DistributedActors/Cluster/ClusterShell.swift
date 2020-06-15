@@ -740,15 +740,58 @@ extension ClusterShell {
 // MARK: Incoming Handshake
 
 extension ClusterShell {
+    func rejectIfNodeAlreadyLeaving(
+        _ context: ActorContext<Message>,
+        _ state: ClusterShellState,
+        _ offer: Wire.HandshakeOffer
+    ) -> Wire.HandshakeReject? {
+        guard let member = state.localMember else {
+            // no local member? this is bad
+            state.log.warning(
+                """
+                Received handshake while no local Cluster.Member available, this may indicate that we were removed form the cluster. 
+                Rejecting handshake
+                """)
+            return .init(
+                version: state.settings.protocolVersion,
+                targetNode: state.localNode,
+                originNode: offer.originNode,
+                reason: "Node cannot be part of cluster, no member available.",
+                whenHandshakeReplySent: nil
+            )
+        }
+
+        if member.status.isAtLeast(.leaving) {
+            state.log.notice("Received handshake while already [\(member.status)]")
+
+            return .init(
+                version: state.settings.protocolVersion,
+                targetNode: state.localNode,
+                originNode: offer.originNode,
+                reason: "Node already leaving cluster.",
+                whenHandshakeReplySent: nil
+            )
+        }
+
+        // let's try that to make that handshake
+        return nil
+    }
+
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
     /// - parameter inboundChannel: the inbound connection channel that the other node has opened and is offering its handshake on,
     ///   (as opposed to the channel which we may have opened when we first extended a handshake to that node which would be stored in `state`)
     internal func onHandshakeOffer(
         _ context: ActorContext<Message>, _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer, inboundChannel: Channel,
-        replyInto promise: EventLoopPromise<Wire.HandshakeResponse>
+        replyInto handshakePromise: EventLoopPromise<Wire.HandshakeResponse>
     ) -> Behavior<Message> {
         var state = state
+
+        // TODO: guard that the target node is actually "us"? i.e. if we're exposed over various protocols and/or ports etc?
+        if let rejection = self.rejectIfNodeAlreadyLeaving(context, state, offer) {
+            handshakePromise.succeed(.reject(rejection))
+            return .same
+        }
 
         // if there already is an existing association, we'll bail out and abort this "new" connection; there must only ever be one association
         let maybeExistingAssociation: Association? = self.getSpecificExistingAssociation(with: offer.originNode)
@@ -773,7 +816,7 @@ extension ClusterShell {
 
                 // 2) Only now we can succeed the accept promise (as the old one has been terminated and cleared)
                 self.tracelog(context, .send(to: offer.originNode.node), message: accept)
-                promise.succeed(.accept(accept))
+                handshakePromise.succeed(.accept(accept))
 
                 // 3) Complete and store the association, we are now ready to flush writes onto the network
                 //
@@ -828,14 +871,14 @@ extension ClusterShell {
                     self.terminateAssociation(context.system, state: &state, rejectedHandshake.remoteNode)
                 })
                 self.tracelog(context, .send(to: offer.originNode.node), message: reject)
-                promise.succeed(.reject(reject))
+                handshakePromise.succeed(.reject(reject))
 
                 return self.ready(state: state)
             }
 
         case .abortIncomingHandshake(let error):
             state.log.warning("Aborting incoming handshake: \(error)") // TODO: remove
-            promise.fail(error)
+            handshakePromise.fail(error)
             state.closeHandshakeChannel(offer: offer, channel: inboundChannel)
             return .same
         }

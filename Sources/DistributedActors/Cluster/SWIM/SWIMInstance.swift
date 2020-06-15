@@ -615,7 +615,7 @@ extension SWIM.Instance {
             case .ignoredDueToOlderStatus(let currentStatus):
                 return .ignored(
                     level: .trace,
-                    message: "Ignoring gossip about member \(reflecting: member.node), incoming: [\(member.status)] does not supersede current: [\(currentStatus)]"
+                    message: "Gossip about member \(reflecting: member.node), incoming: [\(member.status)] does not supersede current: [\(currentStatus)]"
                 )
             }
         } else if let remoteMemberNode = member.ref.address.node {

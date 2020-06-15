@@ -234,9 +234,8 @@ extension Cluster.MemberStatus {
         self == .down
     }
 
-    /// Convenience function to check if a status is `.removed` or `.removed`
-    public var isAtLeastDown: Bool {
-        self >= .down
+    public func isAtLeast(_ status: Cluster.MemberStatus) -> Bool {
+        self >= status
     }
 
     /// Convenience function to check if a status is `.removed`

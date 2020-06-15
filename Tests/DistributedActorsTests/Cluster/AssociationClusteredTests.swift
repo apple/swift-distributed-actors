@@ -256,6 +256,44 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             )
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Leaving/down rejecting handshakes
+
+    func test_handshake_shouldRejectIfNodeIsLeavingOrDown() throws {
+        let first = self.setUpNode("first") { settings in
+            settings.cluster.onDownAction = .none // don't shutdown this node (keep process alive)
+        }
+        let second = self.setUpNode("second")
+
+        first.cluster.down(node: first.cluster.node.node)
+
+        let testKit = self.testKit(first)
+        try testKit.eventually(within: .seconds(3)) {
+            let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
+            if let selfMember = snapshot.uniqueMember(first.cluster.node) {
+                if selfMember.status == .down {
+                    () // good
+                } else {
+                    throw testKit.error("Expecting \(first.cluster.node) to become [.down] but was \(selfMember.status). Membership: \(pretty: snapshot)")
+                }
+            } else {
+                throw testKit.error("No self member for \(first.cluster.node)! Membership: \(pretty: snapshot)")
+            }
+        }
+
+        // now we try to join the "already down" node; it should reject any such attempts
+        second.cluster.ref.tell(.command(.handshakeWith(first.cluster.node.node)))
+
+        try assertNotAssociated(system: first, node: second.cluster.node)
+        try assertNotAssociated(system: second, node: first.cluster.node)
+
+        try self.capturedLogs(of: second)
+            .awaitLogContaining(
+                self.testKit(second),
+                text: "Handshake rejected by [sact://first@127.0.0.1:9001], reason: Node already leaving cluster."
+            )
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: second control caching
 
