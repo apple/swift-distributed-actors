@@ -57,6 +57,7 @@ struct Shopper: Actorable {
 
     // @actor
     func add(item: String) { /* ... */ }
+
     // @actor
     func checkOff(item: String) { /* ... */ }
 }
