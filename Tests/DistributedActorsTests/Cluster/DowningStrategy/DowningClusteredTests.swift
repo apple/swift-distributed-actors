@@ -216,4 +216,71 @@ final class DowningClusteredTests: ClusteredNodesTestBase {
             settings.cluster.downingStrategy = self.downingStrategy
         }
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: "Mass" Downing
+
+    func test_many_nonLeaders_shouldPropagateToOtherNodes() throws {
+        let first = self.setUpNode("node-1")
+        var nodes = (2 ... 7).map { self.setUpNode("node-\($0)") }
+
+        pinfo("Joining \(nodes.count + 1) nodes...")
+        let joiningStart = first.metrics.uptimeNanoseconds()
+
+        nodes.forEach { first.cluster.join(node: $0.cluster.node.node) }
+        try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map { $0.cluster.node })
+
+        let joiningStop = first.metrics.uptimeNanoseconds()
+        pinfo("Joined \(nodes.count + 1) nodes, took: \(TimeAmount.nanoseconds(joiningStop - joiningStart).prettyDescription)")
+
+        let nodesToDown = nodes.prefix(nodes.count / 2)
+        nodes.removeFirst(nodes.count / 2)
+
+        pinfo("Downing \(nodes.count / 2) nodes: \(nodesToDown.map { $0.cluster.node })")
+        for node in nodesToDown {
+            node.shutdown().wait()
+        }
+
+        nodes.append(first)
+        var probes: [UniqueNode: ActorTestProbe<Cluster.Event>] = [:]
+        for remainingNode in nodes {
+            probes[remainingNode.cluster.node] = self.testKit(remainingNode).spawnEventStreamTestProbe(subscribedTo: remainingNode.cluster.events)
+        }
+
+        func expectedDownMemberEventsFishing(
+            on: ActorSystem,
+            file: StaticString = #file, line: UInt = #line
+        ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
+            pinfo("Expecting \(nodesToDown.map { $0.cluster.node.node }) to become [.down] on [\(on.cluster.node.node)]")
+            var removalsFound = 0
+
+            return { event in
+                switch event {
+                case .membershipChange(let change) where change.isRemoval:
+                    pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
+                    removalsFound += 1
+                    if removalsFound == nodesToDown.count {
+                        return .catchComplete(change)
+                    } else {
+                        return .catchContinue(change)
+                    }
+                case .membershipChange(let change) where change.isDown:
+                    pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
+                    return .catchContinue(change)
+                default:
+                    return .ignore
+                }
+            }
+        }
+
+        for remainingNode in nodes {
+            let probe = probes[remainingNode.cluster.node]!
+            let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(60), expectedDownMemberEventsFishing(on: remainingNode))
+
+            events.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
+            for expectedDownNode in nodesToDown {
+                events.shouldContain(Cluster.MembershipChange(node: expectedDownNode.cluster.node, fromStatus: .down, toStatus: .removed))
+            }
+        }
+    }
 }
