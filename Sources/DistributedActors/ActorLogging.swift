@@ -72,10 +72,15 @@ internal final class LoggingContext {
 /// such as it's path or node on which it resides.
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
-public struct ActorLogger {
+extension Logger {
     public static func make<T>(context: ActorContext<T>) -> Logger {
-        var log = context.system.log
-        log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(context.path)
+        Logger.make(context.log, path: context.path)
+    }
+
+    internal static func make(_ base: Logger, path: ActorPath) -> Logger {
+        var log = base
+        log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
+        pprint("log[metadataKey: \"actor/path\"] = \(log[metadataKey: "actor/path"])")
         return log
     }
 }
