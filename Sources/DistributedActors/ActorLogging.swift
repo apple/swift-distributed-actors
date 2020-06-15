@@ -274,19 +274,29 @@ public struct LogMessage {
     let line: UInt
 }
 
-// MARK: Extend logging metadata storage capabilities
-
-extension Logger.Metadata {
+extension Logger.MetadataValue {
     public static func pretty<T>(_ value: T) -> Logger.Metadata.Value where T: CustomPrettyStringConvertible {
-        .string(value.prettyDescription)
+        Logger.MetadataValue.stringConvertible(CustomPrettyStringConvertibleMetadataValue(value))
     }
 
     public static func pretty<T>(_ value: T) -> Logger.Metadata.Value {
         if let pretty = value as? CustomPrettyStringConvertible {
-            return .string(pretty.prettyDescription)
+            return Logger.MetadataValue.stringConvertible(CustomPrettyStringConvertibleMetadataValue(pretty))
         } else {
             return .string("\(value)")
         }
+    }
+}
+
+struct CustomPrettyStringConvertibleMetadataValue: CustomStringConvertible {
+    let value: CustomPrettyStringConvertible
+
+    init(_ value: CustomPrettyStringConvertible) {
+        self.value = value
+    }
+
+    var description: String {
+        "\(self.value)"
     }
 }
 

@@ -177,9 +177,8 @@ extension CRDT.Identity: GossipIdentifier {
 
 extension CRDT {
     /// The gossip to be spread about a specific CRDT (identity).
-    struct Gossip: GossipEnvelopeProtocol, CustomPrettyStringConvertible {
+    struct Gossip: GossipEnvelopeProtocol, CustomStringConvertible, CustomPrettyStringConvertible {
         struct Metadata: Codable {}
-
         typealias Payload = StateBasedCRDT
 
         var metadata: Metadata
@@ -196,6 +195,10 @@ extension CRDT {
 
         mutating func tryMerge(other: StateBasedCRDT) -> CRDT.MergeError? {
             self.payload._tryMerge(other: other)
+        }
+
+        var description: String {
+            "CRDT.Gossip(metadata: \(metadata), payload: \(payload))"
         }
     }
 }

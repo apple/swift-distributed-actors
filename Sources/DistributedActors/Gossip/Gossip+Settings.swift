@@ -13,9 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: GossipShell Settings
+// MARK: Gossiper Settings
 
-extension GossipShell {
+extension Gossiper {
     public struct Settings {
         /// Interval at which gossip rounds should proceed.
         public var gossipInterval: TimeAmount = .seconds(2)

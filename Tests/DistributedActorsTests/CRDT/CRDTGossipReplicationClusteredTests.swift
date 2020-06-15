@@ -190,7 +190,6 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             let testKit: ActorTestKit = self.testKit(first)
 
             _ = try p1.fishFor(Int.self, within: .seconds(5)) { counter in
-                pprint("\(p1) received = \(pretty: counter)")
                 if counter.value == 6 {
                     return .complete
                 } else {
@@ -199,7 +198,8 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             }
 
             try testKit.assertHolds(for: .seconds(5), interval: .seconds(1)) {
-                let logs = self.capturedLogs(of: first).grep("Received gossip")
+                let logs: [CapturedLogMessage] = self.capturedLogs(of: first)
+                    .grep("Received gossip", metadata: ["gossip/identity": "counter"])
 
                 guard logs.count < 5 else {
                     throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
@@ -214,7 +214,8 @@ final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
             _ = try fourth.spawn("reader-4", ownsCounter(p: p4))
 
             try testKit.assertHolds(for: .seconds(5), interval: .seconds(1)) {
-                let logs = self.capturedLogs(of: fourth).grep("Received gossip")
+                let logs = self.capturedLogs(of: fourth)
+                    .grep("Received gossip", metadata: ["gossip/identity": "counter"])
 
                 guard logs.count < 5 else {
                     throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
