@@ -34,14 +34,14 @@ final class NodeTests: XCTestCase {
 
     func test_uniqueNode_shouldRenderProperly() {
         let node = Node(systemName: "SystemName", host: "188.121.122.3", port: 1111)
-        let uniqueNode = UniqueNode(node: node, nid: NodeID(2222))
+        let uniqueNode = UniqueNode(node: node, nid: UniqueNodeID(2222))
 
         "\(uniqueNode)".shouldEqual("sact://SystemName@188.121.122.3:1111")
         "\(String(reflecting: uniqueNode))".shouldEqual("sact://SystemName:2222@188.121.122.3:1111")
     }
 
     func test_uniqueNode_comparison_equal() {
-        let two = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeID(2222))
+        let two = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: UniqueNodeID(2222))
         let anotherTwo = two
 
         two.shouldEqual(anotherTwo)
@@ -49,8 +49,8 @@ final class NodeTests: XCTestCase {
     }
 
     func test_uniqueNode_comparison_lessThan() {
-        let two = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeID(2222))
-        let three = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeID(3333))
+        let two = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: UniqueNodeID(2222))
+        let three = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: UniqueNodeID(3333))
 
         two.shouldBeLessThan(three)
     }

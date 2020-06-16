@@ -37,12 +37,13 @@ import Foundation // for Codable
 public class Serialization {
     private let log: Logger
     internal let settings: Serialization.Settings
-    @usableFromInline
-    internal let metrics: ActorSystemMetrics // TODO: rather, do this via instrumentation
 
     /// Allocator used by the serialization infrastructure.
     /// Public only for access by other serialization work performed e.g. by other transports.
     public let allocator: ByteBufferAllocator
+
+    @usableFromInline
+    internal let metrics: ActorSystemMetrics // TODO: rather, do this via instrumentation
 
     /// WARNING: This WILL be mutated during runtime!
     ///

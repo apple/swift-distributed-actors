@@ -85,7 +85,7 @@ extension UniqueNode: ProtobufRepresentable {
             port: Int(proto.node.port)
         )
 
-        self = .init(node: node, nid: NodeID(proto.nid))
+        self = .init(node: node, nid: UniqueNodeID(proto.nid))
     }
 }
 
@@ -132,7 +132,7 @@ extension UniqueNode {
             throw SerializationError.missingField("uid", type: String(describing: UniqueNode.self))
         }
         let node = Node(proto.node)
-        let nid = NodeID(proto.nid)
+        let nid = UniqueNodeID(proto.nid)
         self.init(node: node, nid: nid)
     }
 }

@@ -96,7 +96,7 @@ final class ActorAddressTests: XCTestCase {
 
     func test_remote_actorAddress_shouldPrintNicely() throws {
         let address = try ActorAddress(path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
-        let node = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: NodeID(11111))
+        let node = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
         let remote = ActorAddress(node: node, path: address.path, incarnation: ActorIncarnation(8888))
 
         String(reflecting: remote).shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888")
@@ -124,8 +124,8 @@ final class ActorAddressTests: XCTestCase {
 
     func test_equalityOf_addressWithDifferentSystemNameOnly() throws {
         let address = try ActorAddress(path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
-        let one = ActorAddress(node: UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
-        let two = ActorAddress(node: UniqueNode(systemName: "two", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let one = ActorAddress(node: UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let two = ActorAddress(node: UniqueNode(systemName: "two", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
 
         one.shouldEqual(two)
     }
@@ -165,9 +165,9 @@ final class ActorAddressTests: XCTestCase {
 
     func test_sortingOf_diffNodes_ActorAddresses() throws {
         var addresses: [ActorAddress] = []
-        let a: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 111, nid: NodeID(1)), incarnation: 1)
-        let b: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 222, nid: NodeID(1)), incarnation: 1)
-        let c: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 333, nid: NodeID(1)), incarnation: 1)
+        let a: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 111, nid: UniqueNodeID(1)), incarnation: 1)
+        let b: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 222, nid: UniqueNodeID(1)), incarnation: 1)
+        let c: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 333, nid: UniqueNodeID(1)), incarnation: 1)
         addresses.append(c)
         addresses.append(b)
         addresses.append(a)

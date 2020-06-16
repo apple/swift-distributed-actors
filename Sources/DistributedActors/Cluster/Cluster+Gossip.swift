@@ -322,7 +322,3 @@ extension Cluster.Gossip.SeenTable: CustomStringConvertible, CustomPrettyStringC
         return s
     }
 }
-
-extension Cluster.Gossip.SeenTable: Codable {
-    // Codable: synthesized conformance
-}

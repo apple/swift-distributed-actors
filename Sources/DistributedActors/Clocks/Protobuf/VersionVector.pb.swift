@@ -59,17 +59,27 @@ public struct ProtoVersionReplicaID {
     set {_uniqueStorage()._value = .uniqueNode(newValue)}
   }
 
+  public var uniqueNodeID: UInt32 {
+    get {
+      if case .uniqueNodeID(let v)? = _storage._value {return v}
+      return 0
+    }
+    set {_uniqueStorage()._value = .uniqueNodeID(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Value: Equatable {
     case actorAddress(ProtoActorAddress)
     case uniqueNode(ProtoUniqueNode)
+    case uniqueNodeID(UInt32)
 
   #if !swift(>=4.1)
     public static func ==(lhs: ProtoVersionReplicaID.OneOf_Value, rhs: ProtoVersionReplicaID.OneOf_Value) -> Bool {
       switch (lhs, rhs) {
       case (.actorAddress(let l), .actorAddress(let r)): return l == r
       case (.uniqueNode(let l), .uniqueNode(let r)): return l == r
+      case (.uniqueNodeID(let l), .uniqueNodeID(let r)): return l == r
       default: return false
       }
     }
@@ -190,6 +200,7 @@ extension ProtoVersionReplicaID: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "actorAddress"),
     2: .same(proto: "uniqueNode"),
+    3: .same(proto: "uniqueNodeID"),
   ]
 
   fileprivate class _StorageClass {
@@ -232,6 +243,11 @@ extension ProtoVersionReplicaID: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           }
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {_storage._value = .uniqueNode(v)}
+        case 3:
+          if _storage._value != nil {try decoder.handleConflictingOneOf()}
+          var v: UInt32?
+          try decoder.decodeSingularUInt32Field(value: &v)
+          if let v = v {_storage._value = .uniqueNodeID(v)}
         default: break
         }
       }
@@ -245,6 +261,8 @@ extension ProtoVersionReplicaID: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       case .uniqueNode(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      case .uniqueNodeID(let v)?:
+        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 3)
       case nil: break
       }
     }

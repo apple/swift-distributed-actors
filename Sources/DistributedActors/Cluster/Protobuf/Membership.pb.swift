@@ -200,21 +200,70 @@ public struct ProtoClusterMembershipGossip {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  /// origin of the gossip
-  public var from: ProtoUniqueNode {
-    get {return _storage._from ?? ProtoUniqueNode()}
-    set {_uniqueStorage()._from = newValue}
+  /// Membership contains full UniqueNode renderings, and the owner and seen table refer to them by UniqueNode.ID
+  /// this saves us space (by avoiding to render the unique node explicitly many times for each member/seen-entry).
+  public var membership: ProtoClusterMembership {
+    get {return _storage._membership ?? ProtoClusterMembership()}
+    set {_uniqueStorage()._membership = newValue}
   }
-  /// Returns true if `from` has been explicitly set.
-  public var hasFrom: Bool {return _storage._from != nil}
-  /// Clears the value of `from`. Subsequent reads from it will return its default value.
-  public mutating func clearFrom() {_uniqueStorage()._from = nil}
+  /// Returns true if `membership` has been explicitly set.
+  public var hasMembership: Bool {return _storage._membership != nil}
+  /// Clears the value of `membership`. Subsequent reads from it will return its default value.
+  public mutating func clearMembership() {_uniqueStorage()._membership = nil}
 
-  /// TODO: Something else, "membership diff"?
-  public var members: [ProtoClusterMember] {
-    get {return _storage._members}
-    set {_uniqueStorage()._members = newValue}
+  /// The following fields will use compressed UniqueNode encoding and ONLY serialize them as their uniqueNodeID.
+  /// During deserialization the fields can be resolved against the membership to obtain full UniqueNode values if necessary.
+  public var ownerUniqueNodeID: UInt32 {
+    get {return _storage._ownerUniqueNodeID}
+    set {_uniqueStorage()._ownerUniqueNodeID = newValue}
   }
+
+  public var seenTable: ProtoClusterMembershipSeenTable {
+    get {return _storage._seenTable ?? ProtoClusterMembershipSeenTable()}
+    set {_uniqueStorage()._seenTable = newValue}
+  }
+  /// Returns true if `seenTable` has been explicitly set.
+  public var hasSeenTable: Bool {return _storage._seenTable != nil}
+  /// Clears the value of `seenTable`. Subsequent reads from it will return its default value.
+  public mutating func clearSeenTable() {_uniqueStorage()._seenTable = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct ProtoClusterMembershipSeenTable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var rows: [ProtoClusterMembershipSeenTableRow] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct ProtoClusterMembershipSeenTableRow {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var uniqueNodeID: UInt32 {
+    get {return _storage._uniqueNodeID}
+    set {_uniqueStorage()._uniqueNodeID = newValue}
+  }
+
+  public var version: ProtoVersionVector {
+    get {return _storage._version ?? ProtoVersionVector()}
+    set {_uniqueStorage()._version = newValue}
+  }
+  /// Returns true if `version` has been explicitly set.
+  public var hasVersion: Bool {return _storage._version != nil}
+  /// Clears the value of `version`. Subsequent reads from it will return its default value.
+  public mutating func clearVersion() {_uniqueStorage()._version = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -401,21 +450,24 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "ClusterMembershipGossip"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "from"),
-    2: .same(proto: "members"),
+    1: .same(proto: "membership"),
+    2: .same(proto: "ownerUniqueNodeID"),
+    3: .same(proto: "seenTable"),
   ]
 
   fileprivate class _StorageClass {
-    var _from: ProtoUniqueNode? = nil
-    var _members: [ProtoClusterMember] = []
+    var _membership: ProtoClusterMembership? = nil
+    var _ownerUniqueNodeID: UInt32 = 0
+    var _seenTable: ProtoClusterMembershipSeenTable? = nil
 
     static let defaultInstance = _StorageClass()
 
     private init() {}
 
     init(copying source: _StorageClass) {
-      _from = source._from
-      _members = source._members
+      _membership = source._membership
+      _ownerUniqueNodeID = source._ownerUniqueNodeID
+      _seenTable = source._seenTable
     }
   }
 
@@ -431,8 +483,9 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._from)
-        case 2: try decoder.decodeRepeatedMessageField(value: &_storage._members)
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._membership)
+        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._ownerUniqueNodeID)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._seenTable)
         default: break
         }
       }
@@ -441,11 +494,14 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._from {
+      if let v = _storage._membership {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if !_storage._members.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._members, fieldNumber: 2)
+      if _storage._ownerUniqueNodeID != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._ownerUniqueNodeID, fieldNumber: 2)
+      }
+      if let v = _storage._seenTable {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -456,8 +512,107 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._from != rhs_storage._from {return false}
-        if _storage._members != rhs_storage._members {return false}
+        if _storage._membership != rhs_storage._membership {return false}
+        if _storage._ownerUniqueNodeID != rhs_storage._ownerUniqueNodeID {return false}
+        if _storage._seenTable != rhs_storage._seenTable {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoClusterMembershipSeenTable: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = "ClusterMembershipSeenTable"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "rows"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try decoder.decodeRepeatedMessageField(value: &self.rows)
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.rows.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.rows, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ProtoClusterMembershipSeenTable, rhs: ProtoClusterMembershipSeenTable) -> Bool {
+    if lhs.rows != rhs.rows {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoClusterMembershipSeenTableRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = "ClusterMembershipSeenTableRow"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "uniqueNodeID"),
+    2: .same(proto: "version"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _uniqueNodeID: UInt32 = 0
+    var _version: ProtoVersionVector? = nil
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _uniqueNodeID = source._uniqueNodeID
+      _version = source._version
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularUInt32Field(value: &_storage._uniqueNodeID)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._version)
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if _storage._uniqueNodeID != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._uniqueNodeID, fieldNumber: 1)
+      }
+      if let v = _storage._version {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: ProtoClusterMembershipSeenTableRow, rhs: ProtoClusterMembershipSeenTableRow) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._uniqueNodeID != rhs_storage._uniqueNodeID {return false}
+        if _storage._version != rhs_storage._version {return false}
         return true
       }
       if !storagesAreEqual {return false}
