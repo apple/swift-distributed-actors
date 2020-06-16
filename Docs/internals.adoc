@@ -153,7 +153,7 @@ R -[#red]-x L: HandshakeReject
 
 ==== Handshake phases
 
-Note that handshakes may "race" from both nodes to eachother concurrently, thus the system has to "pick one".
+Note that handshakes may "race" from both nodes to each other concurrently, thus the system has to "pick one".
 
 
 
