@@ -241,6 +241,7 @@ public struct ReplicaID: Hashable {
     internal enum Storage: Hashable {
         case actorAddress(ActorAddress)
         case uniqueNode(UniqueNode)
+        case uniqueNodeID(UniqueNode.ID)
     }
 
     internal let storage: Storage
@@ -262,12 +263,24 @@ public struct ReplicaID: Hashable {
         .init(.uniqueNode(uniqueNode))
     }
 
+    public static func uniqueNodeID(_ uniqueNode: UniqueNode) -> ReplicaID {
+        .init(.uniqueNodeID(uniqueNode.nid))
+    }
+
+    internal static func uniqueNodeID(_ uniqueNodeID: UInt32) -> ReplicaID {
+        .init(.uniqueNodeID(.init(uniqueNodeID)))
+    }
+
     func ensuringNode(_ node: UniqueNode) -> ReplicaID {
         switch self.storage {
-        case .uniqueNode:
-            return self
         case .actorAddress(let address):
             return .actorAddress(address.ensuringNode(node))
+        case .uniqueNode(let existingNode):
+            assert(existingNode.nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(existingNode)], attempted: \(node)")
+            return self
+        case .uniqueNodeID(let nid): // drops the nid
+            assert(nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(nid)], attempted: \(node)")
+            return .uniqueNode(node)
         }
     }
 }
@@ -279,6 +292,8 @@ extension ReplicaID: CustomStringConvertible {
             return "actor:\(address)"
         case .uniqueNode(let node):
             return "uniqueNode:\(node)"
+        case .uniqueNodeID(let nid):
+            return "uniqueNodeID:\(nid)"
         }
     }
 }
@@ -290,8 +305,10 @@ extension ReplicaID: Comparable {
             return l < r
         case (.uniqueNode(let l), .uniqueNode(let r)):
             return l < r
-        case (.uniqueNode, _), (.actorAddress, _):
-            return false // TODO: should we even disallow comparing them?
+        case (.uniqueNodeID(let l), .uniqueNodeID(let r)):
+            return l < r
+        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorAddress, _):
+            return false
         }
     }
 
@@ -299,34 +316,45 @@ extension ReplicaID: Comparable {
         switch (lhs.storage, rhs.storage) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l == r
+
         case (.uniqueNode(let l), .uniqueNode(let r)):
             return l == r
-        case (.uniqueNode, _), (.actorAddress, _):
-            return false // TODO: should we even disallow comparing them?
+
+        case (.uniqueNodeID(let l), .uniqueNodeID(let r)):
+            return l == r
+        case (.uniqueNode(let l), .uniqueNodeID(let r)):
+            return l.nid == r
+        case (.uniqueNodeID(let l), .uniqueNode(let r)):
+            return l == r.nid
+
+        case (.uniqueNode, _), (.uniqueNodeID, _), (.actorAddress, _):
+            return false
         }
     }
 }
 
 extension ReplicaID: Codable {
     public enum DiscriminatorKeys: String, Codable {
-        case actorAddress
-        case uniqueNode
+        case actorAddress = "a"
+        case uniqueNode = "N"
+        case uniqueNodeID = "n"
     }
 
     public enum CodingKeys: CodingKey {
         case _case
 
-        case actorAddress_value
-        case uniqueNode_value
+        case value
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .actorAddress:
-            self = try .actorAddress(container.decode(ActorAddress.self, forKey: .actorAddress_value))
+            self = try .actorAddress(container.decode(ActorAddress.self, forKey: .value))
         case .uniqueNode:
-            self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .uniqueNode_value))
+            self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .value))
+        case .uniqueNodeID:
+            self = try .uniqueNodeID(container.decode(UInt32.self, forKey: .value))
         }
     }
 
@@ -335,10 +363,13 @@ extension ReplicaID: Codable {
         switch self.storage {
         case .actorAddress(let address):
             try container.encode(DiscriminatorKeys.actorAddress, forKey: ._case)
-            try container.encode(address, forKey: .actorAddress_value)
+            try container.encode(address, forKey: .value)
         case .uniqueNode(let node):
             try container.encode(DiscriminatorKeys.uniqueNode, forKey: ._case)
-            try container.encode(node, forKey: .uniqueNode_value)
+            try container.encode(node, forKey: .value)
+        case .uniqueNodeID(let nid):
+            try container.encode(DiscriminatorKeys.uniqueNodeID, forKey: ._case)
+            try container.encode(nid.value, forKey: .value)
         }
     }
 }

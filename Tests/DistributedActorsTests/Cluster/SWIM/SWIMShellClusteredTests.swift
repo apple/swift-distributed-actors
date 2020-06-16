@@ -543,7 +543,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         try self.firstClusterProbe.expectNoMessage(for: .seconds(1))
         timeSource.tick()
 
-        let supectedByNodes = Set((1 ... maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(UInt32($0))) })
+        let supectedByNodes = Set((1 ... maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: UniqueNodeID(UInt32($0))) })
 
         let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
         let suspectStatus: SWIM.Status = .suspect(incarnation: 0, suspectedBy: supectedByNodes)
@@ -588,7 +588,7 @@ final class SWIMShellClusteredTests: ClusteredNodesTestBase {
         timeSource.tick()
 
         let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
-        let supectedByNodes = Set((1 ... maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(UInt32($0))) })
+        let supectedByNodes = Set((1 ... maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: UniqueNodeID(UInt32($0))) })
         let suspectStatus: SWIM.Status = .suspect(incarnation: 0, suspectedBy: supectedByNodes)
         ref.tell(.remote(.ping(replyTo: ackProbe.ref, payload: .membership([SWIMMember(ref: remoteMemberRef, status: suspectStatus, protocolPeriod: 0)]))))
 

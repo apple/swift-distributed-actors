@@ -25,6 +25,8 @@ extension ReplicaID: ProtobufRepresentable {
             proto.actorAddress = try actorAddress.toProto(context: context)
         case .uniqueNode(let node):
             proto.uniqueNode = try node.toProto(context: context)
+        case .uniqueNodeID(let nid):
+            proto.uniqueNodeID = nid.value
         }
         return proto
     }
@@ -41,6 +43,8 @@ extension ReplicaID: ProtobufRepresentable {
         case .uniqueNode(let protoNode):
             let node = try UniqueNode(fromProto: protoNode, context: context)
             self = .uniqueNode(node)
+        case .uniqueNodeID(let nid):
+            self = .uniqueNodeID(nid)
         }
     }
 }
@@ -57,6 +61,29 @@ extension VersionVector: ProtobufRepresentable {
         let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaID, version in
             var replicaVersion = ProtoReplicaVersion()
             replicaVersion.replicaID = try replicaID.toProto(context: context)
+            replicaVersion.version = UInt64(version)
+            return replicaVersion
+        }
+        proto.state = replicaVersions
+
+        return proto
+    }
+
+    /// Serialize using uniqueNodeID specifically (or crash);
+    /// Used in situations where an enclosing message already has the unique nodes serialized and we can save space by avoiding to serialize them again.
+    public func toCompactReplicaNodeIDProto(context: Serialization.Context) throws -> ProtoVersionVector {
+        var proto = ProtoVersionVector()
+
+        let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaID, version in
+            var replicaVersion = ProtoReplicaVersion()
+            switch replicaID.storage {
+            case .uniqueNode(let node):
+                replicaVersion.replicaID.uniqueNodeID = node.nid.value
+            case .uniqueNodeID(let nid):
+                replicaVersion.replicaID.uniqueNodeID = nid.value
+            case .actorAddress:
+                throw SerializationError.unableToSerialize(hint: "Can't serialize using actor address as replica id! Was: \(replicaID)")
+            }
             replicaVersion.version = UInt64(version)
             return replicaVersion
         }

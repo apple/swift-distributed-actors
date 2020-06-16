@@ -612,20 +612,22 @@ extension Node: Comparable {
 /// Once the remote node accepts our handshake, it offers the other node its unique address.
 /// Only once this address has been obtained can a node communicate with actors located on the remote node.
 public struct UniqueNode: Hashable {
-    public var node: Node
-    public let nid: NodeID
+    public typealias ID = UniqueNodeID
 
-    public init(node: Node, nid: NodeID) {
+    public var node: Node
+    public let nid: UniqueNodeID
+
+    public init(node: Node, nid: UniqueNodeID) {
         precondition(node.port > 0, "port MUST be > 0")
         self.node = node
         self.nid = nid
     }
 
-    public init(protocol: String, systemName: String, host: String, port: Int, nid: NodeID) {
+    public init(protocol: String, systemName: String, host: String, port: Int, nid: UniqueNodeID) {
         self.init(node: Node(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
     }
 
-    public init(systemName: String, host: String, port: Int, nid: NodeID) {
+    public init(systemName: String, host: String, port: Int, nid: UniqueNodeID) {
         self.init(protocol: "sact", systemName: systemName, host: host, port: port, nid: nid)
     }
 
@@ -676,7 +678,7 @@ extension UniqueNode: Comparable {
     }
 }
 
-public struct NodeID: Hashable {
+public struct UniqueNodeID: Hashable {
     let value: UInt32 // TODO: redesign / reconsider exact size
 
     public init(_ value: UInt32) {
@@ -684,21 +686,21 @@ public struct NodeID: Hashable {
     }
 }
 
-extension NodeID: Comparable {
-    public static func < (lhs: NodeID, rhs: NodeID) -> Bool {
+extension UniqueNodeID: Comparable {
+    public static func < (lhs: UniqueNodeID, rhs: UniqueNodeID) -> Bool {
         lhs.value < rhs.value
     }
 }
 
-extension NodeID: CustomStringConvertible {
+extension UniqueNodeID: CustomStringConvertible {
     public var description: String {
         "\(self.value)"
     }
 }
 
-public extension NodeID {
-    static func random() -> NodeID {
-        NodeID(UInt32.random(in: 1 ... .max))
+public extension UniqueNodeID {
+    static func random() -> UniqueNodeID {
+        UniqueNodeID(UInt32.random(in: 1 ... .max))
     }
 }
 

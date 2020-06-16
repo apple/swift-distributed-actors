@@ -71,7 +71,7 @@ extension Serialization {
         ///
         /// This is set automatically when modifying the systems cluster settings.
         internal var localNode: UniqueNode =
-            .init(systemName: "<mock-value-will-be-replaced-during-system-start>", host: "127.0.0.1", port: 7337, nid: NodeID(0))
+            .init(systemName: "<mock-value-will-be-replaced-during-system-start>", host: "127.0.0.1", port: 7337, nid: UniqueNodeID(0))
 
         /// Applied before automatically selecting a serializer based on manifest.
         /// Allows to deserialize incoming messages when "the same" message is now represented on this system differently.

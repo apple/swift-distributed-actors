@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import XCTest
 
 final class SWIMInstanceTests: ActorSystemTestBase {
-    let testNode = UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(0))
+    let testNode = UniqueNode(systemName: "test", host: "test", port: 12345, nid: UniqueNodeID(0))
 
     var clusterTestProbe: ActorTestProbe<ClusterShell.Message>!
 
@@ -213,7 +213,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let swim = SWIM.Instance(.default, myShellMyself: p1, myNode: self.testNode)
 
         let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let secondTestNode = self.testNode.copy(NodeID(1))
+        let secondTestNode = self.testNode.copy(UniqueNodeID(1))
 
         swim.addMember(p2, status: .suspect(incarnation: 1, suspectedBy: [secondTestNode]))
 
@@ -455,7 +455,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let other = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         swim.addMember(other, status: .suspect(incarnation: 0, suspectedBy: [self.testNode]))
-        let secondTestNode = self.testNode.copy(NodeID(1))
+        let secondTestNode = self.testNode.copy(UniqueNodeID(1))
         var otherMember = swim.member(for: other)!
         otherMember.status = .suspect(incarnation: 0, suspectedBy: [secondTestNode])
         let res = swim.onGossipPayload(about: otherMember)
@@ -472,7 +472,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let swim = SWIM.Instance(.default, myShellMyself: myself, myNode: self.testNode)
         let other = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
-        let saturatedSuspectedByList = (1 ... swim.settings.lifeguard.maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: NodeID(UInt32($0))) }
+        let saturatedSuspectedByList = (1 ... swim.settings.lifeguard.maxIndependentSuspicions).map { UniqueNode(systemName: "test", host: "test", port: 12345, nid: UniqueNodeID(UInt32($0))) }
 
         swim.addMember(other, status: .suspect(incarnation: 0, suspectedBy: Set(saturatedSuspectedByList)))
 
@@ -491,9 +491,9 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let swim = SWIM.Instance(settings, myShellMyself: myself, myNode: self.testNode)
         let other = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
-        let secondTestNode = self.testNode.copy(NodeID(1))
-        let thirdTestNode = self.testNode.copy(NodeID(2))
-        let fourthTestNode = self.testNode.copy(NodeID(3))
+        let secondTestNode = self.testNode.copy(UniqueNodeID(1))
+        let thirdTestNode = self.testNode.copy(UniqueNodeID(2))
+        let fourthTestNode = self.testNode.copy(UniqueNodeID(3))
 
         swim.addMember(other, status: .suspect(incarnation: 0, suspectedBy: [self.testNode, secondTestNode]))
 
@@ -732,7 +732,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let aliveAtZero = SWIM.Status.alive(incarnation: 0)
         swim.addMember(p1, status: aliveAtZero)
         swim.memberCount.shouldEqual(2)
-        let secondTestNode = self.testNode.copy(NodeID(1))
+        let secondTestNode = self.testNode.copy(UniqueNodeID(1))
 
         self.validateSuspects(swim, expected: [])
         let oldStatus: SWIM.Status = .suspect(incarnation: 0, suspectedBy: [self.testNode])
@@ -751,7 +751,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
         let aliveAtZero = SWIM.Status.alive(incarnation: 0)
         swim.addMember(p1, status: aliveAtZero)
         swim.memberCount.shouldEqual(2)
-        let secondTestNode = self.testNode.copy(NodeID(1))
+        let secondTestNode = self.testNode.copy(UniqueNodeID(1))
 
         self.validateSuspects(swim, expected: [])
         let oldStatus: SWIM.Status = .suspect(incarnation: 0, suspectedBy: [self.testNode, secondTestNode])
@@ -876,7 +876,7 @@ final class SWIMInstanceTests: ActorSystemTestBase {
 }
 
 extension UniqueNode {
-    func copy(_ nid: NodeID) -> UniqueNode {
+    func copy(_ nid: UniqueNodeID) -> UniqueNode {
         UniqueNode(node: self.node, nid: nid)
     }
 }

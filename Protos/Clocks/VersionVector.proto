@@ -27,6 +27,7 @@ message VersionReplicaID {
     oneof value {
         ActorAddress actorAddress = 1;
         UniqueNode uniqueNode = 2;
+        uint32 uniqueNodeID = 3;
     }
 }
 

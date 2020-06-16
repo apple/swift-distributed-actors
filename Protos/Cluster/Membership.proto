@@ -19,6 +19,7 @@ option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
+import "Clocks/VersionVector.proto";
 
 message ClusterMembership {
     repeated ClusterMember members = 1;
@@ -47,8 +48,24 @@ enum ClusterMemberStatus {
     CLUSTER_MEMBER_STATUS_REMOVED = 5;
 }
 
+// ==== Membership Gossip ----------------------------------------------------------------------------------------------
+
 message ClusterMembershipGossip {
-    // origin of the gossip
-    UniqueNode from = 1;
-    repeated ClusterMember members = 2; // TODO: Something else, "membership diff"?
+    // Membership contains full UniqueNode renderings, and the owner and seen table refer to them by UniqueNode.ID
+    // this saves us space (by avoiding to render the unique node explicitly many times for each member/seen-entry).
+    ClusterMembership membership = 1;
+
+    // The following fields will use compressed UniqueNode encoding and ONLY serialize them as their uniqueNodeID.
+    // During deserialization the fields can be resolved against the membership to obtain full UniqueNode values if necessary.
+    uint32 ownerUniqueNodeID = 2;
+    ClusterMembershipSeenTable seenTable = 3;
+}
+
+message ClusterMembershipSeenTable {
+    repeated ClusterMembershipSeenTableRow rows = 1;
+}
+
+message ClusterMembershipSeenTableRow {
+    uint32 uniqueNodeID = 1;
+    VersionVector version = 2;
 }
