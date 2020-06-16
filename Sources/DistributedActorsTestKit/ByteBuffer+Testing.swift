@@ -20,14 +20,16 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
+// TODO: probably remove those?
+
 extension Serialization.Buffer {
     // For easier visual inspection of known utf8 data within a Buffer, use with care (!)
     public func stringDebugDescription() -> String {
         switch self {
         case .data(let data):
             return data.stringDebugDescription()
-        case .nioByteBuffer(let bufffer):
-            return bufffer.stringDebugDescription()
+        case .nioByteBuffer(let buffer):
+            return buffer.stringDebugDescription()
         }
     }
 }
@@ -35,7 +37,11 @@ extension Serialization.Buffer {
 extension Data {
     // For easier visual inspection of known utf8 data within a Data, use with care (!)
     public func stringDebugDescription() -> String {
-        String(data: self, encoding: .utf8)!
+        if let string = String(data: self, encoding: .utf8) {
+            return string
+        } else {
+            return "<<NOT UTF8 ENCODED: \(self)>>"
+        }
     }
 }
 

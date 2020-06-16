@@ -15,6 +15,10 @@
 @testable import DistributedActors
 import XCTest
 
+/// Convenience class for building multi-node (yet same-process) tests with many actor systems involved.
+///
+/// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
+/// captured and only printed when a test failure occurs.
 open class ClusteredNodesTestBase: XCTestCase {
     public private(set) var _nodes: [ActorSystem] = []
     public private(set) var _testKits: [ActorTestKit] = []

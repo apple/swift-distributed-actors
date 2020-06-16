@@ -142,6 +142,11 @@ extension Cluster {
             }
         }
 
+        public func member(byUniqueNodeID nid: UniqueNode.ID) -> Cluster.Member? {
+            // TODO: make this O(1) by allowing wrapper type to equality check only on NodeID
+            self._members.first(where: { $0.key.nid == nid })?.value
+        }
+
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Leaders
 

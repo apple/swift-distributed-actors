@@ -24,8 +24,8 @@ final class RemoteActorRefProviderTests: ActorSystemTestBase {
         }
     }
 
-    let localNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 7111, nid: NodeID(777_777))
-    let remoteNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeID(888_888))
+    let localNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 7111, nid: UniqueNodeID(777_777))
+    let remoteNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: UniqueNodeID(888_888))
     lazy var remoteAddress = ActorAddress(node: remoteNode, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ final class RemoteActorRefProviderTests: ActorSystemTestBase {
     func test_remoteActorRefProvider_shouldResolveRemoteDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: ActorRef<DeadLetter> = self.system.deadLetters
         var address: ActorAddress = ref.address
-        let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeID(1211))
+        let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: UniqueNodeID(1211))
         address._location = .remote(unknownNode)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
@@ -97,7 +97,7 @@ final class RemoteActorRefProviderTests: ActorSystemTestBase {
     }
 
     func test_remoteActorRefProvider_shouldResolveRemoteAlreadyDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
-        let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeID(1211))
+        let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: UniqueNodeID(1211))
         let address: ActorAddress = try .init(node: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)

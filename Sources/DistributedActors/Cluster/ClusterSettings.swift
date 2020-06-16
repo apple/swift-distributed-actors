@@ -63,7 +63,7 @@ public struct ClusterSettings {
     public var node: Node
 
     /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
-    public var nid: NodeID
+    public var nid: UniqueNodeID
 
     // Reflects the bindAddress however carries an uniquely assigned UID.
     // The UID remains the same throughout updates of the `bindAddress` field.
@@ -174,7 +174,7 @@ public struct ClusterSettings {
 
     public init(node: Node, tls: TLSConfiguration? = nil) {
         self.node = node
-        self.nid = NodeID.random()
+        self.nid = UniqueNodeID.random()
         self.tls = tls
     }
 }

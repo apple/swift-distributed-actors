@@ -205,7 +205,7 @@ extension ProtoActorAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 }
 
 extension ProtoActorPath: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = "actor/path"
+  public static let protoMessageName: String = "ActorPath"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "segments"),
   ]
