@@ -26,12 +26,16 @@ extension ActorTestProbe where Message == Receptionist.Listing<String> {
         expected: Set<ActorRef<String>>, within timeout: TimeAmount,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
-        let listing = try self.fishForMessages(within: timeout, file: file, line: line) {
-            if $0.refs.count == expected.count { return .catchComplete }
-            else { return .ignore }
-        }.first!
+        do {
+            let listing = try self.fishForMessages(within: timeout, file: file, line: line) {
+                if $0.refs.count == expected.count { return .catchComplete }
+                else { return .ignore }
+            }.first!
 
-        // TODO: not super efficient, rework eventually
-        listing.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted(), file: file, line: line, column: column)
+            // TODO: not super efficient, rework eventually
+            listing.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted(), file: file, line: line, column: column)
+        } catch {
+            throw self.error("Expected \(expected), error: \(error)", file: file, line: line)
+        }
     }
 }
