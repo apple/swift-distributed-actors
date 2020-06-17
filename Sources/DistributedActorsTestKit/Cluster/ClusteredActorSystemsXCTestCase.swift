@@ -141,14 +141,14 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(15), nodes: UniqueNode...,
+        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(20), nodes: UniqueNode...,
         file: StaticString = #file, line: UInt = #line
     ) throws {
         try self.ensureNodes(status, on: system, within: within, nodes: nodes, file: file, line: line)
     }
 
     public func ensureNodes(
-        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(15), nodes: [UniqueNode],
+        _ status: Cluster.MemberStatus, on system: ActorSystem? = nil, within: TimeAmount = .seconds(20), nodes: [UniqueNode],
         file: StaticString = #file, line: UInt = #line
     ) throws {
         guard let onSystem = system ?? self._nodes.first(where: { !$0.isShuttingDown }) else {
