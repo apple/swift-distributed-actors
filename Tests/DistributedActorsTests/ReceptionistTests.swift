@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ReceptionistTests: ActorSystemTestBase {
+final class ReceptionistTests: ActorSystemXCTestCase {
     let LocalReceptionist = OperationLogClusterReceptionist(settings: .default)
 
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {

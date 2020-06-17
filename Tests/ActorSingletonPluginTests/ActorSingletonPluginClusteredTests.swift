@@ -17,7 +17,7 @@ import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorSingletonPluginClusteredTests: ClusteredNodesTestBase {
+final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
             "/system/cluster/swim",

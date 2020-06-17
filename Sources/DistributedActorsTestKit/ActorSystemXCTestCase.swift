@@ -19,7 +19,7 @@ import XCTest
 
 /// Base class to handle the repetitive setUp/tearDown code involved in most ActorSystem requiring tests.
 // TODO: Document and API guarantees
-open class ActorSystemTestBase: ClusteredNodesTestBase {
+open class ActorSystemXCTestCase: ClusteredActorSystemsXCTestCase {
     public var system: ActorSystem {
         guard let node = self._nodes.first else {
             fatalError("No system spawned!")

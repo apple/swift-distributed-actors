@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class SystemMessagesRedeliveryTests: ActorSystemTestBase {
+final class SystemMessagesRedeliveryTests: ActorSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: OutboundSystemMessageRedelivery
 

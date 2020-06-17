@@ -19,7 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-final class SystemMessageRedeliveryHandlerTests: ActorSystemTestBase {
+final class SystemMessageRedeliveryHandlerTests: ActorSystemXCTestCase {
     // FIXME: These tests are disabled !!!!
     // FIXME: These tests are disabled !!!!
     // FIXME: These tests are disabled !!!!

@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import XCTest
 
 /// Tests of the SWIM.Instance which require the existence of actor systems, even if the instance tests are driven manually.
-final class SWIMInstanceClusteredTests: ClusteredNodesTestBase {
+final class SWIMInstanceClusteredTests: ClusteredActorSystemsXCTestCase {
     let testNode = UniqueNode(systemName: "test", host: "test", port: 12345, nid: UniqueNodeID(0))
 
     var localClusterProbe: ActorTestProbe<ClusterShell.Message>!

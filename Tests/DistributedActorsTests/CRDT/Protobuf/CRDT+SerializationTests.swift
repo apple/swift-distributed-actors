@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class CRDTSerializationTests: ActorSystemTestBase {
+final class CRDTSerializationTests: ActorSystemXCTestCase {
     typealias V = UInt64
 
     override func setUp() {

@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class RemoteActorRefProviderTests: ActorSystemTestBase {
+final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
     override func setUp() {
         _ = self.setUpNode(String(reflecting: Self.self)) { settings in
             settings.cluster.enabled = true

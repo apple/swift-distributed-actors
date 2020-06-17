@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import NIO
 import XCTest
 
-final class ClusterAssociationTests: ClusteredNodesTestBase {
+final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
             "/system/replicator",

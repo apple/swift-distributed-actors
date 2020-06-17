@@ -18,7 +18,7 @@ import Foundation
 import NIOSSL
 import XCTest
 
-class RemotingTLSTests: ClusteredNodesTestBase {
+class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
     let testCert1 = """
     -----BEGIN CERTIFICATE-----
     MIIDEjCCAfoCCQCHROo5Bb+wETANBgkqhkiG9w0BAQsFADBKMQswCQYDVQQGEwJV

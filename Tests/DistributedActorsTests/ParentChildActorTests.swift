@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ParentChildActorTests: ActorSystemTestBase {
+final class ParentChildActorTests: ActorSystemXCTestCase {
     typealias ParentRef = ActorRef<ParentProtocol>
     enum ParentProtocol: NonTransportableActorMessage {
         case spawnChild(name: String, behavior: Behavior<ChildProtocol>)

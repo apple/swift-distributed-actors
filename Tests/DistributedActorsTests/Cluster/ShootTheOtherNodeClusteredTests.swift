@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import NIO
 import XCTest
 
-final class ShootTheOtherNodeClusteredTests: ClusteredNodesTestBase {
+final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeGrep = [
             "TimerKey",

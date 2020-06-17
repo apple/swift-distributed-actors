@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorLoggingTests: ActorSystemTestBase {
+final class ActorLoggingTests: ActorSystemXCTestCase {
     var exampleSenderPath: ActorPath!
 
     override func setUp() {

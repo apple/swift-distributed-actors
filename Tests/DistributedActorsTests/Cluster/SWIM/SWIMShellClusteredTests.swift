@@ -18,7 +18,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class SWIMShellClusteredTests: ClusteredNodesTestBase {
+final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 

@@ -19,7 +19,7 @@ import XCTest
 ///
 /// Systems started using `setUpNode` are automatically terminated upon test completion, and logs are automatically
 /// captured and only printed when a test failure occurs.
-open class ClusteredNodesTestBase: XCTestCase {
+open class ClusteredActorSystemsXCTestCase: XCTestCase {
     public private(set) var _nodes: [ActorSystem] = []
     public private(set) var _testKits: [ActorTestKit] = []
     public private(set) var _logCaptures: [LogCapture] = []
@@ -171,7 +171,7 @@ open class ClusteredNodesTestBase: XCTestCase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Printing information
 
-extension ClusteredNodesTestBase {
+extension ClusteredActorSystemsXCTestCase {
     public func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
         let testKit = self.testKit(system)
         let p = testKit.spawnTestProbe(expecting: Cluster.Membership.self)
@@ -198,7 +198,7 @@ extension ClusteredNodesTestBase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Captured Logs
 
-extension ClusteredNodesTestBase {
+extension ClusteredActorSystemsXCTestCase {
     public func capturedLogs(of node: ActorSystem) -> LogCapture {
         guard let index = self._nodes.firstIndex(of: node) else {
             fatalError("No such node: [\(node)] in [\(self._nodes)]!")
@@ -223,7 +223,7 @@ extension ClusteredNodesTestBase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Assertions
 
-extension ClusteredNodesTestBase {
+extension ClusteredActorSystemsXCTestCase {
     public func assertAssociated(
         _ system: ActorSystem, withAtLeast node: UniqueNode,
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
@@ -399,7 +399,7 @@ extension ClusteredNodesTestBase {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
-extension ClusteredNodesTestBase {
+extension ClusteredActorSystemsXCTestCase {
     public func resolveRef<M>(_ system: ActorSystem, type: M.Type, address: ActorAddress, on targetSystem: ActorSystem) -> ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
