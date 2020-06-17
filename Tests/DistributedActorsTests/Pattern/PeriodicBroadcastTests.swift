@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class PeriodicBroadcastTests: ActorSystemTestBase {
+final class PeriodicBroadcastTests: ActorSystemXCTestCase {
     // TODO: Way more tests and capabilities; should be able to use receptionist to find nodes to broadcast to
 
     func test_PeriodicBroadcast_send() throws {

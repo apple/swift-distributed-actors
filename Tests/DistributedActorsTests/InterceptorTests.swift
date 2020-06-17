@@ -52,7 +52,7 @@ final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
     }
 }
 
-final class InterceptorTests: ActorSystemTestBase {
+final class InterceptorTests: ActorSystemXCTestCase {
     func test_interceptor_shouldConvertMessages() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 

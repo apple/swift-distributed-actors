@@ -18,7 +18,7 @@ import NIO
 import XCTest
 
 // FIXME: de-duplicate with CRDTActorOwnedTests? replicating all tests here is a bit annoying as they test the same but in diff API
-final class CRDTActorableOwnedTests: ActorSystemTestBase {
+final class CRDTActorableOwnedTests: ActorSystemXCTestCase {
     func test_actorOwned_GCounter_increment_shouldNotifyOthers() throws {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"

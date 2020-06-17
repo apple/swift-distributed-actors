@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import XCTest
 
 // "Get down!"
-final class DowningClusteredTests: ClusteredNodesTestBase {
+final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
             "/system/replicator",

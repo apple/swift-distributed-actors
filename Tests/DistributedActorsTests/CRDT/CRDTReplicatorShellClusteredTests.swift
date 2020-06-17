@@ -18,7 +18,7 @@ import XCTest
 
 // TODO: add tests for non-delta-CRDT
 
-final class CRDTReplicatorShellClusteredTests: ClusteredNodesTestBase {
+final class CRDTReplicatorShellClusteredTests: ClusteredActorSystemsXCTestCase {
     var localSystem: ActorSystem!
     var localTestKit: ActorTestKit!
 

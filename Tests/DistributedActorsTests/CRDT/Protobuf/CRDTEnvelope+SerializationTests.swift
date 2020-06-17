@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTEnvelopeSerializationTests: ActorSystemTestBase {
+final class CRDTEnvelopeSerializationTests: ActorSystemXCTestCase {
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
 
     func test_serializationOf_CRDTEnvelope_DeltaCRDTBox_GCounter() throws {

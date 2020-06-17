@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class NodeDeathWatcherTests: ClusteredNodesTestBase {
+final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
     func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in

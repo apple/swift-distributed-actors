@@ -18,7 +18,7 @@ import Foundation
 import NIOSSL
 import XCTest
 
-final class ClusterLeaderActionsClusteredTests: ClusteredNodesTestBase {
+final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 

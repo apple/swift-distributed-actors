@@ -16,7 +16,7 @@ import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-final class ClusterMembershipSnapshotTests: ClusteredNodesTestBase {
+final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
     func test_membershipSnapshot_initialShouldContainSelfNode() {
         let system = self.setUpNode("first")
 

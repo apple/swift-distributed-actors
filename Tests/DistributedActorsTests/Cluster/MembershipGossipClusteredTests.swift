@@ -18,7 +18,7 @@ import Foundation
 import NIOSSL
 import XCTest
 
-final class MembershipGossipClusteredTests: ClusteredNodesTestBase {
+final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.filterActorPaths = [
             "/system/cluster",

@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTGossipReplicationTests: ClusteredNodesTestBase {
+final class CRDTGossipReplicationTests: ClusteredActorSystemsXCTestCase {
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [
             "/system/cluster/swim",

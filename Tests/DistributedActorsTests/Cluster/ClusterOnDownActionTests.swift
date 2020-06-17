@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import NIOSSL
 import XCTest
 
-final class ClusterOnDownActionTests: ClusteredNodesTestBase {
+final class ClusterOnDownActionTests: ClusteredActorSystemsXCTestCase {
     func test_onNodeDowned_performShutdown() throws {
         try shouldNotThrow {
             let (first, second) = self.setUpPair { settings in

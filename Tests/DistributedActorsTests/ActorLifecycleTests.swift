@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ActorLifecycleTests: ActorSystemTestBase {
+class ActorLifecycleTests: ActorSystemXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: starting actors
 

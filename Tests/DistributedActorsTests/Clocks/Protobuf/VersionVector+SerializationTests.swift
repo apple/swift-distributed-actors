@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class VersionVectorSerializationTests: ActorSystemTestBase {
+final class VersionVectorSerializationTests: ActorSystemXCTestCase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { _ in
         }

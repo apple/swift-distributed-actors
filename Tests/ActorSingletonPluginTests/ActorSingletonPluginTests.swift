@@ -17,7 +17,7 @@ import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorSingletonPluginTests: ActorSystemTestBase {
+final class ActorSingletonPluginTests: ActorSystemXCTestCase {
     func test_noCluster_ref() throws {
         // Singleton should work just fine without clustering
         let system = ActorSystem("test") { settings in

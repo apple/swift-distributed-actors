@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTReplicationSerializationTests: ActorSystemTestBase {
+final class CRDTReplicationSerializationTests: ActorSystemXCTestCase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
             // TODO: all this registering will go away with _mangledTypeName
