@@ -154,7 +154,7 @@ internal class ClusterShell {
         }
 
         guard let removedAssociation = removedAssociationOption else {
-            system.log.warning("Attempted to terminate non-existing association [\(reflecting: remoteNode)].")
+            system.log.debug("Attempted to terminate non-existing association [\(reflecting: remoteNode)].")
             return
         }
 
