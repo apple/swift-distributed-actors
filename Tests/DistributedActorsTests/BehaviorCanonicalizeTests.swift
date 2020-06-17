@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class BehaviorCanonicalizeTests: ActorSystemTestBase {
+final class BehaviorCanonicalizeTests: ActorSystemXCTestCase {
     func test_canonicalize_nestedSetupBehaviors() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe1")
 

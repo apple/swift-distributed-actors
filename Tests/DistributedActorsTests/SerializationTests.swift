@@ -20,7 +20,7 @@ import NIO
 import NIOFoundationCompat
 import XCTest
 
-class SerializationTests: ActorSystemTestBase {
+class SerializationTests: ActorSystemXCTestCase {
     override func setUp() {
         _ = self.setUpNode(String(describing: type(of: self))) { settings in
             settings.serialization.register(HasReceivesSystemMsgs.self)

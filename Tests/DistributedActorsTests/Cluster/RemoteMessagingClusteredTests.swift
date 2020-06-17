@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class RemoteMessagingClusteredTests: ClusteredNodesTestBase {
+final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
     // TODO: This will start failing once we implement _mangledTypeName manifests
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide() throws {
         let local = self.setUpNode("local") { settings in

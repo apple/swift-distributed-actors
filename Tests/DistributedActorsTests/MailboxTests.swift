@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class MailboxTests: ActorSystemTestBase {
+final class MailboxTests: ActorSystemXCTestCase {
     func test_sendMessage_shouldDropMessagesWhenFull() {
         let mailbox: Mailbox<Int> = Mailbox(system: self.system, capacity: 2)
 

@@ -19,7 +19,7 @@ import Foundation
 import NIO
 import XCTest
 
-final class BehaviorTests: ActorSystemTestBase {
+final class BehaviorTests: ActorSystemXCTestCase {
     public struct TestMessage: ActorMessage {
         let message: String
         let replyTo: ActorRef<String>

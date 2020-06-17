@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTReplicatorInstanceTests: ActorSystemTestBase {
+final class CRDTReplicatorInstanceTests: ActorSystemXCTestCase {
     let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
     let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 

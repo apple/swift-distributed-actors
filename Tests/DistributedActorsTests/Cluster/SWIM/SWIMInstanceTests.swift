@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class SWIMInstanceTests: ActorSystemTestBase {
+final class SWIMInstanceTests: ActorSystemXCTestCase {
     let testNode = UniqueNode(systemName: "test", host: "test", port: 12345, nid: UniqueNodeID(0))
 
     var clusterTestProbe: ActorTestProbe<ClusterShell.Message>!

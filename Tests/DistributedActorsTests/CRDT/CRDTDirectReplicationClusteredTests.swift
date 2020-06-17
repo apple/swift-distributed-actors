@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class CRDTDirectReplicationTests: ClusteredNodesTestBase {
+final class CRDTDirectReplicationTests: ClusteredActorSystemsXCTestCase {
     var localSystem: ActorSystem!
     var localTestKit: ActorTestKit!
 

@@ -18,7 +18,7 @@ import Foundation
 import XCTest
 
 // TODO: "ActorGroup" perhaps could be better name?
-final class WorkerPoolTests: ActorSystemTestBase {
+final class WorkerPoolTests: ActorSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() throws {
         let workerKey = Receptionist.RegistrationKey(messageType: String.self, id: "request-workers")
 

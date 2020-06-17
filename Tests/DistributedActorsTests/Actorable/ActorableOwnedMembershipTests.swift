@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorableOwnedMembershipTests: ClusteredNodesTestBase {
+final class ActorableOwnedMembershipTests: ClusteredActorSystemsXCTestCase {
     func test_autoUpdatedMembership_updatesAutomatically() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in

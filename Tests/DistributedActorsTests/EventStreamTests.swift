@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import NIO
 import XCTest
 
-final class EventStreamTests: ActorSystemTestBase {
+final class EventStreamTests: ActorSystemXCTestCase {
     func test_eventStream_shouldPublishEventsToAllSubscribers() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: String.self)
         let p2 = self.testKit.spawnTestProbe(expecting: String.self)
