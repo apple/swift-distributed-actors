@@ -97,6 +97,11 @@ public final class ActorSystem {
         self._metrics
     }
 
+    // TODO: become the system's uptime
+    internal func uptimeNanoseconds() -> Int64 {
+        Deadline.now().uptimeNanoseconds
+    }
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
 
