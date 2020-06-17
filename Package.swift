@@ -49,6 +49,11 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
 
+            // tracing PoC
+            .product(name: "Baggage", package: "gsoc-swift-tracing"),
+            .product(name: "Instrumentation", package: "gsoc-swift-tracing"),
+            // end of tracing PoC
+
             .product(name: "Stencil", package: "Stencil"), // TODO: remove this dependency
             .product(name: "Files", package: "Files"), // TODO: remove this dependency
         ]
@@ -261,6 +266,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
+    .package(url: "https://github.com/slashmo/gsoc-swift-tracing", .branch("master")),
 
     // ~~~ only for GenActors ~~~
     // swift-syntax is Swift version dependent, and added  as such below
