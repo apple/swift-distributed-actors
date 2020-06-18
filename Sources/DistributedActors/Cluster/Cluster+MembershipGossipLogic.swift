@@ -17,13 +17,13 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Membership Gossip Logic
 
-final class MembershipGossipLogic: GossipLogic {
+final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     typealias Envelope = Cluster.Gossip
 
     private let context: Context
-    private lazy var localNode: UniqueNode = self.context.system.cluster.node
+    internal lazy var localNode: UniqueNode = self.context.system.cluster.node
 
-    private var latestGossip: Cluster.Gossip
+    internal var latestGossip: Cluster.Gossip
     private let notifyOnGossipRef: ActorRef<Cluster.Gossip>
 
     init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.Gossip>) {
@@ -125,6 +125,10 @@ final class MembershipGossipLogic: GossipLogic {
     private func mergeInbound(_ incoming: Cluster.Gossip) {
         _ = self.latestGossip.mergeForward(incoming: incoming)
         // effects are signalled via the ClusterShell, not here (it will also perform a merge) // TODO: a bit duplicated, could we maintain it here?
+    }
+
+    var description: String {
+        "MembershipGossipLogic(\(localNode))"
     }
 }
 

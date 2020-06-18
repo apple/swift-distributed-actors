@@ -22,7 +22,6 @@ import XCTest
 ///
 /// ### Warning
 /// This handler uses locks for each and every operation.
-// TODO: the implementation is quite incomplete and does not allow inspecting metadata setting etc.
 public final class LogCapture {
     private var _logs: [CapturedLogMessage] = []
     private let lock = DistributedActorsConcurrencyHelpers.Lock()
@@ -84,6 +83,11 @@ extension LogCapture {
         public var excludeGrep: Set<String> = []
         public var grep: Set<String> = []
 
+        public var ignoredMetadata: Set<String> = [
+            "actor/node",
+            "actor/nodeName",
+        ]
+
         public init() {}
     }
 }
@@ -110,8 +114,9 @@ extension LogCapture {
                 }
 
                 metadata.removeValue(forKey: "label")
-                metadata.removeValue(forKey: "actor/node")
-                metadata.removeValue(forKey: "actor/nodeName")
+                self.settings.ignoredMetadata.forEach { ignoreKey in
+                    metadata.removeValue(forKey: ignoreKey)
+                }
                 if !metadata.isEmpty {
                     metadataString = "\n// metadata:\n"
                     for key in metadata.keys.sorted() {
