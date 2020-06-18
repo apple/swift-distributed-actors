@@ -60,16 +60,18 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
     /// Set up a new node intended to be clustered.
     open func setUpNode(_ name: String, _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
-        var captureSettings = LogCapture.Settings()
-        self.configureLogCapture(settings: &captureSettings)
-        let capture = LogCapture(settings: captureSettings)
-
         let node = ActorSystem(name) { settings in
             settings.cluster.enabled = true
             settings.cluster.node.port = self.nextPort()
 
             if self.captureLogs {
+                var captureSettings = LogCapture.Settings()
+                self.configureLogCapture(settings: &captureSettings)
+                let capture = LogCapture(settings: captureSettings)
+
                 settings.logging.logger = capture.logger(label: name)
+
+                self._logCaptures.append(capture)
             }
 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
@@ -85,9 +87,6 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
         self._nodes.append(node)
         self._testKits.append(.init(node))
-        if self.captureLogs {
-            self._logCaptures.append(capture)
-        }
 
         return node
     }
