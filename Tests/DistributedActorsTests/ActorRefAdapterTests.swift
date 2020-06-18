@@ -268,10 +268,11 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
         let expectedLine = #line - 1
         let expectedFile = #file
 
-        try logCapture.shouldContain(
-            message: "*was not delivered to [*", at: .info,
-            expectedFile: expectedFile, expectedLine: expectedLine
+        let deadLetterLogMessage = try logCapture.shouldContain(
+            message: "*was not delivered to [*", 
+            at: .info
         )
+        deadLetterLogMessage.metadata!["deadLetter/location"]!.shouldEqual("\(expectedFile):\(expectedLine)")
     }
 
     func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
