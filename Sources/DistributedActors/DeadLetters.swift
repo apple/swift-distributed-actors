@@ -42,12 +42,22 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
     let sentAtFile: String?
     let sentAtLine: UInt?
 
+    #if DEBUG
+    public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = #file, sentAtLine: UInt? = #line) {
+        self.message = message
+        self.recipient = recipient
+        self.sentAtFile = sentAtFile
+        self.sentAtLine = sentAtLine
+    }
+
+    #else
     public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
         self.message = message
         self.recipient = recipient
         self.sentAtFile = sentAtFile
         self.sentAtLine = sentAtLine
     }
+    #endif
 }
 
 /// // Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.
@@ -212,16 +222,16 @@ public final class DeadLetterOffice {
             return
         }
 
+        // TODO: more metadata (from Envelope) (e.g. sender)
+        metadata["deadLetter/location"] = "\(file):\(line)"
+
         // in all other cases, we want to log the dead letter:
-        // TODO: more metadata (from Envelope)
         self.log.info(
             """
             Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
             \(recipientString).
             """,
-            metadata: metadata,
-            file: file,
-            line: line
+            metadata: metadata
         )
     }
 

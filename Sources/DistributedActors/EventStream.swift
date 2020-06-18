@@ -30,7 +30,9 @@ public struct EventStream<Event: ActorMessage> {
     }
 
     internal init(
-        _ system: ActorSystem, name: String, of type: Event.Type = Event.self,
+        _ system: ActorSystem,
+        name: String,
+        of type: Event.Type = Event.self,
         systemStream: Bool,
         customBehavior: Behavior<EventStreamShell.Message<Event>>? = nil
     ) throws {
@@ -42,16 +44,16 @@ public struct EventStream<Event: ActorMessage> {
         }
     }
 
-    public func subscribe(_ ref: ActorRef<Event>) {
-        self.ref.tell(.subscribe(ref))
+    public func subscribe(_ ref: ActorRef<Event>, file: String = #file, line: UInt = #line) {
+        self.ref.tell(.subscribe(ref), file: file, line: line)
     }
 
-    public func unsubscribe(_ ref: ActorRef<Event>) {
-        self.ref.tell(.unsubscribe(ref))
+    public func unsubscribe(_ ref: ActorRef<Event>, file: String = #file, line: UInt = #line) {
+        self.ref.tell(.unsubscribe(ref), file: file, line: line)
     }
 
     public func publish(_ event: Event, file: String = #file, line: UInt = #line) {
-        self.ref.tell(.publish(event))
+        self.ref.tell(.publish(event), file: file, line: line)
     }
 }
 
