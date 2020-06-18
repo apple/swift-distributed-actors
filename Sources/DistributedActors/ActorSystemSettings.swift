@@ -78,6 +78,8 @@ public struct LoggingSettings {
         }
     }
 
+    /// "Base" logger that will be used as template for all loggers created by the system (e.g. for `context.log` offered to actors).
+    /// This may be used to configure specific systems to log to specific files, or to carry system-wide metadata throughout all loggers the actor system will use.
     public var logger: Logger = LoggingSettings.makeDefaultLogger()
 
     static func makeDefaultLogger() -> Logger {

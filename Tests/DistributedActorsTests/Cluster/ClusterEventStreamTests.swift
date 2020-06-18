@@ -21,6 +21,16 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
     let memberA = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let memberB = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
+    func test_clusterEventStream_shouldNotCauseDeadLettersOnLocalOnlySystem() throws {
+        _ = try self.system.spawn("anything", of: String.self, .setup { context in
+            context.log.info("Hello there!")
+            return .stop
+        })
+
+        try self.logCapture.awaitLogContaining(self.testKit, text: "Hello there!")
+        self.logCapture.grep("Dead letter").shouldBeEmpty()
+    }
+
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
         let p2 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)

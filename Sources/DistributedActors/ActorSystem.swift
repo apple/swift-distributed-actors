@@ -222,16 +222,25 @@ public final class ActorSystem {
             }
             effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
             effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
-        } else {
-            initializationLock.withWriterLockVoid {
-                self._cluster = nil
-                self._clusterControl = ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: EventStream(ref: self.deadLetters.adapted()))
-            }
         }
 
         initializationLock.withWriterLockVoid {
             self.systemProvider = effectiveSystemProvider
             self.userProvider = effectiveUserProvider
+        }
+
+        if !settings.cluster.enabled {
+            let clusterEvents = try! EventStream<Cluster.Event>(
+                self,
+                name: "clusterEvents",
+                systemStream: true,
+                customBehavior: ClusterEventStream.Shell.behavior
+            )
+
+            initializationLock.withWriterLockVoid {
+                self._cluster = nil
+                self._clusterControl = ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: clusterEvents)
+            }
         }
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
