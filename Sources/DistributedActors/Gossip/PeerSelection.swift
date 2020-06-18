@@ -21,9 +21,43 @@
 /// // TODO: implement SWIMs selection in terms of this
 public protocol PeerSelection {
     associatedtype Peer: Hashable
-    typealias Peers = Array<Peer>.SubSequence
+    typealias Peers = [Peer]
 
     func onMembershipEvent(event: Cluster.Event)
 
     func select() -> Peers
 }
+
+//public struct StableRandomRoundRobin<Peer: Hashable> {
+//
+//    var peerSet: Set<Peer>
+//    var peers: [Peer]
+//
+//    // how many peers we select in each gossip round,
+//    // we could for example be dynamic and notice if we have 10+ nodes, we pick 2 members to speed up the dissemination etc.
+//    let n = 1
+//
+//    public init() {
+//    }
+//
+//    func onMembershipEvent(event: Cluster.Event) {
+//
+//    }
+//
+//    func update(peers newPeers: [Peer]) {
+//        let newPeerSet = Set(peers)
+//    }
+//
+//    func select() -> [Peer] {
+//        var selectedPeers: [AddressableActorRef] = []
+//        selectedPeers.reserveCapacity(n)
+//
+//        for peer in peers.shuffled()
+//            where selectedPeers.count < n && self.shouldGossipWith(peer) {
+//            selectedPeers.append(peer)
+//        }
+//
+//        return selectedPeers
+//    }
+//
+//}

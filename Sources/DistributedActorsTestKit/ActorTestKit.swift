@@ -328,14 +328,14 @@ extension ActorTestKit {
 public extension ActorTestKit {
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M: ActorMessage>(forType: M.Type = M.self) -> ActorContext<M> {
+    func makeFakeContext<M: ActorMessage>(of: M.Type = M.self) -> ActorContext<M> {
         MockActorContext(self.system)
     }
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
     func makeFakeContext<M: ActorMessage>(for: Behavior<M>) -> ActorContext<M> {
-        self.makeFakeContext(forType: M.self)
+        self.makeFakeContext(of: M.self)
     }
 }
 
