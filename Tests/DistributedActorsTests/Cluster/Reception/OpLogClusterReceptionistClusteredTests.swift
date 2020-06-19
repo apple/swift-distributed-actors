@@ -297,6 +297,47 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5))
     }
 
+    func test_clusterReceptionist_shouldRemoveManyRemoteActorsFromListingInBulk() throws {
+        let (first, second) = setUpPair {
+            $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
+        }
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
+
+        let key = Receptionist.RegistrationKey(messageType: String.self, id: "key")
+
+        let firstRef = try first.spawn("onFirst", self.stopOnMessage)
+        first.receptionist.register(firstRef, key: key)
+
+        let remotes: [ActorRef<String>] = try (1 ... 100).map {
+            let ref = try second.spawn("remote-\($0)", self.stopOnMessage)
+            second.receptionist.register(ref, key: key)
+            return ref
+        }
+
+        let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Receptionist.Listing<String>.self)
+        let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Receptionist.Listing<String>.self)
+
+        // ensure the ref is registered and known under both keys to both nodes
+        first.receptionist.subscribe(key: key, subscriber: p1.ref)
+        second.receptionist.subscribe(key: key, subscriber: p2.ref)
+
+        var allRefs = Set(remotes)
+        allRefs.insert(firstRef)
+        try p1.eventuallyExpectListing(expected: allRefs, within: .seconds(5))
+        try p2.eventuallyExpectListing(expected: allRefs, within: .seconds(5))
+
+        // crash the second node
+        second.shutdown().wait()
+
+        // it should be removed from all listings; on both nodes, for all keys
+        try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5), verbose: true)
+    }
+
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Multi node / streaming
 

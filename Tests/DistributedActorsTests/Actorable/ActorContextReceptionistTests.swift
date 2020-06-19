@@ -88,7 +88,7 @@ final class ActorContextReceptionTests: ActorSystemXCTestCase {
 
     func test_autoUpdatedListing_shouldQuicklyUpdateFromThousandsOfUpdates() throws {
         let p = self.testKit.spawnTestProbe(expecting: Receptionist.Listing<OwnerOfThings>.self)
-        let n = 2000
+        let n = 1000
 
         _ = try! self.system.spawn("owner") {
             OwnerOfThings(
