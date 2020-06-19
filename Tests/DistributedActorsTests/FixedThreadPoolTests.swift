@@ -18,8 +18,8 @@ import XCTest
 final class FixedThreadPoolTests: XCTestCase {
     func test_pool_shouldProperlyShutdownAllThreads() throws {
         let pool = try FixedThreadPool(4)
-        pool.runningWorkers.load().shouldEqual(4)
+        pool.runningWorkers.load(ordering: .sequentiallyConsistent).shouldEqual(4)
         pool.shutdown()
-        pool.runningWorkers.load().shouldEqual(0)
+        pool.runningWorkers.load(ordering: .sequentiallyConsistent).shouldEqual(0)
     }
 }

@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import Foundation
+import SE0282_Experimental
 
 // TODO: Discuss naming of `Worker`
 private final class Worker {
@@ -48,26 +48,40 @@ public final class FixedThreadPool {
     private var workers: [Worker] = []
 
     @usableFromInline
-    internal let stopping: Atomic<Bool> = Atomic(value: false)
+    internal let poolStatus: UnsafeAtomic<State>
+    @usableFromInline
+    enum State: Int, AtomicValue {
+        case running
+        case stopped
+
+        var isRunning: Bool {
+            self == .running
+        }
+
+        var isStopped: Bool {
+            self == .stopped
+        }
+    }
 
     @usableFromInline
-    internal let runningWorkers: Atomic<Int>
+    internal let runningWorkers: UnsafeAtomic<Int>
 
     internal let allThreadsStopped: BlockingReceptacle<Void> = BlockingReceptacle()
 
     public init(_ threadCount: Int) throws {
-        self.runningWorkers = Atomic(value: threadCount)
+        self.poolStatus = .create(initialValue: .running)
+        self.runningWorkers = .create(initialValue: threadCount)
 
         for _ in 1 ... threadCount {
             let worker = Worker()
             let thread = try Thread {
                 // threads in the pool keep running as long as the pool is not stopping
-                while !self.stopping.load() {
+                while self.poolStatus.load(ordering: .sequentiallyConsistent).isRunning {
                     // FIXME: We are currently using a timed `poll` instead of indefinitely
                     //        blocking on `dequeue` because we need to be able to check
                     //        if the pool is stopping. `pthread_cancel` is problematic here
                     //        because if a thread is waiting on a `pthread_cond_t`, it will
-                    //        re-acquire the mutex before cancelation, which is almost
+                    //        re-acquire the mutex before cancellation, which is almost
                     //        guaranteed to cause a deadlock.
                     if let runnable = self.q.poll(.milliseconds(100)) {
                         worker.lock()
@@ -77,7 +91,7 @@ public final class FixedThreadPool {
                     }
                 }
 
-                if self.runningWorkers.sub(1) == 1 {
+                if self.runningWorkers.loadThenWrappingDecrement(by: 1, ordering: .sequentiallyConsistent) == 1 {
                     // the last thread that stopped notifies the thread(s) waiting for the shutdown
                     self.allThreadsStopped.offerOnce(())
                 }
@@ -93,21 +107,24 @@ public final class FixedThreadPool {
     /// Outstanding work items that have not started processing will not be
     /// ignored.
     public func shutdown() {
-        if !self.stopping.exchange(with: true) {
+        if self.poolStatus.exchange(.stopped, ordering: .sequentiallyConsistent) == .running {
             self.workers.removeAll()
             self.q.clear()
             self.allThreadsStopped.wait()
         }
     }
 
-    /// Submits a task to the threadpool. The task will be asynchronously
+    /// Submits a task to the thread-pool. The task will be asynchronously
     /// processed by one of the threads in the pool.
     ///
     /// - Parameter task: The task to be processed.
     @inlinable
     public func submit(_ task: @escaping () -> Void) {
-        if !self.stopping.load() {
+        switch self.poolStatus.load(ordering: .sequentiallyConsistent) {
+        case .running:
             self.q.enqueue(task)
+        case .stopped:
+            return // drop the work item
         }
     }
 }
