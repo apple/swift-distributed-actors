@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import SE0282_Experimental
+
 /// :nodoc: INTERNAL API: May change without any prior notice.
 ///
 /// Represents a reference to a remote actor.
@@ -32,25 +34,22 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
         self.system.personalDeadLetters(recipient: self.address)
     }
 
-    //     // Implementation notes:
-    //     //
-    //     // Goal: we want to hand out the ref as soon as possible and then if someone uses it they may pay the for accessing
-    //     // the associations there;
-    //     //
-    //     // Problem:
-    //     // - obtaining an association will hit a lock currently, since it is stored in this associations map
-    //     //   - even if we do a concurrent map, it still is more expensive
-    //     //
-    //     // Observations:
-    //     // - we only need the association for the first send -- we can then hit the shared data-structure, and cache the association / remote control here
-    //     // - not all actor refs will be send to perhaps, so we can avoid hitting the shared structure at all sometimes
-    //     //
-    //     // The structure of the shell is such that the only thing that is a field in the class is this associations / remote controls map,
-    //     // which refs access. all other state is not accessible by anyone else since it is hidden in the actor itself.
+    // Implementation notes:
     //
-    // TODO: once we can depend on Swift's Atomics, this could use the UnsafeAtomicLazyReference to easily cache the association
-    // so we can avoid hitting the lock in the ClusterShell for each message send.
-    //    private var _cachedAssociation: UnsafeAtomicLazyReference<Association>
+    // Goal: we want to hand out the ref as soon as possible and then if someone uses it they may pay the for accessing
+    // the associations there;
+    //
+    // Problem:
+    // - obtaining an association will hit a lock currently, since it is stored in this associations map
+    //   - even if we do a concurrent map, it still is more expensive
+    //
+    // Observations:
+    // - we only need the association for the first send -- we can then hit the shared data-structure, and cache the association / remote control here
+    // - not all actor refs will be send to perhaps, so we can avoid hitting the shared structure at all sometimes
+    //
+    // The structure of the shell is such that the only thing that is a field in the class is this associations / remote controls map,
+    // which refs access. all other state is not accessible by anyone else since it is hidden in the actor itself.
+    private var _cachedAssociation: UnsafeAtomicLazyReference<Association>
 
     // TODO: move instrumentation into the transport?
     @usableFromInline
@@ -63,7 +62,12 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
         self.clusterShell = shell
         self.system = system
 
+        self._cachedAssociation = .create()
         self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, address) // TODO: could be in association, per node
+    }
+
+    deinit {
+        self._cachedAssociation.destroy()
     }
 
     @usableFromInline
@@ -97,15 +101,21 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     }
 
     private var association: ClusterShell.StoredAssociationState {
+        if let association = self._cachedAssociation.load() {
+            return .association(association)
+        }
+
         guard let uniqueNode = self.address.node else {
             fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug. The ref was: \(self)")
         }
 
-        // TODO: once we have UnsafeAtomicLazyReference initialize it here:
-        // if let assoc = self._cachedAssociation.load() { return assoc }
-        // else { get from shell and store here }
-
-        return self.clusterShell.getEnsureAssociation(with: uniqueNode)
+        let shellStoredAssociation = self.clusterShell.getEnsureAssociation(with: uniqueNode)
+        switch shellStoredAssociation {
+        case .association(let association):
+            return .association(self._cachedAssociation.storeIfNilThenLoad(association))
+        case .tombstone:
+            return shellStoredAssociation
+        }
     }
 
     func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemoteClusterActorPersonality<NewMessage> {

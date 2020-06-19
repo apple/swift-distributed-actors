@@ -26,11 +26,12 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActors",
         dependencies: [
             "DistributedActorsConcurrencyHelpers",
+            .product(name: "SE0282_Experimental", package: "swift-se-0282-experimental"),
             "CDistributedActorsMailbox",
             .product(name: "NIO", package: "swift-nio"),
-            .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "NIOExtras", package: "swift-nio-extras"),
+            .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "SwiftProtobuf", package: "SwiftProtobuf"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "Metrics", package: "swift-metrics"),
@@ -250,6 +251,8 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
+
+    .package(url: "https://github.com/apple/swift-se-0282-experimental.git", .branch("master")),
 
     .package(name: "SwiftProtobuf", url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
