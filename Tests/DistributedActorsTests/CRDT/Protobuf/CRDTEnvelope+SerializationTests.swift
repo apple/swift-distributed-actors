@@ -20,25 +20,23 @@ final class CRDTEnvelopeSerializationTests: ActorSystemXCTestCase {
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
 
     func test_serializationOf_CRDTEnvelope_DeltaCRDTBox_GCounter() throws {
-        try shouldNotThrow {
-            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
-            g1.increment(by: 2)
-            g1.delta.shouldNotBeNil()
+        var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
+        g1.increment(by: 2)
+        g1.delta.shouldNotBeNil()
 
-            let g1AsAny = g1
-            let envelope = CRDT.Envelope(manifest: .init(serializerID: Serialization.ReservedID.CRDTGCounter, hint: _typeName(CRDT.GCounter.self)), g1AsAny) // FIXME: real manifest
+        let g1AsAny = g1
+        let envelope = CRDT.Envelope(manifest: .init(serializerID: Serialization.ReservedID.CRDTGCounter, hint: _typeName(CRDT.GCounter.self)), g1AsAny) // FIXME: real manifest
 
-            let serialized = try system.serialization.serialize(envelope)
-            let deserialized = try system.serialization.deserialize(as: CRDT.Envelope.self, from: serialized)
+        let serialized = try system.serialization.serialize(envelope)
+        let deserialized = try system.serialization.deserialize(as: CRDT.Envelope.self, from: serialized)
 
-            guard let gg1 = deserialized.data as? CRDT.GCounter else {
-                throw self.testKit.fail("DeltaCRDTBox.underlying should be GCounter")
-            }
-
-            gg1.value.shouldEqual(g1.value)
-            gg1.delta.shouldNotBeNil()
-            "\(gg1.delta!.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@127.0.0.1:9001/user/alpha: 2]")
+        guard let gg1 = deserialized.data as? CRDT.GCounter else {
+            throw self.testKit.fail("DeltaCRDTBox.underlying should be GCounter")
         }
+
+        gg1.value.shouldEqual(g1.value)
+        gg1.delta.shouldNotBeNil()
+        "\(gg1.delta!.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@127.0.0.1:9001/user/alpha: 2]")
     }
 
 //    // TODO: use a "real" CvRDT rather than GCounter.Delta

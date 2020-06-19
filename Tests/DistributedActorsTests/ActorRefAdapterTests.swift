@@ -269,7 +269,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
         let expectedFile = #file
 
         let deadLetterLogMessage = try logCapture.shouldContain(
-            message: "*was not delivered to [*", 
+            message: "*was not delivered to [*",
             at: .info
         )
         deadLetterLogMessage.metadata!["deadLetter/location"]!.shouldEqual("\(expectedFile):\(expectedLine)")

@@ -185,17 +185,15 @@ final class MembershipTests: XCTestCase {
 
         let firstReplacement = Cluster.Member(node: UniqueNode(node: self.nodeA.node, nid: .init(111_111)), status: .up)
 
-        try shouldNotThrow {
-            guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: firstReplacement)) else {
-                throw TestError("Expected a change, but didn't get one")
-            }
-
-            change.isReplacement.shouldBeTrue()
-            change.replaced.shouldEqual(self.memberA)
-            change.replaced!.status.shouldEqual(self.memberA.status)
-            change.node.shouldEqual(firstReplacement.node)
-            change.toStatus.shouldEqual(firstReplacement.status)
+        guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: firstReplacement)) else {
+            throw TestError("Expected a change, but didn't get one")
         }
+
+        change.isReplacement.shouldBeTrue()
+        change.replaced.shouldEqual(self.memberA)
+        change.replaced!.status.shouldEqual(self.memberA.status)
+        change.node.shouldEqual(firstReplacement.node)
+        change.toStatus.shouldEqual(firstReplacement.status)
     }
 
     func test_apply_memberRemoval() throws {
@@ -203,17 +201,15 @@ final class MembershipTests: XCTestCase {
 
         let removal = Cluster.Member(node: self.memberA.node, status: .removed)
 
-        try shouldNotThrow {
-            guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: removal)) else {
-                throw TestError("Expected a change, but didn't get one")
-            }
-
-            change.isReplacement.shouldBeFalse()
-            change.node.shouldEqual(removal.node)
-            change.toStatus.shouldEqual(removal.status)
-
-            membership.uniqueMember(self.memberA.node).shouldBeNil()
+        guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: removal)) else {
+            throw TestError("Expected a change, but didn't get one")
         }
+
+        change.isReplacement.shouldBeFalse()
+        change.node.shouldEqual(removal.node)
+        change.toStatus.shouldEqual(removal.status)
+
+        membership.uniqueMember(self.memberA.node).shouldBeNil()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -352,16 +348,14 @@ final class MembershipTests: XCTestCase {
 
         let firstReplacement = Cluster.Member(node: UniqueNode(node: self.nodeA.node, nid: .random()), status: .up)
 
-        try shouldNotThrow {
-            guard let change = membership.mark(firstReplacement.node, as: firstReplacement.status) else {
-                throw TestError("Expected a change")
-            }
-            change.isReplacement.shouldBeTrue()
-            change.replaced.shouldEqual(self.memberA)
-            change.fromStatus.shouldEqual(.up)
-            change.node.shouldEqual(firstReplacement.node)
-            change.toStatus.shouldEqual(.up)
+        guard let change = membership.mark(firstReplacement.node, as: firstReplacement.status) else {
+            throw TestError("Expected a change")
         }
+        change.isReplacement.shouldBeTrue()
+        change.replaced.shouldEqual(self.memberA)
+        change.fromStatus.shouldEqual(.up)
+        change.node.shouldEqual(firstReplacement.node)
+        change.toStatus.shouldEqual(.up)
     }
 
     func test_mark_status_whenReplacingWithNewNode() {

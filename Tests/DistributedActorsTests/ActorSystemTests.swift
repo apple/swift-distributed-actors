@@ -23,7 +23,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
         let _: ActorRef<String> = try system.spawn("test", .ignore)
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             let _: ActorRef<String> = try system.spawn("test", .ignore)
         }
 

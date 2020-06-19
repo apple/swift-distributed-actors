@@ -67,7 +67,7 @@ final class CRDTOperationExecutionTests: ClusteredActorSystemsXCTestCase {
     func test_OperationExecution_consistency_local_throwIfLocalNotConfirmed() throws {
         let remoteMembersCount = 5
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             _ = try OperationExecution<Int>(with: .local, remoteMembersCount: remoteMembersCount, localConfirmed: false)
         }
 
@@ -141,7 +141,7 @@ final class CRDTOperationExecutionTests: ClusteredActorSystemsXCTestCase {
     func test_OperationExecution_consistency_atLeast_throwIfInvalidInput() throws {
         let remoteMembersCount = 5
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             _ = try OperationExecution<Int>(with: .atLeast(0), remoteMembersCount: remoteMembersCount, localConfirmed: true)
         }
 
@@ -153,7 +153,7 @@ final class CRDTOperationExecutionTests: ClusteredActorSystemsXCTestCase {
     func test_OperationExecution_consistency_atLeast_throwIfUnableToFulfill_localConfirmed() throws {
         let remoteMembersCount = 5
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             // Ask for 1 more than remote + local combined
             _ = try OperationExecution<Int>(with: .atLeast(remoteMembersCount + 2), remoteMembersCount: remoteMembersCount, localConfirmed: true)
         }
@@ -170,7 +170,7 @@ final class CRDTOperationExecutionTests: ClusteredActorSystemsXCTestCase {
     func test_OperationExecution_consistency_atLeast_throwIfUnableToFulfill_localNotConfirmed() throws {
         let remoteMembersCount = 5
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             // `remoteMembersCount + 1` essentially means we want all members to confirm.
             // Send false for `localConfirmed` so the operation cannot be fulfilled.
             _ = try OperationExecution<Int>(with: .atLeast(remoteMembersCount + 1), remoteMembersCount: remoteMembersCount, localConfirmed: false)
@@ -215,7 +215,7 @@ final class CRDTOperationExecutionTests: ClusteredActorSystemsXCTestCase {
     func test_OperationExecution_consistency_quorum_throwIfNoRemoteMember() throws {
         let remoteMembersCount = 0
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             _ = try OperationExecution<Int>(with: .quorum, remoteMembersCount: remoteMembersCount, localConfirmed: true)
         }
 
@@ -227,7 +227,7 @@ final class CRDTOperationExecutionTests: ClusteredActorSystemsXCTestCase {
     func test_OperationExecution_consistency_quorum_throwIfUnableToFulfill() throws {
         let remoteMembersCount = 1
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             // Send false for `localConfirmed` so the operation cannot be fulfilled.
             _ = try OperationExecution<Int>(with: .quorum, remoteMembersCount: remoteMembersCount, localConfirmed: false)
         }
@@ -256,7 +256,7 @@ final class CRDTOperationExecutionTests: ClusteredActorSystemsXCTestCase {
     func test_OperationExecution_consistency_all_throwWhenLocalNotConfirmed() throws {
         let remoteMembersCount = 5
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             // Send false for `localConfirmed` so the operation cannot be fulfilled.
             _ = try OperationExecution<Int>(with: .all, remoteMembersCount: remoteMembersCount, localConfirmed: false)
         }

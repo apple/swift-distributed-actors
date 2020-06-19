@@ -83,6 +83,7 @@ final class TraversalTests: ActorSystemXCTestCase {
                 "receptionist",
                 "replicator",
                 "gossip",
+                "clusterEvents",
                 "user",
                 "other",
                 "inner-1",

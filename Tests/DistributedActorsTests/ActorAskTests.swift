@@ -62,7 +62,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             _ = try response.wait()
         }
 
@@ -193,7 +193,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             AnswerMePlease(replyTo: $0)
         }
 
-        let error = shouldThrow {
+        let error = try shouldThrow {
             try result.wait()
         }
 

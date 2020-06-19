@@ -35,27 +35,33 @@ public struct TestMatchers<T> {
 
     func toBe<T>(_ expected: T.Type) {
         if !(self.it is T) {
-            let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.notEqualError(got: self.it, expected: expected)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
 
 public extension TestMatchers where T: Equatable {
     func toEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
-        XCTAssertEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
+        if self.it != expected {
+            let error = self.callSite.notEqualError(got: self.it, expected: expected)
+            XCTAssertEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 
     func toNotEqual(_ unexpectedEqual: T) {
-        let msg = self.callSite.detailedMessage(got: self.it, unexpectedEqual: unexpectedEqual)
-        XCTAssertNotEqual(self.it, unexpectedEqual, msg, file: self.callSite.file, line: self.callSite.line)
+        if self.it == unexpectedEqual {
+            let error = self.callSite.equalError(got: self.it, unexpectedEqual: unexpectedEqual)
+            XCTAssertNotEqual(self.it, unexpectedEqual, "\(error)", file: self.callSite.file, line: self.callSite.line)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 
     func toBe<Other>(_ expected: Other.Type) {
         if !(self.it is Other) {
-            let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.notEqualError(got: self.it, expected: expected)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
@@ -70,7 +76,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             let partialMatch = self.it.commonPrefix(with: prefix)
 
             // classic printout without prefix matching:
-            // let msg = self.callSite.detailedMessage("Expected [\(it)] to start with prefix: [\(prefix)]. " + partialMatchMessage)
+            // let error = self.callSite.error("Expected [\(it)] to start with prefix: [\(prefix)]. " + partialMatchMessage)
 
             // fancy printout:
             var m = "Expected "
@@ -88,8 +94,8 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             m += "\(prefix.dropFirst(partialMatch.underestimatedCount))]."
             if isTty { m += " (Matching sub-prefix marked in \(ANSIColors.bold.rawValue)bold\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue))" }
 
-            let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -106,8 +112,8 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
             m += "]"
 
-            let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -123,8 +129,8 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
             m += "]"
 
-            let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -134,8 +140,8 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             // fancy printout:
             let m = "Expected [\(it)] to contain element matching predicate"
 
-            let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
@@ -153,8 +159,8 @@ public extension TestMatchers where T == String {
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
             m += "]"
 
-            let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -166,23 +172,35 @@ public extension TestMatchers where T == String {
 
 public extension TestMatchers where T: Comparable {
     func toBeLessThan(_ expected: T) {
-        let msg = self.callSite.detailedMessage("\(self.it) is not less than \(expected)")
-        XCTAssertLessThan(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
+        if !(self.it < expected) {
+            let error = self.callSite.error("\(self.it) is not less than \(expected)")
+            XCTAssertLessThan(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 
     func toBeLessThanOrEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage("\(self.it) is not less than or equal \(expected)")
-        XCTAssertLessThanOrEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
+        if !(self.it <= expected) {
+            let error = self.callSite.error("\(self.it) is not less than or equal \(expected)")
+            XCTAssertLessThanOrEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 
     func toBeGreaterThan(_ expected: T) {
-        let msg = self.callSite.detailedMessage("\(self.it) is not greater than \(expected)")
-        XCTAssertGreaterThan(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
+        if !(self.it > expected) {
+            let error = self.callSite.error("\(self.it) is not greater than \(expected)")
+            XCTAssertGreaterThan(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 
     func toBeGreaterThanOrEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage("\(self.it) is not greater than or equal \(expected)")
-        XCTAssertGreaterThanOrEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
+        if !(self.it >= expected) {
+            let error = self.callSite.error("\(self.it) is not greater than or equal \(expected)")
+            XCTAssertGreaterThanOrEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 }
 
@@ -192,8 +210,8 @@ public extension TestMatchers where T: Collection {
         if !self.it.isEmpty {
             let m = "Expected [\(it)] to be empty"
 
-            let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -202,8 +220,8 @@ public extension TestMatchers where T: Collection {
         if self.it.isEmpty {
             let m = "Expected [\(it)] to to be non-empty"
 
-            let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
@@ -219,15 +237,21 @@ private extension Collection where Element: Equatable {
 
 extension Optional {
     public func shouldBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let msg = callSite.detailedMessage("Expected nil, got [\(String(describing: self))]")
-        XCTAssertNil(self, msg, file: callSite.file, line: callSite.line)
+        if self != nil {
+            let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+            let error = callSite.error("Expected nil, got [\(String(describing: self))]")
+            XCTAssertNil(self, "\(error)", file: callSite.file, line: callSite.line)
+            XCTFail("\(error)", file: callSite.file, line: callSite.line)
+        }
     }
 
     public func shouldNotBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let msg = callSite.detailedMessage("Expected not nil, got [\(String(describing: self))]")
-        XCTAssertNotNil(self, msg, file: callSite.file, line: callSite.line)
+        if self == nil {
+            let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+            let error = callSite.error("Expected not nil, got [\(String(describing: self))]")
+            XCTAssertNotNil(self, "\(error)", file: callSite.file, line: callSite.line)
+            XCTFail("\(error)", file: callSite.file, line: callSite.line)
+        }
     }
 }
 
@@ -253,8 +277,7 @@ extension Set {
             }
 
             XCTFail(
-                callSiteInfo.detailedMessage(
-                    message),
+                "\(callSiteInfo.error(message))",
                 file: callSiteInfo.file,
                 line: callSiteInfo.line
             )
@@ -372,19 +395,20 @@ extension String {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Free `should*` functions
 
-public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) {
+public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) throws {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-    let error = shouldThrow(file: file, line: line, column: column, block)
+    let error = try shouldThrow(file: file, line: line, column: column, block)
 
     guard error is E else {
-        let msg = callSiteInfo.detailedMessage("Expected block to throw [\(expected)], but threw: [\(error)]")
-        XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
-        fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
+        let error = callSiteInfo.error("Expected block to throw [\(expected)], but threw: [\(error)]")
+        XCTFail("\(error)", file: callSiteInfo.file, line: callSiteInfo.line)
+        throw error
     }
 }
 
+/// If this function throws, the wrapped block did NOT throw.
 @discardableResult
-public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) -> Error {
+public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) throws -> Error {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     var it: T?
     do {
@@ -393,9 +417,9 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
         return error
     }
 
-    let msg = callSiteInfo.detailedMessage("Expected block to throw, but returned: [\(it!)]")
-    XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
-    fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
+    let error = callSiteInfo.error("Expected block to throw, but returned: [\(it!)]")
+    XCTFail("\(error)", file: callSiteInfo.file, line: callSiteInfo.line)
+    throw error
 }
 
 /// Provides improved error logging in case of an unexpected throw.
@@ -417,29 +441,19 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
 /// ```
 ///
 /// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
-public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) rethrows -> T {
+public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) throws -> T {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     do {
         return try block()
     } catch {
-        let msg: String
-        switch error {
-        case let eventuallyError as EventuallyError:
-            msg = callSiteInfo.detailedMessage("Unexpected throw captured") + "\(eventuallyError.message)"
-        case CallSiteError.error(let message):
-            msg = callSiteInfo.detailedMessage("Unexpected throw captured") + "\(message)"
-        default:
-            msg = callSiteInfo.detailedMessage("Unexpected throw captured: [\(error)]")
-        }
-        XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
-        throw ShouldMatcherError.unexpectedErrorWasThrown
+        XCTFail("\(error)", file: callSiteInfo.file, line: callSiteInfo.line)
+        throw callSiteInfo.error("Should not have thrown, but did:\n" + "\(error)")
     }
 }
 
 public func shouldNotHappen(_ message: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-
-    return callSiteInfo.error("Should not happen! [\(message)]")
+    return callSiteInfo.error("Should not happen: \(message)")
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -450,7 +464,7 @@ public enum ShouldMatcherError: Error {
     case unexpectedErrorWasThrown
 }
 
-struct CallSiteInfo {
+public struct CallSiteInfo {
     let file: StaticString
     let line: UInt
     let column: UInt
@@ -462,65 +476,70 @@ struct CallSiteInfo {
         self.column = column
         self.appliedAssertionName = String(function[function.startIndex ... function.firstIndex(of: "(")!])
     }
+}
 
-    /// Prepares a detailed error information, specialized for two values being equal
-    /// // TODO: DRY this all up
+extension CallSiteInfo {
+    /// Prepares a detailed error, specialized for two values being equal
+    ///
     /// - Warning: Performs file IO in order to read source location line where failure happened
-    func detailedMessage(got it: Any, expected: Any) -> String {
-        let msg = "[\(it)] does not equal expected: [\(expected)]\n"
-        return self.detailedMessage(msg)
+    func notEqualError(got it: Any, expected: Any, failTest: Bool = true) -> CallSiteError {
+        self.error("[\(it)] does not equal expected: [\(expected)]\n", failTest: failTest)
     }
 
-    func detailedMessage(got it: Any, unexpectedEqual: Any) -> String {
-        let msg = "[\(it)] does equal: [\(unexpectedEqual)]\n"
-        return self.detailedMessage(msg)
+    /// - Warning: Performs file IO in order to read source location line where failure happened
+    func equalError(got it: Any, unexpectedEqual: Any, failTest: Bool = true) -> CallSiteError {
+        self.error("[\(it)] does equal: [\(unexpectedEqual)]\n", failTest: failTest)
+    }
+
+    /// Returns an Error that should be thrown by the called.
+    /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
+    public func error(_ message: String, failTest: Bool = true) -> CallSiteError {
+        if failTest, !ActorTestKit.isInRepeatableContext() {
+            XCTFail(message, file: self.file, line: self.line)
+        }
+
+        return CallSiteError(callSite: self, explained: message)
+    }
+}
+
+public struct CallSiteError: Error, CustomStringConvertible {
+    let callSite: CallSiteInfo
+    let explained: String
+
+    public init(callSite: CallSiteInfo, explained: String) {
+        self.callSite = callSite
+
+        self.explained = explained
     }
 
     /// Prepares a detailed error information
     ///
     /// - Warning: Performs file IO in order to read source location line where failure happened
-    func detailedMessage(_ explained: String) -> String {
-        let lines = try! String(contentsOfFile: "\(self.file)")
-            .components(separatedBy: .newlines)
-        let failingLine = lines
-            .dropFirst(Int(self.line - 1))
-            .first!
+    public var description: String {
+        guard isTty else {
+            return self.explained
+        }
 
         var s = ""
+        let lines = try! String(contentsOfFile: "\(self.callSite.file)")
+            .components(separatedBy: .newlines)
+        let failingLine = lines
+            .dropFirst(Int(self.callSite.line - 1))
+            .first!
 
+        s += "\n"
+        s += "\(failingLine)\n"
+        s += "\(String(repeating: " ", count: Int(self.callSite.column) - 1 - self.callSite.appliedAssertionName.count))"
         if isTty {
-            s += "\n"
-            s += "\(failingLine)\n"
-            s += "\(String(repeating: " ", count: Int(self.column) - 1 - self.appliedAssertionName.count))"
-            if isTty {
-                s += ANSIColors.red.rawValue
-            }
-            s += "^\(String(repeating: "~", count: self.appliedAssertionName.count - 1))\n"
-            s += "error: "
-            s += explained
-            s += ANSIColors.reset.rawValue
-        } else {
-            s += explained
+            s += ANSIColors.red.rawValue
         }
+        s += "^\(String(repeating: "~", count: self.callSite.appliedAssertionName.count - 1))\n"
+        s += "error: "
+        s += self.explained
+        s += ANSIColors.reset.rawValue
+
         return s
     }
-}
-
-extension CallSiteInfo {
-    /// Returns an Error that should be thrown by the called.
-    /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
-    public func error(_ message: String, failTest: Bool = true) -> Error {
-        let details = self.detailedMessage(message)
-        if failTest, !ActorTestKit.isInRepeatableContext() {
-            XCTFail(details, file: self.file, line: self.line)
-        }
-
-        return CallSiteError.error(message: details)
-    }
-}
-
-public enum CallSiteError: Error {
-    case error(message: String)
 }
 
 enum ANSIColors: String {

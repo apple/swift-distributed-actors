@@ -115,43 +115,41 @@ final class InterceptorTests: ActorSystemXCTestCase {
     }
 
     func test_interceptor_shouldInterceptSignals() throws {
-        try shouldNotThrow {
-            let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe()
 
-            let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
+        let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
-            let spawnSomeStoppers: Behavior<String> = .setup { context in
-                let one: ActorRef<String> = try context.spawnWatch(
-                    "stopperOne",
-                    .receiveMessage { _ in
-                        .stop
-                    }
-                )
-                one.tell("stop")
-
-                let two: ActorRef<String> = try context.spawnWatch(
-                    "stopperTwo",
-                    .receiveMessage { _ in
-                        .stop
-                    }
-                )
-                two.tell("stop")
-
-                return .same
-            }
-
-            let _: ActorRef<String> = try system.spawn(
-                "theWallsHaveEarsForTermination",
-                .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals)
+        let spawnSomeStoppers: Behavior<String> = .setup { context in
+            let one: ActorRef<String> = try context.spawnWatch(
+                "stopperOne",
+                .receiveMessage { _ in
+                    .stop
+                }
             )
+            one.tell("stop")
 
-            // either of the two child actors can cause the death pact, depending on which one was scheduled first,
-            // so we have to check that the message we get is from one of them and afterwards we should not receive
-            // any additional messages
-            let terminated = try p.expectMessage()
-            (terminated.address.name == "stopperOne" || terminated.address.name == "stopperTwo").shouldBeTrue()
-            try p.expectNoMessage(for: .milliseconds(100))
+            let two: ActorRef<String> = try context.spawnWatch(
+                "stopperTwo",
+                .receiveMessage { _ in
+                    .stop
+                }
+            )
+            two.tell("stop")
+
+            return .same
         }
+
+        let _: ActorRef<String> = try system.spawn(
+            "theWallsHaveEarsForTermination",
+            .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals)
+        )
+
+        // either of the two child actors can cause the death pact, depending on which one was scheduled first,
+        // so we have to check that the message we get is from one of them and afterwards we should not receive
+        // any additional messages
+        let terminated = try p.expectMessage()
+        (terminated.address.name == "stopperOne" || terminated.address.name == "stopperTwo").shouldBeTrue()
+        try p.expectNoMessage(for: .milliseconds(100))
     }
 
     class SignalToStringInterceptor<Message: ActorMessage>: Interceptor<Message> {

@@ -20,11 +20,11 @@ final class ActorAddressTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ActorPath
 
-    func test_shouldNotAllow_illegalCharacters() {
-        shouldThrow(expected: ActorPathError.self) {
+    func test_shouldNotAllow_illegalCharacters() throws {
+        try shouldThrow(expected: ActorPathError.self) {
             _ = try ActorPath(root: "")
         }
-        shouldThrow(expected: ActorPathError.self) {
+        try shouldThrow(expected: ActorPathError.self) {
             _ = try ActorPath(root: " ")
         }
     }
