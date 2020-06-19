@@ -55,82 +55,80 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         stopNode: StopNodeSelection,
         _ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil
     ) throws {
-        try shouldNotThrow {
-            let (first, second) = self.setUpPair { settings in
-                settings.cluster.swim.probeInterval = .milliseconds(500)
-                modifySettings?(&settings)
-            }
-            let thirdNeverDownSystem = self.setUpNode("third", modifySettings)
+        let (first, second) = self.setUpPair { settings in
+            settings.cluster.swim.probeInterval = .milliseconds(500)
+            modifySettings?(&settings)
+        }
+        let thirdNeverDownSystem = self.setUpNode("third", modifySettings)
 
-            try self.joinNodes(node: first, with: second, ensureMembers: .up)
-            try self.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
+        try self.joinNodes(node: first, with: second, ensureMembers: .up)
+        try self.joinNodes(node: thirdNeverDownSystem, with: second, ensureMembers: .up)
 
-            let expectedDownSystem: ActorSystem
-            let otherNotDownPairSystem: ActorSystem
-            switch stopNode {
-            case .firstLeader:
-                expectedDownSystem = first
-                otherNotDownPairSystem = second
-            case .secondNonLeader:
-                expectedDownSystem = second
-                otherNotDownPairSystem = first
-            }
+        let expectedDownSystem: ActorSystem
+        let otherNotDownPairSystem: ActorSystem
+        switch stopNode {
+        case .firstLeader:
+            expectedDownSystem = first
+            otherNotDownPairSystem = second
+        case .secondNonLeader:
+            expectedDownSystem = second
+            otherNotDownPairSystem = first
+        }
 
-            let expectedDownNode = expectedDownSystem.cluster.node
+        let expectedDownNode = expectedDownSystem.cluster.node
 
-            // we start cluster event probes early, so they get the events one by one as they happen
-            let eventsProbeOther = self.testKit(otherNotDownPairSystem).spawnEventStreamTestProbe(subscribedTo: otherNotDownPairSystem.cluster.events)
-            let eventsProbeThird = self.testKit(thirdNeverDownSystem).spawnEventStreamTestProbe(subscribedTo: thirdNeverDownSystem.cluster.events)
+        // we start cluster event probes early, so they get the events one by one as they happen
+        let eventsProbeOther = self.testKit(otherNotDownPairSystem).spawnEventStreamTestProbe(subscribedTo: otherNotDownPairSystem.cluster.events)
+        let eventsProbeThird = self.testKit(thirdNeverDownSystem).spawnEventStreamTestProbe(subscribedTo: thirdNeverDownSystem.cluster.events)
 
-            // we cause the stop of the target node as expected
-            switch (stopMethod, stopNode) {
-            case (.leaveSelfNode, .firstLeader): first.cluster.leave()
-            case (.leaveSelfNode, .secondNonLeader): second.cluster.leave()
+        // we cause the stop of the target node as expected
+        switch (stopMethod, stopNode) {
+        case (.leaveSelfNode, .firstLeader): first.cluster.leave()
+        case (.leaveSelfNode, .secondNonLeader): second.cluster.leave()
 
-            case (.downSelf, .firstLeader): first.cluster.down(node: first.cluster.node.node)
-            case (.downSelf, .secondNonLeader): second.cluster.down(node: second.cluster.node.node)
+        case (.downSelf, .firstLeader): first.cluster.down(node: first.cluster.node.node)
+        case (.downSelf, .secondNonLeader): second.cluster.down(node: second.cluster.node.node)
 
-            case (.shutdownSelf, .firstLeader): first.shutdown()
-            case (.shutdownSelf, .secondNonLeader): second.shutdown()
+        case (.shutdownSelf, .firstLeader): first.shutdown()
+        case (.shutdownSelf, .secondNonLeader): second.shutdown()
 
-            case (.downFromOtherMember, .firstLeader): second.cluster.down(node: first.cluster.node.node)
-            case (.downFromOtherMember, .secondNonLeader): thirdNeverDownSystem.cluster.down(node: second.cluster.node.node)
-            }
+        case (.downFromOtherMember, .firstLeader): second.cluster.down(node: first.cluster.node.node)
+        case (.downFromOtherMember, .secondNonLeader): thirdNeverDownSystem.cluster.down(node: second.cluster.node.node)
+        }
 
-            func expectedDownMemberEventsFishing(
-                on: ActorSystem,
-                file: StaticString = #file, line: UInt = #line
-            ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
-                pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.node.node)], method to stop the node [\(stopMethod)]")
+        func expectedDownMemberEventsFishing(
+            on: ActorSystem,
+            file: StaticString = #file, line: UInt = #line
+        ) -> (Cluster.Event) -> ActorTestProbe<Cluster.Event>.FishingDirective<Cluster.MembershipChange> {
+            pinfo("Expecting [\(expectedDownSystem)] to become [.down] on [\(on.cluster.node.node)], method to stop the node [\(stopMethod)]")
 
-                return { event in
-                    switch event {
-                    case .membershipChange(let change) where change.node == expectedDownNode && change.isRemoval:
-                        pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
-                        return .catchComplete(change)
-                    case .membershipChange(let change) where change.node == expectedDownNode:
-                        pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
-                        return .catchContinue(change)
-                    case .reachabilityChange(let change) where change.member.node == expectedDownNode:
-                        pnote("\(on.cluster.node.node): \(change)", file: file, line: line)
-                        return .ignore
-                    default:
-                        pnote("\(on.cluster.node.node): \(event)", file: file, line: line)
-                        return .ignore
-                    }
+            return { event in
+                switch event {
+                case .membershipChange(let change) where change.node == expectedDownNode && change.isRemoval:
+                    pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
+                    return .catchComplete(change)
+                case .membershipChange(let change) where change.node == expectedDownNode:
+                    pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
+                    return .catchContinue(change)
+                case .reachabilityChange(let change) where change.member.node == expectedDownNode:
+                    pnote("\(on.cluster.node.node): \(change)", file: file, line: line)
+                    return .ignore
+                default:
+                    pnote("\(on.cluster.node.node): \(event)", file: file, line: line)
+                    return .ignore
                 }
             }
-
-            // collect all events regarding the expectedDownNode's membership lifecycle
-            // (the timeout is fairly large here to tolerate slow CI and variations how the events get propagated, normally they propagate quite quickly)
-            let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
-            eventsOnOther.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
-            eventsOnOther.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
-
-            let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
-            eventsOnThird.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
-            eventsOnThird.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
         }
+
+        // collect all events regarding the expectedDownNode's membership lifecycle
+        // (the timeout is fairly large here to tolerate slow CI and variations how the events get propagated, normally they propagate quite quickly)
+        let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
+        eventsOnOther.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
+        eventsOnOther.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
+
+        let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
+        eventsOnThird.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
+        eventsOnThird.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -222,13 +220,19 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_many_nonLeaders_shouldPropagateToOtherNodes() throws {
         let first = self.setUpNode("node-1")
-        var nodes = (2 ... 7).map { self.setUpNode("node-\($0)") }
+        var nodes = (2 ... 7).map {
+            self.setUpNode("node-\($0)")
+        }
 
         pinfo("Joining \(nodes.count + 1) nodes...")
         let joiningStart = first.metrics.uptimeNanoseconds()
 
-        nodes.forEach { first.cluster.join(node: $0.cluster.node.node) }
-        try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map { $0.cluster.node })
+        nodes.forEach {
+            first.cluster.join(node: $0.cluster.node.node)
+        }
+        try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map {
+            $0.cluster.node
+        })
 
         let joiningStop = first.metrics.uptimeNanoseconds()
         pinfo("Joined \(nodes.count + 1) nodes, took: \(TimeAmount.nanoseconds(joiningStop - joiningStart).prettyDescription)")

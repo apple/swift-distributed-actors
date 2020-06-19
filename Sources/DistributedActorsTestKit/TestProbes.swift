@@ -349,7 +349,7 @@ extension ActorTestProbe where Message: Equatable {
             let receivedMessage = try self.receiveMessage(within: timeout)
             self.lastMessage = receivedMessage
             guard receivedMessage == message else {
-                throw callSite.error(callSite.detailedMessage(got: receivedMessage, expected: message))
+                throw callSite.notEqualError(got: receivedMessage, expected: message)
             }
         } catch {
             let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
@@ -367,7 +367,7 @@ extension ActorTestProbe where Message: Equatable {
         let receivedMessage = try self.receiveMessage(within: timeout)
         self.lastMessage = receivedMessage
         guard receivedMessage is T else {
-            throw callSite.error(callSite.detailedMessage(got: receivedMessage, expected: type))
+            throw callSite.notEqualError(got: receivedMessage, expected: type)
         }
     }
 }
@@ -632,7 +632,7 @@ extension ActorTestProbe {
 
         let got: _SystemMessage = try self.expectSignal(file: file, line: line, column: column)
         if got != expected {
-            throw callSite.error(callSite.detailedMessage(got: got, expected: expected))
+            throw callSite.notEqualError(got: got, expected: expected)
         }
     }
 }

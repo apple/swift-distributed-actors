@@ -29,20 +29,9 @@ final class ActorTestKitTests: XCTestCase {
         self.system.shutdown().wait()
     }
 
-    func test_error_withoutMessage() throws {
-        let error = self.testKit.error()
-        guard case CallSiteError.error(let message) = error else {
-            throw error
-        }
-        message.contains("<no message>").shouldBeTrue()
-    }
-
     func test_error_withMessage() throws {
         let error = self.testKit.error("test")
-        guard case CallSiteError.error(let message) = error else {
-            throw error
-        }
-        message.contains("test").shouldBeTrue()
+        "\(error)".contains("test").shouldBeTrue()
     }
 
     func test_fail_shouldNotImmediatelyFailWithinEventuallyBlock() throws {

@@ -191,44 +191,53 @@ public extension ActorTestKit {
         }
         ActorTestKit.leaveRepeatableContext()
 
-        // This dance is necessary to "nicely print" if we had an embedded call site error,
-        // which include colour and formatting, so we have to print the \(msg) directly for that case.
-        let lastErrorMessage: String
-        switch lastError {
-        case .none:
-            lastErrorMessage = "Last error: <none>"
-        case .some(CallSiteError.error(let message)):
-            lastErrorMessage = "Last error: \(message)"
-        case .some(let error):
-            lastErrorMessage = "Last error: \(error)"
-        }
-
-        let message = callSite.detailedMessage("""
-        No result within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-        Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
-        \(lastErrorMessage)
-        """)
+        let error = EventuallyError(callSite, timeAmount, polledTimes, lastError: lastError)
         if !ActorTestKit.isInRepeatableContext() {
-            XCTFail(message, file: callSite.file, line: callSite.line)
+            XCTFail("\(error)", file: callSite.file, line: callSite.line)
         }
-        throw EventuallyError(message: message, lastError: lastError)
+        throw error
     }
 }
 
 /// Thrown by `ActorTestKit.eventually` when the encapsulated assertion fails enough times that the eventually rethrows it.
 ///
 /// Intended to be pretty printed in command line test output.
-public struct EventuallyError: Error, CustomStringConvertible {
-    let message: String
+public struct EventuallyError: Error, CustomStringConvertible, CustomDebugStringConvertible {
+    let callSite: CallSiteInfo
+    let timeAmount: TimeAmount
+    let polledTimes: Int
     let lastError: Error?
 
-    public init(message: String, lastError: Error?) {
-        self.message = message
+    init(_ callSite: CallSiteInfo, _ timeAmount: TimeAmount, _ polledTimes: Int, lastError: Error?) {
+        self.callSite = callSite
+        self.timeAmount = timeAmount
+        self.polledTimes = polledTimes
         self.lastError = lastError
     }
 
     public var description: String {
-        "EventuallyError(message: \(self.message.description), lastError: \(optional: self.lastError))"
+        var message = ""
+
+        // This dance is necessary to "nicely print" if we had an embedded call site error,
+        // which include colour and formatting, so we have to print the \(msg) directly for that case.
+        let lastErrorMessage: String
+        if let error = lastError {
+            lastErrorMessage = "Last error: \(error)"
+        } else {
+            lastErrorMessage = "Last error: <none>"
+        }
+
+        message += """
+        No result within \(self.timeAmount.prettyDescription) for block at \(self.callSite.file):\(self.callSite.line). \
+        Queried \(self.polledTimes) times, within \(self.timeAmount.prettyDescription). \
+        \(lastErrorMessage)
+        """
+
+        return message
+    }
+
+    public var debugDescription: String {
+        "EventuallyError(callSite: \(self.callSite), timeAmount: \(self.timeAmount), polledTimes: \(self.polledTimes), lastError: \(optional: self.lastError))"
     }
 }
 
@@ -237,7 +246,7 @@ public struct EventuallyError: Error, CustomStringConvertible {
 
 public extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
-    /// Throws an `AssertionHoldsError` when the block fails within the specified time amount.
+    /// Throws an error when the block fails within the specified time amount.
     func assertHolds(
         for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
         file: StaticString = #file, line: UInt = #line, column: UInt = #column,
@@ -253,29 +262,19 @@ public extension ActorTestKit {
                 polledTimes += 1
                 try block()
                 usleep(useconds_t(interval.microseconds))
-            } catch CallSiteError.error(let errorDetails) {
-                let message = callSite.detailedMessage("""
-                Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
-                Error: \(errorDetails)
-                """)
-                XCTFail(message, file: callSite.file, line: callSite.line)
-                throw AssertionHoldsError(message: message)
             } catch {
-                let message = callSite.detailedMessage("""
-                Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
-                Error: \(error)
-                """)
-                XCTFail(message, file: callSite.file, line: callSite.line)
-                throw AssertionHoldsError(message: message)
+                let error = callSite.error(
+                    """
+                    Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
+                    Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
+                    Error: \(error)
+                    """
+                )
+                XCTFail("\(error)", file: callSite.file, line: callSite.line)
+                throw error
             }
         }
     }
-}
-
-public struct AssertionHoldsError: Error {
-    let message: String
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

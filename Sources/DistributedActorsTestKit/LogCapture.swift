@@ -110,6 +110,8 @@ extension LogCapture {
                 }
 
                 metadata.removeValue(forKey: "label")
+                metadata.removeValue(forKey: "actor/node")
+                metadata.removeValue(forKey: "actor/nodeName")
                 if !metadata.isEmpty {
                     metadataString = "\n// metadata:\n"
                     for key in metadata.keys.sorted() {
@@ -315,7 +317,7 @@ extension LogCapture {
             """
             let callSiteError = callSite.error(message)
             if failTest {
-                XCTAssert(false, message, file: callSite.file, line: callSite.line)
+                XCTFail(message, file: callSite.file, line: callSite.line)
             }
             throw callSiteError
         }

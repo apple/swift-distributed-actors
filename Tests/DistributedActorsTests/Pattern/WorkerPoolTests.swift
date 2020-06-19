@@ -243,7 +243,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
     }
 
     func test_workerPool_static_throwOnEmptyInitialSet() throws {
-        let error = shouldThrow {
+        let error = try shouldThrow {
             let _: WorkerPoolRef<Never> = try WorkerPool.spawn(system, "wrongConfigPool", select: .static([]))
         }
 

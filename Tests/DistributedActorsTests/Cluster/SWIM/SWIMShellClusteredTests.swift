@@ -349,57 +349,55 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     // FIXME: Can't seem to implement a hardened test like this...
     func ignored_test_swim_shouldNotifyClusterAboutUnreachableNode_andThenReachableAgain() throws {
-        try shouldNotThrow {
-            let first = self.setUpFirst { settings in
-                settings.cluster.swim.disabled = true // since we drive one manually
-            }
-            let second = self.setUpSecond { settings in
-                settings.cluster.swim.disabled = true // since we drive one manually
-            }
+        let first = self.setUpFirst { settings in
+            settings.cluster.swim.disabled = true // since we drive one manually
+        }
+        let second = self.setUpSecond { settings in
+            settings.cluster.swim.disabled = true // since we drive one manually
+        }
 
-            first.cluster.join(node: second.cluster.node.node)
-            try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
 
-            let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-            let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
 
-            let pingTimeout: TimeAmount = .milliseconds(100)
-            let timeSource = TestTimeSource()
-            let ref = try first.spawn(
-                "SWIM",
-                SWIMShell.swimBehavior(
-                    members: [remoteMemberRef],
-                    clusterRef: self.firstClusterProbe.ref,
-                    configuredWith: { settings in
-                        settings.lifeguard.timeSourceNanos = timeSource.now
-                        settings.lifeguard.suspicionTimeoutMin = .nanoseconds(3)
-                        settings.lifeguard.suspicionTimeoutMax = .nanoseconds(6)
-                        settings.pingTimeout = pingTimeout
-                    }
-                )
+        let pingTimeout: TimeAmount = .milliseconds(100)
+        let timeSource = TestTimeSource()
+        let ref = try first.spawn(
+            "SWIM",
+            SWIMShell.swimBehavior(
+                members: [remoteMemberRef],
+                clusterRef: self.firstClusterProbe.ref,
+                configuredWith: { settings in
+                    settings.lifeguard.timeSourceNanos = timeSource.now
+                    settings.lifeguard.suspicionTimeoutMin = .nanoseconds(3)
+                    settings.lifeguard.suspicionTimeoutMax = .nanoseconds(6)
+                    settings.pingTimeout = pingTimeout
+                }
             )
+        )
 
-            // spin not-replying for more than timeoutPeriodsMax, such that the member will be marked as unreachable
-            for _ in 0 ..< SWIMSettings.default.lifeguard.suspicionTimeoutMax.nanoseconds + 100 {
-                ref.tell(.local(.pingRandomMember))
-                try self.expectPing(on: p, reply: false)
-                timeSource.tick()
-            }
-
-            // should become unreachable
-            guard case .command(.failureDetectorReachabilityChanged(_, .unreachable)) = try firstClusterProbe.expectMessage() else {
-                throw self.testKit(first).fail("expected to receive `.command(.failureDetectorReachabilityChanged)`, but got `\(firstClusterProbe.lastMessage, orElse: "nil")`")
-            }
-
-            // if it'd directly reply while unreachable (which is an "extended period suspect" really), it can come back alive
+        // spin not-replying for more than timeoutPeriodsMax, such that the member will be marked as unreachable
+        for _ in 0 ..< SWIMSettings.default.lifeguard.suspicionTimeoutMax.nanoseconds + 100 {
             ref.tell(.local(.pingRandomMember))
-            try self.expectPing(on: p, reply: true, incarnation: 2)
+            try self.expectPing(on: p, reply: false)
+            timeSource.tick()
+        }
 
-            // since we replied again with alive, should become reachable
-            try self.awaitStatus(.alive(incarnation: 2), for: remoteMemberRef, on: ref, within: .seconds(1))
-            guard case .command(.failureDetectorReachabilityChanged(_, .reachable)) = try firstClusterProbe.expectMessage() else {
-                throw self.testKit(first).fail("expected to receive `.command(.failureDetectorReachabilityChanged)`, but got `\(firstClusterProbe.lastMessage, orElse: "nil")`")
-            }
+        // should become unreachable
+        guard case .command(.failureDetectorReachabilityChanged(_, .unreachable)) = try self.firstClusterProbe.expectMessage() else {
+            throw self.testKit(first).fail("expected to receive `.command(.failureDetectorReachabilityChanged)`, but got `\(self.firstClusterProbe.lastMessage, orElse: "nil")`")
+        }
+
+        // if it'd directly reply while unreachable (which is an "extended period suspect" really), it can come back alive
+        ref.tell(.local(.pingRandomMember))
+        try self.expectPing(on: p, reply: true, incarnation: 2)
+
+        // since we replied again with alive, should become reachable
+        try self.awaitStatus(.alive(incarnation: 2), for: remoteMemberRef, on: ref, within: .seconds(1))
+        guard case .command(.failureDetectorReachabilityChanged(_, .reachable)) = try self.firstClusterProbe.expectMessage() else {
+            throw self.testKit(first).fail("expected to receive `.command(.failureDetectorReachabilityChanged)`, but got `\(self.firstClusterProbe.lastMessage, orElse: "nil")`")
         }
     }
 
@@ -733,31 +731,29 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        try shouldNotThrow {
-            first.cluster.join(node: second.cluster.node.node)
-            try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
 
-            let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-            let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
 
-            let behavior = SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
-                settings.pingTimeout = .milliseconds(50)
-            }
+        let behavior = SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
+            settings.pingTimeout = .milliseconds(50)
+        }
 
-            let swimRef = try first.spawn("SWIM", behavior)
-            let remoteSwimRef = second._resolveKnownRemote(swimRef, onRemoteSystem: first)
+        let swimRef = try first.spawn("SWIM", behavior)
+        let remoteSwimRef = second._resolveKnownRemote(swimRef, onRemoteSystem: first)
 
-            swimRef.tell(.local(.pingRandomMember))
+        swimRef.tell(.local(.pingRandomMember))
 
-            try self.expectPing(on: p, reply: false) {
-                switch $0 {
-                case .membership(let members):
-                    members.shouldContain(SWIM.Member(ref: p.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
-                    members.shouldContain(SWIM.Member(ref: remoteSwimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
-                    members.count.shouldEqual(2)
-                case .none:
-                    throw p.error("Expected gossip, but got `.none`")
-                }
+        try self.expectPing(on: p, reply: false) {
+            switch $0 {
+            case .membership(let members):
+                members.shouldContain(SWIM.Member(ref: p.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
+                members.shouldContain(SWIM.Member(ref: remoteSwimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
+                members.count.shouldEqual(2)
+            case .none:
+                throw p.error("Expected gossip, but got `.none`")
             }
         }
     }
@@ -871,45 +867,43 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_swim_shouldConvergeStateThroughGossip() throws {
-        try shouldNotThrow {
-            let first = self.setUpFirst()
-            let second = self.setUpSecond()
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
 
-            let membershipProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.MembershipState.self)
-            let pingProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
+        let membershipProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.MembershipState.self)
+        let pingProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
 
-            var settings: SWIMSettings = .default
-            settings.probeInterval = .milliseconds(100)
+        var settings: SWIMSettings = .default
+        settings.probeInterval = .milliseconds(100)
 
-            let firstSwim: ActorRef<SWIM.Message> = try self.testKit(first)._eventuallyResolve(address: ._swim(on: first.cluster.node))
-            let secondSwim: ActorRef<SWIM.Message> = try self.testKit(second)._eventuallyResolve(address: ._swim(on: second.cluster.node))
+        let firstSwim: ActorRef<SWIM.Message> = try self.testKit(first)._eventuallyResolve(address: ._swim(on: first.cluster.node))
+        let secondSwim: ActorRef<SWIM.Message> = try self.testKit(second)._eventuallyResolve(address: ._swim(on: second.cluster.node))
 
-            let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
+        let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
 
-            secondSwim.tell(.remote(.pingReq(target: localRefRemote, replyTo: pingProbe.ref, payload: .none)))
+        secondSwim.tell(.remote(.pingReq(target: localRefRemote, replyTo: pingProbe.ref, payload: .none)))
 
-            try self.testKit(first).eventually(within: .seconds(10)) {
-                firstSwim.tell(._testing(.getMembershipState(replyTo: membershipProbe.ref)))
-                let statusA = try membershipProbe.expectMessage(within: .seconds(1))
+        try self.testKit(first).eventually(within: .seconds(10)) {
+            firstSwim.tell(._testing(.getMembershipState(replyTo: membershipProbe.ref)))
+            let statusA = try membershipProbe.expectMessage(within: .seconds(1))
 
-                secondSwim.tell(._testing(.getMembershipState(replyTo: membershipProbe.ref)))
-                let statusB = try membershipProbe.expectMessage(within: .seconds(1))
+            secondSwim.tell(._testing(.getMembershipState(replyTo: membershipProbe.ref)))
+            let statusB = try membershipProbe.expectMessage(within: .seconds(1))
 
-                guard statusA.membershipState.count == 2, statusB.membershipState.count == 2 else {
-                    throw self.testKit(first).error("Expected count of both members to be 2, was [statusA=\(statusA.membershipState.count), statusB=\(statusB.membershipState.count)]")
+            guard statusA.membershipState.count == 2, statusB.membershipState.count == 2 else {
+                throw self.testKit(first).error("Expected count of both members to be 2, was [statusA=\(statusA.membershipState.count), statusB=\(statusB.membershipState.count)]")
+            }
+
+            for (ref, status) in statusA.membershipState {
+                // there has to be a better way to do this, but that paths are
+                // different, because they reside on different nodes, so we
+                // compare only the segments, which are unique per instance
+                guard let (_, otherStatus) = statusB.membershipState.first(where: { $0.key.address.path.segments == ref.address.path.segments }) else {
+                    throw self.testKit(first).error("Did not get status for [\(ref)] in statusB")
                 }
 
-                for (ref, status) in statusA.membershipState {
-                    // there has to be a better way to do this, but that paths are
-                    // different, because they reside on different nodes, so we
-                    // compare only the segments, which are unique per instance
-                    guard let (_, otherStatus) = statusB.membershipState.first(where: { $0.key.address.path.segments == ref.address.path.segments }) else {
-                        throw self.testKit(first).error("Did not get status for [\(ref)] in statusB")
-                    }
-
-                    guard otherStatus == status else {
-                        throw self.testKit(first).error("Expected status \(status) for [\(ref)] in statusB, but found \(otherStatus)")
-                    }
+                guard otherStatus == status else {
+                    throw self.testKit(first).error("Expected status \(status) for [\(ref)] in statusB, but found \(otherStatus)")
                 }
             }
         }
