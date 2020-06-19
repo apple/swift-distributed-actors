@@ -38,44 +38,42 @@ final class MembershipGossipClusteredTests: ClusteredActorSystemsXCTestCase {
     // MARK: Marking .down
 
     func test_down_beGossipedToOtherNodes() throws {
-        try shouldNotThrow {
-            let strategy = ClusterSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
-            let first = self.setUpNode("first") { settings in
-                settings.cluster.autoLeaderElection = strategy
-                settings.cluster.onDownAction = .none
-            }
-            let second = self.setUpNode("second") { settings in
-                settings.cluster.autoLeaderElection = strategy
-                settings.cluster.onDownAction = .none
-            }
-            let third = self.setUpNode("third") { settings in
-                settings.cluster.autoLeaderElection = strategy
-                settings.cluster.onDownAction = .none
-            }
-
-            first.cluster.join(node: second.cluster.node.node)
-            third.cluster.join(node: second.cluster.node.node)
-
-            try assertAssociated(first, withAtLeast: second.cluster.node)
-            try assertAssociated(second, withAtLeast: third.cluster.node)
-            try assertAssociated(first, withAtLeast: third.cluster.node)
-
-            try self.testKit(second).eventually(within: .seconds(10)) {
-                try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
-                try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
-                try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
-            }
-
-            let firstEvents = testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
-            let secondEvents = testKit(second).spawnEventStreamTestProbe(subscribedTo: second.cluster.events)
-            let thirdEvents = testKit(third).spawnEventStreamTestProbe(subscribedTo: third.cluster.events)
-
-            second.cluster.down(node: third.cluster.node.node)
-
-            try self.assertMemberDown(firstEvents, node: third.cluster.node)
-            try self.assertMemberDown(secondEvents, node: third.cluster.node)
-            try self.assertMemberDown(thirdEvents, node: third.cluster.node)
+        let strategy = ClusterSettings.LeadershipSelectionSettings.lowestReachable(minNumberOfMembers: 3)
+        let first = self.setUpNode("first") { settings in
+            settings.cluster.autoLeaderElection = strategy
+            settings.cluster.onDownAction = .none
         }
+        let second = self.setUpNode("second") { settings in
+            settings.cluster.autoLeaderElection = strategy
+            settings.cluster.onDownAction = .none
+        }
+        let third = self.setUpNode("third") { settings in
+            settings.cluster.autoLeaderElection = strategy
+            settings.cluster.onDownAction = .none
+        }
+
+        first.cluster.join(node: second.cluster.node.node)
+        third.cluster.join(node: second.cluster.node.node)
+
+        try assertAssociated(first, withAtLeast: second.cluster.node)
+        try assertAssociated(second, withAtLeast: third.cluster.node)
+        try assertAssociated(first, withAtLeast: third.cluster.node)
+
+        try self.testKit(second).eventually(within: .seconds(10)) {
+            try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
+            try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
+            try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
+        }
+
+        let firstEvents = testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
+        let secondEvents = testKit(second).spawnEventStreamTestProbe(subscribedTo: second.cluster.events)
+        let thirdEvents = testKit(third).spawnEventStreamTestProbe(subscribedTo: third.cluster.events)
+
+        second.cluster.down(node: third.cluster.node.node)
+
+        try self.assertMemberDown(firstEvents, node: third.cluster.node)
+        try self.assertMemberDown(secondEvents, node: third.cluster.node)
+        try self.assertMemberDown(thirdEvents, node: third.cluster.node)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

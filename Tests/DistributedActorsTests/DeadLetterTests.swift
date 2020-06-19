@@ -74,7 +74,7 @@ final class DeadLetterTests: ActorSystemXCTestCase {
             "This is a question, reply to \(replyTo)"
         }
 
-        _ = shouldThrow {
+        _ = try shouldThrow {
             try answer.wait()
         }
 

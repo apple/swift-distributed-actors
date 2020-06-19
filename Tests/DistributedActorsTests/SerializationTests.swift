@@ -85,7 +85,7 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_actorAddress_shouldDemandContext() throws {
-        let err = shouldThrow {
+        let err = try shouldThrow {
             let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
 
             let encoder = JSONEncoder()
@@ -96,29 +96,27 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_actorAddress_usingContext() throws {
-        try shouldNotThrow {
-            let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
+        let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
 
-            let encoder = JSONEncoder()
-            let decoder = JSONDecoder()
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
 
-            let context = Serialization.Context(
-                log: self.system.log,
-                system: self.system,
-                allocator: ByteBufferAllocator()
-            )
+        let context = Serialization.Context(
+            log: self.system.log,
+            system: self.system,
+            allocator: ByteBufferAllocator()
+        )
 
-            encoder.userInfo[.actorSerializationContext] = context
-            decoder.userInfo[.actorSerializationContext] = context
+        encoder.userInfo[.actorSerializationContext] = context
+        decoder.userInfo[.actorSerializationContext] = context
 
-            let encoded = try encoder.encode(address)
-            pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
+        let encoded = try encoder.encode(address)
+        pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
 
-            let addressAgain = try decoder.decode(ActorAddress.self, from: encoded)
-            pinfo("Deserialized again: \(String(reflecting: addressAgain))")
+        let addressAgain = try decoder.decode(ActorAddress.self, from: encoded)
+        pinfo("Deserialized again: \(String(reflecting: addressAgain))")
 
-            "\(addressAgain)".shouldEqual("sact://SerializationTests@127.0.0.1:9001/user/hello")
-        }
+        "\(addressAgain)".shouldEqual("sact://SerializationTests@127.0.0.1:9001/user/hello")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -240,7 +238,7 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
-        _ = shouldThrow {
+        _ = try shouldThrow {
             try system.serialization.serialize(NotCodableHasInt(containedInt: 1337))
         }
     }
@@ -413,7 +411,7 @@ class SerializationTests: ActorSystemXCTestCase {
             system2.shutdown().wait()
         }
 
-        _ = shouldThrow {
+        _ = try shouldThrow {
             _ = try system2.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         }
 

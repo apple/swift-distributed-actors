@@ -50,33 +50,29 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
     // FIXME: has to be changed a bit when downing moved to subscribing to Cluster.MembershipChange events
     func test_onLeaderChange_whenNotLeaderAndNewLeaderIsOtherAddress_shouldNotBecomeLeader() throws {
-        try shouldNotThrow {
-            self.instance.isLeader.shouldBeFalse()
+        self.instance.isLeader.shouldBeFalse()
 
-            _ = self.instance.membership.join(self.otherNode)
-            let directive = try self.instance.onLeaderChange(to: self.otherMember)
-            // we the node does not become the leader, the directive should be `.none`
-            guard case .none = directive else {
-                throw TestError("Expected directive to be .none")
-            }
-            self.instance.isLeader.shouldBeFalse()
+        _ = self.instance.membership.join(self.otherNode)
+        let directive = try self.instance.onLeaderChange(to: self.otherMember)
+        // we the node does not become the leader, the directive should be `.none`
+        guard case .none = directive else {
+            throw TestError("Expected directive to be .none")
         }
+        self.instance.isLeader.shouldBeFalse()
     }
 
     func test_onLeaderChange_whenLeaderAndNewLeaderIsOtherAddress_shouldLoseLeadership() throws {
-        try shouldNotThrow {
-            _ = self.instance.membership.join(self.selfNode)
-            _ = self.instance.membership.join(self.otherNode)
+        _ = self.instance.membership.join(self.selfNode)
+        _ = self.instance.membership.join(self.otherNode)
 
-            _ = try self.instance.onLeaderChange(to: self.selfMember)
-            self.instance.isLeader.shouldBeTrue()
-            let directive = try self.instance.onLeaderChange(to: self.otherMember)
-            // when losing leadership, the directive should be `.none`
-            guard case .none = directive else {
-                throw TestError("Expected directive to be .none")
-            }
-            self.instance.isLeader.shouldBeFalse()
+        _ = try self.instance.onLeaderChange(to: self.selfMember)
+        self.instance.isLeader.shouldBeTrue()
+        let directive = try self.instance.onLeaderChange(to: self.otherMember)
+        // when losing leadership, the directive should be `.none`
+        guard case .none = directive else {
+            throw TestError("Expected directive to be .none")
         }
+        self.instance.isLeader.shouldBeFalse()
     }
 
     func test_onLeaderChange_whenLeaderAndNewLeaderIsSelfAddress_shouldStayLeader() throws {
@@ -150,24 +146,22 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
         let unreachableMember = self.otherMember.asUnreachable
 
-        try shouldNotThrow {
-            let directive = self.instance.onMemberUnreachable(.init(member: unreachableMember))
-            guard case .startTimer = directive else {
-                throw TestError("Expected .startTimer, but got \(directive)")
-            }
-
-            let downDecision = self.instance.onTimeout(unreachableMember)
-            guard case .markAsDown(let nodesToDown) = downDecision else {
-                throw TestError("Expected .markAsDown, but got \(directive)")
-            }
-
-            nodesToDown.shouldEqual([unreachableMember])
-
-            // since we signalled the .down, no need to retain the member as "to be marked down" anymore,
-            // if we never cleaned that set it could be technically a memory leak, continuing to accumulate
-            // all members that we downed over the lifetime of the cluster.
-            self.instance._markAsDown.shouldBeEmpty()
+        let directive = self.instance.onMemberUnreachable(.init(member: unreachableMember))
+        guard case .startTimer = directive else {
+            throw TestError("Expected .startTimer, but got \(directive)")
         }
+
+        let downDecision = self.instance.onTimeout(unreachableMember)
+        guard case .markAsDown(let nodesToDown) = downDecision else {
+            throw TestError("Expected .markAsDown, but got \(directive)")
+        }
+
+        nodesToDown.shouldEqual([unreachableMember])
+
+        // since we signalled the .down, no need to retain the member as "to be marked down" anymore,
+        // if we never cleaned that set it could be technically a memory leak, continuing to accumulate
+        // all members that we downed over the lifetime of the cluster.
+        self.instance._markAsDown.shouldBeEmpty()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

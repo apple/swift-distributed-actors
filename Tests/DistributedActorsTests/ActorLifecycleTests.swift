@@ -24,7 +24,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
     func test_spawn_shouldNotAllowStartingWith_Same() throws {
         // since there is no previous behavior to stay "same" name at the same time:
 
-        let ex = shouldThrow {
+        let ex = try shouldThrow {
             let sameBehavior: Behavior<String> = .same
             _ = try self.system.spawn("same", sameBehavior)
         }
@@ -41,7 +41,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
         //
         // We do allow starting with .ignore though since that's like a "blackhole"
 
-        let ex = shouldThrow {
+        let ex = try shouldThrow {
             let unhandledBehavior: Behavior<String> = .unhandled
             _ = try system.spawn("unhandled", unhandledBehavior)
         }
@@ -51,7 +51,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
 
     func test_spawn_shouldNotAllowIllegalActorNames() throws {
         func check(illegalName: String, expectedError: String) throws {
-            let err = shouldThrow {
+            let err = try shouldThrow {
                 let b: Behavior<String> = .ignore
 
                 // more coverage for all the different chars in [[ActorPathTests]]
