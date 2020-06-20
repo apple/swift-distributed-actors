@@ -41,7 +41,6 @@ final class CRDTEnvelopeSerializationTests: ActorSystemXCTestCase {
 
 //    // TODO: use a "real" CvRDT rather than GCounter.Delta
 //    func test_serializationOf_CRDTEnvelope_AnyCvRDT_GCounter_delta() throws {
-//        try shouldNotThrow {
 //            var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))
 //            g1.increment(by: 2)
 //            g1.delta.shouldNotBeNil()
@@ -61,6 +60,5 @@ final class CRDTEnvelopeSerializationTests: ActorSystemXCTestCase {
 //
 //            dg1Delta.state.count.shouldEqual(1)
 //            "\(dg1Delta.state)".shouldContain("[actor:sact://CRDTEnvelopeSerializationTests@127.0.0.1:9001/user/alpha: 2]")
-//        }
 //    }
 }
