@@ -24,15 +24,19 @@ extension ActorTestProbe where Message == Receptionist.Listing<String> {
     /// Lack of listing emitted during the `within` period also yields a test-case failing error.
     public func eventuallyExpectListing(
         expected: Set<ActorRef<String>>, within timeout: TimeAmount,
+        verbose: Bool = false,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         do {
             let listing = try self.fishForMessages(within: timeout, file: file, line: line) {
+                if verbose {
+                    pinfo("Received listing: \($0.refs.count)")
+                }
+
                 if $0.refs.count == expected.count { return .catchComplete }
                 else { return .ignore }
             }.first!
 
-            // TODO: not super efficient, rework eventually
             listing.refs.map { $0.path }.sorted().shouldEqual(expected.map { $0.address.path }.sorted(), file: file, line: line, column: column)
         } catch {
             throw self.error("Expected \(expected), error: \(error)", file: file, line: line)

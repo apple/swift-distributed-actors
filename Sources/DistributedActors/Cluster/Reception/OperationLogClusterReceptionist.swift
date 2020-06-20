@@ -252,28 +252,20 @@ public class OperationLogClusterReceptionist {
                     self.onPeriodicAckTick(context)
 
                 case let message as _Register:
-                    try self.onRegister(context: context, message: message)
+                    try self.onRegister(context: context, message: message) // FIXME: would kill the receptionist!
 
                 case let message as _Lookup:
-                    try self.onLookup(context: context, message: message)
+                    try self.onLookup(context: context, message: message) // FIXME: would kill the receptionist!
 
                 case let message as _Subscribe:
-                    try self.onSubscribe(context: context, message: message)
+                    try self.onSubscribe(context: context, message: message) // FIXME: would kill the receptionist!
 
                 default:
                     context.log.warning("Received unexpected message: \(String(reflecting: $0)), \(type(of: $0))")
                 }
                 return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                context.log.debug("Remote receptionist terminated: \(terminated)")
-                if let node = terminated.address.node,
-                    terminated.address == ActorAddress._receptionist(on: node) {
-                    // receptionist terminated, need to prune it
-                    self.onReceptionistTerminated(context, terminated: terminated)
-                } else {
-                    // just some actor terminated, we need to remove it from storage and spread its removal
-                    self.onActorTerminated(context, terminated: terminated)
-                }
+                self.onTerminated(context: context, terminated: terminated)
                 return .same
             }
         }
@@ -513,6 +505,10 @@ extension OperationLogClusterReceptionist {
             return // no subscribers for this key
         }
 
+        self.publishListings(context, forKey: key, to: subscribers)
+    }
+
+    private func publishListings(_ context: ActorContext<Message>, forKey key: AnyRegistrationKey, to subscribers: Set<AnySubscribe>) {
         let registrations = self.storage.registrations(forKey: key) ?? []
 
         context.log.trace(
@@ -611,6 +607,17 @@ extension OperationLogClusterReceptionist {
 // MARK: Termination handling
 
 extension OperationLogClusterReceptionist {
+    private func onTerminated(context: ActorContext<ReceptionistMessage>, terminated: Signals.Terminated) {
+        if let node = terminated.address.node,
+            terminated.address == ActorAddress._receptionist(on: node) {
+            context.log.debug("Watched receptionist terminated: \(terminated)")
+            self.onReceptionistTerminated(context, terminated: terminated)
+        } else {
+            context.log.debug("Watched actor terminated: \(terminated)")
+            self.onActorTerminated(context, terminated: terminated)
+        }
+    }
+
     private func onReceptionistTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
         if let node = terminated.address.node {
             self.pruneClusterMember(context, removedNode: node)
@@ -627,7 +634,7 @@ extension OperationLogClusterReceptionist {
         let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log, address: address, system: nil)))
         let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAddressable())
 
-        for key in wasRegisteredWithKeys {
+        for key in wasRegisteredWithKeys.registeredUnderKeys {
             self.addOperation(context, .remove(key: key, address: address))
             self.publishListings(context, forKey: key)
         }
@@ -701,6 +708,7 @@ extension OperationLogClusterReceptionist {
     }
 
     private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
+        context.log.trace("Pruning cluster member: \(removedNode)")
         let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode)
         let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
 
@@ -718,7 +726,10 @@ extension OperationLogClusterReceptionist {
         _ = self.appliedSequenceNrs.pruneReplica(.actorAddress(terminatedReceptionistAddress))
 
         // clear state any registrations still lingering about the now-known-to-be-down node
-        self.storage.pruneNode(removedNode)
+        let pruned = self.storage.pruneNode(removedNode)
+        for key in pruned.keys {
+            self.publishListings(context, forKey: key, to: pruned.peersToNotify(key))
+        }
     }
 }
 
