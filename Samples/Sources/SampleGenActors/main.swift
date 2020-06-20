@@ -29,4 +29,4 @@ greeter.greet(name: "Caplin")
 
 greeter.ref.tell(.greet(name: "Caplin"))
 
-Thread.sleep(.seconds(1))
+__sleep(.seconds(1))

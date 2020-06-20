@@ -342,7 +342,7 @@ final class SupervisionTests: ActorSystemTestBase {
         guard case .setupRunning = try p.expectMessage() else { throw p.error() }
 
         pinfo("\(Date()) :: Giving enough breathing time to replenish the restart period (\(failurePeriod))")
-        Thread.sleep(failurePeriod)
+        __sleep(failurePeriod)
         pinfo("\(Date()) :: Done sleeping...")
 
         pinfo("2nd boom...")

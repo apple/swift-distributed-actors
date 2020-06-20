@@ -65,7 +65,9 @@ var targets: [PackageDescription.Target] = [
     
     .target(
          name: "ActorSingletonPlugin",
-         dependencies: ["DistributedActors"]
+         dependencies: [
+             "DistributedActors"
+         ]
      ),
 
     // ==== ------------------------------------------------------------------------------------------------------------

@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Baggage
+
 /// :nodoc: INTERNAL API: May change without any prior notice.
 ///
 /// Represents a reference to a remote actor.
@@ -70,9 +72,22 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     func sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
         traceLog_Cell("RemoteActorRef(\(self.address)) sendUserMessage: \(message)")
 
+        // let instrument = SenderBaggageInstrument.current() // TODO: pick all instruments?
+
+        var baggage = BaggageContext() // TODO: we need branch here
+        if let currentContext = ThreadLocalActorContext.current {
+            baggage.actorSender = currentContext.address
+        }
+
         switch self.association {
         case .association(let association):
-            association.sendUserMessage(envelope: Payload(payload: .message(message)), recipient: self.address)
+            association.sendUserMessage(
+                envelope: MessageEnvelope(
+                    payload: .message(message),
+                    baggage: baggage
+                ),
+                recipient: self.address
+            )
             self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)

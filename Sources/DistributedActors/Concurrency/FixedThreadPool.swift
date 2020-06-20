@@ -15,30 +15,6 @@
 import DistributedActorsConcurrencyHelpers
 import Foundation
 
-// TODO: Discuss naming of `Worker`
-private final class Worker {
-    var thread: Thread?
-    var completedTasks: Int = 0
-
-    @usableFromInline
-    let _lock: _Mutex = _Mutex()
-
-    @inlinable
-    func lock() {
-        self._lock.lock()
-    }
-
-    @inlinable
-    func tryLock() -> Bool {
-        self._lock.tryLock()
-    }
-
-    @inlinable
-    func unlock() {
-        self._lock.unlock()
-    }
-}
-
 /// A FixedThreadPool eagerly starts the configured number of threads and keeps
 /// all of them running until `shutdown` is called. Submitted tasks will be
 /// executed concurrently on all threads.
@@ -58,10 +34,8 @@ public final class FixedThreadPool {
     public init(_ threadCount: Int) throws {
         self.runningWorkers = Atomic(value: threadCount)
 
-        for _ in 1 ... threadCount {
-            let worker = Worker()
-            let thread = try Thread {
-                // threads in the pool keep running as long as the pool is not stopping
+        for n in 1 ... threadCount {
+            let worker = Worker(name: "FixedThreadPool-\(n)") { lock in
                 while !self.stopping.load() {
                     // FIXME: We are currently using a timed `poll` instead of indefinitely
                     //        blocking on `dequeue` because we need to be able to check
@@ -70,10 +44,9 @@ public final class FixedThreadPool {
                     //        re-acquire the mutex before cancelation, which is almost
                     //        guaranteed to cause a deadlock.
                     if let runnable = self.q.poll(.milliseconds(100)) {
-                        worker.lock()
-                        defer { worker.unlock() }
+                        lock.lock()
+                        defer { lock.unlock() }
                         runnable()
-                        worker.completedTasks += 1
                     }
                 }
 
@@ -82,7 +55,6 @@ public final class FixedThreadPool {
                     self.allThreadsStopped.offerOnce(())
                 }
             }
-            worker.thread = thread
 
             self.workers.append(worker)
         }
@@ -108,6 +80,35 @@ public final class FixedThreadPool {
     public func submit(_ task: @escaping () -> Void) {
         if !self.stopping.load() {
             self.q.enqueue(task)
+        }
+    }
+}
+
+extension FixedThreadPool {
+    private final class Worker {
+        @usableFromInline
+        let _lock: _Mutex
+
+        init(name: String, _ closure: @escaping (_Mutex) -> Void) {
+            self._lock = _Mutex()
+            Thread.spawnAndRun(name: name) { _ in
+                closure(self._lock)
+            }
+        }
+
+        @inlinable
+        func lock() {
+            self._lock.lock()
+        }
+
+        @inlinable
+        func tryLock() -> Bool {
+            self._lock.tryLock()
+        }
+
+        @inlinable
+        func unlock() {
+            self._lock.unlock()
         }
     }
 }

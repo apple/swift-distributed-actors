@@ -49,7 +49,7 @@ struct ScoreGame {
         }
 
         while first.cluster.membershipSnapshot.members(atLeast: .up).count < nodes.count {
-            Thread.sleep(.seconds(1))
+            __sleep(.seconds(1))
         }
         print("~~~~~~~ systems joined each other ~~~~~~~")
 

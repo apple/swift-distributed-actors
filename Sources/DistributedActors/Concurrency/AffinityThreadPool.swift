@@ -34,8 +34,8 @@ internal final class AffinityThreadPool {
         self.workerCount = workerCount
         self.stopped = Atomic(value: false)
 
-        for _ in 0 ..< workerCount {
-            workers.append(try Worker(stopped: self.stopped))
+        for n in 0 ..< workerCount {
+            workers.append(try Worker(name: "ActorThreadPool-\(n)", stopped: self.stopped))
         }
 
         self.workers = workers
@@ -68,11 +68,11 @@ internal final class AffinityThreadPool {
     internal struct Worker {
         @usableFromInline
         internal let taskQueue: LinkedBlockingQueue<() -> Void>
-        private let thread: Thread
 
-        internal init(stopped: Atomic<Bool>) throws {
+        internal init(name: String, stopped: Atomic<Bool>) throws {
             let queue: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
-            let thread = try Thread {
+
+            Thread.spawnAndRun(name: name) { _ in
                 while !stopped.load(order: .acquire) {
                     // TODO: We are doing a timed poll here to guarantee that we
                     // will eventually check if stopped has been set, even if no
@@ -84,7 +84,6 @@ internal final class AffinityThreadPool {
                     }
                 }
             }
-            self.thread = thread
             self.taskQueue = queue
         }
     }

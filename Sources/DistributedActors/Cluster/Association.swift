@@ -167,7 +167,7 @@ final class Association: CustomStringConvertible {
 
 extension Association {
     /// Concurrency: safe to invoke from any thread.
-    func sendUserMessage(envelope: Payload, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
+    func sendUserMessage(envelope: MessageEnvelope, recipient: ActorAddress, promise: EventLoopPromise<Void>? = nil) {
         let transportEnvelope = TransportEnvelope(envelope: envelope, recipient: recipient)
         self._send(transportEnvelope, promise: promise)
     }

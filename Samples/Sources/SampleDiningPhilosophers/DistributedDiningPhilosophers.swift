@@ -36,7 +36,7 @@ struct DistributedDiningPhilosophers {
         systemA.cluster.join(node: systemC.settings.cluster.node)
         systemC.cluster.join(node: systemB.settings.cluster.node)
 
-        Thread.sleep(.seconds(2))
+        __sleep(.seconds(2))
 
         print("~~~~~~~ systems joined each other ~~~~~~~")
 

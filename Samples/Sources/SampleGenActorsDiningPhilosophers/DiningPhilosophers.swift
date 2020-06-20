@@ -32,6 +32,6 @@ struct DiningPhilosophers {
         _ = try system.spawn("Cory") { Philosopher(context: $0, leftFork: fork3, rightFork: fork4) }
         _ = try system.spawn("Erik") { Philosopher(context: $0, leftFork: fork4, rightFork: fork5) }
 
-        Thread.sleep(time)
+        __sleep(time)
     }
 }

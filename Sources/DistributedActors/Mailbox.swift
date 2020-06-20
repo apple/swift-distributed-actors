@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Baggage
 import DistributedActorsConcurrencyHelpers
 
 internal enum MailboxBitMasks {
@@ -54,7 +55,7 @@ internal enum MailboxBitMasks {
 internal final class Mailbox<Message: ActorMessage> {
     weak var shell: ActorShell<Message>?
     let _status: Atomic<UInt64> = Atomic(value: 0)
-    let userMessages: MPSCLinkedQueue<Payload>
+    let userMessages: MPSCLinkedQueue<MessageEnvelope>
     let systemMessages: MPSCLinkedQueue<_SystemMessage>
     let capacity: UInt32
     let maxRunLength: UInt32
@@ -107,7 +108,7 @@ internal final class Mailbox<Message: ActorMessage> {
     }
 
     @inlinable
-    func sendMessage(envelope: Payload, file: String, line: UInt) {
+    func sendMessage(envelope: MessageEnvelope, file: String, line: UInt) {
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
@@ -156,7 +157,7 @@ internal final class Mailbox<Message: ActorMessage> {
     }
 
     @inlinable
-    func enqueueUserMessage(_ envelope: Payload) -> EnqueueDirective {
+    func enqueueUserMessage(_ envelope: MessageEnvelope) -> EnqueueDirective {
         let oldStatus = self.incrementMessageCount()
         guard oldStatus.messageCount < self.capacity else {
             // If we passed the maximum capacity of the user queue, we can't enqueue more
@@ -640,22 +641,14 @@ internal enum WrappedMessage: NonTransportableActorMessage {
 }
 
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
-internal struct Payload {
+internal struct MessageEnvelope {
     let payload: WrappedMessage
-
-    // Note that we can pass around senders however we can not automatically get the type of them right.
-    // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
-    // TODO: explain this more
-    #if SACT_DEBUG
-    let senderAddress: ActorAddress
-    #endif
 
     // Implementation notes:
     // Envelopes are also used to enable tracing, both within an local actor system as well as across systems
     // the beauty here is that we basically have the "right place" to put the trace metadata - the envelope
     // and don't need to do any magic around it
-
-    // TODO: let trace: TraceMetadata
+    var baggage: BaggageContext
 }
 
 /// Can carry a closure for later execution on specific actor context.

@@ -271,6 +271,8 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stop`
     @inlinable
     func interpretMessage(message: Message) throws -> ActorRunResult {
+        ThreadLocalActorContext.current = self
+        defer { ThreadLocalActorContext.current = nil }
         self.instrumentation.actorReceivedStart(message: message, from: nil)
 
         do {
@@ -299,6 +301,9 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
     func interpretSystemMessage(message: _SystemMessage) throws -> ActorRunResult {
+        ThreadLocalActorContext.current = self
+        defer { ThreadLocalActorContext.current = nil }
+
         traceLog_Cell("Interpret system message: \(message)")
 
         switch message {

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Baggage
 import Logging
 
 /// The `ActorContext` exposes an actors details and capabilities, such as names and timers.
@@ -19,34 +20,7 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message: ActorMessage>: ActorRefFactory {
-    /// Returns `ActorSystem` which this context belongs to.
-    public var system: ActorSystem {
-        undefined()
-    }
-
-    /// Uniquely identifies this actor in the cluster.
-    public var address: ActorAddress {
-        undefined()
-    }
-
-    /// Local path under which this actor resides within the actor tree.
-    public var path: ActorPath {
-        undefined()
-    }
-
-    /// Name of this actor.
-    ///
-    /// The `name` is the last segment of the Actor's `path`.
-    ///
-    /// Special characters like `$` are reserved for internal use of the `ActorSystem`.
-    // Implementation note:
-    // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
-    // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
-    public var name: String {
-        undefined()
-    }
-
+public class ActorContext<Message: ActorMessage>: AnyActorContext, ActorRefFactory {
     /// The actor reference to _this_ actor.
     ///
     /// It remains valid across "restarts", however does not remain valid for "stop actor and start another new one under the same path",
@@ -56,21 +30,6 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
     // to get developers into the right mindset.
     public var myself: ActorRef<Message> {
-        undefined()
-    }
-
-    /// Provides context metadata aware `Logger`
-    public var log: Logger {
-        get {
-            undefined()
-        }
-        set { // has to become settable
-            fatalError()
-        }
-    }
-
-    /// `Props` which were used when spawning this actor.
-    public var props: Props {
         undefined()
     }
 
@@ -200,20 +159,6 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
     ) throws -> ActorRef<M>
         where M: ActorMessage {
         return undefined()
-    }
-
-    /// Container of spawned child actors.
-    ///
-    /// Allows obtaining references to previously spawned actors by their name.
-    /// For less dynamic scenarios it is recommended to keep actors refs in your own collection types or as values in your behavior,
-    /// since looking up actors by name has an inherent seek cost associated with it.
-    public var children: Children {
-        get {
-            undefined()
-        }
-        set {
-            fatalError()
-        }
     }
 
     /// Stop a child actor identified by the passed in actor ref.
@@ -438,6 +383,80 @@ public class ActorContext<Message: ActorMessage>: ActorRefFactory {
         undefined()
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: AnyActorContext
+
+public class AnyActorContext {
+    /// Returns `ActorSystem` which this context belongs to.
+    public var system: ActorSystem {
+        undefined()
+    }
+
+    /// Uniquely identifies this actor in the cluster.
+    public var address: ActorAddress {
+        undefined()
+    }
+
+    /// Local path under which this actor resides within the actor tree.
+    public var path: ActorPath {
+        undefined()
+    }
+
+    /// Name of this actor.
+    ///
+    /// The `name` is the last segment of the Actor's `path`.
+    ///
+    /// Special characters like `$` are reserved for internal use of the `ActorSystem`.
+    // Implementation note:
+    // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
+    // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
+    public var name: String {
+        undefined()
+    }
+
+    /// Provides context metadata aware `Logger`
+    public var log: Logger {
+        get {
+            undefined()
+        }
+        set {
+            undefined()
+        }
+    }
+
+    /// Actor specific baggage
+    public var baggage: BaggageContext {
+        get {
+            undefined()
+        }
+        set {
+            undefined()
+        }
+    }
+
+    /// `Props` which were used when spawning this actor.
+    public var props: Props {
+        undefined()
+    }
+
+    /// Container of spawned child actors.
+    ///
+    /// Allows obtaining references to previously spawned actors by their name.
+    /// For less dynamic scenarios it is recommended to keep actors refs in your own collection types or as values in your behavior,
+    /// since looking up actors by name has an inherent seek cost associated with it.
+    public var children: Children {
+        get {
+            undefined()
+        }
+        set {
+            undefined()
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: SubReceive
 
 // Used to identify a `subReceive`
 public struct SubReceiveId<SubMessage>: Hashable, Equatable {

@@ -198,7 +198,10 @@ internal class ClusterShell {
         // and directly hit the channel. It is also guaranteed that the message is flushed() before we close it in the next line.
         let shootTheOtherNodePromise: EventLoopPromise<Void> = system._eventLoopGroup.next().makePromise(of: Void.self)
 
-        let ripMessage = Payload(payload: .message(ClusterShell.Message.inbound(.restInPeace(remoteNode, from: system.cluster.node))))
+        let ripMessage = MessageEnvelope(
+            payload: .message(ClusterShell.Message.inbound(.restInPeace(remoteNode, from: system.cluster.node))),
+            baggage: .currentOrEmpty
+        )
         targetNodeAssociation.sendUserMessage(
             envelope: ripMessage,
             recipient: ._clusterShell(on: remoteNode),

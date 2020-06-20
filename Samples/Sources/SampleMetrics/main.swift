@@ -99,10 +99,10 @@ let m = try system.spawn("metricsPrinter", MetricPrinter.behavior)
 
 for i in 1 ... 10 {
     _ = try system.spawn("life-\(i)", DieAfterSomeTime.behavior)
-    Thread.sleep(.seconds(1))
+    __sleep(.seconds(1))
 }
 
-Thread.sleep(.seconds(100))
+__sleep(.seconds(100))
 
 system.shutdown().wait()
 print("~~~~~~~~~~~~~~~ SHUTTING DOWN ~~~~~~~~~~~~~~~")
