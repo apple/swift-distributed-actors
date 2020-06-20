@@ -29,41 +29,35 @@ final class VersionVectorSerializationTests: ActorSystemXCTestCase {
     // MARK: VersionVector
 
     func test_serializationOf_VersionVector() throws {
-        try shouldNotThrow {
-            let vv = VersionVector([(.actorAddress(self.addressA), 2), (.actorAddress(self.addressB), 5)])
+        let vv = VersionVector([(.actorAddress(self.addressA), 2), (.actorAddress(self.addressB), 5)])
 
-            let serialized = try system.serialization.serialize(vv)
-            let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
+        let serialized = try system.serialization.serialize(vv)
+        let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
 
-            deserialized.state.count.shouldEqual(2) // replicas A and B
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A: 2")
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/B: 5")
-        }
+        deserialized.state.count.shouldEqual(2) // replicas A and B
+        "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A: 2")
+        "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/B: 5")
     }
 
     func test_serializationOf_VersionVector_empty() throws {
-        try shouldNotThrow {
-            let vv = VersionVector()
+        let vv = VersionVector()
 
-            let serialized = try system.serialization.serialize(vv)
-            let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
+        let serialized = try system.serialization.serialize(vv)
+        let deserialized = try system.serialization.deserialize(as: VersionVector.self, from: serialized)
 
-            deserialized.isEmpty.shouldBeTrue()
-        }
+        deserialized.isEmpty.shouldBeTrue()
     }
 
     // ==== -----------------------------------------------------------------------------------------------------------
     // MARK: VersionDot
 
     func test_serializationOf_VersionDot() throws {
-        try shouldNotThrow {
-            let dot = VersionDot(.actorAddress(self.addressA), 2)
+        let dot = VersionDot(.actorAddress(self.addressA), 2)
 
-            let serialized = try system.serialization.serialize(dot)
-            let deserialized = try system.serialization.deserialize(as: VersionDot.self, from: serialized)
+        let serialized = try system.serialization.serialize(dot)
+        let deserialized = try system.serialization.deserialize(as: VersionDot.self, from: serialized)
 
-            "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A")
-            deserialized.version.shouldEqual(2)
-        }
+        "\(deserialized)".shouldContain("actor:sact://VersionVectorSerializationTests@127.0.0.1:9001/user/A")
+        deserialized.version.shouldEqual(2)
     }
 }

@@ -261,12 +261,10 @@ final class SystemMessagesRedeliveryTests: ActorSystemXCTestCase {
         }
 
         func validateRoundTrip<T: Equatable>(_ value: T) throws {
-            try shouldNotThrow {
-                let serialized = try system.serialization.serialize(value)
-                let back = try system.serialization.deserialize(as: T.self, from: serialized)
+            let serialized = try system.serialization.serialize(value)
+            let back = try system.serialization.deserialize(as: T.self, from: serialized)
 
-                back.shouldEqual(value)
-            }
+            back.shouldEqual(value)
         }
 
         try validateRoundTrip(_SystemMessage.ACK(sequenceNr: 1337))

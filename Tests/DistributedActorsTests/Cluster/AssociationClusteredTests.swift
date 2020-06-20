@@ -64,100 +64,92 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_handshake_shouldNotifyOnSuccess() throws {
-        try shouldNotThrow {
-            let (first, second) = self.setUpPair()
+        let (first, second) = self.setUpPair()
 
-            first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
 
-            try assertAssociated(first, withExactly: second.cluster.node)
-            try assertAssociated(second, withExactly: first.cluster.node)
-        }
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
     }
 
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
-        try shouldNotThrow {
-            let (first, second) = self.setUpPair()
+        let (first, second) = self.setUpPair()
 
-            first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
 
-            try assertAssociated(first, withExactly: second.cluster.node)
-            try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
 
-            first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
 
-            try assertAssociated(first, withExactly: second.cluster.node)
-            try assertAssociated(second, withExactly: first.cluster.node)
-        }
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Joining into existing cluster
 
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
-        try shouldNotThrow {
-            let (first, second) = self.setUpPair()
+        let (first, second) = self.setUpPair()
 
-            let secondName = second.cluster.node.node.systemName
-            let secondPort = second.cluster.node.port
+        let secondName = second.cluster.node.node.systemName
+        let secondPort = second.cluster.node.port
 
-            let firstEventsProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
-            let secondEventsProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
-            first.cluster.events.subscribe(firstEventsProbe.ref)
-            second.cluster.events.subscribe(secondEventsProbe.ref)
+        let firstEventsProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+        let secondEventsProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
+        first.cluster.events.subscribe(firstEventsProbe.ref)
+        second.cluster.events.subscribe(secondEventsProbe.ref)
 
-            first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.node.node)
 
-            try assertAssociated(first, withExactly: second.cluster.node)
-            try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
 
-            let oldSecond = second
-            let shutdown = oldSecond.shutdown() // kill second node
-            try shutdown.wait(atMost: .seconds(3))
+        let oldSecond = second
+        let shutdown = oldSecond.shutdown() // kill second node
+        try shutdown.wait(atMost: .seconds(3))
 
-            let secondReplacement = self.setUpNode(secondName + "-REPLACEMENT") { settings in
-                settings.cluster.bindPort = secondPort
-            }
-            let secondReplacementEventsProbe = self.testKit(secondReplacement).spawnTestProbe(expecting: Cluster.Event.self)
-            secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
-            second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
-
-            // the new replacement node is now going to initiate a handshake with 'first' which knew about the previous
-            // instance (oldSecond) on the same node; It should accept this new handshake, and ban the previous node.
-            secondReplacement.cluster.join(node: first.cluster.node.node)
-
-            // verify we are associated ONLY with the appropriate nodes now;
-            try assertAssociated(first, withExactly: [secondReplacement.cluster.node])
-            try assertAssociated(secondReplacement, withExactly: [first.cluster.node])
+        let secondReplacement = self.setUpNode(secondName + "-REPLACEMENT") { settings in
+            settings.cluster.bindPort = secondPort
         }
+        let secondReplacementEventsProbe = self.testKit(secondReplacement).spawnTestProbe(expecting: Cluster.Event.self)
+        secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
+        second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
+
+        // the new replacement node is now going to initiate a handshake with 'first' which knew about the previous
+        // instance (oldSecond) on the same node; It should accept this new handshake, and ban the previous node.
+        secondReplacement.cluster.join(node: first.cluster.node.node)
+
+        // verify we are associated ONLY with the appropriate nodes now;
+        try assertAssociated(first, withExactly: [secondReplacement.cluster.node])
+        try assertAssociated(secondReplacement, withExactly: [first.cluster.node])
     }
 
     func test_association_shouldAllowSendingToSecondReference() throws {
-        try shouldNotThrow {
-            let (first, second) = self.setUpPair()
+        let (first, second) = self.setUpPair()
 
-            let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: String.self)
-            let refOnSecondSystem: ActorRef<String> = try second.spawn(
-                "secondAcquaintance",
-                .receiveMessage { message in
-                    probeOnSecond.tell("forwarded:\(message)")
-                    return .same
-                }
-            )
+        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: String.self)
+        let refOnSecondSystem: ActorRef<String> = try second.spawn(
+            "secondAcquaintance",
+            .receiveMessage { message in
+                probeOnSecond.tell("forwarded:\(message)")
+                return .same
+            }
+        )
 
-            first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.node.node)
 
-            try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
+        try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-            // first we manually construct the "right second path"; Don't do this in normal production code
-            let uniqueSecondAddress = ActorAddress(node: second.cluster.node, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.address.incarnation)
-            // to then obtain a second ref ON the `system`, meaning that the node within uniqueSecondAddress is a second one
-            let resolvedRef = self.resolveRef(first, type: String.self, address: uniqueSecondAddress, on: second)
-            // the resolved ref is a first resource on the `system` and points via the right association to the second actor
-            // inside system `second`. Sending messages to a ref constructed like this will make the messages go over remoting.
-            resolvedRef.tell("HELLO")
+        // first we manually construct the "right second path"; Don't do this in normal production code
+        let uniqueSecondAddress = ActorAddress(node: second.cluster.node, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.address.incarnation)
+        // to then obtain a second ref ON the `system`, meaning that the node within uniqueSecondAddress is a second one
+        let resolvedRef = self.resolveRef(first, type: String.self, address: uniqueSecondAddress, on: second)
+        // the resolved ref is a first resource on the `system` and points via the right association to the second actor
+        // inside system `second`. Sending messages to a ref constructed like this will make the messages go over remoting.
+        resolvedRef.tell("HELLO")
 
-            try probeOnSecond.expectMessage("forwarded:HELLO")
-        }
+        try probeOnSecond.expectMessage("forwarded:HELLO")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -354,51 +346,49 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     // MARK: Change membership on Down detected
 
     func test_down_self_shouldChangeMembershipSelfToBeDown() throws {
-        try shouldNotThrow {
-            let (first, second) = setUpPair { settings in
-                settings.cluster.onDownAction = .none // as otherwise we can't inspect if we really changed the status to .down, as we might shutdown too quickly :-)
+        let (first, second) = setUpPair { settings in
+            settings.cluster.onDownAction = .none // as otherwise we can't inspect if we really changed the status to .down, as we might shutdown too quickly :-)
+        }
+
+        second.cluster.join(node: first.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+
+        // down myself
+        first.cluster.down(node: first.cluster.node.node)
+
+        let firstProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
+        let secondProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Membership.self)
+
+        // we we down first on first, it should become down there:
+        try self.testKit(first).eventually(within: .seconds(3)) {
+            first.cluster.ref.tell(.query(.currentMembership(firstProbe.ref)))
+            let firstMembership = try firstProbe.expectMessage()
+
+            guard let selfMember = firstMembership.uniqueMember(first.cluster.node) else {
+                throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.node)", line: #line - 1)
             }
 
-            second.cluster.join(node: first.cluster.node.node)
-            try assertAssociated(first, withExactly: second.cluster.node)
+            try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
+            guard selfMember.status == .down else {
+                throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
+            }
+        }
 
-            // down myself
-            first.cluster.down(node: first.cluster.node.node)
+        // and the second node should also notice
+        try self.testKit(second).eventually(within: .seconds(3)) {
+            second.cluster.ref.tell(.query(.currentMembership(secondProbe.ref)))
+            let secondMembership = try secondProbe.expectMessage()
 
-            let firstProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
-            let secondProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Membership.self)
+            // and the first node should also propagate the Down information to the second node
+            // although this may be a best effort since the first can just shut down if it wanted to,
+            // this scenario assumes a graceful leave though:
 
-            // we we down first on first, it should become down there:
-            try self.testKit(first).eventually(within: .seconds(3)) {
-                first.cluster.ref.tell(.query(.currentMembership(firstProbe.ref)))
-                let firstMembership = try firstProbe.expectMessage()
-
-                guard let selfMember = firstMembership.uniqueMember(first.cluster.node) else {
-                    throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.node)", line: #line - 1)
-                }
-
-                try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
-                guard selfMember.status == .down else {
-                    throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
-                }
+            guard let firstMemberObservedOnSecond = secondMembership.uniqueMember(first.cluster.node) else {
+                throw self.testKit(second).error("\(second) does not know about the \(first.cluster.node) at all...!", line: #line - 1)
             }
 
-            // and the second node should also notice
-            try self.testKit(second).eventually(within: .seconds(3)) {
-                second.cluster.ref.tell(.query(.currentMembership(secondProbe.ref)))
-                let secondMembership = try secondProbe.expectMessage()
-
-                // and the first node should also propagate the Down information to the second node
-                // although this may be a best effort since the first can just shut down if it wanted to,
-                // this scenario assumes a graceful leave though:
-
-                guard let firstMemberObservedOnSecond = secondMembership.uniqueMember(first.cluster.node) else {
-                    throw self.testKit(second).error("\(second) does not know about the \(first.cluster.node) at all...!", line: #line - 1)
-                }
-
-                guard firstMemberObservedOnSecond.status == .down else {
-                    throw self.testKit(second).error("Wanted to see \(first.cluster.node) as DOWN on \(second), but was still: \(firstMemberObservedOnSecond)", line: #line - 1)
-                }
+            guard firstMemberObservedOnSecond.status == .down else {
+                throw self.testKit(second).error("Wanted to see \(first.cluster.node) as DOWN on \(second), but was still: \(firstMemberObservedOnSecond)", line: #line - 1)
             }
         }
     }
