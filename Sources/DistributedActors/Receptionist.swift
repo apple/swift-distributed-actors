@@ -199,7 +199,7 @@ public enum Receptionist {
     /// Storage container for a receptionist's registrations and subscriptions
     internal final class Storage {
         internal var _registrations: [AnyRegistrationKey: Set<AddressableActorRef>] = [:]
-        private var _subscriptions: [AnyRegistrationKey: Set<AnySubscribe>] = [:]
+        internal var _subscriptions: [AnyRegistrationKey: Set<AnySubscribe>] = [:]
 
         /// Per (receptionist) node mapping of which keys are presently known to this receptionist on the given node.
         /// This is used to perform quicker cleanups upon a node/receptionist crashing, and thus all existing references
@@ -261,15 +261,15 @@ public enum Receptionist {
 
         // FIXME: improve this to always pass around AddressableActorRef rather than just address (in receptionist Subscribe message), remove this trick then
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
-        func removeFromKeyMappings(address: ActorAddress) -> Set<AnyRegistrationKey> {
+        func removeFromKeyMappings(address: ActorAddress) -> RefMappingRemovalResult {
             let equalityHackRef = ActorRef<Never>(.deadLetters(.init(Logger(label: ""), address: address, system: nil)))
             return self.removeFromKeyMappings(equalityHackRef.asAddressable())
         }
 
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
-        func removeFromKeyMappings(_ ref: AddressableActorRef) -> Set<AnyRegistrationKey> {
+        func removeFromKeyMappings(_ ref: AddressableActorRef) -> RefMappingRemovalResult {
             guard let associatedKeys = self._addressToKeys.removeValue(forKey: ref.address) else {
-                return []
+                return RefMappingRemovalResult(registeredUnderKeys: [])
             }
 
             var registeredKeys: Set<AnyRegistrationKey> = [] // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
@@ -280,30 +280,67 @@ public enum Receptionist {
                 self._subscriptions[key]?.remove(.init(address: ref.address))
             }
 
-            return registeredKeys
+            return RefMappingRemovalResult(
+                registeredUnderKeys: registeredKeys
+            )
         }
 
-        func pruneNode(_ node: UniqueNode) {
+        struct RefMappingRemovalResult {
+            /// The (now removed) ref was registered under the following keys
+            let registeredUnderKeys: Set<AnyRegistrationKey>
+            /// The following actors have been subscribed to this key
+        }
+
+        /// Prunes any registrations and subscriptions of the presence of any actors on the passed in `node`.
+        ///
+        /// - Returns: A result containing all keys which were changed by this operation (which previously contained nodes on this node),
+        ///   as well as which local subscribers we need to notify about the change, even if _now_ they do not subscribe to anything anymore
+        ///   (as they only were interested on things on the now-removed node). This allows us to eagerly and "in batch" give them a listing update
+        ///   *once* with all the remote actors removed, rather than trickling in the changes to the Listing one by one (as it would be the case
+        ///   if we waited for Terminated signals to trickle in and handle these removals one by one then).
+        func pruneNode(_ node: UniqueNode) -> PrunedNodeDirective {
+            var prune = PrunedNodeDirective()
+
             guard let keys = self._registeredKeysByNode[node] else {
                 // no keys were related to this node, we should have nothing to clean-up here
-                return
+                return prune
             }
 
             // for every key that was related to the now terminated node
             for key in keys {
                 // 1) we remove any registrations that it hosted
-                let regs: Set<AddressableActorRef> = self._registrations.removeValue(forKey: key) ?? []
-                let prunedRegs = regs.filter { $0.address.node != node }
-                if !prunedRegs.isEmpty {
-                    self._registrations[key] = prunedRegs
+                let registrations: Set<AddressableActorRef> = self._registrations.removeValue(forKey: key) ?? []
+                let remainingRegistrations = registrations.filter { $0.address.node != node }
+                if !remainingRegistrations.isEmpty {
+                    self._registrations[key] = remainingRegistrations
                 }
 
                 // 2) and remove any of our subscriptions
                 let subs: Set<AnySubscribe> = self._subscriptions.removeValue(forKey: key) ?? []
-                let prunedSubs = subs.filter { $0.address.node == node }
+                let prunedSubs = subs.filter { $0.address.node != node }
+                if remainingRegistrations.count != registrations.count {
+                    // only if the set of registered actors for this key was actually affected by this prune
+                    // we want to mark it as changed and ensure we contact all of such keys subscribers about the change.
+                    // In other words: we want to avoid pushing not-changed Listings.
+                    prune.changed[key] = prunedSubs
+                }
                 if !prunedSubs.isEmpty {
                     self._subscriptions[key] = prunedSubs
                 }
+            }
+
+            return prune
+        }
+
+        struct PrunedNodeDirective {
+            fileprivate var changed: [AnyRegistrationKey: Set<AnySubscribe>] = [:]
+
+            var keys: Dictionary<AnyRegistrationKey, Set<AnySubscribe>>.Keys {
+                self.changed.keys
+            }
+
+            func peersToNotify(_ key: AnyRegistrationKey) -> Set<AnySubscribe> {
+                self.changed[key] ?? []
             }
         }
 
@@ -494,7 +531,7 @@ internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable, CustomSt
     }
 
     var description: String {
-        "AnyRegistrationKey(\(self.id))"
+        "AnyRegistrationKey(\(self.id), typeHint: \(self.typeHint))"
     }
 
     func hash(into hasher: inout Hasher) {
