@@ -152,6 +152,19 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try probeOnSecond.expectMessage("forwarded:HELLO")
     }
 
+    func test_ignore_attemptToSelfJoinANode() throws {
+        let alone = self.setUpNode("alone")
+
+        alone.cluster.join(node: alone.cluster.node.node) // "self join", should simply be ignored
+
+        let testKit = self.testKit(alone)
+
+        sleep(1)
+        try testKit.eventually(within: .seconds(3)) {
+            alone.cluster.membershipSnapshot.count.shouldEqual(1)
+        }
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Concurrently initiated handshakes to same node should both get completed
 
