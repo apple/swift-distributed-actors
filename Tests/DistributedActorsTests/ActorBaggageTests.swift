@@ -12,10 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
-import struct DistributedActors.TimeAmount
+@testable import DistributedActors
 import DistributedActorsTestKit
-import Foundation
 import XCTest
 
 final class ActorBaggageTests: ActorSystemTestBase {
@@ -33,5 +31,23 @@ final class ActorBaggageTests: ActorSystemTestBase {
 
         let baggageString: String = try p.expectMessage()
         baggageString.shouldStartWith(prefix: "baggage:actor/sender:/user/caplin-the-sender")
+    }
+
+    func test_assertInActor() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let first: ActorRef<String> = try self.system.spawn("first", .receive { context, _ in
+            context.assertInActor() // good
+            p.tell("ok!")
+
+            // The following would cause a precondition failure
+            // Thread.spawnAndRun { _ in
+            //    context.assertInActor() // boom!
+            // }
+            return .stop
+        })
+        first.tell("Hello")
+
+        _ = try p.expectMessage()
     }
 }

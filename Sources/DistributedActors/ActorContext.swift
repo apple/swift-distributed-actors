@@ -507,3 +507,34 @@ internal struct AsynchronousCallback<T> {
         self._send { try self._callback(arg) }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Assert in Actor
+
+extension ActorContext {
+    public func assertInActor(file: StaticString = #file, line: UInt = #line) {
+        #if DEBUG
+        if let baggage = BaggageContext.current,
+            let currentActorContext = baggage.actorContext {
+            precondition(
+                currentActorContext.address == self.address,
+                """
+                Expected to be executing in [\(self.address)] but was executed on [\(currentActorContext.address)] actor's context! \
+                This could lead to race conditions and undefined behavior!
+                """,
+                file: file,
+                line: line
+            )
+        } else {
+            preconditionFailure(
+                """
+                Expected to be executing in [\(self.address)] but not executing in actor context! \
+                This could lead to race conditions and undefined behavior!
+                """,
+                file: file,
+                line: line
+            )
+        }
+        #endif
+    }
+}
