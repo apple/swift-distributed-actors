@@ -334,10 +334,6 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5), verbose: true)
     }
 
-    override var alwaysPrintCaptureLogs: Bool {
-        true
-    }
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Multi node / streaming
 
