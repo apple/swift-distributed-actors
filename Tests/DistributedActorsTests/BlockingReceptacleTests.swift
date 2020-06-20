@@ -28,7 +28,7 @@ class BlockingReceptacleTests: XCTestCase {
     func test_blockingReceptacle_twoThreads() throws {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()
 
-        _ = try Thread {
+        Thread.spawnAndRun { _ in
             receptacle.offerOnce("hello")
         }
 
@@ -39,17 +39,17 @@ class BlockingReceptacleTests: XCTestCase {
     func test_blockingReceptacle_manyWaiters() throws {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()
 
-        _ = try Thread {
+        Thread.spawnAndRun { _ in
             let res = receptacle.wait(atMost: .milliseconds(200))
             res.shouldEqual("hello")
         }
 
-        _ = try Thread {
+        Thread.spawnAndRun { _ in
             let res = receptacle.wait(atMost: .milliseconds(200))
             res.shouldEqual("hello")
         }
 
-        _ = try Thread {
+        Thread.spawnAndRun { _ in
             receptacle.offerOnce("hello")
         }
 

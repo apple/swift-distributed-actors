@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Baggage
 import CDistributedActorsMailbox
 import Logging
 import Metrics
@@ -250,6 +251,17 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         }
     }
 
+    // TODO: think how this should be done
+    private var _baggage: BaggageContext = .init()
+    public override var baggage: BaggageContext {
+        get {
+            self._baggage
+        }
+        set {
+            self._baggage = newValue
+        }
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Interpreting messages
 
@@ -264,6 +276,15 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         }
     }
 
+    @inlinable // FIXME: how to handle everywhere
+    func interpretMessage(message: Message, baggage incomingBaggage: BaggageContext) throws -> ActorRunResult {
+        let old = self.baggage
+        defer { self.baggage = old } // TODO: restore
+
+        self.baggage = incomingBaggage // FIXME: this should be instrument.merge()
+        return try self.interpretMessage(message: message)
+    }
+
     /// Interprets the incoming message using the current `Behavior` and swaps it with the
     /// next behavior (as returned by user code, which the message was applied to).
     ///
@@ -271,8 +292,6 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stop`
     @inlinable
     func interpretMessage(message: Message) throws -> ActorRunResult {
-        ThreadLocalActorContext.current = self
-        defer { ThreadLocalActorContext.current = nil }
         self.instrumentation.actorReceivedStart(message: message, from: nil)
 
         do {

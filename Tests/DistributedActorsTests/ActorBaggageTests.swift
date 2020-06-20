@@ -21,18 +21,17 @@ import XCTest
 final class ActorBaggageTests: ActorSystemTestBase {
     func test_baggage_carrySender() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let first: ActorRef<String> = try self.system.spawn("first", .receive { message, context in
-            p.tell("message:\(message)")
-            p.tell("baggage: \(context.baggage)")
+        let first: ActorRef<String> = try self.system.spawn("first", .receive { context, _ in
+            p.tell("baggage:actor/sender:\(context.baggage.actorSender!)")
             return .stop
         })
 
-        let sender: ActorRef<String> = try self.system.spawn("caplin-the-sender", .setup {
+        let sender: ActorRef<String> = try self.system.spawn("caplin-the-sender", .setup { _ in
             first.tell("Hello!")
             return .stop
         })
 
-        try p.expectMessage("message:Hello!")
-        try p.expectMessage("BAG")
+        let baggageString: String = try p.expectMessage()
+        baggageString.shouldStartWith(prefix: "baggage:actor/sender:/user/caplin-the-sender")
     }
 }

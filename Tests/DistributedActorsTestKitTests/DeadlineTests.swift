@@ -56,7 +56,7 @@ class DeadlineTests: XCTestCase {
 
     func test_deadline_subtracting() {
         let older = Deadline.now()
-        __sleep(until: Date().addingTimeInterval(0.02))
+        __sleep(.milliseconds(1))
         let newer = Deadline.now()
 
         XCTAssertLessThan(older - newer, .nanoseconds(0))

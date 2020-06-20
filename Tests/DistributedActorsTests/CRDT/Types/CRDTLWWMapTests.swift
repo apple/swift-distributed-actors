@@ -204,7 +204,7 @@ final class CRDTLWWMapTests: XCTestCase {
         m2.set(forKey: "bar", value: 3) // (B,2)
 
         // Ensure the following changes are "newer"
-        __sleep(until: Date().addingTimeInterval(0.005))
+        __sleep(.milliseconds(50))
 
         m1.set(forKey: "bar", value: 6) // (A,2)
         m2.set(forKey: "foo", value: 1) // (B,3) replaces (B,1)
@@ -241,7 +241,7 @@ final class CRDTLWWMapTests: XCTestCase {
         m1.set(forKey: "bar", value: 6) // (A,2)
 
         // Ensure the following changes are "newer"
-        __sleep(until: Date().addingTimeInterval(0.005))
+        __sleep(.milliseconds(50))
 
         var m2 = CRDT.LWWMap<String, Int>(replicaID: self.replicaB, defaultValue: 0)
         // ORSet `keys`: [(B,1): "bar", (B,2): "baz"]

@@ -425,17 +425,18 @@ internal final class Mailbox<Message: ActorMessage> {
         // run user messages -------------------------------------------------------------------------------------------
 
         if runResult == .continueRunning {
-            while processedActivations < runLength, runResult == .continueRunning, let message = self.userMessages.dequeue() {
+            while processedActivations < runLength, runResult == .continueRunning, let envelope = self.userMessages.dequeue() {
                 do {
                     processedActivations += MailboxBitMasks.singleUserMessage
-                    switch message.payload {
+                    switch envelope.payload {
                     case .message(let _message):
-                        traceLog_Mailbox(self.address.path, "INVOKE MSG: \(message)")
+                        traceLog_Mailbox(self.address.path, "INVOKE MSG: \(envelope)")
                         guard let message = _message as? Message else {
                             fatalError("Received message [\(_message)]:\(type(of: _message)), expected \(Message.self)")
                         }
 
-                        runResult = try shell.interpretMessage(message: message)
+                        // FIXME: pass envelope into interpret?
+                        runResult = try shell.interpretMessage(message: message, baggage: envelope.baggage)
                     case .closure(let carry):
                         traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)")
                         runResult = try shell.interpretClosure(carry)
@@ -641,6 +642,7 @@ internal enum WrappedMessage: NonTransportableActorMessage {
 }
 
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
+@usableFromInline
 internal struct MessageEnvelope {
     let payload: WrappedMessage
 

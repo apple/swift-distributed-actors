@@ -37,7 +37,7 @@ class MPSCLinkedQueueTests: XCTestCase {
         let q = MPSCLinkedQueue<Int>()
 
         for _ in 1 ... writerCount {
-            _ = try Thread {
+            Thread.spawnAndRun { _ in
                 for i in 0 ..< messageCountPerWriter {
                     q.enqueue(i)
                 }

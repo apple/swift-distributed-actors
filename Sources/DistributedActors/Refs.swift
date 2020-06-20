@@ -343,7 +343,15 @@ public final class ActorCell<Message: ActorMessage> {
     @usableFromInline
     func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
         traceLog_Mailbox(self.address.path, "sendMessage: [\(message)], to: \(self)")
-        let envelope: MessageEnvelope = MessageEnvelope(payload: .message(message), baggage: BaggageContext.currentOrEmpty)
+        // FIXME: carry just baggage? invoke instrument here? BaggageContext.currentOrEmpty
+        // FIXME: this is a branch here
+        var baggage = BaggageContext.currentOrEmpty
+        baggage.actorSender = ThreadLocalActorContext.current?.address
+
+        let envelope: MessageEnvelope = MessageEnvelope(
+            payload: .message(message),
+            baggage: baggage
+        )
         self.mailbox.sendMessage(envelope: envelope, file: file, line: line)
     }
 

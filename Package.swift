@@ -27,6 +27,8 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
+            .product(name: "Baggage", package: "gsoc-swift-tracing"),
+            .product(name: "Instrumentation", package: "gsoc-swift-tracing"),
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
@@ -254,7 +256,7 @@ targets.append(
 #endif
 
 var dependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
+    .package(url: "https://github.com/apple/swift-nio.git", from: "2.17.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
 
