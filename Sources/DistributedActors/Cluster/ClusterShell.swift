@@ -423,7 +423,7 @@ extension ClusterShell {
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
                 // TODO: Membership.Gossip?
-                let gossipControl: GossipControl<Cluster.Gossip> = try Gossiper.start(
+                let gossipControl: GossipControl<Cluster.Gossip, Cluster.Gossip> = try Gossiper.start(
                     context,
                     name: "\(ActorPath._clusterGossip.name)",
                     props: ._wellKnown,
@@ -431,7 +431,7 @@ extension ClusterShell {
                         gossipInterval: clusterSettings.membershipGossipInterval,
                         gossipIntervalRandomFactor: clusterSettings.membershipGossipIntervalRandomFactor,
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
-                            let resolveContext = ResolveContext<GossipShell<Cluster.Gossip>.Message>(address: ._clusterGossip(on: member.node), system: context.system)
+                            let resolveContext = ResolveContext<GossipShell<Cluster.Gossip, Cluster.Gossip>.Message>(address: ._clusterGossip(on: member.node), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable()
                     })
                     ),
@@ -636,7 +636,7 @@ extension ClusterShell {
         // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
 
         // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
-        let gossipPeer: GossipShell<Cluster.Gossip>.Ref = context.system._resolve(
+        let gossipPeer: GossipShell<Cluster.Gossip, Cluster.Gossip>.Ref = context.system._resolve(
             context: .init(address: ._clusterGossip(on: change.member.node), system: context.system)
         )
         // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...

@@ -69,8 +69,8 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
 
         self.systems = [systemA, systemB, systemC]
         self.nodes = systems.map { $0.cluster.node }
-        self.allPeers = try! systems.map { system -> ActorRef<GossipShell<Cluster.Gossip>.Message> in
-            let ref: ActorRef<GossipShell<Cluster.Gossip>.Message> = try system.spawn("peer", .receiveMessage { _ in .same })
+        self.allPeers = try! systems.map { system -> ActorRef<GossipShell<Cluster.Gossip, Cluster.Gossip>.Message> in
+            let ref: ActorRef<GossipShell<Cluster.Gossip, Cluster.Gossip>.Message> = try system.spawn("peer", .receiveMessage { _ in .same })
             return self.systemA._resolveKnownRemote(ref, onRemoteSystem: system)
         }.map { $0.asAddressable() }
 
@@ -90,7 +90,7 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
 
     private func makeLogic(_ system: ActorSystem, _ probe: ActorTestProbe<Cluster.Gossip>) -> MembershipGossipLogic {
         MembershipGossipLogic(
-            GossipLogicContext<Cluster.Gossip>(
+            GossipLogicContext<Cluster.Gossip, Cluster.Gossip>(
                 ownerContext: self.testKit(system).makeFakeContext(),
                 gossipIdentifier: StringGossipIdentifier("membership")
             ),
@@ -138,7 +138,8 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
     func test_avgRounds_untilConvergence() throws {
         let simulations = 10
         var roundCounts: [Int] = []
-        for _ in 1...simulations {
+        var messageCounts: [Int] = Array(repeating: 0, count: simulations)
+        for simulationNr in 1...simulations {
             self.initializeLogics()
 
             var gossipA = Cluster.Gossip.parse(
@@ -195,6 +196,8 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
                     pinfo("[\(logic.nodeName)] selected peers: \(selectedPeers.map({$0.address.node!.node.systemName}))")
 
                     for targetPeer in selectedPeers {
+                        messageCounts[simulationNr - 1] += 1
+
                         let targetGossip = logic.makePayload(target: targetPeer)
                         if let gossip = targetGossip {
                             // pinfo("    \(logic.nodeName) -> \(targetPeer.address.node!.node.systemName): \(pretty: gossip)")
@@ -228,7 +231,9 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
             pnote("All peers converged after: [\(rounds) rounds]")
             roundCounts += [rounds]
         }
-        pnote("Finished [\(simulations)] simulations, rounds: \(roundCounts) (\(Double(roundCounts.reduce(0, +)) / Double(simulations)) avg)")
+        pnote("Finished [\(simulations)] simulationsRounds: \(roundCounts)")
+        pnote("    Rounds: \(roundCounts) (\(Double(roundCounts.reduce(0, +)) / Double(simulations)) avg)")
+        pnote("  Messages: \(messageCounts) (\(Double(messageCounts.reduce(0, +)) / Double(simulations)) avg)")
     }
 
     func test_logic_peersChanged() throws {

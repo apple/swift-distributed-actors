@@ -116,7 +116,7 @@ public class Serialization {
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
         settings.register(Cluster.Gossip.self)
-        settings.register(GossipShell<Cluster.Gossip>.Message.self)
+        settings.register(GossipShell<Cluster.Gossip, Cluster.Gossip>.Message.self)
         settings.register(StringGossipIdentifier.self)
 
         // receptionist needs some special casing
@@ -166,8 +166,8 @@ public class Serialization {
         settings.register(CRDT.GCounterDelta.self, serializerID: Serialization.ReservedID.CRDTGCounterDelta)
 
         // crdt gossip
-        settings.register(GossipACK.self)
-        settings.register(GossipShell<DistributedActors.CRDT.Gossip>.Message.self) // TODO: remove this, workaround since we ust strings rather than mangled names today
+        settings.register(CRDT.GossipAck.self)
+        settings.register(GossipShell<CRDT.Gossip, CRDT.GossipAck>.Message.self)
         settings.register(CRDT.Gossip.self)
         settings.register(CRDT.Gossip.Metadata.self)
 

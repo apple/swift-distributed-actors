@@ -21,6 +21,7 @@ extension CRDT {
     /// about them (e.g. through direct replication).
     final class GossipReplicatorLogic: GossipLogic {
         typealias Envelope = CRDT.Gossip
+        typealias Acknowledgement = CRDT.GossipAck
 
         let identity: CRDT.Identity
         let context: Context
@@ -79,7 +80,7 @@ extension CRDT {
             self.latest
         }
 
-        func receivePayloadACK(target: AddressableActorRef, confirmedDeliveryOf envelope: CRDT.Gossip) {
+        func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: CRDT.Gossip) {
             guard (self.latest.map { $0.payload.equalState(to: envelope.payload) } ?? false) else {
                 // received an ack for something, however it's not the "latest" anymore, so we need to gossip to target anyway
                 return
@@ -87,13 +88,13 @@ extension CRDT {
 
             // TODO: in v3 this would translate to ACKing specific deltas for this target
             // good, the latest gossip is still the same as was confirmed here, so we can mark it acked
-            self.peersAckedOurLatestGossip.insert(target.address)
+            self.peersAckedOurLatestGossip.insert(peer.address)
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Receiving gossip
 
-        func receiveGossip(origin: AddressableActorRef, payload: CRDT.Gossip) {
+        func receiveGossip(origin: AddressableActorRef, payload: CRDT.Gossip) -> CRDT.GossipAck? {
             // merge the datatype locally, and update our information about the origin's knowledge about this datatype
             // (does it already know about our data/all-deltas-we-are-aware-of or not)
             self.mergeInbound(from: origin, payload)
@@ -101,6 +102,8 @@ extension CRDT {
             // notify the direct replicator to update all local `actorOwned` CRDTs.
             // TODO: the direct replicator may choose to delay flushing this information a bit to avoid much data churn see `settings.crdt.`
             self.replicatorControl.tellGossipWrite(id: self.identity, data: payload.payload)
+
+            return .init() // always ack
         }
 
         func localGossipUpdate(payload: CRDT.Gossip) {
@@ -178,7 +181,7 @@ extension CRDT.Identity: GossipIdentifier {
 extension CRDT {
     /// The gossip to be spread about a specific CRDT (identity).
     struct Gossip: GossipEnvelopeProtocol, CustomStringConvertible, CustomPrettyStringConvertible {
-        struct Metadata: Codable {}
+        struct Metadata: Codable {} // FIXME: remove, seems we dont need metadata explicitly here
         typealias Payload = StateBasedCRDT
 
         var metadata: Metadata
@@ -201,6 +204,8 @@ extension CRDT {
             "CRDT.Gossip(metadata: \(metadata), payload: \(payload))"
         }
     }
+
+    struct GossipAck: Codable {}
 }
 
 extension CRDT.Gossip {

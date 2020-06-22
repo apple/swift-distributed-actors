@@ -167,6 +167,11 @@ extension Cluster {
             return !laggingBehindMemberFound
         }
     }
+
+//    struct GossipAck: Codable {
+//        let owner: UniqueNode
+//        var seen: Cluster.Gossip.SeenTable
+//    }
 }
 
 extension Cluster.Gossip: GossipEnvelopeProtocol {

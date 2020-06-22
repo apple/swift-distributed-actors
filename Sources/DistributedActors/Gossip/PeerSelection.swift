@@ -28,7 +28,7 @@ public protocol PeerSelection {
     func select() -> Peers
 }
 
-//public struct StableRandomRoundRobin<Peer: Hashable> {
+// public struct StableRandomRoundRobin<Peer: Hashable> {
 //
 //    var peerSet: Set<Peer>
 //    var peers: [Peer]
@@ -60,4 +60,4 @@ public protocol PeerSelection {
 //        return selectedPeers
 //    }
 //
-//}
+// }

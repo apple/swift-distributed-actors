@@ -39,7 +39,9 @@ import Logging
 /// - SeeAlso: `Cluster.Gossip` for the Actor System's own gossip mechanism for membership dissemination
 public protocol GossipLogic {
     associatedtype Envelope: GossipEnvelopeProtocol
-    typealias Context = GossipLogicContext<Envelope>
+    associatedtype Acknowledgement: Codable
+
+    typealias Context = GossipLogicContext<Envelope, Acknowledgement>
 
     // init(context: Context) // TODO: a form of context?
 
@@ -62,15 +64,16 @@ public protocol GossipLogic {
     /// Eg. if gossip is sent to 2 peers, it is NOT deterministic which of the acks returns first (or at all!).
     ///
     /// - Parameters:
-    ///   - target: The target which has acknowlaged the gossiped payload.
+    ///   - peer: The target which has acknowledged the gossiped payload.
     ///     It corresponds to the parameter that was passed to the `makePayload(target:)` which created this gossip payload.
+    ///   - acknowledgement: acknowledgement sent by the peer
     ///   - envelope:
-    mutating func receivePayloadACK(target: AddressableActorRef, confirmedDeliveryOf envelope: Envelope)
+    mutating func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    mutating func receiveGossip(origin: AddressableActorRef, payload: Envelope)
+    mutating func receiveGossip(origin: AddressableActorRef, payload: Envelope) -> Acknowledgement?
 
     mutating func localGossipUpdate(payload: Envelope)
 
@@ -85,12 +88,12 @@ extension GossipLogic {
     }
 }
 
-public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol> {
+public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol, Acknowledgement: Codable> {
     public let gossipIdentifier: GossipIdentifier
 
-    private let ownerContext: ActorContext<GossipShell<Envelope>.Message>
+    private let ownerContext: ActorContext<GossipShell<Envelope, Acknowledgement>.Message>
 
-    internal init(ownerContext: ActorContext<GossipShell<Envelope>.Message>, gossipIdentifier: GossipIdentifier) {
+    internal init(ownerContext: ActorContext<GossipShell<Envelope, Acknowledgement>.Message>, gossipIdentifier: GossipIdentifier) {
         self.ownerContext = ownerContext
         self.gossipIdentifier = gossipIdentifier
     }
@@ -114,29 +117,29 @@ public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol> {
     }
 }
 
-public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol>: GossipLogic, CustomStringConvertible {
+public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol, Acknowledgement: Codable>: GossipLogic, CustomStringConvertible {
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
     let _makePayload: (AddressableActorRef) -> Envelope?
     @usableFromInline
-    let _receivePayloadACK: (AddressableActorRef, Envelope) -> Void
+    let _receiveGossip: (AddressableActorRef, Envelope) -> Acknowledgement?
     @usableFromInline
-    let _receiveGossip: (AddressableActorRef, Envelope) -> Void
+    let _receiveAcknowledgement: (AddressableActorRef, Acknowledgement, Envelope) -> Void
+
     @usableFromInline
     let _localGossipUpdate: (Envelope) -> Void
-
     @usableFromInline
     let _receiveSideChannelMessage: (Any) throws -> Void
 
     public init<Logic>(_ logic: Logic)
-        where Logic: GossipLogic, Logic.Envelope == Envelope {
+        where Logic: GossipLogic, Logic.Envelope == Envelope, Logic.Acknowledgement == Acknowledgement {
         var l = logic
         self._selectPeers = { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
-        self._receivePayloadACK = { l.receivePayloadACK(target: $0, confirmedDeliveryOf: $1) }
-
         self._receiveGossip = { l.receiveGossip(origin: $0, payload: $1) }
+
+        self._receiveAcknowledgement = { l.receiveAcknowledgement(from: $0, acknowledgement: $1, confirmsDeliveryOf: $2) }
         self._localGossipUpdate = { l.localGossipUpdate(payload: $0) }
 
         self._receiveSideChannelMessage = { try l.receiveSideChannelMessage(message: $0) }
@@ -150,12 +153,12 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol>: GossipLogic, Cus
         self._makePayload(target)
     }
 
-    public func receivePayloadACK(target: AddressableActorRef, confirmedDeliveryOf envelope: Envelope) {
-        self._receivePayloadACK(target, envelope)
+    public func receiveGossip(origin: AddressableActorRef, payload: Envelope) -> Acknowledgement? {
+        self._receiveGossip(origin, payload)
     }
 
-    public func receiveGossip(origin: AddressableActorRef, payload: Envelope) {
-        self._receiveGossip(origin, payload)
+    public func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope) {
+        self._receiveAcknowledgement(peer, acknowledgement, envelope)
     }
 
     public func localGossipUpdate(payload: Envelope) {
@@ -183,5 +186,3 @@ public protocol GossipEnvelopeProtocol: Codable {
     var metadata: Metadata { get }
     var payload: Payload { get }
 }
-
-public struct GossipACK: Codable {} // TODO: Make Acknowlagement an associated type on GossipEnvelopeProtocol!
