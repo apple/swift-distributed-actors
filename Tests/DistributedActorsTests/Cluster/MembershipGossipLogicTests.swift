@@ -140,7 +140,7 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
         var roundCounts: [Int] = []
         for _ in 1...simulations {
             self.initializeLogics()
-            
+
             var gossipA = Cluster.Gossip.parse(
                 """
                 A.up B.up C.up
@@ -229,6 +229,25 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
             roundCounts += [rounds]
         }
         pnote("Finished [\(simulations)] simulations, rounds: \(roundCounts) (\(Double(roundCounts.reduce(0, +)) / Double(simulations)) avg)")
+    }
+
+    func test_logic_peersChanged() throws {
+        let all = [a, b, c]
+        let known: [AddressableActorRef] = [a]
+        let less: [AddressableActorRef] = []
+        let more: [AddressableActorRef] = [a, b]
+
+        let res1 = MembershipGossipLogic.peersChanged(known: known, current: less)
+        res1!.removed.shouldEqual([a])
+        res1!.added.shouldEqual([])
+
+        let res2 = MembershipGossipLogic.peersChanged(known: known, current: more)
+        res2!.removed.shouldEqual([])
+        res2!.added.shouldEqual([b])
+
+        let res3 = MembershipGossipLogic.peersChanged(known: [], current: all)
+        res3!.removed.shouldEqual([])
+        res3!.added.shouldEqual([a, b, c])
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
