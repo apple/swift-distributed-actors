@@ -26,6 +26,8 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     internal var latestGossip: Cluster.Gossip
     private let notifyOnGossipRef: ActorRef<Cluster.Gossip>
 
+    private var gossipPeers: [AddressableActorRef] = []
+
     init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.Gossip>) {
         self.context = context
         self.notifyOnGossipRef = notifyOnGossipRef
@@ -36,20 +38,46 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // MARK: Spreading gossip
 
     // TODO: implement better, only peers which are "behind"
-    func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+    func selectPeers(peers _peers: [AddressableActorRef]) -> [AddressableActorRef] {
         // how many peers we select in each gossip round,
         // we could for example be dynamic and notice if we have 10+ nodes, we pick 2 members to speed up the dissemination etc.
         let n = 1
 
-        var selectedPeers: [AddressableActorRef] = []
-        selectedPeers.reserveCapacity(n)
+        self.updateActivePeers(peers: _peers)
 
-        for peer in peers.shuffled()
-            where selectedPeers.count < n && self.shouldGossipWith(peer) {
-            selectedPeers.append(peer)
+        var selectedPeers: [AddressableActorRef] = []
+        selectedPeers.reserveCapacity(min(n, self.gossipPeers.count))
+
+        /// Trust the order of peers in gossipPeers for the selection; see `updateActivePeers` for logic of the ordering.
+        for peer in self.gossipPeers
+            where selectedPeers.count < n {
+            if self.shouldGossipWith(peer) {
+                selectedPeers.append(peer)
+            }
         }
 
         return selectedPeers
+    }
+
+    private func updateActivePeers(peers: [AddressableActorRef]) {
+        if let changed = Self.peersChanged(known: self.gossipPeers, current: peers) {
+            if !changed.removed.isEmpty {
+                let removedPeers = Set(changed.removed)
+                self.gossipPeers = self.gossipPeers.filter { !removedPeers.contains($0) }
+            }
+
+            for peer in changed.added {
+                // Newly added members are inserted at a random spot in the list of members
+                // to ping, to have a better distribution of messages to this node from all
+                // other nodes. If for example all nodes would add it to the end of the list,
+                // it would take a longer time until it would be pinged for the first time
+                // and also likely receive multiple pings within a very short time frame.
+                //
+                // This is adopted from the SWIM membership implementation and related papers.
+                let insertIndex = Int.random(in: self.gossipPeers.startIndex ... self.gossipPeers.endIndex)
+                self.gossipPeers.insert(peer, at: insertIndex)
+            }
+        }
     }
 
     func makePayload(target: AddressableActorRef) -> Cluster.Gossip? {
@@ -86,6 +114,35 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
 //            // we have strictly concurrent or more information the peer, gossip with it
 //            return true
 //        }
+    }
+
+    // TODO may also want to return "these were removed" if we need to make any internal cleanup
+    static func peersChanged(known: [AddressableActorRef], current: [AddressableActorRef]) -> PeersChanged? {
+        // TODO: a bit lazy implementation
+        let knownSet = Set(known)
+        let currentSet = Set(current)
+
+        let added = currentSet.subtracting(knownSet)
+        let removed = knownSet.subtracting(currentSet)
+
+        if added.isEmpty && removed.isEmpty {
+            return nil
+        } else {
+            return PeersChanged(
+                added: added,
+                removed: removed
+            )
+        }
+    }
+    struct PeersChanged {
+        let added: Set<AddressableActorRef>
+        let removed: Set<AddressableActorRef>
+
+        init(added: Set<AddressableActorRef>, removed: Set<AddressableActorRef>) {
+            assert(!added.isEmpty || !removed.isEmpty, "PeersChanged yet both added/removed are empty!")
+            self.added = added
+            self.removed = removed
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
