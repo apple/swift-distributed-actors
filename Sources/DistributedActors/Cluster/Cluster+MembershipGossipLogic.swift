@@ -19,6 +19,7 @@ import NIO
 
 final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     typealias Envelope = Cluster.Gossip
+    typealias Acknowledgement = Cluster.Gossip // TODO: GossipAck instead, a more minimal one; just the peers status
 
     private let context: Context
     internal lazy var localNode: UniqueNode = self.context.system.cluster.node
@@ -26,7 +27,12 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     internal var latestGossip: Cluster.Gossip
     private let notifyOnGossipRef: ActorRef<Cluster.Gossip>
 
-    private var gossipPeers: [AddressableActorRef] = []
+    /// We store and use a shuffled yet stable order for gossiping peers.
+    /// See `updateActivePeers` for details.
+    private var peers: [AddressableActorRef] = []
+
+    /// See `updateActivePeers` and `receiveGossip` for details.
+    private var peerLastSeenGossip: [AddressableActorRef: Cluster.Gossip] = [:]
 
     init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.Gossip>) {
         self.context = context
@@ -44,13 +50,11 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         let n = 1
 
         self.updateActivePeers(peers: _peers)
-
         var selectedPeers: [AddressableActorRef] = []
-        selectedPeers.reserveCapacity(min(n, self.gossipPeers.count))
+        selectedPeers.reserveCapacity(min(n, self.peers.count))
 
         /// Trust the order of peers in gossipPeers for the selection; see `updateActivePeers` for logic of the ordering.
-        for peer in self.gossipPeers
-            where selectedPeers.count < n {
+        for peer in self.peers where selectedPeers.count < n {
             if self.shouldGossipWith(peer) {
                 selectedPeers.append(peer)
             }
@@ -60,10 +64,16 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     }
 
     private func updateActivePeers(peers: [AddressableActorRef]) {
-        if let changed = Self.peersChanged(known: self.gossipPeers, current: peers) {
+        if let changed = Self.peersChanged(known: self.peers, current: peers) {
+            // 1) remove any peers which are no longer active
+            //    - from the peers list
+            //    - from their gossip storage, we'll never gossip with them again after all
             if !changed.removed.isEmpty {
                 let removedPeers = Set(changed.removed)
-                self.gossipPeers = self.gossipPeers.filter { !removedPeers.contains($0) }
+                self.peers = self.peers.filter { !removedPeers.contains($0) }
+                changed.removed.forEach { removed in
+                    _ = self.peerLastSeenGossip.removeValue(forKey: removed)
+                }
             }
 
             for peer in changed.added {
@@ -74,18 +84,20 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
                 // and also likely receive multiple pings within a very short time frame.
                 //
                 // This is adopted from the SWIM membership implementation and related papers.
-                let insertIndex = Int.random(in: self.gossipPeers.startIndex ... self.gossipPeers.endIndex)
-                self.gossipPeers.insert(peer, at: insertIndex)
+                let insertIndex = Int.random(in: self.peers.startIndex ... self.peers.endIndex)
+                self.peers.insert(peer, at: insertIndex)
             }
         }
     }
 
     func makePayload(target: AddressableActorRef) -> Cluster.Gossip? {
         // today we don't trim payloads at all
+        // TODO: trim some information?
         self.latestGossip
     }
 
-    func receivePayloadACK(target: AddressableActorRef, confirmedDeliveryOf envelope: Cluster.Gossip) {
+    func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Cluster.Gossip) {
+        // TODO: forward what we know about the from `peer`
         // nothing to do
     }
 
@@ -96,27 +108,33 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
             return false
         }
 
-//        guard let remoteSeenVersion = self.latestGossip.seen.version(at: remoteNode) else {
-        guard self.latestGossip.seen.version(at: remoteNode) != nil else {
+        guard let peerSeenVersion = self.peerLastSeenGossip[peer]?.seen.version(at: remoteNode) else {
             // this peer has never seen any information from us, so we definitely want to push a gossip
             return true
         }
 
-        // FIXME: this is longer than may be necessary, optimize some more
-        return true
+//        // FIXME: this is longer than may be necessary, optimize some more
+//        return true
 
         // TODO: optimize some more; but today we need to keep gossiping until all VVs are the same, because convergence depends on this
-//        switch self.latestGossip.seen.compareVersion(observedOn: self.localNode, to: remoteSeenVersion) {
-//        case .happenedBefore, .same:
-//            // we have strictly less information than the peer, no need to gossip to it
-//            return false
-//        case .concurrent, .happenedAfter:
-//            // we have strictly concurrent or more information the peer, gossip with it
-//            return true
-//        }
+        switch self.latestGossip.seen.compareVersion(observedOn: self.localNode, to: peerSeenVersion) {
+        case .happenedBefore:
+            pprint("[\(self.localNode.node.systemName)] happenedBefore [\(remoteNode.node.systemName)]")
+            return false
+        case .same:
+            pprint("[\(self.localNode.node.systemName)] same           [\(remoteNode.node.systemName)]")
+            return false
+        case .concurrent:
+            // we have strictly concurrent or more information the peer, gossip with it
+            pprint("[\(self.localNode.node.systemName)] concurrent     [\(remoteNode.node.systemName)]")
+            return true
+        case .happenedAfter:
+            pprint("[\(self.localNode.node.systemName)] happenedAfter  [\(remoteNode.node.systemName)] GOSSIP")
+            return true
+        }
     }
 
-    // TODO may also want to return "these were removed" if we need to make any internal cleanup
+    // TODO: may also want to return "these were removed" if we need to make any internal cleanup
     static func peersChanged(known: [AddressableActorRef], current: [AddressableActorRef]) -> PeersChanged? {
         // TODO: a bit lazy implementation
         let knownSet = Set(known)
@@ -125,7 +143,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         let added = currentSet.subtracting(knownSet)
         let removed = knownSet.subtracting(currentSet)
 
-        if added.isEmpty && removed.isEmpty {
+        if added.isEmpty, removed.isEmpty {
             return nil
         } else {
             return PeersChanged(
@@ -134,6 +152,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
             )
         }
     }
+
     struct PeersChanged {
         let added: Set<AddressableActorRef>
         let removed: Set<AddressableActorRef>
@@ -148,9 +167,13 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    func receiveGossip(origin: AddressableActorRef, payload: Cluster.Gossip) {
+    func receiveGossip(origin: AddressableActorRef, payload: Cluster.Gossip) -> Cluster.Gossip? {
+        self.peerLastSeenGossip[origin] = payload
         self.mergeInbound(payload)
         self.notifyOnGossipRef.tell(self.latestGossip)
+
+        // FIXME: optimized reply here; consider what exactly we should reply with
+        return self.latestGossip
     }
 
     func localGossipUpdate(payload: Cluster.Gossip) {
@@ -185,7 +208,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     }
 
     var description: String {
-        "MembershipGossipLogic(\(localNode))"
+        "MembershipGossipLogic(\(self.localNode))"
     }
 }
 
