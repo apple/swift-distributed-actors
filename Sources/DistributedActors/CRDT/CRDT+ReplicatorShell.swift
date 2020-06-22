@@ -33,7 +33,7 @@ extension CRDT.Replicator {
         typealias RemoteDeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
 
         private let directReplicator: CRDT.Replicator.Instance
-        private var gossipReplication: GossipControl<CRDT.Gossip>!
+        private var gossipReplication: GossipControl<CRDT.Gossip, CRDT.GossipAck>!
 
         // TODO: better name; this is the control from Gossip -> Local
         struct LocalControl {
@@ -74,6 +74,8 @@ extension CRDT.Replicator {
                 self.gossipReplication = try Gossiper.start(
                     context,
                     name: "gossip",
+                    of: CRDT.Gossip.self,
+                    ofAcknowledgement: CRDT.GossipAck.self,
                     settings: Gossiper.Settings(
                         gossipInterval: self.settings.gossipInterval,
                         gossipIntervalRandomFactor: self.settings.gossipIntervalRandomFactor,
