@@ -43,19 +43,13 @@ public struct TestMatchers<T> {
 
 public extension TestMatchers where T: Equatable {
     func toEqual(_ expected: T) {
-        if self.it != expected {
-            let error = self.callSite.notEqualError(got: self.it, expected: expected)
-            XCTAssertEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
-            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
-        }
+        let error = self.callSite.notEqualError(got: self.it, expected: expected)
+        XCTAssertEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
     }
 
     func toNotEqual(_ unexpectedEqual: T) {
-        if self.it == unexpectedEqual {
-            let error = self.callSite.equalError(got: self.it, unexpectedEqual: unexpectedEqual)
-            XCTAssertNotEqual(self.it, unexpectedEqual, "\(error)", file: self.callSite.file, line: self.callSite.line)
-            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
-        }
+        let error = self.callSite.equalError(got: self.it, unexpectedEqual: unexpectedEqual)
+        XCTAssertNotEqual(self.it, unexpectedEqual, "\(error)", file: self.callSite.file, line: self.callSite.line)
     }
 
     func toBe<Other>(_ expected: Other.Type) {
@@ -175,7 +169,6 @@ public extension TestMatchers where T: Comparable {
         if !(self.it < expected) {
             let error = self.callSite.error("\(self.it) is not less than \(expected)")
             XCTAssertLessThan(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
-            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -183,7 +176,6 @@ public extension TestMatchers where T: Comparable {
         if !(self.it <= expected) {
             let error = self.callSite.error("\(self.it) is not less than or equal \(expected)")
             XCTAssertLessThanOrEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
-            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -191,7 +183,6 @@ public extension TestMatchers where T: Comparable {
         if !(self.it > expected) {
             let error = self.callSite.error("\(self.it) is not greater than \(expected)")
             XCTAssertGreaterThan(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
-            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 
@@ -199,7 +190,6 @@ public extension TestMatchers where T: Comparable {
         if !(self.it >= expected) {
             let error = self.callSite.error("\(self.it) is not greater than or equal \(expected)")
             XCTAssertGreaterThanOrEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
-            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
@@ -241,7 +231,6 @@ extension Optional {
             let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
             let error = callSite.error("Expected nil, got [\(String(describing: self))]")
             XCTAssertNil(self, "\(error)", file: callSite.file, line: callSite.line)
-            XCTFail("\(error)", file: callSite.file, line: callSite.line)
         }
     }
 
@@ -250,7 +239,6 @@ extension Optional {
             let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
             let error = callSite.error("Expected not nil, got [\(String(describing: self))]")
             XCTAssertNotNil(self, "\(error)", file: callSite.file, line: callSite.line)
-            XCTFail("\(error)", file: callSite.file, line: callSite.line)
         }
     }
 }
@@ -276,7 +264,8 @@ extension Set {
                 message += "\n    \(selfMinusRhs)"
             }
 
-            XCTFail(
+            XCTAssertEqual(
+                self, rhs,
                 "\(callSiteInfo.error(message))",
                 file: callSiteInfo.file,
                 line: callSiteInfo.line
