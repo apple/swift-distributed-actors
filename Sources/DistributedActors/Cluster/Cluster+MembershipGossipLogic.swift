@@ -31,8 +31,11 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     /// See `updateActivePeers` for details.
     private var peers: [AddressableActorRef] = []
 
+    /// During 1:1 gossip interactions, update this table, which means "we definitely know the specific node has seen our version VV at ..."
+    ///
     /// See `updateActivePeers` and `receiveGossip` for details.
-    private var peerLastSeenGossip: [AddressableActorRef: Cluster.Gossip] = [:]
+    // TODO: This can be optimized and it's enough if we keep a digest of the gossips; this way ACKs can just send the digest as well saving space.
+    private var lastGossipFrom: [AddressableActorRef: Cluster.Gossip] = [:]
 
     init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.Gossip>) {
         self.context = context
@@ -71,8 +74,8 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
             if !changed.removed.isEmpty {
                 let removedPeers = Set(changed.removed)
                 self.peers = self.peers.filter { !removedPeers.contains($0) }
-                changed.removed.forEach { removed in
-                    _ = self.peerLastSeenGossip.removeValue(forKey: removed)
+                changed.removed.forEach { removedPeer in
+                    _ = self.lastGossipFrom.removeValue(forKey: removedPeer)
                 }
             }
 
@@ -97,8 +100,11 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     }
 
     func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Cluster.Gossip) {
-        // TODO: forward what we know about the from `peer`
-        // nothing to do
+        // 1) store the direct gossip we got from this peer; we can use this to know if there's no need to gossip to that peer by inspecting seen table equality
+        self.lastGossipFrom[peer] = acknowledgement
+
+        // 2) use this to move forward the gossip as well
+        self.mergeInbound(gossip: acknowledgement)
     }
 
     /// True if the peers is "behind" in terms of information it has "seen" (as determined by comparing our and its seen tables).
@@ -108,30 +114,16 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
             return false
         }
 
-        guard let peerSeenVersion = self.peerLastSeenGossip[peer]?.seen.version(at: remoteNode) else {
-            // this peer has never seen any information from us, so we definitely want to push a gossip
+        guard let lastSeenGossipFromPeer = self.lastGossipFrom[peer] else {
+            // it's a peer we have not gotten any gossip from yet
             return true
         }
 
-//        // FIXME: this is longer than may be necessary, optimize some more
-//        return true
+//    pprint("\(self.localNode.node.systemName) = self.latestGossip.version = \(pretty: self.latestGossip)")
+//    pprint("\(self.localNode.node.systemName) = lastSeenGossipFromPeer[\(peer.address.node!.node.systemName)]    = \(pretty: lastSeenGossipFromPeer)")
 
-        // TODO: optimize some more; but today we need to keep gossiping until all VVs are the same, because convergence depends on this
-        switch self.latestGossip.seen.compareVersion(observedOn: self.localNode, to: peerSeenVersion) {
-        case .happenedBefore:
-            pprint("[\(self.localNode.node.systemName)] happenedBefore [\(remoteNode.node.systemName)]")
-            return false
-        case .same:
-            pprint("[\(self.localNode.node.systemName)] same           [\(remoteNode.node.systemName)]")
-            return false
-        case .concurrent:
-            // we have strictly concurrent or more information the peer, gossip with it
-            pprint("[\(self.localNode.node.systemName)] concurrent     [\(remoteNode.node.systemName)]")
-            return true
-        case .happenedAfter:
-            pprint("[\(self.localNode.node.systemName)] happenedAfter  [\(remoteNode.node.systemName)] GOSSIP")
-            return true
-        }
+        // TODO: can be replaced by a digest comparison
+        return self.latestGossip.seen != lastSeenGossipFromPeer.seen
     }
 
     // TODO: may also want to return "these were removed" if we need to make any internal cleanup
@@ -167,17 +159,23 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    func receiveGossip(origin: AddressableActorRef, payload: Cluster.Gossip) -> Cluster.Gossip? {
-        self.peerLastSeenGossip[origin] = payload
-        self.mergeInbound(payload)
+    func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement? {
+        // 1) mark that from that specific peer, we know it observed at least that version
+        self.lastGossipFrom[peer] = gossip
+
+        // 2) move forward the gossip we store
+        self.mergeInbound(gossip: gossip)
+
+        // 3) notify listeners
         self.notifyOnGossipRef.tell(self.latestGossip)
 
-        // FIXME: optimized reply here; consider what exactly we should reply with
+        // FIXME: optimize ack reply; this can contain only rows of seen tables where we are "ahead" (and always "our" row)
+        // no need to send back the entire tables if it's the same up to date ones as we just received
         return self.latestGossip
     }
 
-    func localGossipUpdate(payload: Cluster.Gossip) {
-        self.mergeInbound(payload)
+    func localGossipUpdate(gossip: Cluster.Gossip) {
+        self.mergeInbound(gossip: gossip)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -194,16 +192,16 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         }
 
         switch sideChannelMessage {
-        case .localUpdate(let payload):
-            self.mergeInbound(payload)
+        case .localUpdate(let gossip):
+            self.mergeInbound(gossip: gossip)
         }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Utilities
 
-    private func mergeInbound(_ incoming: Cluster.Gossip) {
-        _ = self.latestGossip.mergeForward(incoming: incoming)
+    private func mergeInbound(gossip: Cluster.Gossip) {
+        _ = self.latestGossip.mergeForward(incoming: gossip)
         // effects are signalled via the ClusterShell, not here (it will also perform a merge) // TODO: a bit duplicated, could we maintain it here?
     }
 

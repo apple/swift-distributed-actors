@@ -101,7 +101,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
 
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        if let ack = logic.receiveGossip(origin: origin.asAddressable(), payload: payload) {
+        if let ack = logic.receiveGossip(gossip: payload, from: origin.asAddressable()) {
             ackRef.tell(ack)
         }
     }
@@ -113,7 +113,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
     ) {
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        logic.localGossipUpdate(payload: payload)
+        logic.localGossipUpdate(gossip: payload)
 
         context.log.trace("Gossip payload [\(identifier.gossipIdentifier)] (locally) updated", metadata: [
             "gossip/identifier": "\(identifier.gossipIdentifier)",
