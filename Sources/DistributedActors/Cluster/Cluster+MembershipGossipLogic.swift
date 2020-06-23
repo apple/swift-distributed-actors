@@ -181,7 +181,6 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
 
     func localGossipUpdate(gossip: Cluster.Gossip) {
         self.mergeInbound(gossip: gossip)
-        self.context.log.info("MERGED local gossip update: \(pretty: self.latestGossip)")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
