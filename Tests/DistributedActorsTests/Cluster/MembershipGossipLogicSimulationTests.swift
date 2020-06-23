@@ -14,9 +14,9 @@
 
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Logging
 import NIO
 import XCTest
-import Logging
 
 final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCase {
     override func configureActorSystem(settings: inout ActorSystemSettings) {
@@ -25,13 +25,14 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
 
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.filterActorPaths = [
-            "/user/peer"
+            "/user/peer",
         ]
     }
 
     var systems: [ActorSystem] {
         self._nodes
     }
+
     func system(_ id: String) -> ActorSystem {
         self.systems.first(where: { $0.name == id })!
     }
@@ -97,7 +98,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     Cluster.Gossip.parse(initialGossipState, owner: systemC.cluster.node, nodes: self.nodes),
                 ]
             },
-            updateLogic: { logics in
+            updateLogic: { _ in
                 let logicA: MembershipGossipLogic = self.logic("A")
 
                 // We simulate that `A` noticed it's the leader and moved `B` and `C` .up
@@ -111,7 +112,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     owner: systemA.cluster.node, nodes: nodes
                 ))
             },
-            stopRunWhen: { (logics, results) in
+            stopRunWhen: { (logics, _) in
                 logics.allSatisfy { $0.latestGossip.converged() }
             },
             assert: { results in
@@ -138,7 +139,6 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         let allSystems = [
             systemA, systemB, systemC, systemD, systemE,
             systemF, systemG, systemH, systemI, systemJ,
-
         ]
 
         let initialFewGossip =
@@ -184,7 +184,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     Cluster.Gossip.parse(initialNewGossip, owner: systemJ.cluster.node, nodes: self.nodes),
                 ]
             },
-            updateLogic: { logics in
+            updateLogic: { _ in
                 let logicA: MembershipGossipLogic = self.logic("A")
                 let logicD: MembershipGossipLogic = self.logic("D")
 
@@ -223,10 +223,10 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     owner: systemD.cluster.node, nodes: nodes
                 ))
             },
-            stopRunWhen: { (logics, results) in
+            stopRunWhen: { (logics, _) in
                 // keep gossiping until all members become .up and converged
                 logics.allSatisfy { $0.latestGossip.converged() } &&
-                logics.allSatisfy { $0.latestGossip.membership.count(withStatus: .up) == allSystems.count }
+                    logics.allSatisfy { $0.latestGossip.membership.count(withStatus: .up) == allSystems.count }
             },
             assert: { results in
                 results.roundCounts.max()?.shouldBeLessThanOrEqual(3)
@@ -259,7 +259,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     Cluster.Gossip.parse(initialGossipState, owner: systemC.cluster.node, nodes: self.nodes),
                 ]
             },
-            updateLogic: { logics in
+            updateLogic: { _ in
                 let logicA: MembershipGossipLogic = self.logic("A")
 
                 // We simulate that `A` noticed it's the leader and moved `B` and `C` .up
@@ -273,7 +273,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     owner: systemA.cluster.node, nodes: nodes
                 ))
             },
-            stopRunWhen: { logics, results in
+            stopRunWhen: { logics, _ in
                 logics.allSatisfy { logic in
                     logic.selectPeers(peers: self.peers(of: logic)) == [] // no more peers to talk to
                 }
@@ -291,9 +291,9 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     func gossipSimulationTest(
         runs: Int,
         setUpPeers: () -> [Cluster.Gossip],
-        updateLogic: ([MembershipGossipLogic]) -> (),
+        updateLogic: ([MembershipGossipLogic]) -> Void,
         stopRunWhen: ([MembershipGossipLogic], GossipSimulationResults) -> Bool,
-        assert: (GossipSimulationResults) -> ()
+        assert: (GossipSimulationResults) -> Void
     ) throws {
         var roundCounts: [Int] = []
         var messageCounts: [Int] = []
@@ -314,12 +314,12 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         var log = self.systems.first!.log
         log[metadataKey: "actor/path"] = "/user/peer" // mock actor path for log capture
 
-        for _ in 1...runs {
+        for _ in 1 ... runs {
             // initialize with user provided gossips
             self.logics = initialGossips.map { initialGossip in
                 let system = self.system(initialGossip.owner.node.systemName)
                 let probe = self.testKit(system).spawnTestProbe(expecting: Cluster.Gossip.self)
-                let logic =  self.makeLogic(system, probe)
+                let logic = self.makeLogic(system, probe)
                 logic.localGossipUpdate(gossip: initialGossip)
                 return logic
             }
@@ -331,7 +331,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     let convergenceStatus = converged ? "(locally assumed) converged" : "not converged"
 
                     log.notice("\(g.owner.node.systemName): \(convergenceStatus)", metadata: [
-                        "gossip": Logger.MetadataValue.pretty(g)
+                        "gossip": Logger.MetadataValue.pretty(g),
                     ])
 
                     allSatisfied = allSatisfied && converged
@@ -348,7 +348,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let participatingGossips = self.logics.shuffled()
                 for logic in participatingGossips {
                     let selectedPeers: [AddressableActorRef] = logic.selectPeers(peers: self.peers(of: logic))
-                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map({$0.address.node!.node.systemName}))")
+                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map { $0.address.node!.node.systemName })")
 
                     for targetPeer in selectedPeers {
                         messageCounts[messageCounts.endIndex - 1] += 1
@@ -356,18 +356,18 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                         let targetGossip = logic.makePayload(target: targetPeer)
                         if let gossip = targetGossip {
                             log.notice("    \(logic.nodeName) -> \(targetPeer.address.node!.node.systemName)", metadata: [
-                                "gossip": Logger.MetadataValue.pretty(gossip)
+                                "gossip": Logger.MetadataValue.pretty(gossip),
                             ])
 
-                            let targetLogic = selectLogic(targetPeer)
+                            let targetLogic = self.selectLogic(targetPeer)
                             let maybeAck = targetLogic.receiveGossip(gossip: gossip, from: self.peer(logic))
                             log.notice("updated [\(targetPeer.address.node!.node.systemName)]", metadata: [
-                                "gossip": Logger.MetadataValue.pretty(targetLogic.latestGossip)
+                                "gossip": Logger.MetadataValue.pretty(targetLogic.latestGossip),
                             ])
 
                             if let ack = maybeAck {
                                 log.notice("    \(logic.nodeName) <- \(targetPeer.address.node!.node.systemName) (ack)", metadata: [
-                                    "ack": Logger.MetadataValue.pretty(ack)
+                                    "ack": Logger.MetadataValue.pretty(ack),
                                 ])
                                 logic.receiveAcknowledgement(from: self.peer(targetLogic), acknowledgement: ack, confirmsDeliveryOf: gossip)
                             }
@@ -440,7 +440,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     }
 }
 
-fileprivate extension MembershipGossipLogic {
+private extension MembershipGossipLogic {
     var nodeName: String {
         self.localNode.node.systemName
     }

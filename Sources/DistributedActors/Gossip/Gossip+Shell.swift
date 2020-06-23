@@ -113,14 +113,11 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
     ) {
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        logic.localGossipUpdate(gossip: payload)
-
-        context.log.trace("Gossip payload [\(identifier.gossipIdentifier)] (locally) updated", metadata: [
+        context.log.trace("Update (locally) gossip payload [\(identifier.gossipIdentifier)]", metadata: [
             "gossip/identifier": "\(identifier.gossipIdentifier)",
             "gossip/payload": "\(pretty: payload)",
         ])
-
-        // TODO: bump local version vector; once it is in the envelope
+        logic.localGossipUpdate(gossip: payload)
     }
 
     private func getEnsureLogic(_ context: ActorContext<Message>, identifier: GossipIdentifier) -> AnyGossipLogic<Envelope, Acknowledgement> {

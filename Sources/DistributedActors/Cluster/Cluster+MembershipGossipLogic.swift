@@ -102,30 +102,21 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         self.latestGossip
     }
 
-    func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Cluster.Gossip) {
-        // 1) store the direct gossip we got from this peer; we can use this to know if there's no need to gossip to that peer by inspecting seen table equality
-        self.lastGossipFrom[peer] = acknowledgement
-
-        // 2) use this to move forward the gossip as well
-        self.mergeInbound(gossip: acknowledgement)
-    }
-
     /// True if the peers is "behind" in terms of information it has "seen" (as determined by comparing our and its seen tables).
     // TODO: Implement stricter-round robin, the same way as our SWIM impl does, see `nextMemberToPing`
     //       This hardens the implementation against gossiping with the same node multiple times in a row.
     //       Note that we do NOT need to worry about filtering out dead peers as this is automatically handled by the gossip shell.
     private func shouldGossipWith(_ peer: AddressableActorRef) -> Bool {
-        guard let remoteNode = peer.address.node else {
-            // targets should always be remote peers; one not having a node should not happen, let's ignore it as a gossip target
-            return false
-        }
+//        guard let remoteNode = peer.address.node else {
+//            // targets should always be remote peers; one not having a node should not happen, let's ignore it as a gossip target
+//            return false
+//        }
 
         guard let lastSeenGossipFromPeer = self.lastGossipFrom[peer] else {
             // it's a peer we have not gotten any gossip from yet
             return true
         }
 
-        // TODO: can be replaced by a digest comparison
         return self.latestGossip.seen != lastSeenGossipFromPeer.seen
     }
 
@@ -177,27 +168,20 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         return self.latestGossip
     }
 
+    func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Cluster.Gossip) {
+        // 1) store the direct gossip we got from this peer; we can use this to know if there's no need to gossip to that peer by inspecting seen table equality
+        self.lastGossipFrom[peer] = acknowledgement
+
+        // 2) move forward the gossip we store
+        self.mergeInbound(gossip: acknowledgement)
+
+        // 3) notify listeners
+        self.notifyOnGossipRef.tell(self.latestGossip)
+    }
+
     func localGossipUpdate(gossip: Cluster.Gossip) {
         self.mergeInbound(gossip: gossip)
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Side-channel
-
-    enum SideChannelMessage {
-        case localUpdate(Envelope)
-    }
-
-    func receiveSideChannelMessage(message: Any) throws {
-        guard let sideChannelMessage = message as? SideChannelMessage else {
-            self.context.system.deadLetters.tell(DeadLetter(message, recipient: self.context.gossiperAddress))
-            return
-        }
-
-        switch sideChannelMessage {
-        case .localUpdate(let gossip):
-            self.mergeInbound(gossip: gossip)
-        }
+        self.context.log.info("MERGED local gossip update: \(pretty: self.latestGossip)")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
