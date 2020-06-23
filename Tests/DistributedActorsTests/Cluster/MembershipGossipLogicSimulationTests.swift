@@ -121,6 +121,120 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         )
     }
 
+    func test_avgRounds_manyNodes() throws {
+        let systemA = self.setUpNode("A") { settings in
+            settings.cluster.enabled = true
+        }
+        let systemB = self.setUpNode("B")
+        let systemC = self.setUpNode("C")
+        let systemD = self.setUpNode("D")
+        let systemE = self.setUpNode("E")
+        let systemF = self.setUpNode("F")
+        let systemG = self.setUpNode("G")
+        let systemH = self.setUpNode("H")
+        let systemI = self.setUpNode("I")
+        let systemJ = self.setUpNode("J")
+
+        let allSystems = [
+            systemA, systemB, systemC, systemD, systemE,
+            systemF, systemG, systemH, systemI, systemJ,
+
+        ]
+
+        let initialFewGossip =
+            """
+            A.up B.joining C.joining D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
+            A: A@9 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@5 
+            B: A@5 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            C: A@3 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            D: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
+            E: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
+            F: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
+            G: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
+            H: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
+            I: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
+            J: A@2 B@3 C@3 D@5 E@5 F@5 G@5 H@5 I@5 J@1
+            """
+        let initialNewGossip =
+            """
+            D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
+            D: D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            E: D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            F: D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            G: D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            H: D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            I: D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            J: D@5 E@5 F@5 G@5 H@5 I@5 J@5
+            """
+
+        try self.gossipSimulationTest(
+            runs: 1,
+            setUpPeers: { () in
+                [
+                    Cluster.Gossip.parse(initialFewGossip, owner: systemA.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialFewGossip, owner: systemB.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialFewGossip, owner: systemC.cluster.node, nodes: self.nodes),
+
+                    Cluster.Gossip.parse(initialNewGossip, owner: systemD.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialNewGossip, owner: systemE.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialNewGossip, owner: systemF.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialNewGossip, owner: systemG.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialNewGossip, owner: systemH.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialNewGossip, owner: systemI.cluster.node, nodes: self.nodes),
+                    Cluster.Gossip.parse(initialNewGossip, owner: systemJ.cluster.node, nodes: self.nodes),
+                ]
+            },
+            updateLogic: { logics in
+                let logicA: MembershipGossipLogic = self.logic("A")
+                let logicD: MembershipGossipLogic = self.logic("D")
+
+                logicA.localGossipUpdate(gossip: Cluster.Gossip.parse(
+                    """
+                    A.up B.up C.up D.up E.up F.up G.up H.up I.up J.up 
+                    A: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16 
+                    B: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    C: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    D: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    E: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    F: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    G: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    H: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    I: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    J: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
+                    """,
+                    owner: systemA.cluster.node, nodes: nodes
+                ))
+
+                // they're trying to join
+                logicD.localGossipUpdate(gossip: Cluster.Gossip.parse(
+                    """
+                    A.up B.up C.up D.joining E.joining F.joining G.joining H.joining I.joining J.joining 
+                    A: A@11 B@16 C@16 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    B: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    C: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    D: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    E: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    F: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    G: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    H: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    I: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    J: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
+                    """,
+                    owner: systemD.cluster.node, nodes: nodes
+                ))
+            },
+            stopRunWhen: { (logics, results) in
+                // keep gossiping until all members become .up and converged
+                logics.allSatisfy { $0.latestGossip.converged() } &&
+                logics.allSatisfy { $0.latestGossip.membership.count(withStatus: .up) == allSystems.count }
+            },
+            assert: { results in
+                results.roundCounts.max()?.shouldBeLessThanOrEqual(3)
+                results.messageCounts.max()?.shouldBeLessThanOrEqual(10)
+            }
+        )
+    }
+
     func test_shouldEventuallySuspendGossiping() throws {
         let systemA = self.setUpNode("A") { settings in
             settings.cluster.enabled = true
@@ -165,8 +279,8 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 }
             },
             assert: { results in
-                results.roundCounts.max()!.shouldBeLessThanOrEqual(3) // usually 2 but 3 is tolerable; may be 1 if we're very lucky with ordering
-                results.messageCounts.max()!.shouldBeLessThanOrEqual(9) // usually 6, but up to 9 is tolerable
+                results.roundCounts.max()!.shouldBeLessThanOrEqual(4)
+                results.messageCounts.max()!.shouldBeLessThanOrEqual(12)
             }
         )
     }
@@ -200,7 +314,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         var log = self.systems.first!.log
         log[metadataKey: "actor/path"] = "/user/peer" // mock actor path for log capture
 
-        for runNr in 1...runs {
+        for _ in 1...runs {
             // initialize with user provided gossips
             self.logics = initialGossips.map { initialGossip in
                 let system = self.system(initialGossip.owner.node.systemName)
@@ -288,7 +402,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             roundCounts += [rounds]
         }
 
-        pinfo("Finished [\(runs)] simulationsRounds: \(roundCounts)")
+        pinfo("Finished [\(runs)] simulation runs")
         pinfo("    Rounds: \(roundCounts) (\(Double(roundCounts.reduce(0, +)) / Double(runs)) avg)")
         pinfo("  Messages: \(messageCounts) (\(Double(messageCounts.reduce(0, +)) / Double(runs)) avg)")
 
@@ -323,5 +437,11 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         } else {
             fatalError("No addressable peer for logic: \(logic), peers: \(self.mockPeers)")
         }
+    }
+}
+
+fileprivate extension MembershipGossipLogic {
+    var nodeName: String {
+        self.localNode.node.systemName
     }
 }
