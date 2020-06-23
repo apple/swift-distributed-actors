@@ -107,10 +107,10 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     //       This hardens the implementation against gossiping with the same node multiple times in a row.
     //       Note that we do NOT need to worry about filtering out dead peers as this is automatically handled by the gossip shell.
     private func shouldGossipWith(_ peer: AddressableActorRef) -> Bool {
-//        guard let remoteNode = peer.address.node else {
-//            // targets should always be remote peers; one not having a node should not happen, let's ignore it as a gossip target
-//            return false
-//        }
+        guard peer.address.node != nil else {
+            // targets should always be remote peers; one not having a node should not happen, let's ignore it as a gossip target
+            return false
+        }
 
         guard let lastSeenGossipFromPeer = self.lastGossipFrom[peer] else {
             // it's a peer we have not gotten any gossip from yet
