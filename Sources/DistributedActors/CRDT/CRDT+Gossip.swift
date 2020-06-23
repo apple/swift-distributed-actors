@@ -94,20 +94,20 @@ extension CRDT {
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Receiving gossip
 
-        func receiveGossip(origin: AddressableActorRef, payload: CRDT.Gossip) -> CRDT.GossipAck? {
+        func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> CRDT.GossipAck? {
             // merge the datatype locally, and update our information about the origin's knowledge about this datatype
             // (does it already know about our data/all-deltas-we-are-aware-of or not)
-            self.mergeInbound(from: origin, payload)
+            self.mergeInbound(from: peer, gossip)
 
             // notify the direct replicator to update all local `actorOwned` CRDTs.
             // TODO: the direct replicator may choose to delay flushing this information a bit to avoid much data churn see `settings.crdt.`
-            self.replicatorControl.tellGossipWrite(id: self.identity, data: payload.payload)
+            self.replicatorControl.tellGossipWrite(id: self.identity, data: gossip.payload)
 
-            return .init() // always ack
+            return CRDT.GossipAck()
         }
 
-        func localGossipUpdate(payload: CRDT.Gossip) {
-            self.mergeInbound(from: nil, payload)
+        func localGossipUpdate(gossip: CRDT.Gossip) {
+            self.mergeInbound(from: nil, gossip)
             // during the next gossip round we'll gossip the latest most-up-to date version now;
             // no need to schedule that, we'll be called when it's time.
         }

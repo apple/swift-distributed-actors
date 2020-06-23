@@ -59,6 +59,10 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
         [self.logicA, self.logicB, self.logicC]
     }
 
+    var gossips: [Cluster.Gossip] {
+        self.logics.map { $0.latestGossip }
+    }
+
     override func setUp() {
         super.setUp()
         self.systemA = setUpNode("A") { settings in
@@ -111,7 +115,7 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
             """,
             owner: systemA.cluster.node, nodes: nodes
         )
-        logicA.localGossipUpdate(payload: gossip)
+        logicA.localGossipUpdate(gossip: gossip)
 
 
 
@@ -119,122 +123,26 @@ final class MembershipGossipLogicTests: ClusteredActorSystemsXCTestCase {
         round1.shouldEqual([self.b])
     }
 
-    func test_stopCondition_converged() throws {
-        let gossip = Cluster.Gossip.parse(
-            """
-            A.up B.joining C.up
-            A: A@5 B@5 C@6
-            B: A@5 B@5 C@6
-            C: A@5 B@5 C@6
-            """,
-            owner: systemA.cluster.node, nodes: nodes
-        )
-        logicA.localGossipUpdate(payload: gossip)
-
-        let round1 = logicA.selectPeers(peers: self.peers(of: logicA))
-        round1.shouldBeEmpty()
-    }
-
-    func test_avgRounds_untilConvergence() throws {
-        let simulations = 10
-        var roundCounts: [Int] = []
-        var messageCounts: [Int] = Array(repeating: 0, count: simulations)
-        for simulationNr in 1...simulations {
-            self.initializeLogics()
-
-            var gossipA = Cluster.Gossip.parse(
-                """
-                A.up B.up C.up
-                A: A@5 B@3 C@3
-                B: A@3 B@3 C@3
-                C: A@3 B@3 C@3
-                """,
-                owner: systemA.cluster.node, nodes: nodes
-            )
-            logicA.localGossipUpdate(payload: gossipA)
-
-            var gossipB = Cluster.Gossip.parse(
-                """
-                A.up B.joining C.joining
-                A: A@3 B@3 C@3
-                B: A@3 B@3 C@3
-                C: A@3 B@3 C@3
-                """,
-                owner: systemB.cluster.node, nodes: nodes
-            )
-            logicB.localGossipUpdate(payload: gossipB)
-
-            var gossipC = Cluster.Gossip.parse(
-                """
-                A.up B.joining C.joining
-                A: A@3 B@3 C@3
-                B: A@3 B@3 C@3
-                C: A@3 B@3 C@3
-                """,
-                owner: systemC.cluster.node, nodes: nodes
-            )
-            logicC.localGossipUpdate(payload: gossipC)
-
-            func allConverged(gossips: [Cluster.Gossip]) -> Bool {
-                var allSatisfied = true // on purpose not via .allSatisfy since we want to print status of each logic
-                for g in gossips.sorted(by: { $0.owner.node.systemName < $1.owner.node.systemName }) {
-                    let converged = g.converged()
-                    let convergenceStatus = converged ? "(locally assumed) converged" : "not converged"
-                    pinfo("\(g.owner.node.systemName): \(convergenceStatus)")
-                    allSatisfied = allSatisfied && converged
-                }
-                return allSatisfied
-            }
-
-            func simulateGossipRound() {
-                // we shuffle the gossips to simulate the slight timing differences -- not always will the "first" node be the first where the timers trigger
-                // and definitely not always will it always _remain_ the first to be gossiping; there may be others still gossiping around spreading their "not super complete"
-                // information.
-                let participatingGossips = logics.shuffled()
-                for logic in participatingGossips {
-                    let selectedPeers: [AddressableActorRef] = logic.selectPeers(peers: self.peers(of: logic))
-                    pinfo("[\(logic.nodeName)] selected peers: \(selectedPeers.map({$0.address.node!.node.systemName}))")
-
-                    for targetPeer in selectedPeers {
-                        messageCounts[simulationNr - 1] += 1
-
-                        let targetGossip = logic.makePayload(target: targetPeer)
-                        if let gossip = targetGossip {
-                            // pinfo("    \(logic.nodeName) -> \(targetPeer.address.node!.node.systemName): \(pretty: gossip)")
-                            pinfo("    \(logic.nodeName) -> \(targetPeer.address.node!.node.systemName)")
-
-                            let targetLogic = selectLogic(targetPeer)
-                            targetLogic.receiveGossip(origin: self.origin(logic), payload: gossip)
-
-                            pinfo("updated [\(targetPeer.address.node!.node.systemName)] gossip: \(targetLogic.latestGossip)")
-                            switch targetPeer.address.node!.node.systemName {
-                            case "A": gossipA = targetLogic.latestGossip
-                            case "B": gossipB = targetLogic.latestGossip
-                            case "C": gossipC = targetLogic.latestGossip
-                            default: fatalError("No gossip storage space for \(targetPeer)")
-                            }
-                        } else {
-                            () // skipping target...
-                        }
-                    }
-                }
-            }
-
-            var rounds = 0
-            pnote("~~~~~~~~~~~~ new gossip instance ~~~~~~~~~~~~")
-            while !allConverged(gossips: [gossipA, gossipB, gossipC]) {
-                rounds += 1
-                pnote("Next gossip round (\(rounds))...")
-                simulateGossipRound()
-            }
-
-            pnote("All peers converged after: [\(rounds) rounds]")
-            roundCounts += [rounds]
-        }
-        pnote("Finished [\(simulations)] simulationsRounds: \(roundCounts)")
-        pnote("    Rounds: \(roundCounts) (\(Double(roundCounts.reduce(0, +)) / Double(simulations)) avg)")
-        pnote("  Messages: \(messageCounts) (\(Double(messageCounts.reduce(0, +)) / Double(simulations)) avg)")
-    }
+//    func test_eventuallyStopGossiping() throws {
+//        let gossip = Cluster.Gossip.parse(
+//            """
+//            A.up B.joining C.up
+//            A: A@5 B@5 C@6
+//            B: A@5 B@5 C@6
+//            C: A@5 B@5 C@6
+//            """,
+//            owner: systemA.cluster.node, nodes: nodes
+//        )
+//        logicA.localGossipUpdate(gossip: gossip)
+//
+//        var rounds = 0
+//        while logicA.sele {
+//            pprint("...")
+//            rounds += 1
+//        }
+//
+//        rounds.shouldBeLessThanOrEqual(10)
+//    }
 
     func test_logic_peersChanged() throws {
         let all = [a, b, c]

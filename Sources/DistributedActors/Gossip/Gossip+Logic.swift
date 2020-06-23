@@ -73,9 +73,9 @@ public protocol GossipLogic {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    mutating func receiveGossip(origin: AddressableActorRef, payload: Envelope) -> Acknowledgement?
+    mutating func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement?
 
-    mutating func localGossipUpdate(payload: Envelope)
+    mutating func localGossipUpdate(gossip: Envelope)
 
     /// Extra side channel, allowing for arbitrary outside interactions with this gossip logic.
     // TODO: We could consider making it typed perhaps...
@@ -123,7 +123,7 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol, Acknowledgement: 
     @usableFromInline
     let _makePayload: (AddressableActorRef) -> Envelope?
     @usableFromInline
-    let _receiveGossip: (AddressableActorRef, Envelope) -> Acknowledgement?
+    let _receiveGossip: (Envelope, AddressableActorRef) -> Acknowledgement?
     @usableFromInline
     let _receiveAcknowledgement: (AddressableActorRef, Acknowledgement, Envelope) -> Void
 
@@ -137,10 +137,10 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol, Acknowledgement: 
         var l = logic
         self._selectPeers = { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
-        self._receiveGossip = { l.receiveGossip(origin: $0, payload: $1) }
+        self._receiveGossip = { l.receiveGossip(gossip: $0, from: $1) }
 
         self._receiveAcknowledgement = { l.receiveAcknowledgement(from: $0, acknowledgement: $1, confirmsDeliveryOf: $2) }
-        self._localGossipUpdate = { l.localGossipUpdate(payload: $0) }
+        self._localGossipUpdate = { l.localGossipUpdate(gossip: $0) }
 
         self._receiveSideChannelMessage = { try l.receiveSideChannelMessage(message: $0) }
     }
@@ -153,16 +153,16 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol, Acknowledgement: 
         self._makePayload(target)
     }
 
-    public func receiveGossip(origin: AddressableActorRef, payload: Envelope) -> Acknowledgement? {
-        self._receiveGossip(origin, payload)
+    public func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement? {
+        self._receiveGossip(gossip, peer)
     }
 
     public func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope) {
         self._receiveAcknowledgement(peer, acknowledgement, envelope)
     }
 
-    public func localGossipUpdate(payload: Envelope) {
-        self._localGossipUpdate(payload)
+    public func localGossipUpdate(gossip: Envelope) {
+        self._localGossipUpdate(gossip)
     }
 
     public func receiveSideChannelMessage(_ message: Any) throws {
