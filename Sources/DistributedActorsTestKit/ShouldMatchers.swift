@@ -43,13 +43,17 @@ public struct TestMatchers<T> {
 
 public extension TestMatchers where T: Equatable {
     func toEqual(_ expected: T) {
-        let error = self.callSite.notEqualError(got: self.it, expected: expected)
-        XCTAssertEqual(self.it, expected, "\(error)", file: self.callSite.file, line: self.callSite.line)
+        if self.it != expected {
+            let error = self.callSite.notEqualError(got: self.it, expected: expected)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 
     func toNotEqual(_ unexpectedEqual: T) {
-        let error = self.callSite.equalError(got: self.it, unexpectedEqual: unexpectedEqual)
-        XCTAssertNotEqual(self.it, unexpectedEqual, "\(error)", file: self.callSite.file, line: self.callSite.line)
+        if self.it == unexpectedEqual {
+            let error = self.callSite.equalError(got: self.it, unexpectedEqual: unexpectedEqual)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
     }
 
     func toBe<Other>(_ expected: Other.Type) {
