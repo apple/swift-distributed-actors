@@ -251,12 +251,23 @@ extension ClusterShellState {
             return .negotiateIncoming(fsm)
         }
 
-        guard existingAssociation == nil else {
-            let error = HandshakeStateMachine.HandshakeConnectionError(
-                node: offer.originNode.node,
-                message: "Terminating this connection, the node [\(offer.originNode)] is already associated. Possibly a delayed handshake retry message was delivered?"
-            )
-            return .abortIncomingHandshake(error)
+        if let assoc = existingAssociation {
+            switch assoc.state {
+            case .associating:
+                () // continue, we'll perform the tie-breaker logic below
+            case .associated:
+                let error = HandshakeStateMachine.HandshakeConnectionError(
+                    node: offer.originNode.node,
+                    message: "Terminating this connection, the node [\(offer.originNode)] is already associated. Possibly a delayed handshake retry message was delivered?"
+                )
+                return .abortIncomingHandshake(error)
+            case .tombstone:
+                let error = HandshakeStateMachine.HandshakeConnectionError(
+                    node: offer.originNode.node,
+                    message: "Terminating this connection, the node [\(offer.originNode)] is already tombstone-ed. Possibly a delayed handshake retry message was delivered?"
+                )
+                return .abortIncomingHandshake(error)
+            }
         }
 
         guard let inProgress = self._handshakes[offer.originNode.node] else {
