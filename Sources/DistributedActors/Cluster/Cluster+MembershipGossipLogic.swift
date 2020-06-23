@@ -30,6 +30,9 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     /// We store and use a shuffled yet stable order for gossiping peers.
     /// See `updateActivePeers` for details.
     private var peers: [AddressableActorRef] = []
+    /// Constantly mutated by `nextPeerToGossipWith` in an effort to keep order in which we gossip with nodes evenly distributed.
+    /// This follows our logic in SWIM, and has the benefit that we never get too chatty with one specific node (as in the worst case it may be unreachable or down already).
+    private var _peerToGossipWithIndex: Int = 0
 
     /// During 1:1 gossip interactions, update this table, which means "we definitely know the specific node has seen our version VV at ..."
     ///
@@ -108,6 +111,9 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     }
 
     /// True if the peers is "behind" in terms of information it has "seen" (as determined by comparing our and its seen tables).
+    // TODO: Implement stricter-round robin, the same way as our SWIM impl does, see `nextMemberToPing`
+    //       This hardens the implementation against gossiping with the same node multiple times in a row.
+    //       Note that we do NOT need to worry about filtering out dead peers as this is automatically handled by the gossip shell.
     private func shouldGossipWith(_ peer: AddressableActorRef) -> Bool {
         guard let remoteNode = peer.address.node else {
             // targets should always be remote peers; one not having a node should not happen, let's ignore it as a gossip target
@@ -118,9 +124,6 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
             // it's a peer we have not gotten any gossip from yet
             return true
         }
-
-//    pprint("\(self.localNode.node.systemName) = self.latestGossip.version = \(pretty: self.latestGossip)")
-//    pprint("\(self.localNode.node.systemName) = lastSeenGossipFromPeer[\(peer.address.node!.node.systemName)]    = \(pretty: lastSeenGossipFromPeer)")
 
         // TODO: can be replaced by a digest comparison
         return self.latestGossip.seen != lastSeenGossipFromPeer.seen

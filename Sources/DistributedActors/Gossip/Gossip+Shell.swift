@@ -263,6 +263,11 @@ extension GossipShell {
 
                 let resolved: AddressableActorRef = resolvePeerOn(member)
                 if let peer = resolved.ref as? PeerRef {
+                    // We MUST always watch all peers we gossip with, as if they (or their nodes) were to terminate
+                    // they MUST be removed from the peer list we offer to gossip logics. Otherwise a naive gossip logic
+                    // may continue trying to gossip with that peer.
+                    context.watch(peer)
+
                     if self.peers.insert(peer).inserted {
                         context.log.debug("Automatically discovered peer", metadata: [
                             "gossip/peer": "\(peer)",
