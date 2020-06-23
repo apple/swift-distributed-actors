@@ -123,7 +123,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
     public func joinNodes(
         node: ActorSystem, with other: ActorSystem,
-        ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil
+        ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
+        file: StaticString = #file, line: UInt = #line
     ) throws {
         node.cluster.join(node: other.cluster.node.node)
 
@@ -132,9 +133,9 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 
         if let expectedStatus = maybeExpectedStatus {
             if let specificTimeout = ensureWithin {
-                try self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node)
+                try self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node, file: file, line: line)
             } else {
-                try self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node)
+                try self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node, file: file, line: line)
             }
         }
     }

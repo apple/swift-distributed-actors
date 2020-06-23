@@ -19,7 +19,6 @@ import NIOSSL
 import XCTest
 
 final class GossipShellTests: ActorSystemXCTestCase {
-
     func test_down_beGossipedToOtherNodes() throws {
         let p = self.testKit.spawnTestProbe(expecting: [AddressableActorRef].self)
 
@@ -48,6 +47,7 @@ final class GossipShellTests: ActorSystemXCTestCase {
         first.tell(.removePayload(identifier: StringGossipIdentifier("stop")))
         try p.expectNoMessage(for: .milliseconds(300))
     }
+
     struct InspectOfferedPeersTestGossipLogic: GossipLogic {
         struct Envelope: GossipEnvelopeProtocol {
             let metadata: String
@@ -58,6 +58,7 @@ final class GossipShellTests: ActorSystemXCTestCase {
                 self.payload = info
             }
         }
+
         typealias Acknowledgement = String
 
         let offeredPeersProbe: ActorRef<[AddressableActorRef]>
@@ -74,15 +75,12 @@ final class GossipShellTests: ActorSystemXCTestCase {
             nil
         }
 
-        func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope) {
-        }
+        func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope) {}
 
         func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement? {
             nil
         }
 
-        func localGossipUpdate(gossip: Envelope) {
-        }
+        func localGossipUpdate(gossip: Envelope) {}
     }
-
 }
