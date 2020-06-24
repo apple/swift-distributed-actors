@@ -157,7 +157,6 @@ extension Cluster {
             return !laggingBehindMemberFound
         }
     }
-
 }
 
 extension Cluster.MembershipGossip: CustomPrettyStringConvertible {}

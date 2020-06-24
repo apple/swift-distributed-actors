@@ -53,7 +53,6 @@ extension Gossiper {
             case acknowledged(timeout: TimeAmount)
         }
 
-
         /// How the gossiper should discover peers to gossip with.
         public var peerDiscovery: PeerDiscovery = .manuallyIntroduced
         public enum PeerDiscovery {
