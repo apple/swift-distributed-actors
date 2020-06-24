@@ -422,7 +422,7 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper.start(
+                let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper.spawn(
                     context,
                     name: "\(ActorPath._clusterGossip.name)",
                     settings: .init(

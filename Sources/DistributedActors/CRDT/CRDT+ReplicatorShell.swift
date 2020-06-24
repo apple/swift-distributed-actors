@@ -71,7 +71,7 @@ extension CRDT.Replicator {
                     }
                 )
 
-                self.gossipReplication = try Gossiper.start(
+                self.gossipReplication = try Gossiper.spawn(
                     context,
                     name: "gossip",
                     settings: Gossiper.Settings(
