@@ -75,8 +75,9 @@ extension CRDT.Replicator {
                     context,
                     name: "gossip",
                     settings: Gossiper.Settings(
-                        gossipInterval: self.settings.gossipInterval,
-                        gossipIntervalRandomFactor: self.settings.gossipIntervalRandomFactor,
+                        interval: self.settings.gossipInterval,
+                        intervalRandomFactor: self.settings.gossipIntervalRandomFactor,
+                        style: .acknowledged(timeout: .seconds(1)),
                         peerDiscovery: .fromReceptionistListing(id: "crdt-gossip-replicator")
                     ),
                     makeLogic: { logicContext in

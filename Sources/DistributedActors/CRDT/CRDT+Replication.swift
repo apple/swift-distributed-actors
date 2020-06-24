@@ -278,6 +278,10 @@ extension CRDT {
         /// during this round
         public var gossipInterval: TimeAmount = .seconds(2)
 
+        /// Timeout used when asking another peer when spreading gossip.
+        /// Timeouts are logged, but by themselves not "errors", as we still eventually may be able to spread the payload to given peer.
+        public var gossipAcknowledgementTimeout: TimeAmount = .milliseconds(500)
+
         /// Adds a random factor to the gossip interval, which is useful to avoid an entire cluster ticking "synchronously"
         /// at the same time, causing spikes in gossip traffic (as all nodes decide to gossip in the same second).
         ///

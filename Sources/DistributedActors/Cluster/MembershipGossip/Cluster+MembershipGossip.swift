@@ -160,19 +160,6 @@ extension Cluster {
 
 }
 
-extension Cluster.MembershipGossip: GossipEnvelopeProtocol {
-    typealias Metadata = SeenTable
-    typealias Payload = Self
-
-    var metadata: Metadata {
-        self.seen
-    }
-
-    var payload: Payload {
-        self
-    }
-}
-
 extension Cluster.MembershipGossip: CustomPrettyStringConvertible {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------

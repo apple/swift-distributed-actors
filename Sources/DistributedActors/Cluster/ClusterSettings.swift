@@ -110,6 +110,12 @@ public struct ClusterSettings {
 
     public var membershipGossipInterval: TimeAmount = .seconds(1)
 
+    // since we talk to many peers one by one; even as we proceed to the next round after `membershipGossipInterval`
+    // it is fine if we get a reply from the previously gossiped to peer after same or similar timeout. No rush about it.
+    //
+    // A missing ACK is not terminal, may happen, and we'll then gossip with that peer again (e.g. if it ha had some form of network trouble for a moment).
+    public var membershipGossipAcknowledgementTimeout: TimeAmount = .seconds(1)
+
     public var membershipGossipIntervalRandomFactor: Double = 0.2
 
     // ==== ------------------------------------------------------------------------------------------------------------
