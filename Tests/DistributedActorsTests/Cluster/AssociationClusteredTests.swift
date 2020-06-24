@@ -158,10 +158,11 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         alone.cluster.join(node: alone.cluster.node.node) // "self join", should simply be ignored
 
         let testKit = self.testKit(alone)
-
-        sleep(1)
         try testKit.eventually(within: .seconds(3)) {
-            alone.cluster.membershipSnapshot.count.shouldEqual(1)
+            let snapshot: Cluster.Membership = alone.cluster.membershipSnapshot
+            if snapshot.count != 1 {
+                throw TestError("Expected membership to include self node, was: \(snapshot)")
+            }
         }
     }
 
