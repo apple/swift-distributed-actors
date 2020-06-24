@@ -268,10 +268,8 @@ extension CRDT.Replicator {
             _ id: CRDT.Identity,
             _ data: StateBasedCRDT
         ) {
-            let gossip = CRDT.Gossip(
-                metadata: .init(),
-                payload: data // TODO: v2, allow tracking the deltas here
-            )
+            // TODO: v2, allow tracking the deltas here
+            let gossip = CRDT.Gossip(payload: data)
             self.gossipReplication.update(id, payload: gossip)
         }
 
@@ -408,10 +406,7 @@ extension CRDT.Replicator {
                             replyTo.tell(.success(updatedData))
 
                             // Update the data stored in the replicator (yeah today we store 2 copies in the replicators, we could converge them into one with enough effort)
-                            let gossip = CRDT.Gossip(
-                                metadata: .init(),
-                                payload: updatedData
-                            )
+                            let gossip = CRDT.Gossip(payload: updatedData)
                             self.gossipReplication.update(id, payload: gossip) // TODO: v2, allow tracking the deltas here
 
                             // Followed by notifying all owners since the CRDT might have been updated
