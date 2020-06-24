@@ -237,7 +237,11 @@ public struct EventuallyError: Error, CustomStringConvertible, CustomDebugString
     }
 
     public var debugDescription: String {
-        "EventuallyError(callSite: \(self.callSite), timeAmount: \(self.timeAmount), polledTimes: \(self.polledTimes), lastError: \(optional: self.lastError))"
+        let error = self.callSite.error(
+            """
+            Eventually block failed, after \(self.timeAmount) (polled \(self.polledTimes) times), last error: \(optional: self.lastError)
+            """)
+        return "\(error)"
     }
 }
 
