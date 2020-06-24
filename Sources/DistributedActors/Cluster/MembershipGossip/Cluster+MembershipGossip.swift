@@ -19,14 +19,14 @@ extension Cluster {
     /// Gossip payload about members in the cluster.
     ///
     /// Used to guarantee phrases like "all nodes have seen a node A in status S", upon which the Leader may act.
-    struct Gossip: ActorMessage, Equatable {
+    struct MembershipGossip: ActorMessage, Equatable {
         let owner: UniqueNode
         /// A table maintaining our perception of other nodes views on the version of membership.
         /// Each row in the table represents what versionVector we know the given node has observed recently.
         /// It may have in the mean time of course observed a new version already.
         // TODO: There is tons of compression opportunity about not having to send full tables around in general, but for now we will just send them around
         // FIXME: ensure that we never have a seen entry for a non-member
-        var seen: Cluster.Gossip.SeenTable
+        var seen: Cluster.MembershipGossip.SeenTable
         /// The version vector of this gossip and the `Membership` state owned by it.
         var version: VersionVector {
             self.seen.underlying[self.owner]! // !-safe, since we _always_ know our own world view
@@ -39,7 +39,7 @@ extension Cluster {
         init(ownerNode: UniqueNode) {
             self.owner = ownerNode
             // self.seen = Cluster.Gossip.SeenTable(myselfNode: ownerNode, version: VersionVector((.uniqueNode(ownerNode), 1)))
-            self.seen = Cluster.Gossip.SeenTable(myselfNode: ownerNode, version: VersionVector())
+            self.seen = Cluster.MembershipGossip.SeenTable(myselfNode: ownerNode, version: VersionVector())
 
             // The actual payload
             self.membership = .empty // MUST be empty, as on the first "self gossip, we cause all ClusterEvents
@@ -58,7 +58,7 @@ extension Cluster {
 
         /// Merge an incoming gossip _into_ the current gossip.
         /// Ownership of this gossip is retained, versions are bumped, and membership is merged.
-        mutating func mergeForward(incoming: Gossip) -> MergeDirective {
+        mutating func mergeForward(incoming: MembershipGossip) -> MergeDirective {
             var incoming = incoming
 
             // 1) decide the relationship between this gossip and the incoming one
@@ -134,7 +134,7 @@ extension Cluster {
         /// Only `.up` and `.leaving` members are considered, since joining members are "too early"
         /// to matter in decisions, and down members shall never participate in decision making.
         func converged() -> Bool {
-            let members = self.membership.members(withStatus: [.joining, .up, .leaving]) // FIXME: we should not require joining nodes in convergence, can losen up a bit here I hope
+            let members = self.membership.members(withStatus: [.up, .leaving]) // FIXME: we should not require joining nodes in convergence, can losen up a bit here I hope
             let requiredVersion = self.version
 
             if members.isEmpty {
@@ -158,13 +158,9 @@ extension Cluster {
         }
     }
 
-//    struct GossipAck: Codable {
-//        let owner: UniqueNode
-//        var seen: Cluster.Gossip.SeenTable
-//    }
 }
 
-extension Cluster.Gossip: GossipEnvelopeProtocol {
+extension Cluster.MembershipGossip: GossipEnvelopeProtocol {
     typealias Metadata = SeenTable
     typealias Payload = Self
 
@@ -177,12 +173,12 @@ extension Cluster.Gossip: GossipEnvelopeProtocol {
     }
 }
 
-extension Cluster.Gossip: CustomPrettyStringConvertible {}
+extension Cluster.MembershipGossip: CustomPrettyStringConvertible {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster.Gossip.SeenTable
 
-extension Cluster.Gossip {
+extension Cluster.MembershipGossip {
     /// A table containing information about which node has seen the gossip at which version.
     ///
     /// It is best visualized as a series of views (by "owners" of a row) onto the state of the cluster.
@@ -295,9 +291,9 @@ extension Cluster.Gossip {
     }
 }
 
-extension Cluster.Gossip.SeenTable: CustomStringConvertible, CustomPrettyStringConvertible {
+extension Cluster.MembershipGossip.SeenTable: CustomStringConvertible, CustomPrettyStringConvertible {
     public var description: String {
-        "Cluster.Gossip.SeenTable(\(self.underlying))"
+        "Cluster.MembershipGossip.SeenTable(\(self.underlying))"
     }
 
     public func prettyDescription(depth: Int) -> String {

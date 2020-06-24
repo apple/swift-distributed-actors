@@ -85,7 +85,7 @@ extension ClusterShell {
         case send(to: Node)
         case receive(from: Node)
         case receiveUnique(from: UniqueNode)
-        case gossip(Cluster.Gossip)
+        case gossip(Cluster.MembershipGossip)
 
         var description: String {
             switch self {

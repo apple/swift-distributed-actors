@@ -60,14 +60,14 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
 
-    let gossipControl: GossipControl<Cluster.Gossip, Cluster.Gossip>
+    let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip>
 
     /// Updating the `latestGossip` causes the gossiper to be informed about it, such that the next time it does a gossip round
     /// it uses the latest gossip available.
-    var _latestGossip: Cluster.Gossip
+    var _latestGossip: Cluster.MembershipGossip
 
     /// Any change to the gossip data, is propagated to the gossiper immediately.
-    var latestGossip: Cluster.Gossip {
+    var latestGossip: Cluster.MembershipGossip {
         get {
             self._latestGossip
         }
@@ -75,7 +75,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
             if self._latestGossip.membership == newValue.membership {
                 self._latestGossip = newValue
             } else {
-                let next: Cluster.Gossip
+                let next: Cluster.MembershipGossip
                 if self._latestGossip.version == newValue.version {
                     next = newValue.incrementingOwnerVersion()
                 } else {
@@ -84,7 +84,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
                 self._latestGossip = next
             }
-            self.gossipControl.update(payload: self._latestGossip)
+            self.gossiperControl.update(payload: self._latestGossip)
         }
     }
 
@@ -101,7 +101,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         settings: ClusterSettings,
         channel: Channel,
         events: EventStream<Cluster.Event>,
-        gossipControl: GossipControl<Cluster.Gossip, Cluster.Gossip>,
+        gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip>,
         log: Logger
     ) {
         self.log = log
@@ -110,10 +110,10 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         self.localNode = settings.uniqueBindNode
-        self._latestGossip = Cluster.Gossip(ownerNode: settings.uniqueBindNode)
+        self._latestGossip = Cluster.MembershipGossip(ownerNode: settings.uniqueBindNode)
 
         self.events = events
-        self.gossipControl = gossipControl
+        self.gossiperControl = gossiperControl
         self.channel = channel
     }
 

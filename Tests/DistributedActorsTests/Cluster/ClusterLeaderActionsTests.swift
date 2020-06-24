@@ -149,7 +149,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
     }
 
     @discardableResult
-    private func gossip(from: ClusterShellState, to: inout ClusterShellState) -> Cluster.Gossip.MergeDirective {
+    private func gossip(from: ClusterShellState, to: inout ClusterShellState) -> Cluster.MembershipGossip.MergeDirective {
         to.latestGossip.mergeForward(incoming: from.latestGossip)
     }
 

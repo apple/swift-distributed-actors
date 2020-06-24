@@ -39,14 +39,14 @@ final class MembershipGossipTests: XCTestCase {
     // MARK: Merging gossips
 
     func test_mergeForward_incomingGossip_firstGossipFromOtherNode() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.joining
             A: A:1
             """, owner: self.nodeA, nodes: self.allNodes
         )
 
-        let incoming = Cluster.Gossip.parse(
+        let incoming = Cluster.MembershipGossip.parse(
             """
             B.joining
             B: B:1
@@ -60,7 +60,7 @@ final class MembershipGossipTests: XCTestCase {
         )
 
         gossip.shouldEqual(
-            Cluster.Gossip.parse(
+            Cluster.MembershipGossip.parse(
                 """
                 A.joining B.joining
                 A: A:1 B:1
@@ -71,14 +71,14 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_incomingGossip_firstGossipFromOtherNodes() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.joining
             A: A:1
             """, owner: self.nodeA, nodes: self.allNodes
         )
 
-        let incoming = Cluster.Gossip.parse(
+        let incoming = Cluster.MembershipGossip.parse(
             """
             B.joining C.joining
             B: B:1 C:1
@@ -97,7 +97,7 @@ final class MembershipGossipTests: XCTestCase {
             )
         )
 
-        let expected = Cluster.Gossip.parse(
+        let expected = Cluster.MembershipGossip.parse(
             """
             A.joining B.joining C.joining
             A: A:1 B:1 C:1
@@ -115,19 +115,19 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_incomingGossip_sameVersions() {
-        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        var gossip = Cluster.MembershipGossip(ownerNode: self.nodeA)
         _ = gossip.membership.join(self.nodeA)
         gossip.seen.incrementVersion(owner: self.nodeB, at: self.nodeA) // v: myself:1, second:1
         _ = gossip.membership.join(self.nodeB) // myself:joining, second:joining
 
-        let gossipFromSecond = Cluster.Gossip(ownerNode: self.nodeB)
+        let gossipFromSecond = Cluster.MembershipGossip(ownerNode: self.nodeB)
         let directive = gossip.mergeForward(incoming: gossipFromSecond)
 
         directive.effectiveChanges.shouldEqual([])
     }
 
     func test_mergeForward_incomingGossip_fromFourth_onlyKnowsAboutItself() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.joining B.joining B.joining
             A: A@1 B@1 C@1
@@ -135,7 +135,7 @@ final class MembershipGossipTests: XCTestCase {
         )
 
         // only knows about fourth, while myGossip has first, second and third
-        let incomingGossip = Cluster.Gossip.parse(
+        let incomingGossip = Cluster.MembershipGossip.parse(
             """
             D.joining
             D: D@1
@@ -150,7 +150,7 @@ final class MembershipGossipTests: XCTestCase {
             [Cluster.MembershipChange(node: self.fourthNode, fromStatus: nil, toStatus: .joining)]
         )
         gossip.shouldEqual(
-            Cluster.Gossip.parse(
+            Cluster.MembershipGossip.parse(
                 """
                 A.joining B.joining C.joining
                 A: A@1 B@1 C@1 D@1
@@ -161,7 +161,7 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_incomingGossip_localHasRemoved_incomingHasOldViewWithDownNode() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.up B.down C.up
             A: A@5 B@5 C@6 
@@ -177,7 +177,7 @@ final class MembershipGossipTests: XCTestCase {
         _ = gossip.pruneMember(removedMember)
         gossip.incrementOwnerVersion()
 
-        let incomingOldGossip = Cluster.Gossip.parse(
+        let incomingOldGossip = Cluster.MembershipGossip.parse(
             """
             A.up B.down C.up
             A: A@5 B@5  C@6
@@ -203,7 +203,7 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_incomingGossip_concurrent_leaderDisagreement() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.up B.joining [leader:A]
             A: A@5 B@5 
@@ -216,7 +216,7 @@ final class MembershipGossipTests: XCTestCase {
         // once the nodes talk to each other again, they will run leader election and resolve the double leader situation
         // until that happens, the two leaders indeed remain as-is -- as the membership itself is not the right place to resolve
         // who shall be leader
-        let incomingGossip = Cluster.Gossip.parse(
+        let incomingGossip = Cluster.MembershipGossip.parse(
             """
             A.up B.joining C.up [leader:B]
             B: B@2 C@1
@@ -242,7 +242,7 @@ final class MembershipGossipTests: XCTestCase {
             ]
         )
 
-        let expected = Cluster.Gossip.parse(
+        let expected = Cluster.MembershipGossip.parse(
             """
             A.up B.joining C.up [leader:A]
             A: A:5 B:5 C:9
@@ -257,14 +257,14 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_incomingGossip_concurrent_simple() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.up B.joining
             A: A@4
             """, owner: self.nodeA, nodes: self.allNodes
         )
 
-        let concurrent = Cluster.Gossip.parse(
+        let concurrent = Cluster.MembershipGossip.parse(
             """
             A.joining B.joining
             B: B@2
@@ -276,7 +276,7 @@ final class MembershipGossipTests: XCTestCase {
         gossip.owner.shouldEqual(self.nodeA)
         directive.effectiveChanges.count.shouldEqual(0)
         gossip.shouldEqual(
-            Cluster.Gossip.parse(
+            Cluster.MembershipGossip.parse(
                 """
                 A.up B.joining
                 A: A@4 B@2
@@ -287,7 +287,7 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_incomingGossip_hasNewNode() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.up
             A: A@5
@@ -310,7 +310,7 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_removal_incomingGossip_isAhead_hasRemovedNodeKnownToBeDown() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.up B.down C.up [leader:A]
             A: A@5 B@5 C@6
@@ -320,7 +320,7 @@ final class MembershipGossipTests: XCTestCase {
             owner: self.nodeA, nodes: self.allNodes
         )
 
-        let incomingGossip = Cluster.Gossip.parse(
+        let incomingGossip = Cluster.MembershipGossip.parse(
             """
             A.up C.up
             A: A@5 C@6
@@ -340,7 +340,7 @@ final class MembershipGossipTests: XCTestCase {
         )
 
         gossip.shouldEqual(
-            Cluster.Gossip.parse(
+            Cluster.MembershipGossip.parse(
                 """
                 A.up C.up [leader:A]
                 A: A@5 C@7
@@ -351,7 +351,7 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_mergeForward_incomingGossip_removal_isAhead_hasMyNodeRemoved_thusWeKeepItAsRemoved() {
-        var gossip = Cluster.Gossip.parse(
+        var gossip = Cluster.MembershipGossip.parse(
             """
             A.up B.down C.up
             A: A@5 B@5 C@6
@@ -361,7 +361,7 @@ final class MembershipGossipTests: XCTestCase {
             owner: self.nodeB, nodes: self.allNodes
         )
 
-        let incomingGossip = Cluster.Gossip.parse(
+        let incomingGossip = Cluster.MembershipGossip.parse(
             """
             A.up C.up
             A: A@5 C@6
@@ -380,7 +380,7 @@ final class MembershipGossipTests: XCTestCase {
 
         // we MIGHT receive a removal of "our node" however we must never apply such change!
         // we know we are `.down` and that's the most "we" will ever perceive ourselves as -- i.e. removed is only for "others".
-        let expected = Cluster.Gossip.parse(
+        let expected = Cluster.MembershipGossip.parse(
             """
             A.up B.removed C.up
             A: A@5 B@5 C@6
@@ -398,7 +398,7 @@ final class MembershipGossipTests: XCTestCase {
     // MARK: Convergence
 
     func test_converged_shouldBeTrue_forNoMembers() {
-        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        var gossip = Cluster.MembershipGossip(ownerNode: self.nodeA)
         _ = gossip.membership.join(self.nodeA)
         gossip.converged().shouldBeTrue()
 
@@ -407,7 +407,7 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_converged_amongUpMembers() {
-        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        var gossip = Cluster.MembershipGossip(ownerNode: self.nodeA)
         _ = gossip.membership.join(self.nodeA)
         _ = gossip.membership.mark(self.nodeA, as: .up)
 
@@ -451,7 +451,7 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_converged_othersAreOnlyDown() {
-        let gossip = Cluster.Gossip.parse(
+        let gossip = Cluster.MembershipGossip.parse(
             """
             A.up B.down
             A: A@8 B@5 
@@ -466,7 +466,7 @@ final class MembershipGossipTests: XCTestCase {
 
     // FIXME: we should not need .joining nodes to participate on convergence()
     func fixme_converged_joiningOrDownMembersDoNotCount() {
-        var gossip = Cluster.Gossip(ownerNode: self.nodeA)
+        var gossip = Cluster.MembershipGossip(ownerNode: self.nodeA)
         _ = gossip.membership.join(self.nodeA)
 
         _ = gossip.membership.join(self.nodeB)
@@ -518,8 +518,8 @@ final class MembershipGossipTests: XCTestCase {
     }
 
     func test_gossip_eventuallyConverges() {
-        func makeRandomGossip(owner node: UniqueNode) -> Cluster.Gossip {
-            var gossip = Cluster.Gossip(ownerNode: node)
+        func makeRandomGossip(owner node: UniqueNode) -> Cluster.MembershipGossip {
+            var gossip = Cluster.MembershipGossip(ownerNode: node)
             _ = gossip.membership.join(node)
             _ = gossip.membership.mark(node, as: .joining)
             var vv = VersionVector()

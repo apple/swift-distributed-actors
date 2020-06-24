@@ -17,15 +17,19 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Membership Gossip Logic
 
+/// The logic of the membership gossip.
+///
+/// Membership gossip is what is used to reach cluster "convergence" upon which a leader may perform leader actions.
+/// See `Cluster.MembershipGossip.converged` for more details.
 final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
-    typealias Envelope = Cluster.Gossip
-    typealias Acknowledgement = Cluster.Gossip // TODO: GossipAck instead, a more minimal one; just the peers status
+    typealias Gossip = Cluster.MembershipGossip
+    typealias Acknowledgement = Cluster.MembershipGossip
 
     private let context: Context
     internal lazy var localNode: UniqueNode = self.context.system.cluster.node
 
-    internal var latestGossip: Cluster.Gossip
-    private let notifyOnGossipRef: ActorRef<Cluster.Gossip>
+    internal var latestGossip: Cluster.MembershipGossip
+    private let notifyOnGossipRef: ActorRef<Cluster.MembershipGossip>
 
     /// We store and use a shuffled yet stable order for gossiping peers.
     /// See `updateActivePeers` for details.
@@ -38,9 +42,9 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     ///
     /// See `updateActivePeers` and `receiveGossip` for details.
     // TODO: This can be optimized and it's enough if we keep a digest of the gossips; this way ACKs can just send the digest as well saving space.
-    private var lastGossipFrom: [AddressableActorRef: Cluster.Gossip] = [:]
+    private var lastGossipFrom: [AddressableActorRef: Cluster.MembershipGossip] = [:]
 
-    init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.Gossip>) {
+    init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.MembershipGossip>) {
         self.context = context
         self.notifyOnGossipRef = notifyOnGossipRef
         self.latestGossip = .init(ownerNode: context.system.cluster.node)
@@ -96,7 +100,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         }
     }
 
-    func makePayload(target: AddressableActorRef) -> Cluster.Gossip? {
+    func makePayload(target: AddressableActorRef) -> Cluster.MembershipGossip? {
         // today we don't trim payloads at all
         // TODO: trim some information?
         self.latestGossip
@@ -153,7 +157,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement? {
+    func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
         // 1) mark that from that specific peer, we know it observed at least that version
         self.lastGossipFrom[peer] = gossip
 
@@ -168,7 +172,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         return self.latestGossip
     }
 
-    func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Cluster.Gossip) {
+    func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Cluster.MembershipGossip) {
         // 1) store the direct gossip we got from this peer; we can use this to know if there's no need to gossip to that peer by inspecting seen table equality
         self.lastGossipFrom[peer] = acknowledgement
 
@@ -179,14 +183,14 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         self.notifyOnGossipRef.tell(self.latestGossip)
     }
 
-    func localGossipUpdate(gossip: Cluster.Gossip) {
+    func receiveLocalGossipUpdate(_ gossip: Cluster.MembershipGossip) {
         self.mergeInbound(gossip: gossip)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Utilities
 
-    private func mergeInbound(gossip: Cluster.Gossip) {
+    private func mergeInbound(gossip: Cluster.MembershipGossip) {
         _ = self.latestGossip.mergeForward(incoming: gossip)
         // effects are signalled via the ClusterShell, not here (it will also perform a merge) // TODO: a bit duplicated, could we maintain it here?
     }
@@ -201,7 +205,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
 
 let MembershipGossipIdentifier: StringGossipIdentifier = "membership"
 
-extension GossipControl where GossipEnvelope == Cluster.Gossip {
+extension GossiperControl where GossipEnvelope == Cluster.MembershipGossip {
     func update(payload: GossipEnvelope) {
         self.update(MembershipGossipIdentifier, payload: payload)
     }
