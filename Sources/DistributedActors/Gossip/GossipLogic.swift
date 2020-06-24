@@ -71,7 +71,6 @@ public protocol GossipLogic {
     /// gossip targeted to the same gossip identity as the logic's context
     mutating func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement?
 
-
     /// Invoked when the specific gossiped payload is acknowledged by the target.
     ///
     /// Note that acknowledgements may arrive in various orders, so make sure tracking them accounts for all possible orderings.

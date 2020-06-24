@@ -18,10 +18,9 @@ import Foundation
 import NIOSSL
 import XCTest
 
-final class GossipShellTests: ActorSystemXCTestCase {
-
+final class GossiperShellTests: ActorSystemXCTestCase {
     func peerBehavior<T: Codable>() -> Behavior<GossipShell<T, String>.Message> {
-         .receiveMessage { msg in
+        .receiveMessage { msg in
             if "\(msg)".contains("stop") { return .stop } else { return .same }
         }
     }
@@ -32,14 +31,14 @@ final class GossipShellTests: ActorSystemXCTestCase {
     func test_down_beGossipedToOtherNodes() throws {
         let p = self.testKit.spawnTestProbe(expecting: [AddressableActorRef].self)
 
-        let control = try Gossiper.start(
+        let control = try Gossiper.spawn(
             self.system,
             name: "gossiper",
             settings: .init(
                 interval: .seconds(1),
                 style: .unidirectional
-            )) { _ in InspectOfferedPeersTestGossipLogic(offeredPeersProbe: p.ref) }
-
+            )
+        ) { _ in InspectOfferedPeersTestGossipLogic(offeredPeersProbe: p.ref) }
 
         let first: ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
             try self.system.spawn("first", self.peerBehavior())
@@ -98,10 +97,10 @@ final class GossipShellTests: ActorSystemXCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: test_unidirectional_yetEmitsAck_shouldWarn
 
-    func test_unidirectional_yetEmitsAck_shouldWarn() throws {
+    func test_unidirectional_yetReceivesAckRef_shouldWarn() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let control = try Gossiper.start(
+        let control = try Gossiper.spawn(
             self.system,
             name: "noAcks",
             settings: .init(
@@ -124,7 +123,8 @@ final class GossipShellTests: ActorSystemXCTestCase {
             )
         )
 
-        try self.logCapture.awaitLogContaining(self.testKit,
+        try self.logCapture.awaitLogContaining(
+            self.testKit,
             text: " Incoming gossip has acknowledgement actor ref and seems to be expecting an ACK, while this gossiper is configured as .unidirectional!"
         )
     }
