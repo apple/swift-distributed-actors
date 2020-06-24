@@ -279,7 +279,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         for remainingNode in nodes {
             let probe = probes[remainingNode.cluster.node]!
-            let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(60), expectedDownMemberEventsFishing(on: remainingNode))
+            let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(120), expectedDownMemberEventsFishing(on: remainingNode))
 
             events.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
             for expectedDownNode in nodesToDown {

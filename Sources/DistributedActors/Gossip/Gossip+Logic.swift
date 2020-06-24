@@ -38,10 +38,10 @@ import Logging
 ///   for a nice overview of the general concepts involved in gossip algorithms.
 /// - SeeAlso: `Cluster.Gossip` for the Actor System's own gossip mechanism for membership dissemination
 public protocol GossipLogic {
-    associatedtype Envelope: GossipEnvelopeProtocol
+    associatedtype Gossip: GossipEnvelopeProtocol
     associatedtype Acknowledgement: Codable
 
-    typealias Context = GossipLogicContext<Envelope, Acknowledgement>
+    typealias Context = GossipLogicContext<Gossip, Acknowledgement>
 
     // init(context: Context) // TODO: a form of context?
 
@@ -56,7 +56,7 @@ public protocol GossipLogic {
     // TODO: make a directive here
 
     /// Allows for customizing the payload for specific targets
-    mutating func makePayload(target: AddressableActorRef) -> Envelope?
+    mutating func makePayload(target: AddressableActorRef) -> Gossip?
 
     /// Invoked when the specific gossiped payload is acknowledged by the target.
     ///
@@ -64,26 +64,25 @@ public protocol GossipLogic {
     /// Eg. if gossip is sent to 2 peers, it is NOT deterministic which of the acks returns first (or at all!).
     ///
     /// - Parameters:
+    ///   - acknowledgement: acknowledgement sent by the peer
     ///   - peer: The target which has acknowledged the gossiped payload.
     ///     It corresponds to the parameter that was passed to the `makePayload(target:)` which created this gossip payload.
-    ///   - acknowledgement: acknowledgement sent by the peer
-    ///   - envelope:
-    mutating func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope)
+    ///   - gossip:
+    mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving gossip
 
-    mutating func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement?
+    mutating func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement?
 
-    mutating func localGossipUpdate(gossip: Envelope)
+    mutating func receiveLocalGossipUpdate(_ gossip: Gossip)
 
     /// Extra side channel, allowing for arbitrary outside interactions with this gossip logic.
-    // TODO: We could consider making it typed perhaps...
-    mutating func receiveSideChannelMessage(message: Any) throws
+    mutating func receiveSideChannelMessage(_ message: Any) throws
 }
 
 extension GossipLogic {
-    public mutating func receiveSideChannelMessage(message: Any) throws {
+    public mutating func receiveSideChannelMessage(_ message: Any) throws {
         // ignore by default
     }
 }
@@ -117,52 +116,52 @@ public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol, Acknowledgeme
     }
 }
 
-public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol, Acknowledgement: Codable>: GossipLogic, CustomStringConvertible {
+public struct AnyGossipLogic<Gossip: GossipEnvelopeProtocol, Acknowledgement: Codable>: GossipLogic, CustomStringConvertible {
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
-    let _makePayload: (AddressableActorRef) -> Envelope?
+    let _makePayload: (AddressableActorRef) -> Gossip?
     @usableFromInline
-    let _receiveGossip: (Envelope, AddressableActorRef) -> Acknowledgement?
+    let _receiveGossip: (Gossip, AddressableActorRef) -> Acknowledgement?
     @usableFromInline
-    let _receiveAcknowledgement: (AddressableActorRef, Acknowledgement, Envelope) -> Void
+    let _receiveAcknowledgement: (Acknowledgement, AddressableActorRef, Gossip) -> Void
 
     @usableFromInline
-    let _localGossipUpdate: (Envelope) -> Void
+    let _receiveLocalGossipUpdate: (Gossip) -> Void
     @usableFromInline
     let _receiveSideChannelMessage: (Any) throws -> Void
 
     public init<Logic>(_ logic: Logic)
-        where Logic: GossipLogic, Logic.Envelope == Envelope, Logic.Acknowledgement == Acknowledgement {
+        where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement {
         var l = logic
         self._selectPeers = { l.selectPeers(peers: $0) }
         self._makePayload = { l.makePayload(target: $0) }
-        self._receiveGossip = { l.receiveGossip(gossip: $0, from: $1) }
+        self._receiveGossip = { l.receiveGossip($0, from: $1) }
 
-        self._receiveAcknowledgement = { l.receiveAcknowledgement(from: $0, acknowledgement: $1, confirmsDeliveryOf: $2) }
-        self._localGossipUpdate = { l.localGossipUpdate(gossip: $0) }
+        self._receiveAcknowledgement = { l.receiveAcknowledgement($0, from: $1, confirming: $2) }
+        self._receiveLocalGossipUpdate = { l.receiveLocalGossipUpdate($0) }
 
-        self._receiveSideChannelMessage = { try l.receiveSideChannelMessage(message: $0) }
+        self._receiveSideChannelMessage = { try l.receiveSideChannelMessage($0) }
     }
 
     public func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
         self._selectPeers(peers)
     }
 
-    public func makePayload(target: AddressableActorRef) -> Envelope? {
+    public func makePayload(target: AddressableActorRef) -> Gossip? {
         self._makePayload(target)
     }
 
-    public func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement? {
+    public func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
         self._receiveGossip(gossip, peer)
     }
 
-    public func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope) {
-        self._receiveAcknowledgement(peer, acknowledgement, envelope)
+    public func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming envelope: Gossip) {
+        self._receiveAcknowledgement(acknowledgement, peer, envelope)
     }
 
-    public func localGossipUpdate(gossip: Envelope) {
-        self._localGossipUpdate(gossip)
+    public func receiveLocalGossipUpdate(_ gossip: Gossip) {
+        self._receiveLocalGossipUpdate(gossip)
     }
 
     public func receiveSideChannelMessage(_ message: Any) throws {
@@ -170,7 +169,7 @@ public struct AnyGossipLogic<Envelope: GossipEnvelopeProtocol, Acknowledgement: 
     }
 
     public var description: String {
-        "GossipLogicBox<\(reflecting: Envelope.self)>(...)"
+        "\(reflecting: Self.self)(...)"
     }
 }
 

@@ -29,7 +29,7 @@ final class GossipShellTests: ActorSystemXCTestCase {
             makeLogic: { _ in InspectOfferedPeersTestGossipLogic(offeredPeersProbe: p.ref) }
         )
 
-        let peerBehavior: Behavior<GossipShell<InspectOfferedPeersTestGossipLogic.Envelope, String>.Message> = .receiveMessage { msg in
+        let peerBehavior: Behavior<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> = .receiveMessage { msg in
             if "\(msg)".contains("stop") { return .stop } else { return .same }
         }
         let first = try self.system.spawn("first", peerBehavior)
@@ -49,7 +49,7 @@ final class GossipShellTests: ActorSystemXCTestCase {
     }
 
     struct InspectOfferedPeersTestGossipLogic: GossipLogic {
-        struct Envelope: GossipEnvelopeProtocol {
+        struct Gossip: GossipEnvelopeProtocol {
             let metadata: String
             let payload: String
 
@@ -71,16 +71,16 @@ final class GossipShellTests: ActorSystemXCTestCase {
             return []
         }
 
-        func makePayload(target: AddressableActorRef) -> Envelope? {
+        func makePayload(target: AddressableActorRef) -> Gossip? {
             nil
         }
 
-        func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: Envelope) {}
+        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming envelope: Gossip) {}
 
-        func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> Acknowledgement? {
+        func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
             nil
         }
 
-        func localGossipUpdate(gossip: Envelope) {}
+        func receiveLocalGossipUpdate(_ gossip: Gossip) {}
     }
 }

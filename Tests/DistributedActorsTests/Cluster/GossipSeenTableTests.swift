@@ -19,7 +19,7 @@ import XCTest
 
 /// Tests of just the datatype
 final class GossipSeenTableTests: XCTestCase {
-    typealias SeenTable = Cluster.Gossip.SeenTable
+    typealias SeenTable = Cluster.MembershipGossip.SeenTable
 
     var nodeA: UniqueNode!
     var nodeB: UniqueNode!
@@ -37,13 +37,13 @@ final class GossipSeenTableTests: XCTestCase {
     }
 
     func test_seenTable_compare_concurrent_eachOtherDontKnown() {
-        let table = Cluster.Gossip.SeenTable.parse(
+        let table = Cluster.MembershipGossip.SeenTable.parse(
             """
             A: A@1
             """, nodes: self.allNodes
         )
 
-        let incoming = Cluster.Gossip.SeenTable.parse(
+        let incoming = Cluster.MembershipGossip.SeenTable.parse(
             """
             B: B@1
             """, nodes: self.allNodes
@@ -61,7 +61,7 @@ final class GossipSeenTableTests: XCTestCase {
     // MARK: increments
 
     func test_incrementVersion() {
-        var table = Cluster.Gossip.SeenTable(myselfNode: self.nodeA, version: .init())
+        var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.version(at: self.nodeA).shouldEqual(VersionVector.parse("", nodes: self.allNodes))
 
         table.incrementVersion(owner: self.nodeA, at: self.nodeA)
@@ -83,13 +83,13 @@ final class GossipSeenTableTests: XCTestCase {
     // MARK: merge
 
     func test_seenTable_merge_notYetSeenInformation() {
-        var table = Cluster.Gossip.SeenTable.parse(
+        var table = Cluster.MembershipGossip.SeenTable.parse(
             """
             A: A:1
             """, nodes: self.allNodes
         )
 
-        let incoming = Cluster.Gossip.SeenTable.parse(
+        let incoming = Cluster.MembershipGossip.SeenTable.parse(
             """
             B: B:2
             """, nodes: self.allNodes
@@ -106,12 +106,12 @@ final class GossipSeenTableTests: XCTestCase {
     func test_seenTable_merge_sameInformation() {
         // a situation in which the two nodes have converged, so their versions are .same
 
-        var table = Cluster.Gossip.SeenTable(myselfNode: self.nodeA, version: .init())
+        var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
         table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:1
         table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:2
 
-        var incoming = Cluster.Gossip(ownerNode: self.nodeB) // B observed:
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed:
         incoming.incrementOwnerVersion() // B observed: B:1
         incoming.incrementOwnerVersion() // B observed: B:2
         incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeA) // B observed: A:1 B:2
@@ -125,10 +125,10 @@ final class GossipSeenTableTests: XCTestCase {
     func test_seenTable_merge_aheadInformation() {
         // the incoming gossip is "ahead" and has some more information
 
-        var table = Cluster.Gossip.SeenTable(myselfNode: self.nodeA, version: .init())
+        var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
 
-        var incoming = Cluster.Gossip(ownerNode: self.nodeB) // B observed:
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed:
         incoming.incrementOwnerVersion() // B observed: B:1
         incoming.incrementOwnerVersion() // B observed: B:2
         incoming.seen.incrementVersion(owner: self.nodeB, at: self.nodeA) // B observed: A:1 B:2
@@ -142,12 +142,12 @@ final class GossipSeenTableTests: XCTestCase {
     func test_seenTable_merge_behindInformation() {
         // the incoming gossip is "behind"
 
-        var table = Cluster.Gossip.SeenTable(myselfNode: self.nodeA, version: .init())
+        var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
         table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:1
         table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:2
 
-        var incoming = Cluster.Gossip(ownerNode: self.nodeB) // B observed:
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed:
         incoming.incrementOwnerVersion() // B observed: B:1
         incoming.incrementOwnerVersion() // B observed: B:2
 
@@ -160,7 +160,7 @@ final class GossipSeenTableTests: XCTestCase {
     func test_seenTable_merge_concurrentInformation() {
         // the incoming gossip is "concurrent"
 
-        var table = Cluster.Gossip.SeenTable(myselfNode: self.nodeA, version: .init())
+        var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.incrementVersion(owner: self.nodeA, at: self.nodeA) // A observed: A:1
         table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:1
         table.incrementVersion(owner: self.nodeA, at: self.nodeB) // A observed: A:1 B:2
@@ -170,7 +170,7 @@ final class GossipSeenTableTests: XCTestCase {
         table.incrementVersion(owner: self.nodeB, at: self.nodeB) // B observed: B:3
 
         // in reality S is quite more far ahead, already at t=4
-        var incoming = Cluster.Gossip(ownerNode: self.nodeB) // B observed
+        var incoming = Cluster.MembershipGossip(ownerNode: self.nodeB) // B observed
         incoming.incrementOwnerVersion() // B observed: B:1
         incoming.incrementOwnerVersion() // B observed: B:2
         incoming.incrementOwnerVersion() // B observed: B:3
@@ -185,13 +185,13 @@ final class GossipSeenTableTests: XCTestCase {
     func test_seenTable_merge_concurrentInformation_unknownMember() {
         // the incoming gossip is "concurrent", and has a table entry for a node we don't know
 
-        var table = Cluster.Gossip.SeenTable.parse(
+        var table = Cluster.MembershipGossip.SeenTable.parse(
             """
             A: A:4
             """, nodes: self.allNodes
         )
 
-        let incoming = Cluster.Gossip.SeenTable.parse(
+        let incoming = Cluster.MembershipGossip.SeenTable.parse(
             """
             A: A:1
             B: B:2 C:1
@@ -210,7 +210,7 @@ final class GossipSeenTableTests: XCTestCase {
     // MARK: Prune
 
     func test_prune_removeNodeFromSeenTable() {
-        var table = Cluster.Gossip.SeenTable(myselfNode: self.nodeA, version: .init())
+        var table = Cluster.MembershipGossip.SeenTable(myselfNode: self.nodeA, version: .init())
         table.incrementVersion(owner: self.nodeA, at: self.nodeA)
         table.incrementVersion(owner: self.nodeA, at: self.nodeC)
 

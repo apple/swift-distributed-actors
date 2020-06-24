@@ -20,7 +20,7 @@ extension CRDT {
     /// It collaborates with the Direct Replicator in order to avoid needlessly sending values to nodes which already know
     /// about them (e.g. through direct replication).
     final class GossipReplicatorLogic: GossipLogic {
-        typealias Envelope = CRDT.Gossip
+        typealias Gossip = CRDT.Gossip
         typealias Acknowledgement = CRDT.GossipAck
 
         let identity: CRDT.Identity
@@ -80,7 +80,7 @@ extension CRDT {
             self.latest
         }
 
-        func receiveAcknowledgement(from peer: AddressableActorRef, acknowledgement: Acknowledgement, confirmsDeliveryOf envelope: CRDT.Gossip) {
+        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming envelope: CRDT.Gossip) {
             guard (self.latest.map { $0.payload.equalState(to: envelope.payload) } ?? false) else {
                 // received an ack for something, however it's not the "latest" anymore, so we need to gossip to target anyway
                 return
@@ -94,7 +94,7 @@ extension CRDT {
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Receiving gossip
 
-        func receiveGossip(gossip: Envelope, from peer: AddressableActorRef) -> CRDT.GossipAck? {
+        func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> CRDT.GossipAck? {
             // merge the datatype locally, and update our information about the origin's knowledge about this datatype
             // (does it already know about our data/all-deltas-we-are-aware-of or not)
             self.mergeInbound(from: peer, gossip)
@@ -106,7 +106,7 @@ extension CRDT {
             return CRDT.GossipAck()
         }
 
-        func localGossipUpdate(gossip: CRDT.Gossip) {
+        func receiveLocalGossipUpdate(_ gossip: CRDT.Gossip) {
             self.mergeInbound(from: nil, gossip)
             // during the next gossip round we'll gossip the latest most-up-to date version now;
             // no need to schedule that, we'll be called when it's time.
@@ -120,8 +120,8 @@ extension CRDT {
         // and gossip replicator, so that's a downside that we'll eventually want to address.
 
         enum SideChannelMessage {
-            case localUpdate(Envelope)
-            case ack(origin: AddressableActorRef, payload: Envelope)
+            case localUpdate(Gossip)
+            case ack(origin: AddressableActorRef, payload: Gossip)
         }
 
         func receiveSideChannelMessage(message: Any) throws {

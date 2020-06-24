@@ -19,21 +19,21 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Membership Testing DSL
 
-extension Cluster.Gossip {
+extension Cluster.MembershipGossip {
     /// First line is Membership DSL, followed by lines of the SeenTable DSL
-    internal static func parse(_ dsl: String, owner: UniqueNode, nodes: [UniqueNode]) -> Cluster.Gossip {
+    internal static func parse(_ dsl: String, owner: UniqueNode, nodes: [UniqueNode]) -> Cluster.MembershipGossip {
         let dslLines = dsl.split(separator: "\n")
-        var gossip = Cluster.Gossip(ownerNode: owner)
+        var gossip = Cluster.MembershipGossip(ownerNode: owner)
         gossip.membership = Cluster.Membership.parse(String(dslLines.first!), nodes: nodes)
-        gossip.seen = Cluster.Gossip.SeenTable.parse(dslLines.dropFirst().joined(separator: "\n"), nodes: nodes)
+        gossip.seen = Cluster.MembershipGossip.SeenTable.parse(dslLines.dropFirst().joined(separator: "\n"), nodes: nodes)
         return gossip
     }
 }
 
-extension Cluster.Gossip.SeenTable {
+extension Cluster.MembershipGossip.SeenTable {
     /// Express seen tables using a DSL
     /// Syntax: each line: `<owner>: <node>@<version>*`
-    internal static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> Cluster.Gossip.SeenTable {
+    internal static func parse(_ dslString: String, nodes: [UniqueNode], file: StaticString = #file, line: UInt = #line) -> Cluster.MembershipGossip.SeenTable {
         let lines = dslString.split(separator: "\n")
         func nodeById(id: String.SubSequence) -> UniqueNode {
             if let found = nodes.first(where: { $0.node.systemName.contains(id) }) {
@@ -43,7 +43,7 @@ extension Cluster.Gossip.SeenTable {
             }
         }
 
-        var table = Cluster.Gossip.SeenTable()
+        var table = Cluster.MembershipGossip.SeenTable()
 
         for line in lines {
             let elements = line.split(separator: " ")

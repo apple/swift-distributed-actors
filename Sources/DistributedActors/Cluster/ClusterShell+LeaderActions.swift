@@ -145,7 +145,7 @@ extension ClusterShell {
             return
         }
         state._latestGossip.incrementOwnerVersion()
-        state.gossipControl.update(payload: state._latestGossip)
+        state.gossiperControl.update(payload: state._latestGossip)
 
         self.terminateAssociation(system, state: &state, memberToRemove.node)
 

@@ -17,15 +17,15 @@ import Logging
 private let gossipTickKey: TimerKey = "gossip-tick"
 
 /// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgement: Codable> {
+internal final class GossipShell<Gossip: GossipEnvelopeProtocol, Acknowledgement: Codable> {
     typealias Ref = ActorRef<Message>
 
     let settings: Gossiper.Settings
 
-    private let makeLogic: (ActorContext<Message>, GossipIdentifier) -> AnyGossipLogic<Envelope, Acknowledgement>
+    private let makeLogic: (ActorContext<Message>, GossipIdentifier) -> AnyGossipLogic<Gossip, Acknowledgement>
 
     /// Payloads to be gossiped on gossip rounds
-    private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Envelope, Acknowledgement>]
+    private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Gossip, Acknowledgement>]
 
     typealias PeerRef = ActorRef<Message>
     private var peers: Set<PeerRef>
@@ -33,7 +33,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
     fileprivate init<Logic>(
         settings: Gossiper.Settings,
         makeLogic: @escaping (Logic.Context) -> Logic
-    ) where Logic: GossipLogic, Logic.Envelope == Envelope, Logic.Acknowledgement == Acknowledgement {
+    ) where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement {
         self.settings = settings
         self.makeLogic = { shellContext, id in
             let logicContext = GossipLogicContext(ownerContext: shellContext, gossipIdentifier: id)
@@ -90,7 +90,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
         _ context: ActorContext<Message>,
         identifier: GossipIdentifier,
         origin: ActorRef<Message>,
-        payload: Envelope,
+        payload: Gossip,
         ackRef: ActorRef<Acknowledgement>
     ) {
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
@@ -101,7 +101,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
 
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        if let ack = logic.receiveGossip(gossip: payload, from: origin.asAddressable()) {
+        if let ack = logic.receiveGossip(payload, from: origin.asAddressable()) {
             ackRef.tell(ack)
         }
     }
@@ -109,7 +109,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
     private func onLocalPayloadUpdate(
         _ context: ActorContext<Message>,
         identifier: GossipIdentifier,
-        payload: Envelope
+        payload: Gossip
     ) {
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
@@ -117,11 +117,11 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
             "gossip/identifier": "\(identifier.gossipIdentifier)",
             "gossip/payload": "\(pretty: payload)",
         ])
-        logic.localGossipUpdate(gossip: payload)
+        logic.receiveLocalGossipUpdate(payload)
     }
 
-    private func getEnsureLogic(_ context: ActorContext<Message>, identifier: GossipIdentifier) -> AnyGossipLogic<Envelope, Acknowledgement> {
-        let logic: AnyGossipLogic<Envelope, Acknowledgement>
+    private func getEnsureLogic(_ context: ActorContext<Message>, identifier: GossipIdentifier) -> AnyGossipLogic<Gossip, Acknowledgement> {
+        let logic: AnyGossipLogic<Gossip, Acknowledgement>
         if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
             logic = existing
         } else {
@@ -164,7 +164,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
             ])
 
             for selectedPeer in selectedPeers {
-                guard let payload: Envelope = logic.makePayload(target: selectedPeer) else {
+                guard let gossip: Gossip = logic.makePayload(target: selectedPeer) else {
                     context.log.trace("Skipping gossip to peer \(selectedPeer)", metadata: [
                         "gossip/id": "\(identifier.gossipIdentifier)",
                         "gossip/target": "\(selectedPeer)",
@@ -182,8 +182,8 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
                     continue
                 }
 
-                self.sendGossip(context, identifier: identifier, payload, to: selectedRef, onGossipAck: { ack in
-                    logic.receiveAcknowledgement(from: selectedPeer, acknowledgement: ack, confirmsDeliveryOf: payload)
+                self.sendGossip(context, identifier: identifier, gossip, to: selectedRef, onGossipAck: { ack in
+                    logic.receiveAcknowledgement(ack, from: selectedPeer, confirming: gossip)
                 })
             }
 
@@ -195,7 +195,7 @@ internal final class GossipShell<Envelope: GossipEnvelopeProtocol, Acknowledgeme
     private func sendGossip(
         _ context: ActorContext<Message>,
         identifier: AnyGossipIdentifier,
-        _ payload: Envelope,
+        _ payload: Gossip,
         to target: PeerRef,
         onGossipAck: @escaping (Acknowledgement) -> Void
     ) {
@@ -355,10 +355,10 @@ extension GossipShell {
 extension GossipShell {
     enum Message {
         // gossip
-        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Envelope, ackRef: ActorRef<Acknowledgement>)
+        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Gossip, ackRef: ActorRef<Acknowledgement>)
 
         // local messages
-        case updatePayload(identifier: GossipIdentifier, Envelope)
+        case updatePayload(identifier: GossipIdentifier, Gossip)
         case removePayload(identifier: GossipIdentifier)
         case introducePeer(PeerRef)
 
@@ -382,8 +382,8 @@ public enum Gossiper {
         props: Props = .init(),
         settings: Settings = .init(),
         makeLogic: @escaping (Logic.Context) -> Logic
-    ) throws -> GossipControl<Envelope, Acknowledgement>
-        where Logic: GossipLogic, Logic.Envelope == Envelope, Logic.Acknowledgement == Acknowledgement {
+    ) throws -> GossiperControl<Envelope, Acknowledgement>
+        where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement {
         let ref = try context.spawn(
             naming,
             of: GossipShell<Envelope, Acknowledgement>.Message.self,
@@ -391,14 +391,14 @@ public enum Gossiper {
             file: #file, line: #line,
             GossipShell<Envelope, Acknowledgement>(settings: settings, makeLogic: makeLogic).behavior
         )
-        return GossipControl(ref)
+        return GossiperControl(ref)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: GossipControl
+// MARK: GossiperControl
 
-internal struct GossipControl<GossipEnvelope: GossipEnvelopeProtocol, GossipAcknowledgement: Codable> {
+internal struct GossiperControl<GossipEnvelope: GossipEnvelopeProtocol, GossipAcknowledgement: Codable> {
     private let ref: GossipShell<GossipEnvelope, GossipAcknowledgement>.Ref
 
     init(_ ref: GossipShell<GossipEnvelope, GossipAcknowledgement>.Ref) {
