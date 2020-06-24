@@ -38,12 +38,10 @@ import Logging
 ///   for a nice overview of the general concepts involved in gossip algorithms.
 /// - SeeAlso: `Cluster.Gossip` for the Actor System's own gossip mechanism for membership dissemination
 public protocol GossipLogic {
-    associatedtype Gossip: GossipEnvelopeProtocol
+    associatedtype Gossip: Codable
     associatedtype Acknowledgement: Codable
 
     typealias Context = GossipLogicContext<Gossip, Acknowledgement>
-
-    // init(context: Context) // TODO: a form of context?
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spreading gossip
@@ -52,11 +50,27 @@ public protocol GossipLogic {
     ///
     /// Useful to implement using `PeerSelection`
     // TODO: OrderedSet would be the right thing here to be honest...
-    mutating func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef]
+    mutating func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef]
     // TODO: make a directive here
 
-    /// Allows for customizing the payload for specific targets
+    /// Allows for customizing the payload for each of the selected peers.
+    ///
+    /// Some gossip protocols are able to specialize the gossip payload sent to a specific peer,
+    /// e.g. by excluding information the peer is already aware of or similar.
+    ///
+    /// Returning `nil` means that the peer will be skipped in this gossip round, even though it was a candidate selected by peer selection.
     mutating func makePayload(target: AddressableActorRef) -> Gossip?
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Receiving gossip
+
+    /// Invoked whenever a gossip message is received from another peer.
+    ///
+    /// Note that a single gossiper instance may create _multiple_ `GossipLogic` instances,
+    /// one for each `GossipIdentifier` it is managing. This function is guaranteed to be invoked with the
+    /// gossip targeted to the same gossip identity as the logic's context
+    mutating func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement?
+
 
     /// Invoked when the specific gossiped payload is acknowledged by the target.
     ///
@@ -70,10 +84,8 @@ public protocol GossipLogic {
     ///   - gossip:
     mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip)
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Receiving gossip
-
-    mutating func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement?
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Local interactions / control messages
 
     mutating func receiveLocalGossipUpdate(_ gossip: Gossip)
 
@@ -82,18 +94,26 @@ public protocol GossipLogic {
 }
 
 extension GossipLogic {
+    public mutating func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {
+        // ignore by default
+    }
+
     public mutating func receiveSideChannelMessage(_ message: Any) throws {
         // ignore by default
     }
 }
 
-public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol, Acknowledgement: Codable> {
+public struct GossipLogicContext<Envelope: Codable, Acknowledgement: Codable> {
+    /// Identifier associated with this gossip logic.
+    ///
+    /// Many gossipers only use a single identifier (and logic),
+    /// however some may need to manage gossip rounds for specific identifiers independently.
     public let gossipIdentifier: GossipIdentifier
 
-    private let ownerContext: ActorContext<GossipShell<Envelope, Acknowledgement>.Message>
+    private let gossiperContext: ActorContext<GossipShell<Envelope, Acknowledgement>.Message>
 
     internal init(ownerContext: ActorContext<GossipShell<Envelope, Acknowledgement>.Message>, gossipIdentifier: GossipIdentifier) {
-        self.ownerContext = ownerContext
+        self.gossiperContext = ownerContext
         self.gossipIdentifier = gossipIdentifier
     }
 
@@ -102,21 +122,24 @@ public struct GossipLogicContext<Envelope: GossipEnvelopeProtocol, Acknowledgeme
     /// Should not be used to arbitrarily allow sending messages to the gossiper from gossip logics,
     /// which is why it is only an address and not full ActorRef to the gossiper.
     public var gossiperAddress: ActorAddress {
-        self.ownerContext.myself.address
+        self.gossiperContext.myself.address
     }
 
+    /// Logger associated with the owning `Gossiper`.
+    ///
+    /// Has the `gossip/identifier` of this gossip logic stored as metadata automatically.
     public var log: Logger {
-        var l = self.ownerContext.log
+        var l = self.gossiperContext.log
         l[metadataKey: "gossip/identifier"] = "\(self.gossipIdentifier)"
         return l
     }
 
     public var system: ActorSystem {
-        self.ownerContext.system
+        self.gossiperContext.system
     }
 }
 
-public struct AnyGossipLogic<Gossip: GossipEnvelopeProtocol, Acknowledgement: Codable>: GossipLogic, CustomStringConvertible {
+public struct AnyGossipLogic<Gossip: Codable, Acknowledgement: Codable>: GossipLogic, CustomStringConvertible {
     @usableFromInline
     let _selectPeers: ([AddressableActorRef]) -> [AddressableActorRef]
     @usableFromInline
@@ -131,10 +154,14 @@ public struct AnyGossipLogic<Gossip: GossipEnvelopeProtocol, Acknowledgement: Co
     @usableFromInline
     let _receiveSideChannelMessage: (Any) throws -> Void
 
+    public init(context: Context) {
+        fatalError("\(Self.self) is intended to be created with a context, use `init(logic)` instead.")
+    }
+
     public init<Logic>(_ logic: Logic)
         where Logic: GossipLogic, Logic.Gossip == Gossip, Logic.Acknowledgement == Acknowledgement {
         var l = logic
-        self._selectPeers = { l.selectPeers(peers: $0) }
+        self._selectPeers = { l.selectPeers($0) }
         self._makePayload = { l.makePayload(target: $0) }
         self._receiveGossip = { l.receiveGossip($0, from: $1) }
 
@@ -144,7 +171,7 @@ public struct AnyGossipLogic<Gossip: GossipEnvelopeProtocol, Acknowledgement: Co
         self._receiveSideChannelMessage = { try l.receiveSideChannelMessage($0) }
     }
 
-    public func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+    public func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
         self._selectPeers(peers)
     }
 
@@ -156,8 +183,8 @@ public struct AnyGossipLogic<Gossip: GossipEnvelopeProtocol, Acknowledgement: Co
         self._receiveGossip(gossip, peer)
     }
 
-    public func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming envelope: Gossip) {
-        self._receiveAcknowledgement(acknowledgement, peer, envelope)
+    public func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {
+        self._receiveAcknowledgement(acknowledgement, peer, gossip)
     }
 
     public func receiveLocalGossipUpdate(_ gossip: Gossip) {
@@ -171,17 +198,4 @@ public struct AnyGossipLogic<Gossip: GossipEnvelopeProtocol, Acknowledgement: Co
     public var description: String {
         "\(reflecting: Self.self)(...)"
     }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Envelope
-
-public protocol GossipEnvelopeProtocol: Codable {
-    associatedtype Metadata
-    associatedtype Payload
-
-    // Payload MAY contain the metadata, and we just expose it, or metadata is separate and we do NOT gossip it.
-
-    var metadata: Metadata { get }
-    var payload: Payload { get }
 }

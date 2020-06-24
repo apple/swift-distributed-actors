@@ -16,8 +16,10 @@ import Logging
 
 private let gossipTickKey: TimerKey = "gossip-tick"
 
-/// Convergent gossip is a gossip mechanism which aims to equalize some state across all peers participating.
-internal final class GossipShell<Gossip: GossipEnvelopeProtocol, Acknowledgement: Codable> {
+/// :nodoc:
+///
+/// Not intended to be spawned directly, use `Gossiper.spawn` instead!
+internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     typealias Ref = ActorRef<Message>
 
     let settings: Gossiper.Settings
@@ -91,7 +93,7 @@ internal final class GossipShell<Gossip: GossipEnvelopeProtocol, Acknowledgement
         identifier: GossipIdentifier,
         origin: ActorRef<Message>,
         payload: Gossip,
-        ackRef: ActorRef<Acknowledgement>
+        ackRef: ActorRef<Acknowledgement>?
     ) {
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
@@ -101,8 +103,37 @@ internal final class GossipShell<Gossip: GossipEnvelopeProtocol, Acknowledgement
 
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        if let ack = logic.receiveGossip(payload, from: origin.asAddressable()) {
-            ackRef.tell(ack)
+        let ack: Acknowledgement? = logic.receiveGossip(payload, from: origin.asAddressable())
+
+        switch self.settings.style {
+        case .acknowledged:
+            if let ack = ack {
+                ackRef?.tell(ack)
+            }
+
+        case .unidirectional:
+            if let unexpectedAck = ack {
+                context.log.warning(
+                    """
+                    GossipLogic attempted to offer Acknowledgement while it is configured as .unidirectional!\
+                    This is potentially a bug in the logic or the Gossiper's configuration. Dropping acknowledgement.
+                    """, metadata: [
+                    "gossip/identity": "\(identifier.gossipIdentifier)",
+                    "gossip/origin": "\(origin.address)",
+                    "gossip/ack": "\(unexpectedAck)",
+                ])
+            }
+            if let unexpectedAckRef = ackRef {
+                context.log.warning(
+                    """
+                    Incoming gossip has acknowledgement actor ref and seems to be expecting an ACK, while this gossiper is configured as .unidirectional! \
+                    This is potentially a bug in the logic or the Gossiper's configuration.
+                    """, metadata: [
+                    "gossip/identity": "\(identifier.gossipIdentifier)",
+                    "gossip/origin": "\(origin.address)",
+                    "gossip/ackRef": "\(unexpectedAckRef)",
+                ])
+            }
         }
     }
 
@@ -156,7 +187,7 @@ internal final class GossipShell<Gossip: GossipEnvelopeProtocol, Acknowledgement
         }
 
         for (identifier, logic) in self.gossipLogics {
-            let selectedPeers = logic.selectPeers(peers: allPeers) // TODO: OrderedSet would be the right thing here...
+            let selectedPeers = logic.selectPeers(allPeers) // TODO: OrderedSet would be the right thing here...
 
             context.log.trace("New gossip round, selected [\(selectedPeers.count)] peers, from [\(allPeers.count)] peers", metadata: [
                 "gossip/id": "\(identifier.gossipIdentifier)",
@@ -205,22 +236,26 @@ internal final class GossipShell<Gossip: GossipEnvelopeProtocol, Acknowledgement
             "actor/message": Logger.MetadataValue.pretty(payload),
         ])
 
-        // TODO: configurable timeout?
-        let ack = target.ask(for: Acknowledgement.self, timeout: .seconds(3)) { replyTo in
-            Message.gossip(identity: identifier.underlying, origin: context.myself, payload, ackRef: replyTo)
-        }
-
-        context.onResultAsync(of: ack, timeout: .effectivelyInfinite) { res in
-            switch res {
-            case .success(let ack):
-                context.log.trace("Gossip ACKed", metadata: [
-                    "gossip/ack": "\(ack)",
-                ])
-                onGossipAck(ack)
-            case .failure:
-                context.log.warning("Failed to ACK delivery [\(identifier.gossipIdentifier)] gossip \(payload) to \(target)")
+        switch self.settings.style {
+        case .unidirectional:
+            target.tell(Message.gossip(identity: identifier.underlying, origin: context.myself, payload, ackRef: nil))
+        case .acknowledged(let timeout):
+            let ack = target.ask(for: Acknowledgement.self, timeout: timeout) { replyTo in
+                Message.gossip(identity: identifier.underlying, origin: context.myself, payload, ackRef: replyTo)
             }
-            return .same
+
+            context.onResultAsync(of: ack, timeout: .effectivelyInfinite) { res in
+                switch res {
+                case .success(let ack):
+                    context.log.trace("Gossip ACKed", metadata: [
+                        "gossip/ack": "\(ack)",
+                    ])
+                    onGossipAck(ack)
+                case .failure:
+                    context.log.warning("Failed to ACK delivery [\(identifier.gossipIdentifier)] gossip \(payload) to \(target)")
+                }
+                return .same
+            }
         }
     }
 
@@ -229,8 +264,8 @@ internal final class GossipShell<Gossip: GossipEnvelopeProtocol, Acknowledgement
             return // no need to schedule gossip ticks if we have no peers
         }
 
-        let delay = self.settings.effectiveGossipInterval
-        context.log.trace("Schedule next gossip round in \(delay.prettyDescription) (\(self.settings.gossipInterval.prettyDescription) ± \(self.settings.gossipIntervalRandomFactor * 100)%)")
+        let delay = self.settings.effectiveInterval
+        context.log.trace("Schedule next gossip round in \(delay.prettyDescription) (\(self.settings.interval.prettyDescription) ± \(self.settings.intervalRandomFactor * 100)%)")
         context.timers.startSingle(key: gossipTickKey, message: ._periodicGossipTick, delay: delay)
     }
 }
@@ -355,7 +390,7 @@ extension GossipShell {
 extension GossipShell {
     enum Message {
         // gossip
-        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Gossip, ackRef: ActorRef<Acknowledgement>)
+        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Gossip, ackRef: ActorRef<Acknowledgement>?)
 
         // local messages
         case updatePayload(identifier: GossipIdentifier, Gossip)
@@ -376,11 +411,10 @@ extension GossipShell {
 public enum Gossiper {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
     static func start<Logic, Envelope, Acknowledgement>(
-        _ context: ActorRefFactory, name naming: ActorNaming,
-        of type: Envelope.Type = Envelope.self,
-        ofAcknowledgement acknowledgementType: Acknowledgement.Type = Acknowledgement.self,
+        _ context: ActorRefFactory,
+        name naming: ActorNaming,
+        settings: Settings,
         props: Props = .init(),
-        settings: Settings = .init(),
         makeLogic: @escaping (Logic.Context) -> Logic
     ) throws -> GossiperControl<Envelope, Acknowledgement>
         where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement {
@@ -398,29 +432,34 @@ public enum Gossiper {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: GossiperControl
 
-internal struct GossiperControl<GossipEnvelope: GossipEnvelopeProtocol, GossipAcknowledgement: Codable> {
-    private let ref: GossipShell<GossipEnvelope, GossipAcknowledgement>.Ref
+/// Control object used to modify and interact with a spawned `Gossiper<Gossip, Acknowledgement>`.
+public struct GossiperControl<Gossip: Codable, Acknowledgement: Codable> {
+    /// Internal FOR TESTING ONLY.
+    internal let ref: GossipShell<Gossip, Acknowledgement>.Ref
 
-    init(_ ref: GossipShell<GossipEnvelope, GossipAcknowledgement>.Ref) {
+    init(_ ref: GossipShell<Gossip, Acknowledgement>.Ref) {
         self.ref = ref
     }
 
-    /// Introduce a peer to the gossip group
-    func introduce(peer: GossipShell<GossipEnvelope, GossipAcknowledgement>.Ref) {
+    /// Introduce a peer to the gossip group.
+    ///
+    /// This method is fairly manual and error prone and as such internal only for the time being.
+    /// Please use the receptionist based peer discovery instead.
+    internal func introduce(peer: GossipShell<Gossip, Acknowledgement>.Ref) {
         self.ref.tell(.introducePeer(peer))
     }
 
     // FIXME: is there some way to express that actually, Metadata is INSIDE Payload so I only want to pass the "envelope" myself...?
-    func update(_ identifier: GossipIdentifier, payload: GossipEnvelope) {
+    public func update(_ identifier: GossipIdentifier, payload: Gossip) {
         self.ref.tell(.updatePayload(identifier: identifier, payload))
     }
 
-    func remove(_ identifier: GossipIdentifier) {
+    public func remove(_ identifier: GossipIdentifier) {
         self.ref.tell(.removePayload(identifier: identifier))
     }
 
     /// Side channel messages which may be piped into specific gossip logics.
-    func sideChannelTell(_ identifier: GossipIdentifier, message: Any) {
+    public func sideChannelTell(_ identifier: GossipIdentifier, message: Any) {
         self.ref.tell(.sideChannelMessage(identifier: identifier, message))
     }
 }

@@ -55,7 +55,7 @@ extension CRDT {
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Spreading gossip
 
-        func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+        func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
             // how many peers we select in each gossip round,
             // we could for example be dynamic and notice if we have 10+ nodes, we pick 2 members to speed up the dissemination etc.
             let n = 1
@@ -80,8 +80,8 @@ extension CRDT {
             self.latest
         }
 
-        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming envelope: CRDT.Gossip) {
-            guard (self.latest.map { $0.payload.equalState(to: envelope.payload) } ?? false) else {
+        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: CRDT.Gossip) {
+            guard (self.latest.map { $0.payload.equalState(to: gossip.payload) } ?? false) else {
                 // received an ack for something, however it's not the "latest" anymore, so we need to gossip to target anyway
                 return
             }
@@ -180,7 +180,7 @@ extension CRDT.Identity: GossipIdentifier {
 
 extension CRDT {
     /// The gossip to be spread about a specific CRDT (identity).
-    struct Gossip: GossipEnvelopeProtocol, CustomStringConvertible, CustomPrettyStringConvertible {
+    struct Gossip: Codable, CustomStringConvertible, CustomPrettyStringConvertible {
         struct Metadata: Codable {} // FIXME: remove, seems we dont need metadata explicitly here
         typealias Payload = StateBasedCRDT
 
