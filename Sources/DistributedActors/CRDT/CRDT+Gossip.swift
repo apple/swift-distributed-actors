@@ -181,14 +181,9 @@ extension CRDT.Identity: GossipIdentifier {
 extension CRDT {
     /// The gossip to be spread about a specific CRDT (identity).
     struct Gossip: Codable, CustomStringConvertible, CustomPrettyStringConvertible {
-        struct Metadata: Codable {} // FIXME: remove, seems we dont need metadata explicitly here
-        typealias Payload = StateBasedCRDT
+        var payload: StateBasedCRDT
 
-        var metadata: Metadata
-        var payload: Payload
-
-        init(metadata: CRDT.Gossip.Metadata, payload: CRDT.Gossip.Payload) {
-            self.metadata = metadata
+        init(payload: StateBasedCRDT) {
             self.payload = payload
         }
 
@@ -201,7 +196,7 @@ extension CRDT {
         }
 
         var description: String {
-            "CRDT.Gossip(metadata: \(metadata), payload: \(payload))"
+            "CRDT.Gossip(\(payload))"
         }
     }
 
@@ -210,8 +205,6 @@ extension CRDT {
 
 extension CRDT.Gossip {
     enum CodingKeys: CodingKey {
-        case metadata
-        case metadataManifest
         case payload
         case payloadManifest
     }
@@ -222,10 +215,6 @@ extension CRDT.Gossip {
         }
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        let manifestData = try container.decode(Data.self, forKey: .metadata)
-        let manifestManifest = try container.decode(Serialization.Manifest.self, forKey: .metadataManifest)
-        self.metadata = try context.serialization.deserialize(as: Metadata.self, from: .data(manifestData), using: manifestManifest)
 
         let payloadData = try container.decode(Data.self, forKey: .payload)
         let payloadManifest = try container.decode(Serialization.Manifest.self, forKey: .payloadManifest)
@@ -242,9 +231,5 @@ extension CRDT.Gossip {
         let serializedPayload = try context.serialization.serialize(self.payload)
         try container.encode(serializedPayload.buffer.readData(), forKey: .payload)
         try container.encode(serializedPayload.manifest, forKey: .payloadManifest)
-
-        let serializedMetadata = try context.serialization.serialize(self.metadata)
-        try container.encode(serializedMetadata.buffer.readData(), forKey: .metadata)
-        try container.encode(serializedMetadata.manifest, forKey: .metadataManifest)
     }
 }
