@@ -27,7 +27,7 @@ extension ClusterShellState {
         }
 
         guard self.latestGossip.converged() else {
-            return [] // leader actions are only performed when
+            return [] // leader actions are only performed when up nodes are converged
         }
 
         func collectMemberUpMoves() -> [LeaderAction] {
@@ -71,19 +71,6 @@ extension ClusterShell {
         file: String = #file, line: UInt = #line
     ) -> ClusterShellState {
         guard !leaderActions.isEmpty else {
-            return previousState
-        }
-
-        guard previousState.latestGossip.converged() else {
-            previousState.log.warning(
-                "Skipping leader actions, gossip not converged",
-                metadata: [
-                    "tag": "leader-action",
-                    "leader/actions": "\(leaderActions)",
-                    "gossip/current": "\(previousState.latestGossip)",
-                    "leader/interpret/location": "\(file):\(line)",
-                ]
-            )
             return previousState
         }
 
