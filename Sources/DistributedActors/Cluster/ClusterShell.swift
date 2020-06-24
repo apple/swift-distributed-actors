@@ -422,19 +422,19 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                // TODO: Membership.Gossip?
                 let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper.start(
                     context,
                     name: "\(ActorPath._clusterGossip.name)",
-                    props: ._wellKnown,
                     settings: .init(
-                        gossipInterval: clusterSettings.membershipGossipInterval,
-                        gossipIntervalRandomFactor: clusterSettings.membershipGossipIntervalRandomFactor,
+                        interval: clusterSettings.membershipGossipInterval,
+                        intervalRandomFactor: clusterSettings.membershipGossipIntervalRandomFactor,
+                        style: .acknowledged(timeout: clusterSettings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
                             let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.node), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable()
                     })
                     ),
+                    props: ._wellKnown,
                     makeLogic: {
                         MembershipGossipLogic(
                             $0,

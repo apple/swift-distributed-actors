@@ -37,7 +37,6 @@ extension GossipShell.Message: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .gossip:
-
             let identifierManifest = try container.decode(Serialization.Manifest.self, forKey: .gossip_identifier_manifest)
             let identifierPayload = try container.decode(Data.self, forKey: .gossip_identifier)
             let identifierAny = try context.serialization.deserializeAny(from: .data(identifierPayload), using: identifierManifest)
@@ -53,8 +52,8 @@ extension GossipShell.Message: Codable {
             let payloadPayload = try container.decode(Data.self, forKey: .gossip_payload)
             let payload = try context.serialization.deserialize(as: Gossip.self, from: .data(payloadPayload), using: payloadManifest)
 
-            let ackRefAddress = try container.decode(ActorAddress.self, forKey: .ackRef)
-            let ackRef = context.resolveActorRef(Acknowledgement.self, identifiedBy: ackRefAddress)
+            let ackRefAddress = try container.decodeIfPresent(ActorAddress.self, forKey: .ackRef)
+            let ackRef = ackRefAddress.map { context.resolveActorRef(Acknowledgement.self, identifiedBy: $0) }
 
             self = .gossip(identity: identifier, origin: origin, payload, ackRef: ackRef)
         }
@@ -81,7 +80,7 @@ extension GossipShell.Message: Codable {
             try container.encode(serializedPayload.manifest, forKey: .gossip_payload_manifest)
             try container.encode(serializedPayload.buffer.readData(), forKey: .gossip_payload)
 
-            try container.encode(ackRef.address, forKey: .ackRef)
+            try container.encodeIfPresent(ackRef?.address, forKey: .ackRef)
 
         default:
             throw SerializationError.unableToSerialize(hint: "\(reflecting: Self.self)")

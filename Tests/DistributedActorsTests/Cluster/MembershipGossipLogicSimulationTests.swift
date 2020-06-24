@@ -275,7 +275,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             },
             stopRunWhen: { logics, _ in
                 logics.allSatisfy { logic in
-                    logic.selectPeers(peers: self.peers(of: logic)) == [] // no more peers to talk to
+                    logic.selectPeers(self.peers(of: logic)) == [] // no more peers to talk to
                 }
             },
             assert: { results in
@@ -347,7 +347,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 // information.
                 let participatingGossips = self.logics.shuffled()
                 for logic in participatingGossips {
-                    let selectedPeers: [AddressableActorRef] = logic.selectPeers(peers: self.peers(of: logic))
+                    let selectedPeers: [AddressableActorRef] = logic.selectPeers(self.peers(of: logic))
                     log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map { $0.address.node!.node.systemName })")
 
                     for targetPeer in selectedPeers {

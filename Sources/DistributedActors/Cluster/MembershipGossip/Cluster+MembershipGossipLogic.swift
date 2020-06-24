@@ -53,13 +53,12 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spreading gossip
 
-    // TODO: implement better, only peers which are "behind"
-    func selectPeers(peers _peers: [AddressableActorRef]) -> [AddressableActorRef] {
+    func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
         // how many peers we select in each gossip round,
         // we could for example be dynamic and notice if we have 10+ nodes, we pick 2 members to speed up the dissemination etc.
         let n = 1
 
-        self.updateActivePeers(peers: _peers)
+        self.updateActivePeers(peers)
         var selectedPeers: [AddressableActorRef] = []
         selectedPeers.reserveCapacity(min(n, self.peers.count))
 
@@ -73,7 +72,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
         return selectedPeers
     }
 
-    private func updateActivePeers(peers: [AddressableActorRef]) {
+    private func updateActivePeers(_ peers: [AddressableActorRef]) {
         if let changed = Self.peersChanged(known: self.peers, current: peers) {
             // 1) remove any peers which are no longer active
             //    - from the peers list
@@ -205,8 +204,8 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
 
 let MembershipGossipIdentifier: StringGossipIdentifier = "membership"
 
-extension GossiperControl where GossipEnvelope == Cluster.MembershipGossip {
-    func update(payload: GossipEnvelope) {
+extension GossiperControl where Gossip == Cluster.MembershipGossip {
+    func update(payload: Gossip) {
         self.update(MembershipGossipIdentifier, payload: payload)
     }
 

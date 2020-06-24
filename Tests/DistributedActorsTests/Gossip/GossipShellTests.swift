@@ -19,21 +19,32 @@ import NIOSSL
 import XCTest
 
 final class GossipShellTests: ActorSystemXCTestCase {
+
+    func peerBehavior<T: Codable>() -> Behavior<GossipShell<T, String>.Message> {
+         .receiveMessage { msg in
+            if "\(msg)".contains("stop") { return .stop } else { return .same }
+        }
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: test_down_beGossipedToOtherNodes
+
     func test_down_beGossipedToOtherNodes() throws {
         let p = self.testKit.spawnTestProbe(expecting: [AddressableActorRef].self)
 
         let control = try Gossiper.start(
             self.system,
             name: "gossiper",
-            settings: .init(gossipInterval: .seconds(1)),
-            makeLogic: { _ in InspectOfferedPeersTestGossipLogic(offeredPeersProbe: p.ref) }
-        )
+            settings: .init(
+                interval: .seconds(1),
+                style: .unidirectional
+            )) { _ in InspectOfferedPeersTestGossipLogic(offeredPeersProbe: p.ref) }
 
-        let peerBehavior: Behavior<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> = .receiveMessage { msg in
-            if "\(msg)".contains("stop") { return .stop } else { return .same }
-        }
-        let first = try self.system.spawn("first", peerBehavior)
-        let second = try self.system.spawn("second", peerBehavior)
+
+        let first: ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
+            try self.system.spawn("first", self.peerBehavior())
+        let second: ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
+            try self.system.spawn("second", self.peerBehavior())
 
         control.introduce(peer: first)
         control.introduce(peer: second)
@@ -49,7 +60,7 @@ final class GossipShellTests: ActorSystemXCTestCase {
     }
 
     struct InspectOfferedPeersTestGossipLogic: GossipLogic {
-        struct Gossip: GossipEnvelopeProtocol {
+        struct Gossip: Codable {
             let metadata: String
             let payload: String
 
@@ -66,7 +77,7 @@ final class GossipShellTests: ActorSystemXCTestCase {
             self.offeredPeersProbe = offeredPeersProbe
         }
 
-        func selectPeers(peers: [AddressableActorRef]) -> [AddressableActorRef] {
+        func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
             self.offeredPeersProbe.tell(peers)
             return []
         }
@@ -75,7 +86,75 @@ final class GossipShellTests: ActorSystemXCTestCase {
             nil
         }
 
-        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming envelope: Gossip) {}
+        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {}
+
+        func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
+            nil
+        }
+
+        func receiveLocalGossipUpdate(_ gossip: Gossip) {}
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: test_unidirectional_yetEmitsAck_shouldWarn
+
+    func test_unidirectional_yetEmitsAck_shouldWarn() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let control = try Gossiper.start(
+            self.system,
+            name: "noAcks",
+            settings: .init(
+                interval: .milliseconds(100),
+                style: .unidirectional
+            ),
+            makeLogic: { _ in NoAcksTestGossipLogic(probe: p.ref) }
+        )
+
+        let first: ActorRef<GossipShell<NoAcksTestGossipLogic.Gossip, NoAcksTestGossipLogic.Acknowledgement>.Message> =
+            try self.system.spawn("first", self.peerBehavior())
+
+        control.introduce(peer: first)
+        control.update(StringGossipIdentifier("hi"), payload: .init("hello"))
+        control.ref.tell(
+            .gossip(
+                identity: StringGossipIdentifier("example"),
+                origin: first, .init("unexpected"),
+                ackRef: system.deadLetters.adapted() // this is wrong on purpose; we're configured as `unidirectional`; this should cause warnings
+            )
+        )
+
+        try self.logCapture.awaitLogContaining(self.testKit,
+            text: " Incoming gossip has acknowledgement actor ref and seems to be expecting an ACK, while this gossiper is configured as .unidirectional!"
+        )
+    }
+
+    struct NoAcksTestGossipLogic: GossipLogic {
+        struct Gossip: Codable {
+            let metadata: String
+            let payload: String
+
+            init(_ info: String) {
+                self.metadata = info
+                self.payload = info
+            }
+        }
+
+        let probe: ActorRef<String>
+
+        typealias Acknowledgement = String
+
+        func selectPeers(_ peers: [AddressableActorRef]) -> [AddressableActorRef] {
+            peers
+        }
+
+        func makePayload(target: AddressableActorRef) -> Gossip? {
+            .init("Hello") // legal but will produce a warning
+        }
+
+        func receiveAcknowledgement(_ acknowledgement: Acknowledgement, from peer: AddressableActorRef, confirming gossip: Gossip) {
+            self.probe.tell("un-expected acknowledgement: \(acknowledgement) from \(peer) confirming \(gossip)")
+        }
 
         func receiveGossip(_ gossip: Gossip, from peer: AddressableActorRef) -> Acknowledgement? {
             nil
