@@ -134,7 +134,7 @@ extension Cluster {
         /// Only `.up` and `.leaving` members are considered, since joining members are "too early"
         /// to matter in decisions, and down members shall never participate in decision making.
         func converged() -> Bool {
-            let members = self.membership.members(withStatus: [.up, .leaving]) // FIXME: we should not require joining nodes in convergence, can losen up a bit here I hope
+            let members = self.membership.members(withStatus: [.joining, .up, .leaving]) // FIXME: we should not require joining nodes in convergence, can losen up a bit here I hope
             let requiredVersion = self.version
 
             if members.isEmpty {
