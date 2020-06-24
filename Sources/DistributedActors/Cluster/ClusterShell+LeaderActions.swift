@@ -65,7 +65,8 @@ extension ClusterShellState {
 
 extension ClusterShell {
     func interpretLeaderActions(
-        _ system: ActorSystem, _ previousState: ClusterShellState,
+        _ system: ActorSystem,
+        _ previousState: ClusterShellState,
         _ leaderActions: [ClusterShellState.LeaderAction],
         file: String = #file, line: UInt = #line
     ) -> ClusterShellState {
@@ -117,6 +118,8 @@ extension ClusterShell {
                 "gossip/before": "\(previousState.latestGossip)",
             ]
         )
+
+        system.cluster.updateMembershipSnapshot(state.membership)
 
         return state
     }

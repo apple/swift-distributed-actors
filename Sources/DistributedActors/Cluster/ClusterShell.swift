@@ -550,21 +550,29 @@ extension ClusterShell {
             self.tracelog(context, .receive(from: state.localNode.node), message: event)
             var state = state
 
-            let changeDirective = state.applyClusterEvent(event)
+            // 1) IMPORTANT: We MUST apply and act on the incoming event FIRST, before handling the other events.
+            // This is because:
+            //   - is the event is a `leadershipChange` applying it could make us become the leader
+            //   - if that happens, the 2) phase will collect leader actions (perhaps for the first time),
+            //     and issue any pending up/down events.
+            //   - For consistency such events MUST only be issued AFTER we have emitted the leadership change (!)
+            //     Otherwise subscribers may end up seeing joining->up changes BEFORE they see the leadershipChange,
+            //     which is not strictly wrong per se, however it is very confusing -- we know there MUST be a leader
+            //     somewhere in order to perform those moves, so it is confusing if such joining->up events were to be
+            //     seen by a subscriber before they saw "we have a leader".
+            if state.applyClusterEvent(event).applied {
+                state.latestGossip.incrementOwnerVersion()
+                // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
+                self.clusterEvents.publish(event)
+            } // else no "effective change", thus we do not publish events
+
+            // 2) Collect and interpret leader actions which may result changing the membership and publishing events for the changes
             let actions: [ClusterShellState.LeaderAction] = state.collectLeaderActions()
             state = self.interpretLeaderActions(context.system, state, actions)
 
             if case .membershipChange(let change) = event {
                 self.tryIntroduceGossipPeer(context, state, change: change)
             }
-
-            if changeDirective.applied {
-                state.latestGossip.incrementOwnerVersion()
-                // update the membership snapshot before publishing change events
-                context.system.cluster.updateMembershipSnapshot(state.membership)
-                // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
-                self.clusterEvents.publish(event)
-            } // else no "effective change", thus we do not publish events
 
             return self.ready(state: state)
         }
@@ -604,11 +612,9 @@ extension ClusterShell {
             }
 
             let leaderActions = state.collectLeaderActions()
-            if !leaderActions.isEmpty {
-                state.log.trace("Leadership actions upon gossip: \(leaderActions)", metadata: ["tag": "membership"])
-            }
-
             state = self.interpretLeaderActions(context.system, state, leaderActions)
+
+            // definitely update the snapshot; even if no leader actions performed
             context.system.cluster.updateMembershipSnapshot(state.membership)
 
             return self.ready(state: state)
@@ -1240,7 +1246,6 @@ extension ClusterShell {
             }
 
             state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
-
             return state
         }
 

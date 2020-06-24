@@ -23,6 +23,10 @@ import Logging
 /// such as peer monitoring and managing cluster events and their impact on peers.
 ///
 /// It can automatically discover new peers as new members join the cluster using the `Receptionist`.
+///
+/// - SeeAlso: [Gossiping in Distributed Systems](https://www.distributed-systems.net/my-data/papers/2007.osr.pdf) (Anne-Marie Kermarrec, Maarten van Steen),
+///   for a nice overview of the general concepts involved in gossip algorithms.
+/// - SeeAlso: [Cassandra Internals — Understanding Gossip](https://www.youtube.com/watch?v=FuP1Fvrv6ZQ) which a nice generally useful talk
 public enum Gossiper {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
     static func spawn<Logic, Envelope, Acknowledgement>(
