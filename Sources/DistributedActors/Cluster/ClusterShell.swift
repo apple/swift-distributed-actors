@@ -314,7 +314,7 @@ internal class ClusterShell {
         /// Gossiping is handled by /system/cluster/gossip, however acting on it still is our task,
         /// thus the gossiper forwards gossip whenever interesting things happen ("more up to date gossip")
         /// to the shell, using this message, so we may act on it -- e.g. perform leader actions or change membership that we store.
-        case gossipFromGossiper(Cluster.Gossip)
+        case gossipFromGossiper(Cluster.MembershipGossip)
     }
 
     // this is basically our API internally for this system
@@ -423,7 +423,7 @@ extension ClusterShell {
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
                 // TODO: Membership.Gossip?
-                let gossipControl: GossipControl<Cluster.Gossip, Cluster.Gossip> = try Gossiper.start(
+                let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper.start(
                     context,
                     name: "\(ActorPath._clusterGossip.name)",
                     props: ._wellKnown,
@@ -431,14 +431,14 @@ extension ClusterShell {
                         gossipInterval: clusterSettings.membershipGossipInterval,
                         gossipIntervalRandomFactor: clusterSettings.membershipGossipIntervalRandomFactor,
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
-                            let resolveContext = ResolveContext<GossipShell<Cluster.Gossip, Cluster.Gossip>.Message>(address: ._clusterGossip(on: member.node), system: context.system)
+                            let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.node), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable()
                     })
                     ),
                     makeLogic: {
                         MembershipGossipLogic(
                             $0,
-                            notifyOnGossipRef: context.messageAdapter(from: Cluster.Gossip.self) {
+                            notifyOnGossipRef: context.messageAdapter(from: Cluster.MembershipGossip.self) {
                                 Optional.some(Message.gossipFromGossiper($0))
                             }
                         )
@@ -449,17 +449,17 @@ extension ClusterShell {
                     settings: clusterSettings,
                     channel: chan,
                     events: self.clusterEvents,
-                    gossipControl: gossipControl,
+                    gossiperControl: gossiperControl,
                     log: context.log
                 )
 
                 // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
-                var firstGossip = Cluster.Gossip(ownerNode: state.localNode)
+                var firstGossip = Cluster.MembershipGossip(ownerNode: state.localNode)
                 _ = firstGossip.membership.join(state.localNode) // change will be put into effect by receiving the "self gossip"
                 firstGossip.incrementOwnerVersion()
                 context.system.cluster.updateMembershipSnapshot(state.membership)
 
-                gossipControl.update(payload: firstGossip) // ????
+                gossiperControl.update(payload: firstGossip) // ????
                 context.myself.tell(.gossipFromGossiper(firstGossip))
                 // TODO: are we ok if we received another gossip first, not our own initial? should be just fine IMHO
 
@@ -572,7 +572,7 @@ extension ClusterShell {
         func receiveMembershipGossip(
             _ context: ActorContext<Message>,
             _ state: ClusterShellState,
-            gossip: Cluster.Gossip
+            gossip: Cluster.MembershipGossip
         ) -> Behavior<Message> {
             tracelog(context, .gossip(gossip), message: gossip)
             var state = state
@@ -637,12 +637,12 @@ extension ClusterShell {
         // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
 
         // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
-        let gossipPeer: GossipShell<Cluster.Gossip, Cluster.Gossip>.Ref = context.system._resolve(
+        let gossipPeer: GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Ref = context.system._resolve(
             context: .init(address: ._clusterGossip(on: change.member.node), system: context.system)
         )
         // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...
         // today it can happen that a node goes down but we dont know yet so we add it again :O
-        state.gossipControl.introduce(peer: gossipPeer)
+        state.gossiperControl.introduce(peer: gossipPeer)
     }
 }
 

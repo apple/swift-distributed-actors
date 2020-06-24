@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension Cluster.Gossip: ProtobufRepresentable {
+extension Cluster.MembershipGossip: ProtobufRepresentable {
     typealias ProtobufRepresentation = ProtoClusterMembershipGossip
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
@@ -36,13 +36,13 @@ extension Cluster.Gossip: ProtobufRepresentable {
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.ownerUniqueNodeID != 0 else {
-            throw SerializationError.missingField("ownerUniqueNodeID", type: "\(reflecting: Cluster.Gossip.self)")
+            throw SerializationError.missingField("ownerUniqueNodeID", type: "\(reflecting: Cluster.MembershipGossip.self)")
         }
         guard proto.hasMembership else {
-            throw SerializationError.missingField("membership", type: "\(reflecting: Cluster.Gossip.self)")
+            throw SerializationError.missingField("membership", type: "\(reflecting: Cluster.MembershipGossip.self)")
         }
         guard proto.hasSeenTable else {
-            throw SerializationError.missingField("seenTable", type: "\(reflecting: Cluster.Gossip.self)")
+            throw SerializationError.missingField("seenTable", type: "\(reflecting: Cluster.MembershipGossip.self)")
         }
 
         let membership = try Cluster.Membership(fromProto: proto.membership, context: context)
@@ -52,7 +52,7 @@ extension Cluster.Gossip: ProtobufRepresentable {
             throw SerializationError.unableToDeserialize(hint: "Missing member for ownerUniqueNodeID, members: \(membership)")
         }
 
-        var gossip = Cluster.Gossip(ownerNode: ownerNode)
+        var gossip = Cluster.MembershipGossip(ownerNode: ownerNode)
         gossip.membership = membership
         gossip.seen.underlying.reserveCapacity(proto.seenTable.rows.count)
         for row in proto.seenTable.rows {

@@ -115,8 +115,8 @@ public class Serialization {
         // cluster
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
-        settings.register(Cluster.Gossip.self)
-        settings.register(GossipShell<Cluster.Gossip, Cluster.Gossip>.Message.self)
+        settings.register(Cluster.MembershipGossip.self)
+        settings.register(GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message.self)
         settings.register(StringGossipIdentifier.self)
 
         // receptionist needs some special casing

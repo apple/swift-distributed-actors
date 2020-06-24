@@ -58,7 +58,7 @@ final class MembershipSerializationTests: ActorSystemXCTestCase {
         }
         let nodes = members.map { $0.node }
 
-        let gossip = Cluster.Gossip.parse(
+        let gossip = Cluster.MembershipGossip.parse(
             """
             1.joining 2.joining 3.joining 4.up 5.up 6.up 7.up 8.up 9.down 10.down 11.up 12.up 13.up 14.up 15.up  
             1: 1:4 2:4 3:4 4:6 5:7 6:7 7:8 8:8 9:12 10:12 11:8 12:8 13:8 14:9 15:6
@@ -84,7 +84,7 @@ final class MembershipSerializationTests: ActorSystemXCTestCase {
         serialized.manifest.serializerID.shouldEqual(Serialization.SerializerID.protobufRepresentable)
         serialized.buffer.count.shouldEqual(2105)
 
-        let back = try system.serialization.deserialize(as: Cluster.Gossip.self, from: serialized)
+        let back = try system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)
         "\(pretty: back)".shouldStartWith(prefix: "\(pretty: gossip)") // nicer human readable error
         back.shouldEqual(gossip) // the actual sanity check
     }
