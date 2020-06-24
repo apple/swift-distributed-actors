@@ -169,7 +169,6 @@ public class Serialization {
         settings.register(CRDT.GossipAck.self)
         settings.register(GossipShell<CRDT.Gossip, CRDT.GossipAck>.Message.self)
         settings.register(CRDT.Gossip.self)
-        settings.register(CRDT.Gossip.Metadata.self)
 
         // errors
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
