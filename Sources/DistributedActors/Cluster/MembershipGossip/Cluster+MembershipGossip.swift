@@ -83,7 +83,7 @@ extension Cluster {
             // 1.2) Protect from zombies: Any nodes that we know are dead or down, we should not accept any information from
             let incomingConcurrentDownMembers = incoming.membership.members(atLeast: .down)
             for pruneFromIncomingBeforeMerge in incomingConcurrentDownMembers
-                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.node) == nil {
+                where self.membership.uniqueMember(pruneFromIncomingBeforeMerge.uniqueNode) == nil {
                 _ = incoming.pruneMember(pruneFromIncomingBeforeMerge)
             }
 
@@ -104,8 +104,8 @@ extension Cluster {
 
             // 3) if any removals happened, we need to prune the removed nodes from the seen table
             for change in changes
-                where change.toStatus.isRemoved && change.member.node != self.owner {
-                self.seen.prune(change.member.node)
+                where change.toStatus.isRemoved && change.member.uniqueNode != self.owner {
+                self.seen.prune(change.member.uniqueNode)
             }
 
             return .init(causalRelation: causalRelation, effectiveChanges: changes)
@@ -113,8 +113,8 @@ extension Cluster {
 
         /// Remove member from `membership` and prune the seen tables of any trace of the removed node.
         mutating func pruneMember(_ member: Member) -> Cluster.MembershipChange? {
-            self.seen.prune(member.node) // always prune is okey
-            let change = self.membership.removeCompletely(member.node)
+            self.seen.prune(member.uniqueNode) // always prune is okey
+            let change = self.membership.removeCompletely(member.uniqueNode)
             return change
         }
 
@@ -142,7 +142,7 @@ extension Cluster {
             }
 
             let laggingBehindMemberFound = members.contains { member in
-                if let memberSeenVersion = self.seen.version(at: member.node) {
+                if let memberSeenVersion = self.seen.version(at: member.uniqueNode) {
                     switch memberSeenVersion.compareTo(requiredVersion) {
                     case .happenedBefore, .concurrent:
                         return true // found an offending member, it is lagging behind, thus no convergence

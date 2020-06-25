@@ -40,9 +40,9 @@ internal class ActorSingletonAllocationByLeadership: ActorSingletonAllocationStr
     func onClusterEvent(_ clusterEvent: Cluster.Event) -> UniqueNode? {
         switch clusterEvent {
         case .leadershipChange(let change):
-            self.node = change.newLeader?.node
+            self.node = change.newLeader?.uniqueNode
         case .snapshot(let membership):
-            self.node = membership.leader?.node
+            self.node = membership.leader?.uniqueNode
         default:
             () // ignore other events
         }

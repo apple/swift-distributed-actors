@@ -196,7 +196,7 @@ final class MembershipGossipTests: XCTestCase {
         )
 
         gossip.membership.members(atLeast: .joining).shouldNotContain(removedMember)
-        gossip.seen.nodes.shouldNotContain(removedMember.node)
+        gossip.seen.nodes.shouldNotContain(removedMember.uniqueNode)
 
         gossip.seen.shouldEqual(gossipBeforeMerge.seen)
         gossip.membership.shouldEqual(gossipBeforeMerge.membership)

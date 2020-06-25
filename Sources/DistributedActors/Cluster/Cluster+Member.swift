@@ -22,7 +22,7 @@ extension Cluster {
     /// Its identity is the underlying `UniqueNode`, other fields are not taken into account when comparing members.
     public struct Member: Hashable {
         /// Unique node of this cluster member.
-        public let node: UniqueNode
+        public let uniqueNode: UniqueNode
 
         /// Cluster membership status of this member, signifying the logical state it resides in the membership.
         /// Note, that a node that is reachable may still become `.down`, e.g. by issuing a manual `cluster.down(node:)` command or similar.
@@ -41,7 +41,7 @@ extension Cluster {
         public var _upNumber: Int?
 
         public init(node: UniqueNode, status: Cluster.MemberStatus) {
-            self.node = node
+            self.uniqueNode = node
             self.status = status
             self._upNumber = nil
             self.reachability = .reachable
@@ -49,7 +49,7 @@ extension Cluster {
 
         internal init(node: UniqueNode, status: Cluster.MemberStatus, upNumber: Int) {
             assert(!status.isJoining, "Node \(node) was \(status) yet was given upNumber: \(upNumber). This is incorrect, as only at-least .up members may have upNumbers!")
-            self.node = node
+            self.uniqueNode = node
             self.status = status
             self._upNumber = upNumber
             self.reachability = .reachable
@@ -72,7 +72,7 @@ extension Cluster {
         public var asDownIfNotAlready: Member {
             switch self.status {
             case .joining, .up, .leaving:
-                return Member(node: self.node, status: .down)
+                return Member(node: self.uniqueNode, status: .down)
             case .down, .removed:
                 return self
             }
@@ -112,11 +112,11 @@ extension Cluster {
 
 extension Cluster.Member: Equatable {
     public func hash(into hasher: inout Hasher) {
-        self.node.hash(into: &hasher)
+        self.uniqueNode.hash(into: &hasher)
     }
 
     public static func == (lhs: Cluster.Member, rhs: Cluster.Member) -> Bool {
-        lhs.node == rhs.node
+        lhs.uniqueNode == rhs.uniqueNode
     }
 }
 
@@ -138,17 +138,17 @@ extension Cluster.Member {
     /// An ordering by the members' `node` properties, e.g. 1.1.1.1 is "lower" than 2.2.2.2.
     /// This ordering somewhat unusual, however always consistent and used to select a leader -- see `LowestReachableMember`.
     public static let lowestAddressOrdering: (Cluster.Member, Cluster.Member) -> Bool = { l, r in
-        l.node < r.node
+        l.uniqueNode < r.uniqueNode
     }
 }
 
 extension Cluster.Member: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        "Member(\(self.node), status: \(self.status), reachability: \(self.reachability))"
+        "Member(\(self.uniqueNode), status: \(self.status), reachability: \(self.reachability))"
     }
 
     public var debugDescription: String {
-        "Member(\(String(reflecting: self.node)), status: \(self.status), reachability: \(self.reachability)\(self._upNumber.map { ", upNumber: \($0)" } ?? ""))"
+        "Member(\(String(reflecting: self.uniqueNode)), status: \(self.status), reachability: \(self.reachability)\(self._upNumber.map { ", upNumber: \($0)" } ?? ""))"
     }
 }
 

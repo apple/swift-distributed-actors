@@ -119,7 +119,7 @@ final class ClusterLeaderActionsTests: XCTestCase {
             return
         }
         member.status.isDown.shouldBeTrue()
-        member.node.shouldEqual(self.nodeB)
+        member.uniqueNode.shouldEqual(self.nodeB)
 
         // interpret leader actions would interpret it by removing the member now and tombstone-ing it,
         // see `interpretLeaderActions`

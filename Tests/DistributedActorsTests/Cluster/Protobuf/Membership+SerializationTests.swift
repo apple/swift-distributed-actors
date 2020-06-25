@@ -56,7 +56,7 @@ final class MembershipSerializationTests: ActorSystemXCTestCase {
                 status: .up
             )
         }
-        let nodes = members.map { $0.node }
+        let nodes = members.map { $0.uniqueNode }
 
         let gossip = Cluster.MembershipGossip.parse(
             """

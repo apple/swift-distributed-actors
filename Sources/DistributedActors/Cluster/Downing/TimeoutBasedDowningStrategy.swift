@@ -111,7 +111,7 @@ public final class TimeoutBasedDowningStrategy: DowningStrategy {
     }
 
     func timerKey(_ member: Cluster.Member) -> TimerKey {
-        TimerKey(member.node)
+        TimerKey(member.uniqueNode)
     }
 
     func onLeaderChange(to leader: Cluster.Member?) throws -> DowningStrategyDirective {

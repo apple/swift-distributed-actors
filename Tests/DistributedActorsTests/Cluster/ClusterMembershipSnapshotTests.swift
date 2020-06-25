@@ -41,10 +41,11 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
                 throw testKit.error(line: #line - 1)
             }
 
-            let nodes: [UniqueNode] = snapshot.members(atMost: .up).map { $0.node }
+            let nodes: [UniqueNode] = snapshot.members(atMost: .up).map { $0.uniqueNode }
             nodes.shouldContain(first.cluster.node)
             nodes.shouldContain(second.cluster.node)
             nodes.shouldContain(third.cluster.node)
         }
     }
+
 }
