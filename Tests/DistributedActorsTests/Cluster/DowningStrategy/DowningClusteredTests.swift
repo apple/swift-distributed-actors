@@ -219,36 +219,34 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
     // MARK: "Mass" Downing
 
     func test_many_nonLeaders_shouldPropagateToOtherNodes() throws {
-        let first = self.setUpNode("node-1")
-        var nodes = (2 ... 7).map {
+        let nodes = (1 ... 7).map {
             self.setUpNode("node-\($0)")
         }
+        let first = nodes.first!
 
-        pinfo("Joining \(nodes.count + 1) nodes...")
+        var probes: [UniqueNode: ActorTestProbe<Cluster.Event>] = [:]
+        for remainingNode in nodes {
+            probes[remainingNode.cluster.node] = self.testKit(remainingNode).spawnEventStreamTestProbe(subscribedTo: remainingNode.cluster.events)
+        }
+
+        pinfo("Joining \(nodes.count) nodes...")
         let joiningStart = first.metrics.uptimeNanoseconds()
 
-        nodes.forEach {
-            first.cluster.join(node: $0.cluster.node.node)
-        }
+        nodes.forEach { first.cluster.join(node: $0.cluster.node.node) }
         try self.ensureNodes(.up, within: .seconds(30), nodes: nodes.map {
             $0.cluster.node
         })
 
         let joiningStop = first.metrics.uptimeNanoseconds()
-        pinfo("Joined \(nodes.count + 1) nodes, took: \(TimeAmount.nanoseconds(joiningStop - joiningStart).prettyDescription)")
+        pinfo("Joined \(nodes.count) nodes, took: \(TimeAmount.nanoseconds(joiningStop - joiningStart).prettyDescription)")
 
         let nodesToDown = nodes.prefix(nodes.count / 2)
-        nodes.removeFirst(nodes.count / 2)
+        var remainingNodes = nodes
+        remainingNodes.removeFirst(nodesToDown.count)
 
-        pinfo("Downing \(nodes.count / 2) nodes: \(nodesToDown.map { $0.cluster.node })")
+        pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map { $0.cluster.node })")
         for node in nodesToDown {
             node.shutdown().wait()
-        }
-
-        nodes.append(first)
-        var probes: [UniqueNode: ActorTestProbe<Cluster.Event>] = [:]
-        for remainingNode in nodes {
-            probes[remainingNode.cluster.node] = self.testKit(remainingNode).spawnEventStreamTestProbe(subscribedTo: remainingNode.cluster.events)
         }
 
         func expectedDownMemberEventsFishing(
@@ -277,9 +275,9 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        for remainingNode in nodes {
+        for remainingNode in remainingNodes {
             let probe = probes[remainingNode.cluster.node]!
-            let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(120), expectedDownMemberEventsFishing(on: remainingNode))
+            let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(60), expectedDownMemberEventsFishing(on: remainingNode))
 
             events.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
             for expectedDownNode in nodesToDown {
