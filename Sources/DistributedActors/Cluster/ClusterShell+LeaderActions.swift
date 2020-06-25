@@ -67,8 +67,7 @@ extension ClusterShell {
     func interpretLeaderActions(
         _ system: ActorSystem,
         _ previousState: ClusterShellState,
-        _ leaderActions: [ClusterShellState.LeaderAction],
-        file: String = #file, line: UInt = #line
+        _ leaderActions: [ClusterShellState.LeaderAction]
     ) -> ClusterShellState {
         guard !leaderActions.isEmpty else {
             return previousState
@@ -82,57 +81,63 @@ extension ClusterShell {
                 "leader/actions": "\(leaderActions)",
                 "gossip/converged": "\(state.latestGossip.converged())",
                 "gossip/current": "\(state.latestGossip)",
-                "leader/interpret/location": "\(file):\(line)",
             ]
         )
 
+        // This "dance" about collecting events first and only then emitting them is important for ordering guarantees
+        // with regards to the membership snapshot. We always want the snapshot to be in sync when an actor receives an update.
+        // The snapshot therefore MUST be updated BEFORE we emit events.
+        var eventsToPublish: [Cluster.Event] = []
         for leaderAction in leaderActions {
             switch leaderAction {
             case .moveMember(let movingUp):
-                self.interpretMoveMemberLeaderAction(&state, movingUp: movingUp)
+                eventsToPublish += self.interpretMoveMemberLeaderAction(&state, movingUp: movingUp)
 
             case .removeMember(let memberToRemove):
-                self.interpretRemoveMemberLeaderAction(system, &state, memberToRemove: memberToRemove)
+                eventsToPublish += self.interpretRemoveMemberLeaderAction(system, &state, memberToRemove: memberToRemove)
             }
         }
+
+        system.cluster.updateMembershipSnapshot(state.membership)
+        eventsToPublish.forEach { state.events.publish($0) }
 
         previousState.log.trace(
             "Membership state after leader actions: \(state.membership)",
             metadata: [
                 "tag": "leader-action",
-                "leader/interpret/location": "\(file):\(line)",
                 "gossip/current": "\(state.latestGossip)",
                 "gossip/before": "\(previousState.latestGossip)",
             ]
         )
 
-        system.cluster.updateMembershipSnapshot(state.membership)
-
         return state
     }
 
-    func interpretMoveMemberLeaderAction(_ state: inout ClusterShellState, movingUp: Cluster.MembershipChange) {
+    func interpretMoveMemberLeaderAction(_ state: inout ClusterShellState, movingUp: Cluster.MembershipChange) -> [Cluster.Event] {
+        var events: [Cluster.Event] = []
         guard let change = state.membership.applyMembershipChange(movingUp) else {
-            return
+            return []
         }
 
         if let downReplacedNodeChange = change.replacementDownPreviousNodeChange {
             state.log.debug("Downing replaced member: \(change)", metadata: ["tag": "leader-action"])
-            state.events.publish(.membershipChange(downReplacedNodeChange))
+            events.append(.membershipChange(downReplacedNodeChange))
         }
 
         state.log.debug("Leader moved member: \(change)", metadata: ["tag": "leader-action"])
-        state.events.publish(.membershipChange(change))
+        events.append(.membershipChange(change))
+
+        return events
     }
 
     /// Removal also terminates (and tombstones) the association to the given node.
-    func interpretRemoveMemberLeaderAction(_ system: ActorSystem, _ state: inout ClusterShellState, memberToRemove: Cluster.Member) {
+    func interpretRemoveMemberLeaderAction(_ system: ActorSystem, _ state: inout ClusterShellState, memberToRemove: Cluster.Member) -> [Cluster.Event] {
         let previousGossip = state.latestGossip
         // !!! IMPORTANT !!!
         // We MUST perform the prune on the _latestGossip_, not the wrapper,
-        // as otherwise the wrapper enforces "vector time moves forward"
+        // as otherwise the wrapper enforces "vector time moves forward" // TODO: or should we?
         guard let removalChange = state._latestGossip.pruneMember(memberToRemove) else {
-            return
+            return []
         }
         state._latestGossip.incrementOwnerVersion()
         state.gossiperControl.update(payload: state._latestGossip)
@@ -150,6 +155,6 @@ extension ClusterShell {
 
         // TODO: will this "just work" as we removed from membership, so gossip will tell others...?
         // or do we need to push a round of gossip with .removed anyway?
-        state.events.publish(.membershipChange(removalChange))
+        return [.membershipChange(removalChange)]
     }
 }

@@ -48,4 +48,30 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         }
     }
 
+    func test_membershipSnapshot_beInSyncWithEvents() throws {
+        let first = self.setUpNode("first")
+        let second = self.setUpNode("second")
+        let third = self.setUpNode("third")
+
+        let events = self.testKit(first).spawnEventStreamTestProbe(subscribedTo: first.cluster.events)
+
+        try self.joinNodes(node: first, with: second)
+        try self.joinNodes(node: first, with: third)
+        try self.joinNodes(node: second, with: third)
+
+        var membership: Cluster.Membership = .empty
+        while let event = try events.maybeExpectMessage(within: .seconds(1)) {
+            let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
+            try membership.apply(event: event)
+
+            // snapshot MUST NOT be "behind" it may be HEAD though (e.g. 3 events are being emitted now, and we'll get them in order)
+            // but the snapshot already knows about all of them.
+            snapshot.count.shouldBeGreaterThanOrEqual(membership.count)
+            membership.members(atLeast: .joining).forEach { mm in
+                if let nm = snapshot.uniqueMember(mm.uniqueNode) {
+                    nm.status.shouldBeGreaterThanOrEqual(mm.status)
+                }
+            }
+        }
+    }
 }
