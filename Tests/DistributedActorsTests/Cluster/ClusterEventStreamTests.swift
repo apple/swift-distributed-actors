@@ -58,13 +58,13 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
         }
         switch try p1.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.memberA.node)
+            change.node.shouldEqual(self.memberA.uniqueNode)
         default:
             throw p1.error("Expected a membershipChange")
         }
         switch try p1.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.memberB.node)
+            change.node.shouldEqual(self.memberB.uniqueNode)
         default:
             throw p1.error("Expected a membershipChange")
         }
@@ -73,14 +73,14 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
 
         switch try p2.expectMessage() {
         case .snapshot(let snapshot):
-            snapshot.uniqueMember(self.memberA.node).shouldEqual(self.memberA)
+            snapshot.uniqueMember(self.memberA.uniqueNode).shouldEqual(self.memberA)
             () // ok
         default:
             throw p2.error("Expected a snapshot first")
         }
         switch try p2.expectMessage() {
         case .membershipChange(let change):
-            change.node.shouldEqual(self.memberB.node)
+            change.node.shouldEqual(self.memberB.uniqueNode)
         default:
             throw p2.error("Expected a membershipChange")
         }

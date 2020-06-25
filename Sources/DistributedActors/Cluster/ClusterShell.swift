@@ -430,7 +430,7 @@ extension ClusterShell {
                         intervalRandomFactor: clusterSettings.membershipGossipIntervalRandomFactor,
                         style: .acknowledged(timeout: clusterSettings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
-                            let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.node), system: context.system)
+                            let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
                             return context.system._resolve(context: resolveContext).asAddressable()
                     })
                     ),
@@ -637,14 +637,14 @@ extension ClusterShell {
         guard change.toStatus < .down else {
             return
         }
-        guard change.member.node != state.localNode else {
+        guard change.member.uniqueNode != state.localNode else {
             return
         }
         // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
 
         // TODO: consider receptionist instead of this; we're "early" but receptionist could already be spreading its info to this node, since we associated.
         let gossipPeer: GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Ref = context.system._resolve(
-            context: .init(address: ._clusterGossip(on: change.member.node), system: context.system)
+            context: .init(address: ._clusterGossip(on: change.member.uniqueNode), system: context.system)
         )
         // FIXME: make sure that if the peer terminated, we don't add it again in here, receptionist would be better then to power this...
         // today it can happen that a node goes down but we dont know yet so we add it again :O
@@ -1225,7 +1225,7 @@ extension ClusterShell {
             }
         }
 
-        guard memberToDown.node != state.localNode else {
+        guard memberToDown.uniqueNode != state.localNode else {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
             context.log.warning(
@@ -1235,7 +1235,7 @@ extension ClusterShell {
                 ]
             )
 
-            self._swimRef?.tell(.local(.confirmDead(memberToDown.node)))
+            self._swimRef?.tell(.local(.confirmDead(memberToDown.uniqueNode)))
 
             do {
                 let onDownAction = context.system.settings.cluster.onDownAction.make()
@@ -1253,7 +1253,7 @@ extension ClusterShell {
         // Terminate association and Down the (other) node
 
         state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
-        self.terminateAssociation(context.system, state: &state, memberToDown.node)
+        self.terminateAssociation(context.system, state: &state, memberToDown.uniqueNode)
         return state
     }
 }

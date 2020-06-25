@@ -112,18 +112,18 @@ extension CRDT.Replicator {
             switch event {
             case .membershipChange(let change) where change.toStatus == .up:
                 let member = change.member
-                guard member.node != context.system.cluster.node else {
+                guard member.uniqueNode != context.system.cluster.node else {
                     return // Skip adding member to replicator because it is the same as local node
                 }
 
                 self.tracelog(context, .addMember, message: member)
-                let remoteReplicatorRef = makeReplicatorRef(member.node)
+                let remoteReplicatorRef = makeReplicatorRef(member.uniqueNode)
                 self.remoteReplicators.insert(remoteReplicatorRef)
 
             case .membershipChange(let change) where change.toStatus >= .down:
                 let member = change.member
                 self.tracelog(context, .removeMember, message: member)
-                let remoteReplicatorRef = makeReplicatorRef(member.node)
+                let remoteReplicatorRef = makeReplicatorRef(member.uniqueNode)
                 self.remoteReplicators.remove(remoteReplicatorRef)
 
             case .snapshot(let snapshot):

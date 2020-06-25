@@ -52,7 +52,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             guard let leader = change.newLeader else {
                 throw self.testKit(first).fail("Expected \(first.cluster.node) to be leader")
             }
-            leader.node.shouldEqual(first.cluster.node)
+            leader.uniqueNode.shouldEqual(first.cluster.node)
         default:
             throw self.testKit(first).fail("Expected leader change event")
         }

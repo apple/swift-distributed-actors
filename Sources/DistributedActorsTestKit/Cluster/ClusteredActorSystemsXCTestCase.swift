@@ -348,7 +348,7 @@ extension ClusteredActorSystemsXCTestCase {
         if foundMember.status != expectedStatus {
             throw testKit.error(
                 """
-                Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) \
+                Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.node) \
                 to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
                 """,
                 file: file,
@@ -389,7 +389,7 @@ extension ClusteredActorSystemsXCTestCase {
         system.cluster.ref.tell(.query(.currentMembership(p.ref)))
 
         let membership = try p.expectMessage()
-        let leaderNode = membership.leader?.node
+        let leaderNode = membership.leader?.uniqueNode
         if leaderNode != expectedNode {
             throw testKit.error("Expected \(reflecting: expectedNode) to be leader node on \(reflecting: system.cluster.node) but was [\(reflecting: leaderNode)]")
         }

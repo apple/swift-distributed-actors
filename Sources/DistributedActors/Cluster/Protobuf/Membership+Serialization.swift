@@ -26,7 +26,7 @@ extension Cluster.Membership: ProtobufRepresentable {
             try $0.toProto(context: context)
         }
         if let leader = self.leader {
-            proto.leaderNode = try leader.node.toProto(context: context)
+            proto.leaderNode = try leader.uniqueNode.toProto(context: context)
         }
         return proto
     }
@@ -36,7 +36,7 @@ extension Cluster.Membership: ProtobufRepresentable {
         self._members.reserveCapacity(proto.members.count)
         for protoMember in proto.members {
             let member = try Cluster.Member(fromProto: protoMember, context: context)
-            self._members[member.node] = member
+            self._members[member.uniqueNode] = member
         }
         if proto.hasLeaderNode {
             self._leaderNode = try UniqueNode(fromProto: proto.leaderNode, context: context)
@@ -51,7 +51,7 @@ extension Cluster.Member: ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
-        proto.node = try self.node.toProto(context: context)
+        proto.node = try self.uniqueNode.toProto(context: context)
         proto.status = self.status.toProto(context: context)
         proto.reachability = try self.reachability.toProto(context: context)
         if let number = self._upNumber {
@@ -64,7 +64,7 @@ extension Cluster.Member: ProtobufRepresentable {
         guard proto.hasNode else {
             throw SerializationError.missingField("node", type: "\(ProtobufRepresentation.self)")
         }
-        self.node = try .init(fromProto: proto.node, context: context)
+        self.uniqueNode = try .init(fromProto: proto.node, context: context)
         self.status = try .init(fromProto: proto.status, context: context)
         self.reachability = try .init(fromProto: proto.reachability, context: context)
         self._upNumber = proto.upNumber == 0 ? nil : Int(proto.upNumber)
