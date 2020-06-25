@@ -31,6 +31,13 @@ public struct ClusterControl {
     /// Note that this view may be immediately outdated after checking if, if e.g. a membership change is just being processed.
     ///
     /// Consider subscribing to `cluster.events` in order to react to membership changes dynamically, and never miss a change.
+    ///
+    /// It is guaranteed that a `membershipSnapshot` is always at-least as up-to-date as an emitted `Cluster.Event`.
+    /// It may be "ahead" however, for example if a series of 3 events are published closely one after another,
+    /// if one were to observe the `cluster.membershipSnapshot` when receiving the first event, it may already contain
+    /// information related to the next two incoming events. For that reason is recommended to stick to one of the ways
+    /// of obtaining the information to act on rather than mixing the two. Use events if transitions state should trigger
+    /// something, and use the snapshot for ad-hoc "one time" membership inspections.
     public var membershipSnapshot: Cluster.Membership {
         self.membershipSnapshotLock.lock()
         defer { self.membershipSnapshotLock.unlock() }

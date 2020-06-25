@@ -562,6 +562,10 @@ extension ClusterShell {
             //     seen by a subscriber before they saw "we have a leader".
             if state.applyClusterEvent(event).applied {
                 state.latestGossip.incrementOwnerVersion()
+
+                // Always FIRST update the snapshot, before emitting events:
+                context.system.cluster.updateMembershipSnapshot(state.membership)
+
                 // we only publish the event if it really caused a change in membership, to avoid echoing "the same" change many times.
                 self.clusterEvents.publish(event)
             } // else no "effective change", thus we do not publish events
@@ -601,21 +605,21 @@ extension ClusterShell {
                 ]
             )
 
+            // we want to update the snapshot before the events are published
+            context.system.cluster.updateMembershipSnapshot(state.membership)
+
+            // Publish the events
             mergeDirective.effectiveChanges.forEach { effectiveChange in
-                // a change COULD have also been a replacement, in which case we need to publish it as well
-                // the removal od the
+                // a change COULD have also been a replacement, in which case we need to publish it as well the removal od the
                 if let replacementChange = effectiveChange.replacementDownPreviousNodeChange {
                     self.clusterEvents.publish(.membershipChange(replacementChange))
                 }
-                let event: Cluster.Event = .membershipChange(effectiveChange)
-                self.clusterEvents.publish(event)
+                self.clusterEvents.publish(.membershipChange(effectiveChange))
             }
 
+            // follow up with leader actions
             let leaderActions = state.collectLeaderActions()
             state = self.interpretLeaderActions(context.system, state, leaderActions)
-
-            // definitely update the snapshot; even if no leader actions performed
-            context.system.cluster.updateMembershipSnapshot(state.membership)
 
             return self.ready(state: state)
         }
@@ -856,6 +860,7 @@ extension ClusterShell {
                 // publish any cluster events this association caused.
                 // As the new association is stored, any reactions to these events will use the right underlying connection
                 if let change = directive.membershipChange {
+                    context.system.cluster.updateMembershipSnapshot(state.membership)
                     state.events.publish(.membershipChange(change)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
                     self.tryIntroduceGossipPeer(context, state, change: change)
                 }
@@ -1006,6 +1011,9 @@ extension ClusterShell {
             ])
         }
 
+        // we want to update the snapshot before the events are published
+        context.system.cluster.updateMembershipSnapshot(state.membership)
+
         // 3) publish any cluster events this association caused.
         //    As the new association is stored, any reactions to these events will use the right underlying connection
         if let change = directive.membershipChange {
@@ -1037,7 +1045,10 @@ extension ClusterShell {
             state.log.info("Accepted handshake from [\(reflecting: directive.handshake.remoteNode)] which replaces the previously known: [\(reflecting: replacedMember)].")
 
             // We MUST be careful to first terminate the association and then store the new one in 2)
-            self.terminateAssociation(context.system, state: &state, replacedMember.node)
+            self.terminateAssociation(context.system, state: &state, replacedMember.uniqueNode)
+
+            // we want to update the snapshot before the events are published
+            context.system.cluster.updateMembershipSnapshot(state.membership)
 
             // By emitting these `change`s, we not only let anyone interested know about this,
             // but we also enable the shell (or leadership) to update the leader if it needs changing.
@@ -1196,16 +1207,18 @@ extension ClusterShell {
         change: Cluster.ReachabilityChange
     ) -> Behavior<Message> {
         var state = state
-
-        // TODO: make sure we don't end up infinitely spamming reachability events
-        if state.membership.applyReachabilityChange(change) != nil {
-            context.system.cluster.updateMembershipSnapshot(state.membership)
-            self.clusterEvents.publish(.reachabilityChange(change))
-            self.recordMetrics(context.system.metrics, membership: state.membership)
-            return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot
-        } else {
+        guard state.membership.applyReachabilityChange(change) != nil else {
             return .same
         }
+
+        // we want to update the snapshot before the events are published
+        context.system.cluster.updateMembershipSnapshot(state.membership)
+
+        // then publish events and update metrics
+        self.clusterEvents.publish(.reachabilityChange(change))
+        self.recordMetrics(context.system.metrics, membership: state.membership)
+
+        return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot
     }
 
     /// Convenience function for directly handling down command in shell.
