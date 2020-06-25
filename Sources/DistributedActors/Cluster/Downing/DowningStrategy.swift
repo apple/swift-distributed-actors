@@ -106,7 +106,7 @@ internal struct DowningStrategyShell {
                 "Decision to [.down] member [\(member)]!",
                 metadata: self.metadata.merging(
                     [
-                        "downing/node": "\(reflecting: member.node)",
+                        "downing/node": "\(reflecting: member.uniqueNode)",
                     ],
                     uniquingKeysWith: { l, _ in l }
                 )

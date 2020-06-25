@@ -46,13 +46,13 @@ final class LeadershipTests: XCTestCase {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        _ = membership.removeCompletely(self.memberA.node)
+        _ = membership.removeCompletely(self.memberA.uniqueNode)
 
         // 2 members -> not enough to make decision anymore
         let change1: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
         change1.shouldBeNil()
 
-        _ = membership.join(self.newMember.node)
+        _ = membership.join(self.newMember.uniqueNode)
 
         // 3 members again, should work
         let change2: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
@@ -63,13 +63,13 @@ final class LeadershipTests: XCTestCase {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        _ = membership.mark(self.memberB.node, reachability: .unreachable)
+        _ = membership.mark(self.memberB.uniqueNode, reachability: .unreachable)
 
         // 2 reachable members -> not enough to make decision anymore
         let change1: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
         change1.shouldBeNil()
 
-        _ = membership.join(self.newMember.node)
+        _ = membership.join(self.newMember.uniqueNode)
 
         // 3 reachable members again, 1 unreachable, should work
         let change2: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
@@ -80,8 +80,8 @@ final class LeadershipTests: XCTestCase {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        _ = membership.mark(self.memberA.node, reachability: .unreachable)
-        _ = membership.mark(self.memberB.node, reachability: .unreachable)
+        _ = membership.mark(self.memberA.uniqueNode, reachability: .unreachable)
+        _ = membership.mark(self.memberB.uniqueNode, reachability: .unreachable)
 
         // 1 reachable member -> not enough to make decision anymore
         let change1: Cluster.LeadershipChange? = try election.runElection(context: self.fakeContext, membership: membership).future.wait()
@@ -98,7 +98,7 @@ final class LeadershipTests: XCTestCase {
         leader.shouldEqual(self.memberA)
 
         // leader is down:
-        _ = membership.mark(self.memberA.node, as: .down)
+        _ = membership.mark(self.memberA.uniqueNode, as: .down)
 
         // 2 members -> not enough to make decision anymore
         // Since we go from a leader to without, there should be a change
@@ -111,12 +111,12 @@ final class LeadershipTests: XCTestCase {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        _ = membership.join(self.newMember.node)
+        _ = membership.join(self.newMember.uniqueNode)
 
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberA))
 
-        _ = membership.mark(self.memberA.node, as: .down)
+        _ = membership.mark(self.memberA.uniqueNode, as: .down)
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberB))
     }
@@ -125,12 +125,12 @@ final class LeadershipTests: XCTestCase {
         var election = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
         var membership = self.initialMembership
-        _ = membership.join(self.newMember.node)
+        _ = membership.join(self.newMember.uniqueNode)
 
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberA))
 
-        _ = membership.mark(self.memberA.node, as: .down)
+        _ = membership.mark(self.memberA.uniqueNode, as: .down)
         (try election.runElection(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberB))
     }
@@ -150,7 +150,7 @@ final class LeadershipTests: XCTestCase {
             .map(applyToMembership)
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberA))
 
-        _ = membership.mark(self.memberA.node, reachability: .unreachable)
+        _ = membership.mark(self.memberA.uniqueNode, reachability: .unreachable)
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
             .shouldEqual(nil)
@@ -179,14 +179,14 @@ final class LeadershipTests: XCTestCase {
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberA))
 
         // down third
-        _ = membership.mark(self.memberC.node, as: .down)
+        _ = membership.mark(self.memberC.uniqueNode, as: .down)
         // no reason to remove the leadership from the first node
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
             .shouldEqual(nil)
 
         // down second
-        _ = membership.mark(self.memberB.node, as: .down)
+        _ = membership.mark(self.memberB.uniqueNode, as: .down)
         // STILL no reason to remove the leadership from the first node
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
@@ -215,14 +215,14 @@ final class LeadershipTests: XCTestCase {
             .shouldEqual(Cluster.LeadershipChange(oldLeader: nil, newLeader: self.memberA))
 
         // down third
-        _ = membership.mark(self.memberC.node, as: .down)
+        _ = membership.mark(self.memberC.uniqueNode, as: .down)
         // no reason to remove the leadership from the first node
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)
             .shouldEqual(Cluster.LeadershipChange(oldLeader: self.memberA, newLeader: nil))
 
         // down second
-        _ = membership.mark(self.memberB.node, as: .down)
+        _ = membership.mark(self.memberB.uniqueNode, as: .down)
         // STILL no reason to remove the leadership from the first node
         try election.runElection(context: self.fakeContext, membership: membership).future.wait()
             .map(applyToMembership)

@@ -48,7 +48,7 @@ extension Cluster.MembershipGossip: ProtobufRepresentable {
         let membership = try Cluster.Membership(fromProto: proto.membership, context: context)
 
         let ownerID = UniqueNodeID(proto.ownerUniqueNodeID)
-        guard let ownerNode = membership.member(byUniqueNodeID: ownerID)?.node else {
+        guard let ownerNode = membership.member(byUniqueNodeID: ownerID)?.uniqueNode else {
             throw SerializationError.unableToDeserialize(hint: "Missing member for ownerUniqueNodeID, members: \(membership)")
         }
 
@@ -70,7 +70,7 @@ extension Cluster.MembershipGossip: ProtobufRepresentable {
                     guard let member = membership.member(byUniqueNodeID: .init(id)) else {
                         throw SerializationError.unableToDeserialize(hint: "No member for nodeID \(id) in membership: \(membership)")
                     }
-                    replicaID = .uniqueNode(member.node)
+                    replicaID = .uniqueNode(member.uniqueNode)
                 case .some(.uniqueNode(let protoUniqueNode)):
                     replicaID = try .uniqueNode(.init(fromProto: protoUniqueNode, context: context))
                 case .none, .some(.actorAddress):
@@ -81,7 +81,7 @@ extension Cluster.MembershipGossip: ProtobufRepresentable {
                 replicaVersions.append(VersionVector.ReplicaVersion(replicaID: replicaID, version: v))
             }
 
-            gossip.seen.underlying[member.node] = VersionVector(replicaVersions)
+            gossip.seen.underlying[member.uniqueNode] = VersionVector(replicaVersions)
         }
 
         self = gossip

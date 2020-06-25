@@ -38,7 +38,7 @@ extension Cluster {
 
         /// The node which the change concerns.
         public var node: UniqueNode {
-            self.member.node
+            self.member.uniqueNode
         }
 
         /// Only set if the change is a "replacement", which can happen only if a node joins
@@ -98,8 +98,8 @@ extension Cluster {
 
         /// Use to create a "replacement", when the previousNode and node are different (i.e. they should only differ in ID, not host/port)
         init(replaced: Member, by newMember: Member) {
-            assert(replaced.node.host == newMember.node.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
-            assert(replaced.node.port == newMember.node.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
+            assert(replaced.uniqueNode.host == newMember.uniqueNode.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
+            assert(replaced.uniqueNode.port == newMember.uniqueNode.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
 
             self.replaced = replaced
             self.member = newMember

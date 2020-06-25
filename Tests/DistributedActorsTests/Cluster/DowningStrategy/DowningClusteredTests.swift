@@ -110,7 +110,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
                 case .membershipChange(let change) where change.node == expectedDownNode:
                     pinfo("\(on.cluster.node.node): \(change)", file: file, line: line)
                     return .catchContinue(change)
-                case .reachabilityChange(let change) where change.member.node == expectedDownNode:
+                case .reachabilityChange(let change) where change.member.uniqueNode == expectedDownNode:
                     pnote("\(on.cluster.node.node): \(change)", file: file, line: line)
                     return .ignore
                 default:

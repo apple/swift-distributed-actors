@@ -670,7 +670,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         guard let change: Cluster.ReachabilityChange = messages.first else {
             throw testKit.fail("Expected a reachability change, but did not get one on \(testKit.system.cluster.node)")
         }
-        change.member.node.shouldEqual(uniqueNode)
+        change.member.uniqueNode.shouldEqual(uniqueNode)
         change.member.reachability.shouldEqual(expected)
     }
 
