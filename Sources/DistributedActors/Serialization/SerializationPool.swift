@@ -77,9 +77,12 @@ public final class SerializationPool {
                 self.instrumentation.remoteActorMessageSerializeStart(id: promise.futureResult, recipient: recipientPath, message: message)
                 let serialized = try self.serialization.serialize(message)
 
+                traceLog_Serialization("serialize(\(message), to: \(recipientPath))")
+
                 // TODO: collapse those two and only use the instrumentation points, also for metrics
                 self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: serialized.buffer.count)
                 self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.buffer.count)
+                traceLog_Serialization("OK serialize(\(message), to: \(recipientPath))")
 
                 return serialized
             } catch {

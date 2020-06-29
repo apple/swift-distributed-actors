@@ -77,7 +77,7 @@ class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     }
 
     func unkeyedContainer() -> UnkeyedEncodingContainer {
-        fatalError()
+        fatalErrorBacktrace("Attempted \(#function) in \(self)")
         // TopLevelProtobufBlobEncoderContainer(superEncoder: self)
     }
 
