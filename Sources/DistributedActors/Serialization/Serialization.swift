@@ -65,7 +65,7 @@ public class Serialization {
     /// Used to protect `_serializers`.
     private var _serializersLock = ReadWriteLock()
 
-    public let context: Serialization.Context
+    private let context: Serialization.Context
 
     internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem) {
         var settings = systemSettings.serialization
@@ -409,7 +409,10 @@ extension Serialization {
             traceLog_Serialization("serialize(\(message), manifest: \(manifest))")
 
             let result: Serialization.Buffer
-            if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
+            if let predefinedSerializer: AnySerializer =
+                (self._serializersLock.withReaderLock { self._serializers[ObjectIdentifier(messageType)] }) {
+                result = try predefinedSerializer.trySerialize(message)
+            } else if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let serializer = makeSpecializedSerializer(self.allocator)
                 serializer.setSerializationContext(self.context)
                 result = try serializer.trySerialize(message)
@@ -452,16 +455,8 @@ extension Serialization {
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(messageType), manifest: \(manifest)")
                 }
             } else {
-                // FIXME: should this be first?
-                // TODO: Do we really need to store them at all?
-                guard let serializer: AnySerializer = (self._serializersLock.withReaderLock {
-                    self._serializers[ObjectIdentifier(messageType)]
-                }) else {
-                    self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: messageType))")
-                    throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Type: \(messageType), id: \(messageType), known serializers: \(self._serializers)")
-                }
-
-                result = try serializer.trySerialize(message)
+                self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: messageType))")
+                throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Type: \(messageType), id: \(messageType), known serializers: \(self._serializers)")
             }
 
             return Serialized(manifest: manifest, buffer: result)

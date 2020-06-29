@@ -36,6 +36,7 @@ public final class ActorSingletonPlugin {
 
     public init() {}
 
+    // FIXME: document that may crash, it may right?
     func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
         try self.singletonsLock.withLock {
             if let existing = self.singletons[settings.name] {

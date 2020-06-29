@@ -205,7 +205,6 @@ extension ActorIncarnation: Codable {
 extension Node: Codable {
     // FIXME: encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
-        traceLog_Serialization("\(self)")
         var container = encoder.unkeyedContainer()
         try container.encode(self.protocol)
         // ://

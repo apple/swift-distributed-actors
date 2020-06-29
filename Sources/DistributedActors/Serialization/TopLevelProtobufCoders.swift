@@ -22,7 +22,7 @@ import NIOFoundationCompat
 
 // TODO: TopLevelDataEncoder
 
-class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
+final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     let allocator: ByteBufferAllocator
 
     var result: Serialization.Buffer?
