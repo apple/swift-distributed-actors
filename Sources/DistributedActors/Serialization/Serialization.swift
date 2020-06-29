@@ -65,7 +65,7 @@ public class Serialization {
     /// Used to protect `_serializers`.
     private var _serializersLock = ReadWriteLock()
 
-    private let context: Serialization.Context
+    public let context: Serialization.Context
 
     internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem) {
         var settings = systemSettings.serialization
@@ -382,7 +382,7 @@ extension Serialization {
     /// - Returns: `Serialized` describing what serializer was used to serialize the value, and its serialized bytes
     /// - Throws: If no manifest could be created for the value, or a manifest was created however it selected
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
-    public func serialize<Message>( // TODO: can we require Codable here?
+    public func serialize<Message>(
         _ message: Message,
         file: String = #file, line: UInt = #line
     ) throws -> Serialized {
@@ -408,12 +408,18 @@ extension Serialization {
 
             traceLog_Serialization("serialize(\(message), manifest: \(manifest))")
 
+            pprint("manifest = \(manifest)")
+            pprint("messageType = \(messageType)")
+            pprint("messageType as? Encodable = \(messageType as? Encodable)")
+            pprint("messageType as? Encodable.Type = \(messageType as? Encodable.Type)")
+            pprint("message as? Encodable = \(message as? Encodable)")
+
             let result: Serialization.Buffer
             if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let serializer = makeSpecializedSerializer(self.allocator)
                 serializer.setSerializationContext(self.context)
                 result = try serializer.trySerialize(message)
-            } else if let encodableMessage = messageType as? Encodable {
+            } else if let encodableMessage = message as? Encodable {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().encode()"
                 switch manifest.serializerID {
                 case .specializedWithTypeHint:

@@ -419,9 +419,58 @@ class SerializationTests: ActorSystemXCTestCase {
         back.shouldEqual(test)
     }
 
-    func test_mangledNameManifest_() throws {
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Mangled-name Manifests
+
+    func test_manifest_usingMangledName() throws {
+        #if compiler(>=5.3) && os(Linux)
+        () // ok
+        #elseif os(macOS)
+        if #available(macOS 10.16, *) {
+            () // ok, it's available on these platforms
+        } else {
+            pnote("Skipping \(#function) test, as the required [_getMangledTypeName] is not available on this platform.")
+            return
+        }
+        #endif
+
         let manifest = try self.system.serialization.outboundManifest([String: Mid].self)
-        manifest.hint!.shouldEqual("SDySS22DistributedActorsTests10$110bc1a98yXZ3MidCG")
+        manifest.hint!.shouldStartWith(prefix: "SDySS22DistributedActorsTests")
+        manifest.hint!.shouldEndWith(suffix: "XZ3MidCG")
+
+        // seems linux and mac don't return the _exact_ same representation:
+        let fromLinux = _typeByName("SDySS22DistributedActorsTests13$563ab46799f8yXZ3MidCG")
+        let fromMacOS = _typeByName("SDySS22DistributedActorsTests10$110bc1a98yXZ3MidCG")
+        "\(reflecting: fromLinux)".shouldEqual("\(reflecting: fromMacOS)")
+    }
+
+    func test_mangledTypeName_catDogList() throws {
+        #if compiler(>=5.3) && os(Linux)
+        () // ok
+        #elseif os(macOS)
+        if #available(macOS 10.16, *) {
+            () // ok, it's available on these platforms
+        } else {
+            pnote("Skipping \(#function) test, as the required [_getMangledTypeName] is not available on this platform.")
+            return
+        }
+        #endif
+
+        let list: ManifestArray<CodableAnimal> = [TestDog(bark: "woof"), TestCat(purr: "purr")]
+
+        pprint("_getMangledTypeName(type(of: list)) = \(_getMangledTypeName(type(of: list)))")
+        let m = _getMangledTypeName(type(of: list))
+        pprint("_typeByName(22DistributedActorsTests13ManifestArrayVyAA13$557beccc0500yXZ13CodableAnimalCG) = \(_typeByName("22DistributedActorsTests13ManifestArrayVyAA13$557beccc0500yXZ13CodableAnimalCG"))")
+
+        let serialized = try self.system.serialization.serialize(list)
+
+        let decoder = JSONDecoder()
+        decoder.userInfo[.actorSerializationContext] = system.serialization.context
+        let manual = try decoder.decode(ManifestArray<CodableAnimal>.self, from: serialized.buffer.readData())
+        pprint("manual = \(manual)")
+
+        let back = try self.system.serialization.deserialize(as: ManifestArray<CodableAnimal>.self, from: serialized)
+        pprint("back = \(back)")
     }
 }
 
@@ -521,4 +570,114 @@ private struct PListBinCodableTest: Codable, Equatable {
 private struct PListXMLCodableTest: Codable, Equatable {
     let name: String
     let items: [String]
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable protocols
+
+struct ManifestArray<Element: Codable>: Codable, ExpressibleByArrayLiteral {
+    typealias ArrayLiteralElement = Element
+
+    enum CodingKeys {
+        case elementManifest
+        case element
+    }
+
+    let elements: [Element]
+    struct Box: Codable {
+        let manifest: Serialization.Manifest
+        let element: Element
+    }
+
+    init(arrayLiteral elements: Self.ArrayLiteralElement...) {
+        self.elements = elements
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        var container = try decoder.unkeyedContainer()
+        guard let count = container.count else {
+            throw SerializationError.missingField("count", type: "Int")
+        }
+        self.elements = try (1 ..< count).map { _ in
+            let manifest = try container.decode(Serialization.Manifest.self)
+            // context.serialization.deserialize(as: Element.self, from: )
+            guard let T = try context.summonType(from: manifest) as? Decodable.Type else {
+                fatalError("Can't summon type from \(manifest)")
+            }
+            guard let XX = T as? Element.Type else {
+                fatalError("Can't summon type from \(manifest)")
+            }
+            let element = try T.init(from: decoder)
+            return element as! Element
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        var container = try encoder.unkeyedContainer()
+        for element in self.elements {
+            let manifest = try context.outboundManifest(type(of: element as Any) as! Element.Type)
+            try container.encode(manifest)
+            try container.encode(element)
+        }
+    }
+}
+
+private class CodableAnimal: Codable {}
+
+private class TestDog: CodableAnimal {
+    let bark: String
+
+    init(bark: String) {
+        self.bark = bark
+        super.init()
+    }
+
+    required override init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        let container = try decoder.singleValueContainer()
+        self.bark = try container.decode(String.self)
+        super.init()
+    }
+
+    override func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        var container = encoder.singleValueContainer()
+        try container.encode(self.bark)
+    }
+}
+
+private class TestCat: CodableAnimal {
+    let purr: String
+
+    init(purr: String) {
+        self.purr = purr
+        super.init()
+    }
+
+    required override init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        let container = try decoder.singleValueContainer()
+        self.purr = try container.decode(String.self)
+        super.init()
+    }
+
+    override func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        var container = try encoder.singleValueContainer()
+        try container.encode(self.purr)
+    }
 }

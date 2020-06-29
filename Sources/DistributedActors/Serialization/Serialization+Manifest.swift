@@ -147,7 +147,6 @@ extension Serialization {
         return selectedManifest
     }
 
-    // FIXME: Once https://github.com/apple/swift/pull/30318 is merged we can make this "real"
     /// Summon a `Type` from a manifest which's `hint` contains a mangled name.
     ///
     /// While such `Any.Type` can not be used to invoke Codable's decode() and friends directly,
@@ -159,7 +158,10 @@ extension Serialization {
             return custom
         }
 
-        if let hint = manifest.hint, let type = _typeByName(hint) {
+        pprint("manifest.hint = \(manifest.hint)")
+        if let hint = manifest.hint,
+            let type = _typeByName(hint) {
+            pprint("type = \(type)")
             return type
         }
 

@@ -73,9 +73,6 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
         if !self.it.starts(with: prefix) {
             let partialMatch = self.it.commonPrefix(with: prefix)
 
-            // classic printout without prefix matching:
-            // let error = self.callSite.error("Expected [\(it)] to start with prefix: [\(prefix)]. " + partialMatchMessage)
-
             // fancy printout:
             var m = "Expected "
             if isTty { m += "[\(ANSIColors.bold.rawValue)" }
@@ -91,6 +88,36 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
             m += "\(prefix.dropFirst(partialMatch.underestimatedCount))]."
             if isTty { m += " (Matching sub-prefix marked in \(ANSIColors.bold.rawValue)bold\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue))" }
+
+            let error = self.callSite.error(m)
+            XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
+        }
+    }
+
+    /// Asserts that `it` ends with the passed in `suffix`.
+    func toEndWith<PossibleSuffix>(suffix: PossibleSuffix) where PossibleSuffix: Collection, T.Element == PossibleSuffix.Element {
+        if !self.it.reversed().starts(with: suffix.reversed()) {
+            let prefix = self.it.prefix(self.it.count - suffix.count)
+            // fancy printout:
+            var m = "Expected "
+            if isTty { m += "[" }
+            m += "\(prefix)"
+            m += "\(ANSIColors.bold.rawValue)"
+            let itSuffix = self.it.reversed().prefix(suffix.count).reversed().reduce(into: "") { $0 += "\($1)" }
+            m += "\(itSuffix)"
+            if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
+            m += "] to end with suffix: "
+            if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
+            m += "\(ANSIColors.bold.rawValue)"
+            m += "\(suffix)\n"
+            m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)"
+            if isTty { m += String(repeating: " ", count: "[error] Expected".count) } // align with the error message prefix
+            m += "[\(String(repeating: ".", count: prefix.count))"
+            m += "\(ANSIColors.red.rawValue)\(ANSIColors.bold.rawValue)"
+            m += "\(suffix)"
+            m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)"
+            m += "]"
+            m += "\(ANSIColors.reset.rawValue)"
 
             let error = self.callSite.error(m)
             XCTFail("\(error)", file: self.callSite.file, line: self.callSite.line)
@@ -354,6 +381,12 @@ extension Collection where Element: Equatable {
         where PossiblePrefix: Collection, Element == PossiblePrefix.Element {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
+    }
+
+    public func shouldEndWith<PossibleSuffix>(suffix: PossibleSuffix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
+        where PossibleSuffix: Collection, Element == PossibleSuffix.Element {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toEndWith(suffix: suffix)
     }
 
     public func shouldContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
