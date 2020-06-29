@@ -327,7 +327,7 @@ It is possible to summon a type from a `Serialization.Manifest` by using the `sy
 
 ==== Troubleshooting Manifest Issues
 
-When using automatic manifests powered by `_getMangledTypeName` and their recovery into types using `_typeByName`
+When using automatic manifests powered by `_getMangledTypeName` and their recovery into types using `_typeByName`,
 it is important that the messages being sent are _NOT_ `private`, as then the `_typeByName` function (and as such the `serialization.summonType`)
 will not be able to return a proper type from its mangled name.
 
