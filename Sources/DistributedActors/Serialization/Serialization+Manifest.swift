@@ -110,7 +110,7 @@ extension Serialization {
 
         let hint: String
         #if compiler(>=5.3)
-        if #available(macOS 9999, *) {
+        if #available(macOS 10.16, *) {
             // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
             // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
             // to be deserialized (thus, we can disallow decoding random messages for security).
@@ -123,9 +123,6 @@ extension Serialization {
                 hint = _typeName(messageType)
             }
         } else {
-            // This is a workaround more or less, however it enables us to get a "stable-ish" name for messages,
-            // and as long as both sides of a cluster register the same type this manifest will allow us to locate
-            // and summon the type - in order to invoke decoding on it.
             hint = _typeName(messageType)
         }
         #else

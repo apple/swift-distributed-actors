@@ -418,6 +418,11 @@ class SerializationTests: ActorSystemXCTestCase {
         let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         back.shouldEqual(test)
     }
+
+    func test_mangledNameManifest_() throws {
+        let manifest = try self.system.serialization.outboundManifest([String: Mid].self)
+        manifest.hint!.shouldEqual("SDySS22DistributedActorsTests10$110bc1a98yXZ3MidCG")
+    }
 }
 
 // MARK: Example types for serialization tests
