@@ -325,6 +325,12 @@ generic information of the carried message.
 
 It is possible to summon a type from a `Serialization.Manifest` by using the `system.serialization.summonType(manifest)` function (though statically still typed as `Any.Type`). It is also then possible to, if the type is Codable, invoke it's decoding `init(from:)` - which is what the serialization infrastructure does transparently.
 
+==== Troubleshooting Manifest Issues
+
+When using automatic manifests powered by `_getMangledTypeName` and their recovery into types using `_typeByName`
+it is important that the messages being sent are _NOT_ `private`, as then the `_typeByName` function (and as such the `serialization.summonType`)
+will not be able to return a proper type from its mangled name.
+
 ==== Advanced: Using Manifests manually
 
 While usually the Codable infrastructure should handle all messages automatically, you may sometimes find yourself in need of
