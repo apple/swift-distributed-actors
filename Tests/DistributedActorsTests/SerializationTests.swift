@@ -423,41 +423,58 @@ class SerializationTests: ActorSystemXCTestCase {
     // MARK: Mangled-name Manifests
 
     func test_manifest_usingMangledName() throws {
-        #if compiler(>=5.3) && os(Linux)
-        () // ok
-        #elseif os(macOS)
+        var ok = true
+        #if compiler(>=5.3)
+        ok = true // ok
+        #else
+        ok = false
+        #endif
+
+        #if os(Linux)
+        ok = ok && true // ok
+        #else
         if #available(macOS 10.16, *) {
             () // ok, it's available on these platforms
-        } else {
-            pnote("Skipping \(#function) test, as the required [_getMangledTypeName] is not available on this platform.")
-            return
+        } else if ok {
+            ok = false
         }
         #endif
 
-        let manifest = try self.system.serialization.outboundManifest([String: Mid].self)
-        manifest.hint!.shouldStartWith(prefix: "SDySS22DistributedActorsTests")
-        manifest.hint!.shouldEndWith(suffix: "XZ3MidCG")
+        guard ok else {
+            pnote("Skipping \(#function) test, as the required [_getMangledTypeName] is not available on this platform.")
+            return
+        }
 
-        // seems linux and mac don't return the _exact_ same representation:
-        let fromLinux = _typeByName("SDySS22DistributedActorsTests13$563ab46799f8yXZ3MidCG")
-        let fromMacOS = _typeByName("SDySS22DistributedActorsTests10$110bc1a98yXZ3MidCG")
-        "\(reflecting: fromLinux)".shouldEqual("\(reflecting: fromMacOS)")
+        let manifest = try self.system.serialization.outboundManifest(ManifestArray<CodableAnimal>.self)
+        manifest.hint!.shouldStartWith(prefix: "22DistributedActorsTests13ManifestArray")
+        manifest.hint!.shouldEndWith(suffix: "CodableAnimalCG")
     }
 
     // Disclaimer: Such deserialization style COULD be a security risk, however we ensure to always use the `summonType`
     // and actor system associated APIs which working with mangled names and types -- the system can be configured in strict
     // or lose mode, meaning that normally it should ENFORCE that we never deserialize a type that we did not EXPLICITLY enlist to be available for such intents.
     func test_mangledTypeName_catDogList() throws {
-        #if compiler(>=5.3) && os(Linux)
-        () // ok
-        #elseif os(macOS)
+        var ok = true
+        #if compiler(>=5.3)
+        ok = true // ok
+        #else
+        ok = false
+        #endif
+
+        #if os(Linux)
+        ok = ok && true // ok
+        #else
         if #available(macOS 10.16, *) {
             () // ok, it's available on these platforms
-        } else {
+        } else if ok {
+            ok = false
+        }
+        #endif
+
+        guard ok else {
             pnote("Skipping \(#function) test, as the required [_getMangledTypeName] is not available on this platform.")
             return
         }
-        #endif
 
         let dog = TestDog(bark: "woof")
         let cat = TestCat(purr: "purr")
