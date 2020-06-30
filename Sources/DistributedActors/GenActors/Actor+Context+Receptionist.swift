@@ -46,10 +46,13 @@ extension Actor.Context {
         ///
         /// - Parameters:
         ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
-        ///
-        /// - SeeAlso: `register(actor:key:)`, `register(actor:as:)`
         public func registerMyself(as id: String) {
-            self.register(actor: self.context.myself, key: Reception.Key(A.self, id: id))
+            self.registerMyself(with: Reception.Key(A.self, id: id))
+        }
+
+        /// Registers `myself` in the systems receptionist with given key.
+        public func registerMyself(with key: Reception.Key<A>) {
+            self.register(actor: self.context.myself, key: key)
         }
 
         /// Registers passed in `actor` in the systems receptionist with given id.
