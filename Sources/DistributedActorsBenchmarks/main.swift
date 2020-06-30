@@ -43,13 +43,13 @@ private func registerBenchmark(_ name: String, _ function: @escaping (Int) -> Vo
     registerBenchmark(BenchmarkInfo(name: name, runFunction: function, tags: tags))
 }
 
-registerBenchmark(ActorTreeTraversalBenchmarks)
-registerBenchmark(SerializationCodableBenchmarks)
-registerBenchmark(SerializationProtobufBenchmarks)
-registerBenchmark(RingBenchmarks)
-registerBenchmark(ActorPingPongBenchmarks)
-registerBenchmark(ActorRemotePingPongBenchmarks)
-registerBenchmark(ActorMessageFloodingBenchmarks)
+//registerBenchmark(ActorTreeTraversalBenchmarks)
+//registerBenchmark(SerializationCodableBenchmarks)
+//registerBenchmark(SerializationProtobufBenchmarks)
+//registerBenchmark(RingBenchmarks)
+//registerBenchmark(ActorPingPongBenchmarks)
+//registerBenchmark(ActorRemotePingPongBenchmarks)
+//registerBenchmark(ActorMessageFloodingBenchmarks)
 registerBenchmark(ActorSpawnBenchmarks)
 
 main()
