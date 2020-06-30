@@ -40,6 +40,11 @@ var targets: [PackageDescription.Target] = [
         path: "Sources/SampleCluster"
     ),
     .target(
+        name: "SampleReceptionist",
+        dependencies: ["DistributedActors"],
+        path: "Sources/SampleReceptionist"
+    ),
+    .target(
         name: "SampleMetrics",
         dependencies: [
             "DistributedActors",

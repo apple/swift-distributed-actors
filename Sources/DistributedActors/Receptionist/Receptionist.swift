@@ -400,7 +400,7 @@ public extension ActorRef where Message == ReceptionistMessage {
     }
 
     /// Subscribe to changes in checked-in actors under given `key`.
-    /// 
+    ///
     /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register, leave or die,
     /// under the passed in key.
     func subscribe<M>(key: Receptionist.RegistrationKey<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {

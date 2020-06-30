@@ -47,8 +47,18 @@
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
 public struct ActorAddress: Equatable, Hashable {
+//    @usableFromInline
+//    internal var _location: ActorLocation
     @usableFromInline
     internal var _location: ActorLocation
+//    {
+//        get {
+//            .local
+//        }
+//        set {
+//
+//        }
+//    }
 
     /// Returns a remote node's address if the address points to a remote actor,
     /// or `nil` if the referred to actor is local to the system the address was obtained from.
@@ -74,6 +84,14 @@ public struct ActorAddress: Equatable, Hashable {
 
     /// Underlying path representation, not attached to a specific Actor instance.
     public var path: ActorPath
+//    {
+//        get {
+//            ._dead
+//        }
+//        set {
+//
+//        }
+//    }
 
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
@@ -88,18 +106,18 @@ public struct ActorAddress: Equatable, Hashable {
     ///
     /// Usually NOT intended to be used directly in user code.
     public init(path: ActorPath, incarnation: ActorIncarnation) {
+        self.incarnation = incarnation
         self._location = .local
         self.path = path
-        self.incarnation = incarnation
     }
 
     /// Creates an actor address referring to an address on a _remote_ `node`.
     ///
     /// Usually NOT intended to be used directly in user code, but rather obtained from the serialization infrastructure.
     public init(node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+        self.incarnation = incarnation
         self._location = .remote(node)
         self.path = path
-        self.incarnation = incarnation
     }
 
     internal func ensuringNode(_ node: UniqueNode) -> ActorAddress {

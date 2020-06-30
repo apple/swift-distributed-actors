@@ -98,7 +98,7 @@ public final class ActorSystem {
     }
 
     // TODO: become the system's uptime
-    internal func uptimeNanoseconds() -> Int64 {
+    public func uptimeNanoseconds() -> Int64 {
         Deadline.now().uptimeNanoseconds
     }
 

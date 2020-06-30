@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor<A>.Context Receptionist
 
@@ -74,7 +73,7 @@ extension ActorContext {
         /// Subscribe to changes in checked-in actors under given `key`.
         ///
         /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register, leave or die, under the passed in key.
-        func subscribe<M>(key: SystemReceptionist.RegistrationKey<M>, subscriber: ActorRef<SystemReceptionist.Listing<M>>) {
+        public func subscribe<M>(key: SystemReceptionist.RegistrationKey<M>, subscriber: ActorRef<SystemReceptionist.Listing<M>>) {
             self.system.receptionist.subscribe(key: key, subscriber: subscriber)
         }
 
@@ -86,5 +85,4 @@ extension ActorContext {
             self.system.receptionist.lookup(key: key, timeout: timeout)
         }
     }
-
 }
