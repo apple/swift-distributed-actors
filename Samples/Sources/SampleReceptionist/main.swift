@@ -14,31 +14,63 @@
 
 import DistributedActors
 
-let system = ActorSystem("Metrics") { settings in
+let system = ActorSystem("SampleReceptionist") { settings in
     settings.cluster.enabled = true
 }
 
 enum HotelGuest {
     static var behavior: Behavior<String> = .setup { context in
-        context.system.receptionist.register(<#T##ref: ActorRef<M>##DistributedActors.ActorRef<M>#>, key: <#T##RegistrationKey<M>##DistributedActors.Receptionist.RegistrationKey<M>#>)
+        context.receptionist.registerMyself(as: "all/guest")
+
+        return .receiveMessage { message in
+
+            return .same
+        }
     }
 }
 
-let props = Props().metrics(group: "talkers")
+enum HotelOwner {
+    static var behavior: Behavior<Int> = .receiveMessage { message in
+        let guests = try (1 ... message).map { id in
+            try system.spawn("guest-\(id)", HotelGuest.behavior)
+        }
 
-let t1 = try system.spawn("talker-1", props: props, Talker.talkTo(another: nil))
-let t2 = try system.spawn("talker-2", props: props, Talker.talkTo(another: t1))
-let t3 = try system.spawn("talker-3", props: props, Talker.talkTo(another: t2))
-let t4 = try system.spawn("talker-4", props: props, Talker.talkTo(another: t3))
-
-let m = try system.spawn("metricsPrinter", MetricPrinter.behavior)
-
-for i in 1 ... 10 {
-    _ = try system.spawn("life-\(i)", DieAfterSomeTime.behavior)
-    Thread.sleep(.seconds(1))
+        return .receive { context, message in
+            .same
+        }
+    }
 }
+
+let actors = 10_000
+
+enum GuestListener {
+    static var behavior: Behavior<Receptionist.Listing<String>> = .setup { context in
+
+        context.receptionist.subscribe(key: .init(messageType: String.self, id: "all/guest"), subscriber: context.myself)
+
+        let startAll = context.system.uptimeNanoseconds()
+        var startLast = context.system.uptimeNanoseconds()
+
+        return .receiveMessage { listing in
+            let stop = context.system.uptimeNanoseconds()
+            if listing.count % 100 == 0 {
+                context.log.info("Listing @ \(listing.count), time since last update: \(TimeAmount.nanoseconds(stop - startLast).prettyDescription)")
+            }
+            startLast = stop
+
+            if listing.count == actors {
+                context.log.notice("Listing updated [\(listing.count)] within: \(TimeAmount.nanoseconds(stop - startAll).prettyDescription)")
+            }
+            return .same
+        }
+    }
+}
+
+_ = try system.spawn("listener", GuestListener.behavior)
+
+let owner = try system.spawn("owner", HotelOwner.behavior)
+owner.tell(actors)
 
 Thread.sleep(.seconds(100))
 
-system.shutdown().wait()
 print("~~~~~~~~~~~~~~~ SHUTTING DOWN ~~~~~~~~~~~~~~~")

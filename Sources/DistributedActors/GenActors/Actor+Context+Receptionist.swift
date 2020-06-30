@@ -171,6 +171,14 @@ extension SystemReceptionist.Listing where T: Actorable {
         self.underlying = SystemReceptionist.ActorableListing<Act>(refs: refs)
     }
 
+    public var actors: LazyMapSequence<Set<ActorRef<Act.Message>>, Actor<Act>> {
+        self.refs.lazy.map { Actor<Act>(ref: $0) }
+    }
+
+    public var first: Actor<Act>? {
+        self.refs.first.map { Actor<Act>(ref: $0) }
+    }
+
     public var refs: Set<ActorRef<Act.Message>> {
         self.underlying.unsafeUnwrapAs(SystemReceptionist.ActorableListing<Act>.self).refs
     }
@@ -179,12 +187,8 @@ extension SystemReceptionist.Listing where T: Actorable {
         self.refs.isEmpty
     }
 
-    public var actors: LazyMapSequence<Set<ActorRef<Act.Message>>, Actor<Act>> {
-        self.refs.lazy.map { Actor<Act>(ref: $0) }
-    }
-
-    public var first: Actor<Act>? {
-        self.refs.first.map { Actor<Act>(ref: $0) }
+    public var count: Int {
+        self.refs.count
     }
 
     public func actor(named name: String) -> Actor<Act>? {

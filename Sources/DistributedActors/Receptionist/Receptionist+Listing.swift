@@ -81,6 +81,14 @@ extension Receptionist.Listing where T: ActorMessage {
         self.underlying.unsafeUnwrapAs(Receptionist.ActorRefListing<Message>.self).refs
     }
 
+    public var isEmpty: Bool {
+        self.refs.isEmpty
+    }
+
+    public var count: Int {
+        self.refs.count
+    }
+
     var first: ActorRef<Message>? {
         self.refs.first
     }
