@@ -90,8 +90,9 @@ extension Actor.Context {
             // TODO: Implementing this without sub-receive would be preferable, as today we either create many subs or override them
             self.underlying.system.receptionist.subscribe(
                 key: key.underlying,
-                subscriber: self.underlying.subReceive(.init(id: String(reflecting: Act.self)), SystemReceptionist.Listing<Act.Message>.self) { listing in
-                    onListingChange(.init(refs: listing.refs))
+                subscriber: self.underlying.subReceive(.init(id: String(reflecting: Act.self)), SystemReceptionist.Listing<Act.Message>.self) { _ in
+                    fatalError() // FIXME:
+                    // onListingChange(listing)
                 }
             )
         }
@@ -104,8 +105,9 @@ extension Actor.Context {
             let owned: ActorableOwned<SystemReceptionist.Listing<Act>> = ActorableOwned(self.context)
             self.context.system.receptionist.subscribe(
                 key: key.underlying,
-                subscriber: self.context._underlying.subReceive(SystemReceptionist.Listing<Act.Message>.self) { listing in
-                    owned.update(newValue: .init(refs: listing.refs))
+                subscriber: self.context._underlying.subReceive(SystemReceptionist.Listing<Act.Message>.self) { _ in
+                    fatalError() // FIXME:
+                    // owned.update(newValue: listing)
                 }
             )
 
@@ -117,12 +119,13 @@ extension Actor.Context {
         /// - Parameters:
         ///   - key: selects which actors we are interested in.
         public func lookup<Act: Actorable>(_ key: Reception.Key<Act>, timeout: TimeAmount) -> Reply<SystemReceptionist.Listing<Act>> {
-            let listingReply: AskResponse<SystemReceptionist.Listing<Act>> = self.underlying.system.receptionist.ask(timeout: timeout) {
-                SystemReceptionist.Lookup(key: key.underlying, replyTo: $0)
-            }.map { listing in
-                SystemReceptionist.Listing<Act>(refs: listing.refs)
-            }
-            return Reply.from(askResponse: listingReply)
+            fatalError() // FIXME:
+//            let listingReply: AskResponse<SystemReceptionist.Listing<Act>> = self.underlying.system.receptionist.ask(timeout: timeout) {
+//                SystemReceptionist.Lookup(key: key.underlying, replyTo: $0)
+//            }.map { listing in
+//                SystemReceptionist.Listing<Act>(refs: listing.refs, key: key)
+//            }
+//            return Reply.from(askResponse: listingReply)
         }
     }
 }
@@ -167,31 +170,21 @@ extension SystemReceptionist {
 extension SystemReceptionist.Listing where T: Actorable {
     public typealias Act = T
 
-    public init(refs: Set<ActorRef<Act.Message>>) {
-        self.underlying = SystemReceptionist.ActorableListing<Act>(refs: refs)
-    }
-
-    public var actors: LazyMapSequence<Set<ActorRef<Act.Message>>, Actor<Act>> {
-        self.refs.lazy.map { Actor<Act>(ref: $0) }
+    public var actors: LazyMapSequence<Set<AddressableActorRef>, Actor<Act>> {
+        fatalError() // FIXME:
+//        self.underlying.lazy.map { addressable in
+//            let ref = key._unsafeAsActorRef(addressable) // safe, we guarantee the right type of key with relation to listing in Receptionist
+//            Actor<Act>(ref: ref)
+//        }
     }
 
     public var first: Actor<Act>? {
-        self.refs.first.map { Actor<Act>(ref: $0) }
-    }
-
-    public var refs: Set<ActorRef<Act.Message>> {
-        self.underlying.unsafeUnwrapAs(SystemReceptionist.ActorableListing<Act>.self).refs
-    }
-
-    public var isEmpty: Bool {
-        self.refs.isEmpty
-    }
-
-    public var count: Int {
-        self.refs.count
+        fatalError() // FIXME:
+//        self.refs.first.map { Actor<Act>(ref: $0) }
     }
 
     public func actor(named name: String) -> Actor<Act>? {
-        self.refs.first { $0.address.name == name }.map { Actor<Act>(ref: $0) }
+        fatalError() // FIXME:
+//        self.refs.first { $0.address.name == name }.map { Actor<Act>(ref: $0) }
     }
 }

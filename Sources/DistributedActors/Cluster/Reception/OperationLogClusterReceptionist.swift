@@ -260,6 +260,9 @@ public class OperationLogClusterReceptionist {
                 case let message as _Subscribe:
                     try self.onSubscribe(context: context, message: message) // FIXME: would kill the receptionist!
 
+                case let message as _ReceptionistDelayedListingFlushTick:
+                    self.onDelayedListingFlushTick(context: context, message: message)
+
                 default:
                     context.log.warning("Received unexpected message: \(String(reflecting: $0)), \(type(of: $0))")
                 }
@@ -319,12 +322,7 @@ extension OperationLogClusterReceptionist {
                 ]
             )
 
-            if let subscribed = self.storage.subscriptions(forKey: key) {
-                let registrations = self.storage.registrations(forKey: key) ?? []
-                for subscription in subscribed {
-                    subscription._replyWith(registrations)
-                }
-            }
+            self.ensureDelayedListingFlush(of: key, context: context)
         }
 
         // ---
@@ -334,21 +332,43 @@ extension OperationLogClusterReceptionist {
 
         message.replyRegistered()
     }
+}
 
-    private func addOperation(_ context: ActorContext<Message>, _ op: ReceptionistOp) {
-        self.ops.add(op)
-        switch op {
-        case .register:
-            context.system.metrics._receptionist_registrations.increment()
-        case .remove:
-            context.system.metrics._receptionist_registrations.decrement()
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Delayed (Listing Notification) Flush
+
+extension OperationLogClusterReceptionist {
+    func ensureDelayedListingFlush(of key: AnyRegistrationKey, context: ActorContext<Message>) {
+        let timerKey = self.flushTimerKey(key)
+
+        guard !context.timers.exists(key: timerKey) else {
+            return // timer exists nothing to do
         }
 
-        let latestSelfSeqNr = VersionVector(self.ops.maxSeqNr, at: .actorAddress(context.myself.address))
-        self.observedSequenceNrs.merge(other: latestSelfSeqNr)
-        self.appliedSequenceNrs.merge(other: latestSelfSeqNr)
+        // TODO: also flush when a key has seen e.g. 100 changes?
+        let flushDelay = context.system.settings.receptionist.listingFlushDelay
+        context.timers.startSingle(key: timerKey, message: _ReceptionistDelayedListingFlushTick(key: key), delay: flushDelay)
+    }
 
-        context.system.metrics._receptionist_oplog_size.record(self.ops.count)
+    func onDelayedListingFlushTick(context: ActorContext<ReceptionistMessage>, message: _ReceptionistDelayedListingFlushTick) {
+        context.log.trace("Delayed listing flush: \(message.key)")
+
+        self.notifySubscribers(of: message.key)
+    }
+
+    func notifySubscribers(of key: AnyRegistrationKey) {
+        guard let subscriptions = self.storage.subscriptions(forKey: key) else {
+            return // ok, no-one to notify
+        }
+
+        let registrations: Set<AddressableActorRef> = self.storage.registrations(forKey: key) ?? []
+        for subscription in subscriptions {
+            subscription._replyWith(registrations)
+        }
+    }
+
+    private func flushTimerKey(_ key: AnyRegistrationKey) -> TimerKey {
+        "flush-\(key.hashValue)"
     }
 }
 
@@ -600,6 +620,22 @@ extension OperationLogClusterReceptionist {
         default:
             fatalError("Remote receptionists MUST be of .remote personality, was: \(peer.personality), \(peer.address)")
         }
+    }
+
+    private func addOperation(_ context: ActorContext<Message>, _ op: ReceptionistOp) {
+        self.ops.add(op)
+        switch op {
+        case .register:
+            context.system.metrics._receptionist_registrations.increment()
+        case .remove:
+            context.system.metrics._receptionist_registrations.decrement()
+        }
+
+        let latestSelfSeqNr = VersionVector(self.ops.maxSeqNr, at: .actorAddress(context.myself.address))
+        self.observedSequenceNrs.merge(other: latestSelfSeqNr)
+        self.appliedSequenceNrs.merge(other: latestSelfSeqNr)
+
+        context.system.metrics._receptionist_oplog_size.record(self.ops.count)
     }
 }
 
