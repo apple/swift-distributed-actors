@@ -34,7 +34,7 @@ struct OwnerOfThings: Actorable {
             onListingUpdated(probe, newValue)
         }
 
-        context.receptionist.registerMyself(as: Self.key.id)
+        context.receptionist.registerMyself(with: Self.key)
     }
 
     // @actor

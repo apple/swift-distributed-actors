@@ -28,7 +28,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             .setup { context in
-                context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
+                context.receptionist.registerMyself(with: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
                     p.tell("work:\(work) at \(context.name)")
@@ -73,7 +73,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             .setup { context in
-                context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
+                context.receptionist.registerMyself(with: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
                     if work == "stop" {
