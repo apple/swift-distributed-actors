@@ -26,6 +26,11 @@ extension Decodable {
     static func _decode(from buffer: Serialization.Buffer, using decoder: JSONDecoder) throws -> Self {
         try decoder.decode(Self.self, from: buffer.readData())
     }
+
+    static func _decode<C>(from container: inout C, forKey key: C.Key, using decoder: Decoder) throws -> Self
+        where C: KeyedDecodingContainerProtocol {
+        try container.decode(Self.self, forKey: key)
+    }
 }
 
 extension Decodable {

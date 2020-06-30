@@ -77,8 +77,8 @@ extension Serialization {
         /// Obtain a manifest for the passed `Message` type, which allows to determine which serializer should be used for the type.
         ///
         /// - SeeAlso: `Serialization.outboundManifest` for more details.
-        public func outboundManifest<Message: ActorMessage>(_ type: Message.Type) throws -> Serialization.Manifest {
-            try self.system.serialization.outboundManifest(type)
+        public func outboundManifest<Message>(_ messageType: Message.Type) throws -> Serialization.Manifest {
+            try self.system.serialization.outboundManifest(messageType)
         }
     }
 }

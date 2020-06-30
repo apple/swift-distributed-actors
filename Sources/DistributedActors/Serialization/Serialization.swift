@@ -382,7 +382,7 @@ extension Serialization {
     /// - Returns: `Serialized` describing what serializer was used to serialize the value, and its serialized bytes
     /// - Throws: If no manifest could be created for the value, or a manifest was created however it selected
     ///   a serializer (by ID) that is not registered with the system, or the serializer failing to serialize the message.
-    public func serialize<Message>( // TODO: can we require Codable here?
+    public func serialize<Message>(
         _ message: Message,
         file: String = #file, line: UInt = #line
     ) throws -> Serialized {
@@ -409,11 +409,14 @@ extension Serialization {
             traceLog_Serialization("serialize(\(message), manifest: \(manifest))")
 
             let result: Serialization.Buffer
-            if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
+            if let predefinedSerializer: AnySerializer =
+                (self._serializersLock.withReaderLock { self._serializers[ObjectIdentifier(messageType)] }) {
+                result = try predefinedSerializer.trySerialize(message)
+            } else if let makeSpecializedSerializer = self.settings.specializedSerializerMakers[manifest] {
                 let serializer = makeSpecializedSerializer(self.allocator)
                 serializer.setSerializationContext(self.context)
                 result = try serializer.trySerialize(message)
-            } else if let encodableMessage = messageType as? Encodable {
+            } else if let encodableMessage = message as? Encodable {
                 // TODO: we need to be able to abstract over Coders to collapse this into "giveMeACoder().encode()"
                 switch manifest.serializerID {
                 case .specializedWithTypeHint:
@@ -452,16 +455,8 @@ extension Serialization {
                     throw SerializationError.unableToMakeSerializer(hint: "SerializerID: \(otherSerializerID), messageType: \(messageType), manifest: \(manifest)")
                 }
             } else {
-                // FIXME: should this be first?
-                // TODO: Do we really need to store them at all?
-                guard let serializer: AnySerializer = (self._serializersLock.withReaderLock {
-                    self._serializers[ObjectIdentifier(messageType)]
-                }) else {
-                    self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: messageType))")
-                    throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Type: \(messageType), id: \(messageType), known serializers: \(self._serializers)")
-                }
-
-                result = try serializer.trySerialize(message)
+                self.debugPrintSerializerTable(header: "Unable to find serializer for manifest (\(manifest)),message type: \(String(reflecting: messageType))")
+                throw SerializationError.noSerializerRegisteredFor(manifest: manifest, hint: "Type: \(messageType), id: \(messageType), known serializers: \(self._serializers)")
             }
 
             return Serialized(manifest: manifest, buffer: result)
@@ -770,6 +765,9 @@ public enum SerializationError: Error {
     // --- Manifest errors ---
     case missingManifest(hint: String)
     case unableToCreateManifest(hint: String)
+    /// Thrown when an illegal manifest is provided, but also when an existing well-formed manifest
+    /// is passed to a system which a) is not aware of the type the manifest represents (e.g. it is no longer part of the application),
+    /// or b) the type exists but is private (!).
     case unableToSummonTypeFromManifest(Serialization.Manifest)
 
     // --- format errors ---

@@ -22,7 +22,7 @@ import NIOFoundationCompat
 
 // TODO: TopLevelDataEncoder
 
-class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
+final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     let allocator: ByteBufferAllocator
 
     var result: Serialization.Buffer?
@@ -77,7 +77,7 @@ class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     }
 
     func unkeyedContainer() -> UnkeyedEncodingContainer {
-        fatalError()
+        fatalErrorBacktrace("Attempted \(#function) in \(self)")
         // TopLevelProtobufBlobEncoderContainer(superEncoder: self)
     }
 
