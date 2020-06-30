@@ -144,11 +144,11 @@ public enum Receptionist {
         }
 
         override func replyWith(_ refs: Set<AddressableActorRef>) {
-            let typedRefs = refs.map { ref in
-                key._unsafeAsActorRef(ref)
-            }
+//            let typedRefs = refs.lazy.map { ref in
+//                key._unsafeAsActorRef(ref)
+//            }
 
-            self.replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
+            self.replyTo.tell(Receptionist.Listing(refs: refs, key: self.key))
         }
 
         public var description: String {
@@ -184,11 +184,12 @@ public enum Receptionist {
         }
 
         func replyWith(_ refs: Set<AddressableActorRef>) {
-            let typedRefs = refs.map { ref in
-                key._unsafeAsActorRef(ref)
-            }
-
-            self.replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
+//            let typedRefs = refs.map { ref in
+//                key._unsafeAsActorRef(ref)
+//            }
+//
+//            self.replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
+            self.replyTo.tell(Receptionist.Listing(refs: refs, key: self.key))
         }
 
         public var description: String {
@@ -497,26 +498,6 @@ internal enum ReceptionistError: Error {
 }
 
 internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable, CustomStringConvertible {
-    enum CodingKeys: CodingKey {
-        case id
-        case typeHint
-    }
-
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        let id = try container.decode(String.self, forKey: .id)
-        let typeHint = try container.decode(String.self, forKey: .typeHint)
-        super.init(id: id, typeHint: typeHint)
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-
-        try container.encode(self.id, forKey: .id)
-        try container.encode(self.typeHint, forKey: .typeHint)
-    }
-
     init(from key: _RegistrationKey) {
         super.init(id: key.id, typeHint: key.typeHint)
     }
@@ -554,6 +535,28 @@ internal class AnyRegistrationKey: _RegistrationKey, Codable, Hashable, CustomSt
             return false
         }
         return true
+    }
+
+    // coding
+
+    enum CodingKeys: CodingKey {
+        case id
+        case typeHint
+    }
+
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        let id = try container.decode(String.self, forKey: .id)
+        let typeHint = try container.decode(String.self, forKey: .typeHint)
+        super.init(id: id, typeHint: typeHint)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.typeHint, forKey: .typeHint)
     }
 }
 
@@ -615,4 +618,17 @@ internal protocol ListingRequest {
     var replyTo: ActorRef<Receptionist.Listing<Message>> { get }
 
     func replyWith(_ refs: Set<AddressableActorRef>)
+}
+
+internal final class _ReceptionistDelayedListingFlushTick: ReceptionistMessage, NonTransportableActorMessage {
+    let key: AnyRegistrationKey
+
+    init(key: AnyRegistrationKey) {
+        self.key = key
+        super.init()
+    }
+
+    required init(from decoder: Decoder) throws {
+        throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
+    }
 }

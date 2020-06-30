@@ -32,8 +32,9 @@ extension Receptionist.Listing: ActorMessage {
             throw SerializationError.unableToDeserialize(hint: "Unknown listing type: \(listingType)")
         }
 
-        let listingDecoder = try container.superDecoder(forKey: .listing)
-        self.underlying = try anyListingType.init(from: listingDecoder)
+//        let listingDecoder = try container.superDecoder(forKey: .listing)
+//        self.underlying = try anyListingType.init(from: listingDecoder)
+        fatalError() // FIXME:
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -44,7 +45,8 @@ extension Receptionist.Listing: ActorMessage {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(context.serialization.outboundManifest(type(of: self.underlying as Any)), forKey: .manifest)
 
-        let listingEncoder = container.superEncoder(forKey: .listing)
-        try self.underlying.encode(to: listingEncoder)
+//        let listingEncoder = container.superEncoder(forKey: .listing)
+//        try self.underlying.encode(to: listingEncoder)
+        fatalError() // FIXME:
     }
 }

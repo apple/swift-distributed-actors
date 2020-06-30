@@ -122,13 +122,15 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     @usableFromInline internal var _deathWatch: DeathWatch<Message>?
     @usableFromInline internal var deathWatch: DeathWatch<Message> {
         get {
-            guard let d = self._deathWatch else {
-                fatalError("BUG! Tried to access deathWatch on \(self.address) and it was nil!!!! Maybe a message was handled after tombstone?")
-            }
-            return d
+            self._deathWatch!
         }
-        set {
-            self._deathWatch = newValue
+        _modify {
+            guard var d = self._deathWatch else {
+                fatalError("BUG! Tried to access deathWatch on \(self.address) and it was nil! Maybe a message was handled after tombstone?")
+            }
+            self._deathWatch = nil
+            defer { self._deathWatch = d }
+            yield &d
         }
     }
 
