@@ -548,6 +548,8 @@ extension ActorSystem: ActorRefFactory {
             dispatcher = self.dispatcher
         case .callingThread:
             dispatcher = CallingThreadDispatcher()
+        case .dispatchQueue(let queue):
+            dispatcher = DispatchQueueDispatcher(queue: queue)
         case .nio(let group):
             dispatcher = NIOEventLoopGroupDispatcher(group)
         default:
