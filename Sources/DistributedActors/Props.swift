@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Dispatch
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -83,6 +84,8 @@ public enum DispatcherProps {
     // I'd rather implement such style, as it actually is build "for" actors, and not accidentally running them well...
     // case OurOwnFancyActorSpecificDispatcher
 
+    case dispatchQueue(DispatchQueue)
+
     /// WARNING: Use with Caution!
     ///
     /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
@@ -110,6 +113,7 @@ public enum DispatcherProps {
         case .default: return "default"
         case .pinnedThread: return "pinnedThread"
         case .nio: return "nioEventLoopGroup"
+        case .dispatchQueue: return "dispatchQueue"
         case .callingThread: return "callingThread"
         }
     }

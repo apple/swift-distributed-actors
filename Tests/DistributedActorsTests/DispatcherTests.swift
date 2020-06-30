@@ -60,4 +60,44 @@ final class DispatcherTests: ActorSystemXCTestCase {
         let dispatcher: String = try p.expectMessage()
         dispatcher.dropFirst("Dispatcher: ".count).shouldStartWith(prefix: "nio:")
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Grand Central Dispatch
+
+    func test_runOn_dispatchQueue() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let behavior: Behavior<String> = .receive { context, message in
+            context.log.info("HELLO")
+            p.tell("\(message)")
+            p.tell("\((context as! ActorShell<String>)._dispatcher.name)")
+            return .same
+        }
+
+        let global: DispatchQueue = .global()
+        let w = try system.spawn(.anonymous, props: .dispatcher(.dispatchQueue(global)), behavior)
+        w.tell("Hello")
+        w.tell("World")
+
+        func expectWasOnDispatchQueue(p: ActorTestProbe<String>) throws {
+            #if os(Linux)
+            try p.expectMessage().shouldContain("Dispatch.DispatchQueue")
+            #else
+            try p.expectMessage().shouldContain("OS_dispatch_queue_global:")
+            #endif
+        }
+
+        try p.expectMessage("Hello")
+        try expectWasOnDispatchQueue(p: p)
+
+        try p.expectMessage("World")
+        try expectWasOnDispatchQueue(p: p)
+
+        for i in 1 ... 100 {
+            w.tell("\(i)")
+        }
+        for i in 1 ... 100 {
+            try p.expectMessage("\(i)")
+            try expectWasOnDispatchQueue(p: p)
+        }
+    }
 }
