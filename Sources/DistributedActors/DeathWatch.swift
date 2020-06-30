@@ -50,6 +50,7 @@ internal struct DeathWatch<Message: ActorMessage> {
         self.nodeDeathWatcher = nodeDeathWatcher
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: perform watch/unwatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
@@ -76,14 +77,15 @@ internal struct DeathWatch<Message: ActorMessage> {
             self.watching[watchee] = OnTerminationMessage(customize: terminationMessage)
 
             return
-        }
+        } else {
+            // not yet watching
+            watchee._sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+            self.watching[watchee] = OnTerminationMessage(customize: terminationMessage)
 
-        watchee._sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
-        self.watching[watchee] = OnTerminationMessage(customize: terminationMessage)
-
-        // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
-        if watchee.address.node?.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
-            self.subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
+            // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
+            if watchee.address.node?.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
+                self.subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
+            }
         }
     }
 

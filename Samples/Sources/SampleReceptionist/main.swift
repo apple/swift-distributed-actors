@@ -18,12 +18,15 @@ let system = ActorSystem("SampleReceptionist") { settings in
     settings.cluster.enabled = true
 }
 
+let actors = 10_000
+
 enum HotelGuest {
     static var behavior: Behavior<String> = .setup { context in
         context.receptionist.registerMyself(as: "all/guest")
 
-        return .receiveMessage { message in
+            context.log.warning("Spawned the \(context.name)")
 
+        return .receiveMessage { message in
             return .same
         }
     }
@@ -40,8 +43,6 @@ enum HotelOwner {
         }
     }
 }
-
-let actors = 10_000
 
 enum GuestListener {
     static var behavior: Behavior<Receptionist.Listing<String>> = .setup { context in

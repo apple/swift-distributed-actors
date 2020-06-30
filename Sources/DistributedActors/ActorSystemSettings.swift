@@ -27,8 +27,10 @@ public struct ActorSystemSettings {
     public var failure: FailureSettings = .default
 
     public var plugins: PluginsSettings = .default
-    public var transports: [ActorTransport] = []
 
+    public var receptionist: ReceptionistSettings = .default
+
+    public var transports: [ActorTransport] = []
     public var serialization: Serialization.Settings = .default
     public var cluster: ClusterSettings = .default {
         didSet {

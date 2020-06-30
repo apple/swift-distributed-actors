@@ -44,15 +44,24 @@ extension ReceptionistListing {
 extension Receptionist {
     /// Response to `Lookup` and `Subscribe` requests.
     /// A listing MAY be empty.
-    public struct Listing<T>: Equatable, CustomStringConvertible {
-        let underlying: AnyReceptionistListing
+    public struct Listing<T: Codable>: Equatable, CustomStringConvertible {
+        // let underlying: AnyReceptionistListing
+        let underlying: Set<AddressableActorRef>
+        let key: Receptionist.RegistrationKey<T>
+
+        // public init(refs: Set<ActorRef<Act.Message>>) {
+        public init(refs: Set<AddressableActorRef>, key: SystemReceptionist.RegistrationKey<T>) {
+            // TODO: assert the refs match type?
+            self.underlying = refs
+            self.key = key
+        }
 
         public var description: String {
-            "\(self.underlying)"
+            "Receptionist.Listing<\(T.self)>(\(self.underlying))"
         }
 
         public static func == (lhs: Listing<T>, rhs: Listing<T>) -> Bool {
-            lhs.underlying.refsAsAnyHashable == rhs.underlying.refsAsAnyHashable
+            lhs.underlying == rhs.underlying
         }
     }
 }
@@ -73,23 +82,19 @@ extension Receptionist {
 extension Receptionist.Listing where T: ActorMessage {
     public typealias Message = T
 
-    public init(refs: Set<ActorRef<Message>>) {
-        self.underlying = Receptionist.ActorRefListing(refs: refs)
-    }
-
-    public var refs: Set<ActorRef<Message>> {
-        self.underlying.unsafeUnwrapAs(Receptionist.ActorRefListing<Message>.self).refs
+    public var refs: LazyMapSequence<Set<AddressableActorRef>, ActorRef<T>> {
+        self.underlying.lazy.map { self.key._unsafeAsActorRef($0) }
     }
 
     public var isEmpty: Bool {
-        self.refs.isEmpty
+        self.underlying.isEmpty
     }
 
     public var count: Int {
-        self.refs.count
+        self.underlying.count
     }
 
     var first: ActorRef<Message>? {
-        self.refs.first
+        self.underlying.first.map { self.key._unsafeAsActorRef($0) }
     }
 }
