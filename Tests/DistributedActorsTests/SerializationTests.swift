@@ -418,8 +418,84 @@ class SerializationTests: ActorSystemXCTestCase {
         let back = try system.serialization.deserialize(as: PListXMLCodableTest.self, from: serialized)
         back.shouldEqual(test)
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Mangled-name Manifests
+
+    func test_manifest_usingMangledName() throws {
+        var ok = true
+        #if compiler(>=5.3)
+        ok = true // ok
+        #else
+        ok = false
+        #endif
+
+        #if os(Linux)
+        ok = ok && true // ok
+        #else
+        if #available(macOS 10.16, *) {
+            () // ok, it's available on these platforms
+        } else if ok {
+            ok = false
+        }
+        #endif
+
+        guard ok else {
+            pnote("Skipping \(#function) test, as the required [_getMangledTypeName] is not available on this platform.")
+            return
+        }
+
+        let manifest = try self.system.serialization.outboundManifest(ManifestArray<CodableAnimal>.self)
+        manifest.hint!.shouldStartWith(prefix: "22DistributedActorsTests13ManifestArray")
+        manifest.hint!.shouldEndWith(suffix: "CodableAnimalCG")
+    }
+
+    // Disclaimer: Such deserialization style COULD be a security risk, however we ensure to always use the `summonType`
+    // and actor system associated APIs which working with mangled names and types -- the system can be configured in strict
+    // or lose mode, meaning that normally it should ENFORCE that we never deserialize a type that we did not EXPLICITLY enlist to be available for such intents.
+    func test_mangledTypeName_catDogList() throws {
+        var ok = true
+        #if compiler(>=5.3)
+        ok = true // ok
+        #else
+        ok = false
+        #endif
+
+        #if os(Linux)
+        ok = ok && true // ok
+        #else
+        if #available(macOS 10.16, *) {
+            () // ok, it's available on these platforms
+        } else if ok {
+            ok = false
+        }
+        #endif
+
+        guard ok else {
+            pnote("Skipping \(#function) test, as the required [_getMangledTypeName] is not available on this platform.")
+            return
+        }
+
+        let dog = TestDog(bark: "woof")
+        let cat = TestCat(purr: "purr")
+        let list: ManifestArray<CodableAnimal> = [
+            dog,
+            cat,
+        ]
+
+        let serialized = try self.system.serialization.serialize(list)
+        pinfo("\(serialized.buffer.stringDebugDescription())")
+
+        let back = try self.system.serialization.deserialize(as: ManifestArray<CodableAnimal>.self, from: serialized)
+        pinfo("\(back))")
+
+        back.elements.count.shouldEqual(list.elements.count)
+        (back.elements.first(where: { "\($0)".contains("Dog") }) as! TestDog).shouldEqual(dog)
+        (back.elements.first(where: { "\($0)".contains("Cat") }) as! TestCat).shouldEqual(cat)
+    }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Example types for serialization tests
 
 private protocol Top: Hashable, Codable {
@@ -516,4 +592,120 @@ private struct PListBinCodableTest: Codable, Equatable {
 private struct PListXMLCodableTest: Codable, Equatable {
     let name: String
     let items: [String]
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable protocols
+
+struct ManifestArray<Element: Codable>: Codable, ExpressibleByArrayLiteral {
+    typealias ArrayLiteralElement = Element
+
+    enum BoxCodingKeys: String, CodingKey {
+        case type
+        case data
+    }
+
+    let elements: [Element]
+    struct Box: Codable {
+        let type: String
+        let data: Element
+    }
+
+    init(arrayLiteral elements: Self.ArrayLiteralElement...) {
+        self.elements = elements
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        var container = try decoder.unkeyedContainer()
+        guard let count = container.count else {
+            throw SerializationError.missingField("count", type: "Int")
+        }
+        self.elements = try (0 ..< count).map { _ in
+            var nested = try container.nestedContainer(keyedBy: BoxCodingKeys.self)
+            let typeHint = try nested.decode(String.self, forKey: .type)
+            let manifest = Serialization.Manifest(serializerID: .foundationJSON, hint: typeHint) // we assume JSON rather than (en/de)-coding the full manifest
+            guard let T = try context.summonType(from: manifest) as? Decodable.Type else {
+                fatalError("Can't summon type from \(manifest)")
+            }
+            guard T is Element.Type else {
+                fatalError("Summoned type T (\(T)) is not subtype of \(Element.self)")
+            }
+            let element = try T._decode(from: &nested, forKey: .data, using: decoder) // the magic, with the recovered "right" T
+            return element as! Element // as!-safe, since we checked the T is Element
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            fatalError("Needs actor serialization infra")
+        }
+        var container = encoder.unkeyedContainer()
+        for element in self.elements {
+            let manifest = try context.outboundManifest(type(of: element))
+            let box = Box(type: manifest.hint!, data: element) // we assume JSON rather than (en/de)-coding the full manifest
+            try container.encode(box)
+        }
+    }
+}
+
+internal class CodableAnimal: Codable {}
+
+internal final class TestDog: CodableAnimal, Equatable {
+    let bark: String
+
+    init(bark: String) {
+        self.bark = bark
+        super.init()
+    }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.bark = try container.decode(String.self)
+        super.init()
+    }
+
+    override func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(self.bark)
+    }
+
+    static func == (lhs: TestDog, rhs: TestDog) -> Bool {
+        lhs.bark == rhs.bark
+    }
+}
+
+internal final class TestCat: CodableAnimal, Equatable {
+    let purr: String
+    let color: String
+
+    enum CodingKeys: String, CodingKey {
+        case purr
+        case color
+    }
+
+    init(purr: String, color: String = "black") {
+        self.purr = purr
+        self.color = color
+        super.init()
+    }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.purr = try container.decode(String.self, forKey: .purr)
+        self.color = try container.decode(String.self, forKey: .color)
+        super.init()
+    }
+
+    override func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.purr, forKey: .purr)
+        try container.encode(self.color, forKey: .color)
+    }
+
+    static func == (lhs: TestCat, rhs: TestCat) -> Bool {
+        lhs.purr == rhs.purr && lhs.color == rhs.color
+    }
 }
