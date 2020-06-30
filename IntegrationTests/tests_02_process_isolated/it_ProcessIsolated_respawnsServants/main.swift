@@ -63,7 +63,7 @@ try isolated.run(on: .servant) {
             .prefixed(with: "worker"),
             .setup { context in
                 context.log.info("Spawned \(context.path) on servant node, registering with receptionist.")
-                context.system.receptionist.register(context.myself, key: workersKey)
+                context.receptionist.registerMyself(with: workersKey)
 
                 return .receiveMessage { message in
                     context.log.info("Handled: \(message)")

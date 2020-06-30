@@ -330,7 +330,7 @@ extension GossipShell {
 
         case .fromReceptionistListing(let id):
             let key = Receptionist.RegistrationKey<Message>(id)
-            context.system.receptionist.register(context.myself, key: key)
+            context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
             context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing.self) { listing in
