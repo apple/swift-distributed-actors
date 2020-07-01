@@ -30,10 +30,10 @@ extension GeneratedActor.Messages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Boxing Parking for any inheriting actorable `A` 
 
-extension Actor where A: Parking {
+extension Actor where Act: Parking {
 
     public func park() {
-        self.ref.tell(A._boxParking(.park))
+        self.ref.tell(Act._boxParking(.park))
     }
  
 

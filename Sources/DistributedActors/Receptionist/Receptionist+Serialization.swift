@@ -20,7 +20,7 @@ extension Receptionist.Listing: ActorMessage {
 
     public init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(decoder, Receptionist.Listing<T>.self)
+            throw SerializationError.missingSerializationContext(decoder, Receptionist.Listing<Guest>.self)
         }
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -39,7 +39,7 @@ extension Receptionist.Listing: ActorMessage {
 
     public func encode(to encoder: Encoder) throws {
         guard let context: Serialization.Context = encoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(encoder, Receptionist.Listing<T>.self)
+            throw SerializationError.missingSerializationContext(encoder, Receptionist.Listing<Guest>.self)
         }
 
         var container = encoder.container(keyedBy: CodingKeys.self)

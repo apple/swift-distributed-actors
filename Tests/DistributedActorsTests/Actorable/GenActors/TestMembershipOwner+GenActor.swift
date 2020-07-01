@@ -80,7 +80,7 @@ extension TestMembershipOwner {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for TestMembershipOwner
 
-extension Actor where A.Message == TestMembershipOwner.Message {
+extension Actor where Act.Message == TestMembershipOwner.Message {
 
      func replyMembership() -> Reply<Cluster.Membership?> {
         // TODO: FIXME perhaps timeout should be taken from context

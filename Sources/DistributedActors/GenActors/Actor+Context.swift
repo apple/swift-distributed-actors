@@ -15,19 +15,19 @@
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor<A>.Context
+// MARK: Actor<Act>.Context
 
 extension Actor {
     /// `Context` of the `Actor`, exposing details and capabilities of the actor, such as spawning, starting timers and similar.
     ///
     /// - ***Warning**: MUST NOT be shared "outside" the actor, as it is only safe to access by the owning actor itself.
     ///
-    /// The `Actor<A>.Context` is the `Actorable` equivalent of `ActorContext<Message>`, which is designed to work with the low-level `Behavior` types.
+    /// The `Actor<Act>.Context` is the `Actorable` equivalent of `ActorContext<Message>`, which is designed to work with the low-level `Behavior` types.
     public struct Context {
         /// Only public to enable workarounds while all APIs gain Actor/Actorable style versions.
-        public let _underlying: ActorContext<A.Message>
+        public let _underlying: ActorContext<Act.Message>
 
-        public init(underlying: ActorContext<A.Message>) {
+        public init(underlying: ActorContext<Act.Message>) {
             self._underlying = underlying
         }
     }
@@ -72,7 +72,7 @@ extension Actor.Context {
     // We use `myself` as the Akka style `self` is taken; We could also do `context.ref` however this sounds inhuman,
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
     // to get developers into the right mindset.
-    public var myself: Actor<A> {
+    public var myself: Actor<Act> {
         Actor(ref: self._underlying.myself)
     }
 
@@ -94,7 +94,7 @@ extension Actor.Context {
 }
 
 // ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Actor<A>.Context + Spawning
+// MARK: Actor<Act>.Context + Spawning
 
 extension Actor.Context {
     /// Stops the current actor -- meaning that the current message is the last one it will ever process.
@@ -124,13 +124,13 @@ extension Actor.Context {
     /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
-    public func stop<Child>(child: Actor<Child>) throws where A: Actorable {
+    public func stop<Child>(child: Actor<Child>) throws where Act: Actorable {
         try self._underlying.stop(child: child.ref)
     }
 }
 
 // ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Actor<A>.Context + Spawning
+// MARK: Actor<Act>.Context + Spawning
 
 extension Actor.Context {
     /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
@@ -172,17 +172,17 @@ extension Actor.Context {
 }
 
 // ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Actor<A>.Context + Timers
+// MARK: Actor<Act>.Context + Timers
 
 extension Actor.Context {
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
-    public var timers: Timers<A.Message> {
+    public var timers: Timers<Act.Message> {
         self._underlying.timers
     }
 }
 
 // ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Actor<A>.Context + Death Watch
+// MARK: Actor<Act>.Context + Death Watch
 
 extension Actor.Context {
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
@@ -247,7 +247,7 @@ extension Actor.Context {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor<A>.Context + Suspending / Future inter-op
+// MARK: Actor<Act>.Context + Suspending / Future inter-op
 
 extension Actor.Context {
     /// ***CAUTION***: This functionality should be used with extreme caution, as it will

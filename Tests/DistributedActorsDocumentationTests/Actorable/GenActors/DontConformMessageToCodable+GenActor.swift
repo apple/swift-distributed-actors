@@ -85,7 +85,7 @@ extension DontConformMessageToCodable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for DontConformMessageToCodable
 
-extension Actor where A.Message == DontConformMessageToCodable.Message {
+extension Actor where Act.Message == DontConformMessageToCodable.Message {
 
     public func echo(closure: @escaping (String) -> String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context

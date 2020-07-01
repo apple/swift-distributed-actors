@@ -79,7 +79,7 @@ extension GreetMeGreeter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for GreetMeGreeter
 
-extension Actor where A.Message == GreetMeGreeter.Message {
+extension Actor where Act.Message == GreetMeGreeter.Message {
 
      func greet(_ greetMe: Actor<GreetMe>) {
         self.ref.tell(Self.Message.greet(greetMe))

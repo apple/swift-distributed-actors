@@ -68,7 +68,7 @@ extension Fork {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for Fork
 
-extension Actor where A.Message == Fork.Message {
+extension Actor where Act.Message == Fork.Message {
 
      func take() -> Reply<Bool> {
         // TODO: FIXME perhaps timeout should be taken from context

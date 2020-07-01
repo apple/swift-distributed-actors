@@ -129,8 +129,8 @@ extension XPCActorTransport: XPCControl {
     /// No validation is performed about matching message type, nor the existence of the service synchronously.
     ///
     /// In order to use this API, the service should be implemented as an `Actorable`.
-    public func actor<A: Actorable>(_ actorableType: A.Type, serviceName: String) throws -> Actor<A> {
-        let reference = try self.ref(A.Message.self, serviceName: serviceName)
+    public func actor<Act: Actorable>(_ actorableType: Act.Type, serviceName: String) throws -> Actor<Act> {
+        let reference = try self.ref(Act.Message.self, serviceName: serviceName)
         return Actor(ref: reference)
     }
 

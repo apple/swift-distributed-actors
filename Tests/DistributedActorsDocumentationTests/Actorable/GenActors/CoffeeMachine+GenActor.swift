@@ -36,13 +36,13 @@ extension GeneratedActor.Messages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Boxing CoffeeMachine for any inheriting actorable `A` 
 
-extension Actor where A: CoffeeMachine {
+extension Actor where Act: CoffeeMachine {
 
     public func makeCoffee() -> Reply<Coffee> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: Coffee.self, timeout: .effectivelyInfinite) { _replyTo in
-                A._boxCoffeeMachine(.makeCoffee(_replyTo: _replyTo))
+                Act._boxCoffeeMachine(.makeCoffee(_replyTo: _replyTo))
             }
         )
     }

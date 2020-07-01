@@ -97,11 +97,11 @@ extension ActorTestKit {
     }
 
     /// Spawn `ActorableTestProbe` which offers various assertions for actor messaging interactions.
-    public func spawnActorableTestProbe<A: Actorable>(
+    public func spawnActorableTestProbe<Act: Actorable>(
         _ naming: ActorNaming? = nil,
-        of actorable: A.Type = A.self,
+        of actorable: Act.Type = Act.self,
         file: StaticString = #file, line: UInt = #line
-    ) -> ActorableTestProbe<A> {
+    ) -> ActorableTestProbe<Act> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
         // we want to use our own sequence number for the naming here, so we make it here rather than let the
@@ -110,7 +110,7 @@ extension ActorTestKit {
         if let naming = naming {
             name = naming.makeName(&self._namingContext)
         } else {
-            name = ActorTestProbe<A.Message>.naming.makeName(&self._namingContext)
+            name = ActorTestProbe<Act.Message>.naming.makeName(&self._namingContext)
         }
 
         return ActorableTestProbe(
@@ -145,10 +145,10 @@ extension ActorTestKit {
 /// A test probe pretends to be the `Actorable` and allows expecting messages be sent to it.
 ///
 /// - SeeAlso: `ActorTestProbe` which is the equivalent API for `ActorRef`s.
-public final class ActorableTestProbe<A: Actorable>: ActorTestProbe<A.Message> {
+public final class ActorableTestProbe<Act: Actorable>: ActorTestProbe<Act.Message> {
     /// `Actor` reference to the underlying test probe actor.
     /// All message sends invoked on this Actor will result in messages in the probe available to be `expect`-ed.
-    public var actor: Actor<A> {
+    public var actor: Actor<Act> {
         Actor(ref: self.ref)
     }
 }
@@ -518,12 +518,12 @@ extension ActorTestKit {
     /// Ensures that a given number of refs are registered with the Receptionist under `key`.
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
     public func ensureRegistered<Message>(
-        key: Receptionist.RegistrationKey<Message>,
+        key: Receptionist.RegistrationKey<ActorRef<Message>>,
         expectedCount: Int = 1,
         expectedRefs: Set<ActorRef<Message>>? = nil,
         within: TimeAmount = .seconds(3)
     ) throws {
-        let lookupProbe = self.spawnTestProbe(expecting: Receptionist.Listing<Message>.self)
+        let lookupProbe = self.spawnTestProbe(expecting: Receptionist.Listing<ActorRef<Message>>.self)
 
         try self.eventually(within: within) {
             self.system.receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
@@ -533,7 +533,7 @@ extension ActorTestKit {
                 throw self.error("Expected Receptionist.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
             }
             if let expectedRefs = expectedRefs {
-                guard listing.refs == expectedRefs else {
+                guard Set(listing.refs) == expectedRefs else {
                     throw self.error("Expected Receptionist.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
                 }
             }

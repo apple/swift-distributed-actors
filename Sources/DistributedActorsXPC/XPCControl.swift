@@ -24,7 +24,7 @@ public protocol XPCControl {
     /// No validation is performed about matching message type, nor the existence of the service synchronously.
     ///
     /// In order to use this API, the service should be implemented as an `Actorable`.
-    func actor<A: Actorable>(_ actorableType: A.Type, serviceName: String) throws -> Actor<A>
+    func actor<Act: Actorable>(_ actorableType: Act.Type, serviceName: String) throws -> Actor<Act>
 
     /// Returns an `ActorRef` representing a reference to an XPC service with the passed in `serviceName`.
     ///

@@ -78,7 +78,7 @@ extension ClassActorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for ClassActorable
 
-extension Actor where A.Message == ClassActorable.Message {
+extension Actor where Act.Message == ClassActorable.Message {
 
      func hello() -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context

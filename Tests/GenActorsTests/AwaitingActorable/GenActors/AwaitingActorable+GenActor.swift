@@ -82,7 +82,7 @@ extension AwaitingActorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for AwaitingActorable
 
-extension Actor where A.Message == AwaitingActorable.Message {
+extension Actor where Act.Message == AwaitingActorable.Message {
 
      func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, AwaitingActorableError>>) {
         self.ref.tell(Self.Message.awaitOnAFuture(f: f, replyTo: replyTo))
