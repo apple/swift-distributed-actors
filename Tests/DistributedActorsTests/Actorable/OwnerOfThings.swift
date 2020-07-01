@@ -16,56 +16,56 @@ import DistributedActors
 
 struct OwnerOfThings: Actorable {
     enum Hello {
-        case breaksCodeGen
+        case usedToBreakCodeGen
     }
 
     let context: Myself.Context
-    let ownedListing: ActorableOwned<Receptionist.Listing<OwnerOfThings>>!
+    let ownedListing: ActorableOwned<Reception.Listing<Actor<OwnerOfThings>>>!
 
     init(
-        context: Myself.Context, probe: ActorRef<Receptionist.Listing<OwnerOfThings>>,
-        onListingUpdated: @escaping (ActorRef<Receptionist.Listing<OwnerOfThings>>, Receptionist.Listing<OwnerOfThings>) -> Void = { $0.tell($1) }
+        context: Myself.Context, probe: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>,
+        onOwnedListingUpdated: @escaping (ActorRef<Reception.Listing<Actor<OwnerOfThings>>>, Reception.Listing<Actor<OwnerOfThings>>) -> Void = { $0.tell($1) }
     ) {
         self.context = context
-        context.receptionist.registerMyself(as: "all/owners")
+        context.receptionist.registerMyself(with: .ownerOfThingsKey)
 
-        self.ownedListing = context.receptionist.autoUpdatedListing(OwnerOfThings.key)
+        self.ownedListing = context.receptionist.autoUpdatedListing(.ownerOfThingsKey)
         self.ownedListing.onUpdate { newValue in
-            onListingUpdated(probe, newValue)
+            onOwnedListingUpdated(probe, newValue)
         }
 
-        context.receptionist.registerMyself(with: Self.key)
+        context.receptionist.registerMyself(with: .ownerOfThingsKey)
     }
 
     // @actor
-    func readLastObservedValue() -> Receptionist.Listing<OwnerOfThings>? {
+    func readLastObservedValue() -> Reception.Listing<Actor<OwnerOfThings>>? {
         self.ownedListing.lastObservedValue
     }
 
     // we can delegate to another actor directly; the Actor<OwnerOfThings> signature will not change
     // it always remains Reply<T> to whomever calls us, and we may implement it with a strictly, with a Reply, or AskResponse.
     // @actor
-    func performLookup() -> Reply<Receptionist.Listing<OwnerOfThings>> {
-        self.context.receptionist.lookup(.init(OwnerOfThings.self, id: "all/owners"), timeout: .effectivelyInfinite)
+    func performLookup() -> AskResponse<Reception.Listing<Actor<OwnerOfThings>>> {
+        self.context.receptionist.lookup(.ownerOfThingsKey)
     }
 
     // if we HAD TO, we could still ask a ref directly and just expose this as well
     // for callers it still shows up as an Reply though.
     // @actor
-    func performAskLookup() -> AskResponse<Receptionist.Listing<OwnerOfThings.Message>> {
-        self.context.system.receptionist.ask(for: Receptionist.Listing<OwnerOfThings.Message>.self, timeout: .effectivelyInfinite) { ref in
-            Receptionist.Lookup(key: .init(messageType: OwnerOfThings.Message.self, id: "all/owners"), replyTo: ref)
-        }
+    func performAskLookup() -> AskResponse<Reception.Listing<Actor<OwnerOfThings>>> {
+        self.context.receptionist.lookup(.ownerOfThingsKey)
     }
 
     // @actor
-    func performSubscribe(p: ActorRef<Receptionist.Listing<OwnerOfThings>>) {
-        self.context.receptionist.subscribe(.init(OwnerOfThings.self, id: "all/owners")) {
+    func performSubscribe(p: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>) {
+        self.context.receptionist.subscribe(to: .ownerOfThingsKey) {
             p.tell($0)
         }
     }
 }
 
-extension OwnerOfThings {
-    static let key = Reception.Key(OwnerOfThings.self, id: "owners-of-things")
+extension Reception.Key {
+    static var ownerOfThingsKey: Reception.Key<Actor<OwnerOfThings>> {
+        .init()
+    }
 }

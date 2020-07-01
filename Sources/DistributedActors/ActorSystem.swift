@@ -74,9 +74,9 @@ public final class ActorSystem {
     // MARK: Receptionist
 
     // TODO: Use "set once" atomic structure
-    private var _receptionist: ActorRef<Receptionist.Message>!
-    public var receptionist: ActorRef<Receptionist.Message> {
-        self._receptionist
+    private var _receptionistRef: ActorRef<Receptionist.Message>!
+    public var receptionist: SystemReceptionist {
+        SystemReceptionist(ref: self._receptionistRef)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -193,8 +193,9 @@ public final class ActorSystem {
         var rootLogger = settings.logging.logger
         if settings.cluster.enabled {
             rootLogger[metadataKey: "actor/node"] = "\(settings.cluster.uniqueBindNode)"
+        } else {
+            rootLogger[metadataKey: "actor/nodeName"] = "\(self.name)"
         }
-        rootLogger[metadataKey: "actor/nodeName"] = "\(self.name)"
         self.log = rootLogger
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
@@ -274,7 +275,7 @@ public final class ActorSystem {
         // receptionist
         let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
-        self._receptionist = lazyReceptionist.ref
+        self._receptionistRef = lazyReceptionist.ref
 
         let lazyReplicator = try! self._prepareSystemActor(
             CRDT.Replicator.naming,
@@ -386,7 +387,7 @@ public final class ActorSystem {
             self.dispatcher.shutdown()
 
             try! self._eventLoopGroup.syncShutdownGracefully()
-            self._receptionist = self.deadLetters.adapted()
+            self._receptionistRef = self.deadLetters.adapted()
 
             /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
             /// as they should never be invoked anymore.
@@ -421,7 +422,7 @@ extension ActorSystem: CustomStringConvertible {
         var res = "ActorSystem("
         res.append(self.name)
         if self.settings.cluster.enabled {
-            res.append(", \(self.cluster.node)")
+            res.append(", \(self.cluster.uniqueNode)")
         }
         res.append(")")
         return res

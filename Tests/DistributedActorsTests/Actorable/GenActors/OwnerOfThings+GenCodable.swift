@@ -45,16 +45,16 @@ extension OwnerOfThings.Message {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .readLastObservedValue:
-            let _replyTo = try container.decode(ActorRef<Receptionist.Listing<OwnerOfThings>?>.self, forKey: CodingKeys.readLastObservedValue__replyTo)
+            let _replyTo = try container.decode(ActorRef<Reception.Listing<Actor<OwnerOfThings>>?>.self, forKey: CodingKeys.readLastObservedValue__replyTo)
             self = .readLastObservedValue(_replyTo: _replyTo)
         case .performLookup:
-            let _replyTo = try container.decode(ActorRef<Result<Receptionist.Listing<OwnerOfThings>, ErrorEnvelope>>.self, forKey: CodingKeys.performLookup__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<Reception.Listing<Actor<OwnerOfThings>>, ErrorEnvelope>>.self, forKey: CodingKeys.performLookup__replyTo)
             self = .performLookup(_replyTo: _replyTo)
         case .performAskLookup:
-            let _replyTo = try container.decode(ActorRef<Result<Receptionist.Listing<OwnerOfThings.Message>, ErrorEnvelope>>.self, forKey: CodingKeys.performAskLookup__replyTo)
+            let _replyTo = try container.decode(ActorRef<Result<Reception.Listing<Actor<OwnerOfThings>>, ErrorEnvelope>>.self, forKey: CodingKeys.performAskLookup__replyTo)
             self = .performAskLookup(_replyTo: _replyTo)
         case .performSubscribe:
-            let p = try container.decode(ActorRef<Receptionist.Listing<OwnerOfThings>>.self, forKey: CodingKeys.performSubscribe_p)
+            let p = try container.decode(ActorRef<Reception.Listing<Actor<OwnerOfThings>>>.self, forKey: CodingKeys.performSubscribe_p)
             self = .performSubscribe(p: p)
 
         }

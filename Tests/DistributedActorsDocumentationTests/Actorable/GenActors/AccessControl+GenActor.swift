@@ -53,11 +53,13 @@ extension AccessControl {
                 switch message { 
                 
                 case .greetPublicly:
-                    instance.greetPublicly()
- 
+                                        instance.greetPublicly()
+
+                     
                 case .greetInternal:
-                    instance.greetInternal()
- 
+                                        instance.greetInternal()
+
+                     
                 
                 }
                 return .same

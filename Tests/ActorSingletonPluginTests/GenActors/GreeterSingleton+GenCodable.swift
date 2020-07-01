@@ -17,7 +17,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import ActorSingletonPlugin
-import DistributedActors
+@testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 

@@ -58,15 +58,18 @@ extension JackOfAllTrades {
                 switch message { 
                 
                 case .hello(let replyTo):
-                    instance.hello(replyTo: replyTo)
- 
+                                        instance.hello(replyTo: replyTo)
+
+                     
                 
                 case .parking(.park):
-                    instance.park()
- 
+                                        instance.park()
+
+                     
                 case .ticketing(.makeTicket):
-                    instance.makeTicket()
- 
+                                        instance.makeTicket()
+
+                     
                 }
                 return .same
             }.receiveSignal { _context, signal in 

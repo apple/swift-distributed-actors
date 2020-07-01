@@ -52,28 +52,35 @@ extension LifecycleActor {
                 switch message { 
                 
                 case .hello(let _replyTo):
-                    let result = instance.hello()
+                    let result =                     instance.hello()
                     _replyTo.tell(result)
- 
+
+                     
                 case .pleaseStopViaBehavior:
                     return /*become*/ instance.pleaseStopViaBehavior()
- 
+
+                     
                 case .pleaseStopViaContextStop(let _replyTo):
-                    let result = instance.pleaseStopViaContextStop()
+                    let result =                     instance.pleaseStopViaContextStop()
                     _replyTo.tell(result)
- 
+
+                     
                 case .pleaseStopViaContextStopCalledManyTimes:
                     return /*become*/ instance.pleaseStopViaContextStopCalledManyTimes()
- 
+
+                     
                 case .watchChildAndTellItToStop:
-                    try instance.watchChildAndTellItToStop()
- 
+                                        try instance.watchChildAndTellItToStop()
+
+                     
                 case .watchChildAndStopIt:
-                    try instance.watchChildAndStopIt()
- 
+                                        try instance.watchChildAndStopIt()
+
+                     
                 case ._doNOTSkipMe:
-                    instance._doNOTSkipMe()
- 
+                                        instance._doNOTSkipMe()
+
+                     
                 
                 }
                 return .same

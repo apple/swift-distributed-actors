@@ -41,7 +41,6 @@ public struct Actor<Act: Actorable>: ActorMessage {
     public init(ref: ActorRef<Act.Message>) {
         self.ref = ref
     }
-
 }
 
 extension Actor: Hashable {}
@@ -50,9 +49,8 @@ extension Actor: Hashable {}
 // MARK: ActorProtocol
 
 /// Protocol describing types related to an `Actor<Act>`.
-public protocol ActorProtocol: ReceptionistGuest {
+public protocol ActorProtocol: ReceptionistGuest where Message == Act.Message {
     associatedtype Act: Actorable
-    typealias Message = Act.Message
 }
 
 extension Actor: ActorProtocol {

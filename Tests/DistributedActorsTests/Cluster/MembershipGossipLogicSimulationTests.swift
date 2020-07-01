@@ -38,7 +38,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     }
 
     var nodes: [UniqueNode] {
-        self._nodes.map { $0.cluster.node }
+        self._nodes.map { $0.cluster.uniqueNode }
     }
 
     var mockPeers: [AddressableActorRef] = []
@@ -93,9 +93,9 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             runs: 10,
             setUpPeers: { () in
                 [
-                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemA.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemB.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemC.cluster.node, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemA.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemB.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemC.cluster.uniqueNode, nodes: self.nodes),
                 ]
             },
             updateLogic: { _ in
@@ -109,7 +109,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     B: A@3 B@3 C@3
                     C: A@3 B@3 C@3
                     """,
-                    owner: systemA.cluster.node, nodes: nodes
+                    owner: systemA.cluster.uniqueNode, nodes: nodes
                 ))
             },
             stopRunWhen: { (logics, _) in
@@ -171,17 +171,17 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             runs: 1,
             setUpPeers: { () in
                 [
-                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemA.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemB.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemC.cluster.node, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemA.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemB.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialFewGossip, owner: systemC.cluster.uniqueNode, nodes: self.nodes),
 
-                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemD.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemE.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemF.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemG.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemH.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemI.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemJ.cluster.node, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemD.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemE.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemF.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemG.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemH.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemI.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialNewGossip, owner: systemJ.cluster.uniqueNode, nodes: self.nodes),
                 ]
             },
             updateLogic: { _ in
@@ -202,7 +202,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     I: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
                     J: A@20 B@16 C@16 D@16 E@16 F@16 G@16 H@16 I@16 J@16
                     """,
-                    owner: systemA.cluster.node, nodes: nodes
+                    owner: systemA.cluster.uniqueNode, nodes: nodes
                 ))
 
                 // they're trying to join
@@ -220,7 +220,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     I: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
                     J: A@12 B@11 C@11 D@9 E@13 F@13 G@13 H@13 I@13 J@13
                     """,
-                    owner: systemD.cluster.node, nodes: nodes
+                    owner: systemD.cluster.uniqueNode, nodes: nodes
                 ))
             },
             stopRunWhen: { (logics, _) in
@@ -254,9 +254,9 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             runs: 10,
             setUpPeers: { () in
                 [
-                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemA.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemB.cluster.node, nodes: self.nodes),
-                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemC.cluster.node, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemA.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemB.cluster.uniqueNode, nodes: self.nodes),
+                    Cluster.MembershipGossip.parse(initialGossipState, owner: systemC.cluster.uniqueNode, nodes: self.nodes),
                 ]
             },
             updateLogic: { _ in
@@ -270,7 +270,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                     B: A@3 B@3 C@3
                     C: A@3 B@3 C@3
                     """,
-                    owner: systemA.cluster.node, nodes: nodes
+                    owner: systemA.cluster.uniqueNode, nodes: nodes
                 ))
             },
             stopRunWhen: { logics, _ in

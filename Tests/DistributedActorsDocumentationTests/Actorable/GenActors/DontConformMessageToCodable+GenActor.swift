@@ -52,9 +52,10 @@ extension DontConformMessageToCodable {
                 switch message { 
                 
                 case .echo(let closure, let _replyTo):
-                    let result = instance.echo(closure: closure)
+                    let result =                     instance.echo(closure: closure)
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

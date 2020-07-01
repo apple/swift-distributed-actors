@@ -45,7 +45,7 @@ enum HotelOwner {
 }
 
 enum GuestListener {
-    static var behavior: Behavior<Receptionist.Listing<ActorRef<String>>> = .setup { context in
+    static var behavior: Behavior<Reception.Listing<ActorRef<String>>> = .setup { context in
 
         context.receptionist.subscribe(key: .init(ActorRef<String>.self, id: "all/guest"), subscriber: context.myself)
 

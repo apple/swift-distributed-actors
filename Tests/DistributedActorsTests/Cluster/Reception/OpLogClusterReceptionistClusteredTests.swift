@@ -50,7 +50,7 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         try self.joinNodes(node: local, with: remote)
 
         let probe = testKit.spawnTestProbe(expecting: String.self)
-        let registeredProbe = testKit.spawnTestProbe("registered", expecting: Receptionist.Registered<ActorRef<String>>.self)
+        let registeredProbe = testKit.spawnTestProbe("registered", expecting: Reception.Registered<ActorRef<String>>.self)
 
         let ref: ActorRef<String> = try local.spawn(
             .anonymous,
@@ -60,15 +60,15 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
             }
         )
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(ActorRef<String>.self, id: "test")
 
         // subscribe on `remote`
-        let subscriberProbe = testKit.spawnTestProbe(expecting: Receptionist.Listing<ActorRef<String>>.self)
-        remote.receptionist.subscribe(key: key, subscriber: subscriberProbe.ref)
+        let subscriberProbe = testKit.spawnTestProbe(expecting: Reception.Listing<ActorRef<String>>.self)
+        remote.receptionist.subscribe(subscriberProbe.ref, to: key)
         _ = try subscriberProbe.expectMessage()
 
         // register on `local`
-        local.receptionist.register(ref, key: key, replyTo: registeredProbe.ref)
+        local.receptionist.register(ref, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
         let listing = try subscriberProbe.expectMessage()
@@ -87,8 +87,8 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         }
 
         let probe = self.testKit(local).spawnTestProbe(expecting: String.self)
-        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<ActorRef<String>>.self)
-        let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<ActorRef<String>>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Reception.Registered<ActorRef<String>>.self)
+        let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Reception.Listing<ActorRef<String>>.self)
 
         let ref: ActorRef<String> = try local.spawn(
             .anonymous,
@@ -98,16 +98,16 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
             }
         )
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(ActorRef<String>.self, id: "test")
 
-        remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
+        remote.receptionist.subscribe(lookupProbe.ref, to: key)
 
         _ = try lookupProbe.expectMessage()
 
-        local.receptionist.tell(Receptionist.Register(ref, key: key, replyTo: registeredProbe.ref))
+        local.receptionist.register(ref, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        local.cluster.join(node: remote.cluster.node.node)
+        local.cluster.join(node: remote.cluster.uniqueNode.node)
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         let listing = try lookupProbe.expectMessage()
@@ -125,9 +125,9 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
         }
 
-        let registeredProbe = self.testKit(local).spawnTestProbe("registeredProbe", expecting: Receptionist.Registered<ActorRef<String>>.self)
-        let localLookupProbe = self.testKit(local).spawnTestProbe("localLookupProbe", expecting: Receptionist.Listing<ActorRef<String>>.self)
-        let remoteLookupProbe = self.testKit(remote).spawnTestProbe("remoteLookupProbe", expecting: Receptionist.Listing<ActorRef<String>>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe("registeredProbe", expecting: Reception.Registered<ActorRef<String>>.self)
+        let localLookupProbe = self.testKit(local).spawnTestProbe("localLookupProbe", expecting: Reception.Listing<ActorRef<String>>.self)
+        let remoteLookupProbe = self.testKit(remote).spawnTestProbe("remoteLookupProbe", expecting: Reception.Listing<ActorRef<String>>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             .same
@@ -138,27 +138,27 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         let refC: ActorRef<String> = try remote.spawn("refC", behavior)
         let refD: ActorRef<String> = try remote.spawn("refD", behavior)
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(ActorRef<String>.self, id: "test")
 
-        local.receptionist.tell(Receptionist.Register(refA, key: key, replyTo: registeredProbe.ref))
+        local.receptionist.register(refA, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        local.receptionist.tell(Receptionist.Register(refB, key: key, replyTo: registeredProbe.ref))
+        local.receptionist.register(refB, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        remote.receptionist.tell(Receptionist.Register(refC, key: key, replyTo: registeredProbe.ref))
+        remote.receptionist.register(refC, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        remote.receptionist.tell(Receptionist.Register(refD, key: key, replyTo: registeredProbe.ref))
+        remote.receptionist.register(refD, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        local.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: localLookupProbe.ref))
+        local.receptionist.subscribe(localLookupProbe.ref, to: key)
         _ = try localLookupProbe.expectMessage()
 
-        remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: remoteLookupProbe.ref))
+        remote.receptionist.subscribe(remoteLookupProbe.ref, to: key)
         _ = try remoteLookupProbe.expectMessage()
 
-        local.cluster.join(node: remote.cluster.node.node)
+        local.cluster.join(node: remote.cluster.uniqueNode.node)
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         let localListing = try localLookupProbe.expectMessage()
@@ -181,24 +181,24 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .seconds(1)
         }
 
-        let registeredProbe = self.testKit(first).spawnTestProbe(expecting: Receptionist.Registered<ActorRef<String>>.self)
-        let remoteLookupProbe = self.testKit(second).spawnTestProbe(expecting: Receptionist.Listing<ActorRef<String>>.self)
+        let registeredProbe = self.testKit(first).spawnTestProbe(expecting: Reception.Registered<ActorRef<String>>.self)
+        let remoteLookupProbe = self.testKit(second).spawnTestProbe(expecting: Reception.Listing<ActorRef<String>>.self)
 
         let refA: ActorRef<String> = try first.spawn(.anonymous, self.stopOnMessage)
         let refB: ActorRef<String> = try first.spawn(.anonymous, self.stopOnMessage)
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(ActorRef<String>.self, id: "test")
 
-        first.receptionist.register(refA, key: key, replyTo: registeredProbe.ref)
+        first.receptionist.register(refA, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        first.receptionist.register(refB, key: key, replyTo: registeredProbe.ref)
+        first.receptionist.register(refB, with: key, replyTo: registeredProbe.ref)
         _ = try registeredProbe.expectMessage()
 
-        second.receptionist.subscribe(key: key, subscriber: remoteLookupProbe.ref)
+        second.receptionist.subscribe(remoteLookupProbe.ref, to: key)
         _ = try remoteLookupProbe.expectMessage()
 
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
         try remoteLookupProbe.eventuallyExpectListing(expected: [refA, refB], within: .seconds(3))
@@ -226,27 +226,27 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         let (first, second) = setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-        let firstKey = Receptionist.RegistrationKey(ActorRef<String>.self, id: "first")
-        let extraKey = Receptionist.RegistrationKey(ActorRef<String>.self, id: "extra")
+        let firstKey = Reception.Key(ActorRef<String>.self, id: "first")
+        let extraKey = Reception.Key(ActorRef<String>.self, id: "extra")
 
         let ref = try first.spawn("hi", self.stopOnMessage)
-        first.receptionist.register(ref, key: firstKey)
-        first.receptionist.register(ref, key: extraKey)
+        first.receptionist.register(ref, with: firstKey)
+        first.receptionist.register(ref, with: extraKey)
 
-        let p1f = self.testKit(first).spawnTestProbe("p1f", expecting: Receptionist.Listing<ActorRef<String>>.self)
-        let p1e = self.testKit(first).spawnTestProbe("p1e", expecting: Receptionist.Listing<ActorRef<String>>.self)
-        let p2f = self.testKit(second).spawnTestProbe("p2f", expecting: Receptionist.Listing<ActorRef<String>>.self)
-        let p2e = self.testKit(second).spawnTestProbe("p2e", expecting: Receptionist.Listing<ActorRef<String>>.self)
+        let p1f = self.testKit(first).spawnTestProbe("p1f", expecting: Reception.Listing<ActorRef<String>>.self)
+        let p1e = self.testKit(first).spawnTestProbe("p1e", expecting: Reception.Listing<ActorRef<String>>.self)
+        let p2f = self.testKit(second).spawnTestProbe("p2f", expecting: Reception.Listing<ActorRef<String>>.self)
+        let p2e = self.testKit(second).spawnTestProbe("p2e", expecting: Reception.Listing<ActorRef<String>>.self)
 
         // ensure the ref is registered and known under both keys to both nodes
-        first.receptionist.subscribe(key: firstKey, subscriber: p1f.ref)
-        first.receptionist.subscribe(key: extraKey, subscriber: p1e.ref)
+        first.receptionist.subscribe(p1f.ref, to: firstKey)
+        first.receptionist.subscribe(p1e.ref, to: extraKey)
 
-        second.receptionist.subscribe(key: firstKey, subscriber: p2f.ref)
-        second.receptionist.subscribe(key: extraKey, subscriber: p2e.ref)
+        second.receptionist.subscribe(p2f.ref, to: firstKey)
+        second.receptionist.subscribe(p2e.ref, to: extraKey)
 
         func expectListingOnAllProbes(expected: Set<ActorRef<String>>) throws {
             try p1f.eventuallyExpectListing(expected: expected, within: .seconds(3))
@@ -269,23 +269,23 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         let (first, second) = setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "key")
+        let key = Reception.Key(ActorRef<String>.self, id: "key")
 
         let firstRef = try first.spawn("onFirst", self.stopOnMessage)
-        first.receptionist.register(firstRef, key: key)
+        first.receptionist.register(firstRef, with: key)
 
         let secondRef = try second.spawn("onSecond", self.stopOnMessage)
-        second.receptionist.register(secondRef, key: key)
+        second.receptionist.register(secondRef, with: key)
 
-        let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Receptionist.Listing<ActorRef<String>>.self)
-        let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Receptionist.Listing<ActorRef<String>>.self)
+        let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Reception.Listing<ActorRef<String>>.self)
+        let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Reception.Listing<ActorRef<String>>.self)
 
         // ensure the ref is registered and known under both keys to both nodes
-        first.receptionist.subscribe(key: key, subscriber: p1.ref)
-        second.receptionist.subscribe(key: key, subscriber: p2.ref)
+        first.receptionist.subscribe(p1.ref, to: key)
+        second.receptionist.subscribe(p2.ref, to: key)
 
         try p1.eventuallyExpectListing(expected: [firstRef, secondRef], within: .seconds(3))
         try p2.eventuallyExpectListing(expected: [firstRef, secondRef], within: .seconds(3))
@@ -301,26 +301,26 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         let (first, second) = setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "key")
+        let key = Reception.Key(ActorRef<String>.self, id: "key")
 
         let firstRef = try first.spawn("onFirst", self.stopOnMessage)
-        first.receptionist.register(firstRef, key: key)
+        first.receptionist.register(firstRef, with: key)
 
         let remotes: [ActorRef<String>] = try (1 ... 100).map {
             let ref = try second.spawn("remote-\($0)", self.stopOnMessage)
-            second.receptionist.register(ref, key: key)
+            second.receptionist.register(ref, with: key)
             return ref
         }
 
-        let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Receptionist.Listing<ActorRef<String>>.self)
-        let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Receptionist.Listing<ActorRef<String>>.self)
+        let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Reception.Listing<ActorRef<String>>.self)
+        let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Reception.Listing<ActorRef<String>>.self)
 
         // ensure the ref is registered and known under both keys to both nodes
-        first.receptionist.subscribe(key: key, subscriber: p1.ref)
-        second.receptionist.subscribe(key: key, subscriber: p2.ref)
+        first.receptionist.subscribe(p1.ref, to: key)
+        second.receptionist.subscribe(p2.ref, to: key)
 
         var allRefs = Set(remotes)
         allRefs.insert(firstRef)
@@ -334,31 +334,31 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         try p1.eventuallyExpectListing(expected: [firstRef], within: .seconds(5), verbose: true)
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Multi node / streaming
 
     func test_clusterReceptionist_shouldStreamAllRegisteredActorsInChunks() throws {
         let (first, second) = setUpPair {
             $0.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(200)
         }
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "first")
+        let key = Reception.Key(ActorRef<String>.self, id: "first")
 
         var allRefs: Set<ActorRef<String>> = []
         for i in 1 ... (first.settings.cluster.receptionist.syncBatchSize * 10) {
             let ref = try first.spawn("example-\(i)", self.stopOnMessage)
-            first.receptionist.register(ref, key: key)
+            first.receptionist.register(ref, with: key)
             _ = allRefs.insert(ref)
         }
 
-        let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Receptionist.Listing<ActorRef<String>>.self)
-        let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Receptionist.Listing<ActorRef<String>>.self)
+        let p1 = self.testKit(first).spawnTestProbe("p1", expecting: Reception.Listing<ActorRef<String>>.self)
+        let p2 = self.testKit(second).spawnTestProbe("p2", expecting: Reception.Listing<ActorRef<String>>.self)
 
         // ensure the ref is registered and known under both keys to both nodes
-        first.receptionist.subscribe(key: key, subscriber: p1.ref)
-        second.receptionist.subscribe(key: key, subscriber: p2.ref)
+        first.receptionist.subscribe(p1.ref, to: key)
+        second.receptionist.subscribe(p2.ref, to: key)
 
         try p1.eventuallyExpectListing(expected: allRefs, within: .seconds(10))
         try p2.eventuallyExpectListing(expected: allRefs, within: .seconds(10))
@@ -375,14 +375,14 @@ final class OpLogClusterReceptionistClusteredTests: ClusteredActorSystemsXCTestC
         try self.joinNodes(node: first, with: third)
         try self.joinNodes(node: fourth, with: second)
 
-        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "key")
+        let key = Reception.Key(ActorRef<String>.self, id: "key")
 
         let ref = try first.spawn("hi", self.stopOnMessage)
-        first.receptionist.register(ref, key: key)
+        first.receptionist.register(ref, with: key)
 
         func expectListingContainsRef(on system: ActorSystem) throws {
-            let p = self.testKit(system).spawnTestProbe("p", expecting: Receptionist.Listing<ActorRef<String>>.self)
-            system.receptionist.subscribe(key: key, subscriber: p.ref)
+            let p = self.testKit(system).spawnTestProbe("p", expecting: Reception.Listing<ActorRef<String>>.self)
+            system.receptionist.subscribe(p.ref, to: key)
 
             try p.eventuallyExpectListing(expected: [ref], within: .seconds(3))
         }

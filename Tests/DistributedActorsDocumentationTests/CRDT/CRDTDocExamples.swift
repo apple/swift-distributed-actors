@@ -25,7 +25,7 @@ import XCTest
 class Docs_quickstart_types {
     func x(system: ActorSystem) {
         // tag::quickstart_types[]
-        let node: UniqueNode = system.cluster.node
+        let node: UniqueNode = system.cluster.uniqueNode
         let replicaID: ReplicaID = .uniqueNode(node)
 
         let set: CRDT.ORSet<String> = CRDT.ORSet(replicaID: replicaID)

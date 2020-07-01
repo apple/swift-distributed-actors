@@ -276,8 +276,8 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension GossipShell {
-    public static func receptionKey(id: String) -> Receptionist.RegistrationKey<ActorRef<Message>> {
-        Receptionist.RegistrationKey(id)
+    public static func receptionKey(id: String) -> Reception.Key<ActorRef<Message>> {
+        Reception.Key(id)
     }
 
     private func initPeerDiscovery(_ context: ActorContext<Message>) {
@@ -287,7 +287,7 @@ extension GossipShell {
 
         case .onClusterMember(let atLeastStatus, let resolvePeerOn):
             func resolveInsertPeer(_ context: ActorContext<Message>, member: Cluster.Member) {
-                guard member.uniqueNode != context.system.cluster.node else {
+                guard member.uniqueNode != context.system.cluster.uniqueNode else {
                     return // ignore self node
                 }
 
@@ -329,11 +329,11 @@ extension GossipShell {
             context.system.cluster.events.subscribe(onClusterEventRef)
 
         case .fromReceptionistListing(let id):
-            let key = Receptionist.RegistrationKey<ActorRef<Message>>(id)
+            let key = Reception.Key<ActorRef<Message>>(id)
             context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
-            context.system.receptionist.subscribe(key: key, subscriber: context.subReceive(Receptionist.Listing<ActorRef<Message>>.self) { listing in
+            context.receptionist.subscribe(to: key, subReceive: { listing in
                 context.log.trace("Peer listing update via receptionist", metadata: [
                     "peer/listing": Logger.MetadataValue.array(
                         listing.refs.map { ref in Logger.MetadataValue.stringConvertible(ref) }

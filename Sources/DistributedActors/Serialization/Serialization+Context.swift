@@ -37,7 +37,7 @@ extension Serialization {
 
         /// Address to be included in serialized actor refs if they are local references.
         public var localNode: UniqueNode {
-            self.system.cluster.node
+            self.system.cluster.uniqueNode
         }
 
         internal init(log: Logger, system: ActorSystem, allocator: NIO.ByteBufferAllocator) {

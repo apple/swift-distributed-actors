@@ -26,7 +26,7 @@ extension OperationLogClusterReceptionist.ReceptionistOp {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let key = try container.decode(AnyRegistrationKey.self, forKey: .key)
+        let key = try container.decode(AnyReceptionKey.self, forKey: .key)
         let address = try container.decode(ActorAddress.self, forKey: .address)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .register:

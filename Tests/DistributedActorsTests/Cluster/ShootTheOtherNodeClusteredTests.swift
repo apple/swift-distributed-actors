@@ -34,9 +34,9 @@ final class ShootTheOtherNodeClusteredTests: ClusteredActorSystemsXCTestCase {
         // also assures they are associated
         try self.joinNodes(node: local, with: remote, ensureWithin: .seconds(5), ensureMembers: .up)
 
-        let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.node)
+        let remoteAssociationControlState0 = local._cluster!.getEnsureAssociation(with: remote.cluster.uniqueNode)
         guard case ClusterShell.StoredAssociationState.association(let remoteControl0) = remoteAssociationControlState0 else {
-            throw Boom("Expected the association to exist for \(remote.cluster.node)")
+            throw Boom("Expected the association to exist for \(remote.cluster.uniqueNode)")
         }
 
         ClusterShell.shootTheOtherNodeAndCloseConnection(system: local, targetNodeAssociation: remoteControl0)

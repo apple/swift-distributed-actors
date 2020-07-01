@@ -17,7 +17,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import ActorSingletonPlugin
-import DistributedActors
+@testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
@@ -48,9 +48,10 @@ extension GreeterSingleton {
                 switch message { 
                 
                 case .greet(let name, let _replyTo):
-                    let result = instance.greet(name: name)
+                    let result =                     instance.greet(name: name)
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

@@ -45,8 +45,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -81,8 +81,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -106,8 +106,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -162,7 +162,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
 
         let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let memberProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
@@ -183,8 +183,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: String.self)
 
@@ -242,11 +242,11 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_swim_shouldMarkSuspects_whenPingFailsAndNoOtherNodesCanBeRequested() throws {
         let first = self.setUpFirst()
-        let firstNode = first.cluster.node
+        let firstNode = first.cluster.uniqueNode
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -262,7 +262,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() throws {
         let first = self.setUpFirst()
-        let firstNode = first.cluster.node
+        let firstNode = first.cluster.uniqueNode
 
         let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
@@ -324,11 +324,11 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_swim_shouldMarkSuspectedMembersAsAlive_whenPingingSucceedsWithinSuspicionTimeout() throws {
         let first = self.setUpFirst()
-        let firstNode = first.cluster.node
+        let firstNode = first.cluster.uniqueNode
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -356,8 +356,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.swim.disabled = true // since we drive one manually
         }
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -403,12 +403,12 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_swim_shouldNotifyClusterAboutUnreachableNode_afterConfiguredSuspicionTimeout_andMarkDeadWhenConfirmed() throws {
         let first = self.setUpFirst()
-        let firstNode = first.cluster.node
+        let firstNode = first.cluster.uniqueNode
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -453,12 +453,12 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_swim_shouldNotMarkUnreachable_whenSuspectedByNotEnoughNodes_whenMinTimeoutReached() throws {
         let first = self.setUpFirst()
-        let firstNode = first.cluster.node
+        let firstNode = first.cluster.uniqueNode
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -500,12 +500,12 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_swim_suspicionTimeout_decayWithIncomingSuspicions() throws {
         let first = self.setUpFirst()
-        let firstNode = first.cluster.node
+        let firstNode = first.cluster.uniqueNode
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -561,9 +561,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -617,18 +617,18 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.swim.pingTimeout = .seconds(3)
         }
         let second = self.setUpSecond()
-        let secondNode = second.cluster.node
+        let secondNode = second.cluster.uniqueNode
         let third = self.setUpNode("third") { settings in
             settings.cluster.swim.lifeguard.suspicionTimeoutMin = .nanoseconds(2)
             settings.cluster.swim.lifeguard.suspicionTimeoutMax = .nanoseconds(2)
             settings.cluster.swim.pingTimeout = .milliseconds(300)
         }
 
-        first.cluster.join(node: second.cluster.node.node)
-        third.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: [second.cluster.node, third.cluster.node])
-        try assertAssociated(second, withExactly: [first.cluster.node, third.cluster.node])
-        try assertAssociated(third, withExactly: [first.cluster.node, second.cluster.node])
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        third.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: [second.cluster.uniqueNode, third.cluster.uniqueNode])
+        try assertAssociated(second, withExactly: [first.cluster.uniqueNode, third.cluster.uniqueNode])
+        try assertAssociated(third, withExactly: [first.cluster.uniqueNode, second.cluster.uniqueNode])
 
         let firstTestKit = self.testKit(first)
         let p1 = firstTestKit.spawnTestProbe(expecting: Cluster.Event.self)
@@ -668,7 +668,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         }
         messages.count.shouldEqual(1)
         guard let change: Cluster.ReachabilityChange = messages.first else {
-            throw testKit.fail("Expected a reachability change, but did not get one on \(testKit.system.cluster.node)")
+            throw testKit.fail("Expected a reachability change, but did not get one on \(testKit.system.cluster.uniqueNode)")
         }
         change.member.uniqueNode.shouldEqual(uniqueNode)
         change.member.reachability.shouldEqual(expected)
@@ -685,10 +685,10 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
                 if secondMember.reachability == expected {
                     return
                 } else {
-                    throw testKit.error("Expected \(node) on \(testKit.system.cluster.node) to be [\(expected)] but was: \(secondMember)")
+                    throw testKit.error("Expected \(node) on \(testKit.system.cluster.uniqueNode) to be [\(expected)] but was: \(secondMember)")
                 }
             } else {
-                pinfo("Unable to assert reachability of \(node) on \(testKit.system.cluster.node) since membership did not contain it. Was: \(snapshot)")
+                pinfo("Unable to assert reachability of \(node) on \(testKit.system.cluster.uniqueNode) since membership did not contain it. Was: \(snapshot)")
                 () // it may have technically been removed already, so this is "fine"
             }
         }
@@ -701,9 +701,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.PingResponse.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -731,8 +731,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
 
-        first.cluster.join(node: second.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
@@ -831,7 +831,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let p = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
         let memberProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
 
-        let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [memberProbe.ref: .suspect(incarnation: 0, suspectedBy: [first.cluster.node])], clusterRef: self.firstClusterProbe.ref))
+        let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [memberProbe.ref: .suspect(incarnation: 0, suspectedBy: [first.cluster.uniqueNode])], clusterRef: self.firstClusterProbe.ref))
 
         // iterate maxGossipCountPerMessage + 1 times
         for _ in 0 ..< SWIM.Settings.default.gossip.maxGossipCountPerMessage + 1 {
@@ -840,7 +840,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
             switch response {
             case .remote(.ping(_, .membership(let members))):
-                members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .suspect(incarnation: 0, suspectedBy: [first.cluster.node]), protocolPeriod: 0))
+                members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .suspect(incarnation: 0, suspectedBy: [first.cluster.uniqueNode]), protocolPeriod: 0))
             case let resp:
                 throw p.error("Expected gossip, but got \(resp)")
             }
@@ -853,7 +853,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let ref = try first.spawn("SWIM", SWIMShell.swimBehavior(members: [], clusterRef: self.firstClusterProbe.ref))
 
-        ref.tell(.remote(.ping(replyTo: p.ref, payload: .membership([SWIM.Member(ref: ref, status: .suspect(incarnation: 0, suspectedBy: [first.cluster.node]), protocolPeriod: 0)]))))
+        ref.tell(.remote(.ping(replyTo: p.ref, payload: .membership([SWIM.Member(ref: ref, status: .suspect(incarnation: 0, suspectedBy: [first.cluster.uniqueNode]), protocolPeriod: 0)]))))
 
         let response = try p.expectMessage()
 
@@ -876,8 +876,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         var settings: SWIMSettings = .default
         settings.probeInterval = .milliseconds(100)
 
-        let firstSwim: ActorRef<SWIM.Message> = try self.testKit(first)._eventuallyResolve(address: ._swim(on: first.cluster.node))
-        let secondSwim: ActorRef<SWIM.Message> = try self.testKit(second)._eventuallyResolve(address: ._swim(on: second.cluster.node))
+        let firstSwim: ActorRef<SWIM.Message> = try self.testKit(first)._eventuallyResolve(address: ._swim(on: first.cluster.uniqueNode))
+        let secondSwim: ActorRef<SWIM.Message> = try self.testKit(second)._eventuallyResolve(address: ._swim(on: second.cluster.uniqueNode))
 
         let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
 
@@ -913,10 +913,10 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let local = self.setUpFirst()
         let remote = self.setUpSecond()
 
-        local.cluster.join(node: remote.cluster.node.node)
+        local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        let localSwim: ActorRef<SWIM.Message> = try self.testKit(local)._eventuallyResolve(address: ._swim(on: local.cluster.node))
-        let remoteSwim: ActorRef<SWIM.Message> = try self.testKit(remote)._eventuallyResolve(address: ._swim(on: remote.cluster.node))
+        let localSwim: ActorRef<SWIM.Message> = try self.testKit(local)._eventuallyResolve(address: ._swim(on: local.cluster.uniqueNode))
+        let remoteSwim: ActorRef<SWIM.Message> = try self.testKit(remote)._eventuallyResolve(address: ._swim(on: remote.cluster.uniqueNode))
 
         let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
         try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
@@ -1005,7 +1005,7 @@ extension SWIMShell {
     }) -> SWIM.Instance {
         var settings = SWIM.Settings()
         configure(&settings)
-        let instance = SWIM.Instance(settings, myShellMyself: context.myself, myNode: context.system.cluster.node)
+        let instance = SWIM.Instance(settings, myShellMyself: context.myself, myNode: context.system.cluster.uniqueNode)
         for (member, status) in members {
             instance.addMember(member, status: status)
         }
