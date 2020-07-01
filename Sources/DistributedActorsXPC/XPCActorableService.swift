@@ -37,16 +37,16 @@ struct XPCStorage {
 /// Allows handling XPC messages using an `Actorable`.
 ///
 /// Once a handler actor is defined the `park()` function MUST be invoked to kick
-public final class XPCActorableService<A: Actorable> {
+public final class XPCActorableService<Act: Actorable> {
     let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
-    let myself: ActorRef<A.Message>
+    let myself: ActorRef<Act.Message>
     let system: ActorSystem
 
 //    var onConnectionContext: XPCHandlerClosureContext!
 //    let onConnectionCallback: SactXPCOnConnectionCallback
 //    let onMessageCallback: SactXPCOnMessageCallback
 
-    public init(_ system: ActorSystem, _ makeActorableHandler: @escaping (A.Myself.Context) -> A) throws {
+    public init(_ system: ActorSystem, _ makeActorableHandler: @escaping (Act.Myself.Context) -> Act) throws {
         let actor = try system.spawn("\(system.name)") { makeActorableHandler($0) }
         self.myself = actor.ref
         self.system = system
@@ -86,7 +86,7 @@ public final class XPCActorableService<A: Actorable> {
             system: self.system,
             sendMessage: { message in
                 // TODO: THIS DUPLICATES LOGIC FROM _tellOrDeadLetter but that we'd like to keep internal...
-                guard let _message = message as? A.Message else {
+                guard let _message = message as? Act.Message else {
                     // traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
                     self.system.deadLetters.tell(DeadLetter(message, recipient: self.myself.address, sentAtFile: #file, sentAtLine: #line))
                     return // TODO: "drop" the message rather than dead letter it?

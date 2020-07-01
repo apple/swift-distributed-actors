@@ -80,7 +80,7 @@ extension TestMeActorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for TestMeActorable
 
-extension Actor where A.Message == TestMeActorable.Message {
+extension Actor where Act.Message == TestMeActorable.Message {
 
      func hello() -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context

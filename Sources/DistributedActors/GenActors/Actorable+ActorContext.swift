@@ -22,19 +22,19 @@ extension ActorContext {
     ///
     /// The actor is immediately available to receive messages, which may be sent to it using function calls, which are turned into message-sends.
     /// The underlying `ActorRef<Message>` is available as `ref` on the returned actor, and allows passing the actor to `Behavior` style APIs.
-    public func spawn<A: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (ActorContext<A.Message>) -> A) throws -> Actor<A> {
+    public func spawn<Act: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (ActorContext<Act.Message>) -> Act) throws -> Actor<Act> {
         let ref = try self.spawn(
             naming,
-            of: A.Message.self,
-            Behavior<A.Message>.setup { context in
-                A.makeBehavior(instance: makeActorable(context))
+            of: Act.Message.self,
+            Behavior<Act.Message>.setup { context in
+                Act.makeBehavior(instance: makeActorable(context))
             }
         )
         return Actor(ref: ref)
     }
 
-    public func spawn<A: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> A) throws -> Actor<A> {
-        let ref = try self.spawn(naming, of: A.Message.self, A.makeBehavior(instance: makeActorable()))
+    public func spawn<Act: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Act) throws -> Actor<Act> {
+        let ref = try self.spawn(naming, of: Act.Message.self, Act.makeBehavior(instance: makeActorable()))
         return Actor(ref: ref)
     }
 }

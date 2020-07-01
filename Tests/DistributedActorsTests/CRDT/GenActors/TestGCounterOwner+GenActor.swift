@@ -98,7 +98,7 @@ extension TestGCounterOwner {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for TestGCounterOwner
 
-extension Actor where A.Message == TestGCounterOwner.Message {
+extension Actor where Act.Message == TestGCounterOwner.Message {
 
      func increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: DistributedActors.TimeAmount) -> Reply<Int> {
         // TODO: FIXME perhaps timeout should be taken from context

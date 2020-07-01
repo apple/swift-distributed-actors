@@ -90,9 +90,9 @@ system.receptionist.register(chatter, key: chatRoomId) // <1>
 if system.cluster.node.port == 7337 { // <2>
     let greeter = try system.spawn(
         "greeter",
-        of: Receptionist.Listing<String>.self,
+        of: Receptionist.Listing<ActorRef<String>>.self,
         .setup { context in // <3>
-            context.system.receptionist.subscribe(key: Receptionist.RegistrationKey(messageType: String.self, id: chatRoomId), subscriber: context.myself)
+            context.system.receptionist.subscribe(key: Receptionist.RegistrationKey(ActorRef<String>.self, id: chatRoomId), subscriber: context.myself)
 
             return .receiveMessage { chattersListing in // <4>
                 for chatter in chattersListing.refs {

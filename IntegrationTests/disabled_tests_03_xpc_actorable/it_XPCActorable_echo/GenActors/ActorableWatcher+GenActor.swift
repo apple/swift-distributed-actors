@@ -80,7 +80,7 @@ extension ActorableWatcher {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for ActorableWatcher
 
-extension Actor where A.Message == ActorableWatcher.Message {
+extension Actor where Act.Message == ActorableWatcher.Message {
 
      func noop() {
         self.ref.tell(Self.Message.noop)

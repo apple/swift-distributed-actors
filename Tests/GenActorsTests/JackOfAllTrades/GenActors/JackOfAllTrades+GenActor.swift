@@ -96,7 +96,7 @@ extension JackOfAllTrades {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for JackOfAllTrades
 
-extension Actor where A.Message == JackOfAllTrades.Message {
+extension Actor where Act.Message == JackOfAllTrades.Message {
 
     public func hello(replyTo: ActorRef<String>) {
         self.ref.tell(Self.Message.hello(replyTo: replyTo))

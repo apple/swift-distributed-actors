@@ -39,34 +39,36 @@ public enum Receptionist {
     /// of the string id and the message type of the actor.
     ///
     /// - See `Reception.Key` for the high-level `Actorable`/`Actor` compatible key API
-    public class RegistrationKey<Message: Codable>: _RegistrationKey, CustomStringConvertible, ExpressibleByStringLiteral {
-        public init(messageType: Message.Type, id: String) {
+    public class RegistrationKey<Guest: ReceptionistGuest>: _RegistrationKey, CustomStringConvertible, ExpressibleByStringLiteral {
+
+        public init(_ guest: Guest.Type, id: String) {
+            let messageType = Guest.Message.self
             super.init(id: id, typeHint: _typeName(messageType as Any.Type))
         }
 
         public init(_ value: String) {
-            super.init(id: value, typeHint: _typeName(Message.self as Any.Type))
+            super.init(id: value, typeHint: _typeName(Guest.self as Any.Type))
         }
 
         public required init(stringLiteral value: StringLiteralType) {
-            super.init(id: value, typeHint: _typeName(Message.self as Any.Type))
+            super.init(id: value, typeHint: _typeName(Guest.self as Any.Type))
         }
 
-        internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Message> {
+        internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Guest.Message> {
             if addressable.isRemote() {
-                let remoteWellTypedPersonality: RemoteClusterActorPersonality<Message> = addressable.ref._unsafeGetRemotePersonality(Message.self)
-                return ActorRef(.remote(remoteWellTypedPersonality))
+                let remotePersonality: RemoteClusterActorPersonality<Guest.Message> = addressable.ref._unsafeGetRemotePersonality(Guest.Message.self)
+                return ActorRef(.remote(remotePersonality))
             } else {
-                guard let ref = addressable.ref as? ActorRef<Message> else {
-                    fatalError("Type mismatch, expected: [\(String(reflecting: ActorRef<Message>.self))] got [\(addressable)]")
+                guard let ref = addressable.ref as? ActorRef<Guest.Message> else {
+                    fatalError("Type mismatch, expected: [\(String(reflecting: Guest.self))] got [\(addressable)]")
                 }
 
                 return ref
             }
         }
-
+        
         internal override func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: ActorRef<Message> = system._resolve(context: ResolveContext(address: address, system: system))
+            let ref: ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable()
         }
 
@@ -75,18 +77,18 @@ public enum Receptionist {
         }
 
         public var description: String {
-            "RegistrationKey(id: \(self.id), typeHint: \(self.typeHint))"
+            "RegistrationKey<\(Guest.self)>(id: \(self.id), typeHint: \(self.typeHint))"
         }
     }
 
     /// When sent to receptionist will register the specified `ActorRef` under the given `RegistrationKey`
-    public class Register<Message: Codable>: _Register {
-        public let ref: ActorRef<Message>
-        public let key: RegistrationKey<Message>
-        public let replyTo: ActorRef<Registered<Message>>?
+    public class Register<Guest: ReceptionistGuest>: _Register {
+        public let guest: Guest // TODO: can we store ActorRef<>? cheaper?
+        public let key: RegistrationKey<Guest>
+        public let replyTo: ActorRef<Registered<Guest>>?
 
-        public init(_ ref: ActorRef<Message>, key: RegistrationKey<Message>, replyTo: ActorRef<Registered<Message>>? = nil) {
-            self.ref = ref
+        public init(_ ref: Guest, key: RegistrationKey<Guest>, replyTo: ActorRef<Registered<Guest>>? = nil) {
+            self.guest = ref
             self.key = key
             self.replyTo = replyTo
             super.init()
@@ -97,7 +99,7 @@ public enum Receptionist {
         }
 
         internal override var _addressableActorRef: AddressableActorRef {
-            AddressableActorRef(self.ref)
+            AddressableActorRef(self.guest._ref)
         }
 
         internal override var _key: _RegistrationKey {
@@ -105,35 +107,35 @@ public enum Receptionist {
         }
 
         internal override func replyRegistered() {
-            self.replyTo?.tell(Registered(ref: self.ref, key: self.key))
+            self.replyTo?.tell(Registered(self.guest, key: self.key))
         }
 
         public override var description: String {
-            "Register(ref: \(self.ref), key: \(self.key), replyTo: \(String(reflecting: self.replyTo))"
+            "Register(ref: \(self.guest), key: \(self.key), replyTo: \(String(reflecting: self.replyTo))"
         }
     }
 
     /// Response to a `Register` message
-    public class Registered<Message: Codable>: NonTransportableActorMessage, CustomStringConvertible {
-        public let ref: ActorRef<Message>
-        public let key: RegistrationKey<Message>
+    public class Registered<Guest: ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
+        internal let _guest: Guest
+        public let key: RegistrationKey<Guest>
 
-        public init(ref: ActorRef<Message>, key: RegistrationKey<Message>) {
-            self.ref = ref
+        public init(_ guest: Guest, key: RegistrationKey<Guest>) {
+            self._guest = guest
             self.key = key
         }
 
         public var description: String {
-            "Receptionist.Registered(ref: \(self.ref), key: \(self.key))"
+            "Receptionist.Registered(guest: \(self._guest), key: \(self.key))"
         }
     }
 
     /// Used to lookup `ActorRef`s for the given `RegistrationKey`
-    public class Lookup<Message: Codable>: _Lookup, ListingRequest, CustomStringConvertible {
-        public let key: RegistrationKey<Message>
-        public let replyTo: ActorRef<Listing<Message>>
+    public class Lookup<Guest: ReceptionistGuest>: _Lookup, ListingRequest, CustomStringConvertible {
+        public let key: RegistrationKey<Guest>
+        public let replyTo: ActorRef<Listing<Guest>>
 
-        public init(key: RegistrationKey<Message>, replyTo: ActorRef<Listing<Message>>) {
+        public init(key: RegistrationKey<Guest>, replyTo: ActorRef<Listing<Guest>>) {
             self.key = key
             self.replyTo = replyTo
             super.init(_key: key)
@@ -157,11 +159,11 @@ public enum Receptionist {
     }
 
     /// Subscribe to periodic updates of the specified key
-    public class Subscribe<Message: Codable>: _Subscribe, ListingRequest, CustomStringConvertible {
-        public let key: RegistrationKey<Message>
-        public let replyTo: ActorRef<Listing<Message>>
+    public class Subscribe<Guest: ReceptionistGuest>: _Subscribe, ListingRequest, CustomStringConvertible {
+        public let key: RegistrationKey<Guest>
+        public let replyTo: ActorRef<Listing<Guest>>
 
-        public init(key: RegistrationKey<Message>, subscriber: ActorRef<Listing<Message>>) {
+        public init(key: RegistrationKey<Guest>, subscriber: ActorRef<Listing<Guest>>) {
             self.key = key
             self.replyTo = subscriber
             super.init()
@@ -372,31 +374,47 @@ public enum Receptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receptionist ActorRef Extensions
 
+// This is the SystemReceptionist (as exposed by `system.receptionist`).
+// It is not actorable but we pretend it is by adding the extension methods manually.
 public extension ActorRef where Message == ReceptionistMessage {
     /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
-    func register<M>(_ ref: ActorRef<M>, key keyId: String, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
-        let key = Receptionist.RegistrationKey(messageType: M.self, id: keyId)
+    func register<Guest>(
+        _ ref: Guest,
+        id keyId: String,
+        replyTo: ActorRef<Receptionist.Registered<Guest>>? = nil
+    ) where Guest: ReceptionistGuest {
+        let key = Receptionist.RegistrationKey(Guest.self, id: keyId)
         self.register(ref, key: key, replyTo: replyTo)
     }
 
     /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
-    func register<M>(_ ref: ActorRef<M>, key: Receptionist.RegistrationKey<M>, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
-        self.tell(Receptionist.Register(ref, key: key, replyTo: replyTo))
+    func register<Guest>(
+        _ guest: Guest,
+        key: Receptionist.RegistrationKey<Guest>,
+        replyTo: ActorRef<Receptionist.Registered<Guest>>? = nil
+    ) where Guest: ReceptionistGuest {
+        self.tell(Receptionist.Register<Guest>(guest, key: key, replyTo: replyTo))
     }
 
     /// Looks up actors by given `key`, replying (once) to the `replyTo` actor once the lookup has completed.
     ///
     /// - SeeAlso: `subscribe(key:subscriber:)`
-    func lookup<M>(key: Receptionist.RegistrationKey<M>, replyTo: ActorRef<Receptionist.Listing<M>>) {
-        self.tell(Receptionist.Lookup(key: key, replyTo: replyTo))
+    func lookup<Guest>(
+        key: Receptionist.RegistrationKey<Guest>,
+        replyTo: ActorRef<Receptionist.Listing<Guest>>
+    ) where Guest: ReceptionistGuest {
+        self.tell(Receptionist.Lookup<Guest>(key: key, replyTo: replyTo))
     }
 
     /// Looks up actors by given `key`.
     ///
     /// The closure is invoked _on the actor context_, meaning that it is safe to access and/or modify actor state from it.
-    func lookup<M>(key: Receptionist.RegistrationKey<M>, timeout: TimeAmount = .effectivelyInfinite) -> AskResponse<Receptionist.Listing<M>> {
-        self.ask(for: Receptionist.Listing<M>.self, timeout: timeout) {
-            Receptionist.Lookup<M>(key: key, replyTo: $0)
+    func lookup<Guest>(
+        key: Receptionist.RegistrationKey<Guest>,
+        timeout: TimeAmount = .effectivelyInfinite
+    ) -> AskResponse<Receptionist.Listing<Guest>> where Guest: ReceptionistGuest {
+        self.ask(for: Receptionist.Listing<Guest>.self, timeout: timeout) {
+            Receptionist.Lookup<Guest>(key: key, replyTo: $0)
         }
     }
 
@@ -404,20 +422,51 @@ public extension ActorRef where Message == ReceptionistMessage {
     ///
     /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register, leave or die,
     /// under the passed in key.
-    func subscribe<M>(key: Receptionist.RegistrationKey<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
-        self.tell(Receptionist.Subscribe(key: key, subscriber: subscriber))
+    func subscribe<Guest>(
+        key: Receptionist.RegistrationKey<Guest>,
+        subscriber: ActorRef<Receptionist.Listing<Guest>>
+    ) where Guest: ReceptionistGuest {
+        self.tell(Receptionist.Subscribe<Guest>(key: key, subscriber: subscriber))
     }
 }
 
 extension ActorPath {
-    internal static let _receptionist: ActorPath = try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
+    internal static let receptionist: ActorPath = try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
 }
 
 extension ActorAddress {
     internal static func _receptionist(on node: UniqueNode) -> ActorAddress {
-        .init(node: node, path: ._receptionist, incarnation: .wellKnown)
+        .init(node: node, path: .receptionist, incarnation: .wellKnown)
     }
 }
+
+extension Receptionist.Registered where Guest: ReceivesMessages {
+    public var ref: ActorRef<Guest.Message> {
+        self._guest._ref
+    }
+}
+extension Receptionist.Registered where Guest: ActorProtocol {
+    public var actor: Actor<Guest.Act> {
+        .init(ref: self._guest._ref)
+    }
+}
+
+/// Represents an entity that is able to register with the `Receptionist`.
+///
+/// It is either an `ActorRef<Message>` or an `Actor<Act>`.
+public protocol ReceptionistGuest {
+    associatedtype Message: Codable
+
+    // TODO: can we hide this?
+    var _ref: ActorRef<Message> { get }
+}
+
+extension ActorRef: ReceptionistGuest {
+    public var _ref: ActorRef<Message> { self }
+}
+//extension ActorProtocol: ReceptionistGuest {
+//    public var _ref: ActorRef<Message> { self.ref }
+//}
 
 /// Marker protocol for all receptionist messages
 ///
@@ -586,7 +635,7 @@ internal struct AnySubscribe: Hashable {
     let address: ActorAddress
     let _replyWith: (Set<AddressableActorRef>) -> Void
 
-    init<M>(subscribe: Receptionist.Subscribe<M>) {
+    init<Guest>(subscribe: Receptionist.Subscribe<Guest>) where Guest: ReceptionistGuest {
         self.address = subscribe.replyTo.address
         self._replyWith = subscribe.replyWith
     }
@@ -610,12 +659,12 @@ internal struct AnySubscribe: Hashable {
 }
 
 internal protocol ListingRequest {
-    associatedtype Message: Codable
+    associatedtype Guest: ReceptionistGuest
 
-    var key: Receptionist.RegistrationKey<Message> { get }
+    var key: Receptionist.RegistrationKey<Guest> { get }
     var _key: _RegistrationKey { get }
 
-    var replyTo: ActorRef<Receptionist.Listing<Message>> { get }
+    var replyTo: ActorRef<Receptionist.Listing<Guest>> { get }
 
     func replyWith(_ refs: Set<AddressableActorRef>)
 }

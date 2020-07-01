@@ -106,7 +106,7 @@ extension OwnerOfThings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for OwnerOfThings
 
-extension Actor where A.Message == OwnerOfThings.Message {
+extension Actor where Act.Message == OwnerOfThings.Message {
 
      func readLastObservedValue() -> Reply<Receptionist.Listing<OwnerOfThings>?> {
         // TODO: FIXME perhaps timeout should be taken from context

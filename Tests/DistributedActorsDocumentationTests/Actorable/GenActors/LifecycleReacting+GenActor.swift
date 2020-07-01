@@ -84,7 +84,7 @@ extension LifecycleReacting {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for LifecycleReacting
 
-extension Actor where A.Message == LifecycleReacting.Message {
+extension Actor where Act.Message == LifecycleReacting.Message {
 
      func something() {
         self.ref.tell(Self.Message.something)

@@ -104,7 +104,7 @@ extension LifecycleActor {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for LifecycleActor
 
-extension Actor where A.Message == LifecycleActor.Message {
+extension Actor where Act.Message == LifecycleActor.Message {
 
     public func hello() -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context

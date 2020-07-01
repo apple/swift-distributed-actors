@@ -22,7 +22,7 @@ import Logging
 /// dynamically, e.g. if a node joins or removes itself from the cluster.
 ///
 // TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
-public class WorkerPool<Message: ActorMessage> { // TODO: really has to be Codable?
+public class WorkerPool<Message: ActorMessage> {
     typealias Ref = WorkerPoolRef<Message>
 
     /// A selector defines how actors should be selected to participate in the pool.
@@ -32,7 +32,7 @@ public class WorkerPool<Message: ActorMessage> { // TODO: really has to be Codab
     public enum Selector {
         /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
         /// any actors which register/leave with the receptionist using this key.
-        case dynamic(Receptionist.RegistrationKey<Message>)
+        case dynamic(Receptionist.RegistrationKey<ActorRef<Message>>)
         // TODO: let awaitAtLeast: Int // before starting to direct traffic
 
         /// Instructs the `WorkerPool` to use only the specified actors for routing.
@@ -91,7 +91,7 @@ internal extension WorkerPool {
             case .dynamic(let key):
                 context.system.receptionist.subscribe(
                     key: key,
-                    subscriber: context.messageAdapter(from: Receptionist.Listing<Message>.self) { listing in
+                    subscriber: context.messageAdapter(from: Receptionist.Listing<ActorRef<Message>>.self) { listing in
                         context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
                         return .listing(listing)
                     }
@@ -242,25 +242,10 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
     }
 }
 
-// extension WorkerPoolRef: ReceivesQuestions {
-//    public typealias Question = Message
-//
-//    public func ask<Answer: ActorMessage>(
-//        for type: Answer.Type = Answer.self,
-//        timeout: TimeAmount,
-//        file: String = #file, function: String = #function, line: UInt = #line,
-//        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
-//    ) -> AskResponse<Answer> {
-//        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
-//            .forward(makeQuestion(replyTo))
-//        }
-//    }
-// }
-
 @usableFromInline
 internal enum WorkerPoolMessage<Message: ActorMessage>: NonTransportableActorMessage {
     case forward(Message)
-    case listing(Receptionist.Listing<Message>)
+    case listing(Receptionist.Listing<ActorRef<Message>>)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

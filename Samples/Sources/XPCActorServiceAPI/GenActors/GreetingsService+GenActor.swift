@@ -18,6 +18,6 @@ extension GeneratedActor.Messages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Boxing GreetingsService for any inheriting actorable `A` 
 
-extension Actor where A: GreetingsService {
+extension Actor where Act: GreetingsService {
 
 }

@@ -78,7 +78,7 @@ extension TestActorableNamespace.TestActorableNamespaceDirectly {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for TestActorableNamespace.TestActorableNamespaceDirectly
 
-extension Actor where A.Message == TestActorableNamespace.TestActorableNamespaceDirectly.Message {
+extension Actor where Act.Message == TestActorableNamespace.TestActorableNamespaceDirectly.Message {
 
      func echo(_ string: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
