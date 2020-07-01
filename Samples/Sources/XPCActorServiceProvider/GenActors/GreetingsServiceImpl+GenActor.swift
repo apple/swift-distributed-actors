@@ -69,6 +69,6 @@ extension GreetingsServiceImpl {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for GreetingsServiceImpl
 
-extension Actor where A.Message == GreetingsServiceImpl.Message {
+extension Actor where Act.Message == GreetingsServiceImpl.Message {
 
 }

@@ -88,7 +88,7 @@ extension AccessControl {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for AccessControl
 
-extension Actor where A.Message == AccessControl.Message {
+extension Actor where Act.Message == AccessControl.Message {
 
     public func greetPublicly() {
         self.ref.tell(Self.Message.greetPublicly)

@@ -18,7 +18,7 @@ import XCTest
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTestProbe: Receptionist expectations
 
-extension ActorTestProbe where Message == Receptionist.Listing<String> {
+extension ActorTestProbe where Message == Receptionist.Listing<ActorRef<String>> {
     /// Expect a listing eventually to contain only the `expected` references.
     ///
     /// Lack of listing emitted during the `within` period also yields a test-case failing error.

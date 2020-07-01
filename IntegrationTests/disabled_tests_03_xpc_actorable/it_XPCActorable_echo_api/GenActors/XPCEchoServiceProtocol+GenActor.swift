@@ -31,20 +31,20 @@ extension GeneratedActor.Messages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Boxing XPCEchoServiceProtocol for any inheriting actorable `A` 
 
-extension Actor where A: XPCEchoServiceProtocol {
+extension Actor where Act: XPCEchoServiceProtocol {
 
     public func echo(string: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                A._boxXPCEchoServiceProtocol(.echo(string: string, _replyTo: _replyTo))
+                Act._boxXPCEchoServiceProtocol(.echo(string: string, _replyTo: _replyTo))
             }
         )
     }
  
 
     public func letItCrash() {
-        self.ref.tell(A._boxXPCEchoServiceProtocol(.letItCrash))
+        self.ref.tell(Act._boxXPCEchoServiceProtocol(.letItCrash))
     }
  
 

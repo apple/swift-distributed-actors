@@ -182,7 +182,7 @@ extension Rendering {
 
                 "extensionWhereClause": self.actorable.isGeneric ?
                     "" :
-                    " where A.Message == \(self.actorable.fullName).Message",
+                    " where Act.Message == \(self.actorable.fullName).Message",
 
                 "funcSwitchCases": try self.actorable.funcs.map { funcDecl in
                     try CodePrinter.content { printer in

@@ -71,7 +71,7 @@ extension Philosopher {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for Philosopher
 
-extension Actor where A.Message == Philosopher.Message {
+extension Actor where Act.Message == Philosopher.Message {
 
      func think() {
         self.ref.tell(Self.Message.think)

@@ -89,7 +89,7 @@ extension Shopper_2 {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for Shopper_2
 
-extension Actor where A.Message == Shopper_2.Message {
+extension Actor where Act.Message == Shopper_2.Message {
 
      func add(item: String) {
         self.ref.tell(Self.Message.add(item: item))

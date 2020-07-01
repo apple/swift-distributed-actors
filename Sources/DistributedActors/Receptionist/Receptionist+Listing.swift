@@ -44,23 +44,32 @@ extension ReceptionistListing {
 extension Receptionist {
     /// Response to `Lookup` and `Subscribe` requests.
     /// A listing MAY be empty.
-    public struct Listing<T: Codable>: Equatable, CustomStringConvertible {
+    public struct Listing<Guest: ReceptionistGuest>: Equatable, CustomStringConvertible {
         // let underlying: AnyReceptionistListing
         let underlying: Set<AddressableActorRef>
-        let key: Receptionist.RegistrationKey<T>
+        let key: Receptionist.RegistrationKey<Guest>
 
-        // public init(refs: Set<ActorRef<Act.Message>>) {
-        public init(refs: Set<AddressableActorRef>, key: SystemReceptionist.RegistrationKey<T>) {
+        init(refs: Set<AddressableActorRef>, key: SystemReceptionist.RegistrationKey<Guest>) {
             // TODO: assert the refs match type?
             self.underlying = refs
             self.key = key
         }
 
-        public var description: String {
-            "Receptionist.Listing<\(T.self)>(\(self.underlying))"
+        /// Efficient way to check if a listing is empty.
+        public var isEmpty: Bool {
+            self.underlying.isEmpty
         }
 
-        public static func == (lhs: Listing<T>, rhs: Listing<T>) -> Bool {
+        /// Efficient way to check check the count of listed actors.
+        public var count: Int {
+            self.underlying.count
+        }
+
+        public var description: String {
+            "Receptionist.Listing<\(Guest.self)>(\(self.underlying.map({ $0.address }))"
+        }
+
+        public static func == (lhs: Listing<Guest>, rhs: Listing<Guest>) -> Bool {
             lhs.underlying == rhs.underlying
         }
     }
@@ -69,32 +78,20 @@ extension Receptionist {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorRef Receptionist Listing
 
-extension Receptionist {
-    struct ActorRefListing<Message: ActorMessage>: ReceptionistListing, CustomStringConvertible {
-        let refs: Set<ActorRef<Message>>
+extension Receptionist.Listing where Guest: ReceivesMessages {
 
-        var description: String {
-            "Listing<\(reflecting: Message.self)>(\(self.refs.map { $0.address }))"
-        }
-    }
-}
-
-extension Receptionist.Listing where T: ActorMessage {
-    public typealias Message = T
-
-    public var refs: LazyMapSequence<Set<AddressableActorRef>, ActorRef<T>> {
+    /// Retrieve all listed actor references, mapping them to their appropriate type.
+    /// Note that this operation is lazy and has to iterate over all the actors when performing the
+    /// iteration.
+    ///
+    /// Complexity: O(n)
+    public var refs: LazyMapSequence<Set<AddressableActorRef>, ActorRef<Guest.Message>> {
         self.underlying.lazy.map { self.key._unsafeAsActorRef($0) }
     }
 
-    public var isEmpty: Bool {
-        self.underlying.isEmpty
-    }
-
-    public var count: Int {
-        self.underlying.count
-    }
-
-    var first: ActorRef<Message>? {
-        self.underlying.first.map { self.key._unsafeAsActorRef($0) }
+    var first: ActorRef<Guest.Message>? {
+        self.underlying.first.map {
+            self.key._unsafeAsActorRef($0)
+        }
     }
 }

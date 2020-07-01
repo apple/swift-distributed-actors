@@ -24,7 +24,7 @@ enum HotelGuest {
     static var behavior: Behavior<String> = .setup { context in
         context.receptionist.registerMyself(as: "all/guest")
 
-            context.log.warning("Spawned the \(context.name)")
+//        context.log.warning("Spawned the \(context.name)")
 
         return .receiveMessage { message in
             return .same
@@ -45,9 +45,9 @@ enum HotelOwner {
 }
 
 enum GuestListener {
-    static var behavior: Behavior<Receptionist.Listing<String>> = .setup { context in
+    static var behavior: Behavior<Receptionist.Listing<ActorRef<String>>> = .setup { context in
 
-        context.receptionist.subscribe(key: .init(messageType: String.self, id: "all/guest"), subscriber: context.myself)
+        context.receptionist.subscribe(key: .init(ActorRef<String>.self, id: "all/guest"), subscriber: context.myself)
 
         let startAll = context.system.uptimeNanoseconds()
         var startLast = context.system.uptimeNanoseconds()
@@ -61,6 +61,9 @@ enum GuestListener {
 
             if listing.count == actors {
                 context.log.notice("Listing updated [\(listing.count)] within: \(TimeAmount.nanoseconds(stop - startAll).prettyDescription)")
+                for ref in listing.refs.prefix(20) {
+                    context.log.info("ref: \(ref)")
+                }
             }
             return .same
         }

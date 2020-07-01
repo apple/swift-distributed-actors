@@ -102,7 +102,7 @@ extension InvokeFuncs {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for InvokeFuncs
 
-extension Actor where A.Message == InvokeFuncs.Message {
+extension Actor where Act.Message == InvokeFuncs.Message {
 
     public func doThingsAndRunTask() -> Reply<Int> {
         // TODO: FIXME perhaps timeout should be taken from context

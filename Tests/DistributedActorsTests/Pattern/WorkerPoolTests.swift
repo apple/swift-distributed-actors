@@ -20,7 +20,7 @@ import XCTest
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: ActorSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() throws {
-        let workerKey = Receptionist.RegistrationKey(messageType: String.self, id: "request-workers")
+        let workerKey = Receptionist.RegistrationKey(ActorRef<String>.self, id: "request-workers")
 
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
@@ -65,7 +65,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
     }
 
     func test_workerPool_dynamic_removeDeadActors() throws {
-        let workerKey = Receptionist.RegistrationKey(messageType: String.self, id: "request-workers")
+        let workerKey = Receptionist.RegistrationKey(ActorRef<String>.self, id: "request-workers")
 
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")

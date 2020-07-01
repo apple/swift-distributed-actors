@@ -78,7 +78,7 @@ extension StructActorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for StructActorable
 
-extension Actor where A.Message == StructActorable.Message {
+extension Actor where Act.Message == StructActorable.Message {
 
      func hello() -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context

@@ -89,6 +89,6 @@ extension XPCEchoService {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for XPCEchoService
 
-extension Actor where A.Message == XPCEchoService.Message {
+extension Actor where Act.Message == XPCEchoService.Message {
 
 }

@@ -154,7 +154,7 @@ extension TestActorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for TestActorable
 
-extension Actor where A.Message == TestActorable.Message {
+extension Actor where Act.Message == TestActorable.Message {
 
     public func ping() {
         self.ref.tell(Self.Message.ping)

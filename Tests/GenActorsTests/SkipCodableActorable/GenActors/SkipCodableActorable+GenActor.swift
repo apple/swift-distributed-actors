@@ -79,7 +79,7 @@ extension SkipCodableActorable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for SkipCodableActorable
 
-extension Actor where A.Message == SkipCodableActorable.Message {
+extension Actor where Act.Message == SkipCodableActorable.Message {
 
      func echo(text: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context

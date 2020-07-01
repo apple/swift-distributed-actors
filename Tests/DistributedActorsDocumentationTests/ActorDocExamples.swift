@@ -158,7 +158,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receptionist_register() {
         // tag::receptionist_register[]
-        let key = Receptionist.RegistrationKey(messageType: String.self, id: "my-actor") // <1>
+        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "my-actor") // <1>
 
         let behavior: Behavior<String> = .setup { context in
             context.receptionist.registerMyself(with: key) // <2>
@@ -174,7 +174,7 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_receptionist_lookup() {
-        let key = Receptionist.RegistrationKey(messageType: String.self, id: "my-actor")
+        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "my-actor")
         let system = ActorSystem("LookupExample")
         // tag::receptionist_lookup[]
         let result = system.receptionist.ask(for: Receptionist.Listing.self, timeout: .seconds(1)) { // <1>
@@ -193,9 +193,9 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_receptionist_subscribe() {
-        let key = Receptionist.RegistrationKey(messageType: String.self, id: "my-actor")
+        let key = Receptionist.RegistrationKey(ActorRef<String>.self, id: "my-actor")
         // tag::receptionist_subscribe[]
-        let behavior: Behavior<Receptionist.Listing<String>> = .setup { context in
+        let behavior: Behavior<Receptionist.Listing<ActorRef<String>>> = .setup { context in
             context.system.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: context.myself)) // <1>
 
             return .receiveMessage {

@@ -85,7 +85,7 @@ extension ContextGreeter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for ContextGreeter
 
-extension Actor where A.Message == ContextGreeter.Message {
+extension Actor where Act.Message == ContextGreeter.Message {
 
      func greet(name: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context

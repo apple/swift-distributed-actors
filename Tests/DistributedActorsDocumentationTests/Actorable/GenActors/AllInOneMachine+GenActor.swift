@@ -103,7 +103,7 @@ extension AllInOneMachine {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for AllInOneMachine
 
-extension Actor where A.Message == AllInOneMachine.Message {
+extension Actor where Act.Message == AllInOneMachine.Message {
 
      func clean() {
         self.ref.tell(Self.Message.clean)

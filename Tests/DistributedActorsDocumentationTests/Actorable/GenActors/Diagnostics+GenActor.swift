@@ -36,10 +36,10 @@ extension GeneratedActor.Messages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Boxing Diagnostics for any inheriting actorable `A` 
 
-extension Actor where A: Diagnostics {
+extension Actor where Act: Diagnostics {
 
     internal func printDiagnostics() {
-        self.ref.tell(A._boxDiagnostics(.printDiagnostics))
+        self.ref.tell(Act._boxDiagnostics(.printDiagnostics))
     }
  
 
