@@ -31,10 +31,10 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     func test_boundServer_shouldAcceptAssociate() throws {
         let (first, second) = self.setUpPair()
 
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
 
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
     }
 
     func test_boundServer_shouldAcceptAssociate_raceFromBothNodes() throws {
@@ -44,46 +44,46 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let n5 = self.setUpNode("node-5")
         let n6 = self.setUpNode("node-6")
 
-        first.cluster.join(node: second.cluster.node.node)
-        second.cluster.join(node: first.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        second.cluster.join(node: first.cluster.uniqueNode.node)
 
-        n3.cluster.join(node: first.cluster.node.node)
-        first.cluster.join(node: n3.cluster.node.node)
+        n3.cluster.join(node: first.cluster.uniqueNode.node)
+        first.cluster.join(node: n3.cluster.uniqueNode.node)
 
-        n4.cluster.join(node: first.cluster.node.node)
-        first.cluster.join(node: n4.cluster.node.node)
+        n4.cluster.join(node: first.cluster.uniqueNode.node)
+        first.cluster.join(node: n4.cluster.uniqueNode.node)
 
-        n5.cluster.join(node: first.cluster.node.node)
-        first.cluster.join(node: n5.cluster.node.node)
+        n5.cluster.join(node: first.cluster.uniqueNode.node)
+        first.cluster.join(node: n5.cluster.uniqueNode.node)
 
-        n6.cluster.join(node: first.cluster.node.node)
-        first.cluster.join(node: n6.cluster.node.node)
+        n6.cluster.join(node: first.cluster.uniqueNode.node)
+        first.cluster.join(node: n6.cluster.uniqueNode.node)
 
-        try assertAssociated(first, withAtLeast: second.cluster.node)
-        try assertAssociated(second, withAtLeast: first.cluster.node)
+        try assertAssociated(first, withAtLeast: second.cluster.uniqueNode)
+        try assertAssociated(second, withAtLeast: first.cluster.uniqueNode)
     }
 
     func test_handshake_shouldNotifyOnSuccess() throws {
         let (first, second) = self.setUpPair()
 
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
 
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
     }
 
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
         let (first, second) = self.setUpPair()
 
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
 
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
 
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -92,18 +92,18 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
         let (first, second) = self.setUpPair()
 
-        let secondName = second.cluster.node.node.systemName
-        let secondPort = second.cluster.node.port
+        let secondName = second.cluster.uniqueNode.node.systemName
+        let secondPort = second.cluster.uniqueNode.port
 
         let firstEventsProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
         let secondEventsProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(firstEventsProbe.ref)
         second.cluster.events.subscribe(secondEventsProbe.ref)
 
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
 
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
         let oldSecond = second
         let shutdown = oldSecond.shutdown() // kill second node
@@ -118,11 +118,11 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
         // the new replacement node is now going to initiate a handshake with 'first' which knew about the previous
         // instance (oldSecond) on the same node; It should accept this new handshake, and ban the previous node.
-        secondReplacement.cluster.join(node: first.cluster.node.node)
+        secondReplacement.cluster.join(node: first.cluster.uniqueNode.node)
 
         // verify we are associated ONLY with the appropriate nodes now;
-        try assertAssociated(first, withExactly: [secondReplacement.cluster.node])
-        try assertAssociated(secondReplacement, withExactly: [first.cluster.node])
+        try assertAssociated(first, withExactly: [secondReplacement.cluster.uniqueNode])
+        try assertAssociated(secondReplacement, withExactly: [first.cluster.uniqueNode])
     }
 
     func test_association_shouldAllowSendingToSecondReference() throws {
@@ -137,12 +137,12 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
 
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
         // first we manually construct the "right second path"; Don't do this in normal production code
-        let uniqueSecondAddress = ActorAddress(node: second.cluster.node, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.address.incarnation)
+        let uniqueSecondAddress = ActorAddress(node: second.cluster.uniqueNode, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.address.incarnation)
         // to then obtain a second ref ON the `system`, meaning that the node within uniqueSecondAddress is a second one
         let resolvedRef = self.resolveRef(first, type: String.self, address: uniqueSecondAddress, on: second)
         // the resolved ref is a first resource on the `system` and points via the right association to the second actor
@@ -155,7 +155,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     func test_ignore_attemptToSelfJoinANode() throws {
         let alone = self.setUpNode("alone")
 
-        alone.cluster.join(node: alone.cluster.node.node) // "self join", should simply be ignored
+        alone.cluster.join(node: alone.cluster.uniqueNode.node) // "self join", should simply be ignored
 
         let testKit = self.testKit(alone)
         try testKit.eventually(within: .seconds(3)) {
@@ -174,8 +174,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
         // here we attempt to make a race where the nodes race to join each other
         // again, only one association should be created.
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
-        second.cluster.ref.tell(.command(.handshakeWith(first.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
+        second.cluster.ref.tell(.command(.handshakeWith(first.cluster.uniqueNode.node)))
 
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
         try assertAssociated(second, withExactly: first.settings.cluster.uniqueBindNode)
@@ -185,8 +185,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let (first, second) = setUpPair()
 
         // we issue two handshakes quickly after each other, both should succeed but there should only be one association established (!)
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
 
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
         try assertAssociated(second, withExactly: first.settings.cluster.uniqueBindNode)
@@ -198,7 +198,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     func test_handshake_shouldKeepTryingUntilOtherNodeBindsPort() throws {
         let first = setUpNode("first")
 
-        let secondPort = first.cluster.node.node.port + 10
+        let secondPort = first.cluster.uniqueNode.node.port + 10
         // second is NOT started, but we already ask first to handshake with the second one (which will fail, though the node should keep trying)
         let secondNode = Node(systemName: "second", host: "127.0.0.1", port: secondPort)
 
@@ -209,8 +209,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.bindPort = secondPort
         }
 
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
     }
 
     func test_handshake_shouldStopTryingWhenMaxAttemptsExceeded() throws {
@@ -221,7 +221,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             )
         }
 
-        let secondPort = first.cluster.node.node.port + 10
+        let secondPort = first.cluster.uniqueNode.node.port + 10
         // second is NOT started, but we already ask first to handshake with the second one (which will fail, though the node should keep trying)
         let secondNode = Node(systemName: "second", host: "127.0.0.1", port: secondPort)
 
@@ -238,10 +238,10 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         }
         let second = self.setUpNode("second")
 
-        first.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
 
-        try assertNotAssociated(system: first, node: second.cluster.node)
-        try assertNotAssociated(system: second, node: first.cluster.node)
+        try assertNotAssociated(system: first, node: second.cluster.uniqueNode)
+        try assertNotAssociated(system: second, node: first.cluster.uniqueNode)
     }
 
     func test_handshake_shouldNotifyOnRejection() throws {
@@ -250,10 +250,10 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         }
         let second = self.setUpNode("second")
 
-        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.node.node)))
+        first.cluster.ref.tell(.command(.handshakeWith(second.cluster.uniqueNode.node)))
 
-        try assertNotAssociated(system: first, node: second.cluster.node)
-        try assertNotAssociated(system: second, node: first.cluster.node)
+        try assertNotAssociated(system: first, node: second.cluster.uniqueNode)
+        try assertNotAssociated(system: second, node: first.cluster.uniqueNode)
 
         try self.capturedLogs(of: first)
             .awaitLogContaining(
@@ -271,27 +271,27 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         }
         let second = self.setUpNode("second")
 
-        first.cluster.down(node: first.cluster.node.node)
+        first.cluster.down(node: first.cluster.uniqueNode.node)
 
         let testKit = self.testKit(first)
         try testKit.eventually(within: .seconds(3)) {
             let snapshot: Cluster.Membership = first.cluster.membershipSnapshot
-            if let selfMember = snapshot.uniqueMember(first.cluster.node) {
+            if let selfMember = snapshot.uniqueMember(first.cluster.uniqueNode) {
                 if selfMember.status == .down {
                     () // good
                 } else {
-                    throw testKit.error("Expecting \(first.cluster.node) to become [.down] but was \(selfMember.status). Membership: \(pretty: snapshot)")
+                    throw testKit.error("Expecting \(first.cluster.uniqueNode) to become [.down] but was \(selfMember.status). Membership: \(pretty: snapshot)")
                 }
             } else {
-                throw testKit.error("No self member for \(first.cluster.node)! Membership: \(pretty: snapshot)")
+                throw testKit.error("No self member for \(first.cluster.uniqueNode)! Membership: \(pretty: snapshot)")
             }
         }
 
         // now we try to join the "already down" node; it should reject any such attempts
-        second.cluster.ref.tell(.command(.handshakeWith(first.cluster.node.node)))
+        second.cluster.ref.tell(.command(.handshakeWith(first.cluster.uniqueNode.node)))
 
-        try assertNotAssociated(system: first, node: second.cluster.node)
-        try assertNotAssociated(system: second, node: first.cluster.node)
+        try assertNotAssociated(system: first, node: second.cluster.uniqueNode)
+        try assertNotAssociated(system: second, node: first.cluster.uniqueNode)
 
         try self.capturedLogs(of: second)
             .awaitLogContaining(
@@ -305,9 +305,9 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
     func test_cachedSecondControlsWithSameNodeID_shouldNotOverwriteEachOther() throws {
         let (first, second) = setUpPair()
-        second.cluster.join(node: first.cluster.node.node)
+        second.cluster.join(node: first.cluster.uniqueNode.node)
 
-        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         let thirdSystem = self.setUpNode("third") { settings in
             settings.cluster.enabled = true
@@ -315,8 +315,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.node.port = 9119
         }
 
-        thirdSystem.cluster.join(node: first.cluster.node.node)
-        try assertAssociated(first, withExactly: [second.cluster.node, thirdSystem.settings.cluster.uniqueBindNode])
+        thirdSystem.cluster.join(node: first.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: [second.cluster.uniqueNode, thirdSystem.settings.cluster.uniqueBindNode])
 
         first._cluster?._testingOnly_associations.count.shouldEqual(2)
     }
@@ -332,7 +332,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             return .same
         })
         var secondFullAddress = secondOne.address
-        secondFullAddress.node = second.cluster.node
+        secondFullAddress.node = second.cluster.uniqueNode
 
         // we somehow obtained a ref to secondOne (on second node) without associating second yet
         // e.g. another node sent us that ref; This must cause buffering of sends to second and an association to be created.
@@ -340,8 +340,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let resolveContext = ResolveContext<String>(address: secondFullAddress, system: first)
         let ref = first._resolve(context: resolveContext)
 
-        try assertNotAssociated(system: first, node: second.cluster.node)
-        try assertNotAssociated(system: second, node: first.cluster.node)
+        try assertNotAssociated(system: first, node: second.cluster.uniqueNode)
+        try assertNotAssociated(system: second, node: first.cluster.uniqueNode)
 
         // will be buffered until associated, and then delivered:
         ref.tell("Hello 1")
@@ -352,8 +352,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try p2.expectMessage("Got:Hello 2")
         try p2.expectMessage("Got:Hello 3")
 
-        try assertAssociated(first, withExactly: second.cluster.node)
-        try assertAssociated(second, withExactly: first.cluster.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -364,11 +364,11 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             settings.cluster.onDownAction = .none // as otherwise we can't inspect if we really changed the status to .down, as we might shutdown too quickly :-)
         }
 
-        second.cluster.join(node: first.cluster.node.node)
-        try assertAssociated(first, withExactly: second.cluster.node)
+        second.cluster.join(node: first.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
         // down myself
-        first.cluster.down(node: first.cluster.node.node)
+        first.cluster.down(node: first.cluster.uniqueNode.node)
 
         let firstProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
         let secondProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Membership.self)
@@ -378,11 +378,11 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             first.cluster.ref.tell(.query(.currentMembership(firstProbe.ref)))
             let firstMembership = try firstProbe.expectMessage()
 
-            guard let selfMember = firstMembership.uniqueMember(first.cluster.node) else {
-                throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.node)", line: #line - 1)
+            guard let selfMember = firstMembership.uniqueMember(first.cluster.uniqueNode) else {
+                throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.uniqueNode)", line: #line - 1)
             }
 
-            try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
+            try self.assertMemberStatus(on: first, node: first.cluster.uniqueNode, is: .down)
             guard selfMember.status == .down else {
                 throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
             }
@@ -397,12 +397,12 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             // although this may be a best effort since the first can just shut down if it wanted to,
             // this scenario assumes a graceful leave though:
 
-            guard let firstMemberObservedOnSecond = secondMembership.uniqueMember(first.cluster.node) else {
-                throw self.testKit(second).error("\(second) does not know about the \(first.cluster.node) at all...!", line: #line - 1)
+            guard let firstMemberObservedOnSecond = secondMembership.uniqueMember(first.cluster.uniqueNode) else {
+                throw self.testKit(second).error("\(second) does not know about the \(first.cluster.uniqueNode) at all...!", line: #line - 1)
             }
 
             guard firstMemberObservedOnSecond.status == .down else {
-                throw self.testKit(second).error("Wanted to see \(first.cluster.node) as DOWN on \(second), but was still: \(firstMemberObservedOnSecond)", line: #line - 1)
+                throw self.testKit(second).error("Wanted to see \(first.cluster.uniqueNode) as DOWN on \(second), but was still: \(firstMemberObservedOnSecond)", line: #line - 1)
             }
         }
     }

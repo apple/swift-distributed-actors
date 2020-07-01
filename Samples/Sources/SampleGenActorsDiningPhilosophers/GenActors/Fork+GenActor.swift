@@ -32,12 +32,14 @@ extension Fork {
                 switch message { 
                 
                 case .take(let _replyTo):
-                    let result = instance.take()
+                    let result =                     instance.take()
                     _replyTo.tell(result)
- 
+
+                     
                 case .putBack:
-                    instance.putBack()
- 
+                                        instance.putBack()
+
+                     
                 
                 }
                 return .same

@@ -18,7 +18,7 @@ import XCTest
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorTestProbe: Receptionist expectations
 
-extension ActorTestProbe where Message == Receptionist.Listing<ActorRef<String>> {
+extension ActorTestProbe where Message == Reception.Listing<ActorRef<String>> {
     /// Expect a listing eventually to contain only the `expected` references.
     ///
     /// Lack of listing emitted during the `within` period also yields a test-case failing error.
@@ -30,7 +30,7 @@ extension ActorTestProbe where Message == Receptionist.Listing<ActorRef<String>>
         do {
             let listing = try self.fishForMessages(within: timeout, file: file, line: line) {
                 if verbose {
-                    pinfo("Received listing: \($0.refs.count)")
+                    pinfo("Received listing: \($0.refs.count)", file: file, line: line)
                 }
 
                 if $0.refs.count == expected.count { return .catchComplete }

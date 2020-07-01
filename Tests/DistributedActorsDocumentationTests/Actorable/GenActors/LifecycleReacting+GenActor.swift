@@ -52,8 +52,9 @@ extension LifecycleReacting {
                 switch message { 
                 
                 case .something:
-                    instance.something()
- 
+                                        instance.something()
+
+                     
                 
                 }
                 return .same

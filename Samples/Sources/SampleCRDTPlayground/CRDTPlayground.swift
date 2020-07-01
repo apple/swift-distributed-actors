@@ -46,7 +46,7 @@ struct CRDTPlayground {
         let first: ActorSystem = nodes.first!
 
         _ = nodes.reduce(first) { node, nextNode in
-            node.cluster.join(node: nextNode.cluster.node)
+            node.cluster.join(node: nextNode.cluster.uniqueNode)
             return nextNode
         }
 

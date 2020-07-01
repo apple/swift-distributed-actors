@@ -21,7 +21,7 @@ extension ActorContext {
     /// - SeeAlso: `DistributedActors.Receptionist`, for the system wide receptionist API
     /// - SeeAlso: `Actor<M>.Receptionist`, for the receptionist wrapper specific to actorable actors
     public var receptionist: ActorContext<Message>.Receptionist {
-        Self.Receptionist(system: self.system, context: self)
+        Self.Receptionist(context: self)
     }
 }
 
@@ -31,70 +31,37 @@ extension ActorContext {
     /// Actors may register themselves when they start with an `Reception.Key<A>`
     ///
     /// - SeeAlso: `DistributedActors.Receptionist` for the `ActorRef<Message>` version of this API.
-    public struct Receptionist {
-        let system: ActorSystem
-        let context: ActorContext<Message>
+    public struct Receptionist: MyselfReceptionistOperations {
+        public typealias Myself = ActorRef<Message>
 
-        public init(system: ActorSystem, context: ActorContext<Message>) {
-            self.system = system
-            self.context = context
+        public let _underlyingContext: ActorContext<Message>
+
+        public var _myself: Myself {
+            self._underlyingContext.myself
         }
 
-        /// Registers `myself` in the systems receptionist with given id.
+        public var _system: ActorSystem {
+            self._underlyingContext.system
+        }
+
+        public init(context: ActorContext<Message>) {
+            self._underlyingContext = context
+        }
+
+        // ==== --------------------------------------------------------------------------------------------------------
+        // MARK: ActorContext<Message> specific convenience functions
+
+        /// Subscribe to changes in checked-in actors under given `key` by with a subReceive.
         ///
-        /// - Parameters:
-        ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
-        public func registerMyself(as id: String) {
-            self.registerMyself(with: .init(ActorContext.Myself.self, id: id))
-        }
-
-        /// Registers `myself` in the systems receptionist with given key.
-        public func registerMyself(with key: SystemReceptionist.RegistrationKey<Myself>) {
-            self.register(self.context.myself, key: key)
-        }
-
-        /// Registers passed in `actor` in the systems receptionist with given id.
-        ///
-        /// - Parameters:
-        ///   - actor: the actor to register with the receptionist. It may be `context.myself` or any other actor, however generally it is recommended to let actors register themselves when they are "ready".
-        ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
-        public func register<Guest>(
-            _ ref: ActorRef<Guest>,
-            as id: String
-        ) where Guest: ReceptionistGuest {
-            self.register(ref, key: .init(ActorRef<Guest>.self, id: id))
-        }
-
-        /// Registers passed in `actor` in the systems receptionist with given id.
-        ///
-        /// - Parameters:
-        ///   - actor: the actor to register with the receptionist. It may be `context.myself` or any other actor, however generally it is recommended to let actors register themselves when they are "ready".        ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
-        public func register<Guest>(
-            _ guest: Guest,
-            key: SystemReceptionist.RegistrationKey<Guest>
-        ) where Guest: ReceptionistGuest {
-            self.system.receptionist.register(guest, key: key)
-        }
-
-        /// Subscribe to changes in checked-in actors under given `key`.
-        ///
-        /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register, leave or die, under the passed in key.
+        /// The sub receive (created using `context.subReceive`) is always executed on the actor's context and thus it is
+        /// thread-safe to mutate any of the actors state from this callback.
+        @inlinable
         public func subscribe<Guest>(
-            key: SystemReceptionist.RegistrationKey<Guest>,
-            subscriber: ActorRef<SystemReceptionist.Listing<Guest>>
+            to key: Reception.Key<Guest>,
+            subReceive: @escaping (Reception.Listing<Guest>) -> Void
         ) where Guest: ReceptionistGuest {
-            self.system.receptionist.subscribe(key: key, subscriber: subscriber)
-        }
-
-        /// Perform a single lookup for an `ActorRef<M>` identified by the passed in `key`.
-        ///
-        /// - Parameters:
-        ///   - key: selects which actors we are interested in.
-        public func lookup<Guest>(
-            _ key: SystemReceptionist.RegistrationKey<Guest>,
-            timeout: TimeAmount
-        ) -> AskResponse<SystemReceptionist.Listing<Guest>> where Guest: ReceptionistGuest {
-            self.system.receptionist.lookup(key: key, timeout: timeout)
+            let ref = self._underlyingContext.subReceive(Reception.Listing<Guest>.self, subReceive)
+            self._system.receptionist.subscribe(ref, to: key)
         }
     }
 }

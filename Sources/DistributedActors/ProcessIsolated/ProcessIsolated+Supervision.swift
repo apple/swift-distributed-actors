@@ -95,7 +95,7 @@ extension ProcessIsolated {
 
             case .escalate:
                 self.system.log.info("\(messagePrefix): ESCALATE, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>")")
-                self.system.cluster.down(node: self.system.cluster.node.node)
+                self.system.cluster.down(node: self.system.cluster.uniqueNode.node)
                 // TODO: ensure we exit the master process as well
 
             case .restartImmediately:

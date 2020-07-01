@@ -112,7 +112,7 @@ extension CRDT.Replicator {
             switch event {
             case .membershipChange(let change) where change.toStatus == .up:
                 let member = change.member
-                guard member.uniqueNode != context.system.cluster.node else {
+                guard member.uniqueNode != context.system.cluster.uniqueNode else {
                     return // Skip adding member to replicator because it is the same as local node
                 }
 

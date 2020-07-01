@@ -73,7 +73,7 @@ public struct ClusterControl {
     }
 
     /// The node value representing _this_ node in the cluster.
-    public var node: UniqueNode {
+    public var uniqueNode: UniqueNode {
         self.settings.uniqueBindNode
     }
 
@@ -109,7 +109,7 @@ public struct ClusterControl {
     // TODO: no graceful steps implemented today yet) leave the cluster.
     // TODO: leave should perhaps return a future or something to await on.
     public func leave() {
-        self.ref.tell(.command(.downCommand(self.node.node)))
+        self.ref.tell(.command(.downCommand(self.uniqueNode.node)))
     }
 
     /// Mark *any* currently known member as `Cluster.MemberStatus.down`.

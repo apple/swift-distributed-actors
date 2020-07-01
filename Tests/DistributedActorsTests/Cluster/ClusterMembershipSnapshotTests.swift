@@ -21,7 +21,7 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
         let system = self.setUpNode("first")
 
         system.cluster.membershipSnapshot.members(atLeast: .joining).shouldContain(
-            Cluster.Member(node: system.cluster.node, status: .joining)
+            Cluster.Member(node: system.cluster.uniqueNode, status: .joining)
         )
     }
 
@@ -42,9 +42,9 @@ final class ClusterMembershipSnapshotTests: ClusteredActorSystemsXCTestCase {
             }
 
             let nodes: [UniqueNode] = snapshot.members(atMost: .up).map { $0.uniqueNode }
-            nodes.shouldContain(first.cluster.node)
-            nodes.shouldContain(second.cluster.node)
-            nodes.shouldContain(third.cluster.node)
+            nodes.shouldContain(first.cluster.uniqueNode)
+            nodes.shouldContain(second.cluster.uniqueNode)
+            nodes.shouldContain(third.cluster.uniqueNode)
         }
     }
 

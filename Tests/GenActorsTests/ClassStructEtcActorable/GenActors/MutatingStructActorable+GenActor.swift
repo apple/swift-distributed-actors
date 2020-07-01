@@ -45,9 +45,10 @@ extension MutatingStructActorable {
                 switch message { 
                 
                 case .hello(let _replyTo):
-                    let result = instance.hello()
+                    let result =                     instance.hello()
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

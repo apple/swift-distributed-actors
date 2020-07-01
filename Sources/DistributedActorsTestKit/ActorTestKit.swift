@@ -518,23 +518,23 @@ extension ActorTestKit {
     /// Ensures that a given number of refs are registered with the Receptionist under `key`.
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
     public func ensureRegistered<Message>(
-        key: Receptionist.RegistrationKey<ActorRef<Message>>,
+        key: Reception.Key<ActorRef<Message>>,
         expectedCount: Int = 1,
         expectedRefs: Set<ActorRef<Message>>? = nil,
         within: TimeAmount = .seconds(3)
     ) throws {
-        let lookupProbe = self.spawnTestProbe(expecting: Receptionist.Listing<ActorRef<Message>>.self)
+        let lookupProbe = self.spawnTestProbe(expecting: Reception.Listing<ActorRef<Message>>.self)
 
         try self.eventually(within: within) {
-            self.system.receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+            self.system.receptionist.lookup(key, replyTo: lookupProbe.ref)
 
             let listing = try lookupProbe.expectMessage()
             guard listing.refs.count == expectedCount else {
-                throw self.error("Expected Receptionist.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
+                throw self.error("Expected Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.refs.count)]")
             }
             if let expectedRefs = expectedRefs {
                 guard Set(listing.refs) == expectedRefs else {
-                    throw self.error("Expected Receptionist.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
+                    throw self.error("Expected Reception.Listing for key [\(key)] to have refs \(expectedRefs), but got \(listing.refs)")
                 }
             }
         }

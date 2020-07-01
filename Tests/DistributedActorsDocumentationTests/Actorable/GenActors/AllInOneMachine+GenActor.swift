@@ -64,16 +64,19 @@ extension AllInOneMachine {
                 switch message { 
                 
                 case .clean:
-                    instance.clean()
- 
+                                        instance.clean()
+
+                     
                 
                 case .coffeeMachine(.makeCoffee(let _replyTo)):
-                    let result = instance.makeCoffee()
+                    let result =                     instance.makeCoffee()
                     _replyTo.tell(result)
- 
+
+                     
                 case .diagnostics(.printDiagnostics):
-                    instance.printDiagnostics()
- 
+                                        instance.printDiagnostics()
+
+                     
                 }
                 return .same
             }.receiveSignal { _context, signal in 

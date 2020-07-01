@@ -62,7 +62,7 @@ extension Gossiper {
             case manuallyIntroduced
 
             /// Automatically register this gossiper and subscribe for any others identifying under the same
-            /// `Receptionist.RegistrationKey<GossipShell<Gossip, Acknowledgement>.Message>(id)`.
+            /// `Reception.Key<GossipShell<Gossip, Acknowledgement>.Message>(id)`.
             case fromReceptionistListing(id: String)
 
             /// Automatically discover and add cluster members to the gossip group when they become reachable in `atLeast` status.

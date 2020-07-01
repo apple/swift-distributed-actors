@@ -46,9 +46,10 @@ extension SkipCodableActorable {
                 switch message { 
                 
                 case .echo(let text, let _replyTo):
-                    let result = instance.echo(text: text)
+                    let result =                     instance.echo(text: text)
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

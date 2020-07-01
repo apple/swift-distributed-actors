@@ -112,7 +112,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
     }
 
     public func testKit(_ system: ActorSystem) -> ActorTestKit {
-        guard let idx = self._nodes.firstIndex(where: { s in s.cluster.node == system.cluster.node }) else {
+        guard let idx = self._nodes.firstIndex(where: { s in s.cluster.uniqueNode == system.cluster.uniqueNode }) else {
             fatalError("Must only call with system that was spawned using `setUpNode()`, was: \(system)")
         }
 
@@ -126,16 +126,16 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
         ensureWithin: TimeAmount? = nil, ensureMembers maybeExpectedStatus: Cluster.MemberStatus? = nil,
         file: StaticString = #file, line: UInt = #line
     ) throws {
-        node.cluster.join(node: other.cluster.node.node)
+        node.cluster.join(node: other.cluster.uniqueNode.node)
 
         try assertAssociated(node, withAtLeast: other.settings.cluster.uniqueBindNode)
         try assertAssociated(other, withAtLeast: node.settings.cluster.uniqueBindNode)
 
         if let expectedStatus = maybeExpectedStatus {
             if let specificTimeout = ensureWithin {
-                try self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.node, file: file, line: line)
+                try self.ensureNodes(expectedStatus, on: node, within: specificTimeout, nodes: other.cluster.uniqueNode, file: file, line: line)
             } else {
-                try self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.node, file: file, line: line)
+                try self.ensureNodes(expectedStatus, on: node, nodes: other.cluster.uniqueNode, file: file, line: line)
             }
         }
     }
@@ -178,7 +178,7 @@ extension ClusteredActorSystemsXCTestCase {
 
         system.cluster.ref.tell(.query(.currentMembership(p.ref)))
         let membership = try! p.expectMessage()
-        let info = "Membership on [\(reflecting: system.cluster.node)]: \(membership.prettyDescription)"
+        let info = "Membership on [\(reflecting: system.cluster.uniqueNode)]: \(membership.prettyDescription)"
 
         p.stop()
 
@@ -342,13 +342,13 @@ extension ClusteredActorSystemsXCTestCase {
 
         let membership = try p.expectMessage()
         guard let foundMember = membership.uniqueMember(node) else {
-            throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
+            throw testKit.error("Expected [\(system.cluster.uniqueNode)] to know about [\(node)] member", file: file, line: line)
         }
 
         if foundMember.status != expectedStatus {
             throw testKit.error(
                 """
-                Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.node) \
+                Expected \(reflecting: foundMember.uniqueNode) on \(reflecting: system.cluster.uniqueNode) \
                 to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]
                 """,
                 file: file,
@@ -391,7 +391,7 @@ extension ClusteredActorSystemsXCTestCase {
         let membership = try p.expectMessage()
         let leaderNode = membership.leader?.uniqueNode
         if leaderNode != expectedNode {
-            throw testKit.error("Expected \(reflecting: expectedNode) to be leader node on \(reflecting: system.cluster.node) but was [\(reflecting: leaderNode)]")
+            throw testKit.error("Expected \(reflecting: expectedNode) to be leader node on \(reflecting: system.cluster.uniqueNode) but was [\(reflecting: leaderNode)]")
         }
     }
 }

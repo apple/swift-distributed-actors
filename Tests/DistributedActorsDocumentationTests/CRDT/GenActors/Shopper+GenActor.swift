@@ -54,11 +54,13 @@ extension Shopper {
                 switch message { 
                 
                 case .add(let item):
-                    instance.add(item: item)
- 
+                                        instance.add(item: item)
+
+                     
                 case .checkOff(let item):
-                    instance.checkOff(item: item)
- 
+                                        instance.checkOff(item: item)
+
+                     
                 
                 }
                 return .same

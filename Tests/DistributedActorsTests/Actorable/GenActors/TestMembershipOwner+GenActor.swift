@@ -47,9 +47,10 @@ extension TestMembershipOwner {
                 switch message { 
                 
                 case .replyMembership(let _replyTo):
-                    let result = instance.replyMembership()
+                    let result =                     instance.replyMembership()
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

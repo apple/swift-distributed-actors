@@ -57,11 +57,11 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
         let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
 
-        first.cluster.join(node: second.cluster.node.node)
-        third.cluster.join(node: first.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        third.cluster.join(node: first.cluster.uniqueNode.node)
 
         // `first` will be the leader (lowest address) and runs the singleton
-        try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
 
         try self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expect: "Hello-1 Alice!")
         try self.assertSingletonRequestReply(second, singletonRef: ref2, message: "Bob", expect: "Hello-1 Bob!")
@@ -111,11 +111,11 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         try replyProbe2.expectNoMessage(for: .milliseconds(200))
         try replyProbe3.expectNoMessage(for: .milliseconds(200))
 
-        first.cluster.join(node: second.cluster.node.node)
-        third.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        third.cluster.join(node: second.cluster.uniqueNode.node)
 
         // `first` becomes the leader (lowest address) and runs the singleton
-        try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
 
         try replyProbe1.expectMessage("Hello-1 Alice-1!")
         try replyProbe2.expectMessage("Hello-1 Bob-2!")
@@ -161,11 +161,11 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
         _ = try fourth.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-4")))
 
-        first.cluster.join(node: second.cluster.node.node)
-        third.cluster.join(node: second.cluster.node.node)
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        third.cluster.join(node: second.cluster.uniqueNode.node)
 
-        try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
-        pinfo("Nodes up: \([first.cluster.node, second.cluster.node, third.cluster.node])")
+        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
+        pinfo("Nodes up: \([first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
 
         let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
         let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
@@ -176,7 +176,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         try self.assertSingletonRequestReply(third, singletonRef: ref3, message: "Charlie", expect: "Hello-1 Charlie!")
         pinfo("All three nodes communicated with singleton")
 
-        let firstNode = first.cluster.node
+        let firstNode = first.cluster.uniqueNode
         first.cluster.leave()
 
         // Make sure that `second` and `third` see `first` as down and become leader-less
@@ -188,11 +188,11 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             try self.assertMemberStatus(on: third, node: firstNode, is: .down)
             try self.assertLeaderNode(on: third, is: nil)
         }
-        pinfo("Node \(first.cluster.node) left cluster...")
+        pinfo("Node \(first.cluster.uniqueNode) left cluster...")
 
         // `fourth` will become the new leader and singleton
-        pinfo("Node \(fourth.cluster.node) joining cluster...")
-        fourth.cluster.join(node: second.cluster.node.node)
+        pinfo("Node \(fourth.cluster.uniqueNode) joining cluster...")
+        fourth.cluster.join(node: second.cluster.uniqueNode.node)
         let start = fourth.uptimeNanoseconds()
 
         // No leader so singleton is not available, messages sent should be stashed
@@ -214,8 +214,8 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             }
         })
 
-        try self.ensureNodes(.up, on: second, nodes: second.cluster.node, third.cluster.node, fourth.cluster.node)
-        pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.node, second.cluster.node, third.cluster.node])")
+        try self.ensureNodes(.up, on: second, nodes: second.cluster.uniqueNode, third.cluster.uniqueNode, fourth.cluster.uniqueNode)
+        pinfo("Fourth node joined, will become leader; Members now: \([fourth.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
 
         // The stashed messages get routed to new singleton running on `fourth`
         let got2 = try replyProbe2.expectMessage()
@@ -265,7 +265,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
             } else {
                 throw TestError(
                     """
-                    Received no reply from singleton [\(singletonRef)] while sending from [\(system.cluster.node.node)], \
+                    Received no reply from singleton [\(singletonRef)] while sending from [\(system.cluster.uniqueNode.node)], \
                     perhaps request was lost. Sent [\(message)] and expected: [\(expect)] (attempts: \(attempts))
                     """)
             }

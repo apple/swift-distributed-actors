@@ -26,7 +26,7 @@ final class ActorableOwnedMembershipTests: ClusteredActorSystemsXCTestCase {
         }
 
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
-        try self.assertMemberStatus(on: first, node: second.cluster.node, is: .up)
+        try self.assertMemberStatus(on: first, node: second.cluster.uniqueNode, is: .up)
 
         let owner = try first.spawn("membershipOwner") {
             TestMembershipOwner(context: $0)

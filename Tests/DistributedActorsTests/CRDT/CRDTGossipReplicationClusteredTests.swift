@@ -112,7 +112,7 @@ final class CRDTGossipReplicationTests: ClusteredActorSystemsXCTestCase {
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
         try self.joinNodes(node: second, with: third, ensureMembers: .up)
         try self.joinNodes(node: third, with: fourth, ensureMembers: .up)
-        try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node, fourth.cluster.node)
+        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode, fourth.cluster.uniqueNode)
 
         let one = try first.spawn("one", self.ownsCounter(p: nil))
         let two = try second.spawn("two", self.ownsCounter(p: nil))
@@ -167,7 +167,7 @@ final class CRDTGossipReplicationTests: ClusteredActorSystemsXCTestCase {
 
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
         try self.joinNodes(node: second, with: third, ensureMembers: .up)
-        try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node, third.cluster.node)
+        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
 
         let p1 = self.testKit(first).spawnTestProbe(expecting: CRDT.GCounter.self)
         let one = try first.spawn("one", self.ownsCounter(p: p1))
@@ -202,8 +202,8 @@ final class CRDTGossipReplicationTests: ClusteredActorSystemsXCTestCase {
         }
 
         // ==== Join 4th node, it should gain the information ------------------------------------------------------
-        fourth.cluster.join(node: second.cluster.node.node)
-        fourth.cluster.join(node: first.cluster.node.node)
+        fourth.cluster.join(node: second.cluster.uniqueNode.node)
+        fourth.cluster.join(node: first.cluster.uniqueNode.node)
 
         let p4 = self.testKit(fourth).spawnTestProbe(expecting: CRDT.GCounter.self)
         _ = try fourth.spawn("reader-4", self.ownsCounter(p: p4))

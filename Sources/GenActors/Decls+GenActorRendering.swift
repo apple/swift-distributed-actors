@@ -76,7 +76,7 @@ extension Rendering {
             // ==== ----------------------------------------------------------------------------------------------------------------
             // MARK: DO NOT EDIT: Boxing {{baseName}} for any inheriting actorable `A` 
 
-            extension Actor where A: {{actorableProtocol}} {
+            extension Actor where Act: {{actorableProtocol}} {
             {%for tell in funcBoxTells %}
             {{ tell }} 
             {% endfor %}
@@ -610,7 +610,7 @@ extension ActorableMessageDecl {
 
     func renderPassMessage(boxWith boxProtocol: ActorableTypeDecl?, skipNewline: Bool, printer: inout CodePrinter) {
         if let boxName = boxProtocol?.boxFuncName {
-            printer.print("A.", skipNewline: true)
+            printer.print("Act.", skipNewline: true)
             printer.print(boxName, skipNewline: true)
             printer.print("(", skipNewline: true)
             printer.print(".\(self.name)", skipNewline: true)

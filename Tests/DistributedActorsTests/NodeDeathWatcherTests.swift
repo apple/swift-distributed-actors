@@ -56,8 +56,8 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        try self.ensureNodes(.up, nodes: first.cluster.node, second.cluster.node)
-        first.cluster.down(node: second.cluster.node.node)
+        try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode)
+        first.cluster.down(node: second.cluster.uniqueNode.node)
 
         // should cause termination of all remote actors, observed by the local actors on [first]
         let termination1: Signals.Terminated = try p.expectMessage()
@@ -71,7 +71,7 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
             })
 
         // should not trigger terminated again for any of the remote refs
-        first.cluster.down(node: second.cluster.node.node)
+        first.cluster.down(node: second.cluster.uniqueNode.node)
         try p.expectNoMessage(for: .milliseconds(50))
     }
 }

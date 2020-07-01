@@ -209,7 +209,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             )
         }
 
-        local.cluster.join(node: remote.cluster.node.node)
+        local.cluster.join(node: remote.cluster.uniqueNode.node)
 
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
     }
@@ -241,7 +241,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
 
         let testKit = ActorTestKit(local)
 
-        local.cluster.join(node: remote.cluster.node.node)
+        local.cluster.join(node: remote.cluster.uniqueNode.node)
 
         sleep(2)
 
@@ -286,7 +286,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             )
         }
 
-        local.cluster.join(node: remote.cluster.node.node)
+        local.cluster.join(node: remote.cluster.uniqueNode.node)
 
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
     }
@@ -326,7 +326,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
             }
         }
 
-        local.cluster.join(node: remote.cluster.node.node)
+        local.cluster.join(node: remote.cluster.uniqueNode.node)
 
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
     }

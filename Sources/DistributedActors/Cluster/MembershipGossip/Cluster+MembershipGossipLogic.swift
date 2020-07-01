@@ -26,7 +26,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     typealias Acknowledgement = Cluster.MembershipGossip
 
     private let context: Context
-    internal lazy var localNode: UniqueNode = self.context.system.cluster.node
+    internal lazy var localNode: UniqueNode = self.context.system.cluster.uniqueNode
 
     internal var latestGossip: Cluster.MembershipGossip
     private let notifyOnGossipRef: ActorRef<Cluster.MembershipGossip>
@@ -47,7 +47,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.MembershipGossip>) {
         self.context = context
         self.notifyOnGossipRef = notifyOnGossipRef
-        self.latestGossip = .init(ownerNode: context.system.cluster.node)
+        self.latestGossip = .init(ownerNode: context.system.cluster.uniqueNode)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
