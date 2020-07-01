@@ -119,7 +119,7 @@ internal extension RemoteClusterActorPersonality {
     @usableFromInline
     func _tellUnsafe(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Remote(self.system.cluster.node, "\(self.address)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)")
+            traceLog_Remote(self.system.cluster.uniqueNode, "\(self.address)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)")
             return // TODO: drop the message
         }
 

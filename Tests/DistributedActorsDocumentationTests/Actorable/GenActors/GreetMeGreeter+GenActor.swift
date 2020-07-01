@@ -47,8 +47,9 @@ extension GreetMeGreeter {
                 switch message { 
                 
                 case .greet(let greetMe):
-                    instance.greet(greetMe)
- 
+                                        instance.greet(greetMe)
+
+                     
                 
                 }
                 return .same

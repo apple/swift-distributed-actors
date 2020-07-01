@@ -54,11 +54,12 @@ extension InvokeFuncs {
                 switch message { 
                 
                 case .doThingsAndRunTask(let _replyTo):
-                    let result = instance.doThingsAndRunTask()
+                    let result =                     instance.doThingsAndRunTask()
                     _replyTo.tell(result)
- 
+
+                     
                 case .doThingsAsync(let _replyTo):
-                    instance.doThingsAsync()
+                                        instance.doThingsAsync()
                         ._onComplete { res in
                             switch res {
                             case .success(let value):
@@ -69,9 +70,10 @@ extension InvokeFuncs {
                         }
  
                 case .internalTask(let _replyTo):
-                    let result = instance.internalTask()
+                    let result =                     instance.internalTask()
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

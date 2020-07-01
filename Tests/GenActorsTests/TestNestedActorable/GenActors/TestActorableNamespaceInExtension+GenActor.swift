@@ -45,9 +45,10 @@ extension TestActorableNamespace.TestActorableNamespaceInExtension {
                 switch message { 
                 
                 case .echo(let string, let _replyTo):
-                    let result = instance.echo(string)
+                    let result =                     instance.echo(string)
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

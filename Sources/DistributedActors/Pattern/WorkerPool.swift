@@ -32,7 +32,7 @@ public class WorkerPool<Message: ActorMessage> {
     public enum Selector {
         /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
         /// any actors which register/leave with the receptionist using this key.
-        case dynamic(Receptionist.RegistrationKey<ActorRef<Message>>)
+        case dynamic(Reception.Key<ActorRef<Message>>)
         // TODO: let awaitAtLeast: Int // before starting to direct traffic
 
         /// Instructs the `WorkerPool` to use only the specified actors for routing.
@@ -89,13 +89,11 @@ internal extension WorkerPool {
         .setup { context in
             switch self.selector {
             case .dynamic(let key):
-                context.system.receptionist.subscribe(
-                    key: key,
-                    subscriber: context.messageAdapter(from: Receptionist.Listing<ActorRef<Message>>.self) { listing in
-                        context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
-                        return .listing(listing)
-                    }
-                )
+                let adapter = context.messageAdapter(from: Reception.Listing<ActorRef<Message>>.self) { listing in
+                    context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
+                    return .listing(listing)
+                }
+                context.system.receptionist.subscribe(adapter, to: key)
                 return self.awaitingWorkers()
 
             case .static(let workers):
@@ -245,7 +243,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
 @usableFromInline
 internal enum WorkerPoolMessage<Message: ActorMessage>: NonTransportableActorMessage {
     case forward(Message)
-    case listing(Receptionist.Listing<ActorRef<Message>>)
+    case listing(Reception.Listing<ActorRef<Message>>)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

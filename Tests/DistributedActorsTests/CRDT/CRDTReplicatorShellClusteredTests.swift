@@ -273,7 +273,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredActorSystemsXCTestCase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        try self.ensureNodes(.up, nodes: self.localSystem.cluster.node, self.remoteSystem.cluster.node)
+        try self.ensureNodes(.up, nodes: self.localSystem.cluster.uniqueNode, self.remoteSystem.cluster.uniqueNode)
 
         let writeP = self.localTestKit.spawnTestProbe(expecting: LocalWriteResult.self)
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
@@ -320,7 +320,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredActorSystemsXCTestCase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        try self.ensureNodes(.up, nodes: self.localSystem.cluster.node, self.remoteSystem.cluster.node)
+        try self.ensureNodes(.up, nodes: self.localSystem.cluster.uniqueNode, self.remoteSystem.cluster.uniqueNode)
 
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
@@ -363,7 +363,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredActorSystemsXCTestCase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        try self.ensureNodes(.up, nodes: self.localSystem.cluster.node, self.remoteSystem.cluster.node)
+        try self.ensureNodes(.up, nodes: self.localSystem.cluster.uniqueNode, self.remoteSystem.cluster.uniqueNode)
 
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
@@ -395,7 +395,7 @@ final class CRDTReplicatorShellClusteredTests: ClusteredActorSystemsXCTestCase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        try self.ensureNodes(.up, nodes: self.localSystem.cluster.node, self.remoteSystem.cluster.node)
+        try self.ensureNodes(.up, nodes: self.localSystem.cluster.uniqueNode, self.remoteSystem.cluster.uniqueNode)
 
         let deleteP = self.localTestKit.spawnTestProbe(expecting: LocalDeleteResult.self)
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)

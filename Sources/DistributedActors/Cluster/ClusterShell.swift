@@ -143,12 +143,12 @@ internal class ClusterShell {
     ///
     /// Can be invoked as result of a direct .down being issued, or because of a node replacement happening.
     internal func terminateAssociation(_ system: ActorSystem, state: inout ClusterShellState, _ remoteNode: UniqueNode) {
-        traceLog_Remote(system.cluster.node, "Terminate association with [\(remoteNode)]")
+        traceLog_Remote(system.cluster.uniqueNode, "Terminate association with [\(remoteNode)]")
 
         let removedAssociationOption: Association? = self._associationsLock.withLock {
             // tombstone the association in the shell immediately.
             // No more message sends to the system will be possible.
-            traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Stored tombstone")
+            traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Stored tombstone")
             self._associationTombstones[remoteNode] = Association.Tombstone(remoteNode, settings: system.settings.cluster)
             return self._associations.removeValue(forKey: remoteNode)
         }
@@ -162,7 +162,7 @@ internal class ClusterShell {
 
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
-        traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
+        traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
         self._swimRef?.tell(.local(.confirmDead(remoteNode)))
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
@@ -192,13 +192,13 @@ internal class ClusterShell {
     internal static func shootTheOtherNodeAndCloseConnection(system: ActorSystem, targetNodeAssociation: Association) {
         let log = system.log
         let remoteNode = targetNodeAssociation.remoteNode
-        traceLog_Remote(system.cluster.node, "Finish terminate association [\(remoteNode)]: Shooting the other node a direct .gossip to down itself")
+        traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Shooting the other node a direct .gossip to down itself")
 
         // On purpose use the "raw" RemoteControl to send the message -- this way we avoid the association lookup (it may already be removed),
         // and directly hit the channel. It is also guaranteed that the message is flushed() before we close it in the next line.
         let shootTheOtherNodePromise: EventLoopPromise<Void> = system._eventLoopGroup.next().makePromise(of: Void.self)
 
-        let ripMessage = Payload(payload: .message(ClusterShell.Message.inbound(.restInPeace(remoteNode, from: system.cluster.node))))
+        let ripMessage = Payload(payload: .message(ClusterShell.Message.inbound(.restInPeace(remoteNode, from: system.cluster.uniqueNode))))
         targetNodeAssociation.sendUserMessage(
             envelope: ripMessage,
             recipient: ._clusterShell(on: remoteNode),

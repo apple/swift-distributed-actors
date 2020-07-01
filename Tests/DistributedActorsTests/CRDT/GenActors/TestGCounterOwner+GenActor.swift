@@ -50,11 +50,12 @@ extension TestGCounterOwner {
                 switch message { 
                 
                 case .increment(let amount, let consistency, let timeout, let _replyTo):
-                    let result = instance.increment(amount: amount, consistency: consistency, timeout: timeout)
+                    let result =                     instance.increment(amount: amount, consistency: consistency, timeout: timeout)
                     _replyTo.tell(result)
- 
+
+                     
                 case .read(let consistency, let timeout, let _replyTo):
-                    instance.read(consistency: consistency, timeout: timeout)
+                                        instance.read(consistency: consistency, timeout: timeout)
                         .whenComplete { res in
                             switch res {
                             case .success(let value):
@@ -65,9 +66,10 @@ extension TestGCounterOwner {
                         }
  
                 case .lastObservedValue(let _replyTo):
-                    let result = instance.lastObservedValue()
+                    let result =                     instance.lastObservedValue()
                     _replyTo.tell(result)
- 
+
+                     
                 
                 }
                 return .same

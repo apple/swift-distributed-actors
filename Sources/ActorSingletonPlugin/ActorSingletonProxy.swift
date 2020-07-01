@@ -104,7 +104,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             return
         }
 
-        let selfNode = context.system.cluster.node
+        let selfNode = context.system.cluster.uniqueNode
 
         let previousTargetNode = self.targetNode
         self.targetNode = node

@@ -167,10 +167,10 @@ public class OperationLogClusterReceptionist {
     let storage = Receptionist.Storage()
 
     internal enum ReceptionistOp: OpLogStreamOp, Codable {
-        case register(key: AnyRegistrationKey, address: ActorAddress)
-        case remove(key: AnyRegistrationKey, address: ActorAddress)
+        case register(key: AnyReceptionKey, address: ActorAddress)
+        case remove(key: AnyReceptionKey, address: ActorAddress)
 
-        var key: AnyRegistrationKey {
+        var key: AnyReceptionKey {
             switch self {
             case .register(let key, _): return key
             case .remove(let key, _): return key
@@ -281,7 +281,7 @@ public class OperationLogClusterReceptionist {
 extension OperationLogClusterReceptionist {
     private func onSubscribe(context: ActorContext<Message>, message: _Subscribe) throws {
         let boxedMessage = message._boxed
-        let key = AnyRegistrationKey(from: message._key)
+        let key = AnyReceptionKey(from: message._key)
         if self.storage.addSubscription(key: key, subscription: boxedMessage) {
             context.watch(message._addressableActorRef)
             context.log.trace("Subscribed \(message._addressableActorRef.address) to \(key)")
@@ -290,14 +290,14 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onLookup(context: ActorContext<Message>, message: _Lookup) throws {
-        message.replyWith(self.storage.registrations(forKey: message._key.asAnyRegistrationKey) ?? [])
+        message.replyWith(self.storage.registrations(forKey: message._key.asAnyKey) ?? [])
     }
 
     private func onRegister(context: ActorContext<Message>, message: _Register) throws {
-        let key = message._key.asAnyRegistrationKey
+        let key = message._key.asAnyKey
         let ref = message._addressableActorRef
 
-        guard ref.address.isLocal || (ref.address.node == context.system.cluster.node) else {
+        guard ref.address.isLocal || (ref.address.node == context.system.cluster.uniqueNode) else {
             context.log.warning("""
             Actor [\(ref)] attempted to register under key [\(key)], with NOT-local receptionist! \
             Actors MUST register with their local receptionist in today's Receptionist implementation.
@@ -309,7 +309,7 @@ extension OperationLogClusterReceptionist {
             context.watch(ref)
 
             var addressWithNode = ref.address
-            addressWithNode.node = context.system.cluster.node
+            addressWithNode.node = context.system.cluster.uniqueNode
 
             self.addOperation(context, .register(key: key, address: addressWithNode))
 
@@ -328,7 +328,6 @@ extension OperationLogClusterReceptionist {
         // ---
         // Replication of is done in periodic tics, thus we do not perform a push here.
         // ---
-        // TODO: enable "fast tick"
 
         message.replyRegistered()
     }
@@ -338,8 +337,13 @@ extension OperationLogClusterReceptionist {
 // MARK: Delayed (Listing Notification) Flush
 
 extension OperationLogClusterReceptionist {
-    func ensureDelayedListingFlush(of key: AnyRegistrationKey, context: ActorContext<Message>) {
+    func ensureDelayedListingFlush(of key: AnyReceptionKey, context: ActorContext<Message>) {
         let timerKey = self.flushTimerKey(key)
+
+        if self.storage.registrations(forKey: key)?.isEmpty ?? true {
+            self.notifySubscribers(of: key)
+            return // no need to schedule, there are no registered actors at all, we eagerly emit this info
+        }
 
         guard !context.timers.exists(key: timerKey) else {
             return // timer exists nothing to do
@@ -356,7 +360,7 @@ extension OperationLogClusterReceptionist {
         self.notifySubscribers(of: message.key)
     }
 
-    func notifySubscribers(of key: AnyRegistrationKey) {
+    func notifySubscribers(of key: AnyReceptionKey) {
         guard let subscriptions = self.storage.subscriptions(forKey: key) else {
             return // ok, no-one to notify
         }
@@ -367,7 +371,7 @@ extension OperationLogClusterReceptionist {
         }
     }
 
-    private func flushTimerKey(_ key: AnyRegistrationKey) -> TimerKey {
+    private func flushTimerKey(_ key: AnyReceptionKey) -> TimerKey {
         "flush-\(key.hashValue)"
     }
 }
@@ -405,7 +409,7 @@ extension OperationLogClusterReceptionist {
         )
 
         /// Collect which keys have been updated during this push, so we can publish updated listings for them.
-        var keysToPublish: Set<AnyRegistrationKey> = []
+        var keysToPublish: Set<AnyReceptionKey> = []
         for op in opsToApply {
             keysToPublish.insert(self.applyIncomingOp(context, from: peer, op))
         }
@@ -455,7 +459,7 @@ extension OperationLogClusterReceptionist {
     /// Apply incoming operation from `peer` and update the associated applied sequenceNumber tracking
     ///
     /// - Returns: Set of keys which have been updated during this
-    func applyIncomingOp(_ context: ActorContext<Message>, from peer: ActorRef<Message>, _ sequenced: OpLog<ReceptionistOp>.SequencedOp) -> AnyRegistrationKey {
+    func applyIncomingOp(_ context: ActorContext<Message>, from peer: ActorRef<Message>, _ sequenced: OpLog<ReceptionistOp>.SequencedOp) -> AnyReceptionKey {
         let op = sequenced.op
 
         // apply operation to storage
@@ -520,7 +524,7 @@ extension OperationLogClusterReceptionist {
     }
 
     /// Listings have changed for this key, thus we need to publish them to all subscribers
-    private func publishListings(_ context: ActorContext<Message>, forKey key: AnyRegistrationKey) {
+    private func publishListings(_ context: ActorContext<Message>, forKey key: AnyReceptionKey) {
         guard let subscribers = self.storage.subscriptions(forKey: key) else {
             return // no subscribers for this key
         }
@@ -528,7 +532,7 @@ extension OperationLogClusterReceptionist {
         self.publishListings(context, forKey: key, to: subscribers)
     }
 
-    private func publishListings(_ context: ActorContext<Message>, forKey key: AnyRegistrationKey, to subscribers: Set<AnySubscribe>) {
+    private func publishListings(_ context: ActorContext<Message>, forKey key: AnyReceptionKey, to subscribers: Set<AnySubscribe>) {
         let registrations = self.storage.registrations(forKey: key) ?? []
 
         context.log.trace(
@@ -655,11 +659,12 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onReceptionistTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
-        if let node = terminated.address.node {
-            self.pruneClusterMember(context, removedNode: node)
-        } else {
+        guard let node = terminated.address.node else {
             context.log.warning("Receptionist [\(terminated.address)] terminated however has no `node` set, this is highly suspect. It would mean this is 'us', but that cannot be.")
+            return
         }
+
+        self.pruneClusterMember(context, removedNode: node)
     }
 
     private func onActorTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
@@ -723,7 +728,7 @@ extension OperationLogClusterReceptionist {
             return // not a new member
         }
 
-        guard change.node != context.system.cluster.node else {
+        guard change.node != context.system.cluster.uniqueNode else {
             return // no need to contact our own node, this would be "us"
         }
 

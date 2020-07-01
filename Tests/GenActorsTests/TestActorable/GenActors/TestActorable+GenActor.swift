@@ -61,51 +61,62 @@ extension TestActorable {
                 switch message { 
                 
                 case .ping:
-                    instance.ping()
- 
+                                        instance.ping()
+
+                     
                 case .greet(let name):
-                    instance.greet(name: name)
- 
+                                        instance.greet(name: name)
+
+                     
                 case .greetUnderscoreParam(let name):
-                    instance.greetUnderscoreParam(name)
- 
+                                        instance.greetUnderscoreParam(name)
+
+                     
                 case .greet2(let name, let surname):
-                    instance.greet2(name: name, surname: surname)
- 
+                                        instance.greet2(name: name, surname: surname)
+
+                     
                 case .throwing:
-                    try instance.throwing()
- 
+                                        try instance.throwing()
+
+                     
                 case .passMyself(let someone):
-                    instance.passMyself(someone: someone)
- 
+                                        instance.passMyself(someone: someone)
+
+                     
                 case .parameterNames(let second):
-                    instance.parameterNames(first: second)
- 
+                                        instance.parameterNames(first: second)
+
+                     
                 case .greetReplyToActorRef(let name, let replyTo):
-                    instance.greetReplyToActorRef(name: name, replyTo: replyTo)
- 
+                                        instance.greetReplyToActorRef(name: name, replyTo: replyTo)
+
+                     
                 case .greetReplyToActor(let name, let replyTo):
-                    instance.greetReplyToActor(name: name, replyTo: replyTo)
- 
+                                        instance.greetReplyToActor(name: name, replyTo: replyTo)
+
+                     
                 case .greetReplyToReturnStrict(let name, let _replyTo):
-                    let result = instance.greetReplyToReturnStrict(name: name)
+                    let result =                     instance.greetReplyToReturnStrict(name: name)
                     _replyTo.tell(result)
- 
+
+                     
                 case .greetReplyToReturnStrictThrowing(let name, let _replyTo):
                     do {
-                        let result = try instance.greetReplyToReturnStrictThrowing(name: name)
+                        let result =                         try instance.greetReplyToReturnStrictThrowing(name: name)
                         _replyTo.tell(.success(result))
-                    } catch {
+
+                                            } catch {
                         context.log.warning("Error thrown while handling [\(message)], error: \(error)")
                         _replyTo.tell(.failure(ErrorEnvelope(error)))
                     }
  
                 case .greetReplyToReturnResult(let name, let _replyTo):
-                    let result = instance.greetReplyToReturnResult(name: name)
+                    let result =                     instance.greetReplyToReturnResult(name: name)
                     _replyTo.tell(result.mapError { error in ErrorEnvelope(error) })
  
                 case .greetReplyToReturnNIOFuture(let name, let _replyTo):
-                    instance.greetReplyToReturnNIOFuture(name: name)
+                                        instance.greetReplyToReturnNIOFuture(name: name)
                         .whenComplete { res in
                             switch res {
                             case .success(let value):
@@ -117,13 +128,16 @@ extension TestActorable {
  
                 case .becomeStopped:
                     return /*become*/ instance.becomeStopped()
- 
+
+                     
                 case .contextSpawnExample:
-                    try instance.contextSpawnExample()
- 
+                                        try instance.contextSpawnExample()
+
+                     
                 case .timer:
-                    instance.timer()
- 
+                                        instance.timer()
+
+                     
                 
                 }
                 return .same

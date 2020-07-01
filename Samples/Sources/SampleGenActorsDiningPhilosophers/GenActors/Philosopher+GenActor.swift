@@ -33,14 +33,17 @@ extension Philosopher {
                 switch message { 
                 
                 case .think:
-                    instance.think()
- 
+                                        instance.think()
+
+                     
                 case .attemptToTakeForks:
-                    instance.attemptToTakeForks()
- 
+                                        instance.attemptToTakeForks()
+
+                     
                 case .stopEating:
-                    instance.stopEating()
- 
+                                        instance.stopEating()
+
+                     
                 
                 }
                 return .same

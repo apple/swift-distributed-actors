@@ -41,7 +41,7 @@ internal struct SWIMShell {
 
             let probeInterval = settings.probeInterval
             context.timers.startSingle(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), delay: probeInterval)
-            let shell = SWIMShell(SWIMInstance(settings, myShellMyself: context.myself, myNode: context.system.cluster.node), clusterRef: clusterRef)
+            let shell = SWIMShell(SWIMInstance(settings, myShellMyself: context.myself, myNode: context.system.cluster.uniqueNode), clusterRef: clusterRef)
 
             return SWIMShell.ready(shell: shell)
         }
@@ -316,7 +316,7 @@ internal struct SWIMShell {
     }
 
     func handleMonitor(_ context: ActorContext<SWIM.Message>, node: UniqueNode) {
-        guard context.system.cluster.node.node != node.node else {
+        guard context.system.cluster.uniqueNode.node != node.node else {
             return // no need to monitor ourselves, nor a replacement of us (if node is our replacement, we should have been dead already)
         }
 
@@ -521,7 +521,7 @@ internal struct SWIMShell {
     func withEnsuredAssociation(_ context: ActorContext<SWIM.Message>, remoteNode: UniqueNode?, continueWithAssociation: @escaping (Result<UniqueNode, Error>) -> Void) {
         // this is a local node, so we don't need to connect first
         guard let remoteNode = remoteNode else {
-            continueWithAssociation(.success(context.system.cluster.node))
+            continueWithAssociation(.success(context.system.cluster.uniqueNode))
             return
         }
 

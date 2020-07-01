@@ -31,7 +31,7 @@ let isolated = ProcessIsolated { boot in
 
 pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
-let workersKey = Receptionist.RegistrationKey(ActorRef<String>.self, id: "workers")
+let workersKey = Reception.Key(ActorRef<String>.self, id: "workers")
 
 // though one can ensure to only run if in a process of a given role:
 try isolated.run(on: .master) {

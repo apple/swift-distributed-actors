@@ -47,8 +47,9 @@ extension GreetMe {
                 switch message { 
                 
                 case .hello(let greeting):
-                    instance.hello(greeting: greeting)
- 
+                                        instance.hello(greeting: greeting)
+
+                     
                 
                 }
                 return .same

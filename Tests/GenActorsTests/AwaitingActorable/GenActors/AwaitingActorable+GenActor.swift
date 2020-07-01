@@ -48,10 +48,12 @@ extension AwaitingActorable {
                 
                 case .awaitOnAFuture(let f, let replyTo):
                     return /*become*/ instance.awaitOnAFuture(f: f, replyTo: replyTo)
- 
+
+                     
                 case .onResultAsyncExample(let f, let replyTo):
-                    instance.onResultAsyncExample(f: f, replyTo: replyTo)
- 
+                                        instance.onResultAsyncExample(f: f, replyTo: replyTo)
+
+                     
                 
                 }
                 return .same

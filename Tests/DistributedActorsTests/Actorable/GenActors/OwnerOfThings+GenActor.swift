@@ -25,10 +25,10 @@ import DistributedActors
 extension OwnerOfThings {
 
     public enum Message: ActorMessage { 
-        case readLastObservedValue(_replyTo: ActorRef<Receptionist.Listing<OwnerOfThings>?>) 
-        case performLookup(_replyTo: ActorRef<Result<Receptionist.Listing<OwnerOfThings>, ErrorEnvelope>>) 
-        case performAskLookup(_replyTo: ActorRef<Result<Receptionist.Listing<OwnerOfThings.Message>, ErrorEnvelope>>) 
-        case performSubscribe(p: ActorRef<Receptionist.Listing<OwnerOfThings>>) 
+        case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<Actor<OwnerOfThings>>?>) 
+        case performLookup(_replyTo: ActorRef<Result<Reception.Listing<Actor<OwnerOfThings>>, ErrorEnvelope>>) 
+        case performAskLookup(_replyTo: ActorRef<Result<Reception.Listing<Actor<OwnerOfThings>>, ErrorEnvelope>>) 
+        case performSubscribe(p: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>) 
     }
     
 }
@@ -48,11 +48,12 @@ extension OwnerOfThings {
                 switch message { 
                 
                 case .readLastObservedValue(let _replyTo):
-                    let result = instance.readLastObservedValue()
+                    let result =                     instance.readLastObservedValue()
                     _replyTo.tell(result)
- 
+
+                     
                 case .performLookup(let _replyTo):
-                    instance.performLookup()
+                                        instance.performLookup()
                         ._onComplete { res in
                             switch res {
                             case .success(let value):
@@ -63,7 +64,7 @@ extension OwnerOfThings {
                         }
  
                 case .performAskLookup(let _replyTo):
-                    instance.performAskLookup()
+                                        instance.performAskLookup()
                         ._onComplete { res in
                             switch res {
                             case .success(let value):
@@ -74,8 +75,9 @@ extension OwnerOfThings {
                         }
  
                 case .performSubscribe(let p):
-                    instance.performSubscribe(p: p)
- 
+                                        instance.performSubscribe(p: p)
+
+                     
                 
                 }
                 return .same
@@ -108,34 +110,34 @@ extension OwnerOfThings {
 
 extension Actor where Act.Message == OwnerOfThings.Message {
 
-     func readLastObservedValue() -> Reply<Receptionist.Listing<OwnerOfThings>?> {
+     func readLastObservedValue() -> Reply<Reception.Listing<Actor<OwnerOfThings>>?> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Receptionist.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Reception.Listing<Actor<OwnerOfThings>>?.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.readLastObservedValue(_replyTo: _replyTo)}
         )
     }
  
 
-     func performLookup() -> Reply<Receptionist.Listing<OwnerOfThings>> {
+     func performLookup() -> Reply<Reception.Listing<Actor<OwnerOfThings>>> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<Receptionist.Listing<OwnerOfThings>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Result<Reception.Listing<Actor<OwnerOfThings>>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.performLookup(_replyTo: _replyTo)}
         )
     }
  
 
-     func performAskLookup() -> Reply<Receptionist.Listing<OwnerOfThings.Message>> {
+     func performAskLookup() -> Reply<Reception.Listing<Actor<OwnerOfThings>>> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply.from(askResponse: 
-            self.ref.ask(for: Result<Receptionist.Listing<OwnerOfThings.Message>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
+            self.ref.ask(for: Result<Reception.Listing<Actor<OwnerOfThings>>, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in
                 Self.Message.performAskLookup(_replyTo: _replyTo)}
         )
     }
  
 
-     func performSubscribe(p: ActorRef<Receptionist.Listing<OwnerOfThings>>) {
+     func performSubscribe(p: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>) {
         self.ref.tell(Self.Message.performSubscribe(p: p))
     }
  
