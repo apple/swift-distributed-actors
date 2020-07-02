@@ -19,6 +19,18 @@ var targets: [PackageDescription.Target] = [
 
 targets.append(
     contentsOf: [
+
+        // ==== ----------------------------------------------------------------------------------------------------------------
+        // MARK: Actor Instruments Package Definition
+
+        .target(
+            name: "ActorInstrumentsPackageDefinition",
+            dependencies: [
+                "GenActorInstruments",
+                "SwiftyInstrumentsPackageDefinition",
+            ]
+        ),
+
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: GenActorInstruments
 
@@ -49,8 +61,8 @@ let package = Package(
     name: "swift-distributed-actors-instruments",
     products: [
         .executable(
-            name: "GenActorInstruments",
-            targets: ["GenActorInstruments"]
+            name: "ActorInstrumentsPackageDefinition",
+            targets: ["ActorInstrumentsPackageDefinition"]
         ),
 
         .library(

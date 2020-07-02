@@ -14,54 +14,8 @@
 
 import Logging
 
-public struct SystemReceptionist: BaseReceptionistOperations {
-    let ref: ActorRef<Receptionist.Message>
-
-    init(ref receptionistRef: ActorRef<Receptionist.Message>) {
-        self.ref = receptionistRef
-    }
-
-    public func register<Guest>(
-        _ guest: Guest,
-        as id: String,
-        replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) where Guest: ReceptionistGuest {
-        self.register(guest, with: Reception.Key(Guest.self, id: id), replyTo: replyTo)
-    }
-
-    public func register<Guest>(
-        _ guest: Guest,
-        with key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) where Guest: ReceptionistGuest {
-        self.ref.tell(Receptionist.Register<Guest>(guest, key: key, replyTo: replyTo))
-    }
-
-    public func lookup<Guest>(
-        _ key: Reception.Key<Guest>,
-        timeout: TimeAmount = .effectivelyInfinite
-    ) -> AskResponse<Reception.Listing<Guest>> where Guest: ReceptionistGuest {
-        self.ref.ask(for: Reception.Listing<Guest>.self, timeout: timeout) {
-            Receptionist.Lookup<Guest>(key: key, replyTo: $0)
-        }
-    }
-
-    public func lookup<Guest>(
-        _ key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Listing<Guest>>,
-        timeout: TimeAmount = .effectivelyInfinite
-    ) where Guest: ReceptionistGuest {
-        self.ref.tell(Receptionist.Lookup<Guest>(key: key, replyTo: replyTo))
-    }
-
-    public func subscribe<Guest>(
-        _ subscriber: ActorRef<Reception.Listing<Guest>>,
-        to key: Reception.Key<Guest>
-    ) where Guest: ReceptionistGuest {
-        self.ref.tell(Receptionist.Subscribe<Guest>(key: key, subscriber: subscriber))
-    }
-}
-
+/// :nodoc:
+///
 /// A receptionist is a system actor that allows users to register actors under
 /// a key to make them available to other parts of the system, without having to
 /// share a reference with that specific part directly. There are different reasons
@@ -71,7 +25,7 @@ public struct SystemReceptionist: BaseReceptionistOperations {
 /// part has registered. Actors usually register themselves with the receptionist
 /// as part of their setup process.
 ///
-/// The receptionist can be accessed through `system.receptionist`.
+/// - SeeAlso: `SystemReceptionist`
 public struct Receptionist {
     public typealias Message = ReceptionistMessage
 
@@ -83,6 +37,7 @@ public struct Receptionist {
 
     internal static let naming: ActorNaming = .unique("receptionist")
 
+    /// :nodoc: INTERNAL API
     /// When sent to receptionist will register the specified `ActorRef` under the given `Reception.Key`
     public class Register<Guest: ReceptionistGuest>: AnyRegister {
         public let guest: Guest
@@ -117,6 +72,7 @@ public struct Receptionist {
         }
     }
 
+    /// :nodoc: INTERNAL API
     /// Used to lookup `ActorRef`s for the given `Reception.Key`
     public class Lookup<Guest: ReceptionistGuest>: _Lookup, ListingRequest, CustomStringConvertible {
         public let key: Reception.Key<Guest>
@@ -141,6 +97,7 @@ public struct Receptionist {
         }
     }
 
+    /// :nodoc: INTERNAL API
     /// Subscribe to periodic updates of the specified key
     public class Subscribe<Guest: ReceptionistGuest>: _Subscribe, ListingRequest, CustomStringConvertible {
         public let key: Reception.Key<Guest>
@@ -359,18 +316,6 @@ extension ActorAddress {
     }
 }
 
-extension Reception.Registered where Guest: ReceivesMessages {
-    public var ref: ActorRef<Guest.Message> {
-        self._guest._ref
-    }
-}
-
-extension Reception.Registered where Guest: ActorProtocol {
-    public var actor: Actor<Guest.Act> {
-        .init(ref: self._guest._ref)
-    }
-}
-
 /// Represents an entity that is able to register with the `Receptionist`.
 ///
 /// It is either an `ActorRef<Message>` or an `Actor<Act>`.
@@ -398,6 +343,7 @@ extension ActorRef: ReceptionistGuest {
 ///     - `Receptionist.Lookup`
 ///     - `Receptionist.Register`
 ///     - `Receptionist.Subscribe`
+/// :nodoc: INTERNAL API
 public class ReceptionistMessage: Codable {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -406,6 +352,7 @@ public class ReceptionistMessage: Codable {}
 internal typealias FullyQualifiedTypeName = String
 
 // TODO: Receptionist._Register
+/// :nodoc: INTERNAL API
 public class AnyRegister: ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
     var _addressableActorRef: AddressableActorRef { undefined() }
     var _key: AnyReceptionKey { undefined() }
@@ -440,6 +387,7 @@ public class _Lookup: ReceptionistMessage, NonTransportableActorMessage {
     }
 }
 
+/// :nodoc: INTERNAL API
 protocol ReceptionKeyProtocol {
     var id: String { get }
     var guestType: Any.Type { get }
@@ -451,7 +399,8 @@ protocol ReceptionKeyProtocol {
     func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef
 }
 
-internal struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, CustomStringConvertible {
+// :nodoc:
+public struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, CustomStringConvertible {
     enum CodingKeys: CodingKey {
         case id
         case guestTypeManifest
@@ -475,16 +424,16 @@ internal struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, Custom
         self
     }
 
-    var description: String {
+    public var description: String {
         "AnyReceptionistKey\(self.guestType)(\(self.id))"
     }
 
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(self.id)
         hasher.combine(ObjectIdentifier(self.guestType))
     }
 
-    static func == (lhs: AnyReceptionKey, rhs: AnyReceptionKey) -> Bool {
+    public static func == (lhs: AnyReceptionKey, rhs: AnyReceptionKey) -> Bool {
         if type(of: lhs) != type(of: rhs) {
             return false
         }

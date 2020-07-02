@@ -152,6 +152,8 @@ public class OperationLogClusterReceptionist {
     typealias Message = Receptionist.Message
     typealias ReceptionistRef = ActorRef<Message>
 
+    internal let instrumentation: ReceptionistInstrumentation
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timer Keys
 
@@ -206,7 +208,9 @@ public class OperationLogClusterReceptionist {
     /// gives a good idea how far "behind" we are with regards to changed performed at that peer.
     var appliedSequenceNrs: VersionVector
 
-    internal init(settings: ClusterReceptionist.Settings) {
+    internal init(settings: ClusterReceptionist.Settings, instrumentation: ReceptionistInstrumentation = NoopReceptionistInstrumentation()) {
+        self.instrumentation = instrumentation
+
         self.ops = .init(batchSize: settings.syncBatchSize)
         self.membership = .empty
         self.peerReceptionistReplayers = [:]
@@ -252,13 +256,25 @@ public class OperationLogClusterReceptionist {
                     self.onPeriodicAckTick(context)
 
                 case let message as AnyRegister:
-                    try self.onRegister(context: context, message: message) // FIXME: would kill the receptionist!
+                    do {
+                        try self.onRegister(context: context, message: message)
+                    } catch {
+                        context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
+                    }
 
                 case let message as _Lookup:
-                    try self.onLookup(context: context, message: message) // FIXME: would kill the receptionist!
+                    do {
+                        try self.onLookup(context: context, message: message) // FIXME: would kill the receptionist!
+                    } catch {
+                        context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
+                    }
 
                 case let message as _Subscribe:
-                    try self.onSubscribe(context: context, message: message) // FIXME: would kill the receptionist!
+                    do {
+                        try self.onSubscribe(context: context, message: message) // FIXME: would kill the receptionist!
+                    } catch {
+                        context.log.error("Receptionist error caught: \(error)") // TODO: simplify, but we definitely cannot escalate here
+                    }
 
                 case let message as _ReceptionistDelayedListingFlushTick:
                     self.onDelayedListingFlushTick(context: context, message: message)
@@ -283,6 +299,8 @@ extension OperationLogClusterReceptionist {
         let boxedMessage = message._boxed
         let anyKey = message._key
         if self.storage.addSubscription(key: anyKey, subscription: boxedMessage) {
+            self.instrumentation.actorSubscribed(key: anyKey, address: message._addressableActorRef.address)
+
             context.watch(message._addressableActorRef)
             context.log.trace("Subscribed \(message._addressableActorRef.address) to \(anyKey)")
             boxedMessage.replyWith(self.storage.registrations(forKey: anyKey) ?? [])
@@ -290,7 +308,10 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onLookup(context: ActorContext<Message>, message: _Lookup) throws {
-        message.replyWith(self.storage.registrations(forKey: message._key.asAnyKey) ?? [])
+        let registrations = self.storage.registrations(forKey: message._key) ?? []
+
+        self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count)
+        message.replyWith(registrations)
     }
 
     private func onRegister(context: ActorContext<Message>, message: AnyRegister) throws {
@@ -306,6 +327,8 @@ extension OperationLogClusterReceptionist {
         }
 
         if self.storage.addRegistration(key: key, ref: ref) {
+            self.instrumentation.actorRegistered(key: key, address: ref.address)
+
             context.watch(ref)
 
             var addressWithNode = ref.address
@@ -361,11 +384,14 @@ extension OperationLogClusterReceptionist {
     }
 
     func notifySubscribers(of key: AnyReceptionKey) {
+        let registrations: Set<AddressableActorRef> = self.storage.registrations(forKey: key) ?? []
+
         guard let subscriptions = self.storage.subscriptions(forKey: key) else {
+            self.instrumentation.listingPublished(key: key, subscribers: 0, registrations: registrations.count)
             return // ok, no-one to notify
         }
 
-        let registrations: Set<AddressableActorRef> = self.storage.registrations(forKey: key) ?? []
+        self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count)
         for subscription in subscriptions {
             subscription._replyWith(registrations)
         }
@@ -467,12 +493,16 @@ extension OperationLogClusterReceptionist {
         case .register(let key, let address):
             let resolved = context.system._resolveUntyped(context: .init(address: address, system: context.system))
             context.watch(resolved)
-            _ = self.storage.addRegistration(key: key, ref: resolved)
+            if self.storage.addRegistration(key: key, ref: resolved) {
+                self.instrumentation.actorRegistered(key: key, address: address)
+            }
 
         case .remove(let key, let address):
             let resolved = context.system._resolveUntyped(context: .init(address: address, system: context.system))
             context.unwatch(resolved)
-            _ = self.storage.removeRegistration(key: key, ref: resolved)
+            if self.storage.removeRegistration(key: key, ref: resolved) != nil {
+                self.instrumentation.actorRemoved(key: key, address: address)
+            }
         }
 
         // update the version up until which we updated the state

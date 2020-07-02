@@ -36,10 +36,11 @@ extension ClusterReceptionist {
             /// Guaranteed small messages
             case opLogSync
 
-            func behavior(settings: Settings) -> Behavior<Receptionist.Message> {
+            func behavior(settings: ActorSystemSettings) -> Behavior<Receptionist.Message> {
                 switch self {
                 case .opLogSync:
-                    return OperationLogClusterReceptionist(settings: settings).behavior
+                    let instrumentation = settings.instrumentation.makeReceptionistInstrumentation()
+                    return OperationLogClusterReceptionist(settings: settings.cluster.receptionist, instrumentation: instrumentation).behavior
                 }
             }
         }

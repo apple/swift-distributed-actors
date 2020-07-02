@@ -383,7 +383,7 @@ extension PackageDefinition {
                         """
                         Variable '?\(v)' must appear in pattern to be used in a later expression.
                         Pattern: \(self.pattern)
-                        Schema: \(self.id)
+                        Schema: \(self.id)\n
                         """
                     )
                 }
@@ -946,7 +946,7 @@ extension PackageDefinition.Instrument {
             // public var elements: [GraphLaneElement] = []
             public var plots: [PackageDefinition.Instrument.Graph.Plot] = []
             public var plotTemplates: [PackageDefinition.Instrument.Graph.PlotTemplate] = []
-            // public var histograms: [PackageDefinition.Instrument.Graph.Histogram] = []
+            public var histograms: [PackageDefinition.Instrument.Graph.Histogram] = []
             // public var histogramTemplates: [PackageDefinition.Instrument.Graph.HistogramTemplate] = []
 
             public init(
@@ -973,6 +973,8 @@ extension PackageDefinition.Instrument {
                     self.plots.append(plot)
                 case .plotTemplate(let template):
                     self.plotTemplates.append(template)
+                case .histogram(let histogram):
+                    self.histograms.append(histogram)
                 case .fragment(let fragments):
                     for f in fragments {
                         self.collect(f)
@@ -1061,6 +1063,8 @@ extension PackageDefinition.Instrument {
                     self.elements.append(.plot(element)) // TODO: keep like that or store in separate collections like elsewhere?
                 case .plotTemplate(let element):
                     self.elements.append(.plotTemplate(element)) // TODO: keep like that or store in separate collections like elsewhere?
+                case .histogram(let histogram):
+                    self.elements.append(.histogram(histogram))
                 case .fragment(let fragments):
                     for f in fragments {
                         self.collect(f)
@@ -1186,6 +1190,76 @@ extension PackageDefinition.Instrument {
 
             public func asGraphLaneElement() -> GraphLaneElement {
                 .plotTemplate(self)
+            }
+        }
+
+        /// Creates a histogram to aggregate activity over a given time period.
+        ///
+        /// - SeeAlso: https://help.apple.com/instruments/developer/mac/current/#/dev455934374
+        public struct Histogram: Encodable, GraphLaneElementConvertible {
+             /// Specifies a filter that should be applied to the input data in table-ref
+             public var slice: [Slice] // 1-3
+
+            // /// Flags the histogram as being ideal for a particular time resolution.
+            // best-for-resolution {1,3}
+
+            /// The number of nanoseconds each bucket of the histogram will divided into.
+            public var nanosecondsPerBucket: Int
+
+            var mode: Mode
+            public enum Mode {
+                /// Picks any value arbitrarily.
+                case chooseAny(Column)
+
+                /// If all the data is the same, choose it, else choose nothing.
+                case chooseUnique(Column)
+
+                /// The number of data points in the aggregation.
+                case count(Column)
+
+                /// Total the value in the column mnemonic supplied.
+                case sum(Column)
+
+                /// Minimum value in the column mnemonic supplied.
+                case min(Column)
+
+                /// Maximum value in the column mnemonic supplied.
+                case max(Column)
+
+                /// Average value in the column mnemonic supplied.
+                case average(Column)
+
+                /// Standard deviation (quick estimate) of the value in the column mnemonic supplied.
+                case standardDeviation(Column)
+
+                /// The distance between the first point in the aggregate and the last.
+                case range(Column)
+
+                /// Totals a column value, divides by the capacity constant, and multiplies by 100.
+                case percentOfCapacity(Column)
+            }
+
+//            var peerGroup: PeerGroupMode?
+//            public enum PeerGroupMode {
+//                /// Specifies the peer group which should be used for scaling of the value graphed by this plot.
+//                case peerGroup
+//
+//                /// Specifies the plot doesn't belong to any of the peer groups and value shouldn't be scaled accordingly to any other visible plots.
+//                case ignorePeerGroup
+//            }
+
+            public init(
+                slice: [Slice] = [],
+                nanosecondsPerBucket: Int,
+                mode: Mode
+            ) {
+                self.slice = slice
+                self.nanosecondsPerBucket = nanosecondsPerBucket
+                self.mode = mode
+            }
+
+            public func asGraphLaneElement() -> GraphLaneElement {
+                .histogram(self)
             }
         }
     }

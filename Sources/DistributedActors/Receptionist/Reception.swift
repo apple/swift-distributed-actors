@@ -13,13 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Reception Listing
-
-// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reception
 
-/// The `Reception` serves as holder of public types related to the `Actorable` specific receptionist implementation.
+/// Namespace for public messages related to the Receptionist.
 public enum Reception {}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Reception Key
 
 extension Reception {
     /// Used to register and lookup actors in the receptionist.
@@ -27,8 +27,9 @@ extension Reception {
     ///
     /// The id defaults to "*" which can be used "all actors of that type" (if and only if they registered using this key,
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
-    public struct Key<Guest: ReceptionistGuest>: ReceptionKeyProtocol, Codable, CustomStringConvertible, ExpressibleByStringLiteral {
-
+    public struct Key<Guest: ReceptionistGuest>: ReceptionKeyProtocol, Codable,
+        ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
+        CustomStringConvertible {
         let id: String
         var guestType: Any.Type {
             Guest.self
@@ -97,7 +98,7 @@ extension Reception {
         }
 
         public var description: String {
-            "Reception.Listing<\(Guest.self)>(\(self.underlying.map { $0.address })"
+            "Reception.Listing<\(Guest.self)>(\(self.underlying.map { $0.address }))"
         }
 
         public static func == (lhs: Listing<Guest>, rhs: Listing<Guest>) -> Bool {
@@ -154,7 +155,7 @@ extension ReceptionistListing {
 
 extension Reception {
     /// Response to a `Register` message
-    public class Registered<Guest: ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
+    public final class Registered<Guest: ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
         internal let _guest: Guest
         public let key: Reception.Key<Guest>
 
@@ -166,5 +167,17 @@ extension Reception {
         public var description: String {
             "Reception.Registered(guest: \(self._guest), key: \(self.key))"
         }
+    }
+}
+
+extension Reception.Registered where Guest: ReceivesMessages {
+    public var ref: ActorRef<Guest.Message> {
+        self._guest._ref
+    }
+}
+
+extension Reception.Registered where Guest: ActorProtocol {
+    public var actor: Actor<Guest.Act> {
+        .init(ref: self._guest._ref)
     }
 }

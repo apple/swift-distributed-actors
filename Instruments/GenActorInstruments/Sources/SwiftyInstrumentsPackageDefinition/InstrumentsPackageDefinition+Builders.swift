@@ -337,7 +337,7 @@ public struct GraphBuilder {
 public enum GraphLaneElement: Encodable {
     case plot(PackageDefinition.Instrument.Graph.Plot)
     case plotTemplate(PackageDefinition.Instrument.Graph.PlotTemplate)
-//    case histogram(PackageDefinition.Instrument.Graph.Histogram)
+    case histogram(PackageDefinition.Instrument.Graph.Histogram)
 //    case histogramTemplate(PackageDefinition.Instrument.Graph.HistogramTemplate)
 
     case fragment([GraphLaneElement])

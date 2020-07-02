@@ -416,7 +416,7 @@ extension PackageDefinition.Instrument.Graph.Lane {
 
         try self.plots.forEach { try container.encode($0, forKey: .plot) }
         try self.plotTemplates.forEach { try container.encode($0, forKey: .plotTemplates) }
-        // try self.histograms.forEach { try container.encode($0, forKey: .histograms)} // TODO: implement this
+         try self.histograms.forEach { try container.encode($0, forKey: .histograms)}
         // try self.histogramsTemplates.forEach { try container.encode($0, forKey: .histogramsTemplates)} // TODO: implement this
     }
 }
@@ -436,6 +436,62 @@ extension PackageDefinition.Instrument.Graph.Plot {
         try container.encodeIfPresent(self.colorFrom, forKey: .colorFrom)
         try container.encodeIfPresent(self.labelFrom, forKey: .labelFrom)
         // TODO: all others...
+    }
+}
+
+extension PackageDefinition.Instrument.Graph.Histogram {
+    public enum CodingKeys: String, CodingKey {
+        case slice
+        // case bestForResolution = "best-for-resolution"
+        case nanosecondsPerBucket = "nanoseconds-per-bucket"
+
+        case chooseAny = "choose-any"
+        case chooseUnique = "choose-unique"
+        case count
+        case sum
+        case min
+        case max
+        case average
+        case standardDeviation = "std-dev"
+        case range
+        case percentOfCapacity = "percent-of-capacity"
+
+        case peerGroup = "peer-group"
+        case ignorePeerGroup = "ignore-peer-group"
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        for slice in self.slice {
+            try container.encode(slice, forKey: .slice)
+        }
+
+        try container.encode(self.nanosecondsPerBucket, forKey: .nanosecondsPerBucket)
+
+        switch self.mode {
+        case .chooseAny(let column):
+            try container.encode(column.mnemonic.name, forKey: .chooseAny)
+        case .chooseUnique(let column):
+            try container.encode(column.mnemonic.name, forKey: .chooseUnique)
+        case .count(let column):
+            try container.encode(column.mnemonic.name, forKey: .count)
+        case .sum(let column):
+            try container.encode(column.mnemonic.name, forKey: .sum)
+        case .min(let column):
+            try container.encode(column.mnemonic.name, forKey: .min)
+        case .max(let column):
+            try container.encode(column.mnemonic.name, forKey: .max)
+        case .average(let column):
+            try container.encode(column.mnemonic.name, forKey: .average)
+        case .standardDeviation(let column):
+            try container.encode(column.mnemonic.name, forKey: .standardDeviation)
+        case .range(let column):
+            try container.encode(column.mnemonic.name, forKey: .range)
+        case .percentOfCapacity(let column):
+            try container.encode(column.mnemonic.name, forKey: .percentOfCapacity)
+        }
+
+        // TODO: all others
     }
 }
 
@@ -490,6 +546,7 @@ extension GraphLaneElement {
     public enum CodingKeys: String, CodingKey {
         case plot
         case plotTemplate
+        case histogram
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -500,6 +557,8 @@ extension GraphLaneElement {
             try container.encode(element, forKey: .plot)
         case .plotTemplate(let element):
             try container.encode(element, forKey: .plotTemplate)
+        case .histogram(let element):
+            try container.encode(element, forKey: .histogram)
 
         case .fragment(let elements):
             fatalError("can't encode elements: \(elements)")

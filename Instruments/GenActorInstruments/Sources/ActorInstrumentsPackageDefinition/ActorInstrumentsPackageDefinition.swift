@@ -19,7 +19,7 @@ import SwiftyInstrumentsPackageDefinition
 
 // package
 fileprivate let packageID = "com.apple.actors.ActorInstruments"
-fileprivate let packageVersion: DistributedActors.Version = DistributedActorsProtocolVersion
+fileprivate let packageVersion: String = "0.5.0" // TODO: match with project version
 fileprivate let packageTitle = "Actors"
 
 // schema
@@ -28,6 +28,7 @@ fileprivate let subsystem = "com.apple.actors"
 fileprivate let categoryLifecycle = "Lifecycle"
 fileprivate let categoryMessages = "Messages"
 fileprivate let categorySystemMessages = "System Messages"
+fileprivate let categoryReceptionist = "Receptionist"
 
 extension Column {
     static let actorNode = Column(
@@ -205,6 +206,32 @@ extension Column {
         (if (> ?bytes 100000) then "High" else "Low")
         """
     )
+
+    static let receptionistKey = Column(
+        mnemonic: "reception-key",
+        title: "Reception Key",
+        type: .string,
+        expression: "?key"
+    )
+    static let receptionistKeyType = Column(
+        mnemonic: "reception-type",
+        title: "Reception Key Type",
+        type: .string,
+        expression: "?type"
+    )
+    static let receptionistSubscriptionsCount = Column(
+        mnemonic: "reception-sub-count",
+        title: "Receptionist Subscriptions (Count)",
+        type: .uint32,
+        expression: "?subs"
+    )
+    static let receptionistRegistrationsCount = Column(
+        mnemonic: "reception-reg-count",
+        title: "Receptionist Registrations (Count)",
+        type: .uint32,
+        expression: "?regs"
+    )
+
 }
 
 @available(OSX 10.14, *)
@@ -388,6 +415,65 @@ public struct ActorInstrumentsPackageDefinition {
             Column.message
             Column.messageType
         }
+
+        static let receptionistRegistered = PackageDefinition.OSSignpostPointSchema(
+            id: "actor-receptionist-registered",
+            title: "Receptionist: Actor registered",
+
+            subsystem: "\(OSSignpostReceptionistInstrumentation.subsystem)",
+            category: "\(OSSignpostReceptionistInstrumentation.category)",
+            name: "\(OSSignpostReceptionistInstrumentation.nameRegistered)",
+
+            pattern: OSSignpostReceptionistInstrumentation.registeredFormat
+        ) {
+            Column.receptionistKey
+            Column.receptionistKeyType
+        }
+
+        static let receptionistSubscribed = PackageDefinition.OSSignpostPointSchema(
+            id: "actor-receptionist-subscribed",
+            title: "Receptionist: Actor subscribed",
+
+            subsystem: "\(OSSignpostReceptionistInstrumentation.subsystem)",
+            category: "\(OSSignpostReceptionistInstrumentation.category)",
+            name: "\(OSSignpostReceptionistInstrumentation.nameSubscribed)",
+
+            pattern: OSSignpostReceptionistInstrumentation.subscribedFormat
+        ) {
+            Column.receptionistKey
+            Column.receptionistKeyType
+        }
+
+        static let receptionistActorRemoved = PackageDefinition.OSSignpostPointSchema(
+            id: "actor-receptionist-actor-removed",
+            title: "Receptionist: Actor removed",
+
+            subsystem: "\(OSSignpostReceptionistInstrumentation.subsystem)",
+            category: "\(OSSignpostReceptionistInstrumentation.category)",
+            name: "\(OSSignpostReceptionistInstrumentation.nameRemoved)",
+
+            pattern: OSSignpostReceptionistInstrumentation.removedFormat
+        ) {
+            Column.receptionistKey
+            Column.receptionistKeyType
+        }
+
+        static let receptionistListingPublished = PackageDefinition.OSSignpostPointSchema(
+            id: "actor-receptionist-listing-published",
+            title: "Receptionist: Listing published",
+
+            subsystem: "\(OSSignpostReceptionistInstrumentation.subsystem)",
+            category: "\(OSSignpostReceptionistInstrumentation.category)",
+            name: "\(OSSignpostReceptionistInstrumentation.namePublished)",
+
+            pattern: OSSignpostReceptionistInstrumentation.listingPublishedFormat
+        ) {
+            Column.receptionistKey
+            Column.receptionistKeyType
+
+            Column.receptionistSubscriptionsCount
+            Column.receptionistRegistrationsCount
+        }
     }
 
     public init() {}
@@ -496,7 +582,7 @@ public struct ActorInstrumentsPackageDefinition {
     public var packageDefinition: PackageDefinition {
         PackageDefinition(
             id: packageID,
-            version: packageVersion.versionString,
+            version: packageVersion,
             title: packageTitle,
             owner: Owner(name: "Konrad 'ktoso' Malawski", email: "ktoso@apple.com")
         ) {
@@ -520,6 +606,12 @@ public struct ActorInstrumentsPackageDefinition {
             Schemas.actorTransportSerializationInterval
             Schemas.actorTransportDeserializationInterval
 
+            // receptionist
+            Schemas.receptionistRegistered
+            Schemas.receptionistSubscribed
+            Schemas.receptionistActorRemoved
+            Schemas.receptionistListingPublished
+
             // ==== Instruments ----------------------------------------------------------------------------------------
 
             Instrument(
@@ -538,25 +630,28 @@ public struct ActorInstrumentsPackageDefinition {
 
                 Graph(title: "Lifecycles") {
                     Graph.Lane(
-                        title: "Spawns Lane",
+                        title: "Spawned",
                         table: tableActorLifecycleSpawns
                     ) {
-                        Graph.PlotTemplate(
-                            instanceBy: .actorPath,
-                            valueFrom: .actorPath
+                        Graph.Histogram(
+                            // TODO slice?
+                            nanosecondsPerBucket: Int(TimeAmount.seconds(1).nanoseconds),
+                            mode: .count(.actorPath)
                         )
                     }
 
                     Graph.Lane(
-                        title: "Spawns Lane",
+                        title: "Stopped",
                         table: tableActorLifecycleIntervals
                     ) {
-                        Graph.PlotTemplate(
-                            instanceBy: .actorPath,
-                            labelFormat: "%s",
-                            valueFrom: .actorPath,
-                            colorFrom: .actorStopReasonImpact,
-                            labelFrom: .actorPath
+                        Graph.Histogram(
+                            slice: [
+                                Instrument.Slice(
+                                    column: .actorStopReason, "stop" // FIXME: also count crashes as stops
+                                )
+                            ],
+                            nanosecondsPerBucket: Int(TimeAmount.seconds(1).nanoseconds),
+                            mode: .count(.actorPath)
                         )
                     }
                 }
@@ -761,6 +856,105 @@ public struct ActorInstrumentsPackageDefinition {
                     "/system/replicator/gossip"
                 )
             )
+
+            Instrument(
+                id: "com.apple.actors.instrument.receptionist",
+                title: "Receptionist",
+                category: .behavior,
+                purpose: "Analyze receptionist interactions",
+                icon: .network
+            ) {
+                let receptionistRegistered = Instrument.CreateTable(Schemas.receptionistRegistered)
+                receptionistRegistered
+
+                let receptionistSubscribed = Instrument.CreateTable(Schemas.receptionistSubscribed)
+                receptionistSubscribed
+
+                let receptionistActorRemoved = Instrument.CreateTable(Schemas.receptionistActorRemoved)
+                receptionistActorRemoved
+
+                let receptionistListingPublished = Instrument.CreateTable(Schemas.receptionistListingPublished)
+                receptionistListingPublished
+
+                let registrationsList = List(title: "Registrations", table: receptionistRegistered) {
+                    "timestamp"
+                    Column.receptionistKey
+                    Column.receptionistKeyType
+                }
+                registrationsList
+
+                let subscriptionsList = List(title: "Subscriptions", table: receptionistSubscribed) {
+                    "timestamp"
+                    Column.receptionistKey
+                    Column.receptionistKeyType
+                }
+                subscriptionsList
+
+                let removalsList = List(title: "Removals", table: receptionistActorRemoved) {
+                    "timestamp"
+                    Column.receptionistKey
+                    Column.receptionistKeyType
+                }
+                removalsList
+
+                let publishedListingsList = List(title: "Published Listings", table: receptionistListingPublished) {
+                    "timestamp"
+                    Column.receptionistKey
+                    Column.receptionistKeyType
+                    Column.receptionistSubscriptionsCount
+                    Column.receptionistRegistrationsCount
+                }
+                publishedListingsList
+
+                Aggregation(
+                    title: "Registrations: By Key",
+                    table: receptionistRegistered,
+                    hierarchy: [
+                        .column(.receptionistKey),
+                    ],
+                    visitOnFocus: registrationsList,
+                    columns: [
+                        .count(title: "Count"),
+                    ]
+                )
+
+                Aggregation(
+                    title: "Subscriptions: By Key",
+                    table: receptionistSubscribed,
+                    hierarchy: [
+                        .column(.receptionistKey),
+                    ],
+                    visitOnFocus: registrationsList,
+                    columns: [
+                        .count(title: "Count"),
+                    ]
+                )
+
+                Aggregation(
+                    title: "Published Listings: By Key",
+                    table: receptionistListingPublished,
+                    hierarchy: [
+                        .column(.receptionistKey),
+                    ],
+                    visitOnFocus: registrationsList,
+                    columns: [
+                        .count(.receptionistKey),
+                        .min(.receptionistSubscriptionsCount),
+                        .max(.receptionistSubscriptionsCount),
+                        .average(.receptionistSubscriptionsCount),
+                        .min(.receptionistRegistrationsCount),
+                        .max(.receptionistRegistrationsCount),
+                        .average(.receptionistRegistrationsCount),
+                    ]
+                )
+
+                EngineeringTypeTrack(
+                    table: receptionistRegistered,
+                    hierarchy: [
+                        .column(.receptionistKey),
+                    ]
+                )
+            }
 
             // ==== Template -------------------------------------------------------------------------------------------
             Template(importFromFile: "ActorInstruments.tracetemplate")

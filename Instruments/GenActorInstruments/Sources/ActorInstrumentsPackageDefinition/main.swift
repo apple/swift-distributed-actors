@@ -13,7 +13,15 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import GenActorInstruments
 
 LoggingSystem.bootstrap(StreamLogHandler.standardError)
 
-GenerateActorInstrumentsPackageDefinition.Command.main()
+if #available(macOS 10.14, *) {
+    let generator = InstrumentsPackageDefinitionGenerator(
+        packageDefinition: ActorInstrumentsPackageDefinition().packageDefinition
+    )
+    try! generator.run()
+} else {
+    print("Instruments(.app) PackageDefinition not available on non Apple platforms")
+}

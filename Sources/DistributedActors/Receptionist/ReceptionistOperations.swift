@@ -161,11 +161,9 @@ public protocol MyselfReceptionistOperations: ReceptionistOperations {
     func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>
     ) where Guest: ReceptionistGuest, Myself.Message == Reception.Listing<Guest>
-
 }
 
 extension MyselfReceptionistOperations {
-
     @inlinable
     public func registerMyself(
         with key: Reception.Key<Myself>,
