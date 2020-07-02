@@ -36,14 +36,17 @@ extension Actor.Context {
     public struct Receptionist: MyselfReceptionistOperations {
         let context: Myself.Context
 
+        // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
         public var _myself: Myself {
             self.context.myself
         }
 
+        // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
         public var _underlyingContext: ActorContext<Act.Message> {
             self.context._underlying
         }
 
+        // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
         public var _system: ActorSystem {
             self.context.system
         }
@@ -59,7 +62,7 @@ extension Actor.Context {
             _ key: Reception.Key<Guest>
         ) -> ActorableOwned<Reception.Listing<Guest>> where Guest: ReceptionistGuest {
             let owned: ActorableOwned<Reception.Listing<Guest>> = ActorableOwned(self.context)
-            self.context._underlying.receptionist.subscribe(to: key, subReceive: { listing in
+            self.context._underlying.receptionist.subscribeMyself(to: key, subReceive: { listing in
                 owned.update(newValue: listing)
             })
 

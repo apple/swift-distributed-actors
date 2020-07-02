@@ -58,7 +58,7 @@ struct OwnerOfThings: Actorable {
 
     // @actor
     func performSubscribe(p: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>) {
-        self.context.receptionist.subscribe(to: .ownerOfThingsKey) {
+        self.context.receptionist.subscribeMyself(to: .ownerOfThingsKey) {
             p.tell($0)
         }
     }
