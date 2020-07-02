@@ -14,7 +14,7 @@
 
 #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
 /// Provider of Instrumentation instances which use `os_signpost`.
-public struct OSSignpostInstrumentationProvider: ActorInstrumentationProvider {
+public struct OSSignpostInstrumentationProvider: ActorSystemInstrumentationProvider {
     public init() {}
 
     public var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? {
@@ -29,6 +29,14 @@ public struct OSSignpostInstrumentationProvider: ActorInstrumentationProvider {
     public var actorTransportInstrumentation: (() -> ActorTransportInstrumentation)? {
         if #available(OSX 10.14, *) {
             return OSSignpostActorTransportInstrumentation.init
+        } else {
+            return nil
+        }
+    }
+
+    public var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? {
+        if #available(OSX 10.14, *) {
+            return OSSignpostReceptionistInstrumentation.init
         } else {
             return nil
         }

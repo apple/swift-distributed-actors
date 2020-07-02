@@ -273,7 +273,7 @@ public final class ActorSystem {
         }
 
         // receptionist
-        let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings.cluster.receptionist)
+        let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 

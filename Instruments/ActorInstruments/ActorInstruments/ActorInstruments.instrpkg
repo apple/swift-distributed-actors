@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <package>
   <id>com.apple.actors.ActorInstruments</id>
-  <version>0.0.1</version>
+  <version>0.5.0</version>
   <title>Actors</title>
   <owner>
     <name>Konrad 'ktoso' Malawski</name>
@@ -367,6 +367,110 @@
       <expression>?message-type</expression>
     </column>
   </os-signpost-interval-schema>
+  <os-signpost-point-schema>
+    <id>actor-receptionist-registered</id>
+    <title>Receptionist: Actor registered</title>
+    <note/>
+    <subsystem>"com.apple.actors"</subsystem>
+    <category>"Receptionist"</category>
+    <name>"Registered"</name>
+    <pattern>
+      <message>"reg;key:" ?key ";type:" ?type</message>
+    </pattern>
+    <column>
+      <mnemonic>reception-key</mnemonic>
+      <title>Reception Key</title>
+      <type>string</type>
+      <expression>?key</expression>
+    </column>
+    <column>
+      <mnemonic>reception-type</mnemonic>
+      <title>Reception Key Type</title>
+      <type>string</type>
+      <expression>?type</expression>
+    </column>
+  </os-signpost-point-schema>
+  <os-signpost-point-schema>
+    <id>actor-receptionist-subscribed</id>
+    <title>Receptionist: Actor subscribed</title>
+    <note/>
+    <subsystem>"com.apple.actors"</subsystem>
+    <category>"Receptionist"</category>
+    <name>"Subscribed"</name>
+    <pattern>
+      <message>"sub;key:" ?key ";type:" ?type</message>
+    </pattern>
+    <column>
+      <mnemonic>reception-key</mnemonic>
+      <title>Reception Key</title>
+      <type>string</type>
+      <expression>?key</expression>
+    </column>
+    <column>
+      <mnemonic>reception-type</mnemonic>
+      <title>Reception Key Type</title>
+      <type>string</type>
+      <expression>?type</expression>
+    </column>
+  </os-signpost-point-schema>
+  <os-signpost-point-schema>
+    <id>actor-receptionist-actor-removed</id>
+    <title>Receptionist: Actor removed</title>
+    <note/>
+    <subsystem>"com.apple.actors"</subsystem>
+    <category>"Receptionist"</category>
+    <name>"Removed"</name>
+    <pattern>
+      <message>"rm;key:" ?key ";type:" ?type</message>
+    </pattern>
+    <column>
+      <mnemonic>reception-key</mnemonic>
+      <title>Reception Key</title>
+      <type>string</type>
+      <expression>?key</expression>
+    </column>
+    <column>
+      <mnemonic>reception-type</mnemonic>
+      <title>Reception Key Type</title>
+      <type>string</type>
+      <expression>?type</expression>
+    </column>
+  </os-signpost-point-schema>
+  <os-signpost-point-schema>
+    <id>actor-receptionist-listing-published</id>
+    <title>Receptionist: Listing published</title>
+    <note/>
+    <subsystem>"com.apple.actors"</subsystem>
+    <category>"Receptionist"</category>
+    <name>"Published"</name>
+    <pattern>
+      <message>"pub;key:" ?key ";type:" ?type ";subs:" ?subs ";regs:" ?regs</message>
+    </pattern>
+    <column>
+      <mnemonic>reception-key</mnemonic>
+      <title>Reception Key</title>
+      <type>string</type>
+      <expression>?key</expression>
+    </column>
+    <column>
+      <mnemonic>reception-type</mnemonic>
+      <title>Reception Key Type</title>
+      <type>string</type>
+      <expression>?type</expression>
+    </column>
+    <column>
+      <mnemonic>reception-sub-count</mnemonic>
+      <title>Receptionist Subscriptions (Count)</title>
+      <type>uint32</type>
+      <expression>?subs</expression>
+    </column>
+    <column>
+      <mnemonic>reception-reg-count</mnemonic>
+      <title>Receptionist Registrations (Count)</title>
+      <type>uint32</type>
+      <expression>?regs</expression>
+    </column>
+  </os-signpost-point-schema>
   <instrument>
     <id>com.apple.actors.instrument.lifecycles</id>
     <title>Actor Lifecycle</title>
@@ -384,23 +488,26 @@
     <graph>
       <title>Lifecycles</title>
       <lane>
-        <title>Spawns Lane</title>
+        <title>Spawned</title>
         <table-ref>actor-lifecycle-spawn-table</table-ref>
-        <plot-template>
-          <instance-by>actor-path</instance-by>
-          <value-from>actor-path</value-from>
-        </plot-template>
+        <histogram>
+          <nanoseconds-per-bucket>1000000000</nanoseconds-per-bucket>
+          <count>actor-path</count>
+        </histogram>
       </lane>
       <lane>
-        <title>Spawns Lane</title>
+        <title>Stopped</title>
         <table-ref>actor-lifecycle-interval-table</table-ref>
-        <plot-template>
-          <instance-by>actor-path</instance-by>
-          <label-format>%s</label-format>
-          <value-from>actor-path</value-from>
-          <color-from>actor-stop-reason-impact</color-from>
-          <label-from>actor-path</label-from>
-        </plot-template>
+        <histogram>
+          <slice>
+            <column>actor-stop-reason</column>
+            <equals>
+              <string>stop</string>
+            </equals>
+          </slice>
+          <nanoseconds-per-bucket>1000000000</nanoseconds-per-bucket>
+          <count>actor-path</count>
+        </histogram>
       </lane>
     </graph>
     <list>
@@ -782,6 +889,126 @@
         <sum>transport-message-serialized-bytes</sum>
       </column>
     </aggregation>
+  </instrument>
+  <instrument>
+    <id>com.apple.actors.instrument.receptionist</id>
+    <title>Receptionist</title>
+    <category>Behavior</category>
+    <purpose>Analyze receptionist interactions</purpose>
+    <icon>Network</icon>
+    <create-table>
+      <id>actor-receptionist-registered-table</id>
+      <schema-ref>actor-receptionist-registered</schema-ref>
+    </create-table>
+    <create-table>
+      <id>actor-receptionist-subscribed-table</id>
+      <schema-ref>actor-receptionist-subscribed</schema-ref>
+    </create-table>
+    <create-table>
+      <id>actor-receptionist-actor-removed-table</id>
+      <schema-ref>actor-receptionist-actor-removed</schema-ref>
+    </create-table>
+    <create-table>
+      <id>actor-receptionist-listing-published-table</id>
+      <schema-ref>actor-receptionist-listing-published</schema-ref>
+    </create-table>
+    <list>
+      <title>Registrations</title>
+      <table-ref>actor-receptionist-registered-table</table-ref>
+      <column>timestamp</column>
+      <column>reception-key</column>
+      <column>reception-type</column>
+    </list>
+    <list>
+      <title>Subscriptions</title>
+      <table-ref>actor-receptionist-subscribed-table</table-ref>
+      <column>timestamp</column>
+      <column>reception-key</column>
+      <column>reception-type</column>
+    </list>
+    <list>
+      <title>Removals</title>
+      <table-ref>actor-receptionist-actor-removed-table</table-ref>
+      <column>timestamp</column>
+      <column>reception-key</column>
+      <column>reception-type</column>
+    </list>
+    <list>
+      <title>Published Listings</title>
+      <table-ref>actor-receptionist-listing-published-table</table-ref>
+      <column>timestamp</column>
+      <column>reception-key</column>
+      <column>reception-type</column>
+      <column>reception-sub-count</column>
+      <column>reception-reg-count</column>
+    </list>
+    <aggregation>
+      <title>Registrations: By Key</title>
+      <table-ref>actor-receptionist-registered-table</table-ref>
+      <hierarchy>
+        <level>
+          <column>reception-key</column>
+        </level>
+      </hierarchy>
+      <visit-on-focus>Registrations</visit-on-focus>
+      <column>
+        <title>Count</title>
+        <count/>
+      </column>
+    </aggregation>
+    <aggregation>
+      <title>Subscriptions: By Key</title>
+      <table-ref>actor-receptionist-subscribed-table</table-ref>
+      <hierarchy>
+        <level>
+          <column>reception-key</column>
+        </level>
+      </hierarchy>
+      <visit-on-focus>Registrations</visit-on-focus>
+      <column>
+        <title>Count</title>
+        <count/>
+      </column>
+    </aggregation>
+    <aggregation>
+      <title>Published Listings: By Key</title>
+      <table-ref>actor-receptionist-listing-published-table</table-ref>
+      <hierarchy>
+        <level>
+          <column>reception-key</column>
+        </level>
+      </hierarchy>
+      <visit-on-focus>Registrations</visit-on-focus>
+      <column>
+        <count>reception-key</count>
+      </column>
+      <column>
+        <min>reception-sub-count</min>
+      </column>
+      <column>
+        <max>reception-sub-count</max>
+      </column>
+      <column>
+        <average>reception-sub-count</average>
+      </column>
+      <column>
+        <min>reception-reg-count</min>
+      </column>
+      <column>
+        <max>reception-reg-count</max>
+      </column>
+      <column>
+        <average>reception-reg-count</average>
+      </column>
+    </aggregation>
+    <engineering-type-track>
+      <table-ref>actor-receptionist-registered-table</table-ref>
+      <hierarchy>
+        <level>
+          <column>reception-key</column>
+        </level>
+      </hierarchy>
+    </engineering-type-track>
   </instrument>
   <template>
     <import-from-file>ActorInstruments.tracetemplate</import-from-file>
