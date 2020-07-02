@@ -55,6 +55,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     internal var _system: ActorSystem?
+
     public override var system: ActorSystem {
         if let system = self._system {
             return system

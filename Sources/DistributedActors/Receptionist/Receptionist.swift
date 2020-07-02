@@ -377,7 +377,7 @@ extension Reception.Registered where Guest: ActorProtocol {
 public protocol ReceptionistGuest {
     associatedtype Message: Codable
 
-    // TODO: can we hide this?
+    // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
     var _ref: ActorRef<Message> { get }
 }
 
