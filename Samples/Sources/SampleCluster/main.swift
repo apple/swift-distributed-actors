@@ -84,15 +84,14 @@ let chatter: ActorRef<String> = try system.spawn(
         return .same
     }
 )
-let chatRoomId = "chat-room"
-system.receptionist.register(chatter, with: chatRoomId) // <1>
+system.receptionist.register(chatter, with: "chat-room") // <1>
 
-if system.cluster.node.port == 7337 { // <2>
+if system.cluster.uniqueNode.port == 7337 { // <2>
     let greeter = try system.spawn(
         "greeter",
         of: Reception.Listing<ActorRef<String>>.self,
         .setup { context in // <3>
-            context.system.receptionist.subscribe(key: Reception.Key(ActorRef<String>.self, id: chatRoomId), subscriber: context.myself)
+            context.receptionist.subscribeMyself(to: "chat-room")
 
             return .receiveMessage { chattersListing in // <4>
                 for chatter in chattersListing.refs {
