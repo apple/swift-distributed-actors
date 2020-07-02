@@ -84,7 +84,7 @@ public struct Receptionist {
     internal static let naming: ActorNaming = .unique("receptionist")
 
     /// When sent to receptionist will register the specified `ActorRef` under the given `Reception.Key`
-    public class Register<Guest: ReceptionistGuest>: _Register {
+    public class Register<Guest: ReceptionistGuest>: AnyRegister {
         public let guest: Guest
         public let key: Reception.Key<Guest>
         public let replyTo: ActorRef<Reception.Registered<Guest>>?
@@ -104,8 +104,8 @@ public struct Receptionist {
             AddressableActorRef(self.guest._ref)
         }
 
-        internal override var _key: _ReceptionKey {
-            self.key
+        internal override var _key: AnyReceptionKey {
+            self.key.asAnyKey
         }
 
         internal override func replyRegistered() {
@@ -125,7 +125,7 @@ public struct Receptionist {
         public init(key: Reception.Key<Guest>, replyTo: ActorRef<Reception.Listing<Guest>>) {
             self.key = key
             self.subscriber = replyTo
-            super.init(_key: key)
+            super.init(_key: key.asAnyKey)
         }
 
         required init(from decoder: Decoder) throws {
@@ -156,7 +156,7 @@ public struct Receptionist {
             throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
         }
 
-        internal override var _key: _ReceptionKey {
+        internal override var _key: AnyReceptionKey {
             self.key.asAnyKey
         }
 
@@ -406,9 +406,9 @@ public class ReceptionistMessage: Codable {}
 internal typealias FullyQualifiedTypeName = String
 
 // TODO: Receptionist._Register
-public class _Register: ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
+public class AnyRegister: ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
     var _addressableActorRef: AddressableActorRef { undefined() }
-    var _key: _ReceptionKey { undefined() }
+    var _key: AnyReceptionKey { undefined() }
 
     func replyRegistered() {
         undefined()
@@ -419,12 +419,10 @@ public class _Register: ReceptionistMessage, NonTransportableActorMessage, Custo
     }
 }
 
-// TODO: Receptionist._Lookup
-// TODO: or rather move to not classes here: https://github.com/apple/swift-distributed-actors/issues/510
 public class _Lookup: ReceptionistMessage, NonTransportableActorMessage {
-    let _key: _ReceptionKey
+    let _key: AnyReceptionKey
 
-    init(_key: _ReceptionKey) {
+    init(_key: AnyReceptionKey) {
         self._key = _key
         super.init()
     }
@@ -442,92 +440,91 @@ public class _Lookup: ReceptionistMessage, NonTransportableActorMessage {
     }
 }
 
-// TODO: Receptionist._Registration key, or rather move to not classes here: https://github.com/apple/swift-distributed-actors/issues/510
-public class _ReceptionKey {
-    let id: String
-    let typeHint: FullyQualifiedTypeName
+protocol ReceptionKeyProtocol {
+    var id: String { get }
+    var guestType: Any.Type { get }
 
-    init(id: String, typeHint: FullyQualifiedTypeName) {
-        self.id = id
-        self.typeHint = typeHint
-    }
-
-    var asAnyKey: AnyReceptionKey {
-        undefined()
-    }
+    var asAnyKey: AnyReceptionKey { get }
 
     // `resolve` has to be here, because the key is the only thing that knows which
     // type is requested. See implementation in `Reception.Key`
-    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
-        undefined()
-    }
+    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef
 }
 
-internal class AnyReceptionKey: _ReceptionKey, Codable, Hashable, CustomStringConvertible {
-    init(from key: _ReceptionKey) {
-        super.init(id: key.id, typeHint: key.typeHint)
+internal struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, CustomStringConvertible {
+    enum CodingKeys: CodingKey {
+        case id
+        case guestTypeManifest
     }
 
-    override func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+    let id: String
+    let guestType: Any.Type
+
+    init<Guest>(_ key: Reception.Key<Guest>) {
+        self.id = key.id
+        self.guestType = Guest.self
+    }
+
+    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
         system.personalDeadLetters(type: Never.self, recipient: address).asAddressable()
     }
 
-    override var asAnyKey: AnyReceptionKey {
+    var asAnyKey: AnyReceptionKey {
         self
     }
 
     var description: String {
-        "AnyReceptionistKey(\(self.id), typeHint: \(self.typeHint))"
+        "AnyReceptionistKey\(self.guestType)(\(self.id))"
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(typeHint)
+        hasher.combine(self.id)
+        hasher.combine(ObjectIdentifier(self.guestType))
     }
 
     static func == (lhs: AnyReceptionKey, rhs: AnyReceptionKey) -> Bool {
-        if lhs === rhs {
-            return true
-        }
         if type(of: lhs) != type(of: rhs) {
             return false
         }
         if lhs.id != rhs.id {
             return false
         }
-        if lhs.typeHint != rhs.typeHint {
+        if ObjectIdentifier(lhs.guestType) != ObjectIdentifier(rhs.guestType) {
             return false
         }
         return true
     }
 
-    // coding
+    public init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(decoder, Self.self)
+        }
 
-    enum CodingKeys: CodingKey {
-        case id
-        case typeHint
-    }
-
-    public required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        let id = try container.decode(String.self, forKey: .id)
-        let typeHint = try container.decode(String.self, forKey: .typeHint)
-        super.init(id: id, typeHint: typeHint)
+        self.id = try container.decode(String.self, forKey: .id)
+
+        let guestTypeManifest = try container.decode(Serialization.Manifest.self, forKey: .guestTypeManifest)
+        self.guestType = try context.summonType(from: guestTypeManifest)
     }
 
     public func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(encoder, Self.self)
+        }
+
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         try container.encode(self.id, forKey: .id)
-        try container.encode(self.typeHint, forKey: .typeHint)
+        let guestTypeManifest = try context.serialization.outboundManifest(self.guestType)
+        try container.encode(guestTypeManifest, forKey: .guestTypeManifest)
     }
 }
 
 public class _Subscribe: ReceptionistMessage, NonTransportableActorMessage {
-    var _key: _ReceptionKey {
+    var _key: AnyReceptionKey {
         fatalErrorBacktrace("failed \(#function)")
     }
 
@@ -579,7 +576,7 @@ internal protocol ListingRequest {
     associatedtype Guest: ReceptionistGuest
 
     var key: Reception.Key<Guest> { get }
-    var _key: _ReceptionKey { get }
+    var _key: AnyReceptionKey { get }
 
     var subscriber: ActorRef<Reception.Listing<Guest>> { get }
 

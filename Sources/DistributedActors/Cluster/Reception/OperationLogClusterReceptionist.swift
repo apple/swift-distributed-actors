@@ -251,7 +251,7 @@ public class OperationLogClusterReceptionist {
                 case _ as PeriodicAckTick:
                     self.onPeriodicAckTick(context)
 
-                case let message as _Register:
+                case let message as AnyRegister:
                     try self.onRegister(context: context, message: message) // FIXME: would kill the receptionist!
 
                 case let message as _Lookup:
@@ -281,11 +281,11 @@ public class OperationLogClusterReceptionist {
 extension OperationLogClusterReceptionist {
     private func onSubscribe(context: ActorContext<Message>, message: _Subscribe) throws {
         let boxedMessage = message._boxed
-        let key = AnyReceptionKey(from: message._key)
-        if self.storage.addSubscription(key: key, subscription: boxedMessage) {
+        let anyKey = message._key
+        if self.storage.addSubscription(key: anyKey, subscription: boxedMessage) {
             context.watch(message._addressableActorRef)
-            context.log.trace("Subscribed \(message._addressableActorRef.address) to \(key)")
-            boxedMessage.replyWith(self.storage.registrations(forKey: key) ?? [])
+            context.log.trace("Subscribed \(message._addressableActorRef.address) to \(anyKey)")
+            boxedMessage.replyWith(self.storage.registrations(forKey: anyKey) ?? [])
         }
     }
 
@@ -293,7 +293,7 @@ extension OperationLogClusterReceptionist {
         message.replyWith(self.storage.registrations(forKey: message._key.asAnyKey) ?? [])
     }
 
-    private func onRegister(context: ActorContext<Message>, message: _Register) throws {
+    private func onRegister(context: ActorContext<Message>, message: AnyRegister) throws {
         let key = message._key.asAnyKey
         let ref = message._addressableActorRef
 
