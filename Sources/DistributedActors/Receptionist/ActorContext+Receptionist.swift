@@ -56,7 +56,7 @@ extension ActorContext {
         /// The sub receive (created using `context.subReceive`) is always executed on the actor's context and thus it is
         /// thread-safe to mutate any of the actors state from this callback.
         @inlinable
-        public func subscribe<Guest>(
+        public func subscribeMyself<Guest>(
             to key: Reception.Key<Guest>,
             subReceive: @escaping (Reception.Listing<Guest>) -> Void
         ) where Guest: ReceptionistGuest {

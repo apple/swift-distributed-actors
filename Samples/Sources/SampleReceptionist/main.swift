@@ -18,13 +18,19 @@ let system = ActorSystem("SampleReceptionist") { settings in
     settings.cluster.enabled = true
 }
 
+extension Reception.Key {
+    static var guests: Reception.Key<HotelGuest.Ref> {
+        "*"
+    }
+}
+
 let actors = 10_000
 
 enum HotelGuest {
-    static var behavior: Behavior<String> = .setup { context in
-        context.receptionist.registerMyself(as: "all/guest")
+    typealias Ref = ActorRef<String>
 
-//        context.log.warning("Spawned the \(context.name)")
+    static var behavior: Behavior<String> = .setup { context in
+        context.receptionist.registerMyself(with: .guests)
 
         return .receiveMessage { message in
             return .same
@@ -47,7 +53,7 @@ enum HotelOwner {
 enum GuestListener {
     static var behavior: Behavior<Reception.Listing<ActorRef<String>>> = .setup { context in
 
-        context.receptionist.subscribe(key: .init(ActorRef<String>.self, id: "all/guest"), subscriber: context.myself)
+        context.receptionist.subscribeMyself(to: .guests)
 
         let startAll = context.system.uptimeNanoseconds()
         var startLast = context.system.uptimeNanoseconds()

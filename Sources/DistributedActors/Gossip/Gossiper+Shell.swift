@@ -333,7 +333,7 @@ extension GossipShell {
             context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
-            context.receptionist.subscribe(to: key, subReceive: { listing in
+            context.receptionist.subscribeMyself(to: key, subReceive: { listing in
                 context.log.trace("Peer listing update via receptionist", metadata: [
                     "peer/listing": Logger.MetadataValue.array(
                         listing.refs.map { ref in Logger.MetadataValue.stringConvertible(ref) }

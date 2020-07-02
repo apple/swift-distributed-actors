@@ -125,17 +125,10 @@ public protocol MyselfReceptionistOperations: ReceptionistOperations {
     associatedtype Message: Codable
     associatedtype Myself: ReceptionistGuest
 
+    // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
     var _myself: Myself { get }
+    // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
     var _underlyingContext: ActorContext<Message> { get }
-
-    /// Registers `myself` in the systems receptionist with given id.
-    ///
-    /// - Parameters:
-    ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
-    func registerMyself(
-        as id: String,
-        replyTo: ActorRef<Reception.Registered<Myself>>?
-    )
 
     /// Registers `myself` in the systems receptionist with given key.
     func registerMyself(
@@ -155,20 +148,23 @@ public protocol MyselfReceptionistOperations: ReceptionistOperations {
     ///   - key: selects which actors we are interested in.
     ///   - callback: invoked whenever actors join/leave the reception or when they terminate.
     ///               The invocation is made on the owning actor's context, meaning that it is safe to mutate actor state from the callback.
-    func subscribe<Guest>(
+    func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>,
         subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
     ) where Guest: ReceptionistGuest
+
+    /// Subscribe this actor to actors registering under given `key`.
+    ///
+    /// A new `Reception.Listing<Guest>` is emitted whenever new actors join (or leave) the reception.
+    ///
+    /// - SeeAlso: `subscribeMyself(to:subReceive:)`
+    func subscribeMyself<Guest>(
+        to key: Reception.Key<Guest>
+    ) where Guest: ReceptionistGuest, Myself.Message == Reception.Listing<Guest>
+
 }
 
 extension MyselfReceptionistOperations {
-    @inlinable
-    public func registerMyself(
-        as id: String,
-        replyTo: ActorRef<Reception.Registered<Myself>>? = nil
-    ) {
-        self.registerMyself(with: Reception.Key(Myself.self, id: id))
-    }
 
     @inlinable
     public func registerMyself(
@@ -179,7 +175,7 @@ extension MyselfReceptionistOperations {
     }
 
     @inlinable
-    public func subscribe<Guest>(
+    public func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>,
         subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
     ) where Guest: ReceptionistGuest {
@@ -190,5 +186,12 @@ extension MyselfReceptionistOperations {
             }
 
         self._underlyingContext.receptionist.subscribe(subRef, to: key)
+    }
+
+    @inlinable
+    public func subscribeMyself<Guest>(
+        to key: Reception.Key<Guest>
+    ) where Guest: ReceptionistGuest, Myself.Message == Reception.Listing<Guest> {
+        self.subscribe(self._myself._ref, to: key)
     }
 }
