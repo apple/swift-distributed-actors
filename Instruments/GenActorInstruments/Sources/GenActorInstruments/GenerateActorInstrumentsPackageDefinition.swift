@@ -12,26 +12,30 @@
 //
 //===----------------------------------------------------------------------===//
 
+import SwiftyInstrumentsPackageDefinition
 import ArgumentParser
 import DistributedActors
 import Foundation
 import XMLCoder
 import Logging
 
-struct GenerateActorInstrumentsPackageDefinition {
+public struct InstrumentsPackageDefinitionGenerator {
     let log: Logger = Logger(label: "gen-package-def")
+
+    let packageDefinition: PackageDefinition
     let settings: Command
 
-    init(command settings: Self.Command) {
-        self.settings = settings
+    public init(
+        packageDefinition: PackageDefinition
+    ) {
+        self.packageDefinition = packageDefinition
+        self.settings = Self.Command.parseOrExit()
     }
 
     #if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
-    func run() throws {
+    public func run() throws {
         if #available(macOS 10.14, *) {
-            let package = ActorInstrumentsPackageDefinition().packageDefinition
-
-            let xml = try! XMLEncoder().encode(package, withRootKey: "package")
+            let xml = try! XMLEncoder().encode(self.packageDefinition, withRootKey: "package")
 
             var renderedXML = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
             renderedXML.append(String(data: xml, encoding: .utf8)!)
@@ -64,7 +68,7 @@ struct GenerateActorInstrumentsPackageDefinition {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Command Line interface
 
-extension GenerateActorInstrumentsPackageDefinition {
+extension InstrumentsPackageDefinitionGenerator {
     struct Command: ParsableCommand {
         @Flag(
             name: .shortAndLong,
@@ -86,9 +90,3 @@ extension GenerateActorInstrumentsPackageDefinition {
     }
 }
 
-extension GenerateActorInstrumentsPackageDefinition.Command {
-    public func run() throws {
-        let gen = GenerateActorInstrumentsPackageDefinition(command: self)
-        try gen.run()
-    }
-}

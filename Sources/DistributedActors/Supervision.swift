@@ -453,11 +453,13 @@ internal class Supervisor<Message: ActorMessage> {
 
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
     @inlinable
+    @inline(__always)
     final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> Behavior<Message> {
         try self.interpretSupervised0(target: target, context: context, processingAction: processingAction, nFoldFailureDepth: 1) // 1 since we already have "one failure"
     }
 
     @inlinable
+    @inline(__always)
     final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingAction: ProcessingAction<Message>, nFoldFailureDepth: Int) throws -> Behavior<Message> {
         do {
             switch processingAction {

@@ -170,7 +170,12 @@ extension ActorSystemSettings {
             NoopActorTransportInstrumentation()
         }
 
-        public mutating func configure(with provider: ActorInstrumentationProvider) {
+        /// - SeeAlso: `ReceptionistInstrumentation`
+        public var makeReceptionistInstrumentation: () -> ReceptionistInstrumentation = { () in
+            NoopReceptionistInstrumentation()
+        }
+
+        public mutating func configure(with provider: ActorSystemInstrumentationProvider) {
             if let instrumentFactory = provider.actorInstrumentation {
                 self.makeActorInstrumentation = instrumentFactory
             }
@@ -178,11 +183,16 @@ extension ActorSystemSettings {
             if let instrumentFactory = provider.actorTransportInstrumentation {
                 self.makeActorTransportInstrumentation = instrumentFactory
             }
+
+            if let instrumentFactory = provider.receptionistInstrumentation {
+                self.makeReceptionistInstrumentation = instrumentFactory
+            }
         }
     }
 }
 
-public protocol ActorInstrumentationProvider {
+public protocol ActorSystemInstrumentationProvider {
     var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
     var actorTransportInstrumentation: (() -> ActorTransportInstrumentation)? { get }
+    var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }
 }
