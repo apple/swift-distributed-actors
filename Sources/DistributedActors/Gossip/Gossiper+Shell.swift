@@ -277,7 +277,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 
 extension GossipShell {
     public static func receptionKey(id: String) -> Reception.Key<ActorRef<Message>> {
-        Reception.Key(id)
+        Reception.Key(id: id)
     }
 
     private func initPeerDiscovery(_ context: ActorContext<Message>) {
@@ -329,7 +329,7 @@ extension GossipShell {
             context.system.cluster.events.subscribe(onClusterEventRef)
 
         case .fromReceptionistListing(let id):
-            let key = Reception.Key<ActorRef<Message>>(id)
+            let key = Reception.Key(ActorRef<Message>.self, id: id)
             context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
