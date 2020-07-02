@@ -701,7 +701,7 @@ extension ClusterShell {
                     }
                     do {
                         let sslContext = try self.makeSSLContext(fromConfig: tlsConfig, passphraseCallback: settings.tlsPassphraseCallback)
-                        let sslHandler = try NIOSSLServerHandler(context: sslContext)
+                        let sslHandler = NIOSSLServerHandler(context: sslContext)
                         channelHandlers.append(("ssl", sslHandler))
                     } catch {
                         return channel.eventLoop.makeFailedFuture(error)

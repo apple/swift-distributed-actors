@@ -647,7 +647,7 @@ public struct ActorInstrumentsPackageDefinition {
                         Graph.Histogram(
                             slice: [
                                 Instrument.Slice(
-                                    column: .actorStopReason, "stop" // FIXME: also count crashes as stops
+                                    column: .actorStopReason, "stop" // FIXME:also count crashes as stops
                                 )
                             ],
                             nanosecondsPerBucket: Int(TimeAmount.seconds(1).nanoseconds),

@@ -223,9 +223,8 @@ final class ReceptionistTests: ActorSystemXCTestCase {
 
         let key = Reception.Key(ActorRef<String>.self, id: "test")
 
-
         receptionist.subscribe(lookupProbe.ref, to: key)
-        let listing0 = try lookupProbe.expectMessage()
+        _ = try lookupProbe.expectMessage()
 
         receptionist.register(try system.spawn(.anonymous, .receiveMessage { _ in .same }), with: key)
         receptionist.register(try system.spawn(.anonymous, .receiveMessage { _ in .same }), with: key)

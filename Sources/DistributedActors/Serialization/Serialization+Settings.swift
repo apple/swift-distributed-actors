@@ -113,7 +113,8 @@ extension Serialization.Settings {
     @discardableResult
     public mutating func register<Message: ActorMessage>(
         _ type: Message.Type, hint hintOverride: String? = nil,
-        serializerID overrideSerializerID: SerializerID? = nil
+        serializerID overrideSerializerID: SerializerID? = nil,
+        alsoRegisterActorRef: Bool = true
     ) -> Manifest {
         // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
         let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
@@ -144,6 +145,10 @@ extension Serialization.Settings {
 
         self.typeToManifestRegistry[.init(type)] = manifest
         self.manifest2TypeRegistry[manifest] = type
+
+        if alsoRegisterActorRef {
+            _ = self.register(ActorRef<Message>.self, alsoRegisterActorRef: false)
+        }
 
         return manifest
     }
