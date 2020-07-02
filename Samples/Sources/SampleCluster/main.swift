@@ -85,7 +85,7 @@ let chatter: ActorRef<String> = try system.spawn(
     }
 )
 let chatRoomId = "chat-room"
-system.receptionist.register(chatter, key: chatRoomId) // <1>
+system.receptionist.register(chatter, with: chatRoomId) // <1>
 
 if system.cluster.node.port == 7337 { // <2>
     let greeter = try system.spawn(

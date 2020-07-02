@@ -108,26 +108,7 @@ extension Serialization {
             return manifest
         }
 
-        let hint: String
-        #if compiler(>=5.3)
-        if #available(macOS 10.16, *) {
-            // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
-            // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
-            // to be deserialized (thus, we can disallow decoding random messages for security).
-            //
-            // We would eventually want "codingTypeName" or something similar
-            let (ptr, count) = _getMangledTypeName(messageType)
-            if count > 0 {
-                hint = String(cString: ptr)
-            } else {
-                hint = _typeName(messageType)
-            }
-        } else {
-            hint = _typeName(messageType)
-        }
-        #else
-        hint = _typeName(messageType)
-        #endif
+        let hint: String = self.getTypeHint(messageType)
 
         let manifest: Manifest?
         if messageType is AnyProtobufRepresentable.Type {
@@ -145,6 +126,31 @@ extension Serialization {
         }
 
         return selectedManifest
+    }
+
+    /// Tries to use getMangledTypeName if available.
+    @inlinable
+    @inline(__always)
+    internal func getTypeHint(_ messageType: Any.Type) -> String {
+        #if compiler(>=5.3)
+        if #available(macOS 10.16, *) {
+            // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
+            // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
+            // to be deserialized (thus, we can disallow decoding random messages for security).
+            //
+            // We would eventually want "codingTypeName" or something similar
+            let (ptr, count) = _getMangledTypeName(messageType)
+            if count > 0 {
+                return String(cString: ptr)
+            } else {
+                return _typeName(messageType)
+            }
+        } else {
+            return _typeName(messageType)
+        }
+        #else
+        return _typeName(messageType)
+        #endif
     }
 
     /// Summon a `Type` from a manifest which's `hint` contains a mangled name.
