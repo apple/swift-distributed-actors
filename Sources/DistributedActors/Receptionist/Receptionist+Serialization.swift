@@ -42,7 +42,7 @@ extension Reception.Key {
         case id
     }
 
-    public convenience init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, Reception.Listing<Guest>.self)
         }

@@ -22,23 +22,24 @@
 public enum Reception {}
 
 extension Reception {
-    /// Used to register and lookup actors in the receptionist. The key is a combination
-    /// of the string id and the message type of the actor.
+    /// Used to register and lookup actors in the receptionist.
+    /// The key is a combination the Guest's type and an identifier to identify sub-groups of actors of that type.
     ///
-    /// - See `Reception.Key` for the high-level `Actorable`/`Actor` compatible key API
-    public final class Key<Guest: ReceptionistGuest>: _ReceptionKey, Codable, CustomStringConvertible, ExpressibleByStringLiteral {
+    /// The id defaults to "*" which can be used "all actors of that type" (if and only if they registered using this key,
+    /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
+    public struct Key<Guest: ReceptionistGuest>: ReceptionKeyProtocol, Codable, CustomStringConvertible, ExpressibleByStringLiteral {
 
+        let id: String
+        var guestType: Any.Type {
+            Guest.self
+        }
 
         public init(_ guest: Guest.Type = Guest.self, id: String = "*") {
-            super.init(id: id, typeHint: _typeName(Guest.Message.self as Any.Type))
+            self.id = id
         }
 
-        public init(_ value: String) {
-            super.init(id: value, typeHint: _typeName(Guest.Message.self as Any.Type))
-        }
-
-        public required init(stringLiteral value: StringLiteralType) {
-            super.init(id: value, typeHint: _typeName(Guest.Message.self as Any.Type))
+        public init(stringLiteral value: StringLiteralType) {
+            self.id = value
         }
 
         internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Guest.Message> {
@@ -54,17 +55,17 @@ extension Reception {
             }
         }
 
-        internal override func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+        internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
             let ref: ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable()
         }
 
-        internal override var asAnyKey: AnyReceptionKey {
-            AnyReceptionKey(from: self)
+        internal var asAnyKey: AnyReceptionKey {
+            AnyReceptionKey(self)
         }
 
         public var description: String {
-            "Reception.Key<\(Guest.self)>(id: \(self.id), typeHint: \(self.typeHint))"
+            "Reception.Key<\(Guest.self)>(id: \(self.id))"
         }
     }
 }
