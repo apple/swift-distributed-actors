@@ -271,7 +271,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             settings.serialization.register(SerializationTestMessage.self)
             settings.serialization.register(EchoTestMessage.self)
         }
-        defer { thirdSystem.shutdown().wait() }
+        defer { try! thirdSystem.shutdown().wait() }
 
         thirdSystem.cluster.join(node: local.cluster.uniqueNode.node)
         thirdSystem.cluster.join(node: remote.cluster.uniqueNode.node)

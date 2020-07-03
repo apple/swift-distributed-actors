@@ -26,7 +26,7 @@ final class ActorTestKitTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown().wait()
+        try! self.system.shutdown().wait()
     }
 
     func test_error_withMessage() throws {

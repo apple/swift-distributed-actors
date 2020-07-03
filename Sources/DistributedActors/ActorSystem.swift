@@ -118,7 +118,7 @@ public final class ActorSystem {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Shutdown
-    private var shutdownReceptacle = BlockingReceptacle<Void>()
+    private var shutdownReceptacle = BlockingReceptacle<Error?>()
     private let shutdownLock = Lock()
 
     /// Greater than 0 shutdown has been initiated / is in progress.
@@ -322,7 +322,7 @@ public final class ActorSystem {
     /// This call is also offered to underlying transports which may have to perform the blocking wait themselves
     /// (most notably, `ProcessIsolated` does so). Please refer to your configured transports documentation,
     /// to learn about exact semantics of parking a system while using them.
-    public func park(atMost parkTimeout: TimeAmount? = nil) {
+    public func park(atMost parkTimeout: TimeAmount? = nil) throws {
         let howLongParkingMsg = parkTimeout == nil ? "indefinitely" : "for \(parkTimeout!.prettyDescription)"
         self.log.info("Parking actor system \(howLongParkingMsg)...")
 
@@ -332,9 +332,13 @@ public final class ActorSystem {
         }
 
         if let maxParkingTime = parkTimeout {
-            self.shutdownReceptacle.wait(atMost: maxParkingTime)
+            if let error = self.shutdownReceptacle.wait(atMost: maxParkingTime).flatMap({ $0 }) {
+                throw error
+            }
         } else {
-            self.shutdownReceptacle.wait()
+            if let error = self.shutdownReceptacle.wait() {
+                throw error
+            }
         }
     }
 
@@ -345,29 +349,38 @@ public final class ActorSystem {
     #endif
 
     public struct Shutdown {
-        private let receptacle: BlockingReceptacle<Void>
+        private let receptacle: BlockingReceptacle<Error?>
 
-        init(receptacle: BlockingReceptacle<Void>) {
+        init(receptacle: BlockingReceptacle<Error?>) {
             self.receptacle = receptacle
         }
 
         public func wait(atMost timeout: TimeAmount) throws {
-            guard self.receptacle.wait(atMost: timeout) != nil else {
-                throw TimeoutError(message: "Shutdown did not complete", timeout: timeout)
+            if let error = self.receptacle.wait(atMost: timeout).flatMap({ $0 }) {
+                throw error
             }
         }
 
-        public func wait() {
-            self.receptacle.wait()
+        public func wait() throws {
+            if let error = self.receptacle.wait() {
+                throw error
+            }
         }
     }
 
-    /// Forcefully stops this actor system and all actors that live within. This is an asynchronous operation
-    /// and will be executed on a separate thread.
+    /// Forcefully stops this actor system and all actors that live within it.
+    /// This is an asynchronous operation and will be executed on a separate thread.
     ///
+    /// You can use `shutdown().wait()` to synchronously await on the system's termination,
+    /// or provide a callback to be executed after the system has completed it's shutdown.
+    ///
+    /// - Parameters:
+    ///   - queue: allows configuring on which dispatch queue the shutdown operation will be finalized.
+    ///   - afterShutdownCompleted: optional callback to be invoked when the system has completed shutting down.
+    ///     Will be invoked on the passed in `queue` (which defaults to `DispatchQueue.global()`).
     /// - Returns: A `Shutdown` value that can be waited upon until the system has completed the shutdown.
     @discardableResult
-    public func shutdown() -> Shutdown {
+    public func shutdown(queue: DispatchQueue = DispatchQueue.global(), afterShutdownCompleted: @escaping (Error?) -> Void = { _ in () }) -> Shutdown {
         guard self.shutdownFlag.add(1) == 0 else {
             // shutdown already kicked off by someone else
             return Shutdown(receptacle: self.shutdownReceptacle)
@@ -375,19 +388,24 @@ public final class ActorSystem {
 
         self.settings.plugins.stopAll(self)
 
-        DispatchQueue.global().async {
+        queue.async {
             self.log.log(level: .debug, "Shutting down actor system [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
             if let cluster = self._cluster {
                 let receptacle = BlockingReceptacle<Void>()
-                cluster.ref.tell(.command(.shutdown(receptacle))) // FIXME: should be shutdown
-                receptacle.wait(atMost: .milliseconds(300)) // FIXME: configure
+                cluster.ref.tell(.command(.shutdown(receptacle)))
+                receptacle.wait()
             }
             self.userProvider.stopAll()
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
 
-            try! self._eventLoopGroup.syncShutdownGracefully()
-            self._receptionistRef = self.deadLetters.adapted()
+            do {
+                try self._eventLoopGroup.syncShutdownGracefully()
+                self._receptionistRef = self.deadLetters.adapted()
+            } catch {
+                self.shutdownReceptacle.offerOnce(error)
+                afterShutdownCompleted(error)
+            }
 
             /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
             /// as they should never be invoked anymore.
@@ -396,7 +414,8 @@ public final class ActorSystem {
                 self._cluster = nil
             }
 
-            self.shutdownReceptacle.offerOnce(())
+            self.shutdownReceptacle.offerOnce(nil)
+            afterShutdownCompleted(nil)
         }
 
         return Shutdown(receptacle: self.shutdownReceptacle)

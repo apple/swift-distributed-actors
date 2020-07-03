@@ -350,7 +350,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             settings.logging.logger = capture.logger(label: "mock")
         }
         defer {
-            system.shutdown().wait()
+            try! system.shutdown().wait()
         }
 
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()

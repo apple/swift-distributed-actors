@@ -107,7 +107,7 @@ final class SerializationPoolTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown().wait()
+        try! self.system.shutdown().wait()
         try! self.elg.syncShutdownGracefully()
     }
 

@@ -32,7 +32,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown().wait()
+        try! self.system.shutdown().wait()
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

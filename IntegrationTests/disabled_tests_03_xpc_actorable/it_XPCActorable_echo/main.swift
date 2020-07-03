@@ -47,4 +47,4 @@ case let unknown:
     exit(-1)
 }
 
-system.park()
+try! system.park()

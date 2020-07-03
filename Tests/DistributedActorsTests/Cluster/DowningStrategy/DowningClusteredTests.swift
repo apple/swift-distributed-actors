@@ -246,7 +246,7 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
 
         pinfo("Downing \(nodesToDown.count) nodes: \(nodesToDown.map { $0.cluster.uniqueNode })")
         for node in nodesToDown {
-            node.shutdown().wait()
+            try! node.shutdown().wait()
         }
 
         func expectedDownMemberEventsFishing(

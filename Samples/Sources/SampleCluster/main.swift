@@ -76,6 +76,7 @@ system.cluster.events.subscribe(eventsListener) // <2>
 //    case announcement(String)
 //    case text(String, from: ActorRef<ChatMessage>)
 // }
+
 // tag::cluster-sample-actors-discover-and-chat[]
 let chatter: ActorRef<String> = try system.spawn(
     "chatter",
@@ -87,7 +88,7 @@ let chatter: ActorRef<String> = try system.spawn(
 system.receptionist.register(chatter, with: "chat-room") // <1>
 
 if system.cluster.uniqueNode.port == 7337 { // <2>
-    let greeter = try system.spawn(
+    try system.spawn(
         "greeter",
         of: Reception.Listing<ActorRef<String>>.self,
         .setup { context in // <3>
@@ -105,4 +106,4 @@ if system.cluster.uniqueNode.port == 7337 { // <2>
 
 // end::cluster-sample-actors-discover-and-chat[]
 
-system.park(atMost: .seconds(6000))
+try! system.park(atMost: .seconds(6000))

@@ -585,7 +585,7 @@ public class Guardian {
                     system.log.error("\(message)", metadata: ["actor/path": "\(self.address.path)"])
 
                     _ = try! Thread {
-                        system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
+                        try! system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
                         print("Guardian shutdown of [\(system.name)] ActorSystem complete.")
                     }
                     #if os(iOS) || os(watchOS) || os(tvOS)

@@ -257,7 +257,7 @@ final class SystemMessagesRedeliveryTests: ActorSystemXCTestCase {
     func test_redelivery_systemMessage_serialization() throws {
         let system = ActorSystem("\(type(of: self))")
         defer {
-            system.shutdown().wait()
+            try! system.shutdown().wait()
         }
 
         func validateRoundTrip<T: Equatable>(_ value: T) throws {
