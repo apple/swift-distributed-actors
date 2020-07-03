@@ -38,7 +38,7 @@ class ClusterDocExamples: XCTestCase {
     func example_subscribe_events_apply() throws {
         let system = ActorSystem("Sample")
 
-        _ = try system.spawn(
+        try system.spawn(
             .anonymous,
             of: String.self,
             .setup { context in

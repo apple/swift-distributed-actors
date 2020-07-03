@@ -35,7 +35,7 @@ final class TimersTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
         try p.expectMessage("fromTimer")
         try p.expectNoMessage(for: .milliseconds(10))
     }
@@ -58,7 +58,7 @@ final class TimersTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
         for _ in 0 ..< 5 {
             try p.expectMessage("fromTimer")
         }
@@ -82,7 +82,7 @@ final class TimersTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
         for _ in 0 ..< 5 {
             try p.expectMessage("fromTimer")
         }
@@ -124,7 +124,7 @@ final class TimersTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
         try p.expectMessage("fromTimer")
         try p.expectNoMessage(for: .milliseconds(100))
     }
@@ -141,7 +141,7 @@ final class TimersTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
         try p.expectMessage("fromSystemTimer")
         try p.expectMessage("fromSystemTimer")
         try p.expectMessage("fromSystemTimer")

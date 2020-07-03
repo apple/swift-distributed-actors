@@ -56,7 +56,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn(
+        try system.spawn(
             "watcher",
             of: String.self,
             .setup { context in
@@ -84,7 +84,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn(
+        try system.spawn(
             "watcher",
             of: String.self,
             .setup { context in
@@ -114,7 +114,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn(
+        try system.spawn(
             "watcher",
             of: String.self,
             .setup { context in

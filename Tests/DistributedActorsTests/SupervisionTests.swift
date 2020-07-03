@@ -808,7 +808,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         // parent spawns a new child for every message it receives, the workerProbe gets the reference so we can crash it then
         let parentBehavior = Behavior<String>.receive { context, _ in
             let faultyBehavior = self.faulty(probe: workerProbe.ref)
-            _ = try context.spawn("\(failureMode)-child", faultyBehavior)
+            try context.spawn("\(failureMode)-child", faultyBehavior)
 
             return .same
         }.receiveSignal { _, signal in

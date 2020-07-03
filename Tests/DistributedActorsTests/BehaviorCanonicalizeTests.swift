@@ -177,7 +177,7 @@ final class BehaviorCanonicalizeTests: ActorSystemXCTestCase {
         // TODO: if issue #244 is implemented, we cna supervise and "spy on" start() failures making this test much more specific
 
         let behavior = setupDaDoRunRunRunDaDoRunRun()
-        _ = try system.spawn("nestedSetups", behavior)
+        try system.spawn("nestedSetups", behavior)
 
         for depth in 0 ..< self.system.settings.actor.maxBehaviorNestingDepth {
             try p.expectMessage("at:\(depth)")

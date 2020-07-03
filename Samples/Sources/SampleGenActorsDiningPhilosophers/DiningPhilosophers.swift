@@ -26,11 +26,11 @@ struct DiningPhilosophers {
         let fork5 = try system.spawn(.prefixed(with: "fork"), Fork.init)
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        _ = try system.spawn("Konrad") { Philosopher(context: $0, leftFork: fork5, rightFork: fork1) }
-        _ = try system.spawn("Dario") { Philosopher(context: $0, leftFork: fork1, rightFork: fork2) }
-        _ = try system.spawn("Johannes") { Philosopher(context: $0, leftFork: fork2, rightFork: fork3) }
-        _ = try system.spawn("Cory") { Philosopher(context: $0, leftFork: fork3, rightFork: fork4) }
-        _ = try system.spawn("Erik") { Philosopher(context: $0, leftFork: fork4, rightFork: fork5) }
+        try system.spawn("Konrad") { Philosopher(context: $0, leftFork: fork5, rightFork: fork1) }
+        try system.spawn("Dario") { Philosopher(context: $0, leftFork: fork1, rightFork: fork2) }
+        try system.spawn("Johannes") { Philosopher(context: $0, leftFork: fork2, rightFork: fork3) }
+        try system.spawn("Cory") { Philosopher(context: $0, leftFork: fork3, rightFork: fork4) }
+        try system.spawn("Erik") { Philosopher(context: $0, leftFork: fork4, rightFork: fork5) }
 
         Thread.sleep(time)
     }
