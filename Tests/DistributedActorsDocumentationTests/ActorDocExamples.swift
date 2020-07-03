@@ -283,7 +283,7 @@ class ActorDocExamples: XCTestCase {
             }
         }
 
-        _ = try system.spawn("caplin", caplinBehavior)
+        try system.spawn("caplin", caplinBehavior)
         // end::ask_inside[]
     }
 
@@ -330,7 +330,7 @@ enum WorkerMessages: String, Codable {
 
 func run(system: ActorSystem) throws {
     let (b, props) = ExampleWorker.suggested // TODO: replace with class/Shell pattern?
-    _ = try system.spawn("heavy-worker", props: props, b)
+    try system.spawn("heavy-worker", props: props, b)
 }
 
 // end::suggested_props_pattern[]

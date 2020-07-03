@@ -264,7 +264,7 @@ class SerializationTests: ActorSystemXCTestCase {
             }
         )
 
-        let sysRef = ref.asAddressable()
+        let sysRef = ref.asAddressable
 
         let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
 
@@ -279,7 +279,7 @@ class SerializationTests: ActorSystemXCTestCase {
         back.sysRef.address.shouldEqual(sysRef.address)
 
         // Only to see that the deserialized ref indeed works for sending system messages to it
-        back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable(), existenceConfirmed: false), file: #file, line: #line)
+        back.sysRef._sendSystemMessage(.terminated(ref: watchMe.asAddressable, existenceConfirmed: false), file: #file, line: #line)
         try p.expectMessage("terminated:watchMe")
     }
 

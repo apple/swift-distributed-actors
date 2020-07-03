@@ -122,7 +122,7 @@ public struct Receptionist {
         }
 
         internal override var _addressableActorRef: AddressableActorRef {
-            self.subscriber.asAddressable()
+            self.subscriber.asAddressable
         }
 
         func replyWith(_ refs: Set<AddressableActorRef>) {
@@ -201,7 +201,7 @@ public struct Receptionist {
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
         func removeFromKeyMappings(address: ActorAddress) -> RefMappingRemovalResult {
             let equalityHackRef = ActorRef<Never>(.deadLetters(.init(Logger(label: ""), address: address, system: nil)))
-            return self.removeFromKeyMappings(equalityHackRef.asAddressable())
+            return self.removeFromKeyMappings(equalityHackRef.asAddressable)
         }
 
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
@@ -417,7 +417,7 @@ public struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, CustomSt
     func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
-        system.personalDeadLetters(type: Never.self, recipient: address).asAddressable()
+        system.personalDeadLetters(type: Never.self, recipient: address).asAddressable
     }
 
     var asAnyKey: AnyReceptionKey {

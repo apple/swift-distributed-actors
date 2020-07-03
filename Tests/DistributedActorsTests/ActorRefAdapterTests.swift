@@ -94,7 +94,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         let adaptedRef = try probe.expectMessage()
 
@@ -124,7 +124,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         let adaptedRef = try probe.expectMessage()
 
@@ -186,7 +186,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
         try probe.expectMessage("received:test")
 
         ref.tell(.stop)
-        try probe.expectTerminatedInAnyOrder([ref.asAddressable(), adaptedRef.asAddressable()])
+        try probe.expectTerminatedInAnyOrder([ref.asAddressable, adaptedRef.asAddressable])
     }
 
     func test_adaptedRef_newAdapterShouldReplaceOld() throws {
@@ -301,7 +301,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         let topRef: ActorRef<TopExample> = try probeTop.expectMessage()
         let bottomRef: ActorRef<BottomExample> = try probeBottom.expectMessage()

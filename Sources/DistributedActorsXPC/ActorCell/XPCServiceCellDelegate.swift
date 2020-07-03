@@ -74,7 +74,7 @@ internal final class XPCServiceCellDelegate<Message: ActorMessage>: CellDelegate
         // register connection with death-watcher (when it is Invalidated, we need to signal Terminated to all watchers)
         let myself = ActorRef<Message>(.delegate(self))
         let master = system.xpcTransport.master
-        master.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
+        master.tell(.xpcRegisterService(self.peer, myself.asAddressable)) // TODO: do we really need it?
 
         xpc_connection_set_event_handler(self.peer) { (xdict: xpc_object_t) in
             var log = system.log
@@ -87,10 +87,10 @@ internal final class XPCServiceCellDelegate<Message: ActorMessage>: CellDelegate
                 if let errorDescription = xpc_dictionary_get_string(xdict, "XPCErrorDescription"), errorDescription.pointee != 0 {
                     if String(cString: errorDescription).contains("Connection interrupted") {
                         // log.error("XPC Interrupted Error: \(xdict)")
-                        master.tell(.xpcConnectionInterrupted(myself.asAddressable()))
+                        master.tell(.xpcConnectionInterrupted(myself.asAddressable))
                     } else if String(cString: errorDescription).contains("Connection invalid") { // TODO: Verify this... (or rather, replace with switches)
                         // log.error("XPC Invalid Error: \(xdict)")
-                        master.tell(.xpcConnectionInvalidated(myself.asAddressable()))
+                        master.tell(.xpcConnectionInvalidated(myself.asAddressable))
                     } else {
                         log.error("XPC Error: \(xdict)")
                     }

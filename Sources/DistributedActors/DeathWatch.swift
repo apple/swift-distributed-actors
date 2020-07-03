@@ -16,7 +16,96 @@ import Dispatch
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Death watch implementation
+// MARK: Death Watch
+
+/// Marks an entity to be "watchable", meaning it may participate in Death Watch and form Death Pacts.
+///
+/// Watchable entities are `ActorRef<>`, `Actor<>` but also actors of unknown type such as `AddressableActorRef`.
+///
+/// - SeeAlso: `ActorContext.watch`
+/// - SeeAlso: `DeathWatch`
+public protocol DeathWatchable: AddressableActor {}
+
+extension ActorContext: DeathWatchProtocol {}
+
+public protocol DeathWatchProtocol {
+    associatedtype Message: ActorMessage
+
+    /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
+    /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
+    ///
+    /// There is no difference between keeping the passed in reference or using the returned ref from this method.
+    /// The actor is the being watched subject, not a specific reference to it.
+    ///
+    /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
+    /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
+    /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
+    /// the lovers each kill themselves, thinking the other has died.
+    ///
+    /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> Behavior<Message>)` method,
+    /// which gives this actor the ability to react to the watchee's death in some other fashion,
+    /// for example by saying some nice words about its life, or spawning a "replacement" of watchee in its' place.
+    ///
+    /// When the `.terminated` signal is handled by this actor, the automatic death pact will not be triggered.
+    /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
+    /// and the Death Pact will trigger as usual.
+    ///
+    /// ### The watch(:with:) variant
+    /// Watch offers another variant of the API, which allows you to customize what message shall be received
+    /// when the watchee is terminated. The message may be optionally passed as `context.watch(ref, with: MyMessage(ref, ...))`,
+    /// allowing you to carry additional context "along with" the information about _which_ actor has terminated.
+    /// Note that the delivery semantics of when this message is delivered is the same as `Signals.Terminated` (i.e.
+    /// it's delivery is guaranteed, even in face of message loss across nodes), and the actual message is _local_ (meaning
+    /// that internally all signalling is still performed using `Terminated` and system messages, but when the time comes
+    /// to deliver it to this actor, instead the customized message is delivered).
+    ///
+    /// Invoking `watch()` multiple times with differing `with` arguments results in only the _latest_ invocation to take effect.
+    /// In other words, when an actor terminates, the customized termination message that was last provided "wins,"
+    /// and is delivered to the watcher (this actor).
+    ///
+    /// # Examples:
+    ///
+    ///     // watch some known ActorRef<M>
+    ///     context.watch(someRef)
+    ///
+    ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
+    ///     let child = try context.watch(context.spawn("child", (behavior)))
+    ///
+    ///     // watch(:with:)
+    ///     context.watch(ref, with: .customMessageOnTermination(ref, otherInformation))
+    ///
+    /// #### Concurrency:
+    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
+    @discardableResult
+    func watch<Watchee>(
+        _ watchee: Watchee,
+        with terminationMessage: Message?,
+        file: String, line: UInt
+    ) -> Watchee where Watchee: DeathWatchable
+
+    /// Reverts the watching of an previously watched actor.
+    ///
+    /// Unwatching a not-previously-watched actor has no effect.
+    ///
+    /// ### Semantics for in-flight Terminated signals
+    ///
+    /// After invoking `unwatch`, even if a `Signals.Terminated` signal was already enqueued at this actors
+    /// mailbox; this signal would NOT be delivered to the `onSignal` behavior, since the intent of no longer
+    /// watching the terminating actor takes immediate effect.
+    ///
+    /// #### Concurrency:
+    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
+    ///
+    /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
+    @discardableResult
+    func unwatch<Watchee>(
+        _ watchee: Watchee,
+        file: String, line: UInt
+    ) -> Watchee where Watchee: DeathWatchable
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Death Watch implementation
 
 /// DeathWatch implements the user facing `watch` and `unwatch` functions.
 /// It allows actors to watch other actors for termination, and also takes into account clustering lifecycle information,
@@ -54,14 +143,22 @@ internal struct DeathWatch<Message: ActorMessage> {
     // MARK: perform watch/unwatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    public mutating func watch(watchee: AddressableActorRef, with terminationMessage: Message?, myself watcher: ActorRef<Message>, parent: AddressableActorRef, file: String, line: UInt) {
+    public mutating func watch<Watchee>(
+        watchee: Watchee,
+        with terminationMessage: Message?,
+        myself watcher: ActorRef<Message>,
+        parent: AddressableActorRef,
+        file: String, line: UInt
+    ) where Watchee: DeathWatchable {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
+        let addressableWatchee: AddressableActorRef = watchee.asAddressable
+
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
-        guard watchee.address != watcher.address else {
+        guard addressableWatchee.address != watcher.address else {
             return
         }
 
-        guard watchee.address != parent.address else {
+        guard addressableWatchee.address != parent.address else {
             // No need to store the parent in watchedBy, since we ALWAYS let the parent know about termination
             // and do so by sending an ChildTerminated, which is a sub class of Terminated.
             //
@@ -70,38 +167,43 @@ internal struct DeathWatch<Message: ActorMessage> {
             return
         }
 
-        if self.isWatching(watchee.address) {
+        if self.isWatching(addressableWatchee.address) {
             // While we bail out early here, we DO override whichever value was set as the customized termination message.
             // This is to enable being able to keep updating the context associated with a watched actor, e.g. if how
             // we should react to its termination has changed since the last time watch() was invoked.
-            self.watching[watchee] = OnTerminationMessage(customize: terminationMessage)
+            self.watching[addressableWatchee] = OnTerminationMessage(customize: terminationMessage)
 
             return
         } else {
             // not yet watching
-            watchee._sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
-            self.watching[watchee] = OnTerminationMessage(customize: terminationMessage)
+            addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+            self.watching[addressableWatchee] = OnTerminationMessage(customize: terminationMessage)
 
             // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
-            if watchee.address.node?.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
-                self.subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
+            if addressableWatchee.address.node?.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
+                self.subscribeNodeTerminatedEvents(myself: watcher, node: addressableWatchee.address.node)
             }
         }
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
-    public mutating func unwatch(watchee: AddressableActorRef, myself watcher: ActorRef<Message>, file: String = #file, line: UInt = #line) {
+    public mutating func unwatch<Watchee>(
+        watchee: Watchee,
+        myself watcher: ActorRef<Message>,
+        file: String = #file, line: UInt = #line
+    ) where Watchee: DeathWatchable {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
+        let addressableWatchee = watchee.asAddressable
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
-        if self.watching.removeValue(forKey: watchee) != nil {
-            watchee._sendSystemMessage(.unwatch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+        if self.watching.removeValue(forKey: addressableWatchee) != nil {
+            addressableWatchee._sendSystemMessage(.unwatch(watchee: addressableWatchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         }
     }
 
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
     internal func isWatching(_ address: ActorAddress) -> Bool {
-        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: address, system: nil))).asAddressable()
+        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: address, system: nil))).asAddressable
         return self.watching[mockRefForEquality] != nil
     }
 
@@ -129,7 +231,7 @@ internal struct DeathWatch<Message: ActorMessage> {
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
     public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> TerminatedMessageDirective {
         // refs are compared ONLY by address, thus we can make such mock reference, and it will be properly remove the right "real" refs from the collections below
-        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable()
+        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
 
         // we remove the actor from both sets;
         // 1) we don't need to watch it anymore, since it has just terminated,

@@ -652,7 +652,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     @discardableResult
     public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.asAddressable(), file: file, line: line))
+        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.asAddressable, file: file, line: line))
         return watchee
     }
 
@@ -667,7 +667,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     @discardableResult
     public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.asAddressable()))
+        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.asAddressable))
         return watchee
     }
 

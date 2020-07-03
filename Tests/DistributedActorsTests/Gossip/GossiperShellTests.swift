@@ -49,10 +49,10 @@ final class GossiperShellTests: ActorSystemXCTestCase {
         control.introduce(peer: second)
         control.update(StringGossipIdentifier("hi"), payload: .init("hello"))
 
-        try Set(p.expectMessage()).shouldEqual(Set([first.asAddressable(), second.asAddressable()]))
+        try Set(p.expectMessage()).shouldEqual(Set([first.asAddressable, second.asAddressable]))
 
         first.tell(.removePayload(identifier: StringGossipIdentifier("stop")))
-        try Set(p.expectMessage()).shouldEqual(Set([second.asAddressable()]))
+        try Set(p.expectMessage()).shouldEqual(Set([second.asAddressable]))
 
         first.tell(.removePayload(identifier: StringGossipIdentifier("stop")))
         try p.expectNoMessage(for: .milliseconds(300))

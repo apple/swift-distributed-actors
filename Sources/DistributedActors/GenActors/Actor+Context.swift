@@ -24,6 +24,8 @@ extension Actor {
     ///
     /// The `Actor<Act>.Context` is the `Actorable` equivalent of `ActorContext<Message>`, which is designed to work with the low-level `Behavior` types.
     public struct Context {
+        public typealias Message = Self.Myself.Message
+
         /// Only public to enable workarounds while all APIs gain Actor/Actorable style versions.
         public let _underlying: ActorContext<Act.Message>
 
@@ -124,50 +126,8 @@ extension Actor.Context {
     /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
-    public func stop<Child>(child: Actor<Child>) throws where Act: Actorable {
+    public func stop<Child>(child: Actor<Child>) throws where Child: Actorable {
         try self._underlying.stop(child: child.ref)
-    }
-}
-
-// ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Actor<Act>.Context + Spawning
-
-extension Actor.Context {
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
-        let ref = try self._underlying.spawn(
-            naming,
-            of: Child.Message.self,
-            Behavior<Child.Message>.setup { context in
-                Child.makeBehavior(instance: makeActorable(.init(underlying: context)))
-            }
-        )
-        return Actor<Child>(ref: ref)
-    }
-
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Child) throws -> Actor<Child> {
-        let ref: ActorRef = try self._underlying.spawn(naming, of: Child.Message.self, Child.makeBehavior(instance: makeActorable()))
-        return Actor<Child>(ref: ref)
-    }
-
-    /// Spawn a child actor and start watching it to get notified about termination.
-    ///
-    /// For a detailed explanation of the both concepts refer to the `spawn` and `watch` documentation.
-    ///
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    ///
-    /// - SeeAlso: `spawn`
-    /// - SeeAlso: `watch`
-    public func spawnWatch<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
-        let actor = try self.spawn(naming, makeActorable)
-        return self.watch(actor)
-    }
-
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    public func spawnWatch<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Child) throws -> Actor<Child> {
-        let actor = try self.spawn(naming, makeActorable)
-        return self.watch(actor)
     }
 }
 
@@ -184,65 +144,22 @@ extension Actor.Context {
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: Actor<Act>.Context + Death Watch
 
-extension Actor.Context {
-    /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
-    /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
-    ///
-    /// There is no difference between keeping the passed in reference or using the returned ref from this method.
-    /// The actor is the being watched subject, not a specific reference to it.
-    ///
-    /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
-    /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
-    /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
-    /// the lovers each kill themselves, thinking the other has died.
-    ///
-    /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> Behavior<Message>)` method,
-    /// which gives this actor the ability to react to the watchee's death in some other fashion,
-    /// for example by saying some nice words about its life, or spawning a "replacement" of watchee in its' place.
-    ///
-    /// When the `.terminated` signal is handled by this actor, the automatic death pact will not be triggered.
-    /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
-    /// and the Death Pact will trigger as usual.
-    ///
-    ///
-    /// # Examples:
-    ///
-    ///     // watch some known ActorRef<M>
-    ///     context.watch(someRef)
-    ///
-    ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
-    ///     let child = try context.watch(context.spawn("child", (behavior)))
-    ///
-    /// #### Concurrency:
-    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
+extension Actor.Context: DeathWatchProtocol {
     @discardableResult
-    public func watch<Act>(_ watchee: Actor<Act>, file: String = #file, line: UInt = #line) -> Actor<Act> { // TODO: fix signature, should the watchee
-        _ = self._underlying.watch(watchee.ref, file: file, line: line)
-        return watchee
+    public func watch<Watchee>(
+        _ watchee: Watchee,
+        with terminationMessage: Message? = nil,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee: DeathWatchable {
+        self._underlying.watch(watchee, with: terminationMessage, file: file, line: line)
     }
 
-    internal func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
-        self._underlying.watch(watchee, file: file, line: line)
-    }
-
-    /// Reverts the watching of an previously watched actor.
-    ///
-    /// Unwatching a not-previously-watched actor has no effect.
-    ///
-    /// ### Semantics for in-flight Terminated signals
-    ///
-    /// After invoking `unwatch`, even if a `Signals.Terminated` signal was already enqueued at this actors
-    /// mailbox; this signal would NOT be delivered to the `onSignal` behavior, since the intent of no longer
-    /// watching the terminating actor takes immediate effect.
-    ///
-    /// #### Concurrency:
-    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
-    ///
-    /// - Returns: the passed in watchee reference for easy chaining `e.g. context.unwatch(ref)`
     @discardableResult
-    public func unwatch<Act>(_ watchee: Actor<Act>, file: String = #file, line: UInt = #line) -> Actor<Act> {
-        _ = self._underlying.unwatch(watchee.ref, file: file, line: line)
-        return watchee
+    public func unwatch<Watchee>(
+        _ watchee: Watchee,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee: DeathWatchable {
+        self._underlying.unwatch(watchee, file: file, line: line)
     }
 }
 

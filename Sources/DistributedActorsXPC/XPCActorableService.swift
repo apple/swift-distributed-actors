@@ -82,7 +82,7 @@ public final class XPCActorableService<Act: Actorable> {
         // TODO: SHARE WITH SERIALIZER INFRA
         // TODO: use set_context instead of the global thing perhaps?
         _storage = XPCStorage(
-            myself: self.myself.asAddressable(),
+            myself: self.myself.asAddressable,
             system: self.system,
             sendMessage: { message in
                 // TODO: THIS DUPLICATES LOGIC FROM _tellOrDeadLetter but that we'd like to keep internal...

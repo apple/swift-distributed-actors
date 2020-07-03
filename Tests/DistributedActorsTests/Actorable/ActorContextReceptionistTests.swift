@@ -42,7 +42,7 @@ final class ActorContextReceptionTests: ActorSystemXCTestCase {
             OwnerOfThings(context: $0, probe: p.ref)
         }
 
-        let listing1 = Reception.Listing<Actor<OwnerOfThings>>(refs: Set([owner.ref.asAddressable()]), key: .ownerOfThingsKey)
+        let listing1 = Reception.Listing<Actor<OwnerOfThings>>(refs: Set([owner.ref.asAddressable]), key: .ownerOfThingsKey)
         try p.expectMessage(listing1)
     }
 
@@ -75,12 +75,12 @@ final class ActorContextReceptionTests: ActorSystemXCTestCase {
         let ps = self.testKit.spawnTestProbe(expecting: Reception.Listing<Actor<OwnerOfThings>>.self)
 
         owner.performSubscribe(p: ps.ref)
-        try ps.expectMessage(.init(refs: [owner.ref.asAddressable()], key: .ownerOfThingsKey))
+        try ps.expectMessage(.init(refs: [owner.ref.asAddressable], key: .ownerOfThingsKey))
 
         let anotherOwner = try self.system.spawn("anotherOwner") {
             OwnerOfThings(context: $0, probe: p.ref)
         }
-        try ps.expectMessage(.init(refs: [owner.ref.asAddressable(), anotherOwner.ref.asAddressable()], key: .ownerOfThingsKey))
+        try ps.expectMessage(.init(refs: [owner.ref.asAddressable, anotherOwner.ref.asAddressable], key: .ownerOfThingsKey))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

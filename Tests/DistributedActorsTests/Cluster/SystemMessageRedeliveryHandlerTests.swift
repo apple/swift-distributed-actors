@@ -55,7 +55,7 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemXCTestCase {
 //        self.readRecorder = ReadRecorder()
 //        self.writeRecorder = WriteRecorder(self.system)
 //
-//        self.mockSystemMessage = .watch(watchee: system.deadLetters.asAddressable(), watcher: self.system.deadLetters.asAddressable())
+//        self.mockSystemMessage = .watch(watchee: system.deadLetters.asAddressable, watcher: self.system.deadLetters.asAddressable)
 //
 //        let outbound = OutboundSystemMessageRedelivery()
 //        let inbound = InboundSystemMessages()
