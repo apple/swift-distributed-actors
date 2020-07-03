@@ -231,7 +231,7 @@ public class OperationLogClusterReceptionist {
             // === listen to cluster events ------------------
             context.system.cluster.events.subscribe(
                 context.subReceive(Cluster.Event.self) { event in
-                    try self.onClusterEvent(context, event: event)
+                    self.onClusterEvent(context, event: event)
                 }
             )
 
@@ -718,7 +718,7 @@ extension OperationLogClusterReceptionist {
 // MARK: Handle Cluster Events
 
 extension OperationLogClusterReceptionist {
-    private func onClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) throws {
+    private func onClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) {
         switch event {
         case .snapshot(let snapshot):
             let diff = Cluster.Membership._diff(from: .empty, to: snapshot)
@@ -731,8 +731,8 @@ extension OperationLogClusterReceptionist {
                     "membership/changes": "\(diff.changes)",
                 ]
             )
-            try diff.changes.forEach { change in
-                try self.onClusterEvent(context, event: .membershipChange(change))
+            diff.changes.forEach { change in
+                self.onClusterEvent(context, event: .membershipChange(change))
             }
 
         case .membershipChange(let change):
