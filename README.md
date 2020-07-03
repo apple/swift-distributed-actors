@@ -49,11 +49,10 @@ open .build/docs/api/...-dev/index.html
 
 Swift: 
 
-- Swift 5.1+
-  - if you need Swift 5.0 support, let us know
+- Swift 5.2+ (including 5.3-dev)
 
 Operating Systems:
 
 - Linux systems (Ubuntu and friends)
 - macOS
-- should work but not verified: iOS, iPadOS (get in touch if you need it)
+- should work, but not actively focusing on: iOS, iPadOS (get in touch if you need it)
