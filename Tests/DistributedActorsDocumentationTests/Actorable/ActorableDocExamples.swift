@@ -98,7 +98,7 @@ struct UseActorWithContext {
         } // <1>
 
         // or
-        _ = try system.spawn("anotherWithContext", ContextGreeter.init) // <2>
+        try system.spawn("anotherWithContext", ContextGreeter.init) // <2>
         // end::spawn_with_context_1[]
         _ = greeter
     }

@@ -296,7 +296,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             p.tell("postStop")
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         try p.expectMessage("postStop")
     }
@@ -855,7 +855,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            _ = try context.spawnWatch("child", Behavior<String>.stop)
+            try context.spawnWatch("child", Behavior<String>.stop)
             return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -896,7 +896,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            _ = try context.spawnWatch("child", Behavior<String>.stop)
+            try context.spawnWatch("child", Behavior<String>.stop)
             return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -937,7 +937,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         promise.succeed(1)
         try probe.expectMessage(1)
@@ -964,7 +964,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         promise.fail(error)
         _ = try probe.expectMessage()
@@ -1030,7 +1030,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         promise.succeed(1)
         try resultProbe.expectMessage(1)
@@ -1132,7 +1132,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        try system.spawn(.anonymous, behavior)
 
         promise.succeed(1)
         try probe.expectMessage(1)

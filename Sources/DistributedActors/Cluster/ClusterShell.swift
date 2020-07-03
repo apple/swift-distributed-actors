@@ -399,13 +399,13 @@ extension ClusterShell {
             // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
-                _ = try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
+                try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
             }
 
             // .down decisions made by:
             if let downing = clusterSettings.downingStrategy.make(context.system.cluster.settings) {
                 let shell = DowningStrategyShell(downing)
-                _ = try context.spawn(shell.naming, shell.behavior)
+                try context.spawn(shell.naming, shell.behavior)
             }
 
             // FIXME: all the ordering dance with creating of state and the address...
@@ -431,7 +431,7 @@ extension ClusterShell {
                         style: .acknowledged(timeout: clusterSettings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
                             let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
-                            return context.system._resolve(context: resolveContext).asAddressable()
+                            return context.system._resolve(context: resolveContext).asAddressable
                     })
                     ),
                     props: ._wellKnown,

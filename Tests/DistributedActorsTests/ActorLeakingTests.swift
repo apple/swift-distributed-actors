@@ -151,7 +151,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             } else {
                 for _ in 1 ... childCount {
                     let b: Behavior<String> = .receiveMessage { _ in .same }
-                    _ = try context.spawn(.anonymous, b)
+                    try context.spawn(.anonymous, b)
                 }
                 return .same
             }

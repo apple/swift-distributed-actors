@@ -15,22 +15,8 @@
 import Dispatch
 import NIO
 
-internal protocol ChildActorRefFactory: ActorRefFactory {
-    var children: Children { get set } // lock-protected
-
-    func spawn<Message>(
-        _ naming: ActorNaming, of messageType: Message.Type, props: Props,
-        file: String, line: UInt,
-        _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message>
-        where Message: ActorMessage
-
-    func stop<Message>(child ref: ActorRef<Message>) throws
-        where Message: ActorMessage
-}
-
 internal enum Child {
-    case cell(AbstractActor)
+    case cell(AbstractShellProtocol)
     case adapter(AbstractAdapter)
 }
 
@@ -44,7 +30,7 @@ public class Children {
     private typealias Name = String
 
     private var container: [Name: Child]
-    private var stopping: [ActorAddress: AbstractActor]
+    private var stopping: [ActorAddress: AbstractShellProtocol]
     // **CAUTION**: All access to `container` or `stopping` must be protected by `rwLock`
     private let rwLock: ReadWriteLock
 
@@ -271,7 +257,7 @@ extension Children: _ActorTreeTraversable {
         case .some(.adapter(let child)):
             return child._resolveUntyped(context: context.deeper)
         case .none:
-            return context.personalDeadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable
         }
     }
 }
@@ -320,8 +306,7 @@ extension Children {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal shell operations
 
-// TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
-extension ActorShell: ChildActorRefFactory {
+extension ActorShell {
     internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
@@ -341,7 +326,7 @@ extension ActorShell: ChildActorRefFactory {
 
         let actor: ActorShell<M> = ActorShell<M>(
             system: self.system,
-            parent: self.myself.asAddressable(),
+            parent: self.myself.asAddressable,
             behavior: behavior,
             address: address,
             props: props,
@@ -370,9 +355,9 @@ extension ActorShell: ChildActorRefFactory {
     internal func _stop<T>(child ref: ActorRef<T>) throws {
         guard ref.address.path.isChildPathOf(self.address.path) else {
             if ref.address == self.myself.address {
-                throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable())
+                throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable)
             } else {
-                throw ActorContextError.attemptedStoppingNonChildActor(ref: ref.asAddressable())
+                throw ActorContextError.attemptedStoppingNonChildActor(ref: ref.asAddressable)
             }
         }
 

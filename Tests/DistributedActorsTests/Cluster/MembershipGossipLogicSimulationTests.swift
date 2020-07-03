@@ -309,7 +309,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             let ref: ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> =
                 try system.spawn("peer", .receiveMessage { _ in .same })
             return self.systems.first!._resolveKnownRemote(ref, onRemoteSystem: system)
-        }.map { $0.asAddressable() }
+        }.map { $0.asAddressable }
 
         var log = self.systems.first!.log
         log[metadataKey: "actor/path"] = "/user/peer" // mock actor path for log capture

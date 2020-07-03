@@ -262,12 +262,12 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
-            return context.personalDeadLetters.asAddressable() // i.e. we resolved a "dead reference" as it points to nothing
+            return context.personalDeadLetters.asAddressable // i.e. we resolved a "dead reference" as it points to nothing
         }
         switch selector.value {
         case "system": return self.systemTree._resolveUntyped(context: context)
         case "user": return self.userTree._resolveUntyped(context: context)
-        case "dead": return context.personalDeadLetters.asAddressable()
+        case "dead": return context.personalDeadLetters.asAddressable
         default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }

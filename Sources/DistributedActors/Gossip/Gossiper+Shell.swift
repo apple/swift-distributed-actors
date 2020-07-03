@@ -103,7 +103,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 
         let logic = self.getEnsureLogic(context, identifier: identifier)
 
-        let ack: Acknowledgement? = logic.receiveGossip(payload, from: origin.asAddressable())
+        let ack: Acknowledgement? = logic.receiveGossip(payload, from: origin.asAddressable)
 
         switch self.settings.style {
         case .acknowledged:
@@ -181,7 +181,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
             self.ensureNextGossipRound(context)
         }
 
-        let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable() } // TODO: some protocol Addressable so we can avoid this mapping?
+        let allPeers: [AddressableActorRef] = Array(self.peers).map { $0.asAddressable } // TODO: some protocol Addressable so we can avoid this mapping?
 
         guard !allPeers.isEmpty else {
             // no members to gossip with, skip this round

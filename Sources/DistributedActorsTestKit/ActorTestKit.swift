@@ -389,18 +389,24 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
         .init() // mock impl
     }
 
-    override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        super.watch(watchee, with: terminationMessage, file: file, line: line)
-    }
-
-    override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+    @discardableResult
+    override func watch<Watchee>(
+        _ watchee: Watchee,
+        with terminationMessage: Message? = nil,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee: DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func unwatch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+    @discardableResult
+    override func unwatch<Watchee>(
+        _ watchee: Watchee,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee: DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
+    @discardableResult
     override func spawn<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,
@@ -410,6 +416,7 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
+    @discardableResult
     override func spawnWatch<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,

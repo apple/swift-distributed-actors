@@ -76,7 +76,7 @@ enum GuestListener {
     }
 }
 
-_ = try system.spawn("listener", GuestListener.behavior)
+try system.spawn("listener", GuestListener.behavior)
 
 let owner = try system.spawn("owner", HotelOwner.behavior)
 owner.tell(actors)

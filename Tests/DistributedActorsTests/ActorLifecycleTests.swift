@@ -43,7 +43,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
 
         let ex = try shouldThrow {
             let unhandledBehavior: Behavior<String> = .unhandled
-            _ = try system.spawn("unhandled", unhandledBehavior)
+            try system.spawn("unhandled", unhandledBehavior)
         }
 
         "\(ex)".shouldEqual("notAllowedAsInitial(DistributedActors.Behavior<Swift.String>.unhandled)")
@@ -55,7 +55,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
                 let b: Behavior<String> = .ignore
 
                 // more coverage for all the different chars in [[ActorPathTests]]
-                _ = try system.spawn(.unique(illegalName), b)
+                try system.spawn(.unique(illegalName), b)
             }
             "\(err)".shouldEqual(expectedError)
         }

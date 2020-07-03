@@ -38,7 +38,7 @@ case "echo":
     }
 
 case "letItCrash":
-    _ = try system.spawn("watcher") { ActorableWatcher(context: $0, service: xpcGreetingsActor) }
+    try system.spawn("watcher") { ActorableWatcher(context: $0, service: xpcGreetingsActor) }
     // the watcher watches service when it starts
     xpcGreetingsActor.letItCrash()
 

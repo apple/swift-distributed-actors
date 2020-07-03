@@ -56,7 +56,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn(
+        try system.spawn(
             "watcher",
             of: String.self,
             .setup { context in
@@ -84,7 +84,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn(
+        try system.spawn(
             "watcher",
             of: String.self,
             .setup { context in
@@ -114,7 +114,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz0", self.stopOnAnyMessage(probe: p.ref))
 
-        _ = try system.spawn(
+        try system.spawn(
             "watcher",
             of: String.self,
             .setup { context in
@@ -241,7 +241,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         try probe.expectMessage("reply:hi")
 
         // internal hacks
-        let fakeTerminated: _SystemMessage = .terminated(ref: juliet.asAddressable(), existenceConfirmed: true)
+        let fakeTerminated: _SystemMessage = .terminated(ref: juliet.asAddressable, existenceConfirmed: true)
         romeo._sendSystemMessage(fakeTerminated)
 
         try probe.expectTerminated(romeo)
@@ -296,7 +296,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
         try probe.expectMessage("reply:unwatch")
 
         // internal hacks; we simulate that Juliet has terminated, and enqueued the .terminated before the unwatch managed to reach her
-        let fakeTerminated: _SystemMessage = .terminated(ref: juliet.asAddressable(), existenceConfirmed: true)
+        let fakeTerminated: _SystemMessage = .terminated(ref: juliet.asAddressable, existenceConfirmed: true)
         romeo._sendSystemMessage(fakeTerminated)
 
         // should NOT trigger the receiveSignal handler (which notifies the probe)
@@ -355,7 +355,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
 
         juliet.tell(.takePoison)
 
-        try p.expectTerminatedInAnyOrder([juliet.asAddressable(), romeo.asAddressable()])
+        try p.expectTerminatedInAnyOrder([juliet.asAddressable, romeo.asAddressable])
     }
 
     func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeThrows() throws {
@@ -391,7 +391,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
 
         juliet.tell(.takePoison)
 
-        try p.expectTerminatedInAnyOrder([juliet.asAddressable(), romeo.asAddressable()])
+        try p.expectTerminatedInAnyOrder([juliet.asAddressable, romeo.asAddressable])
     }
 
     struct TakePoisonError: Error {}

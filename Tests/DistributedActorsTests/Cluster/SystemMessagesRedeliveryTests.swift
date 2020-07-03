@@ -269,7 +269,7 @@ final class SystemMessagesRedeliveryTests: ActorSystemXCTestCase {
 
         try validateRoundTrip(_SystemMessage.ACK(sequenceNr: 1337))
         try validateRoundTrip(_SystemMessage.NACK(sequenceNr: 1337))
-        let ref = system.deadLetters.asAddressable()
+        let ref = system.deadLetters.asAddressable
         try validateRoundTrip(SystemMessageEnvelope(sequenceNr: 1337, message: .watch(watchee: ref, watcher: ref)))
     }
 

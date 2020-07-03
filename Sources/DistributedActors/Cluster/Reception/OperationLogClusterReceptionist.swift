@@ -703,7 +703,7 @@ extension OperationLogClusterReceptionist {
 
     private func onActorTerminated(_ context: ActorContext<Message>, address: ActorAddress) {
         let equalityHackRef = ActorRef<Never>(.deadLetters(.init(context.log, address: address, system: nil)))
-        let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAddressable())
+        let wasRegisteredWithKeys = self.storage.removeFromKeyMappings(equalityHackRef.asAddressable)
 
         for key in wasRegisteredWithKeys.registeredUnderKeys {
             self.addOperation(context, .remove(key: key, address: address))

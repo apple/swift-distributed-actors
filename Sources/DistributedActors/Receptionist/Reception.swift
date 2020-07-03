@@ -58,7 +58,7 @@ extension Reception {
 
         internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
             let ref: ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
-            return ref.asAddressable()
+            return ref.asAddressable
         }
 
         internal var asAnyKey: AnyReceptionKey {
