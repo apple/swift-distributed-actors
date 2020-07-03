@@ -26,6 +26,8 @@ import NIO
 /// - SeeAlso: `DeathWatch`
 public protocol DeathWatchable: AddressableActor {}
 
+extension ActorContext: DeathWatchProtocol {}
+
 public protocol DeathWatchProtocol {
     associatedtype Message: ActorMessage
 

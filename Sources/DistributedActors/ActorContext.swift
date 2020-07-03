@@ -19,7 +19,7 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message: ActorMessage>: ChildActorRefFactory, DeathWatchProtocol {
+public class ActorContext<Message: ActorMessage> {
     public typealias Myself = ActorRef<Message>
 
     /// Returns `ActorSystem` which this context belongs to.
@@ -118,13 +118,14 @@ public class ActorContext<Message: ActorMessage>: ChildActorRefFactory, DeathWat
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 
+    @discardableResult
     public func spawn<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
         where M: ActorMessage {
-        return undefined()
+        undefined()
     }
 
     /// Spawn a child actor and start watching it to get notified about termination.
@@ -139,7 +140,7 @@ public class ActorContext<Message: ActorMessage>: ChildActorRefFactory, DeathWat
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
         where M: ActorMessage {
-        return undefined()
+        undefined()
     }
 
     /// Container of spawned child actors.

@@ -60,9 +60,43 @@ public protocol ActorRefFactory {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ChildActorRefFactory
 
-internal protocol ChildActorRefFactory: ActorRefFactory {
+public protocol ChildActorRefFactory: ActorRefFactory {
     var children: Children { get set } // lock-protected
 
     func stop<Message>(child ref: ActorRef<Message>) throws
         where Message: ActorMessage
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor.Context + ActorFactory
+
+extension Actor.Context: ChildActorRefFactory {
+    public var children: Children {
+        get {
+            self._underlying.children
+        }
+        set {
+            self._underlying.children = newValue
+        }
+    }
+
+    public func stop<Message>(child ref: ActorRef<Message>) throws where Message: Codable {
+        try self._underlying.stop(child: ref)
+    }
+
+    @discardableResult
+    public func spawn<Message>(
+        _ naming: ActorNaming,
+        of type: Message.Type,
+        props: Props,
+        file: String, line: UInt,
+        _ behavior: Behavior<Message>
+    ) throws -> ActorRef<Message> where Message: Codable {
+        try self.spawn(naming, of: type, props: props, file: file, line: line, behavior)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorContext + ActorFactory: implementation is in ActorShell
+
+extension ActorContext: ChildActorRefFactory {}

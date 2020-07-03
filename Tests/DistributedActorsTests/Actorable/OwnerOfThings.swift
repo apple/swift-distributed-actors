@@ -20,14 +20,17 @@ struct OwnerOfThings: Actorable {
     }
 
     let context: Myself.Context
+    let probe: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>
     let ownedListing: ActorableOwned<Reception.Listing<Actor<OwnerOfThings>>>!
 
     init(
-        context: Myself.Context, probe: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>,
+        context: Myself.Context,
+        probe: ActorRef<Reception.Listing<Actor<OwnerOfThings>>>,
         onOwnedListingUpdated: @escaping (ActorRef<Reception.Listing<Actor<OwnerOfThings>>>, Reception.Listing<Actor<OwnerOfThings>>) -> Void = { $0.tell($1) }
     ) {
         self.context = context
-        context.receptionist.registerMyself(with: .ownerOfThingsKey)
+        self.probe =
+            context.receptionist.registerMyself(with: .ownerOfThingsKey)
 
         self.ownedListing = context.receptionist.autoUpdatedListing(.ownerOfThingsKey)
         self.ownedListing.onUpdate { newValue in
@@ -61,6 +64,13 @@ struct OwnerOfThings: Actorable {
         self.context.receptionist.subscribeMyself(to: .ownerOfThingsKey) {
             p.tell($0)
         }
+    }
+
+    func testSpawning() throws {
+        try self.context.spawn("a") { OwnerOfThings(context: $0, probe: self.probe) }
+        try self.context.spawn("b", props: Props(), .receiveMessage { _ in
+            .stop
+        })
     }
 }
 

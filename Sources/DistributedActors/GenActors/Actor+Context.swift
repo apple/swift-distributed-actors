@@ -24,6 +24,8 @@ extension Actor {
     ///
     /// The `Actor<Act>.Context` is the `Actorable` equivalent of `ActorContext<Message>`, which is designed to work with the low-level `Behavior` types.
     public struct Context {
+        public typealias Message = Self.Myself.Message
+
         /// Only public to enable workarounds while all APIs gain Actor/Actorable style versions.
         public let _underlying: ActorContext<Act.Message>
 
@@ -142,65 +144,22 @@ extension Actor.Context {
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: Actor<Act>.Context + Death Watch
 
-extension Actor.Context {
-    /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
-    /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
-    ///
-    /// There is no difference between keeping the passed in reference or using the returned ref from this method.
-    /// The actor is the being watched subject, not a specific reference to it.
-    ///
-    /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
-    /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
-    /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
-    /// the lovers each kill themselves, thinking the other has died.
-    ///
-    /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> Behavior<Message>)` method,
-    /// which gives this actor the ability to react to the watchee's death in some other fashion,
-    /// for example by saying some nice words about its life, or spawning a "replacement" of watchee in its' place.
-    ///
-    /// When the `.terminated` signal is handled by this actor, the automatic death pact will not be triggered.
-    /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
-    /// and the Death Pact will trigger as usual.
-    ///
-    ///
-    /// # Examples:
-    ///
-    ///     // watch some known ActorRef<M>
-    ///     context.watch(someRef)
-    ///
-    ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
-    ///     let child = try context.watch(context.spawn("child", (behavior)))
-    ///
-    /// #### Concurrency:
-    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
+extension Actor.Context: DeathWatchProtocol {
     @discardableResult
-    public func watch<Act>(_ watchee: Actor<Act>, file: String = #file, line: UInt = #line) -> Actor<Act> { // TODO: fix signature, should the watchee
-        _ = self._underlying.watch(watchee.ref, file: file, line: line)
-        return watchee
+    public func watch<Watchee>(
+        _ watchee: Watchee,
+        with terminationMessage: Message?,
+        file: String, line: UInt
+    ) -> Watchee where Watchee: DeathWatchable {
+        self._underlying.watch(watchee, with: terminationMessage, file: file, line: line)
     }
 
-    internal func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
-        self._underlying.watch(watchee, file: file, line: line)
-    }
-
-    /// Reverts the watching of an previously watched actor.
-    ///
-    /// Unwatching a not-previously-watched actor has no effect.
-    ///
-    /// ### Semantics for in-flight Terminated signals
-    ///
-    /// After invoking `unwatch`, even if a `Signals.Terminated` signal was already enqueued at this actors
-    /// mailbox; this signal would NOT be delivered to the `onSignal` behavior, since the intent of no longer
-    /// watching the terminating actor takes immediate effect.
-    ///
-    /// #### Concurrency:
-    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
-    ///
-    /// - Returns: the passed in watchee reference for easy chaining `e.g. context.unwatch(ref)`
     @discardableResult
-    public func unwatch<Act>(_ watchee: Actor<Act>, file: String = #file, line: UInt = #line) -> Actor<Act> {
-        _ = self._underlying.unwatch(watchee.ref, file: file, line: line)
-        return watchee
+    public func unwatch<Watchee>(
+        _ watchee: Watchee,
+        file: String, line: UInt
+    ) -> Watchee where Watchee: DeathWatchable {
+        self._underlying.unwatch(watchee, file: file, line: line)
     }
 }
 
