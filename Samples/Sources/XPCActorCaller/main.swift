@@ -41,7 +41,7 @@ reply.withTimeout(after: .seconds(3))._onComplete {
     system.log.info("Reply from service.greet(Capybara) = \($0)")
 }
 
-system.park()
+try! system.park()
 
 // end::xpc_example[]
 #endif

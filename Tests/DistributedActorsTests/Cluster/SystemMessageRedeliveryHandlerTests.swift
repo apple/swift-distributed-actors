@@ -162,7 +162,7 @@ final class SystemMessageRedeliveryHandlerTests: ActorSystemXCTestCase {
 //
 //        let settings = OutboundSystemMessageRedeliverySettings()
 //        let system = ActorSystem("OtherSystem") // formatting is such specific to align names in printout
-//        defer { system.shutdown().wait() }
+//        defer { try! system.shutdown().wait() }
 //
 //        var lossySettings = FaultyNetworkSimulationSettings(mode: .drop(probability: 0.25))
 //        lossySettings.label = "    (DROP)    :" // formatting is such specific to align names in printout

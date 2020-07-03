@@ -65,7 +65,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
         p.watch(ref1)
         p.watch(ref2)
 
-        system2.shutdown().wait()
+        try system2.shutdown().wait()
 
         try p.expectTerminatedInAnyOrder([ref1.asAddressable, ref2.asAddressable])
 
@@ -104,7 +104,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
 
         p.watch(selfSender)
 
-        system2.shutdown().wait()
+        try system2.shutdown().wait()
 
         try p.expectTerminated(selfSender)
     }
@@ -117,5 +117,16 @@ final class ActorSystemTests: ActorSystemXCTestCase {
 
         ref.address.path.shouldEqual(ActorPath._dead.appending(segments: path.segments))
         ref.address.incarnation.shouldEqual(address.incarnation)
+    }
+
+    func test_shutdown_callbackShouldBeInvoked() throws {
+        let system = ActorSystem("ShutMeDown")
+        let receptacle = BlockingReceptacle<Error?>()
+
+        system.shutdown(afterShutdownCompleted: { error in
+            receptacle.offerOnce(error)
+        })
+
+        receptacle.wait(atMost: .seconds(3))!.shouldBeNil()
     }
 }

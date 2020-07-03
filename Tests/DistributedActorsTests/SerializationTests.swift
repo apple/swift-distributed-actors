@@ -304,10 +304,10 @@ class SerializationTests: ActorSystemXCTestCase {
             echo.tell("hi!") // is a built-in serializable message
             try p.expectMessage("echo:hi!")
         } catch {
-            s2.shutdown().wait()
+            try! s2.shutdown().wait()
             throw error
         }
-        s2.shutdown().wait()
+        try! s2.shutdown().wait()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -408,7 +408,7 @@ class SerializationTests: ActorSystemXCTestCase {
             settings.serialization.register(PListXMLCodableTest.self, serializerID: .foundationPropertyListBinary) // on purpose "wrong" format
         }
         defer {
-            system2.shutdown().wait()
+            try! system2.shutdown().wait()
         }
 
         _ = try shouldThrow {

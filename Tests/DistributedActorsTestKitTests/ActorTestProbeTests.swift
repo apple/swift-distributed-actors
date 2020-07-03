@@ -26,7 +26,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown().wait()
+        try! self.system.shutdown().wait()
     }
 
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {

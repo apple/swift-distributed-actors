@@ -214,7 +214,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             }
         )
 
-        system.shutdown().wait()
+        try! system.shutdown().wait()
 
         _ = ref.ask(for: String.self, timeout: .milliseconds(300)) { replyTo in
             TestMessage(replyTo: replyTo)

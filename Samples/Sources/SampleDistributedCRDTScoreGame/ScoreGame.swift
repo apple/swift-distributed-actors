@@ -62,7 +62,7 @@ struct ScoreGame {
         // which other non participants may observe as well.
         _ = try first.spawn("game-engine", self.game(with: players))
 
-        first.park(atMost: time)
+        try first.park(atMost: time)
     }
 }
 

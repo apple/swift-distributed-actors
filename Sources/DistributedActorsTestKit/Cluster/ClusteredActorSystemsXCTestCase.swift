@@ -104,7 +104,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
             self.printAllCapturedLogs()
         }
 
-        self._nodes.forEach { $0.shutdown().wait() }
+        self._nodes.forEach { try! $0.shutdown().wait() }
 
         self._nodes = []
         self._testKits = []

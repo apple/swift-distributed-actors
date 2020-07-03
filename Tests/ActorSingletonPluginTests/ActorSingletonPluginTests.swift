@@ -26,7 +26,7 @@ final class ActorSingletonPluginTests: ActorSystemXCTestCase {
         }
 
         defer {
-            system.shutdown().wait()
+            try! system.shutdown().wait()
         }
 
         let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
@@ -50,7 +50,7 @@ final class ActorSingletonPluginTests: ActorSystemXCTestCase {
         }
 
         defer {
-            system.shutdown().wait()
+            try! system.shutdown().wait()
         }
 
         let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)

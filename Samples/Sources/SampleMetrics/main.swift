@@ -104,5 +104,5 @@ for i in 1 ... 10 {
 
 Thread.sleep(.seconds(100))
 
-system.shutdown().wait()
+try! system.shutdown().wait()
 print("~~~~~~~~~~~~~~~ SHUTTING DOWN ~~~~~~~~~~~~~~~")
