@@ -18,9 +18,15 @@ import protocol NIO.EventLoop
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Addressable (but not tell-able) ActorRef
 
-/// Type erased form of `AddressableActorRef` in order to be used as existential type. // TODO: comment wrong?
-/// This form allows us to check for "is this the same actor?" yet not send messages to it.
-public struct AddressableActorRef: Hashable {
+/// Represents an actor which we know existed at some point in time and this represents its type-erased reference.
+///
+/// An `AddressableActorRef` can be used as type-eraser for specific actor references (be it `Actor` or `ActorRef` based),
+/// as they may still be compared with the `AddressableActorRef` by comparing their respective addressable.
+///
+/// This enables an `AddressableActorRef` to be useful for watching, storing and comparing actor references of various types with another.
+/// Note that unlike a plain `ActorAddress` an `AddressableActorRef` still DOES hold an actual reference to the pointed to actor,
+/// even though it is not able to send messages to it (due to the lack of type-safety when doing so).
+public struct AddressableActorRef: DeathWatchable, Hashable {
     @usableFromInline
     enum RefType {
         case remote
@@ -56,6 +62,10 @@ public struct AddressableActorRef: Hashable {
 
     public var address: ActorAddress {
         self.ref.address
+    }
+
+    public var asAddressable: AddressableActorRef {
+        self
     }
 
     func asReceivesSystemMessages() -> _ReceivesSystemMessages {

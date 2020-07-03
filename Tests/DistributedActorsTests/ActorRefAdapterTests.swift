@@ -186,7 +186,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
         try probe.expectMessage("received:test")
 
         ref.tell(.stop)
-        try probe.expectTerminatedInAnyOrder([ref.asAddressable(), adaptedRef.asAddressable()])
+        try probe.expectTerminatedInAnyOrder([ref.asAddressable, adaptedRef.asAddressable])
     }
 
     func test_adaptedRef_newAdapterShouldReplaceOld() throws {

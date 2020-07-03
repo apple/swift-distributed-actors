@@ -34,7 +34,7 @@ internal struct PeriodicBroadcast {
     typealias Ref<M: ActorMessage> = ActorRef<PeriodicBroadcastShell<M>.Message>
 
     static func start<ParentMessage, Payload>(_ context: ActorContext<ParentMessage>, of type: Payload.Type = Payload.self) throws -> PeriodicBroadcastControl<Payload> {
-        let ref = try context.spawn(.periodicBroadcast, of: PeriodicBroadcastShell<Payload>.Message.self, PeriodicBroadcastShell().behavior(parent: context.myself.asAddressable()))
+        let ref = try context.spawn(.periodicBroadcast, of: PeriodicBroadcastShell<Payload>.Message.self, PeriodicBroadcastShell().behavior(parent: context.myself.asAddressable))
         return PeriodicBroadcastControl(ref)
     }
 }

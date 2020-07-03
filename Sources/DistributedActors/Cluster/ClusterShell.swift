@@ -431,7 +431,7 @@ extension ClusterShell {
                         style: .acknowledged(timeout: clusterSettings.membershipGossipInterval),
                         peerDiscovery: .onClusterMember(atLeast: .joining, resolve: { member in
                             let resolveContext = ResolveContext<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message>(address: ._clusterGossip(on: member.uniqueNode), system: context.system)
-                            return context.system._resolve(context: resolveContext).asAddressable()
+                            return context.system._resolve(context: resolveContext).asAddressable
                     })
                     ),
                     props: ._wellKnown,

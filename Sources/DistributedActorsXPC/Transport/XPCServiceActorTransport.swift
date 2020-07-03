@@ -67,7 +67,7 @@ public final class XPCServiceActorTransport: ActorTransport {
 
         let delegate = ActorRef<Never>(
             .delegate(XPCProxiedRefDelegate(system: context.system, origin: xpcConnection, address: context.address))
-        ).asAddressable()
+        ).asAddressable
         try! _file.append("\(#file):\(#line) DELEGATE: \(delegate)\n")
         return delegate
     }

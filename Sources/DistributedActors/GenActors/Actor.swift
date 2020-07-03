@@ -22,7 +22,7 @@ import NIO
 /// All function calls made on this object are turned into message sends and delivered *asynchronously* to the underlying actor.
 ///
 /// It is safe (including thread-safe) to share the `Actor` object with other threads, as well as to share it across the network.
-public struct Actor<Act: Actorable>: ActorMessage {
+public struct Actor<Act: Actorable>: Codable {
     public typealias Message = Act.Message
     public typealias Myself = Actor<Act>
     public typealias Behavior = DistributedActors.Behavior<Act.Message>
@@ -30,6 +30,12 @@ public struct Actor<Act: Actorable>: ActorMessage {
     /// Underlying `ActorRef` to the actor running the `Actorable` behavior.
     public let ref: ActorRef<Act.Message>
 
+    public init(ref: ActorRef<Act.Message>) {
+        self.ref = ref
+    }
+}
+
+extension Actor {
     public var address: ActorAddress {
         self.ref.address
     }
@@ -38,12 +44,20 @@ public struct Actor<Act: Actorable>: ActorMessage {
         self.ref.address.path
     }
 
-    public init(ref: ActorRef<Act.Message>) {
-        self.ref = ref
+    public var name: String {
+        self.ref.address.path.name
     }
 }
 
 extension Actor: Hashable {}
+
+extension Actor: AddressableActor {
+    public var asAddressable: AddressableActorRef {
+        self._ref.asAddressable
+    }
+}
+
+extension Actor: DeathWatchable {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorProtocol

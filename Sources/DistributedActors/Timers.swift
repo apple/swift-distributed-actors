@@ -157,7 +157,7 @@ public class Timers<Message: ActorMessage> {
         self.cancel(for: key)
 
         let generation = self.nextTimerGen()
-        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.asAddressable())
+        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.asAddressable)
         let handle: Cancelable
         let cb = self.timerCallback
         if repeated {
@@ -240,7 +240,7 @@ internal extension Timers {
             traceLog_Supervision("executing the task ::: \(context.myself)")
 
             // TODO: avoid the box part?
-            context.myself.asAddressable()._sendSystemMessage(.resume(.success(token)))
+            context.myself.asAddressable._sendSystemMessage(.resume(.success(token)))
         }
 
         traceLog_Supervision("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)")

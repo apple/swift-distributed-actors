@@ -61,7 +61,7 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     }
 
     private var myselfAddressable: AddressableActorRef {
-        ActorRef<Never>(.adapter(self)).asAddressable()
+        ActorRef<Never>(.adapter(self)).asAddressable
     }
 
     var system: ActorSystem? {
@@ -174,7 +174,7 @@ extension ActorRefAdapter {
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
-            return context.personalDeadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable
         }
 
         return self.myselfAddressable
@@ -227,7 +227,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
-        self.deadLetters.asAddressable()
+        self.deadLetters.asAddressable
     }
 }
 
@@ -276,7 +276,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
         case .unwatch(let watchee, let watcher):
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
-            self.removeWatcher(watchee: self.myself.asAddressable(), watcher: ref) // note: this was nice, always is correct after all now
+            self.removeWatcher(watchee: self.myself.asAddressable, watcher: ref) // note: this was nice, always is correct after all now
         case .nodeTerminated, .childTerminated, .carrySignal, .resume, .start, .stop, .tombstone:
             () // ignore all other messages // TODO: why?
         }
@@ -333,15 +333,15 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
     }
 
     private func watch(_ watchee: AddressableActorRef) {
-        watchee._sendSystemMessage(.watch(watchee: watchee, watcher: self.myself.asAddressable()))
+        watchee._sendSystemMessage(.watch(watchee: watchee, watcher: self.myself.asAddressable))
     }
 
     private func unwatch(_ watchee: AddressableActorRef) {
-        watchee._sendSystemMessage(.unwatch(watchee: watchee, watcher: self.myself.asAddressable()))
+        watchee._sendSystemMessage(.unwatch(watchee: watchee, watcher: self.myself.asAddressable))
     }
 
     private func sendTerminated(_ ref: AddressableActorRef) {
-        ref._sendSystemMessage(.terminated(ref: self.myself.asAddressable(), existenceConfirmed: true, addressTerminated: false))
+        ref._sendSystemMessage(.terminated(ref: self.myself.asAddressable, existenceConfirmed: true, addressTerminated: false))
     }
 
     func stop() {
@@ -365,7 +365,7 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
 extension SubReceiveAdapter {
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
-        switch visit(context, self.myself.asAddressable()) {
+        switch visit(context, self.myself.asAddressable) {
         case .continue:
             ()
         case .accumulateSingle(let t):
@@ -395,9 +395,9 @@ extension SubReceiveAdapter {
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
-            return context.personalDeadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable
         }
 
-        return self.myself.asAddressable()
+        return self.myself.asAddressable
     }
 }

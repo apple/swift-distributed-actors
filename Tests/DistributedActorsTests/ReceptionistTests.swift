@@ -205,13 +205,13 @@ final class ReceptionistTests: ActorSystemXCTestCase {
         try lookupProbe.expectMessage(Reception.Listing(refs: [], key: key))
 
         receptionist.register(refA, with: key)
-        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable()], key: key))
+        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable], key: key))
 
         receptionist.register(refB, with: key)
-        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable(), refB.asAddressable()], key: key))
+        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable, refB.asAddressable], key: key))
 
         refB.tell("stop")
-        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable()], key: key))
+        try lookupProbe.expectMessage(Reception.Listing(refs: [refA.asAddressable], key: key))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

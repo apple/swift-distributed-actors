@@ -124,50 +124,8 @@ extension Actor.Context {
     /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
-    public func stop<Child>(child: Actor<Child>) throws where Act: Actorable {
+    public func stop<Child>(child: Actor<Child>) throws where Child: Actorable {
         try self._underlying.stop(child: child.ref)
-    }
-}
-
-// ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Actor<Act>.Context + Spawning
-
-extension Actor.Context {
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
-        let ref = try self._underlying.spawn(
-            naming,
-            of: Child.Message.self,
-            Behavior<Child.Message>.setup { context in
-                Child.makeBehavior(instance: makeActorable(.init(underlying: context)))
-            }
-        )
-        return Actor<Child>(ref: ref)
-    }
-
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Child) throws -> Actor<Child> {
-        let ref: ActorRef = try self._underlying.spawn(naming, of: Child.Message.self, Child.makeBehavior(instance: makeActorable()))
-        return Actor<Child>(ref: ref)
-    }
-
-    /// Spawn a child actor and start watching it to get notified about termination.
-    ///
-    /// For a detailed explanation of the both concepts refer to the `spawn` and `watch` documentation.
-    ///
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    ///
-    /// - SeeAlso: `spawn`
-    /// - SeeAlso: `watch`
-    public func spawnWatch<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
-        let actor = try self.spawn(naming, makeActorable)
-        return self.watch(actor)
-    }
-
-    /// - Warning: The way child actors are available today MAY CHANGE; See: https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3Aga%3Aactor-tree-removal
-    public func spawnWatch<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Child) throws -> Actor<Child> {
-        let actor = try self.spawn(naming, makeActorable)
-        return self.watch(actor)
     }
 }
 

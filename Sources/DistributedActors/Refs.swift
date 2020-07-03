@@ -21,7 +21,7 @@ import struct NIO.ByteBuffer
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message: ActorMessage>: ReceivesMessages, _ReceivesSystemMessages {
+public struct ActorRef<Message: ActorMessage>: ReceivesMessages, DeathWatchable, _ReceivesSystemMessages {
     /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -79,6 +79,11 @@ public struct ActorRef<Message: ActorMessage>: ReceivesMessages, _ReceivesSystem
     }
 }
 
+/// Any actor which is able to erase itself into an untyped `AddressableActorRef`.
+public protocol AddressableActor {
+    var asAddressable: AddressableActorRef { get }
+}
+
 public extension ActorRef {
     /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
     ///
@@ -86,7 +91,7 @@ public extension ActorRef {
     /// messages to such identified actor via this reference type.
     ///
     /// - SeeAlso: `AddressableActorRef` for a detailed discussion of its typical use-cases.
-    func asAddressable() -> AddressableActorRef {
+    var asAddressable: AddressableActorRef {
         AddressableActorRef(self)
     }
 }
@@ -677,7 +682,7 @@ extension Guardian: _ActorTreeTraversable {
         let children: Children = self.children
 
         var c = context.deeper
-        switch visit(context, self.ref.asAddressable()) {
+        switch visit(context, self.ref.asAddressable) {
         case .continue:
             return children._traverse(context: c, visit)
         case .accumulateSingle(let t):
@@ -711,7 +716,7 @@ extension Guardian: _ActorTreeTraversable {
         if self.name == selector.value {
             return self.children._resolveUntyped(context: context.deeper)
         } else {
-            return context.personalDeadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable
         }
     }
 }

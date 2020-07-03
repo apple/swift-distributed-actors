@@ -27,7 +27,7 @@ import NIO
 /// all actor interactions with messages, user code, and the mailbox itself happen.
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
-public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractActor {
+public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractShellProtocol {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -86,7 +86,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     @usableFromInline
     var asAddressable: AddressableActorRef {
-        self.myself.asAddressable()
+        self.myself.asAddressable
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -534,9 +534,8 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         }
     }
 
-    // MARK: Lifecycle and DeathWatch TODO move death watch things all into an extension
-
-    // TODO: this is also part of lifecycle / supervision... maybe should be in an extension for those
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Lifecycle and DeathWatch interactions
 
     /// This is the final method an ActorCell ever runs.
     ///
@@ -609,15 +608,15 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
         guard case .failed(_, let failure) = self.behavior.underlying else {
             // we are not failed, so no need to further check for .escalate supervision
-            return parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .stopped))
+            return parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable, .stopped))
         }
 
         guard self.supervisor is EscalatingSupervisor<Message> else {
             // NOT escalating
-            return parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .failed(failure)))
+            return parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable, .failed(failure)))
         }
 
-        parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .escalating(failure)))
+        parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable, .escalating(failure)))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -647,24 +646,25 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Death Watch API
+    // MARK: Death Watch
 
-    public override func watch<M>(_ watchee: ActorRef<M>, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        self.watch(watchee.asAddressable(), with: terminationMessage, file: file, line: line)
-        return watchee
-    }
-
-    internal override func watch(_ watchee: AddressableActorRef, with terminationMessage: Message? = nil, file: String = #file, line: UInt = #line) {
+    @discardableResult
+    public override func watch<Watchee>(
+        _ watchee: Watchee,
+        with terminationMessage: Message? = nil,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee: DeathWatchable {
         self.deathWatch.watch(watchee: watchee, with: terminationMessage, myself: self.myself, parent: self._parent, file: file, line: line)
-    }
-
-    public override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
-        self.unwatch(watchee.asAddressable(), file: file, line: line)
         return watchee
     }
 
-    internal override func unwatch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+    @discardableResult
+    public override func unwatch<Watchee>(
+        _ watchee: Watchee,
+        file: String = #file, line: UInt = #line
+    ) -> Watchee where Watchee: DeathWatchable {
         self.deathWatch.unwatch(watchee: watchee, myself: self.myself, file: file, line: line)
+        return watchee
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -818,7 +818,7 @@ extension ActorShell {
         switch next.underlying {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(
-                dead, myself: self.myself.asAddressable(),
+                dead, myself: self.myself.asAddressable,
                 message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(dead)]. " +
                     "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination."
             )
@@ -934,13 +934,13 @@ extension ActorShell: CustomStringConvertible {
 }
 
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
-internal protocol AbstractActor: _ActorTreeTraversable {
+internal protocol AbstractShellProtocol: _ActorTreeTraversable {
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
     var children: Children { get set } // lock-protected
     var asAddressable: AddressableActorRef { get }
 }
 
-extension AbstractActor {
+extension AbstractShellProtocol {
     @inlinable
     var receivesSystemMessages: _ReceivesSystemMessages {
         self._myselfReceivesSystemMessages
@@ -999,7 +999,7 @@ extension AbstractActor {
                 return self.asAddressable
             } else {
                 // the selection was indeed for this path, however we are a different incarnation (or different actor)
-                return context.personalDeadLetters.asAddressable()
+                return context.personalDeadLetters.asAddressable
             }
         }
 

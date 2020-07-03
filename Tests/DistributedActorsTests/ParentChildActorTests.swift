@@ -390,7 +390,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
         child.tell(.throwWhoops)
 
         // since the parent watched the child, it will also terminate
-        try p.expectTerminatedInAnyOrder([child.asAddressable(), parent.asAddressable()])
+        try p.expectTerminatedInAnyOrder([child.asAddressable, parent.asAddressable])
     }
 
     func test_watchedChild_shouldProduceInSingleTerminatedSignal() throws {
@@ -496,7 +496,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
 
         parent.tell(.stop)
 
-        try p.expectTerminatedInAnyOrder([parent.asAddressable(), childRef.asAddressable(), grandchildRef.asAddressable()])
+        try p.expectTerminatedInAnyOrder([parent.asAddressable, childRef.asAddressable, grandchildRef.asAddressable])
     }
 
     func test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren() throws {

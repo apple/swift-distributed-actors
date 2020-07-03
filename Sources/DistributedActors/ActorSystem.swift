@@ -430,61 +430,15 @@ extension ActorSystem: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorRefFactory
-
-/// Public but not intended for user-extension.
-///
-/// An `ActorRefFactory` is able to create ("spawn") new actors and return `ActorRef` instances for them.
-/// Only the `ActorSystem`, `ActorContext` and potentially testing facilities can ever expose this ability.
-public protocol ActorRefFactory {
-    /// Spawn an actor with the given `name`, optional `props` and `behavior`.
-    ///
-    /// ### Naming
-    /// `ActorNaming` is used to determine the actors real name upon spawning;
-    /// A name can be sequentially (or otherwise) assigned based on the owning naming context (i.e. `ActorContext` or `ActorSystem`).
-    ///
-    /// - Returns: `ActorRef` for the spawned actor.
-    func spawn<Message>(
-        _ naming: ActorNaming, of type: Message.Type, props: Props,
-        file: String, line: UInt,
-        _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message>
-        where Message: ActorMessage
-}
-
-// extension ActorRefFactory {
-//    func spawn<Message>(
-//        _ naming: ActorNaming, props: Props,
-//        file: String = #file, line: UInt = #line,
-//        _ behavior: Behavior<Message>
-//    ) throws -> ActorRef<Message> {
-//        try self.spawn(naming, of: Message.self, props: props, file: file, line: line, behavior)
-//    }
-//
-//    func spawn<Message: Codable>(
-//        _ naming: ActorNaming, props: Props,
-//        file: String = #file, line: UInt = #line,
-//        _ behavior: Behavior<Message>
-//    ) throws -> ActorRef<Message> {
-//        try self.spawn(naming, of: Message.self, props: props, file: file, line: line, behavior)
-//    }
-// }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
 
 extension ActorSystem: ActorRefFactory {
-    /// Spawn a new top-level Actor with the given initial behavior and name.
-    ///
-    /// - throws: when the passed behavior is not a legal initial behavior
-    /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
     public func spawn<Message>(
         _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message>
-        where Message: ActorMessage {
-        try self.serialization._ensureSerializer(type, file: file, line: line) // FIXME: do we need to ensure when it is not Codable?
+    ) throws -> ActorRef<Message> where Message: ActorMessage {
+        try self.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
 
@@ -660,7 +614,7 @@ extension ActorSystem: _ActorTreeTraversable {
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
-            return context.personalDeadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable
         }
 
         var resolved: AddressableActorRef?
@@ -677,7 +631,7 @@ extension ActorSystem: _ActorTreeTraversable {
         switch selector.value {
         case "system": return self.systemProvider._resolveUntyped(context: context)
         case "user": return self.userProvider._resolveUntyped(context: context)
-        case "dead": return context.system.deadLetters.asAddressable()
+        case "dead": return context.system.deadLetters.asAddressable
         default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }

@@ -176,7 +176,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
 
         ref.tell("test")
 
-        try p.expectTerminatedInAnyOrder([ref.asAddressable(), subRef.asAddressable()])
+        try p.expectTerminatedInAnyOrder([ref.asAddressable, subRef.asAddressable])
     }
 
     func shared_subReceive_shouldTriggerSupervisionOnFailure(failureMode: SupervisionTests.FailureMode) throws {

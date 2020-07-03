@@ -65,7 +65,9 @@ public class WorkerPool<Message: ActorMessage> {
     // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?
     // TODO: round robin or what strategy?
     public static func spawn(
-        _ factory: ActorRefFactory, _ naming: ActorNaming, props: Props = Props(),
+        _ factory: ActorRefFactory,
+        _ naming: ActorNaming,
+        props: Props = Props(),
         select selector: WorkerPool<Message>.Selector,
         file: String = #file, line: UInt = #line
     ) throws -> WorkerPoolRef<Message> {

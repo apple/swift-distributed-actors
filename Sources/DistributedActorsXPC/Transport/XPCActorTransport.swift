@@ -83,10 +83,10 @@ public final class XPCActorTransport: ActorTransport {
         do {
             return try ActorRef<Never>(
                 .delegate(XPCServiceCellDelegate(system: context.system, address: context.address))
-            ).asAddressable()
+            ).asAddressable
         } catch {
             context.system.log.error("Failed to \(#function) [\(context.address)], error: \(error)")
-            return context.personalDeadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable
         }
     }
 
