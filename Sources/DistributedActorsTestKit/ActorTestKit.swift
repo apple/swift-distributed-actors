@@ -406,6 +406,7 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
+    @discardableResult
     override func spawn<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,
@@ -415,6 +416,7 @@ final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
+    @discardableResult
     override func spawnWatch<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,

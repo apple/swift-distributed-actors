@@ -29,15 +29,13 @@ struct OwnerOfThings: Actorable {
         onOwnedListingUpdated: @escaping (ActorRef<Reception.Listing<Actor<OwnerOfThings>>>, Reception.Listing<Actor<OwnerOfThings>>) -> Void = { $0.tell($1) }
     ) {
         self.context = context
-        self.probe =
-            context.receptionist.registerMyself(with: .ownerOfThingsKey)
+        self.probe = probe
 
+        context.receptionist.registerMyself(with: .ownerOfThingsKey)
         self.ownedListing = context.receptionist.autoUpdatedListing(.ownerOfThingsKey)
         self.ownedListing.onUpdate { newValue in
             onOwnedListingUpdated(probe, newValue)
         }
-
-        context.receptionist.registerMyself(with: .ownerOfThingsKey)
     }
 
     // @actor
@@ -66,11 +64,25 @@ struct OwnerOfThings: Actorable {
         }
     }
 
-    func testSpawning() throws {
+    func testActorableAndBehaviorInterop() throws {
+        // spawning actorable child actors
         try self.context.spawn("a") { OwnerOfThings(context: $0, probe: self.probe) }
-        try self.context.spawn("b", props: Props(), .receiveMessage { _ in
-            .stop
+        try self.context.spawn("a", props: Props()) { OwnerOfThings(context: $0, probe: self.probe) }
+
+        // spawning behavior child actors
+        try self.context.spawn("b", of: String.self, .receiveMessage { _ in .stop })
+        try self.context.spawn(.anonymous, of: String.self, props: Props(), .receiveMessage { _ in .stop })
+
+        // watching: behavior -> actorable
+        let ref = try self.context.spawn(.anonymous, of: String.self, .setup { context in
+            context.watch(self.context.myself)
+            context.unwatch(self.context.myself)
+            return .stop
         })
+
+        // watching: behavior -> actorable
+        self.context.watch(ref)
+        self.context.unwatch(ref)
     }
 }
 

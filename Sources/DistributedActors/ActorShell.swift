@@ -622,8 +622,11 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spawn implementations
 
+    @discardableResult
     public override func spawn<M>(
-        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        _ naming: ActorNaming,
+        of type: M.Type = M.self,
+        props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
@@ -632,8 +635,11 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         return try self._spawn(naming, props: props, behavior)
     }
 
+    @discardableResult
     public override func spawnWatch<Message>(
-        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props,
+        _ naming: ActorNaming,
+        of type: Message.Type = Message.self,
+        props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message>

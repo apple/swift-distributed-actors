@@ -433,6 +433,7 @@ extension ActorSystem: CustomStringConvertible {
 // MARK: Actor creation
 
 extension ActorSystem: ActorRefFactory {
+    @discardableResult
     public func spawn<Message>(
         _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,

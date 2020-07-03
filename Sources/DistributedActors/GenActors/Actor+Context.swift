@@ -148,8 +148,8 @@ extension Actor.Context: DeathWatchProtocol {
     @discardableResult
     public func watch<Watchee>(
         _ watchee: Watchee,
-        with terminationMessage: Message?,
-        file: String, line: UInt
+        with terminationMessage: Message? = nil,
+        file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DeathWatchable {
         self._underlying.watch(watchee, with: terminationMessage, file: file, line: line)
     }
@@ -157,7 +157,7 @@ extension Actor.Context: DeathWatchProtocol {
     @discardableResult
     public func unwatch<Watchee>(
         _ watchee: Watchee,
-        file: String, line: UInt
+        file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DeathWatchable {
         self._underlying.unwatch(watchee, file: file, line: line)
     }

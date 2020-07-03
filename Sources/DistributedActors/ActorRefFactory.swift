@@ -88,8 +88,8 @@ extension Actor.Context: ChildActorRefFactory {
     public func spawn<Message>(
         _ naming: ActorNaming,
         of type: Message.Type,
-        props: Props,
-        file: String, line: UInt,
+        props: Props = Props(),
+        file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message> where Message: Codable {
         try self.spawn(naming, of: type, props: props, file: file, line: line, behavior)
@@ -97,6 +97,8 @@ extension Actor.Context: ChildActorRefFactory {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorContext + ActorFactory: implementation is in ActorShell
+// MARK: ActorContext + ActorFactory
 
-extension ActorContext: ChildActorRefFactory {}
+extension ActorContext: ChildActorRefFactory {
+    // implementation is in ActorShell, since it has to be because the shell is a subclass of the context
+}

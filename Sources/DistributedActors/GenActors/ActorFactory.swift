@@ -160,6 +160,7 @@ extension ChildActorFactory {
 // MARK: ActorSystem + ActorFactory
 
 extension ActorSystem: ActorFactory {
+    @discardableResult
     public func spawn<Act>(
         _ naming: ActorNaming,
         props: Props = Props(),

@@ -120,7 +120,9 @@ public class ActorContext<Message: ActorMessage> {
 
     @discardableResult
     public func spawn<M>(
-        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        _ naming: ActorNaming,
+        of type: M.Type = M.self,
+        props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
@@ -134,8 +136,11 @@ public class ActorContext<Message: ActorMessage> {
     ///
     /// - SeeAlso: `spawn`
     /// - SeeAlso: `watch`
+    @discardableResult
     public func spawnWatch<M>(
-        _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
+        _ naming: ActorNaming,
+        of type: M.Type = M.self,
+        props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
     ) throws -> ActorRef<M>
