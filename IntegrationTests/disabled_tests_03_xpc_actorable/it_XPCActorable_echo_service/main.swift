@@ -36,5 +36,5 @@ try! _file.append("service booted...\n")
 let service = try XPCActorableService(system, XPCEchoService.init)
 
 service.park()
-system.park() // TODO: system park should invoke the service park, we only need to park once for XPC to kickoff dispatch_main
+try! system.park() // TODO: system park should invoke the service park, we only need to park once for XPC to kickoff dispatch_main
 // unreachable, park never exits

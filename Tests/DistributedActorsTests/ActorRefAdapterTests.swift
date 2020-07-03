@@ -237,7 +237,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
         let system = ActorSystem("\(type(of: self))-2") { settings in
             settings.logging.logger = logCapture.logger(label: settings.cluster.node.systemName)
         }
-        defer { system.shutdown().wait() }
+        defer { try! system.shutdown().wait() }
 
         let probe = self.testKit.spawnTestProbe(expecting: String.self)
         let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)

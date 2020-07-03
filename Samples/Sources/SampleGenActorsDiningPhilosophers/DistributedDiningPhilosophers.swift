@@ -54,6 +54,6 @@ struct DistributedDiningPhilosophers {
         _ = try systemC.spawn("Cory") { Philosopher(context: $0, leftFork: fork3, rightFork: fork4) }
         _ = try systemC.spawn("Norman") { Philosopher(context: $0, leftFork: fork4, rightFork: fork5) }
 
-        systemA.park(atMost: time)
+        try systemA.park(atMost: time)
     }
 }

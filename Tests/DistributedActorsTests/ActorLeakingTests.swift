@@ -234,7 +234,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
 
         for n in 1 ... 5 {
             let system = ActorSystem("Test-\(n)")
-            system.shutdown().wait()
+            try! system.shutdown().wait()
         }
 
         ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
@@ -284,7 +284,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             context.log.trace("Not going to be logged")
             return .receiveMessage { _ in .same }
         })
-        system?.shutdown().wait()
+        try! system?.shutdown().wait()
         system = nil
 
         ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
@@ -304,7 +304,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             context.log.warning("Not going to be logged")
             return .receiveMessage { _ in .same }
         })
-        system?.shutdown().wait()
+        try! system?.shutdown().wait()
         system = nil
 
         ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)

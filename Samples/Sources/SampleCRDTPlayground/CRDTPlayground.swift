@@ -67,7 +67,7 @@ struct CRDTPlayground {
             peer.tell("write-2-\(peer.path.name)")
         }
 
-        first.park(atMost: time)
+        try! first.park(atMost: time)
     }
 }
 
