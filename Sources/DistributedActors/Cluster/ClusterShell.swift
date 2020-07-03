@@ -756,6 +756,17 @@ extension ClusterShell {
         _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer
     ) -> Wire.HandshakeReject? {
+        guard !context.system.isShuttingDown else {
+            // seems the system is shutting down, let's aggressively reject
+            return .init(
+                version: state.settings.protocolVersion,
+                targetNode: state.localNode,
+                originNode: offer.originNode,
+                reason: "Node is shutting down",
+                whenHandshakeReplySent: nil
+            )
+        }
+
         guard let member = state.localMember else {
             // no local member? this is bad
             state.log.warning(
@@ -1158,19 +1169,6 @@ extension ClusterShell {
 
         return self.ready(state: self.onDownCommand(context, state: state, member: myselfMember))
     }
-
-//    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, node: Node, error: Error) {
-//        switch state {
-//        case .initiated(let initiated):
-//            initiated.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-//        case .wasOfferedHandshake(let offered):
-//            offered.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-//        case .completed(let completed):
-//            completed.whenCompleted.fail(HandshakeConnectionError(node: node, message: "\(error)"))
-//        case .inFlight:
-//            preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function)")
-//        }
-//    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -1178,15 +1176,24 @@ extension ClusterShell {
 
 extension ClusterShell {
     fileprivate func onShutdownCommand(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
+        var state = state
+
         let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
-        return context.awaitResult(of: state.channel.close(), timeout: context.system.settings.cluster.unbindTimeout) {
-            // FIXME: also close all associations (!!!)
+        let closedServerChannel = state.channel.close()
+
+        /// ensure we terminate all connections eagerly
+        for node in self._associatedNodes() {
+            self.terminateAssociation(context.system, state: &state, node)
+        }
+
+        return context.awaitResult(of: closedServerChannel, timeout: context.system.settings.cluster.unbindTimeout) {
             switch $0 {
             case .success:
                 context.log.info("Unbound server socket [\(addrDesc)], node: \(reflecting: state.localNode)")
                 self.serializationPool.shutdown()
                 signalOnceUnbound.offerOnce(())
                 return .stop
+
             case .failure(let err):
                 context.log.warning("Failed while unbinding server socket [\(addrDesc)], node: \(reflecting: state.localNode). Error: \(err)")
                 self.serializationPool.shutdown()
