@@ -23,4 +23,4 @@ as their visualizations help understand more about how the actor system is funct
 
 ## Screenshots (may be not super up to date)
 
-![serialized messages](Screen Shot 2020-07-06 at 12.27.35.png)
+![](https://raw.githubusercontent.com/apple/swift-distributed-actors/master/Instruments/Screen%20Shot%202020-07-06%20at%2012.27.35.png?token=AAA5RE6MDOXNJJ26DJZ2NFK7BP5VG)
