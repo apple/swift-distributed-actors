@@ -319,6 +319,7 @@ extension CRDT.ORMap: ProtobufRepresentable {
         proto.keys = try self._keys.toProto(context: context)
         proto.values = try ORMapSerializationUtils.valuesToProto(self._storage, context: context)
         proto.updatedValues = try ORMapSerializationUtils.valuesToProto(self.updatedValues, context: context)
+        proto.defaultValue = try ORMapSerializationUtils.valueToProto(self.defaultValue, context: context)
         return proto
     }
 
@@ -335,7 +336,7 @@ extension CRDT.ORMap: ProtobufRepresentable {
 
         self._storage = try ORMapSerializationUtils.valuesFromProto(proto.values, context: context)
         self.updatedValues = try ORMapSerializationUtils.valuesFromProto(proto.updatedValues, context: context)
-        self.defaultValue = nil // We don't need remote's default value for merge
+        self.defaultValue = try ORMapSerializationUtils.valueFromProto(proto.defaultValue, context: context)
     }
 }
 
@@ -346,6 +347,7 @@ extension CRDT.ORMapDelta: ProtobufRepresentable {
         var proto = ProtobufRepresentation()
         proto.keys = try self.keys.toProto(context: context)
         proto.values = try ORMapSerializationUtils.valuesToProto(self.values, context: context)
+        proto.defaultValue = try ORMapSerializationUtils.valueToProto(self.defaultValue, context: context)
         return proto
     }
 
@@ -356,7 +358,7 @@ extension CRDT.ORMapDelta: ProtobufRepresentable {
         self.keys = try CRDT.ORSet<Key>.Delta(fromProto: proto.keys, context: context)
 
         self.values = try ORMapSerializationUtils.valuesFromProto(proto.values, context: context)
-        self.defaultValue = nil // We don't need remote's default value for merge
+        self.defaultValue = try ORMapSerializationUtils.valueFromProto(proto.defaultValue, context: context)
     }
 }
 
