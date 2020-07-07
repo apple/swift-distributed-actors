@@ -141,11 +141,14 @@ internal struct SWIMShell {
         pingReqOrigin: ActorRef<SWIM.PingResponse>?
     ) {
         let payload = self.swim.makeGossipPayload(to: target)
-
-        context.log.trace("Sending ping to [\(target)] with payload [\(payload)]")
+        // Indirect ping timeout should always be shorter than pingRequest timeout.
+        // Setting it to 80% from initial ping timeout as suggested in the original paper.
+        // SeeAlso: [Lifeguard IV.A. Local Health Multiplier (LHM)](https://arxiv.org/pdf/1707.00788.pdf)
+        let timeout = pingReqOrigin == nil ? self.swim.dynamicLHMPingTimeout : self.settings.pingTimeout * 0.8
+        context.log.trace("Sending ping to [\(target)] with payload [\(payload)] and timeout [\(timeout)]")
 
         let startPing = context.system.metrics.uptimeNanoseconds()
-        let response = target.ask(for: SWIM.PingResponse.self, timeout: self.swim.dynamicLHMPingTimeout) {
+        let response = target.ask(for: SWIM.PingResponse.self, timeout: timeout) {
             let ping = SWIM.RemoteMessage.ping(replyTo: $0, payload: payload)
             self.tracelog(context, .ask(target), message: ping)
             return SWIM.Message.remote(ping)
@@ -204,14 +207,19 @@ internal struct SWIMShell {
                 return SWIM.Message.remote(pingReq)
             }
 
+            context.onResultAsync(of: answer, timeout: pingTimeout) { result in
+                self.swim.onEveryPingRequestResponse(result, pingedMember: toPing)
+                return .same
+            }
+
             answer._onComplete { result in
                 context.system.metrics.recordSWIMPingPingResponseTime(since: startPingReq)
 
-                // We choose to cascade only successes;
+                // We choose to cascade only successful ping responses (i.e. `ack`s);
                 // While this has a slight timing implication on time timeout of the pings -- the node that is last
                 // in the list that we ping, has slightly less time to fulfil the "total ping timeout"; as we set a total timeout on the entire `firstSuccess`.
                 // In practice those timeouts will be relatively large (seconds) and the few millis here should not have a large impact on correctness.
-                if case .success(let response) = result {
+                if case .success(let response) = result, case .ack = response {
                     firstSuccess.succeed(response)
                 }
             }

@@ -467,6 +467,17 @@ extension SWIM.Instance {
         case reply(SWIM.PingResponse)
     }
 
+    func onEveryPingRequestResponse(_ result: Result<SWIM.PingResponse, Error>, pingedMember member: ActorRef<SWIM.Message>) {
+        switch result {
+        case .success:
+            // Successful pingRequestResponse should be handled only once
+            ()
+        case .failure:
+            // Failed pingRequestResponse indicates a missed nack, we should adjust LHMultiplier
+            self.adjustLHMultiplier(.probeWithMissedNack)
+        }
+    }
+
     /// React to an `Ack` (or lack thereof within timeout)
     func onPingRequestResponse(_ result: Result<SWIM.PingResponse, Error>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResponseDirective {
         guard let lastKnownStatus = self.status(of: member) else {
@@ -503,6 +514,7 @@ extension SWIM.Instance {
                 return .ignoredDueToOlderStatus(currentStatus: currentStatus)
             }
         case .success(.nack):
+            // TODO: this should never happen. How do we express it?
             return .nackReceived
         }
     }

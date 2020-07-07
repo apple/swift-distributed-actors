@@ -102,41 +102,6 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try _ = p.expectMessage()
     }
 
-    func test_swim_shouldIncreasePingTimeout_whenHighMultiplier() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
-
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
-
-        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
-        let maxLocalHealthMultiplier = 5
-        let ref = try first.spawn(
-            "SWIM",
-            SWIMShell.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
-                settings.lifeguard.maxLocalHealthMultiplier = maxLocalHealthMultiplier
-                settings.pingTimeout = .milliseconds(500)
-                // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
-                settings.probeInterval = .milliseconds(100)
-            }
-        )
-
-        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
-
-        // bump LHA multiplier to upper limit
-        for _ in 1 ... maxLocalHealthMultiplier {
-            ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none)))
-            try self.expectPing(on: dummyProbe, reply: false)
-            try _ = ackProbe.expectMessage(within: .seconds(6))
-        }
-
-        ref.tell(.remote(.pingReq(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none)))
-        try self.expectPing(on: dummyProbe, reply: false)
-        try ackProbe.expectNoMessage(for: .seconds(1))
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Pinging nodes
 
