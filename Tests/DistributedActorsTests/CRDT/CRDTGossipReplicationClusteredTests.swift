@@ -71,13 +71,13 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         }
     }
 
-    enum OwnsMapMessage: NonTransportableActorMessage {
-        case set(key: String, value: String?, CRDT.OperationConsistency)
+    enum OwnsMapMessage<Value: Codable>: NonTransportableActorMessage {
+        case set(key: String, value: Value, CRDT.OperationConsistency)
     }
 
-    func ownsLWWMap(p: ActorTestProbe<CRDT.LWWMap<String, String?>>?) -> Behavior<OwnsMapMessage> {
+    func ownsLWWMap<Value: Codable>(p: ActorTestProbe<CRDT.LWWMap<String, Value>>?, defaultValue: Value) -> Behavior<OwnsMapMessage<Value>> {
         .setup { context in
-            let map: CRDT.ActorOwned<CRDT.LWWMap<String, String?>> = CRDT.LWWMap.makeOwned(by: context, id: "lwwmap", defaultValue: .none)
+            let map: CRDT.ActorOwned<CRDT.LWWMap<String, Value>> = CRDT.LWWMap.makeOwned(by: context, id: "lwwmap", defaultValue: defaultValue)
             map.onUpdate { _, value in
                 p?.ref.tell(value)
             }
@@ -134,19 +134,21 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         let p1 = self.testKit(first).spawnTestProbe("probe-one", expecting: CRDT.LWWMap<String, String?>.self)
         let p2 = self.testKit(second).spawnTestProbe("probe-two", expecting: CRDT.LWWMap<String, String?>.self)
 
-        let one = try first.spawn("one", self.ownsLWWMap(p: p1))
-        let two = try second.spawn("two", self.ownsLWWMap(p: p2))
+        // TODO: JSON serialization blows up on Swift 5.2.4 Linux with `nil` (https://bugs.swift.org/browse/SR-13173). Change nilPlaceholder to `.none` once fixed
+        let nilPlaceholder: String? = "nil"
+        let one = try first.spawn("one", self.ownsLWWMap(p: p1, defaultValue: nilPlaceholder))
+        let two = try second.spawn("two", self.ownsLWWMap(p: p2, defaultValue: nilPlaceholder))
 
         one.tell(.set(key: "a", value: "foo", .local))
-        one.tell(.set(key: "aa", value: .none, .local))
+        one.tell(.set(key: "aa", value: nilPlaceholder, .local))
 
-        try self.expectMap(probe: p1, expected: ["a": "foo", "aa": .none])
-        try self.expectMap(probe: p2, expected: ["a": "foo", "aa": .none])
+        try self.expectMap(probe: p1, expected: ["a": "foo", "aa": nilPlaceholder])
+        try self.expectMap(probe: p2, expected: ["a": "foo", "aa": nilPlaceholder])
 
         two.tell(.set(key: "b", value: "bar", .local))
 
-        try self.expectMap(probe: p1, expected: ["a": "foo", "aa": .none, "b": "bar"])
-        try self.expectMap(probe: p2, expected: ["a": "foo", "aa": .none, "b": "bar"])
+        try self.expectMap(probe: p1, expected: ["a": "foo", "aa": nilPlaceholder, "b": "bar"])
+        try self.expectMap(probe: p2, expected: ["a": "foo", "aa": nilPlaceholder, "b": "bar"])
     }
 
     func test_gossip_readAll_gossipedOwnerAlwaysIncludesAddress() throws {
