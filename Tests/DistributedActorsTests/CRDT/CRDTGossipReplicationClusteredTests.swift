@@ -31,8 +31,13 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
     override func configureActorSystem(settings: inout ActorSystemSettings) {
         settings.serialization.register(CRDT.ORSet<String>.self)
         settings.serialization.register(CRDT.LWWMap<String, String?>.self)
-        settings.serialization.register(CRDT.ORMap<String, CRDT.LWWRegister<String?>>.self)
         settings.serialization.register(CRDT.LWWRegister<String?>.self)
+        settings.serialization.register(CRDT.LWWMap<String, ThrowingEncodePayload>.self)
+        settings.serialization.register(CRDT.LWWRegister<ThrowingEncodePayload>.self)
+        settings.serialization.register(CRDT.LWWMap<String, ThrowingDecodePayload>.self)
+        settings.serialization.register(CRDT.LWWRegister<ThrowingDecodePayload>.self)
+        settings.serialization.register(ThrowingEncodePayload.self)
+        settings.serialization.register(ThrowingDecodePayload.self)
     }
 
     enum OwnsSetMessage: NonTransportableActorMessage {
@@ -74,9 +79,9 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         case set(key: String, value: Value, CRDT.OperationConsistency)
     }
 
-    func ownsLWWMap(p: ActorTestProbe<CRDT.LWWMap<String, String?>>?) -> Behavior<OwnsMapMessage<String?>> {
+    func ownsLWWMap<Value: Codable>(p: ActorTestProbe<CRDT.LWWMap<String, Value>>?, defaultValue: Value) -> Behavior<OwnsMapMessage<Value>> {
         .setup { context in
-            let map: CRDT.ActorOwned<CRDT.LWWMap<String, String?>> = CRDT.LWWMap.makeOwned(by: context, id: "lwwmap", defaultValue: .none)
+            let map: CRDT.ActorOwned<CRDT.LWWMap<String, Value>> = CRDT.LWWMap.makeOwned(by: context, id: "lwwmap", defaultValue: defaultValue)
             map.onUpdate { _, value in
                 p?.ref.tell(value)
             }
@@ -133,8 +138,8 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         let p1 = self.testKit(first).spawnTestProbe("probe-one", expecting: CRDT.LWWMap<String, String?>.self)
         let p2 = self.testKit(second).spawnTestProbe("probe-two", expecting: CRDT.LWWMap<String, String?>.self)
 
-        let one = try first.spawn("one", self.ownsLWWMap(p: p1))
-        let two = try second.spawn("two", self.ownsLWWMap(p: p2))
+        let one = try first.spawn("one", self.ownsLWWMap(p: p1, defaultValue: .none))
+        let two = try second.spawn("two", self.ownsLWWMap(p: p2, defaultValue: .none))
 
         one.tell(.set(key: "a", value: "foo", .local))
         one.tell(.set(key: "aa", value: .none, .local))
@@ -205,7 +210,7 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
     // MARK: Serialization errors
 
     struct ThrowingEncodePayload: Equatable, Codable {
-        static let message = "Can not serialize \(ThrowingEncodePayload.self)!!!"
+        static let message = "Cannot serialize \(ThrowingEncodePayload.self)!!!"
 
         init() {}
 
@@ -217,14 +222,23 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
     }
 
     struct ThrowingDecodePayload: Equatable, Codable {
-        static let message = "Can not serialize \(ThrowingEncodePayload.self)!!!"
+        static let message = "Cannot deserialize \(ThrowingDecodePayload.self)!!!"
+
+        let value: String = "foobar"
+
+        enum CodingKeys: CodingKey {
+            case value
+        }
 
         init() {}
 
-        init(from decoder: Decoder) throws {}
+        init(from decoder: Decoder) throws {
+            throw SerializationError.unableToDeserialize(hint: Self.message)
+        }
 
         func encode(to encoder: Encoder) throws {
-            throw SerializationError.unableToSerialize(hint: Self.message)
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(value, forKey: .value)
         }
     }
 
@@ -237,20 +251,8 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         let second = self.setUpNode("second", configure)
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
 
-        let ownerBehavior: Behavior<OwnsMapMessage<ThrowingEncodePayload>> = .setup { context in
-            let map: CRDT.ActorOwned<CRDT.LWWMap<String, ThrowingEncodePayload>> = CRDT.LWWMap.makeOwned(by: context, id: "lwwmap", defaultValue: ThrowingEncodePayload())
-
-            return .receiveMessage {
-                switch $0 {
-                case .set(let key, let value, let consistency):
-                    _ = map.set(forKey: key, value: value, writeConsistency: consistency, timeout: .effectivelyInfinite)
-                }
-                return .same
-            }
-        }
-
-        let one = try first.spawn("one", ownerBehavior)
-        try second.spawn("two", ownerBehavior)
+        let one = try first.spawn("one", self.ownsLWWMap(p: nil, defaultValue: ThrowingEncodePayload()))
+        try second.spawn("two", self.ownsLWWMap(p: nil, defaultValue: ThrowingEncodePayload()))
 
         one.tell(.set(key: "a", value: ThrowingEncodePayload(), .local))
         one.tell(.set(key: "aa", value: ThrowingEncodePayload(), .local))
@@ -258,7 +260,7 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: ThrowingEncodePayload.message)
     }
 
-    func test_gossip_failureToSerializeShouldLog_ThrowingDecodePayload() throws {
+    func test_gossip_failureToDeserializeShouldLog_ThrowingDecodePayload() throws {
         let configure: (inout ActorSystemSettings) -> Void = { settings in
             settings.crdt.gossipInterval = .seconds(1)
             settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
@@ -267,25 +269,15 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         let second = self.setUpNode("second", configure)
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
 
-        let ownerBehavior: Behavior<OwnsMapMessage<ThrowingDecodePayload>> = .setup { context in
-            let map: CRDT.ActorOwned<CRDT.LWWMap<String, ThrowingDecodePayload>> = CRDT.LWWMap.makeOwned(by: context, id: "lwwmap", defaultValue: ThrowingDecodePayload())
+        let p2 = self.testKit(second).spawnTestProbe("probe-two", expecting: CRDT.LWWMap<String, ThrowingDecodePayload>.self)
 
-            return .receiveMessage {
-                switch $0 {
-                case .set(let key, let value, let consistency):
-                    _ = map.set(forKey: key, value: value, writeConsistency: consistency, timeout: .effectivelyInfinite)
-                }
-                return .same
-            }
-        }
-
-        let one = try first.spawn("one", ownerBehavior)
-        try second.spawn("two", ownerBehavior)
+        let one = try first.spawn("one", self.ownsLWWMap(p: nil, defaultValue: ThrowingDecodePayload()))
+        try second.spawn("two", self.ownsLWWMap(p: p2, defaultValue: ThrowingDecodePayload()))
 
         one.tell(.set(key: "a", value: ThrowingDecodePayload(), .local))
         one.tell(.set(key: "aa", value: ThrowingDecodePayload(), .local))
 
-        try self.capturedLogs(of: first).awaitLogContaining(self.testKit(first), text: ThrowingDecodePayload.message)
+        try self.capturedLogs(of: second).awaitLogContaining(self.testKit(second), text: ThrowingDecodePayload.message)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
