@@ -82,7 +82,6 @@ public final class SerializationPool {
                 // TODO: collapse those two and only use the instrumentation points, also for metrics
                 self.instrumentation.remoteActorMessageSerializeEnd(id: promise.futureResult, bytes: serialized.buffer.count)
                 self.serialization.metrics.recordSerializationMessageOutbound(recipientPath, serialized.buffer.count)
-                traceLog_Serialization("OK serialize(\(message), to: \(recipientPath))")
 
                 return serialized
             } catch {

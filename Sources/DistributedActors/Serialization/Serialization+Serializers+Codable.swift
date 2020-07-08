@@ -20,6 +20,35 @@ import Foundation // for Codable
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: JSON
 
+/// Terrible workaround to automatically encode nils correctly on Swift 5.2, where Foundation encoders to not pass .allowFragments
+internal protocol __OptionalProtocol {
+    // Terrible workaround to survive `null` values on "top level" (as perceived by the Coders, since we may call them for values in our message)
+    func __jsonEncode(using encoder: JSONEncoder) throws -> Data
+    // Terrible workaround to survive `null` values on "top level" (as perceived by the Coders, since we may call them for values in our message)
+    static func __jsonDecode(using decoder: JSONDecoder, from: Serialization.Buffer) throws -> Self
+}
+
+extension Optional: __OptionalProtocol where Wrapped: Codable {
+    func __jsonEncode(using encoder: JSONEncoder) throws -> Data {
+        switch self {
+        case .some(let value):
+            let data = try encoder.encode(value)
+            return data
+        case .none:
+            return "null".data(using: .ascii)!
+        }
+    }
+
+    static func __jsonDecode(using decoder: JSONDecoder, from bytes: Serialization.Buffer) throws -> Self {
+        let data = bytes.readData()
+        if String(data: data, encoding: .utf8) == "null" {
+            return nil
+        } else {
+            return try decoder.decode(Self.self, from: data)
+        }
+    }
+}
+
 /// Allows for serialization of messages using the Foundation's `JSONEncoder` and `JSONDecoder`.
 ///
 /// - Note: Take care to ensure that both "ends" (sending and receiving members of a cluster)
@@ -35,13 +64,35 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
     }
 
     public override func serialize(_ message: Message) throws -> Serialization.Buffer {
-        let data = try encoder.encode(message)
+        let data: Data
+        #if swift(>=5.3)
+        // It has .allowFragments set by default
+        data = try encoder.encode(message)
+        #else
+        // terrible hack workaround, see __OptionalProtocol for details
+        if let someOptional = message as? __OptionalProtocol {
+            data = try someOptional.__jsonEncode(using: self.encoder)
+        } else {
+            data = try self.encoder.encode(message)
+        }
+        #endif
         traceLog_Serialization("serialized to: \(data)")
         return .data(data)
     }
 
     public override func deserialize(from buffer: Serialization.Buffer) throws -> Message {
-        try self.decoder.decode(Message.self, from: buffer.readData())
+        let data = buffer.readData()
+        #if swift(>=5.3)
+        // It has .allowFragments set by default
+        return try self.decoder.decode(Message.self, from: data)
+        #else
+        // terrible hack workaround, see __OptionalProtocol for details
+        if let OptionalMessageType = Message.self as? __OptionalProtocol.Type {
+            return try OptionalMessageType.__jsonDecode(using: self.decoder, from: buffer) as! Message
+        } else {
+            return try self.decoder.decode(Message.self, from: data)
+        }
+        #endif
     }
 
     public override func setSerializationContext(_ context: Serialization.Context) {

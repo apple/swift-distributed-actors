@@ -25,6 +25,7 @@ import Foundation // for Codable
 
 /// Kind of like coder / encoder, we'll provide bridges for it
 // TODO: Document since users need to implement these
+// TODO: could be a protocol
 open class Serializer<Message> {
     public init() {}
 

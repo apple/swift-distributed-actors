@@ -11,6 +11,7 @@ Samples/swift-distributed-actors-samples.xcodeproj
 
 /.build
 /Samples/.build
+Instruments/ActorInstruments/build/
 /.SourceKitten
 /Packages
 .xcode

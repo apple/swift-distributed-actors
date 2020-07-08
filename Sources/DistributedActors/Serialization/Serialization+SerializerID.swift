@@ -36,7 +36,7 @@ extension Serialization {
             case SerializerID.specializedWithTypeHint.value:
                 return "serializerID:specialized(\(self.value))"
             case SerializerID.foundationJSON.value:
-                return "serializerID:jsonCodable(\(self.value))"
+                return "serializerID:foundationJSON(\(self.value))"
             case SerializerID.foundationPropertyListBinary.value:
                 return "serializerID:foundationPropertyListBinary(\(self.value))"
             case SerializerID.foundationPropertyListXML.value:
