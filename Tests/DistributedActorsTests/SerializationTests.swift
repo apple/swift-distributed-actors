@@ -435,7 +435,7 @@ class SerializationTests: ActorSystemXCTestCase {
         #else
         if #available(macOS 10.16, *) {
             () // ok, it's available on these platforms
-        } else if ok {
+        } else {
             ok = false
         }
         #endif
@@ -466,7 +466,7 @@ class SerializationTests: ActorSystemXCTestCase {
         #else
         if #available(macOS 10.16, *) {
             () // ok, it's available on these platforms
-        } else if ok {
+        } else {
             ok = false
         }
         #endif
