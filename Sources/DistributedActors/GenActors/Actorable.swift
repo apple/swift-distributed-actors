@@ -125,13 +125,13 @@ public enum Reply<Value> {
 extension Reply {
     public static func from<Answer>(askResponse: AskResponse<Answer>) -> Reply<Value> {
         switch askResponse {
-        case .completed(let result as Result<Value, Error>):
-            switch result {
-            case .success(let value):
-                return .completed(.success(value))
-            case .failure(let error):
-                return .completed(.failure(ErrorEnvelope(error)))
-            }
+        case .completed(.success(let value as Value)):
+            return .completed(.success(value))
+        case .completed(.success(let value)):
+            return .completed(.failure(ErrorEnvelope(description: "Received unexpected reply value \(reflecting: type(of: value as Any)), expected: \(Value.self), message: \(value)")))
+
+        case .completed(.failure(let error)):
+            return .completed(.failure(ErrorEnvelope(error)))
 
         case .nioFuture(let nioFuture as EventLoopFuture<Value>):
             return .nioFuture(nioFuture)

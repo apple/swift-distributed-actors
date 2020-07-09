@@ -40,6 +40,24 @@ final class ActorableOwnedMembershipTests: ClusteredActorSystemsXCTestCase {
             }
         }
     }
+
+    func test_notCrashHard_whenCall_onShutDownSystem() throws {
+        let first = self.setUpNode("first")
+
+        let p = self.testKit(first).spawnTestProbe(expecting: Reception.Listing<Actor<OwnerOfThings>>.self)
+        let owner: Actor<OwnerOfThings> = try first.spawn("owner") {
+            OwnerOfThings(context: $0, probe: p.ref)
+        }
+
+        try first.shutdown().wait()
+        let x = owner.readLastObservedValue()
+        do {
+            let reply = try x.wait()
+            XCTFail("Expected call to throw, but got: \(optional: reply)")
+        } catch {
+            "\(error)".shouldContain("DistributedActors.AskError")
+        }
+    }
 }
 
 struct TestMembershipOwner: Actorable {
