@@ -433,7 +433,7 @@ class SerializationTests: ActorSystemXCTestCase {
         #if os(Linux)
         ok = ok && true // ok
         #else
-        if #available(macOS 10.16, *) {
+        if #available(macOS 10.16, iOS 14.0, *) {
             () // ok, it's available on these platforms
         } else {
             ok = false
@@ -464,7 +464,7 @@ class SerializationTests: ActorSystemXCTestCase {
         #if os(Linux)
         ok = ok && true // ok
         #else
-        if #available(macOS 10.16, *) {
+        if #available(macOS 10.16, iOS 14.0, *) {
             () // ok, it's available on these platforms
         } else {
             ok = false
