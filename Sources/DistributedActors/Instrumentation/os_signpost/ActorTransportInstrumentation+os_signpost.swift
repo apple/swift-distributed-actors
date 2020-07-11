@@ -21,8 +21,8 @@ import os.log
 import os.signpost
 
 @available(OSX 10.14, *)
-@available(iOS 10.0, *)
-@available(tvOS 10.0, *)
+@available(iOS 12.0, *)
+@available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
 public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumentation {
     static let subsystem: StaticString = "com.apple.actors"
@@ -46,8 +46,8 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
 // MARK: Instrumentation: Serialization
 
 @available(OSX 10.14, *)
-@available(iOS 10.0, *)
-@available(tvOS 10.0, *)
+@available(iOS 12.0, *)
+@available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorTransportInstrumentation {
     static let actorMessageSerializeStartPattern: StaticString =

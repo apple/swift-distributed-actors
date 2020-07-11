@@ -18,7 +18,7 @@ public struct OSSignpostInstrumentationProvider: ActorSystemInstrumentationProvi
     public init() {}
 
     public var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? {
-        if #available(OSX 10.14, *) {
+        if #available(OSX 10.14, iOS 12.0, *) {
             // TODO: how to guard in iOS etc here?
             return OSSignpostActorInstrumentation.init
         } else {
@@ -27,7 +27,7 @@ public struct OSSignpostInstrumentationProvider: ActorSystemInstrumentationProvi
     }
 
     public var actorTransportInstrumentation: (() -> ActorTransportInstrumentation)? {
-        if #available(OSX 10.14, *) {
+        if #available(OSX 10.14, iOS 12.0, *) {
             return OSSignpostActorTransportInstrumentation.init
         } else {
             return nil
@@ -35,7 +35,7 @@ public struct OSSignpostInstrumentationProvider: ActorSystemInstrumentationProvi
     }
 
     public var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? {
-        if #available(OSX 10.14, *) {
+        if #available(OSX 10.14, iOS 12.0, *) {
             return OSSignpostReceptionistInstrumentation.init
         } else {
             return nil

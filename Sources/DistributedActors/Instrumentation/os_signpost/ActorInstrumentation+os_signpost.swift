@@ -18,8 +18,8 @@ import os.log
 import os.signpost
 
 @available(OSX 10.14, *)
-@available(iOS 10.0, *)
-@available(tvOS 10.0, *)
+@available(iOS 12.0, *)
+@available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
 public struct OSSignpostActorInstrumentation: ActorInstrumentation {
     static let subsystem: StaticString = "com.apple.actors"
@@ -49,8 +49,8 @@ public struct OSSignpostActorInstrumentation: ActorInstrumentation {
 // MARK: Instrumentation: Actor Lifecycle
 
 @available(OSX 10.14, *)
-@available(iOS 10.0, *)
-@available(tvOS 10.0, *)
+@available(iOS 12.0, *)
+@available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorInstrumentation {
     static let actorSpawnedStartFormat: StaticString =
@@ -142,8 +142,8 @@ extension OSSignpostActorInstrumentation {
 // MARK: Instrumentation: Actor Messages
 
 @available(OSX 10.14, *)
-@available(iOS 10.0, *)
-@available(tvOS 10.0, *)
+@available(iOS 12.0, *)
+@available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
 extension OSSignpostActorInstrumentation {
     // ==== ----------------------------------------------------------------------------------------------------------------
