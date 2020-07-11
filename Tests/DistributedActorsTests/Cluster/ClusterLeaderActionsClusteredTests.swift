@@ -268,9 +268,9 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             }
         }
 
-        // snapshot(nil) + first nil -> joining 
-        // OR 
-        // snapshot(first joining) 
+        // snapshot(nil) + first nil -> joining
+        // OR
+        // snapshot(first joining)
         // are both legal
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, fromStatus: nil, toStatus: .joining)))
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.uniqueNode, fromStatus: .joining, toStatus: .up)))
