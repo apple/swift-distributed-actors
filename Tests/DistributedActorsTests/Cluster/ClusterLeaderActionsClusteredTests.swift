@@ -249,8 +249,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         first.cluster.down(node: secondNode.node)
 
         // other nodes have observed it down
-        try self.ensureNodes(.down, on: first, nodes: secondNode)
-        try self.ensureNodes(.down, on: third, nodes: secondNode)
+        try self.ensureNodes(atLeast: .down, on: first, nodes: secondNode)
+        try self.ensureNodes(atLeast: .down, on: third, nodes: secondNode)
 
         // on the leader node, the other node noticed as up:
         var eventsOnFirstSub: [Cluster.Event] = []
@@ -268,9 +268,9 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             }
         }
 
-        // snapshot(nil) + first nil -> joining 
-        // OR 
-        // snapshot(first joining) 
+        // snapshot(nil) + first nil -> joining
+        // OR
+        // snapshot(first joining)
         // are both legal
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, fromStatus: nil, toStatus: .joining)))
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.uniqueNode, fromStatus: .joining, toStatus: .up)))
@@ -325,8 +325,8 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         second.shutdown()
 
         // other nodes have observed it down
-        try self.ensureNodes(.down, on: first, within: .seconds(15), nodes: second.cluster.uniqueNode)
-        try self.ensureNodes(.down, on: third, within: .seconds(15), nodes: second.cluster.uniqueNode)
+        try self.ensureNodes(atLeast: .down, on: first, within: .seconds(15), nodes: second.cluster.uniqueNode)
+        try self.ensureNodes(atLeast: .down, on: third, within: .seconds(15), nodes: second.cluster.uniqueNode)
 
         // on the leader node, the other node noticed as up:
         let testKit = self.testKit(first)
