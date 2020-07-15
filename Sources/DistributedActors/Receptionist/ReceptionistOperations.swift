@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import Foundation // String.replacingOccurrences ...
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: General ReceptionistOperations
@@ -24,21 +25,23 @@ public protocol BaseReceptionistOperations {
     /// - Parameters:
     ///   - actor: the actor to register with the receptionist. It may be `context.myself` or any other actor, however generally it is recommended to let actors register themselves when they are "ready".
     ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
+    @discardableResult
     func register<Guest>(
         _ guest: Guest,
         as id: String,
         replyTo: ActorRef<Reception.Registered<Guest>>?
-    ) where Guest: ReceptionistGuest
+    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest
 
     /// Registers passed in `actor` in the systems receptionist with given id.
     ///
     /// - Parameters:
     ///   - actor: the actor to register with the receptionist. It may be `context.myself` or any other actor, however generally it is recommended to let actors register themselves when they are "ready".        ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
+    @discardableResult
     func register<Guest>(
         _ guest: Guest,
         with key: Reception.Key<Guest>,
         replyTo: ActorRef<Reception.Registered<Guest>>?
-    ) where Guest: ReceptionistGuest
+    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest
 
     /// Subscribe to changes in checked-in actors under given `key`.
     ///
@@ -75,20 +78,22 @@ public protocol ReceptionistOperations: BaseReceptionistOperations {
 
 extension ReceptionistOperations {
     @inlinable
+    @discardableResult
     public func register<Guest>(
         _ guest: Guest,
         as id: String,
         replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) where Guest: ReceptionistGuest {
+    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
         self.register(guest, with: .init(Guest.self, id: id), replyTo: replyTo)
     }
 
     @inlinable
+    @discardableResult
     public func register<Guest>(
         _ guest: Guest,
         with key: Reception.Key<Guest>,
         replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) where Guest: ReceptionistGuest {
+    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
         self._system.receptionist.register(guest, with: key, replyTo: replyTo)
     }
 
@@ -131,10 +136,11 @@ public protocol MyselfReceptionistOperations: ReceptionistOperations {
     var _underlyingContext: ActorContext<Message> { get }
 
     /// Registers `myself` in the systems receptionist with given key.
+    @discardableResult
     func registerMyself(
         with key: Reception.Key<Myself>,
         replyTo: ActorRef<Reception.Registered<Myself>>?
-    )
+    ) -> Reception.Key<Myself>
 
     /// Subscribe to actors registering under given `key`.
     ///
@@ -165,11 +171,13 @@ public protocol MyselfReceptionistOperations: ReceptionistOperations {
 
 extension MyselfReceptionistOperations {
     @inlinable
+    @discardableResult
     public func registerMyself(
         with key: Reception.Key<Myself>,
         replyTo: ActorRef<Reception.Registered<Myself>>? = nil
-    ) {
+    ) -> Reception.Key<Myself> {
         self.register(self._myself, with: key, replyTo: replyTo)
+        return key
     }
 
     @inlinable

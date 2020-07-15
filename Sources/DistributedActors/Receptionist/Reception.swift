@@ -111,14 +111,33 @@ extension Reception.Listing where Guest: ReceivesMessages {
     /// Retrieve all listed actor references, mapping them to their appropriate type.
     /// Note that this operation is lazy and has to iterate over all the actors when performing the
     /// iteration.
-    ///
-    /// Complexity: O(n)
     public var refs: LazyMapSequence<Set<AddressableActorRef>, ActorRef<Guest.Message>> {
         self.underlying.lazy.map { self.key._unsafeAsActorRef($0) }
     }
 
-    var first: ActorRef<Guest.Message>? {
+    public var first: ActorRef<Guest.Message>? {
         self.underlying.first.map {
+            self.key._unsafeAsActorRef($0)
+        }
+    }
+
+    public func first(where matches: (ActorAddress) -> Bool) -> ActorRef<Guest.Message>? {
+        self.underlying.first {
+            let ref: ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
+            return matches(ref.address)
+        }.map {
+            self.key._unsafeAsActorRef($0)
+        }
+    }
+
+    /// Returns the first actor from the listing whose name matches the passed in `name` parameter.
+    ///
+    /// Special handling is applied to message adapters (e.g. `/uses/example/two/$messageAdapter` in which case the last segment is ignored).
+    public func first(named name: String) -> ActorRef<Guest.Message>? {
+        self.underlying.first {
+            $0.path.name == name ||
+                ($0.path.segments.last?.value == "$messageAdapter" &&  $0.path.segments.dropLast(1).last?.value == name)
+        }.map {
             self.key._unsafeAsActorRef($0)
         }
     }

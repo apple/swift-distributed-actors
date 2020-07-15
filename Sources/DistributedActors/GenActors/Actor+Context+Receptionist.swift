@@ -99,4 +99,27 @@ extension Reception.Listing where Guest: ActorProtocol {
             return Actor<Guest.Act>(ref: ref)
         }
     }
+
+    public func first(where matches: (ActorAddress) -> Bool) -> Actor<Guest.Act>? {
+        self.underlying.first {
+            let ref: ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
+            return matches(ref.address)
+        }.map {
+            let ref: ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
+            return Actor<Guest.Act>(ref: ref)
+        }
+    }
+
+    /// Returns the first actor from the listing whose name matches the passed in `name` parameter.
+    ///
+    /// Special handling is applied to message adapters (e.g. `/uses/example/two/$messageAdapter` in which case the last segment is ignored).
+    public func first(named name: String) -> Actor<Guest.Act>? {
+        self.underlying.first {
+            $0.path.name == name ||
+                ($0.path.segments.last?.value == "$messageAdapter" &&  $0.path.segments.dropLast(1).last?.value == name)
+        }.map {
+            let ref: ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
+            return Actor<Guest.Act>(ref: ref)
+        }
+    }
 }

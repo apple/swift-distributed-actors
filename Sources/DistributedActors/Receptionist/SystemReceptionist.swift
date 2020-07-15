@@ -27,20 +27,25 @@ public struct SystemReceptionist: BaseReceptionistOperations {
         self.ref = receptionistRef
     }
 
+    @discardableResult
     public func register<Guest>(
         _ guest: Guest,
         as id: String,
         replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) where Guest: ReceptionistGuest {
-        self.register(guest, with: Reception.Key(Guest.self, id: id), replyTo: replyTo)
+    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
+        let key: Reception.Key<Guest> = Reception.Key(Guest.self, id: id)
+        self.register(guest, with: key, replyTo: replyTo)
+        return key
     }
 
+    @discardableResult
     public func register<Guest>(
         _ guest: Guest,
         with key: Reception.Key<Guest>,
         replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) where Guest: ReceptionistGuest {
+    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
         self.ref.tell(Receptionist.Register<Guest>(guest, key: key, replyTo: replyTo))
+        return key
     }
 
     public func lookup<Guest>(
