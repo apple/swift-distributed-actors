@@ -177,7 +177,8 @@ extension MyselfReceptionistOperations {
         to key: Reception.Key<Guest>,
         subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
     ) where Guest: ReceptionistGuest {
-        let id = SubReceiveId<Reception.Listing<Guest>>(id: "subscribe-\(Guest.self)")
+        let subReceiveStringID = "subscribe-\(Guest.self)"
+        let id = SubReceiveId<Reception.Listing<Guest>>(id: subReceiveStringID)
         let subRef = self._underlyingContext
             .subReceive(id, Reception.Listing<Guest>.self) { listing in
                 callback(listing)
