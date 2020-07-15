@@ -136,7 +136,7 @@ extension Reception.Listing where Guest: ReceivesMessages {
     public func first(named name: String) -> ActorRef<Guest.Message>? {
         self.underlying.first {
             $0.path.name == name ||
-                ($0.path.segments.last?.value == "$messageAdapter" &&  $0.path.segments.dropLast(1).last?.value == name)
+                ($0.path.segments.last?.value == "$messageAdapter" && $0.path.segments.dropLast(1).last?.value == name)
         }.map {
             self.key._unsafeAsActorRef($0)
         }

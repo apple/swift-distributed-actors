@@ -116,7 +116,7 @@ extension Reception.Listing where Guest: ActorProtocol {
     public func first(named name: String) -> Actor<Guest.Act>? {
         self.underlying.first {
             $0.path.name == name ||
-                ($0.path.segments.last?.value == "$messageAdapter" &&  $0.path.segments.dropLast(1).last?.value == name)
+                ($0.path.segments.last?.value == "$messageAdapter" && $0.path.segments.dropLast(1).last?.value == name)
         }.map {
             let ref: ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
             return Actor<Guest.Act>(ref: ref)

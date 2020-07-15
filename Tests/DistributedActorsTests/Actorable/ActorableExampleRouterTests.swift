@@ -90,10 +90,8 @@ final class ActorableExampleRouterTests: ActorSystemXCTestCase {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Impls
-
 
 public enum MessageType: String, Codable {
     case foo
@@ -107,14 +105,12 @@ public protocol MessageTarget: Actorable {
     static func _boxMessageTarget(_ message: GeneratedActor.Messages.MessageTarget) -> Self.Message
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Impls: routers
 
 private let key: Reception.Key<ActorRef<GeneratedActor.Messages.MessageTarget>> = "*"
 
 final class MessageActorReceptionistRouter: Actorable {
-
     var listing: ActorableOwned<Reception.Listing<ActorRef<GeneratedActor.Messages.MessageTarget>>>!
 
     var buffer: [(String, MessageType, ActorRef<String>)] = []
@@ -123,7 +119,7 @@ final class MessageActorReceptionistRouter: Actorable {
     func preStart(context: Myself.Context) {
         self.listing = context.receptionist.autoUpdatedListing(key)
 
-        self.listing.onUpdate { l in
+        self.listing.onUpdate { _ in
             let buffered = self.buffer
             self.buffer = []
 
@@ -148,13 +144,12 @@ final class MessageActorReceptionistRouter: Actorable {
     }
 }
 
-
 final class MessageRefRouter: Actorable {
     var targets: [String: ActorRef<GeneratedActor.Messages.MessageTarget>] = [:]
 
     /* @actor */
     func registerTarget(_ identifier: String, actor ref: ActorRef<GeneratedActor.Messages.MessageTarget>) {
-        targets[identifier] = ref
+        self.targets[identifier] = ref
     }
 
     /* @actor */
@@ -178,7 +173,7 @@ final class MessageRouter: Actorable {
     // Invoked by actors to register as targets
     /* @actor */
     func registerTarget(_ identifier: String, actor: AnyActor.MessageTarget) {
-        targets[identifier] = actor
+        self.targets[identifier] = actor
     }
 
     // Invoked by some other component receiving messages from an external
@@ -206,7 +201,7 @@ struct BarRefTarget: Actorable, MessageTarget {
 
     // @actor
     func preStart(context: Myself.Context) {
-        router.registerTarget(
+        self.router.registerTarget(
             self.context.name,
             actor: context._underlying.messageAdapter {
                 Self._boxMessageTarget($0)
@@ -236,7 +231,7 @@ struct FooRefTarget: Actorable, MessageTarget {
 
     // @actor
     func preStart(context: Myself.Context) {
-        router.registerTarget(
+        self.router.registerTarget(
             self.context.name,
             actor: context._underlying.messageAdapter {
                 Self._boxMessageTarget($0)
@@ -266,7 +261,7 @@ struct BarActorTarget: Actorable, MessageTarget {
 
     // @actor
     func preStart(context: Myself.Context) {
-        router.registerTarget(
+        self.router.registerTarget(
             self.context.name,
             actor: context.asAnyMessageTarget
         )
@@ -293,7 +288,7 @@ struct FooActorTarget: Actorable, MessageTarget {
 
     // @actor
     func preStart(context: Myself.Context) {
-        router.registerTarget(
+        self.router.registerTarget(
             self.context.name,
             actor: context.asAnyMessageTarget
         )
@@ -318,8 +313,7 @@ struct FooActorTarget: Actorable, MessageTarget {
 /// and still being able to send it around as a normal location transparent `Actor` reference.
 ///
 /// This namespace is populated automatically by GenActors when generating proxies for `Actorable`s.
-public enum AnyActor {
-}
+public enum AnyActor {}
 
 extension AnyActor {
     public typealias MessageTarget = AnyMessageTargetActor
@@ -374,6 +368,4 @@ public struct AnyMessageTargetActor: MessageTargetActorProtocol, DeathWatchable,
     }
 }
 
-extension Actor: MessageTargetActorProtocol where Act: MessageTarget {
-}
-
+extension Actor: MessageTargetActorProtocol where Act: MessageTarget {}

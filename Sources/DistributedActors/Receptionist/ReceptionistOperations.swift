@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
 import Foundation // String.replacingOccurrences ...
+import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: General ReceptionistOperations
