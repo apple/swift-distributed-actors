@@ -398,6 +398,8 @@ public struct SubReceiveId<SubMessage>: Hashable, Equatable {
 
     public init(_ type: SubMessage.Type = SubMessage.self, id: String) {
         self.id = id
+            .replacingOccurrences(of: "()", with: "Void")
+            .replacingOccurrences(of: " ", with: "")
     }
 }
 
