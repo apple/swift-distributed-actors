@@ -29,13 +29,8 @@ import NIO
 /// invoking `ActorSystem.spawn(name:actorable:)` are automatically translated in safe message dispatches.
 ///
 /// ***NOTE:*** It is our hope to replace the code generation needed here with language features in Swift itself.
-///
-/// ## Current Limitation: Only Codable messages
-/// Today only `Codable` message types are supported by Actorables. This is fine as the `Actor.Message` type is automatically
-/// generated and conformed to Codable by the GenActors source generator. In general however we may want to look into the future
-/// and consider if we want to allow not only Codable messages here.
 public protocol Actorable {
-    associatedtype Message: ActorMessage // TODO: Lift this restriction as even Actorables may want to use some specialized serializer?
+    associatedtype Message: ActorMessage
 
     /// Represents a handle to this actor (`myself`), that is safe to pass to other actors, threads, and even nodes.
     typealias Myself = Actor<Self>
@@ -52,7 +47,7 @@ public protocol Actorable {
     static var generateCodableConformance: Bool { get }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: GenActor filled in functions
+    // MARK: GenActors filled in functions
 
     static func makeBehavior(instance: Self) -> Behavior<Message>
 

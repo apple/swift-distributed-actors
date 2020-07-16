@@ -25,6 +25,7 @@ import NIO
 public struct Actor<Act: Actorable>: Codable {
     public typealias Message = Act.Message
     public typealias Myself = Actor<Act>
+    public typealias Ref = ActorRef<Act.Message>
     public typealias Behavior = DistributedActors.Behavior<Act.Message>
 
     /// Underlying `ActorRef` to the actor running the `Actorable` behavior.

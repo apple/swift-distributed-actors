@@ -425,7 +425,7 @@ public struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, CustomSt
     }
 
     public var description: String {
-        "AnyReceptionistKey\(self.guestType)(\(self.id))"
+        "AnyReceptionistKey<\(reflecting: self.guestType)>(\(self.id))"
     }
 
     public func hash(into hasher: inout Hasher) {

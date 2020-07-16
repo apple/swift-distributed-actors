@@ -473,7 +473,7 @@ private struct ValidActorPathSymbols {
     static let zero: UnicodeScalar = "0"
     static let nine: UnicodeScalar = "9"
 
-    static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';<>".unicodeScalars
+    static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';<>()".unicodeScalars
 }
 
 struct ActorName {
