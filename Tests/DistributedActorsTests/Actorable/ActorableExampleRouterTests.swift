@@ -16,9 +16,6 @@
 import DistributedActorsTestKit
 import XCTest
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Tests
-
 final class ActorableExampleRouterTests: ActorSystemXCTestCase {
     func test_actorRouter_viaReceptionist_shouldWork() throws {
         let router: Actor<MessageActorReceptionistRouter> = try system.spawn("ref-router") { _ in
@@ -120,6 +117,7 @@ final class MessageActorReceptionistRouter: Actorable {
         self.listing = context.receptionist.autoUpdatedListing(key)
 
         self.listing.onUpdate { _ in
+            // attempt to deliver messages (or buffer them again, this is an inefficient way to implement this, but good enough for our test)
             let buffered = self.buffer
             self.buffer = []
 
@@ -147,9 +145,19 @@ final class MessageActorReceptionistRouter: Actorable {
 final class MessageRefRouter: Actorable {
     var targets: [String: ActorRef<GeneratedActor.Messages.MessageTarget>] = [:]
 
+    var buffer: [(String, MessageType, ActorRef<String>)] = []
+
     /* @actor */
     func registerTarget(_ identifier: String, actor ref: ActorRef<GeneratedActor.Messages.MessageTarget>) {
         self.targets[identifier] = ref
+
+        // attempt to deliver messages (or buffer them again, this is an inefficient way to implement this, but good enough for our test)
+        let buffered = self.buffer
+        self.buffer = []
+
+        buffered.forEach { identifier, message, replyTo in
+            self.dispatchMessage(identifier, message: message, replyTo: replyTo)
+        }
     }
 
     /* @actor */
@@ -166,6 +174,8 @@ final class MessageRouter: Actorable {
     // Map of target identifier to Actor
     var targets: [String: AnyActor.MessageTarget]
 
+    var buffer: [(String, MessageType, ActorRef<String>)] = []
+
     init() {
         self.targets = [:]
     }
@@ -174,6 +184,14 @@ final class MessageRouter: Actorable {
     /* @actor */
     func registerTarget(_ identifier: String, actor: AnyActor.MessageTarget) {
         self.targets[identifier] = actor
+
+        // attempt to deliver messages (or buffer them again, this is an inefficient way to implement this, but good enough for our test)
+        let buffered = self.buffer
+        self.buffer = []
+
+        buffered.forEach { identifier, message, replyTo in
+            self.dispatchMessage(identifier, message: message, replyTo: replyTo)
+        }
     }
 
     // Invoked by some other component receiving messages from an external
@@ -267,8 +285,7 @@ struct BarActorTarget: Actorable, MessageTarget {
         )
 
         // also register with receptionist
-        let key = context.receptionist.register(context.myself.ref, as: "*")
-        pprint("key = \(key)")
+        let _: Reception.Key<ActorRef<BarActorTarget.Message>> = context.receptionist.register(context.myself.ref, as: "*")
     }
 
     // @actor
