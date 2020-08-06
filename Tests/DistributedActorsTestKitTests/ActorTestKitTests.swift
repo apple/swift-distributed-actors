@@ -139,6 +139,27 @@ final class ActorTestKitTests: XCTestCase {
         }
     }
 
+    func test_ensureRegistered() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let receptionKey: Reception.Key<ActorRef<String>> = "*"
+
+        self.system.receptionist.register(p.ref, as: "*")
+
+        try self.testKit.ensureRegistered(
+            key: receptionKey,
+            expectedCount: 1,
+            expectedRefs: [p.ref],
+            within: .seconds(3))
+
+        p.stop()
+
+        try self.testKit.ensureRegistered(
+            key: receptionKey,
+            expectedCount: 0,
+            expectedRefs: nil,
+            within: .seconds(3))
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actorable
 
@@ -155,6 +176,27 @@ final class ActorTestKitTests: XCTestCase {
 
         // the reply should get the hello
         try reply.wait().shouldEqual("Mock Hello!")
+    }
+
+    func test_actorable_ensureRegistered() throws {
+        let p = self.testKit.spawnActorableTestProbe(of: TestMeActorable.self)
+        let receptionKey: Reception.Key<Actor<TestMeActorable>> = "*"
+
+        self.system.receptionist.register(p.actor, as: "*")
+
+        try self.testKit.ensureRegistered(
+            key: receptionKey,
+            expectedCount: 1,
+            expectedActors: [p.actor],
+            within: .seconds(3))
+
+        p.stop()
+
+        try self.testKit.ensureRegistered(
+            key: receptionKey,
+            expectedCount: 0,
+            expectedActors: nil,
+            within: .seconds(3))
     }
 }
 
