@@ -249,7 +249,7 @@ targets.append(
 var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
+    .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.8.0"),
 
     .package(name: "SwiftProtobuf", url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
