@@ -546,4 +546,28 @@ extension ActorTestKit {
             }
         }
     }
+
+    /// `Actorable` version of `ensureRegistered()`.
+    public func ensureRegistered<Actorable>(
+        key: Reception.Key<Actor<Actorable>>,
+        expectedCount: Int = 1,
+        expectedActors: Set<Actor<Actorable>>? = nil,
+        within: TimeAmount = .seconds(3)
+    ) throws {
+        let lookupProbe = self.spawnTestProbe(expecting: Reception.Listing<Actor<Actorable>>.self)
+
+        try self.eventually(within: within) {
+            self.system.receptionist.lookup(key, replyTo: lookupProbe.ref)
+
+            let listing = try lookupProbe.expectMessage()
+            guard listing.actors.count == expectedCount else {
+                throw self.error("Expected Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.actors.count)]")
+            }
+            if let expectedActors = expectedActors {
+                guard Set(listing.actors) == expectedActors else {
+                    throw self.error("Expected Reception.Listing for key [\(key)] to have actors \(expectedActors), but got \(listing.actors)")
+                }
+            }
+        }
+    }
 }
