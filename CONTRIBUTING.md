@@ -5,13 +5,12 @@ your contribution to Apple and the community, and agree by submitting the patch
 that your contributions are licensed under the Apache 2.0 license (see
 `LICENSE.txt`).
 
-
 ## How to submit a bug report
 
 Please ensure to specify the following:
 
-* Swift Distributed Actors commit hash
-* Contextual information (e.g. what you were trying to achieve with Swift Distributed Actors)
+* SwiftMetrics commit hash
+* Contextual information (e.g. what you were trying to achieve with SwiftMetrics)
 * Simplest possible steps to reproduce
   * More complex the steps are, lower the priority will be.
   * A pull request with failing test case is preferred, but it's just fine to paste the test case into the issue description.
@@ -20,15 +19,13 @@ Please ensure to specify the following:
   * OS version and the output of `uname -a`
   * Network configuration
 
-
 ### Example
 
 ```
-Swift Distributed Actors commit hash: 22ec043dc9d24bb011b47ece4f9ee97ee5be2757
+Commit hash: b17a8a9f0f814c01a56977680cb68d8a779c951f
 
 Context:
-While load testing my HTTP web server written with Swift Distributed Actors, I noticed
-that one file descriptor is leaked per request.
+While testing my application that uses with Swift Distributed Actors, I noticed that ...
 
 Steps to reproduce:
 1. ...
@@ -50,17 +47,12 @@ My system has IPv6 disabled.
 
 ## Writing a Patch
 
-A good Swift Distributed Actors patch is:
+A good patch is:
 
 1. Concise, and contains as few changes as needed to achieve the end result.
 2. Tested, ensuring that any tests provided failed before the patch and pass after it.
 3. Documented, adding API documentation as needed to cover new functions and properties.
-4. Adheres to our code formatting conventions and [style guide](STYLE_GUIDE.md).
-5. Accompanied by a great commit message, using our commit message template.
-
-### Code Format and Style
-
-Swift Distributed Actors uses [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) to enforce the preferred [swift code format](.swiftformat). Always run SwiftFormat before committing your code. 
+4. Accompanied by a great commit message, using our commit message template.
 
 ### Commit Message Template
 
@@ -68,10 +60,37 @@ We require that your commit messages match our template. The easiest way to do t
 
     git config commit.template dev/git.commit.template
 
-### Test on Linux
+### Make sure Tests work on Linux
 
-Swift Distributed Actors uses XCTest to run tests on both macOS and Linux. While the macOS version of XCTest is able to use the Objective-C runtime to discover tests at execution time, the Linux version is not. For this reason, whenever you add new tests you will want to run a script that generates the hooks needed to run those tests on Linux, or our CI will complain that the tests are not all present on Linux. To do this, merely execute `./scripts/generate_linux_tests.rb` at the root of the package and check the changes it made.
+SwiftMetrics uses XCTest to run tests on both macOS and Linux. While the macOS version of XCTest is able to use the Objective-C runtime to discover tests at execution time, the Linux version is not.
+For this reason, whenever you add new tests **you have to run a script** that generates the hooks needed to run those tests on Linux, or our CI will complain that the tests are not all present on Linux. To do this, merely execute `ruby ./scripts/generate_linux_tests.rb` at the root of the package and check the changes it made.
+
+### Run `./scripts/sanity.sh`
+
+The scripts directory contains a [sanity.sh script](https://github.com/apple/swift-metrics/blob/master/scripts/sanity.sh) 
+that enforces additional checks, like license headers and formatting style.
+
+Please make sure to `./scripts/sanity.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
+on minor changes such as a missing `self.` or similar formatting issues.
+
+> The script also executes the above mentioned `generate_linux_tests.rb`.
+
+For frequent contributors, we recommend adding the script as a [git pre-push hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks), which you can do via executing the following command in the project root directory: 
+
+```bash
+cat << EOF > .git/hooks/pre-push
+#!/bin/bash
+
+if [[ -f "scripts/sanity.sh" ]]; then
+  scripts/sanity.sh
+fi
+EOF
+```
+
+Which makes the script execute, and only allow the `git push` to complete if the check has passed.
+
+In the case of formatting issues, you can then `git add` the formatting changes, and attempt the push again. 
 
 ## How to contribute your work
 
-Please open a pull request at https://github.com/apple/swift-distributed-actors. Make sure the CI passes, and then wait for code review.
+Please open a pull request at https://github.com/apple/swift-metrics. Make sure the CI passes, and then wait for code review.
