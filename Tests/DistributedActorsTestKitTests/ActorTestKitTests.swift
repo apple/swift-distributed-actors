@@ -149,7 +149,8 @@ final class ActorTestKitTests: XCTestCase {
             key: receptionKey,
             expectedCount: 1,
             expectedRefs: [p.ref],
-            within: .seconds(3))
+            within: .seconds(3)
+        )
 
         p.stop()
 
@@ -157,7 +158,8 @@ final class ActorTestKitTests: XCTestCase {
             key: receptionKey,
             expectedCount: 0,
             expectedRefs: nil,
-            within: .seconds(3))
+            within: .seconds(3)
+        )
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -188,7 +190,8 @@ final class ActorTestKitTests: XCTestCase {
             key: receptionKey,
             expectedCount: 1,
             expectedActors: [p.actor],
-            within: .seconds(3))
+            within: .seconds(3)
+        )
 
         p.stop()
 
@@ -196,7 +199,8 @@ final class ActorTestKitTests: XCTestCase {
             key: receptionKey,
             expectedCount: 0,
             expectedActors: nil,
-            within: .seconds(3))
+            within: .seconds(3)
+        )
     }
 }
 
