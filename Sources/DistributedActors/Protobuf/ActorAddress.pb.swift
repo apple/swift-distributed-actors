@@ -95,7 +95,7 @@ public struct ProtoUniqueNode {
   /// Clears the value of `node`. Subsequent reads from it will return its default value.
   public mutating func clearNode() {_uniqueStorage()._node = nil}
 
-  public var nid: UInt32 {
+  public var nid: UInt64 {
     get {return _storage._nid}
     set {_uniqueStorage()._nid = newValue}
   }
@@ -242,7 +242,7 @@ extension ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
   fileprivate class _StorageClass {
     var _node: ProtoNode? = nil
-    var _nid: UInt32 = 0
+    var _nid: UInt64 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -267,7 +267,7 @@ extension ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._node)
-        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._nid)
+        case 2: try decoder.decodeSingularUInt64Field(value: &_storage._nid)
         default: break
         }
       }
@@ -280,7 +280,7 @@ extension ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if _storage._nid != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._nid, fieldNumber: 2)
+        try visitor.visitSingularUInt64Field(value: _storage._nid, fieldNumber: 2)
       }
     }
     try unknownFields.traverse(visitor: &visitor)

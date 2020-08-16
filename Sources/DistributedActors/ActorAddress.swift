@@ -697,9 +697,9 @@ extension UniqueNode: Comparable {
 }
 
 public struct UniqueNodeID: Hashable {
-    let value: UInt32 // TODO: redesign / reconsider exact size
+    let value: UInt64
 
-    public init(_ value: UInt32) {
+    public init(_ value: UInt64) {
         self.value = value
     }
 }
@@ -718,7 +718,7 @@ extension UniqueNodeID: CustomStringConvertible {
 
 public extension UniqueNodeID {
     static func random() -> UniqueNodeID {
-        UniqueNodeID(UInt32.random(in: 1 ... .max))
+        UniqueNodeID(UInt64.random(in: 1 ... .max))
     }
 }
 

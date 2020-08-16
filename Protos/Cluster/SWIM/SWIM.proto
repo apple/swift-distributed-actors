@@ -29,23 +29,27 @@ message SWIMRemoteMessage {
 
 message SWIMPing {
     ActorAddress replyTo = 1;
-    SWIMPayload payload = 2;
+    SWIMGossipPayload payload = 2;
+    uint32 sequenceNumber = 3;
 }
 
 message SWIMPingRequest {
-    ActorAddress target = 1;
+    UniqueNode target = 1;
     ActorAddress replyTo = 2;
-    SWIMPayload payload = 3;
+    SWIMGossipPayload payload = 3;
+    uint32 sequenceNumber = 4;
 }
 
 message SWIMPingResponse {
     message Ack {
-        ActorAddress target = 1;
+        UniqueNode target = 1;
         uint64 incarnation = 2;
-        SWIMPayload payload = 3;
+        SWIMGossipPayload payload = 3;
+        uint32 sequenceNumber = 4;
     }
     message Nack {
-        ActorAddress target = 1;
+        UniqueNode target = 1;
+        uint32 sequenceNumber = 2;
     }
     oneof pingResponse {
         Ack ack = 1;
@@ -68,10 +72,10 @@ message SWIMStatus {
 }
 
 message SWIMMember {
-    ActorAddress address = 1;
+    UniqueNode node   = 1;
     SWIMStatus status = 2;
 }
 
-message SWIMPayload {
+message SWIMGossipPayload {
     repeated SWIMMember member = 1;
 }

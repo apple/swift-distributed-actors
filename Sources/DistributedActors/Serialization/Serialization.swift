@@ -17,6 +17,7 @@ import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
+import SWIM
 
 import Foundation // for Codable
 

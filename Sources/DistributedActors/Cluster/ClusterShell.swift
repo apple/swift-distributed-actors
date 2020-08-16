@@ -15,6 +15,7 @@
 import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
+import SWIM
 
 /// Cluster namespace.
 public enum Cluster {}
@@ -133,7 +134,7 @@ internal class ClusterShell {
         }
 
         // 2) Ensure the failure detector knows about this node
-        self._swimRef?.tell(.local(.monitor(associated.handshake.remoteNode)))
+        self._swimRef?.tell(.local(SWIM.LocalMessage.monitor(associated.handshake.remoteNode)))
     }
 
     /// Performs all cleanups related to terminating an association:
@@ -163,7 +164,7 @@ internal class ClusterShell {
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
-        self._swimRef?.tell(.local(.confirmDead(remoteNode)))
+        self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(remoteNode)))
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
         if state.membership.contains(remoteNode) {
@@ -383,18 +384,8 @@ extension ClusterShell {
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 
-            // SWIM failure detector and gossiping
-            if !clusterSettings.swim.disabled {
-                let swimBehavior = SWIMShell.behavior(settings: clusterSettings.swim, clusterRef: context.myself)
-                self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: ._wellKnown, swimBehavior)
-            } else {
-                context.log.warning("""
-                SWIM Failure Detector has been [disabled]! \
-                Reachability events will NOT be emitted, meaning that most downing strategies will not be able to perform \
-                their duties. Please ensure that an external mechanism for detecting failed cluster nodes is used.
-                """)
-                self._swimRef = nil
-            }
+            let swimBehavior = SWIMActorShell.behavior(settings: clusterSettings.swim, clusterRef: context.myself)
+            self._swimRef = try context._downcastUnsafe._spawn(SWIMActorShell.naming, props: ._wellKnown, swimBehavior)
 
             // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
@@ -1248,7 +1239,7 @@ extension ClusterShell {
                 ]
             )
 
-            self._swimRef?.tell(.local(.confirmDead(memberToDown.uniqueNode)))
+            self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(memberToDown.uniqueNode)))
 
             do {
                 let onDownAction = context.system.settings.cluster.onDownAction.make()

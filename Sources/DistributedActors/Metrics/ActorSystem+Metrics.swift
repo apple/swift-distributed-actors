@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import SWIM
 import DistributedActorsConcurrencyHelpers
 import Metrics
 

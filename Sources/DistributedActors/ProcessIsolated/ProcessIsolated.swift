@@ -509,7 +509,7 @@ extension UniqueNode {
         let _nid = String(s.prefix(while: { $0 != "@" }))
         s = s.dropFirst(_nid.count)
         s = s.dropFirst(":".count)
-        let nid = UniqueNodeID(UInt32(_nid)!)
+        let nid = UniqueNodeID(UInt64(_nid)!)
 
         let host = String(s.prefix(while: { $0 != ":" }))
         s = s.dropFirst(host.count)

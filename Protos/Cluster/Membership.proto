@@ -57,7 +57,7 @@ message ClusterMembershipGossip {
 
     // The following fields will use compressed UniqueNode encoding and ONLY serialize them as their uniqueNodeID.
     // During deserialization the fields can be resolved against the membership to obtain full UniqueNode values if necessary.
-    uint32 ownerUniqueNodeID = 2;
+    uint64 ownerUniqueNodeID = 2;
     ClusterMembershipSeenTable seenTable = 3;
 }
 
@@ -66,6 +66,6 @@ message ClusterMembershipSeenTable {
 }
 
 message ClusterMembershipSeenTableRow {
-    uint32 uniqueNodeID = 1;
+    uint64 uniqueNodeID = 1;
     VersionVector version = 2;
 }

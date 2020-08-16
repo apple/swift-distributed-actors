@@ -278,48 +278,48 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
     func test_MarkedDirective_isEffectiveChange() {
         let p = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
 
-        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 1), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 1), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1, suspectedBy: [self.testNode]), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1, suspectedBy: [self.testNode]), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
-            .isReachabilityChange.shouldBeTrue(line: #line - 1)
-
-        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
-            .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1, suspectedBy: [self.testNode]), protocolPeriod: 1))
-            .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
-            .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: nil, member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
 
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2, suspectedBy: [self.testNode]), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 1, suspectedBy: [self.testNode]), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 1), protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: .alive(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
             .isReachabilityChange.shouldBeTrue(line: #line - 1)
 
-        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
-            .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2, suspectedBy: [self.testNode]), protocolPeriod: 1))
-            .isReachabilityChange.shouldBeTrue(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
-        SWIM.Instance.MemberStatusChange(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2, suspectedBy: [self.testNode]), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+        SWIM.MemberStatusChangedEvent(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.MemberStatusChangedEvent(fromStatus: .suspect(incarnation: 1, suspectedBy: [self.testNode]), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+
+        SWIM.MemberStatusChangedEvent(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.MemberStatusChangedEvent(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2, suspectedBy: [self.testNode]), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeTrue(line: #line - 1)
+        SWIM.MemberStatusChangedEvent(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+            .isReachabilityChange.shouldBeFalse(line: #line - 1)
+        SWIM.MemberStatusChangedEvent(fromStatus: .unreachable(incarnation: 1), member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
 
         // those are illegal, but even IF they happened at least we'd never bubble them up to high level
         // moving from .dead to any other state is illegal and will assert
-        // illegal, precondition crash: SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
-        // illegal, precondition crash: SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2), protocolPeriod: 1))
-        // illegal, precondition crash: SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
-        SWIM.Instance.MemberStatusChange(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
+        // illegal, precondition crash: SWIM.MemberStatusChangedEvent(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .alive(incarnation: 2), protocolPeriod: 1))
+        // illegal, precondition crash: SWIM.MemberStatusChangedEvent(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .suspect(incarnation: 2), protocolPeriod: 1))
+        // illegal, precondition crash: SWIM.MemberStatusChangedEvent(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .unreachable(incarnation: 2), protocolPeriod: 1))
+        SWIM.MemberStatusChangedEvent(fromStatus: .dead, member: SWIM.Member(ref: p.ref, status: .dead, protocolPeriod: 1))
             .isReachabilityChange.shouldBeFalse(line: #line - 1)
     }
 
@@ -862,11 +862,11 @@ final class SWIMInstanceTests: ActorSystemXCTestCase {
     func validateGossip(swim: SWIM.Instance, expected: Set<SWIM.Member>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let payload = swim.makeGossipPayload(to: nil)
         if expected.isEmpty {
-            guard case SWIM.Payload.none = payload else {
+            guard case SWIM.GossipPayload.none = payload else {
                 throw self.testKit.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)
             }
         } else {
-            guard case SWIM.Payload.membership(let members) = payload else {
+            guard case SWIM.GossipPayload.membership(let members) = payload else {
                 throw self.testKit.fail("Expected `.membership`, but got `\(payload)`", file: file, line: line, column: column)
             }
 

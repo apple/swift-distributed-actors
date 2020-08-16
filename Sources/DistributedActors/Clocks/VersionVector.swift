@@ -267,7 +267,7 @@ public struct ReplicaID: Hashable {
         .init(.uniqueNodeID(uniqueNode.nid))
     }
 
-    internal static func uniqueNodeID(_ uniqueNodeID: UInt32) -> ReplicaID {
+    internal static func uniqueNodeID(_ uniqueNodeID: UInt64) -> ReplicaID {
         .init(.uniqueNodeID(.init(uniqueNodeID)))
     }
 
@@ -354,7 +354,7 @@ extension ReplicaID: Codable {
         case .uniqueNode:
             self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .value))
         case .uniqueNodeID:
-            self = try .uniqueNodeID(container.decode(UInt32.self, forKey: .value))
+            self = try .uniqueNodeID(container.decode(UInt64.self, forKey: .value))
         }
     }
 

@@ -25,12 +25,14 @@ import NIO
 private let NANOS = 1_000_000_000
 
 /// :nodoc: Not intended for general use. TODO: Make internal if possible.
-public typealias TimeSpec = timespec
+@usableFromInline
+internal typealias TimeSpec = timespec
 
 // TODO: move to Time.swift?
 
-/// :nodoc: Not intended for general use. TODO: Make internal if possible.
-public extension TimeSpec {
+/// :nodoc: Not intended for general use. TOD
+internal extension TimeSpec {
+    @usableFromInline
     static func from(timeAmount amount: TimeAmount) -> timespec {
         let seconds = Int(amount.nanoseconds) / NANOS
         let nanos = Int(amount.nanoseconds) % NANOS
@@ -40,6 +42,7 @@ public extension TimeSpec {
         return time
     }
 
+    @usableFromInline
     static func + (a: timespec, b: timespec) -> timespec {
         let totalNanos = a.toNanos() + b.toNanos()
         let seconds = totalNanos / NANOS
@@ -49,17 +52,18 @@ public extension TimeSpec {
         return result
     }
 
+    @usableFromInline
     func toNanos() -> Int {
         self.tv_nsec + (self.tv_sec * NANOS)
     }
 }
 
-extension TimeSpec: Comparable {
-    public static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
-        lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
-    }
-
-    public static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
-        lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
-    }
-}
+//extension TimeSpec: Comparable {
+//    static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+//        lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
+//    }
+//
+//    static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+//        lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
+//    }
+//}

@@ -15,6 +15,7 @@
 import Logging
 import NIO
 import NIOSSL
+import SWIM
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor System Cluster Settings
@@ -161,8 +162,8 @@ public struct ClusterSettings {
     /// shut down the node and process, potentially leaving a higher level orchestrator to replace the node (e.g. k8s starting a new pod for the cluster).
     public var onDownAction: OnDownActionStrategySettings = .gracefulShutdown(delay: .seconds(3))
 
-    /// Configures the SWIM failure failure detector.
-    public var swim: SWIM.Settings = .default
+    /// Configures the SWIM cluster membership implementation (which serves as our failure detector).
+    public var swim: SWIM.Settings = SWIM.Settings()
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Logging
