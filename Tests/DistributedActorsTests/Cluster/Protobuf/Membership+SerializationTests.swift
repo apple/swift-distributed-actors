@@ -51,7 +51,7 @@ final class MembershipSerializationTests: ActorSystemXCTestCase {
             Cluster.Member(
                 node: UniqueNode(
                     node: Node(systemName: "\(id)", host: "1.1.1.\(id)", port: 1111),
-                    nid: .init(UInt32("\(id)\(id)\(id)\(id)")!) // pretend a real-ish looking ID, but be easier to read
+                    nid: .init(UInt64("\(id)\(id)\(id)\(id)")!) // pretend a real-ish looking ID, but be easier to read
                 ),
                 status: .up
             )

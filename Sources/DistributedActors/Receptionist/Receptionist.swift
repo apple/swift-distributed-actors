@@ -312,7 +312,7 @@ extension ActorPath {
 
 extension ActorAddress {
     internal static func _receptionist(on node: UniqueNode) -> ActorAddress {
-        .init(node: node, path: .receptionist, incarnation: .wellKnown)
+        ActorPath.receptionist.makeRemoteAddress(on: node, incarnation: .wellKnown)
     }
 }
 

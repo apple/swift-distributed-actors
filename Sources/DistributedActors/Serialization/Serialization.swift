@@ -114,6 +114,7 @@ public class Serialization {
         settings.register(SystemMessageEnvelope.self)
 
         // cluster
+        settings.register(Wire.Envelope.self, hint: "_$Wire.Envelope", alsoRegisterActorRef: false)
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
         settings.register(Cluster.MembershipGossip.self)
@@ -372,7 +373,22 @@ extension Serialization {
             case .data(let data):
                 return data
             case .nioByteBuffer(var buffer):
-                return buffer.readData(length: buffer.readableBytes)! // ! safe since reading readableBytes
+                // TODO: metrics how often we really have to copy
+                return buffer.readData(length: buffer.readableBytes)! // !-safe since reading readableBytes
+            }
+        }
+
+        /// Convert the buffer to `NIO.ByteBuffer`, or return the underlying one if available.
+        // FIXME: Avoid the copying, needs SwiftProtobuf changes
+        public func asByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
+            switch self {
+            case .data(let data):
+                // TODO: metrics how often we really have to copy
+                var buffer = allocator.buffer(capacity: data.count)
+                buffer.writeBytes(data)
+                return buffer
+            case .nioByteBuffer(let buffer):
+                return buffer
             }
         }
     }

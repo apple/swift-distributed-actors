@@ -57,7 +57,11 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     internal var instrumentation: ActorInstrumentation!
 
     init(shell: ClusterShell, address: ActorAddress, system: ActorSystem) {
-        precondition(address.isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
+        precondition(address._isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
+
+        // Ensure we store as .remote, so printouts work as expected (and include the explicit address)
+        var address = address
+        address._location = .remote(address.node)
         self.address = address
 
         self.clusterShell = shell
@@ -97,15 +101,11 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     }
 
     private var association: ClusterShell.StoredAssociationState {
-        guard let uniqueNode = self.address.node else {
-            fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug. The ref was: \(self)")
-        }
-
         // TODO: once we have UnsafeAtomicLazyReference initialize it here:
         // if let assoc = self._cachedAssociation.load() { return assoc }
         // else { get from shell and store here }
 
-        return self.clusterShell.getEnsureAssociation(with: uniqueNode)
+        self.clusterShell.getEnsureAssociation(with: self.address.node)
     }
 
     func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemoteClusterActorPersonality<NewMessage> {

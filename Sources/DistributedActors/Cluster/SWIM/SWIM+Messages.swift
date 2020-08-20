@@ -90,10 +90,9 @@ extension SWIM {
         let member: SWIM.Member
         var numberOfTimesGossiped: Int
     }
-
 }
 
-//extension SWIM.PingResponse {
+// extension SWIM.PingResponse {
 //    func targetRef(_ context: ActorContext<SWIM.Message>) -> SWIM.PeerActor {
 //        let targetNode: ClusterMembership.Node
 //        switch self {
@@ -108,4 +107,4 @@ extension SWIM {
 //        }
 //        return context.system._resolve(context: .init(address: ._swim(on: targetNode), system: context.system))
 //    }
-//}
+// }

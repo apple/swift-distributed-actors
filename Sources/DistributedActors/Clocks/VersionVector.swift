@@ -251,7 +251,7 @@ public struct ReplicaID: Hashable {
     }
 
     public static func actor<M: Codable>(_ context: ActorContext<M>) -> ReplicaID {
-        .init(.actorAddress(context.address.ensuringNode(context.system.settings.cluster.uniqueBindNode)))
+        .init(.actorAddress(context.address))
     }
 
     // FIXME: don't do this as much, it risks creating one without a node address
@@ -274,7 +274,7 @@ public struct ReplicaID: Hashable {
     func ensuringNode(_ node: UniqueNode) -> ReplicaID {
         switch self.storage {
         case .actorAddress(let address):
-            return .actorAddress(address.ensuringNode(node))
+            return .actorAddress(address)
         case .uniqueNode(let existingNode):
             assert(existingNode.nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(existingNode)], attempted: \(node)")
             return self

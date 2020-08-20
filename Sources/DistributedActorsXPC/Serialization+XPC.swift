@@ -55,10 +55,35 @@ public enum XPCSerialization {
         return xdict
     }
 
-    public static func serializeRecipient(_ system: ActorSystem, xdict: xpc_object_t, address: ActorAddress) throws {
+    public static func serializeRecipient(_ system: ActorSystem, xdict: xpc_object_t, address a: ActorAddress) throws {
         // we mutate the reference such that the recipient knows to reply back over the xpc connection
-        var address = address
-        address.node?.node.protocol = "xpc"
+        // TODO: simplify this a bit; sadly that means public API since we're in a separate module
+        let address: ActorAddress
+        if a._isLocal {
+            address = .init(
+                local: UniqueNode(
+                    protocol: "xpc",
+                    systemName: a.node.node.systemName,
+                    host: a.node.host,
+                    port: a.node.port,
+                    nid: a.node.nid
+                ),
+                path: a.path,
+                incarnation: a.incarnation
+            )
+        } else {
+            address = .init(
+                remote: UniqueNode(
+                    protocol: "xpc",
+                    systemName: a.node.node.systemName,
+                    host: a.node.host,
+                    port: a.node.port,
+                    nid: a.node.nid
+                ),
+                path: a.path,
+                incarnation: a.incarnation
+            )
+        }
         try! _file.append("[sending] [TO: \(address)]\n")
 
         let serialized = try system.serialization.serialize(address)

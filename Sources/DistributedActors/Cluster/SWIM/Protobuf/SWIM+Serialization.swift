@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import ClusterMembership
 import Foundation
 import SWIM
-import ClusterMembership
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
@@ -30,7 +30,7 @@ extension SWIM.Message: ProtobufRepresentable {
         return try message.toProto(context: context)
     }
 
-    public  init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
+    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         self = try .remote(SWIM.RemoteMessage(fromProto: proto, context: context))
     }
 }
@@ -38,7 +38,7 @@ extension SWIM.Message: ProtobufRepresentable {
 extension SWIM.RemoteMessage: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoSWIMRemoteMessage
 
-    public  func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
+    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
         switch self {
         case .ping(let replyTo, let payload, let sequenceNumber):
@@ -49,7 +49,7 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
             proto.ping = ping
         case .pingRequest(let target, let replyTo, let payload, let sequenceNumber):
             var pingRequest = ProtoSWIMPingRequest()
-            pingRequest.target = try (target.address.node ?? context.localNode).toProto(context: context)
+            pingRequest.target = try target.address.node.toProto(context: context)
             pingRequest.replyTo = try replyTo.toProto(context: context)
             pingRequest.payload = try payload.toProto(context: context)
             pingRequest.sequenceNumber = sequenceNumber
@@ -62,7 +62,7 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
         return proto
     }
 
-    public  init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
+    public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         switch proto.request {
         case .ping(let ping):
             let replyToAddress = try ActorAddress(fromProto: ping.replyTo, context: context)
@@ -71,7 +71,7 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
             let payload = try SWIM.GossipPayload(fromProto: ping.payload, context: context)
             let sequenceNumber = ping.sequenceNumber
             self = .ping(replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
-            
+
         case .pingRequest(let pingRequest):
             let targetNode = pingRequest.target
             let targetUniqueNode = try UniqueNode(fromProto: targetNode, context: context)
@@ -84,7 +84,7 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
             let payload = try SWIM.GossipPayload(fromProto: pingRequest.payload, context: context)
             let sequenceNumber = pingRequest.sequenceNumber
             self = .pingRequest(target: target, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
-            
+
         case .none:
             throw SerializationError.missingField("request", type: String(describing: SWIM.Message.self))
         }
@@ -207,7 +207,7 @@ extension SWIM.PingResponse: ProtobufRepresentable {
         }
         switch pingResponse {
         case .ack(let ack):
-            let target = try ClusterMembership.Node(fromProto:  ack.target, context: context)
+            let target = try ClusterMembership.Node(fromProto: ack.target, context: context)
             let payload = try SWIM.GossipPayload(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
             self = .ack(target: target, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
@@ -224,10 +224,37 @@ extension ClusterMembership.Node: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoUniqueNode
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
-        fatalError("\(#function)")
+        var proto = ProtobufRepresentation()
+        var protoNode = ProtoNode()
+        protoNode.protocol = self.protocol
+        if let name = self.name {
+            protoNode.system = name
+        }
+        protoNode.hostname = self.host
+        protoNode.port = UInt32(self.port)
+        proto.node = protoNode
+        if let uid = self.uid {
+            proto.nid = uid
+        }
+        return proto
     }
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        fatalError("\(#function)")
+        guard proto.hasNode else {
+            throw SerializationError.missingField("node", type: String(describing: Node.self))
+        }
+        let protoNode: ProtoNode = proto.node
+        let `protocol` = protoNode.protocol
+        let name: String?
+        if protoNode.protocol != "" {
+            name = protoNode.protocol
+        } else {
+            name = nil
+        }
+        let host = protoNode.hostname
+        let port = Int( protoNode.port)
+
+        let uid = proto.nid
+        self.init(protocol: `protocol`, name: name, host: host, port: port, uid: uid)
     }
 }

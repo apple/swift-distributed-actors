@@ -89,7 +89,7 @@ internal struct BoxedActorSingleton: AnyActorSingleton {
 extension ActorSingleton: AnyActorSingleton {
     func stop(_ system: ActorSystem) {
         // Hand over the singleton gracefully
-        let resolveContext = ResolveContext<ActorSingletonManager<Message>.Directive>(address: ._singletonManager(name: self.settings.name), system: system)
+        let resolveContext = ResolveContext<ActorSingletonManager<Message>.Directive>(address: ._singletonManager(name: self.settings.name, on: system.cluster.uniqueNode), system: system)
         let managerRef = system._resolve(context: resolveContext)
         // If the manager is not running this will end up in dead-letters but that's fine
         managerRef.tell(.stop)

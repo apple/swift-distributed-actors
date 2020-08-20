@@ -15,32 +15,33 @@
 @testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
+import SWIM
 
 final class SWIMSerializationTests: ActorSystemXCTestCase {
     func test_serializationOf_ping() throws {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.PingResponse.self)
-        let payload: SWIM.GossipPayload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let ping: SWIM.Message = .remote(.ping(replyTo: ackProbe.ref, payload: payload))
+        let payload: SWIM.GossipPayload = .membership([.init(peer: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
+        let ping: SWIM.Message = .remote(.ping(replyTo: ackProbe.ref, payload: payload, sequenceNumber: 100))
         try self.shared_serializationRoundtrip(ping)
     }
 
     func test_serializationOf_pingRequest() throws {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.PingResponse.self)
-        let payload: SWIM.GossipPayload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let pingReq: SWIM.Message = .remote(.pingRequest(target: memberProbe.ref, replyTo: ackProbe.ref, payload: payload))
+        let payload: SWIM.GossipPayload = .membership([.init(peer: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
+        let pingReq: SWIM.Message = .remote(.pingRequest(target: memberProbe.ref, replyTo: ackProbe.ref, payload: payload, sequenceNumber: 100))
         try self.shared_serializationRoundtrip(pingReq)
     }
 
     func test_serializationOf_Ack() throws {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let payload: SWIM.GossipPayload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let pingReq: SWIM.PingResponse = .ack(target: memberProbe.ref, incarnation: 1, payload: payload)
+        let payload: SWIM.GossipPayload = .membership([.init(peer: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
+        let pingReq: SWIM.PingResponse = .ack(target: memberProbe.ref.address.node.asSWIMNode, incarnation: 1, payload: payload, sequenceNumber: 13) // FIXME: could pass peer?
         try self.shared_serializationRoundtrip(pingReq)
     }
 
-    func shared_serializationRoundtrip<T: InternalProtobufRepresentable>(_ obj: T) throws {
+    func shared_serializationRoundtrip<T: ProtobufRepresentable>(_ obj: T) throws {
         let serialized = try system.serialization.serialize(obj)
         let deserialized = try system.serialization.deserialize(as: T.self, from: serialized)
         "\(obj)".shouldEqual("\(deserialized)")

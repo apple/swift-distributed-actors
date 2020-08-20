@@ -57,13 +57,3 @@ internal extension TimeSpec {
         self.tv_nsec + (self.tv_sec * NANOS)
     }
 }
-
-//extension TimeSpec: Comparable {
-//    static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
-//        lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
-//    }
-//
-//    static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
-//        lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
-//    }
-//}

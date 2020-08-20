@@ -15,36 +15,12 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ProtoActorAddress
 
-extension ActorAddress {
-    init(fromProto proto: ProtoActorAddress) throws {
-        let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
-        let incarnation = ActorIncarnation(Int(proto.incarnation))
-
-        // TODO: switch over senderNode | recipientNode | address
-        if proto.hasNode {
-            self = try ActorAddress(node: UniqueNode(proto.node), path: path, incarnation: incarnation)
-        } else {
-            self = ActorAddress(path: path, incarnation: incarnation)
-        }
-    }
-}
-
-extension ProtoActorAddress {
-    init(_ value: ActorAddress) {
-        if let node = value.node {
-            self.node = .init(node)
-        }
-        self.path = .init(value.path)
-        self.incarnation = value.incarnation.value
-    }
-}
-
 extension ActorAddress: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoActorAddress
 
     public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {
         var address = ProtoActorAddress()
-        let node = self.node ?? context.localNode
+        let node = self.node
         address.node = try node.toProto(context: context)
 
         address.path.segments = self.segments.map { $0.value }
@@ -59,7 +35,7 @@ extension ActorAddress: ProtobufRepresentable {
         // TODO: make Error
         let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
 
-        self.init(node: uniqueNode, path: path, incarnation: ActorIncarnation(proto.incarnation))
+        self.init(remote: uniqueNode, path: path, incarnation: ActorIncarnation(proto.incarnation))
     }
 }
 

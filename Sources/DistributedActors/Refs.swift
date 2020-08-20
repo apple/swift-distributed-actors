@@ -84,14 +84,14 @@ public protocol AddressableActor {
     var asAddressable: AddressableActorRef { get }
 }
 
-public extension ActorRef {
+extension ActorRef {
     /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
     ///
     /// An `AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
     /// messages to such identified actor via this reference type.
     ///
     /// - SeeAlso: `AddressableActorRef` for a detailed discussion of its typical use-cases.
-    var asAddressable: AddressableActorRef {
+    public var asAddressable: AddressableActorRef {
         AddressableActorRef(self)
     }
 }
@@ -454,7 +454,11 @@ open class CellDelegate<Message: ActorMessage> {
 internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix the name
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
-    let address: ActorAddress = ._localRoot
+    let address: ActorAddress
+
+    init(local node: UniqueNode) {
+        self.address = ActorAddress._localRoot(on: node)
+    }
 
     @usableFromInline
     internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
@@ -536,11 +540,11 @@ public class Guardian {
     private var stopping: Bool = false
     weak var system: ActorSystem?
 
-    init(parent: _ReceivesSystemMessages, name: String, system: ActorSystem) {
-        assert(parent.address == ActorAddress._localRoot, "A Guardian MUST live directly under the `/` path.")
+    init(parent: _ReceivesSystemMessages, name: String, localNode: UniqueNode, system: ActorSystem) {
+        assert(parent.address == ActorAddress._localRoot(on: localNode), "A Guardian MUST live directly under the `/` path.")
 
         do {
-            self._address = try ActorPath(root: name).makeLocalAddress(incarnation: .wellKnown)
+            self._address = try ActorPath(root: name).makeLocalAddress(on: localNode, incarnation: .wellKnown)
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }

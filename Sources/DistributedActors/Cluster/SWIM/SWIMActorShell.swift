@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
-import SWIM
 import ClusterMembership
 import enum Dispatch.DispatchTimeInterval
+import Logging
+import SWIM
 
 extension SWIM.Member {
     func ref(_ context: ActorContext<SWIM.Ref.Message>) -> SWIM.PeerRef {
@@ -47,7 +47,9 @@ internal struct SWIMActorShell {
     /// Initial behavior, kicks off timers and becomes `ready`.
     static func behavior(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) -> Behavior<SWIM.Message> {
         .setup { context in
-
+            var settings = settings
+            settings.logger = context.log
+            settings.logger.logLevel = .trace
             let swim = SWIM.Instance(
                 settings: settings,
                 myself: context.myself
@@ -73,7 +75,6 @@ internal struct SWIMActorShell {
             case ._testing(let message):
                 switch message {
                 case .getMembershipState(let replyTo):
-                    context.log.trace("getMembershipState from \(replyTo), state: \(shell.swim.allMembers)")
                     replyTo.tell(SWIM._MembershipState(membershipState: shell.swim.allMembers))
                     return .same
                 }
@@ -123,6 +124,7 @@ internal struct SWIMActorShell {
     // MARK: Receiving messages
 
     func receiveRemoteMessage(message: SWIM.RemoteMessage, context: MyselfContext) {
+        pprint("MMMM: \(message)")
         switch message {
         case .ping(let replyTo, let payload, let sequenceNumber):
             self.handlePing(context: context, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
@@ -167,7 +169,6 @@ internal struct SWIMActorShell {
                 //            self.processGossipPayload(payload: payload)
             }
         }
-
     }
 
     private func handlePingRequest(
@@ -246,12 +247,15 @@ internal struct SWIMActorShell {
             "swim/timeout": "\(timeout)",
         ]))
 
+        // TODO handle via a future and await?
         target.ping(payload: payload, from: context.myself, timeout: timeout, sequenceNumber: sequenceNumber) { (result: Result<SWIM.PingResponse, Error>) in
             switch result {
             case .success(let response):
                 context.myself.tell(.remote(.pingResponse(response: response)))
+            case .failure(let error as TimeoutError):
+                context.myself.tell(.remote(.pingResponse(response: .timeout(target: target.node, pingRequestOrigin: pingRequestOriginPeer?.node, timeout: .nanoseconds(Int(error.timeout.nanoseconds)), sequenceNumber: sequenceNumber))))
             case .failure(let error):
-                 context.myself.tell(.remote(.pingResponse(response: .error(error, target: target.node, sequenceNumber: 0)))) // FIXME
+                context.myself.tell(.remote(.pingResponse(response: .error(error, target: target.node, sequenceNumber: sequenceNumber))))
             }
 //            switch result {
 //            case .success(let response):
@@ -461,7 +465,7 @@ internal struct SWIMActorShell {
             "Checking suspicion timeouts...",
             metadata: [
                 "swim/suspects": "\(self.swim.suspects)",
-                "swim/all": Logger.MetadataValue.array(self.swim.allMembers.map({ "\($0)" })),
+                "swim/all": Logger.MetadataValue.array(self.swim.allMembers.map { "\($0)" }),
                 "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
             ]
         )
@@ -542,7 +546,6 @@ internal struct SWIMActorShell {
             self.tryAnnounceMemberReachability(change: change, context: context)
         }
     }
-
 
     func processGossipedMembership(_ directive: SWIM.Instance.GossipProcessedDirective, context: MyselfContext) {
         switch directive {
@@ -659,7 +662,7 @@ extension SWIMActorShell {
 
 extension ActorAddress {
     internal static func _swim(on node: UniqueNode) -> ActorAddress {
-        .init(node: node, path: ActorPath._swim, incarnation: .wellKnown)
+        .init(remote: node, path: ActorPath._swim, incarnation: .wellKnown)
     }
 }
 
@@ -690,33 +693,5 @@ internal enum TraceLogType: CustomStringConvertible {
         case .ask(let who):
             return "ASK(\(who.address))"
         }
-    }
-}
-
-extension ClusterMembership.Node {
-    init(uniqueNode: UniqueNode) {
-        self.init(
-            protocol: uniqueNode.node.protocol,
-            name: uniqueNode.node.systemName,
-            host: uniqueNode.host,
-            port: uniqueNode.port,
-            uid: uniqueNode.nid.value
-        )
-    }
-
-    func swimRef(_ context: ActorContext<SWIM.Ref.Message>) -> SWIM.PeerRef {
-        context.system._resolve(context: .init(address: ._swim(on: self.asUniqueNode!), system: context.system)) // TODO: the ! is not so nice
-    }
-
-    var asUniqueNode: UniqueNode? {
-        guard let uid = self.uid else {
-            return nil
-        }
-
-        return .init(protocol: self.protocol, systemName: self.name ?? "", host: self.host, port: self.port, nid: .init(uid))
-    }
-
-    var asNode: DistributedActors.Node? {
-        .init(protocol: self.protocol, systemName: self.name ?? "", host: self.host, port: self.port)
     }
 }

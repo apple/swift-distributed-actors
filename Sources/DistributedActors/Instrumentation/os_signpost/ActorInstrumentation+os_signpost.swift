@@ -82,7 +82,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             Self.actorSpawnedStartFormat,
-            "\(self.address.node?.description ?? "")", "\(self.address.path)"
+            "\(self.address.node)", "\(self.address.path)"
         )
 
         os_signpost(
@@ -91,7 +91,7 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Lifecycle",
             signpostID: self.signpostID,
             Self.actorSpawnedStartFormat,
-            "\(self.address.node?.description ?? "")", "\(self.address.path)"
+            "\(self.address.node)", "\(self.address.path)"
         )
     }
 
@@ -179,8 +179,8 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Message (Tell)",
             signpostID: self.signpostID,
             Self.actorToldEventPattern,
-            "\(self.address.node?.description ?? "")", "\(self.address.path)",
-            "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
+            "\(self.address.node)", "\(self.address.path)",
+            "\(from?.node.description ?? "")", "\(from?.path.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
         )
     }
@@ -222,8 +222,8 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Message (Ask)",
             signpostID: self.signpostID,
             Self.actorAskedEventPattern,
-            "\(self.address.node?.description ?? "")", "\(self.address.path)",
-            "\(from?.node?.description ?? "")", "\(from?.path.description ?? "")",
+            "\(self.address.node)", "\(self.address.path)",
+            "\(from?.node.description ?? "")", "\(from?.path.description ?? "")",
             "\(message)", String(reflecting: type(of: message))
         )
     }
@@ -292,9 +292,9 @@ extension OSSignpostActorInstrumentation {
             name: "Actor Message (Received)",
             signpostID: self.signpostID,
             Self.actorReceivedEventPattern,
-            "\(self.address.node?.description ?? "")",
+            "\(self.address.node.description)",
             "\(self.address.path)",
-            "\(from?.node?.description ?? "")",
+            "\(from?.node.description ?? "")",
             "\(from?.path.description ?? "")",
             "\(message)",
             String(reflecting: type(of: message))

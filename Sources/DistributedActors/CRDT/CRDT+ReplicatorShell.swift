@@ -781,7 +781,7 @@ extension CRDT.Replicator.Shell {
 
 extension ActorAddress {
     internal static func _crdtReplicator(on node: UniqueNode) -> ActorAddress {
-        .init(node: node, path: ._crdtReplicator, incarnation: .wellKnown)
+        .init(remote: node, path: ._crdtReplicator, incarnation: .wellKnown)
     }
 }
 

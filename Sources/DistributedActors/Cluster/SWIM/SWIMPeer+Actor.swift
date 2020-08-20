@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
-import SWIM
 import enum Dispatch.DispatchTimeInterval
+import SWIM
 
 extension SWIM {
     typealias PeerRef = ActorRef<SWIM.Message>
@@ -26,30 +26,23 @@ extension SWIM {
     typealias Shell = SWIMActorShell
 }
 
-extension ActorRef: AddressableSWIMPeer {
+public protocol AnySWIMMessage {}
+extension SWIM.Message: AnySWIMMessage {}
+extension SWIM.PingResponse: AnySWIMMessage {}
 
+extension ActorRef: AddressableSWIMPeer where Message: AnySWIMMessage {
     public var node: ClusterMembership.Node {
-        get {
-            guard let node = self.address.node else {
-                fatalError("SWIM Peers always must have a node; in actor's case this should be the 'local' node if no node is set explicitly")
-            }
-
-            return .init(protocol: node.node.protocol, host: node.host, port: node.port, uid: UInt64(node.nid.value)) // TODO: those integer conversions
-        }
-        set {
-            fatalError("EHHHH") // FIXME
-        }
+        .init(protocol: self.address.node.node.protocol, host: self.address.node.host, port: self.address.node.port, uid: self.address.node.nid.value)
     }
 }
 
 extension ActorRef: SWIMPeer where Message == SWIM.Message {
-
     public func ping(
         payload: SWIM.GossipPayload,
         from origin: AddressableSWIMPeer,
         timeout: DispatchTimeInterval,
         sequenceNumber: SWIM.SequenceNumber,
-        onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> ()
+        onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
         let response: AskResponse<SWIM.PingResponse> = self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.ping(replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber))
@@ -60,7 +53,8 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
 
     public func pingRequest(
         target: AddressableSWIMPeer, payload: SWIM.GossipPayload, from origin: AddressableSWIMPeer,
-        timeout: DispatchTimeInterval, sequenceNumber: SWIM.SequenceNumber, onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> ()) {
+        timeout: DispatchTimeInterval, sequenceNumber: SWIM.SequenceNumber, onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> Void
+    ) {
         let response: AskResponse<SWIM.PingResponse> = self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.pingRequest(target: target as! SWIM.Ref, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }
@@ -70,7 +64,6 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
 }
 
 extension ActorRef: SWIMPingOriginPeer where Message == SWIM.PingResponse {
-
     public func ack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: AddressableSWIMPeer, incarnation: SWIM.Incarnation, payload: SWIM.GossipPayload) {
         self.tell(.ack(target: target.node, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber))
     }

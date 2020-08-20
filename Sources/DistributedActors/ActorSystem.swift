@@ -184,7 +184,7 @@ public final class ActorSystem {
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
         // initialize top level guardians
-        self._root = TheOneWhoHasNoParent()
+        self._root = TheOneWhoHasNoParent(local: settings.cluster.uniqueBindNode)
         let theOne = self._root
 
         let initializationLock = ReadWriteLock()
@@ -206,11 +206,11 @@ public final class ActorSystem {
         }
 
         // dead letters init
-        self._deadLetters = ActorRef(.deadLetters(.init(rootLogger, address: ActorAddress._deadLetters, system: self)))
+        self._deadLetters = ActorRef(.deadLetters(.init(rootLogger, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
 
         // actor providers
-        let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", system: self))
-        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", system: self))
+        let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
+        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", localNode: settings.cluster.uniqueBindNode, system: self))
         // TODO: want to reconciliate those into one, and allow /dead as well
 
         var effectiveUserProvider: _ActorRefProvider = localUserProvider

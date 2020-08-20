@@ -318,7 +318,7 @@ extension OperationLogClusterReceptionist {
         let key = message._key.asAnyKey
         let ref = message._addressableActorRef
 
-        guard ref.address.isLocal || (ref.address.node == context.system.cluster.uniqueNode) else {
+        guard ref.address._isLocal || (ref.address.node == context.system.cluster.uniqueNode) else {
             context.log.warning("""
             Actor [\(ref)] attempted to register under key [\(key)], with NOT-local receptionist! \
             Actors MUST register with their local receptionist in today's Receptionist implementation.
@@ -331,10 +331,7 @@ extension OperationLogClusterReceptionist {
 
             context.watch(ref)
 
-            var addressWithNode = ref.address
-            addressWithNode.node = context.system.cluster.uniqueNode
-
-            self.addOperation(context, .register(key: key, address: addressWithNode))
+            self.addOperation(context, .register(key: key, address: ref.address))
 
             context.log.debug(
                 "Registered [\(ref.address)] for key [\(key)]",
@@ -521,11 +518,11 @@ extension OperationLogClusterReceptionist {
         maybeReceptionistRef: ReceptionistRef? = nil
     ) {
         assert(maybeReceptionistRef == nil || maybeReceptionistRef?.address == receptionistAddress, "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist.")
-        guard let receptionistNode = receptionistAddress.node else {
+        guard case .remote = receptionistAddress._location else {
             return // this would mean we tried to pull from a "local" receptionist, bail out
         }
 
-        guard self.membership.contains(receptionistNode) else {
+        guard self.membership.contains(receptionistAddress.node) else {
             // node is either not known to us yet, OR has been downed and removed
             // avoid talking to it until we see it in membership.
             return
@@ -678,8 +675,7 @@ extension OperationLogClusterReceptionist {
 
 extension OperationLogClusterReceptionist {
     private func onTerminated(context: ActorContext<ReceptionistMessage>, terminated: Signals.Terminated) {
-        if let node = terminated.address.node,
-            terminated.address == ActorAddress._receptionist(on: node) {
+        if terminated.address == ActorAddress._receptionist(on: terminated.address.node) {
             context.log.debug("Watched receptionist terminated: \(terminated)")
             self.onReceptionistTerminated(context, terminated: terminated)
         } else {
@@ -689,12 +685,7 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onReceptionistTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {
-        guard let node = terminated.address.node else {
-            context.log.warning("Receptionist [\(terminated.address)] terminated however has no `node` set, this is highly suspect. It would mean this is 'us', but that cannot be.")
-            return
-        }
-
-        self.pruneClusterMember(context, removedNode: node)
+        self.pruneClusterMember(context, removedNode: terminated.address.node)
     }
 
     private func onActorTerminated(_ context: ActorContext<Message>, terminated: Signals.Terminated) {

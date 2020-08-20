@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SWIM
 import DistributedActorsConcurrencyHelpers
 import Metrics
+import SWIM
 
 /// Carries references to all metrics objects for simple and structured usage throughout the actor system.
 ///

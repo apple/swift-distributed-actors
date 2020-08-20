@@ -47,36 +47,20 @@
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
 public struct ActorAddress: Equatable, Hashable {
-//    @usableFromInline
-//    internal var _location: ActorLocation
+    /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
+    /// It is on purpose not exposed to end-user code, as well, and must remain so to not break the location transparency promises made by the runtime.
+    ///
+    /// Internally, this knowledge sometimes is necessary however.
+    ///
+    /// As far as end users are concerned, local/remote manifests mostly in the address being hidden in a `description` of a local actor,
+    /// this way it is not noisy to print actors when running in local only mode, or when listing actors and some of them are local.
     @usableFromInline
     internal var _location: ActorLocation
-//    {
-//        get {
-//            .local
-//        }
-//        set {
-//
-//        }
-//    }
 
-    /// Returns a remote node's address if the address points to a remote actor,
-    /// or `nil` if the referred to actor is local to the system the address was obtained from.
-    public var node: UniqueNode? {
-        get {
-            switch self._location {
-            case .local:
-                return nil // TODO: we could make it such that we return the owning address :thinking:
-            case .remote(let remote):
-                return remote
-            }
-        }
-        set {
-            if let node = newValue {
-                self._location = .remote(node)
-            } else {
-                self._location = .local
-            }
+    public var node: UniqueNode {
+        switch self._location {
+        case .local(let node): return node
+        case .remote(let remote): return remote
         }
     }
 
@@ -84,14 +68,6 @@ public struct ActorAddress: Equatable, Hashable {
 
     /// Underlying path representation, not attached to a specific Actor instance.
     public var path: ActorPath
-//    {
-//        get {
-//            ._dead
-//        }
-//        set {
-//
-//        }
-//    }
 
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
@@ -102,57 +78,42 @@ public struct ActorAddress: Equatable, Hashable {
     /// Uniquely identifies the specific "incarnation" of this actor.
     public let incarnation: ActorIncarnation
 
-    /// Creates a _local_ actor address.
-    ///
-    /// Usually NOT intended to be used directly in user code.
-    public init(path: ActorPath, incarnation: ActorIncarnation) {
+    /// :nodoc:
+    public init(local node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
+        self._location = .local(node)
         self.incarnation = incarnation
-        self._location = .local
         self.path = path
     }
 
-    /// Creates an actor address referring to an address on a _remote_ `node`.
-    ///
-    /// Usually NOT intended to be used directly in user code, but rather obtained from the serialization infrastructure.
-    public init(node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
-        self.incarnation = incarnation
+    /// :nodoc:
+    public init(remote node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
         self._location = .remote(node)
+        self.incarnation = incarnation
         self.path = path
     }
 
-    internal func ensuringNode(_ node: UniqueNode) -> ActorAddress {
-        guard self.node == nil else {
-            return self
-        }
-
-        var withAddress = self
-        withAddress.node = node
-        return withAddress
+    public static func == (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
+        lhs.incarnation == rhs.incarnation && // quickest to check if the incarnations are the same
+            // if they happen to be equal, we don't know yet for sure if it's the same actor or not, as incarnation is just a random ID
+            // thus we need to compare the node and path as well
+            lhs.node == rhs.node && lhs.path == rhs.path
     }
 }
 
 extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         var res = ""
-        switch self._location {
-        case .local:
-            () // ok
-        case .remote(let addr):
-            res += "\(addr)"
+        if self._isRemote {
+            res += "\(self.node)"
         }
-
         res += "\(self.path)"
-
         return res
     }
 
     public var debugDescription: String {
         var res = ""
-        switch self._location {
-        case .local:
-            () // ok
-        case .remote(let node):
-            res += String(reflecting: node)
+        if self._isRemote {
+            res += "\(self.node)"
         }
 
         res += "\(self.path)"
@@ -168,22 +129,30 @@ extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
 extension ActorAddress {
     /// Local root (also known as: "/") actor address.
     /// Only to be used by the "/" root "actor"
-    internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .wellKnown)
-    internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .wellKnown)
+    internal static func _localRoot(on node: UniqueNode) -> ActorAddress {
+        ActorPath._root.makeLocalAddress(on: node, incarnation: .wellKnown)
+    }
+
+    /// Local dead letters address.
+    internal static func _deadLetters(on node: UniqueNode) -> ActorAddress {
+        ActorPath._deadLetters.makeLocalAddress(on: node, incarnation: .wellKnown)
+    }
 }
 
 extension ActorAddress {
+    /// :nodoc:
     @inlinable
-    internal var isLocal: Bool {
+    public var _isLocal: Bool {
         switch self._location {
         case .local: return true
         default: return false
         }
     }
 
+    /// :nodoc:
     @inlinable
-    internal var isRemote: Bool {
-        !self.isLocal
+    public var _isRemote: Bool {
+        !self._isLocal
     }
 }
 
@@ -193,10 +162,11 @@ extension ActorAddress: PathRelationships {
     }
 
     func makeChildAddress(name: String, incarnation: ActorIncarnation) throws -> ActorAddress {
-        if let node = self.node {
-            return try .init(node: node, path: self.makeChildPath(name: name), incarnation: incarnation)
-        } else {
-            return try .init(path: self.makeChildPath(name: name), incarnation: incarnation)
+        switch self._location {
+        case .local(let node):
+            return try .init(local: node, path: self.makeChildPath(name: name), incarnation: incarnation)
+        case .remote(let node):
+            return try .init(remote: node, path: self.makeChildPath(name: name), incarnation: incarnation)
         }
     }
 
@@ -204,9 +174,9 @@ extension ActorAddress: PathRelationships {
     public func appending(segment: ActorPathSegment) -> ActorAddress {
         switch self._location {
         case .remote(let node):
-            return .init(node: node, path: self.path.appending(segment: segment), incarnation: self.incarnation)
-        case .local:
-            return .init(path: self.path.appending(segment: segment), incarnation: self.incarnation)
+            return .init(remote: node, path: self.path.appending(segment: segment), incarnation: self.incarnation)
+        case .local(let node):
+            return .init(local: node, path: self.path.appending(segment: segment), incarnation: self.incarnation)
         }
     }
 }
@@ -240,7 +210,7 @@ extension Optional: Comparable where Wrapped == UniqueNode {
 
 @usableFromInline
 internal enum ActorLocation: Hashable {
-    case local
+    case local(UniqueNode)
     case remote(UniqueNode)
 }
 
@@ -339,12 +309,12 @@ extension ActorPath {
     public static let _user: ActorPath = try! ActorPath(root: "user")
     public static let _system: ActorPath = try! ActorPath(root: "system")
 
-    internal func makeLocalAddress(incarnation: ActorIncarnation) -> ActorAddress {
-        .init(path: self, incarnation: incarnation)
+    internal func makeLocalAddress(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorAddress {
+        .init(local: node, path: self, incarnation: incarnation)
     }
 
     internal func makeRemoteAddress(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorAddress {
-        .init(node: node, path: self, incarnation: incarnation)
+        .init(remote: node, path: self, incarnation: incarnation)
     }
 }
 

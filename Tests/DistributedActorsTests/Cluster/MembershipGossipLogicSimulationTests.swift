@@ -348,25 +348,25 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
                 let participatingGossips = self.logics.shuffled()
                 for logic in participatingGossips {
                     let selectedPeers: [AddressableActorRef] = logic.selectPeers(self.peers(of: logic))
-                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map { $0.address.node!.node.systemName })")
+                    log.notice("[\(logic.nodeName)] selected peers: \(selectedPeers.map { $0.address.node.node.systemName })")
 
                     for targetPeer in selectedPeers {
                         messageCounts[messageCounts.endIndex - 1] += 1
 
                         let targetGossip = logic.makePayload(target: targetPeer)
                         if let gossip = targetGossip {
-                            log.notice("    \(logic.nodeName) -> \(targetPeer.address.node!.node.systemName)", metadata: [
+                            log.notice("    \(logic.nodeName) -> \(targetPeer.address.node.node.systemName)", metadata: [
                                 "gossip": Logger.MetadataValue.pretty(gossip),
                             ])
 
                             let targetLogic = self.selectLogic(targetPeer)
                             let maybeAck = targetLogic.receiveGossip(gossip, from: self.peer(logic))
-                            log.notice("updated [\(targetPeer.address.node!.node.systemName)]", metadata: [
+                            log.notice("updated [\(targetPeer.address.node.node.systemName)]", metadata: [
                                 "gossip": Logger.MetadataValue.pretty(targetLogic.latestGossip),
                             ])
 
                             if let ack = maybeAck {
-                                log.notice("    \(logic.nodeName) <- \(targetPeer.address.node!.node.systemName) (ack)", metadata: [
+                                log.notice("    \(logic.nodeName) <- \(targetPeer.address.node.node.systemName) (ack)", metadata: [
                                     "ack": Logger.MetadataValue.pretty(ack),
                                 ])
                                 logic.receiveAcknowledgement(ack, from: self.peer(targetLogic), confirming: gossip)
@@ -419,20 +419,16 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
     // MARK: Support functions
 
     func peers(of logic: MembershipGossipLogic) -> [AddressableActorRef] {
-        Array(self.mockPeers.filter { $0.address.node! != logic.localNode })
+        Array(self.mockPeers.filter { $0.address.node != logic.localNode })
     }
 
     func selectLogic(_ peer: AddressableActorRef) -> MembershipGossipLogic {
-        guard let uniqueNode = peer.address.node else {
-            fatalError("MUST have node, was: \(peer.address)")
-        }
-
-        return (self.logics.first { $0.localNode == uniqueNode })!
+        (self.logics.first { $0.localNode == peer.address.node })!
     }
 
     func peer(_ logic: MembershipGossipLogic) -> AddressableActorRef {
         let nodeName = logic.localNode.node.systemName
-        if let peer = (self.mockPeers.first { $0.address.node?.node.systemName == nodeName }) {
+        if let peer = (self.mockPeers.first { $0.address.node.node.systemName == nodeName }) {
             return peer
         } else {
             fatalError("No addressable peer for logic: \(logic), peers: \(self.mockPeers)")

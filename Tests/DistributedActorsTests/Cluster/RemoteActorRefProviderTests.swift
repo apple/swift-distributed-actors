@@ -26,22 +26,22 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
 
     let localNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 7111, nid: UniqueNodeID(777_777))
     let remoteNode = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: UniqueNodeID(888_888))
-    lazy var remoteAddress = ActorAddress(node: remoteNode, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
+    lazy var remoteAddress = ActorAddress(remote: remoteNode, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Properly resolve
 
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
-        let theOne = TheOneWhoHasNoParent()
-        let guardian = Guardian(parent: theOne, name: "user", system: system)
+        let theOne = TheOneWhoHasNoParent(local: system.cluster.uniqueNode)
+        let guardian = Guardian(parent: theOne, name: "user", localNode: system.cluster.uniqueNode, system: system)
         let localProvider = LocalActorRefProvider(root: guardian)
 
         let clusterShell = ClusterShell(selfNode: self.localNode)
         let provider = RemoteActorRefProvider(settings: system.settings, cluster: clusterShell, localProvider: localProvider)
 
         let node = UniqueNode(node: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())
-        let remoteNode = ActorAddress(node: node, path: try ActorPath._user.appending("henry").appending("hacker"), incarnation: ActorIncarnation(1337))
+        let remoteNode = ActorAddress(remote: node, path: try ActorPath._user.appending("henry").appending("hacker"), incarnation: ActorIncarnation(1337))
         let resolveContext = ResolveContext<String>(address: remoteNode, system: system)
 
         // when
@@ -98,7 +98,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
 
     func test_remoteActorRefProvider_shouldResolveRemoteAlreadyDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
         let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: UniqueNodeID(1211))
-        let address: ActorAddress = try .init(node: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
+        let address: ActorAddress = try .init(remote: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .wellKnown)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
         let resolvedRef = self.system._resolve(context: resolveContext)

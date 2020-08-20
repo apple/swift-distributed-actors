@@ -239,7 +239,7 @@ extension ActorSingletonProxy {
 
 extension ActorAddress {
     internal static func _singletonProxy(name: String, on node: UniqueNode) -> ActorAddress {
-        .init(node: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
+        .init(local: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
     }
 }
 

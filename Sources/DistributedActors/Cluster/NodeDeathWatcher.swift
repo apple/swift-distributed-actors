@@ -55,7 +55,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
             return
         }
 
-        if watcher.address.isRemote { // isKnownRemote(localAddress: context.address) {
+        if watcher.address._isRemote { // isKnownRemote(localAddress: context.address) {
             // a failure detector must never register non-local actors, it would not make much sense,
             // as they should have their own local failure detectors on their own systems.
             // If we reach this it is most likely a bug in the library itself.

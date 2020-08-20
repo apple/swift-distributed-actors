@@ -22,8 +22,9 @@ final class VersionVectorSerializationTests: ActorSystemXCTestCase {
         }
     }
 
-    let addressA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .wellKnown)
-    let addressB = try! ActorAddress(path: ActorPath._user.appending("B"), incarnation: .wellKnown)
+    var node: UniqueNode { .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random()) }
+    lazy var addressA = try! ActorAddress(local: node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)
+    lazy var addressB = try! ActorAddress(local: node, path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector

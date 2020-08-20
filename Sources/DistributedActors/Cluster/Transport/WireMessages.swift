@@ -25,7 +25,7 @@ internal enum Wire {
     public typealias Version = DistributedActors.Version
 
     /// Envelope type carrying messages over the network.
-    struct Envelope {
+    struct Envelope: Codable {
         var recipient: ActorAddress
 
         // TODO: metadata

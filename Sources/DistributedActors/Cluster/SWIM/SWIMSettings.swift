@@ -12,17 +12,17 @@
 ////
 ////===----------------------------------------------------------------------===//
 //
-//import struct Dispatch.DispatchTime // for time source overriding
-//import Logging
+// import struct Dispatch.DispatchTime // for time source overriding
+// import Logging
 //
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: SWIM Settings
 //
-//extension SWIM {
+// extension SWIM {
 //    public typealias Settings = SWIMSettings
-//}
+// }
 //
-//public struct SWIMSettings {
+// public struct SWIMSettings {
 //    public static var `default`: SWIMSettings {
 //        .init()
 //    }
@@ -83,12 +83,12 @@
 //    #else
 //    public var traceLogLevel: Logger.Level?
 //    #endif
-//}
+// }
 //
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: SWIM Gossip Settings
 //
-//public struct SWIMGossipSettings {
+// public struct SWIMGossipSettings {
 //    public static var `default`: SWIMGossipSettings {
 //        .init()
 //    }
@@ -98,7 +98,7 @@
 //    public var maxNumberOfMessages: Int = 20
 //
 //    public var maxGossipCountPerMessage: Int = 6
-//}
+// }
 //
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: SWIM Lifeguard extensions Settings
@@ -106,7 +106,7 @@
 ///// Lifeguard is a set of extensions to SWIM that helps reducing false positive failure detections
 /////
 ///// - SeeAlso: [Lifeguard: Local Health Awareness for More Accurate Failure Detection](https://arxiv.org/pdf/1707.00788.pdf)
-//public struct SWIMLifeguardSettings {
+// public struct SWIMLifeguardSettings {
 //    public static var `default`: SWIMLifeguardSettings {
 //        .init()
 //    }
@@ -181,4 +181,4 @@
 //    ///
 //    /// This property allows to override the `.now` function. // TODO: replace with always using the `system.now()` clock.
 //    var timeSourceNanos: () -> Int64 = { () -> Int64 in Int64(DispatchTime.now().uptimeNanoseconds) }
-//}
+// }

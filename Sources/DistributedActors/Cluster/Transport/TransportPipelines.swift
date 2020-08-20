@@ -252,30 +252,29 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
     typealias InboundOut = Wire.Envelope
 
     let log: Logger
+    let serialization: Serialization
 
-    init(log: Logger) {
+    init(serialization: Serialization, log: Logger) {
+        self.serialization = serialization
         self.log = log
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let envelope = self.unwrapOutboundIn(data)
-        let protoEnvelope = ProtoEnvelope(envelope)
         do {
-            let bytes = try protoEnvelope.serializedByteBuffer(allocator: context.channel.allocator)
-            context.writeAndFlush(NIOAny(bytes), promise: promise)
+            let serialized = try serialization.serialize(envelope)
+            let buffer = serialized.buffer.asByteBuffer(allocator: self.serialization.allocator) // FIXME: yes we double allocate, no good ways around it today
+            context.writeAndFlush(NIOAny(buffer), promise: promise)
         } catch {
             context.fireErrorCaught(error)
         }
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        var bytes = self.unwrapInboundIn(data)
-
+        let buffer = self.unwrapInboundIn(data)
         do {
-            let data = bytes.readData(length: bytes.readableBytes)! // safe since using readableBytes
-            let protoEnvelope = try ProtoEnvelope(serializedData: data)
-            bytes.discardReadBytes()
-            let envelope = try Wire.Envelope(protoEnvelope)
+            let knownSpecializedWireEnvelopeManifest = Serialization.Manifest(serializerID: .specializedWithTypeHint, hint: "_$Wire.Envelope")
+            let envelope = try self.serialization.deserialize(as: Wire.Envelope.self, from: .nioByteBuffer(buffer), using: knownSpecializedWireEnvelopeManifest)
             context.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {
             context.fireErrorCaught(error)
@@ -406,10 +405,10 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             context.writeAndFlush(self.wrapOutboundOut(redeliveryEnvelope), promise: promise)
 
         case .bufferOverflowMustAbortAssociation:
-            self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).")
-            if let node = transportEnvelope.recipient.node {
-                self.clusterShell.tell(.command(.downCommand(node.node)))
-            }
+            self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).", metadata: [
+                "recipient": "\(transportEnvelope.recipient)",
+            ])
+            self.clusterShell.tell(.command(.downCommand(transportEnvelope.recipient.node.node)))
         }
     }
 
@@ -723,7 +722,7 @@ extension ClusterShell {
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
                     ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localNode: bindAddress)),
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME only include for debug -DSACT_TRACE_NIO things?
-                    ("wire envelope handler", WireEnvelopeHandler(log: log)),
+                    ("wire envelope handler", WireEnvelopeHandler(serialization: serializationPool.serialization, log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
                     ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
                     ("actor message handler", UserMessageHandler(log: log, system: system, serializationPool: serializationPool)),
@@ -787,7 +786,7 @@ extension ClusterShell {
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
                     ("initiating handshake handler", InitiatingHandshakeHandler(log: log, handshakeOffer: handshakeOffer, cluster: shell)),
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)), // FIXME make available via compilation flag
-                    ("envelope handler", WireEnvelopeHandler(log: log)),
+                    ("envelope handler", WireEnvelopeHandler(serialization: serializationPool.serialization, log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
                     ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
                     ("actor message handler", UserMessageHandler(log: log, system: system, serializationPool: serializationPool)),

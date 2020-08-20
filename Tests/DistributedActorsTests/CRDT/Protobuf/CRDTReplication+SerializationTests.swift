@@ -25,8 +25,8 @@ final class CRDTReplicationSerializationTests: ActorSystemXCTestCase {
         }
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
+    lazy var ownerAlpha = try! ActorAddress(local: self.system.cluster.uniqueNode, path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
+    lazy var ownerBeta = try! ActorAddress(local: self.system.cluster.uniqueNode, path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 
     typealias WriteResult = CRDT.Replicator.RemoteCommand.WriteResult
     typealias ReadResult = CRDT.Replicator.RemoteCommand.ReadResult

@@ -86,7 +86,8 @@ class SerializationTests: ActorSystemXCTestCase {
 
     func test_serialize_actorAddress_shouldDemandContext() throws {
         let err = try shouldThrow {
-            let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
+            let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+            let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(on: node, incarnation: .random())
 
             let encoder = JSONEncoder()
             _ = try encoder.encode(address)
@@ -96,7 +97,8 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_actorAddress_usingContext() throws {
-        let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
+        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(on: node, incarnation: .random())
 
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()

@@ -35,8 +35,9 @@ final class CRDTReplicatorShellClusteredTests: ClusteredActorSystemsXCTestCase {
         self.remoteTestKit = super.testKit(self.remoteSystem)
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
+    var node: UniqueNode { .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random()) }
+    lazy var ownerAlpha = try! ActorAddress(local: node, path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
+    lazy var ownerBeta = try! ActorAddress(local: node, path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 
     let timeout = TimeAmount.seconds(1)
 

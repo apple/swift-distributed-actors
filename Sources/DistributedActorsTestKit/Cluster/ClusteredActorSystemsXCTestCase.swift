@@ -457,7 +457,7 @@ extension ClusteredActorSystemsXCTestCase {
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
         let remoteNode = targetSystem.settings.cluster.uniqueBindNode
 
-        let uniqueRemoteNode = ActorAddress(node: remoteNode, path: address.path, incarnation: address.incarnation)
+        let uniqueRemoteNode = ActorAddress(remote: remoteNode, path: address.path, incarnation: address.incarnation)
         let resolveContext = ResolveContext<M>(address: uniqueRemoteNode, system: system)
         return system._resolve(context: resolveContext)
     }
