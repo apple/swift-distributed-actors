@@ -43,43 +43,6 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: LHA probe modifications
 
-    func test_swim_shouldIncreaseProbeInterval_whenHighMultiplier() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
-        let third = self.setUpNode("third")
-
-        first.cluster.join(node: second.cluster.uniqueNode)
-        first.cluster.join(node: third.cluster.uniqueNode)
-        try assertAssociated(first, withExactly: [second.cluster.uniqueNode, third.cluster.uniqueNode])
-
-        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let maxLocalHealthMultiplier = 100
-        let ref = try first.spawn(
-            "SWIM",
-            SWIMActorShell.swimTestBehavior(members: [probeOnSecond.ref], clusterRef: self.firstClusterProbe.ref) { settings in
-                settings.lifeguard.maxLocalHealthMultiplier = maxLocalHealthMultiplier
-                settings.pingTimeout = .microseconds(1) // definitely timeout each time
-                // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
-                settings.probeInterval = .milliseconds(100)
-            }
-        )
-
-        let dummyProbe = self.testKit(third).spawnTestProbe(expecting: SWIM.Message.self)
-        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
-
-        // bump LHA multiplier to upper limit
-        for nr in 1 ... maxLocalHealthMultiplier {
-            ref.tell(.remote(.pingRequest(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none, sequenceNumber: SWIM.SequenceNumber(nr))))
-            try self.expectPing(on: dummyProbe, reply: false)
-            try _ = ackProbe.expectMessage()
-        }
-
-        ref.tell(.local(.pingRandomMember))
-
-        _ = try probeOnSecond.expectMessage()
-        try probeOnSecond.expectNoMessage(for: .seconds(2))
-    }
-
     func test_swim_shouldNotIncreaseProbeInterval_whenLowMultiplier() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
@@ -104,41 +67,40 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         _ = try probeOnSecond.expectMessage()
     }
 
-//    func test_swim_shouldIncreasePingTimeout_whenHighMultiplier() throws {
-//        let first = self.setUpFirst()
-//        let second = self.setUpSecond()
-//
-//        first.cluster.join(node: second.cluster.uniqueNode.node)
-//        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
-//
-//        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-//        let probeOnSecond.ref = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
-//        let maxLocalHealthMultiplier = 5
-//        let ref = try first.spawn(
-//            "SWIM",
-//            SWIMActorShell.swimTestBehavior(members: [probeOnSecond.ref], clusterRef: self.firstClusterProbe.ref) { settings in
-//                settings.lifeguard.maxLocalHealthMultiplier = maxLocalHealthMultiplier
-//                settings.pingTimeout = .milliseconds(500)
-//                // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
-//                settings.probeInterval = .milliseconds(100)
-//            }
-//        )
-//
-//        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-//        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
-//
-//        // bump LHA multiplier to upper limit
-//        for _ in 1 ... maxLocalHealthMultiplier {
-//            ref.tell(.remote(.pingRequest(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none, sequenceNumber: 13)))
-//            try self.expectPing(on: dummyProbe, reply: false)
-//            try _ = ackProbe.expectMessage(within: .seconds(6))
-//        }
-//
-//        ref.tell(.remote(.pingRequest(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none, sequenceNumber: 13)))
-//        try self.expectPing(on: dummyProbe, reply: false)
-//        try ackProbe.expectNoMessage(for: .seconds(1))
-//    }
-//
+    func test_swim_shouldIncreasePingTimeout_whenHighMultiplier() throws {
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+
+        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let maxLocalHealthMultiplier = 5
+        let ref = try first.spawn(
+            "SWIM",
+            SWIMActorShell.swimTestBehavior(members: [probeOnSecond.ref], clusterRef: self.firstClusterProbe.ref) { settings in
+                settings.lifeguard.maxLocalHealthMultiplier = maxLocalHealthMultiplier
+                settings.pingTimeout = .milliseconds(500)
+                // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
+                settings.probeInterval = .milliseconds(100)
+            }
+        )
+
+        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
+
+        // bump LHA multiplier to upper limit
+        for _ in 1 ... maxLocalHealthMultiplier {
+            ref.tell(.remote(.pingRequest(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none, sequenceNumber: 13)))
+            try self.expectPing(on: dummyProbe, reply: false)
+            try _ = ackProbe.expectMessage(within: .seconds(6))
+        }
+
+        ref.tell(.remote(.pingRequest(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none, sequenceNumber: 13)))
+        try self.expectPing(on: dummyProbe, reply: false)
+        try ackProbe.expectNoMessage(for: .seconds(1))
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Pinging nodes
 
