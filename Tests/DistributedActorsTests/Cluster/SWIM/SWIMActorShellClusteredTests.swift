@@ -653,39 +653,37 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 //            }
 //        }
 //    }
-//
-//    // ==== ----------------------------------------------------------------------------------------------------------------
-//    // MARK: Gossiping
-//
-//    func test_swim_shouldSendGossipInAck() throws {
-//        let first = self.setUpFirst()
-//        let second = self.setUpSecond()
-//
-//        first.cluster.join(node: second.cluster.uniqueNode.node)
-//        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
-//        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
-//
-//        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.PingResponse.self)
-//        let probeOnSecond.ref = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
-//
-//        let memberProbe = self.testKit(second).spawnTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
-//        let remoteMemberRef = first._resolveKnownRemote(memberProbe.ref, onRemoteSystem: second)
-//
-//        let swimRef = try first.spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref))
-//        swimRef.tell(.remote(.ping(replyTo: probeOnSecond.ref, payload: .none)))
-//
-//        let response: SWIM.PingResponse = try p.expectMessage()
-//        switch response {
-//        case .ack(_, _, .membership(let members)):
-//            members.count.shouldEqual(2)
-//            members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
-//            // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full address
-//            // so we want to expect a full (with node) ref here:
-//            members.shouldContain(SWIM.Member(ref: second._resolveKnownRemote(swimRef, onRemoteSystem: first), status: .alive(incarnation: 0), protocolPeriod: 0))
-//        case let reply:
-//            throw p.error("Expected gossip with membership, but got \(reply)")
-//        }
-//    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Gossiping
+
+    func test_swim_shouldSendGossipInAck() throws {
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+        try assertAssociated(second, withExactly: first.cluster.uniqueNode)
+
+        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.PingResponse.self)
+        let secondSwimProbe = self.testKit(second).spawnTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
+
+        let swimRef = try first.spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [secondSwimProbe.ref], clusterRef: self.firstClusterProbe.ref))
+        swimRef.tell(.remote(.ping(replyTo: probeOnSecond.ref, payload: .none, sequenceNumber: 1)))
+
+        let response: SWIM.PingResponse = try probeOnSecond.expectMessage()
+        switch response {
+        case .ack(_, _, .membership(let members), _):
+            members.count.shouldEqual(2)
+            members.shouldContain(SWIM.Member(peer: secondSwimProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
+            // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full address
+            // so we want to expect a full (with node) ref here:
+            members.shouldContain(SWIM.Member(peer: swimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
+        case let reply:
+            throw probeOnSecond.error("Expected gossip with membership, but got \(reply)")
+        }
+    }
+
 //
 //    func test_swim_shouldSendGossipInPing() throws {
 //        let first = self.setUpFirst()

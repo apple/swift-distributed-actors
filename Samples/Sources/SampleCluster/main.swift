@@ -44,6 +44,8 @@ let system = ActorSystem("SampleCluster") { settings in
     settings.cluster.enabled = true
     settings.cluster.bindPort = port
 
+    settings.logging.logLevel = .trace
+
     settings.cluster.downingStrategy = .timeout(.default)
 
     // settings.serialization.register... <1>

@@ -44,6 +44,7 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
         sequenceNumber: SWIM.SequenceNumber,
         onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
+        pprint("ASK: ping >>> TO [\(self)]")
         self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.ping(replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }._onComplete(onComplete)
@@ -53,6 +54,7 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
         target: SWIMAddressablePeer, payload: SWIM.GossipPayload, from origin: SWIMAddressablePeer,
         timeout: DispatchTimeInterval, sequenceNumber: SWIM.SequenceNumber, onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
+        pprint("ASK: ping request >>> TO [\(self)]")
         self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.pingRequest(target: target as! SWIM.Ref, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }._onComplete(onComplete)

@@ -49,6 +49,7 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
         self.sentAtFile = sentAtFile
         self.sentAtLine = sentAtLine
     }
+
     #else
     public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
         self.message = message

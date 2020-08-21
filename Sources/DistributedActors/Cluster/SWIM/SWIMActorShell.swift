@@ -106,7 +106,7 @@ internal struct SWIMActorShell {
         let directive = self.swim.onPeriodicPingTick()
         switch directive {
         case .ignore:
-            context.log.trace("Skipping periodic ping", metadata: self.swim.metadata)
+            () // ok
 
         case .sendPing(let target, let timeout, let sequenceNumber):
             context.log.trace("Periodic ping random member, among: \(self.swim.otherMemberCount)", metadata: self.swim.metadata)
@@ -463,15 +463,6 @@ internal struct SWIMActorShell {
     }
 
     func checkSuspicionTimeouts(context: MyselfContext) {
-        context.log.trace(
-            "Checking suspicion timeouts...",
-            metadata: [
-                "swim/suspects": "\(self.swim.suspects)",
-                "swim/all": Logger.MetadataValue.array(self.swim.allMembers.map { "\($0)" }),
-                "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-            ]
-        )
-
         for suspect in self.swim.suspects {
             if case .suspect(_, let suspectedBy) = suspect.status {
                 let suspicionTimeout = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
