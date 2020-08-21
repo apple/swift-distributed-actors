@@ -17,12 +17,6 @@ import enum Dispatch.DispatchTimeInterval
 import Logging
 import SWIM
 
-extension SWIM.Member {
-    func ref(_ context: ActorContext<SWIM.Ref.Message>) -> SWIM.PeerRef {
-        self.node.swimRef(context)
-    }
-}
-
 /// The SWIM shell is responsible for driving all interactions of the `SWIM.Instance` with the outside world.
 ///
 /// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
@@ -124,16 +118,12 @@ internal struct SWIMActorShell {
     // MARK: Receiving messages
 
     func receiveRemoteMessage(message: SWIM.RemoteMessage, context: MyselfContext) {
-        pprint("MMMM: \(message)")
         switch message {
         case .ping(let replyTo, let payload, let sequenceNumber):
             self.handlePing(context: context, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
 
         case .pingRequest(let target, let replyTo, let payload, let sequenceNumber):
             self.handlePingRequest(target: target, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber, context: context)
-
-        case .pingResponse(let pingResponse):
-            self.handlePingResponse(response: pingResponse, pingRequestOriginPeer: nil, context: context)
         }
     }
 
@@ -150,23 +140,8 @@ internal struct SWIMActorShell {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective, context: context)
 
-            case .reply(let reply):
-                switch reply {
-                case .ack(let targetNode, let incarnation, let payload, let sequenceNumber):
-                    // assert(targetNode == self.node, "Since we are replying to a ping, the target has to be myself node")
-                    replyTo.ack(acknowledging: sequenceNumber, target: context.myself, incarnation: incarnation, payload: payload)
-
-                case .nack(let targetNode, let sequenceNumber):
-                    // assert(targetNode == self.node, "Since we are replying to a ping, the target has to be myself node")
-                    replyTo.nack(acknowledging: sequenceNumber, target: context.myself)
-
-                case .timeout, .error:
-                    fatalError("FIXME this should not happen")
-                }
-                //
-                //            // TODO: push the process gossip into SWIM as well?
-                //            // TODO: the payloadToProcess is the same as `payload` here... but showcasing
-                //            self.processGossipPayload(payload: payload)
+            case .sendAck(let myself, let incarnation, let payload, let sequenceNumber):
+                replyTo.ack(acknowledging: sequenceNumber, target: myself, incarnation: incarnation, payload: payload)
             }
         }
     }
@@ -178,7 +153,11 @@ internal struct SWIMActorShell {
         sequenceNumber pingRequestSequenceNumber: SWIM.SequenceNumber,
         context: MyselfContext
     ) {
-        context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
+        context.log.trace("Received pingRequest@\(pingRequestSequenceNumber) [\(target)] from [\(replyTo)]", metadata: self.swim.metadata([
+            "swim/pingRequest/replyTo": "\(replyTo.address)",
+            "swim/pingRequest/payload": "\(payload)",
+            "swim/pingRequest/seqNr": "\(pingRequestSequenceNumber)",
+        ]))
 
         let directives: [SWIM.Instance.PingRequestDirective] = self.swim.onPingRequest(target: target, replyTo: replyTo, payload: payload)
         directives.forEach { directive in
@@ -247,26 +226,32 @@ internal struct SWIMActorShell {
             "swim/timeout": "\(timeout)",
         ]))
 
-        // TODO handle via a future and await?
-        target.ping(payload: payload, from: context.myself, timeout: timeout, sequenceNumber: sequenceNumber) { (result: Result<SWIM.PingResponse, Error>) in
+        let promise = context.system._eventLoopGroup.next().makePromise(of: SWIM.PingResponse.self)
+        target.ping(payload: payload, from: context.myself, timeout: timeout, sequenceNumber: sequenceNumber) { result in
+            promise.completeWith(result)
+        }
+
+        context.onResultAsync(of: promise.futureResult, timeout: .effectivelyInfinite) { result in
             switch result {
-            case .success(let response):
-                context.myself.tell(.remote(.pingResponse(response: response)))
-            case .failure(let error as TimeoutError):
-                context.myself.tell(.remote(.pingResponse(response: .timeout(target: target.node, pingRequestOrigin: pingRequestOriginPeer?.node, timeout: .nanoseconds(Int(error.timeout.nanoseconds)), sequenceNumber: sequenceNumber))))
+            case .success(let pingResponse):
+                self.handlePingResponse(response: pingResponse, pingRequestOrigin: nil, context: context)
             case .failure(let error):
-                context.myself.tell(.remote(.pingResponse(response: .error(error, target: target.node, sequenceNumber: sequenceNumber))))
+                context.log.debug("Failed to send ping", metadata: self.swim.metadata([
+                    "error": "\(error)"
+                ]))
+                self.handlePingResponse(
+                    response: .timeout(
+                        target: target,
+                        pingRequestOrigin: pingRequestOriginPeer,
+                        timeout: timeout,
+                        sequenceNumber: sequenceNumber
+                    ),
+                    pingRequestOrigin: pingRequestOriginPeer,
+                    context: context
+                )
             }
-//            switch result {
-//            case .success(let response):
-//                context.myself.tell(.remote(.pingResponse(response: response)))
-//                // self.handlePingResponse(result: result, pingRequestOrigin: pingRequestOriginPeer, context: context)
-//            case .failure(let error as TimeoutError):
-//                context.myself.tell(.remote(.pingResponse(response: .timeout(target: target.node, pingRequestOrigin: pingRequestOriginPeer.node, timeout: .nanoseconds(error.timeout.toNanos), sequenceNumber: <#T##SequenceNumber##SWIM.SequenceNumber#>))))
-//                // self.handlePingResponse(response: .timeout(target: target.node, pingRequestOrigin: pingRequestOriginPeer?.node, timeout: error.timeout, sequenceNumber: sequenceNumber), pingRequestOriginPeer: pingRequestOriginPeer)
-//            case .failure(let error):
-//                self.handlePingResponse(response: .error(error, target: target.node, sequenceNumber: sequenceNumber), pingRequestOriginPeer: pingRequestOriginPeer)
-//            }
+
+            return .same
         }
     }
 
@@ -277,25 +262,25 @@ internal struct SWIMActorShell {
         let eventLoop = context.system._eventLoopGroup.next()
         let firstSuccessful = eventLoop.makePromise(of: SWIM.PingResponse.self)
         let pingTimeout = self.swim.dynamicLHMPingTimeout
-        let nodeToPing = directive.targetNode
+        let peerToPing = directive.target
         for pingRequest in directive.requestDetails {
             let memberToPingRequestThrough = pingRequest.memberToPingRequestThrough
             let payload = pingRequest.payload
             let sequenceNumber = pingRequest.sequenceNumber
 
-            context.log.trace("Sending ping request for [\(nodeToPing)] to [\(memberToPingRequestThrough)] with payload: \(payload)")
+            context.log.trace("Sending ping request for [\(peerToPing)] to [\(memberToPingRequestThrough)] with payload: \(payload)")
 
             let peerToPingRequestThrough = memberToPingRequestThrough.node.swimRef(context)
 
             // self.tracelog(.send(to: peerToPingRequestThrough), message: "pingRequest(target: \(nodeToPing), replyTo: \(self.peer), payload: \(payload), sequenceNumber: \(sequenceNumber))")
             let eachReplyPromise = eventLoop.makePromise(of: SWIM.PingResponse.self)
-            peerToPingRequestThrough.pingRequest(target: nodeToPing, payload: payload, from: context.myself, timeout: pingTimeout, sequenceNumber: sequenceNumber) { result in
+            peerToPingRequestThrough.pingRequest(target: peerToPing, payload: payload, from: context.myself, timeout: pingTimeout, sequenceNumber: sequenceNumber) { result in
                 eachReplyPromise.completeWith(result)
             }
             context.onResultAsync(of: eachReplyPromise.futureResult, timeout: .effectivelyInfinite) { result in
                 switch result {
                 case .success(let response):
-                    self.handleEveryPingRequestResponse(response: response, pinged: nodeToPing, context: context)
+                    self.handleEveryPingRequestResponse(response: response, pinged: peerToPing, context: context)
                     if case .ack = response {
                         // We only cascade successful ping responses (i.e. `ack`s);
                         //
@@ -305,10 +290,19 @@ internal struct SWIMActorShell {
                         firstSuccessful.succeed(response)
                     }
                 case .failure(let error):
-                    self.handleEveryPingRequestResponse(response: .error(error, target: nodeToPing, sequenceNumber: sequenceNumber), pinged: nodeToPing, context: context)
+                    self.handleEveryPingRequestResponse(
+                        response: .timeout(
+                            target: peerToPing,
+                            pingRequestOrigin: context.myself.node,
+                            timeout: pingTimeout,
+                            sequenceNumber: sequenceNumber
+                        ),
+                        pinged: peerToPing,
+                        context: context
+                    )
                     // these are generally harmless thus we do not want to log them on higher levels
                     context.log.trace("Failed pingRequest", metadata: [
-                        "swim/target": "\(nodeToPing)",
+                        "swim/target": "\(peerToPing)",
                         "swim/payload": "\(payload)",
                         "swim/pingTimeout": "\(pingTimeout)",
                         "error": "\(error)",
@@ -321,9 +315,12 @@ internal struct SWIMActorShell {
         context.onResultAsync(of: firstSuccessful.futureResult, timeout: .effectivelyInfinite) { result in
             switch result {
             case .success(let response):
-                self.handlePingRequestResponse(response: response, pinged: nodeToPing.swimRef(context), context: context)
+                self.handlePingRequestResponse(response: response, pinged: peerToPing.swimRef(context), context: context)
             case .failure(let error):
-                self.handlePingRequestResponse(response: .error(error, target: nodeToPing, sequenceNumber: 0), pinged: nodeToPing.swimRef(context), context: context) // FIXME: that sequence number...
+                context.log.debug("Failed to sendPingRequests", metadata: [
+                    "error": "\(error)"
+                ])
+                self.handlePingRequestResponse(response: .timeout(target: peerToPing, pingRequestOrigin: context.myself.node, timeout: pingTimeout, sequenceNumber: 0), pinged: peerToPing.swimRef(context), context: context) // FIXME: that sequence number...
             }
             return .same
         }
@@ -331,17 +328,17 @@ internal struct SWIMActorShell {
 
     func handlePingResponse(
         response: SWIM.PingResponse,
-        pingRequestOriginPeer: SWIMPingOriginPeer?,
+        pingRequestOrigin: SWIMPingOriginPeer?,
         context: MyselfContext
     ) {
         let sequenceNumber = response.sequenceNumber
 
         context.log.warning("Receive ping response: \(response)", metadata: self.swim.metadata([
-            "swim/pingRequest/origin": "\(pingRequestOriginPeer, orElse: "nil")",
+            "swim/pingRequest/origin": "\(pingRequestOrigin, orElse: "nil")",
             "swim/response/sequenceNumber": "\(sequenceNumber)",
         ]))
 
-        let directives = self.swim.onPingResponse(response: response, pingRequestOrigin: pingRequestOriginPeer)
+        let directives = self.swim.onPingResponse(response: response, pingRequestOrigin: pingRequestOrigin)
         // optionally debug log all directives here
         directives.forEach { directive in
             switch directive {
@@ -361,14 +358,13 @@ internal struct SWIMActorShell {
     }
 
     /// We have to handle *every* response, because they adjust the value of the timeouts we'll be using in future probes.
-    func handleEveryPingRequestResponse(response: SWIM.PingResponse, pinged: AddressableSWIMPeer, context: MyselfContext) {
+    func handleEveryPingRequestResponse(response: SWIM.PingResponse, pinged: SWIMAddressablePeer, context: MyselfContext) {
         // self.tracelog(.receive(pinged: pinged.node), message: "\(response)")
         self.swim.onEveryPingRequestResponse(response, pingedMember: pinged)
     }
 
     func handlePingRequestResponse(response: SWIM.PingResponse, pinged: SWIM.Ref, context: MyselfContext) {
         // self.tracelog(context, .receive(pinged: pinged), message: response)
-        // TODO: do we know here WHO replied to us actually? We know who they told us about (with the ping-req), could be useful to know
 
         let directives = self.swim.onPingRequestResponse(response, pingedMember: pinged)
         directives.forEach {
@@ -425,7 +421,7 @@ internal struct SWIMActorShell {
             // TODO: add time of death to the status
             // TODO: GC tombstones after a day
 
-            switch self.swim.mark(member.ref(context), as: .dead) {
+            switch self.swim.mark(member.peer, as: .dead) {
             case .applied(let .some(previousState), _):
                 if previousState.isSuspect || previousState.isUnreachable {
                     context.log.warning(
@@ -504,7 +500,7 @@ internal struct SWIMActorShell {
     }
 
     private func markMember(_ context: MyselfContext, latest: SWIM.Member) {
-        switch self.swim.mark(latest.ref(context), as: latest.status) {
+        switch self.swim.mark(latest.peer, as: latest.status) {
         case .applied(let previousStatus, _):
             context.log.trace(
                 "Marked \(latest.node) as \(latest.status), announcing reachability change",
@@ -519,18 +515,6 @@ internal struct SWIMActorShell {
             () // context.log.trace("No change \(latest), currentStatus remains [\(currentStatus)]. No reachability change to announce")
         }
     }
-
-//     // TODO: since this is applying payload to SWIM... can we do this in SWIM itself rather? // DONE
-//    func processGossipPayload(payload: SWIM.GossipPayload, context: MyselfContext) {
-//        self.swim.onGossipPayload()
-//        switch payload {
-//        case .membership(let members):
-//            self.processGossipedMembership(members: members, context: context)
-//
-//        case .none:
-//            return // ok
-//        }
-//    }
 
     func handleGossipPayloadProcessedDirective(_ directive: SWIM.Instance.GossipProcessedDirective, context: MyselfContext) {
         switch directive {

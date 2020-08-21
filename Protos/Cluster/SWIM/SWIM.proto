@@ -22,37 +22,37 @@ import "ActorAddress.proto";
 
 message SWIMRemoteMessage {
     oneof request {
-        SWIMPing ping = 1;
+        SWIMPing ping               = 1;
         SWIMPingRequest pingRequest = 2;
     }
 }
 
 message SWIMPing {
-    ActorAddress replyTo = 1;
+    ActorAddress replyTo      = 1;
     SWIMGossipPayload payload = 2;
-    uint32 sequenceNumber = 3;
+    uint32 sequenceNumber     = 3;
 }
 
 message SWIMPingRequest {
-    UniqueNode target = 1;
-    ActorAddress replyTo = 2;
+    ActorAddress target       = 1;
+    ActorAddress replyTo      = 2;
     SWIMGossipPayload payload = 3;
-    uint32 sequenceNumber = 4;
+    uint32 sequenceNumber     = 4;
 }
 
 message SWIMPingResponse {
     message Ack {
-        UniqueNode target = 1;
-        uint64 incarnation = 2;
+        ActorAddress target       = 1;
+        uint64 incarnation        = 2;
         SWIMGossipPayload payload = 3;
-        uint32 sequenceNumber = 4;
+        uint32 sequenceNumber     = 4;
     }
     message Nack {
-        UniqueNode target = 1;
+        ActorAddress target   = 1;
         uint32 sequenceNumber = 2;
     }
     oneof pingResponse {
-        Ack ack = 1;
+        Ack ack   = 1;
         Nack nack = 2;
     }
 }
@@ -60,14 +60,14 @@ message SWIMPingResponse {
 message SWIMStatus {
     enum Type {
         UNSPECIFIED = 0;
-        ALIVE = 1;
-        SUSPECT = 2;
+        ALIVE       = 1;
+        SUSPECT     = 2;
         UNREACHABLE = 3;
-        DEAD = 4;
+        DEAD        = 4;
     }
 
-    Type type = 1;
-    uint64 incarnation = 2;
+    Type type                       = 1;
+    uint64 incarnation              = 2;
     repeated UniqueNode suspectedBy = 3;
 }
 

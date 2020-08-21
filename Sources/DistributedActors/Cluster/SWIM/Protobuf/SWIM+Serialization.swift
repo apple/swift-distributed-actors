@@ -49,14 +49,11 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
             proto.ping = ping
         case .pingRequest(let target, let replyTo, let payload, let sequenceNumber):
             var pingRequest = ProtoSWIMPingRequest()
-            pingRequest.target = try target.address.node.toProto(context: context)
+            pingRequest.target = try target.toProto(context: context)
             pingRequest.replyTo = try replyTo.toProto(context: context)
             pingRequest.payload = try payload.toProto(context: context)
             pingRequest.sequenceNumber = sequenceNumber
             proto.pingRequest = pingRequest
-
-        case .pingResponse(let response):
-            fatalError("ping response has no serialization, response: \(response)")
         }
 
         return proto
@@ -73,13 +70,11 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
             self = .ping(replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
 
         case .pingRequest(let pingRequest):
-            let targetNode = pingRequest.target
-            let targetUniqueNode = try UniqueNode(fromProto: targetNode, context: context)
-            let targetAddress = ActorAddress._swim(on: targetUniqueNode)
-            let target: ActorRef<SWIM.Message> = context.resolveActorRef(identifiedBy: targetAddress)
+            let targetAddress = try ActorAddress(fromProto: pingRequest.target, context: context)
+            let target: ActorRef<SWIM.Message> = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
 
             let replyToAddress = try ActorAddress(fromProto: pingRequest.replyTo, context: context)
-            let replyTo: ActorRef<SWIM.PingResponse> = context.resolveActorRef(identifiedBy: replyToAddress)
+            let replyTo = context.resolveActorRef(SWIM.PingResponse.self, identifiedBy: replyToAddress)
 
             let payload = try SWIM.GossipPayload(fromProto: pingRequest.payload, context: context)
             let sequenceNumber = pingRequest.sequenceNumber
@@ -183,20 +178,24 @@ extension SWIM.PingResponse: ProtobufRepresentable {
         switch self {
         case .ack(let target, let incarnation, let payload, let sequenceNumber):
             var ack = ProtoSWIMPingResponse.Ack()
-            ack.target = try target.toProto(context: context)
+            guard let targetRef = target as? SWIM.Ref else {
+                throw SerializationError.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)")
+            }
+            ack.target = try targetRef.toProto(context: context)
             ack.incarnation = incarnation
             ack.payload = try payload.toProto(context: context)
             ack.sequenceNumber = sequenceNumber
             proto.ack = ack
         case .nack(let target, let sequenceNumber):
             var nack = ProtoSWIMPingResponse.Nack()
-            nack.target = try target.node.toProto(context: context)
+            guard let targetRef = target as? SWIM.Ref else {
+                throw SerializationError.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)")
+            }
+            nack.target = try targetRef.toProto(context: context)
             nack.sequenceNumber = sequenceNumber
             proto.nack = nack
         case .timeout:
-            fatalError("SHOULD NOT BE SERIALIZED: \(self)")
-        case .error:
-            fatalError("SHOULD NOT BE SERIALIZED: \(self)")
+            throw SerializationError.nonTransportableMessage(type: "\(self)")
         }
         return proto
     }
@@ -207,13 +206,15 @@ extension SWIM.PingResponse: ProtobufRepresentable {
         }
         switch pingResponse {
         case .ack(let ack):
-            let target = try ClusterMembership.Node(fromProto: ack.target, context: context)
+            let targetAddress = try ActorAddress(fromProto: ack.target, context: context)
+            let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
             let payload = try SWIM.GossipPayload(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
             self = .ack(target: target, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
 
         case .nack(let nack):
-            let target = try ClusterMembership.Node(fromProto: nack.target, context: context)
+            let targetAddress = try ActorAddress(fromProto: nack.target, context: context)
+            let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
             let sequenceNumber = nack.sequenceNumber
             self = .nack(target: target, sequenceNumber: sequenceNumber)
         }

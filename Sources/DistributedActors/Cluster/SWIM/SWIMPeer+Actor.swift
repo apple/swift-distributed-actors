@@ -30,7 +30,7 @@ public protocol AnySWIMMessage {}
 extension SWIM.Message: AnySWIMMessage {}
 extension SWIM.PingResponse: AnySWIMMessage {}
 
-extension ActorRef: AddressableSWIMPeer where Message: AnySWIMMessage {
+extension ActorRef: SWIMAddressablePeer where Message: AnySWIMMessage {
     public var node: ClusterMembership.Node {
         .init(protocol: self.address.node.node.protocol, host: self.address.node.host, port: self.address.node.port, uid: self.address.node.nid.value)
     }
@@ -39,36 +39,32 @@ extension ActorRef: AddressableSWIMPeer where Message: AnySWIMMessage {
 extension ActorRef: SWIMPeer where Message == SWIM.Message {
     public func ping(
         payload: SWIM.GossipPayload,
-        from origin: AddressableSWIMPeer,
+        from origin: SWIMAddressablePeer,
         timeout: DispatchTimeInterval,
         sequenceNumber: SWIM.SequenceNumber,
         onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
-        let response: AskResponse<SWIM.PingResponse> = self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
+        self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.ping(replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber))
-        }
-
-        response._onComplete(onComplete)
+        }._onComplete(onComplete)
     }
 
     public func pingRequest(
-        target: AddressableSWIMPeer, payload: SWIM.GossipPayload, from origin: AddressableSWIMPeer,
+        target: SWIMAddressablePeer, payload: SWIM.GossipPayload, from origin: SWIMAddressablePeer,
         timeout: DispatchTimeInterval, sequenceNumber: SWIM.SequenceNumber, onComplete: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
-        let response: AskResponse<SWIM.PingResponse> = self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
+        self.ask(for: SWIM.PingResponse.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.pingRequest(target: target as! SWIM.Ref, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber))
-        }
-
-        response._onComplete(onComplete)
+        }._onComplete(onComplete)
     }
 }
 
 extension ActorRef: SWIMPingOriginPeer where Message == SWIM.PingResponse {
-    public func ack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: AddressableSWIMPeer, incarnation: SWIM.Incarnation, payload: SWIM.GossipPayload) {
-        self.tell(.ack(target: target.node, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber))
+    public func ack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: SWIMAddressablePeer, incarnation: SWIM.Incarnation, payload: SWIM.GossipPayload) {
+        self.tell(.ack(target: target, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber))
     }
 
-    public func nack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: AddressableSWIMPeer) {
-        self.tell(.nack(target: target.node, sequenceNumber: sequenceNumber))
+    public func nack(acknowledging sequenceNumber: SWIM.SequenceNumber, target: SWIMAddressablePeer) {
+        self.tell(.nack(target: target, sequenceNumber: sequenceNumber))
     }
 }

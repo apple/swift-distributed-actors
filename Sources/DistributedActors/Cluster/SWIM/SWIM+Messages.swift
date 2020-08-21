@@ -27,9 +27,6 @@ extension SWIM {
 
         /// "Ping Request" requests a SWIM probe.
         case pingRequest(target: ActorRef<Message>, replyTo: ActorRef<SWIM.PingResponse>, payload: SWIM.GossipPayload, sequenceNumber: SWIM.SequenceNumber)
-
-        /// A ping response will have to be "piped back into the actor" since the SWIM peer callbacks are not executed on the actor context
-        case pingResponse(response: SWIM.PingResponse)
     }
 
     // TODO: can become internal?

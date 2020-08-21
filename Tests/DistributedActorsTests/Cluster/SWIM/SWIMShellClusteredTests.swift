@@ -152,71 +152,71 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let response = try p.expectMessage()
         switch response {
-        case .ack(let pinged, let incarnation, _, let sequenceNumber):
+        case .ack(let pinged, let incarnation, _, _):
             pinged.shouldEqual(ref.node)
             incarnation.shouldEqual(0)
         case let resp:
             throw p.error("Expected ack, but got \(resp)")
         }
     }
-//
-//    func test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget() throws {
-//        let first = self.setUpFirst()
-//        let second = self.setUpSecond()
-//
-//        first.cluster.join(node: second.cluster.uniqueNode.node)
-//
-//        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-//        let memberProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
-//        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
-//
-//        let ref = try first.spawn("SWIM", SWIMActorShell.swimBehavior(members: [memberProbe.ref], clusterRef: self.firstClusterProbe.ref))
-//
-//        ref.tell(.remote(.pingRequest(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none, sequenceNumber: 13)))
-//
-//        try self.expectPing(on: dummyProbe, reply: false)
-//        let response = try ackProbe.expectMessage()
-//        guard case .nack = response else {
-//            throw self.testKit(first).error("expected nack, but got \(response)")
-//        }
-//    }
-//
-//    func test_swim_shouldPingRandomMember() throws {
-//        let first = self.setUpFirst()
-//        let second = self.setUpSecond()
-//
-//        first.cluster.join(node: second.cluster.uniqueNode.node)
-//        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
-//
-//        let p = self.testKit(second).spawnTestProbe(expecting: String.self)
-//
-//        func behavior(postFix: String) -> Behavior<SWIM.Message> {
-//            .receive { context, message in
-//                switch message {
-//                case .remote(.ping(let replyTo, _)):
-//                    replyTo.tell(.ack(target: context.myself, incarnation: 0, payload: .none, sequenceNumber: 13))
-//                    p.tell("pinged:\(postFix)")
-//                default:
-//                    ()
-//                }
-//
-//                return .same
-//            }
-//        }
-//
-//        let refA = try second.spawn("SWIM-A", behavior(postFix: "A"))
-//        let remoteRefA = first._resolveKnownRemote(refA, onRemoteSystem: second)
-//        let refB = try second.spawn("SWIM-B", behavior(postFix: "B"))
-//        let remoteRefB = first._resolveKnownRemote(refB, onRemoteSystem: second)
-//
-//        let ref = try first.spawn("SWIM", SWIMActorShell.swimBehavior(members: [remoteRefA, remoteRefB], clusterRef: self.firstClusterProbe.ref))
-//
-//        ref.tell(.local(.pingRandomMember))
-//        ref.tell(.local(.pingRandomMember))
-//
-//        try p.expectMessagesInAnyOrder(["pinged:A", "pinged:B"], within: .seconds(2))
-//    }
-//
+
+    func test_swim_shouldRespondWithNackToPingReq_whenNoResponseFromTarget() throws {
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+
+        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let memberProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingResponse.self)
+
+        let ref = try first.spawn("SWIM", SWIMActorShell.swimBehavior(members: [memberProbe.ref], clusterRef: self.firstClusterProbe.ref))
+
+        ref.tell(.remote(.pingRequest(target: dummyProbe.ref, replyTo: ackProbe.ref, payload: .none, sequenceNumber: 13)))
+
+        try self.expectPing(on: dummyProbe, reply: false)
+        let response = try ackProbe.expectMessage()
+        guard case .nack = response else {
+            throw self.testKit(first).error("expected nack, but got \(response)")
+        }
+    }
+
+    func test_swim_shouldPingRandomMember() throws {
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
+
+        first.cluster.join(node: second.cluster.uniqueNode.node)
+        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
+
+        let p = self.testKit(second).spawnTestProbe(expecting: String.self)
+
+        func behavior(postFix: String) -> Behavior<SWIM.Message> {
+            .receive { context, message in
+                switch message {
+                case .remote(.ping(let replyTo, _, _)):
+                    replyTo.tell(.ack(target: context.myself.node, incarnation: 0, payload: .none, sequenceNumber: 13))
+                    p.tell("pinged:\(postFix)")
+                default:
+                    ()
+                }
+
+                return .same
+            }
+        }
+
+        let refA = try second.spawn("SWIM-A", behavior(postFix: "A"))
+        let remoteRefA = first._resolveKnownRemote(refA, onRemoteSystem: second)
+        let refB = try second.spawn("SWIM-B", behavior(postFix: "B"))
+        let remoteRefB = first._resolveKnownRemote(refB, onRemoteSystem: second)
+
+        let ref = try first.spawn("SWIM", SWIMActorShell.swimBehavior(members: [remoteRefA, remoteRefB], clusterRef: self.firstClusterProbe.ref))
+
+        ref.tell(.local(.pingRandomMember))
+        ref.tell(.local(.pingRandomMember))
+
+        try p.expectMessagesInAnyOrder(["pinged:A", "pinged:B"], within: .seconds(2))
+    }
+
 //    func test_swim_shouldPingSpecificMemberWhenRequested() throws {
 //        let local = self.setUpFirst()
 //

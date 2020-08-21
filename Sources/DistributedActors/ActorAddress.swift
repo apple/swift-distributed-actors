@@ -100,7 +100,7 @@ public struct ActorAddress: Equatable, Hashable {
     }
 }
 
-extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
+extension ActorAddress: CustomStringConvertible {
     public var description: String {
         var res = ""
         if self._isRemote {
@@ -110,12 +110,11 @@ extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
         return res
     }
 
-    public var debugDescription: String {
+    public var detailedDescription: String {
         var res = ""
         if self._isRemote {
-            res += "\(self.node)"
+            res += "\(reflecting: self.node)"
         }
-
         res += "\(self.path)"
 
         if self.incarnation == ActorIncarnation.wellKnown {

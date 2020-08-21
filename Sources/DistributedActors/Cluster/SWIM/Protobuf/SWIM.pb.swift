@@ -121,8 +121,8 @@ public struct ProtoSWIMPingRequest {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var target: ProtoUniqueNode {
-    get {return _storage._target ?? ProtoUniqueNode()}
+  public var target: ProtoActorAddress {
+    get {return _storage._target ?? ProtoActorAddress()}
     set {_uniqueStorage()._target = newValue}
   }
   /// Returns true if `target` has been explicitly set.
@@ -208,8 +208,8 @@ public struct ProtoSWIMPingResponse {
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var target: ProtoUniqueNode {
-      get {return _storage._target ?? ProtoUniqueNode()}
+    public var target: ProtoActorAddress {
+      get {return _storage._target ?? ProtoActorAddress()}
       set {_uniqueStorage()._target = newValue}
     }
     /// Returns true if `target` has been explicitly set.
@@ -248,8 +248,8 @@ public struct ProtoSWIMPingResponse {
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var target: ProtoUniqueNode {
-      get {return _storage._target ?? ProtoUniqueNode()}
+    public var target: ProtoActorAddress {
+      get {return _storage._target ?? ProtoActorAddress()}
       set {_uniqueStorage()._target = newValue}
     }
     /// Returns true if `target` has been explicitly set.
@@ -554,7 +554,7 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   ]
 
   fileprivate class _StorageClass {
-    var _target: ProtoUniqueNode? = nil
+    var _target: ProtoActorAddress? = nil
     var _replyTo: ProtoActorAddress? = nil
     var _payload: ProtoSWIMGossipPayload? = nil
     var _sequenceNumber: UInt32 = 0
@@ -720,7 +720,7 @@ extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._Messa
   ]
 
   fileprivate class _StorageClass {
-    var _target: ProtoUniqueNode? = nil
+    var _target: ProtoActorAddress? = nil
     var _incarnation: UInt64 = 0
     var _payload: ProtoSWIMGossipPayload? = nil
     var _sequenceNumber: UInt32 = 0
@@ -803,7 +803,7 @@ extension ProtoSWIMPingResponse.Nack: SwiftProtobuf.Message, SwiftProtobuf._Mess
   ]
 
   fileprivate class _StorageClass {
-    var _target: ProtoUniqueNode? = nil
+    var _target: ProtoActorAddress? = nil
     var _sequenceNumber: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
