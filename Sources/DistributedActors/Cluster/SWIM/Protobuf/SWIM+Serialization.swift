@@ -253,7 +253,7 @@ extension ClusterMembership.Node: ProtobufRepresentable {
             name = nil
         }
         let host = protoNode.hostname
-        let port = Int( protoNode.port)
+        let port = Int(protoNode.port)
 
         let uid = proto.nid
         self.init(protocol: `protocol`, name: name, host: host, port: port, uid: uid)

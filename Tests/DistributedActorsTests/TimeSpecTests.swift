@@ -70,12 +70,11 @@ class TimeSpecTests: XCTestCase {
     }
 }
 
-
 extension TimeSpec: Comparable {
     public static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
         lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
     }
-    
+
     public static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
         lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
     }

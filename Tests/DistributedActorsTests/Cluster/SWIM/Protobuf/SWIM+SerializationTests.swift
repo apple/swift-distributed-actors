@@ -14,8 +14,8 @@
 
 @testable import DistributedActors
 import DistributedActorsTestKit
-import XCTest
 import SWIM
+import XCTest
 
 final class SWIMSerializationTests: ActorSystemXCTestCase {
     func test_serializationOf_ping() throws {
@@ -37,7 +37,7 @@ final class SWIMSerializationTests: ActorSystemXCTestCase {
     func test_serializationOf_Ack() throws {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let payload: SWIM.GossipPayload = .membership([.init(peer: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
-        let pingReq: SWIM.PingResponse = .ack(target: memberProbe.ref.address.node.asSWIMNode, incarnation: 1, payload: payload, sequenceNumber: 13) // FIXME: could pass peer?
+        let pingReq: SWIM.PingResponse = .ack(target: memberProbe.ref, incarnation: 1, payload: payload, sequenceNumber: 13)
         try self.shared_serializationRoundtrip(pingReq)
     }
 

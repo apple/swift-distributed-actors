@@ -87,7 +87,8 @@ final class ActorAddressTests: XCTestCase {
         "\(address.path)".shouldEqual("/user/hello")
         "\(address.path.name)".shouldEqual("hello")
 
-        String(reflecting: address).shouldEqual("/user/hello#8888")
+        address.detailedDescription.shouldEqual("/user/hello#8888")
+        String(reflecting: address).shouldEqual("/user/hello")
         String(reflecting: address.name).shouldEqual("\"hello\"")
         String(reflecting: address.path).shouldEqual("/user/hello")
         String(reflecting: address.path.name).shouldEqual("\"hello\"")
@@ -101,7 +102,8 @@ final class ActorAddressTests: XCTestCase {
         let remoteNode = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
         let remote = ActorAddress(remote: remoteNode, path: address.path, incarnation: ActorIncarnation(8888))
 
-        String(reflecting: remote).shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888")
+        remote.detailedDescription.shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888")
+        String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote)".shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote.name)".shouldEqual("hello")
         "\(remote.path)".shouldEqual("/user/hello")
