@@ -234,7 +234,7 @@ internal struct SWIMActorShell {
         context.onResultAsync(of: promise.futureResult, timeout: .effectivelyInfinite) { result in
             switch result {
             case .success(let pingResponse):
-                self.handlePingResponse(response: pingResponse, pingRequestOrigin: nil, error: nil, context: context)
+                self.handlePingResponse(response: pingResponse, pingRequestOrigin: pingRequestOriginPeer, error: nil, context: context)
             case .failure(let error):
                 self.handlePingResponse(
                     response: .timeout(
@@ -345,6 +345,13 @@ internal struct SWIMActorShell {
         }
 
         let directives = self.swim.onPingResponse(response: response, pingRequestOrigin: pingRequestOrigin)
+        context.log.warning("""
+                            response = \(response)
+                            pingRequestOrigin = \(pingRequestOrigin)
+                            DIRECTIVES
+                            """, metadata: [
+            "directives": Logger.MetadataValue.array(directives.map { "\($0)" })
+        ])
         // optionally debug log all directives here
         directives.forEach { directive in
             switch directive {
