@@ -345,13 +345,6 @@ internal struct SWIMActorShell {
         }
 
         let directives = self.swim.onPingResponse(response: response, pingRequestOrigin: pingRequestOrigin)
-        context.log.warning("""
-                            response = \(response)
-                            pingRequestOrigin = \(pingRequestOrigin)
-                            DIRECTIVES
-                            """, metadata: [
-            "directives": Logger.MetadataValue.array(directives.map { "\($0)" })
-        ])
         // optionally debug log all directives here
         directives.forEach { directive in
             switch directive {

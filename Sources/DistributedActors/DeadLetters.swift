@@ -39,17 +39,16 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
 
     // TODO: sender and other metadata
 
+    #if DEBUG
     let sentAtFile: String?
     let sentAtLine: UInt?
 
-    #if DEBUG
     public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = #file, sentAtLine: UInt? = #line) {
         self.message = message
         self.recipient = recipient
         self.sentAtFile = sentAtFile
         self.sentAtLine = sentAtLine
     }
-
     #else
     public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
         self.message = message
@@ -201,7 +200,7 @@ public final class DeadLetterOffice {
                 return // do not log dead letters to /system actors while shutting down
             }
 
-            metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadAddress)
+            metadata["actor/path"] = Logger.MetadataValue.stringConvertible(deadAddress.path)
             recipientString = "to [\(String(reflecting: recipient.detailedDescription))]"
         } else {
             recipientString = ""

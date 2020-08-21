@@ -190,6 +190,9 @@ public final class ActorSystem {
         let initializationLock = ReadWriteLock()
         self.lazyInitializationLock = initializationLock
 
+        if !settings.logging.customizedLogger {
+            settings.logging.logger = Logger(label: self.name)
+        }
         var rootLogger = settings.logging.logger
         if settings.cluster.enabled {
             rootLogger[metadataKey: "actor/node"] = "\(settings.cluster.uniqueBindNode)"
