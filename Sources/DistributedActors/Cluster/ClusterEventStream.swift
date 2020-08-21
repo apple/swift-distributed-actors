@@ -39,11 +39,6 @@ internal enum ClusterEventStream {
                     switch message {
                     case .subscribe(let ref):
                         subscribers[ref.address] = ref
-                        print("""
-
-                              Trying to watch: \(ref.address.detailedDescription) FROM \(context.myself.address.detailedDescription)
-
-                              """)
                         context.watch(ref)
                         context.log.trace("Successfully subscribed [\(ref)], offering membership snapshot")
                         ref.tell(.snapshot(snapshot))

@@ -181,7 +181,7 @@ internal struct DeathWatch<Message: ActorMessage> {
 
             // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
             if addressableWatchee.address.node.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
-                self.subscribeNodeTerminatedEvents(myself: watcher, node: addressableWatchee.address.node, file: file, line: line)
+                self.subscribeNodeTerminatedEvents(myself: watcher, watchedAddress: addressableWatchee.address, file: file, line: line)
             }
         }
     }
@@ -291,10 +291,11 @@ internal struct DeathWatch<Message: ActorMessage> {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Node termination
 
-    private func subscribeNodeTerminatedEvents(myself: ActorRef<Message>, node: UniqueNode?, file: String = #file, line: UInt = #line) {
-        if let remoteNode = node {
-            self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: remoteNode), file: file, line: line)
+    private func subscribeNodeTerminatedEvents(myself: ActorRef<Message>, watchedAddress: ActorAddress, file: String = #file, line: UInt = #line) {
+        guard watchedAddress._isRemote else {
+            return
         }
+        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: watchedAddress.node), file: file, line: line)
     }
 }
 
