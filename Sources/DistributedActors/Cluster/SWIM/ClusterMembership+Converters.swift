@@ -40,7 +40,7 @@ extension ClusterMembership.Node {
         return .init(protocol: self.protocol, systemName: self.name ?? "", host: self.host, port: self.port, nid: .init(uid))
     }
 
-    var asNode: DistributedActors.Node? {
+    var asNode: DistributedActors.Node {
         .init(protocol: self.protocol, systemName: self.name ?? "", host: self.host, port: self.port)
     }
 }

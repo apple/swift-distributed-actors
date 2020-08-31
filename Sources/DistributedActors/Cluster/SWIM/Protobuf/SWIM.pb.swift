@@ -38,38 +38,48 @@ public struct ProtoSWIMRemoteMessage {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var request: OneOf_Request? {
-    get {return _storage._request}
-    set {_uniqueStorage()._request = newValue}
+  public var message: OneOf_Message? {
+    get {return _storage._message}
+    set {_uniqueStorage()._message = newValue}
   }
 
   public var ping: ProtoSWIMPing {
     get {
-      if case .ping(let v)? = _storage._request {return v}
+      if case .ping(let v)? = _storage._message {return v}
       return ProtoSWIMPing()
     }
-    set {_uniqueStorage()._request = .ping(newValue)}
+    set {_uniqueStorage()._message = .ping(newValue)}
   }
 
   public var pingRequest: ProtoSWIMPingRequest {
     get {
-      if case .pingRequest(let v)? = _storage._request {return v}
+      if case .pingRequest(let v)? = _storage._message {return v}
       return ProtoSWIMPingRequest()
     }
-    set {_uniqueStorage()._request = .pingRequest(newValue)}
+    set {_uniqueStorage()._message = .pingRequest(newValue)}
+  }
+
+  public var pingResponse: ProtoSWIMPingResponse {
+    get {
+      if case .pingResponse(let v)? = _storage._message {return v}
+      return ProtoSWIMPingResponse()
+    }
+    set {_uniqueStorage()._message = .pingResponse(newValue)}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  public enum OneOf_Request: Equatable {
+  public enum OneOf_Message: Equatable {
     case ping(ProtoSWIMPing)
     case pingRequest(ProtoSWIMPingRequest)
+    case pingResponse(ProtoSWIMPingResponse)
 
   #if !swift(>=4.1)
-    public static func ==(lhs: ProtoSWIMRemoteMessage.OneOf_Request, rhs: ProtoSWIMRemoteMessage.OneOf_Request) -> Bool {
+    public static func ==(lhs: ProtoSWIMRemoteMessage.OneOf_Message, rhs: ProtoSWIMRemoteMessage.OneOf_Message) -> Bool {
       switch (lhs, rhs) {
       case (.ping(let l), .ping(let r)): return l == r
       case (.pingRequest(let l), .pingRequest(let r)): return l == r
+      case (.pingResponse(let l), .pingResponse(let r)): return l == r
       default: return false
       }
     }
@@ -86,14 +96,14 @@ public struct ProtoSWIMPing {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var replyTo: ProtoActorAddress {
-    get {return _storage._replyTo ?? ProtoActorAddress()}
-    set {_uniqueStorage()._replyTo = newValue}
+  public var origin: ProtoActorAddress {
+    get {return _storage._origin ?? ProtoActorAddress()}
+    set {_uniqueStorage()._origin = newValue}
   }
-  /// Returns true if `replyTo` has been explicitly set.
-  public var hasReplyTo: Bool {return _storage._replyTo != nil}
-  /// Clears the value of `replyTo`. Subsequent reads from it will return its default value.
-  public mutating func clearReplyTo() {_uniqueStorage()._replyTo = nil}
+  /// Returns true if `origin` has been explicitly set.
+  public var hasOrigin: Bool {return _storage._origin != nil}
+  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
+  public mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
   public var payload: ProtoSWIMGossipPayload {
     get {return _storage._payload ?? ProtoSWIMGossipPayload()}
@@ -130,14 +140,14 @@ public struct ProtoSWIMPingRequest {
   /// Clears the value of `target`. Subsequent reads from it will return its default value.
   public mutating func clearTarget() {_uniqueStorage()._target = nil}
 
-  public var replyTo: ProtoActorAddress {
-    get {return _storage._replyTo ?? ProtoActorAddress()}
-    set {_uniqueStorage()._replyTo = newValue}
+  public var origin: ProtoActorAddress {
+    get {return _storage._origin ?? ProtoActorAddress()}
+    set {_uniqueStorage()._origin = newValue}
   }
-  /// Returns true if `replyTo` has been explicitly set.
-  public var hasReplyTo: Bool {return _storage._replyTo != nil}
-  /// Clears the value of `replyTo`. Subsequent reads from it will return its default value.
-  public mutating func clearReplyTo() {_uniqueStorage()._replyTo = nil}
+  /// Returns true if `origin` has been explicitly set.
+  public var hasOrigin: Bool {return _storage._origin != nil}
+  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
+  public mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
   public var payload: ProtoSWIMGossipPayload {
     get {return _storage._payload ?? ProtoSWIMGossipPayload()}
@@ -391,17 +401,18 @@ extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "ping"),
     2: .same(proto: "pingRequest"),
+    3: .same(proto: "pingResponse"),
   ]
 
   fileprivate class _StorageClass {
-    var _request: ProtoSWIMRemoteMessage.OneOf_Request?
+    var _message: ProtoSWIMRemoteMessage.OneOf_Message?
 
     static let defaultInstance = _StorageClass()
 
     private init() {}
 
     init(copying source: _StorageClass) {
-      _request = source._request
+      _message = source._message
     }
   }
 
@@ -419,20 +430,28 @@ extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         switch fieldNumber {
         case 1:
           var v: ProtoSWIMPing?
-          if let current = _storage._request {
+          if let current = _storage._message {
             try decoder.handleConflictingOneOf()
             if case .ping(let m) = current {v = m}
           }
           try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._request = .ping(v)}
+          if let v = v {_storage._message = .ping(v)}
         case 2:
           var v: ProtoSWIMPingRequest?
-          if let current = _storage._request {
+          if let current = _storage._message {
             try decoder.handleConflictingOneOf()
             if case .pingRequest(let m) = current {v = m}
           }
           try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._request = .pingRequest(v)}
+          if let v = v {_storage._message = .pingRequest(v)}
+        case 3:
+          var v: ProtoSWIMPingResponse?
+          if let current = _storage._message {
+            try decoder.handleConflictingOneOf()
+            if case .pingResponse(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {_storage._message = .pingResponse(v)}
         default: break
         }
       }
@@ -441,11 +460,13 @@ extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      switch _storage._request {
+      switch _storage._message {
       case .ping(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       case .pingRequest(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      case .pingResponse(let v)?:
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       case nil: break
       }
     }
@@ -457,7 +478,7 @@ extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._request != rhs_storage._request {return false}
+        if _storage._message != rhs_storage._message {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -470,13 +491,13 @@ extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SWIMPing"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "replyTo"),
+    1: .same(proto: "origin"),
     2: .same(proto: "payload"),
     3: .same(proto: "sequenceNumber"),
   ]
 
   fileprivate class _StorageClass {
-    var _replyTo: ProtoActorAddress? = nil
+    var _origin: ProtoActorAddress? = nil
     var _payload: ProtoSWIMGossipPayload? = nil
     var _sequenceNumber: UInt32 = 0
 
@@ -485,7 +506,7 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     private init() {}
 
     init(copying source: _StorageClass) {
-      _replyTo = source._replyTo
+      _origin = source._origin
       _payload = source._payload
       _sequenceNumber = source._sequenceNumber
     }
@@ -503,7 +524,7 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._origin)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._payload)
         case 3: try decoder.decodeSingularUInt32Field(value: &_storage._sequenceNumber)
         default: break
@@ -514,7 +535,7 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._replyTo {
+      if let v = _storage._origin {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if let v = _storage._payload {
@@ -532,7 +553,7 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._replyTo != rhs_storage._replyTo {return false}
+        if _storage._origin != rhs_storage._origin {return false}
         if _storage._payload != rhs_storage._payload {return false}
         if _storage._sequenceNumber != rhs_storage._sequenceNumber {return false}
         return true
@@ -548,14 +569,14 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   public static let protoMessageName: String = "SWIMPingRequest"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "target"),
-    2: .same(proto: "replyTo"),
+    2: .same(proto: "origin"),
     3: .same(proto: "payload"),
     4: .same(proto: "sequenceNumber"),
   ]
 
   fileprivate class _StorageClass {
     var _target: ProtoActorAddress? = nil
-    var _replyTo: ProtoActorAddress? = nil
+    var _origin: ProtoActorAddress? = nil
     var _payload: ProtoSWIMGossipPayload? = nil
     var _sequenceNumber: UInt32 = 0
 
@@ -565,7 +586,7 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _target = source._target
-      _replyTo = source._replyTo
+      _origin = source._origin
       _payload = source._payload
       _sequenceNumber = source._sequenceNumber
     }
@@ -584,7 +605,7 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._target)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._origin)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._payload)
         case 4: try decoder.decodeSingularUInt32Field(value: &_storage._sequenceNumber)
         default: break
@@ -598,7 +619,7 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if let v = _storage._target {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._replyTo {
+      if let v = _storage._origin {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if let v = _storage._payload {
@@ -617,7 +638,7 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._target != rhs_storage._target {return false}
-        if _storage._replyTo != rhs_storage._replyTo {return false}
+        if _storage._origin != rhs_storage._origin {return false}
         if _storage._payload != rhs_storage._payload {return false}
         if _storage._sequenceNumber != rhs_storage._sequenceNumber {return false}
         return true

@@ -149,7 +149,7 @@ extension Serialization {
             return _typeName(messageType)
         }
         #else
-        return _typeName(messageType)
+        _typeName(messageType)
         #endif
     }
 

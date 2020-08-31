@@ -163,7 +163,7 @@ public struct ClusterSettings {
     public var onDownAction: OnDownActionStrategySettings = .gracefulShutdown(delay: .seconds(3))
 
     /// Configures the SWIM cluster membership implementation (which serves as our failure detector).
-    public var swim: SWIM.Settings = SWIM.Settings()
+    public var swim: SWIM.Settings
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Logging
@@ -183,5 +183,7 @@ public struct ClusterSettings {
         self.node = node
         self.nid = UniqueNodeID.random()
         self.tls = tls
+        self.swim = SWIM.Settings()
+        self.swim.unreachability = .enabled
     }
 }

@@ -21,21 +21,22 @@ option swift_prefix = "Proto";
 import "ActorAddress.proto";
 
 message SWIMRemoteMessage {
-    oneof request {
-        SWIMPing ping               = 1;
-        SWIMPingRequest pingRequest = 2;
+    oneof message {
+        SWIMPing ping                 = 1;
+        SWIMPingRequest pingRequest   = 2;
+        SWIMPingResponse pingResponse = 3;
     }
 }
 
 message SWIMPing {
-    ActorAddress replyTo      = 1;
+    ActorAddress origin       = 1;
     SWIMGossipPayload payload = 2;
     uint32 sequenceNumber     = 3;
 }
 
 message SWIMPingRequest {
     ActorAddress target       = 1;
-    ActorAddress replyTo      = 2;
+    ActorAddress origin       = 2;
     SWIMGossipPayload payload = 3;
     uint32 sequenceNumber     = 4;
 }

@@ -19,24 +19,21 @@ extension SWIM {
     public enum Message: ActorMessage {
         case remote(SWIM.RemoteMessage)
         case local(SWIM.LocalMessage)
-        case _testing(SWIM.TestingMessage)
+        case _testing(SWIM._TestingMessage)
     }
 
     public enum RemoteMessage: ActorMessage {
-        case ping(replyTo: ActorRef<SWIM.PingResponse>, payload: SWIM.GossipPayload, sequenceNumber: SWIM.SequenceNumber)
+        case ping(pingOrigin: SWIM.PingOriginRef, payload: SWIM.GossipPayload, sequenceNumber: SWIM.SequenceNumber)
 
         /// "Ping Request" requests a SWIM probe.
-        case pingRequest(target: ActorRef<Message>, replyTo: ActorRef<SWIM.PingResponse>, payload: SWIM.GossipPayload, sequenceNumber: SWIM.SequenceNumber)
-    }
+        case pingRequest(target: SWIM.Ref, pingRequestOrigin: SWIM.PingRequestOriginRef, payload: SWIM.GossipPayload, sequenceNumber: SWIM.SequenceNumber)
 
-    // TODO: can become internal?
-    public struct _MembershipState: NonTransportableActorMessage {
-        let membershipState: SWIM.MembersValues
+        case pingResponse(SWIM.PingResponse)
     }
 
     public enum LocalMessage: NonTransportableActorMessage {
         /// Periodic message used to wake up SWIM and perform a random ping probe among its members.
-        case pingRandomMember
+        case protocolPeriodTick
 
         /// Sent by `ClusterShell` when wanting to join a cluster node by `Node`.
         ///
@@ -78,9 +75,9 @@ extension SWIM {
         case confirmDead(UniqueNode)
     }
 
-    public enum TestingMessage: NonTransportableActorMessage {
+    public enum _TestingMessage: NonTransportableActorMessage {
         /// FOR TESTING: Expose the entire membership state
-        case getMembershipState(replyTo: ActorRef<_MembershipState>)
+        case _getMembershipState(replyTo: ActorRef<Set<SWIM.Member>>)
     }
 
     internal struct Gossip: Equatable {
@@ -88,20 +85,3 @@ extension SWIM {
         var numberOfTimesGossiped: Int
     }
 }
-
-// extension SWIM.PingResponse {
-//    func targetRef(_ context: ActorContext<SWIM.Message>) -> SWIM.PeerActor {
-//        let targetNode: ClusterMembership.Node
-//        switch self {
-//        case .ack(let target, _, _, _):
-//            targetNode = target
-//        case .nack(let target, _):
-//            targetNode = target
-//        case .timeout(let target, _, _, _):
-//            targetNode = target
-//        case .error(_, let target, _):
-//            targetNode = target
-//        }
-//        return context.system._resolve(context: .init(address: ._swim(on: targetNode), system: context.system))
-//    }
-// }

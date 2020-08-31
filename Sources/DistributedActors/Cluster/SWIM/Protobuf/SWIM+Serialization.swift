@@ -41,44 +41,49 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
         switch self {
-        case .ping(let replyTo, let payload, let sequenceNumber):
+        case .ping(let origin, let payload, let sequenceNumber):
             var ping = ProtoSWIMPing()
-            ping.replyTo = try replyTo.toProto(context: context)
+            ping.origin = try origin.toProto(context: context)
             ping.payload = try payload.toProto(context: context)
             ping.sequenceNumber = sequenceNumber
             proto.ping = ping
-        case .pingRequest(let target, let replyTo, let payload, let sequenceNumber):
+        case .pingRequest(let target, let origin, let payload, let sequenceNumber):
             var pingRequest = ProtoSWIMPingRequest()
             pingRequest.target = try target.toProto(context: context)
-            pingRequest.replyTo = try replyTo.toProto(context: context)
+            pingRequest.origin = try origin.toProto(context: context)
             pingRequest.payload = try payload.toProto(context: context)
             pingRequest.sequenceNumber = sequenceNumber
             proto.pingRequest = pingRequest
+        case .pingResponse(let response):
+            proto.pingResponse = try response.toProto(context: context)
         }
 
         return proto
     }
 
     public init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
-        switch proto.request {
+        switch proto.message {
         case .ping(let ping):
-            let replyToAddress = try ActorAddress(fromProto: ping.replyTo, context: context)
-            let replyTo: ActorRef<SWIM.PingResponse> = context.resolveActorRef(identifiedBy: replyToAddress)
+            let pingOriginAddress = try ActorAddress(fromProto: ping.origin, context: context)
+            let pingOrigin: SWIM.PingOriginRef = context.resolveActorRef(identifiedBy: pingOriginAddress)
 
             let payload = try SWIM.GossipPayload(fromProto: ping.payload, context: context)
             let sequenceNumber = ping.sequenceNumber
-            self = .ping(replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
+            self = .ping(pingOrigin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
 
         case .pingRequest(let pingRequest):
             let targetAddress = try ActorAddress(fromProto: pingRequest.target, context: context)
             let target: ActorRef<SWIM.Message> = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
 
-            let replyToAddress = try ActorAddress(fromProto: pingRequest.replyTo, context: context)
-            let replyTo = context.resolveActorRef(SWIM.PingResponse.self, identifiedBy: replyToAddress)
+            let pingRequestOriginAddress = try ActorAddress(fromProto: pingRequest.origin, context: context)
+            let pingRequestOrigin: SWIM.PingRequestOriginRef = context.resolveActorRef(identifiedBy: pingRequestOriginAddress)
 
             let payload = try SWIM.GossipPayload(fromProto: pingRequest.payload, context: context)
             let sequenceNumber = pingRequest.sequenceNumber
-            self = .pingRequest(target: target, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
+            self = .pingRequest(target: target, pingRequestOrigin: pingRequestOrigin, payload: payload, sequenceNumber: sequenceNumber)
+
+        case .pingResponse(let pingResponse):
+            self = .pingResponse(try SWIM.PingResponse(fromProto: pingResponse, context: context))
 
         case .none:
             throw SerializationError.missingField("request", type: String(describing: SWIM.Message.self))
@@ -207,14 +212,14 @@ extension SWIM.PingResponse: ProtobufRepresentable {
         switch pingResponse {
         case .ack(let ack):
             let targetAddress = try ActorAddress(fromProto: ack.target, context: context)
-            let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
+            let target: SWIM.Ref = context.resolveActorRef(identifiedBy: targetAddress)
             let payload = try SWIM.GossipPayload(fromProto: ack.payload, context: context)
             let sequenceNumber = ack.sequenceNumber
             self = .ack(target: target, incarnation: ack.incarnation, payload: payload, sequenceNumber: sequenceNumber)
 
         case .nack(let nack):
             let targetAddress = try ActorAddress(fromProto: nack.target, context: context)
-            let target = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
+            let target: SWIM.Ref = context.resolveActorRef(identifiedBy: targetAddress)
             let sequenceNumber = nack.sequenceNumber
             self = .nack(target: target, sequenceNumber: sequenceNumber)
         }
