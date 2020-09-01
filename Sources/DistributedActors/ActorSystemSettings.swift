@@ -40,7 +40,11 @@ public struct ActorSystemSettings {
 
     public var crdt: CRDT.ReplicatorSettings = .default
 
-    public var logging: LoggingSettings = .default
+    public var logging: LoggingSettings = .default {
+        didSet {
+            self.cluster.swim.logger = self.logging.logger
+        }
+    }
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var instrumentation: InstrumentationSettings = .default
 
@@ -64,7 +68,9 @@ extension Array where Element == ActorTransport {
 /// log some labelled loggers and some not. Until we land such log handler we have to manually in-project opt-in/-out
 /// of logging some subsystems.
 public struct LoggingSettings {
-    public static let `default` = LoggingSettings()
+    public static var `default`: LoggingSettings {
+        .init()
+    }
 
     /// Customize the default log level of the `system.log` (and `context.log`) loggers.
     ///
@@ -87,7 +93,7 @@ public struct LoggingSettings {
             self._logger
         }
         set {
-            customizedLogger = true
+            self.customizedLogger = true
             self._logger = newValue
         }
     }

@@ -224,12 +224,20 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
         }
 
         switch buffer {
-        case .data(let data) where type is Data.Type:
+        case .data(let data) where type is Foundation.Data.Type:
             return data as! T
+        case .data where type is NIO.ByteBuffer.Type:
+            return buffer.asByteBuffer(allocator: .init()) as! T
+
         case .nioByteBuffer(let buffer) where type is NIO.ByteBuffer.Type:
             return buffer as! T
+        case .nioByteBuffer where type is Foundation.Data.Type:
+            return buffer.readData() as! T
+
         default:
-            throw SerializationError.unableToDeserialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only suports raw bytes")
+            throw SerializationError.unableToDeserialize(hint:
+            "Attempted decode \(reflecting: type) from a \(Self.self) which only supports raw bytes (ByteBuffer or Data) \(type is Foundation.Data.Type)"
+            )
         }
     }
 

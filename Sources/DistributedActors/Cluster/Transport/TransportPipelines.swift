@@ -260,12 +260,16 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let envelope = self.unwrapOutboundIn(data)
+        let envelope: Wire.Envelope = self.unwrapOutboundIn(data)
         do {
             let serialized = try serialization.serialize(envelope)
             let buffer = serialized.buffer.asByteBuffer(allocator: self.serialization.allocator) // FIXME: yes we double allocate, no good ways around it today
             context.writeAndFlush(NIOAny(buffer), promise: promise)
         } catch {
+            self.log.error("Failed to serialize message!", metadata: [
+                "message": "\(envelope)",
+                "error": "\(error)",
+            ])
             context.fireErrorCaught(error)
         }
     }
@@ -273,10 +277,14 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let buffer = self.unwrapInboundIn(data)
         do {
-            let knownSpecializedWireEnvelopeManifest = Serialization.Manifest(serializerID: .specializedWithTypeHint, hint: "_$Wire.Envelope")
+            let knownSpecializedWireEnvelopeManifest = Serialization.Manifest(serializerID: .protobufRepresentable, hint: Wire.Envelope.typeHint)
             let envelope = try self.serialization.deserialize(as: Wire.Envelope.self, from: .nioByteBuffer(buffer), using: knownSpecializedWireEnvelopeManifest)
             context.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {
+            self.log.error("Failed to deserialize: \(data)", metadata: [
+                "buffer": "\(buffer)",
+                "error": "\(error)",
+            ])
             context.fireErrorCaught(error)
         }
     }
@@ -642,8 +650,6 @@ private final class UserMessageHandler: ChannelInboundHandler {
     }
 }
 
-extension ReceivingHandshakeHandler {}
-
 private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
 
@@ -721,7 +727,7 @@ extension ClusterShell {
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
                     ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localNode: bindAddress)),
-                    // ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME only include for debug -DSACT_TRACE_NIO things?
+                     ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME only include for debug -DSACT_TRACE_NIO things?
                     ("wire envelope handler", WireEnvelopeHandler(serialization: serializationPool.serialization, log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
                     ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
@@ -785,7 +791,7 @@ extension ClusterShell {
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
                     ("initiating handshake handler", InitiatingHandshakeHandler(log: log, handshakeOffer: handshakeOffer, cluster: shell)),
-                    // ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)), // FIXME make available via compilation flag
+                     ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)), // FIXME make available via compilation flag
                     ("envelope handler", WireEnvelopeHandler(serialization: serializationPool.serialization, log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
                     ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),

@@ -67,40 +67,6 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         _ = try probeOnSecond.expectMessage()
     }
 
-    func test_swim_shouldIncreasePingTimeout_whenHighMultiplier() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
-
-        first.cluster.join(node: second.cluster.uniqueNode.node)
-        try assertAssociated(first, withExactly: second.cluster.uniqueNode)
-
-        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let maxLocalHealthMultiplier = 5
-        let ref = try first.spawn(
-            "SWIM",
-            SWIMActorShell.swimTestBehavior(members: [probeOnSecond.ref], clusterRef: self.firstClusterProbe.ref) { settings in
-                settings.lifeguard.maxLocalHealthMultiplier = maxLocalHealthMultiplier
-                settings.pingTimeout = .milliseconds(500)
-                // interval should be configured in a way that multiplied by a low LHA counter it will wail the test
-                settings.probeInterval = .milliseconds(100)
-            }
-        )
-
-        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingOriginRef.Message.self)
-
-        // bump LHA multiplier to upper limit
-        for _ in 1 ... maxLocalHealthMultiplier {
-            ref.tell(.remote(.pingRequest(target: dummyProbe.ref, pingRequestOrigin: ackProbe.ref, payload: .none, sequenceNumber: 13)))
-            try self.expectPing(on: dummyProbe, reply: false)
-            try _ = ackProbe.expectMessage(within: .seconds(6))
-        }
-
-        ref.tell(.remote(.pingRequest(target: dummyProbe.ref, pingRequestOrigin: ackProbe.ref, payload: .none, sequenceNumber: 13)))
-        try self.expectPing(on: dummyProbe, reply: false)
-        try ackProbe.expectNoMessage(for: .seconds(1))
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Pinging nodes
 
@@ -220,35 +186,27 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_swim_shouldMarkSuspects_whenPingFailsAndRequestedNodesFailToPing() throws {
-        let first = self.setUpFirst()
+        let systemSWIM = self.setUpFirst()
         let systemA = self.setUpNode("A")
         let systemB = self.setUpNode("B")
 
-        let probeA = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+        let probeA = self.testKit(systemA).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
         let refA = try systemA.spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probeA.ref))
-        let probeB = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+        let probeB = self.testKit(systemB).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
         let refB = try systemB.spawn("SWIM-B", self.forwardingSWIMBehavior(forwardTo: probeB.ref))
 
-        let behavior = SWIMActorShell.swimTestBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
+        let swim = try systemSWIM.spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
             settings.pingTimeout = .milliseconds(50)
-        }
-
-        let swim = try first.spawn("SWIM", behavior)
+        })
         swim.tell(.local(.protocolPeriodTick))
 
         let forwardedPing = try probeA.expectMessage()
         guard case SWIM.Message.remote(.ping) = forwardedPing.message else {
-            throw self.testKit(first).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
+            throw self.testKit(systemSWIM).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
         }
         let suspiciousRef = forwardedPing.recipient
 
-//        let forwardedPingReq: ForwardedSWIMMessage = try probeB.expectMessage()
-//        print("forwardedPingReq ==== \(forwardedPingReq)")
-//        guard case SWIM.Message.remote(.pingRequest(target: suspiciousRef, _, _, _)) = forwardedPingReq.message else {
-//            throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
-//        }
-
-        try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [refA.node]), for: suspiciousRef, on: swim, within: .seconds(1))
+        try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [swim.node]), for: suspiciousRef, on: swim, within: .seconds(1))
     }
 
 //    func test_swim_shouldNotMarkSuspects_whenPingFailsButRequestedNodesSucceedToPing() throws {
@@ -928,7 +886,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
                 .first(where: { $0.peer as! SWIM.Ref == peer })
                 .map { $0.status }
             guard otherStatus == status else {
-                throw testKit.error("Expected status [\(status)] for [\(peer)], but found \(otherStatus.debugDescription)")
+                throw testKit.error("Expected status [\(status)] for [\(peer)], but found \(otherStatus.debugDescription); Membership: \(membership)", file: file, line: line)
             }
         }
     }

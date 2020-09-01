@@ -171,7 +171,7 @@ extension SWIM.Member: ProtobufRepresentable {
         let address = ActorAddress._swim(on: node)
         let peer = context.resolveActorRef(SWIM.Message.self, identifiedBy: address)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
-        self.init(peer: peer, status: status, protocolPeriod: 0)
+        self.init(peer: peer, status: status, protocolPeriod: 0) // FIXME ?
     }
 }
 

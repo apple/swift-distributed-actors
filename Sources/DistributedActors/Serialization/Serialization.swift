@@ -114,7 +114,7 @@ public class Serialization {
         settings.register(SystemMessageEnvelope.self)
 
         // cluster
-        settings.register(Wire.Envelope.self, hint: "_$Wire.Envelope", alsoRegisterActorRef: false)
+        settings.register(Wire.Envelope.self, hint: Wire.Envelope.typeHint, serializerID: .protobufRepresentable, alsoRegisterActorRef: false)
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
         settings.register(Cluster.MembershipGossip.self)
@@ -198,7 +198,7 @@ public class Serialization {
         )
 
         // == eagerly ensure serializers for message types which would not otherwise be registered for some reason ----
-        try! self._ensureAllRegisteredSerializers()
+        try! self._ensureAllRegisteredSerializers() // try!-crash on purpose
 
         #if SACT_TRACE_SERIALIZATION
         self.debugPrintSerializerTable(header: "SACT_TRACE_SERIALIZATION: Registered serializers")
@@ -299,7 +299,12 @@ extension Serialization {
 
         case Serialization.SerializerID.specializedWithTypeHint:
             guard let make = self.settings.specializedSerializerMakers[manifest] else {
-                throw SerializationError.unableToMakeSerializer(hint: "Type: \(String(reflecting: type)), Manifest: \(manifest), Specialized serializer makers: \(self.settings.specializedSerializerMakers)")
+                throw SerializationError.unableToMakeSerializer(
+                    hint: """
+                          Type: \(String(reflecting: type)), \
+                          Manifest: \(manifest), \
+                          Specialized serializer makers: \(self.settings.specializedSerializerMakers)
+                          """)
             }
 
             let serializer = make(self.allocator)

@@ -108,7 +108,7 @@ extension Serialization {
             return manifest
         }
 
-        let hint: String = self.getTypeHint(messageType)
+        let hint: String = Self.getTypeHint(messageType)
 
         let manifest: Manifest?
         if messageType is AnyProtobufRepresentable.Type {
@@ -131,7 +131,7 @@ extension Serialization {
     /// Tries to use getMangledTypeName if available.
     @inlinable
     @inline(__always)
-    internal func getTypeHint(_ messageType: Any.Type) -> String {
+    internal static func getTypeHint(_ messageType: Any.Type) -> String {
         #if compiler(>=5.3)
         if #available(macOS 10.16, iOS 14.0, *) {
             // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
@@ -164,6 +164,7 @@ extension Serialization {
             return custom
         }
 
+        // TODO: mark as unsafe mode only
         if let hint = manifest.hint,
             let type = _typeByName(hint) {
             return type

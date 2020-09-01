@@ -41,9 +41,12 @@ internal struct SWIMActorShell {
     /// Initial behavior, kicks off timers and becomes `ready`.
     static func behavior(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) -> Behavior<SWIM.Message> {
         .setup { context in
+            // A bit weird dance, but this way we make the instance use the actor's logger;
+            // This is always what we want inside an actor system anyway;
+            // And at the same time we do use the configured log level for the entire actor: instance and shell
             var settings = settings
+            context.log.logLevel = settings.logger.logLevel
             settings.logger = context.log
-            settings.logger.logLevel = .trace
             let swim = SWIM.Instance(
                 settings: settings,
                 myself: context.myself
@@ -78,11 +81,13 @@ internal struct SWIMActorShell {
 
     /// Initialize timers and other after-initialized tasks
     private func onStart(context: MyselfContext) {
-        /// We also respect swim configuration, but we simply initiate it the same way as a normal join would.
-        for contactPoint in self.settings.initialContactPoints {
-            self.clusterRef.tell(.command(.handshakeWith(contactPoint.asNode)))
+        guard self.settings.initialContactPoints.isEmpty else {
+            fatalError(
+                """
+                swim.initialContactPoints was not empty! Please use `settings.cluster discovery settings to discover peers,
+                rather than the internal swim instances configuration settings!
+                """)
         }
-
         self.handlePeriodicProtocolPeriodTick(context: context)
     }
 
@@ -91,8 +96,8 @@ internal struct SWIMActorShell {
 
     /// Scheduling a new protocol period and performing the actions for the current protocol period
     func handlePeriodicProtocolPeriodTick(context: MyselfContext) {
-        let directives = self.swim.onPeriodicPingTick()
-        directives.forEach { directive in
+        context.log.info("periodic tick...", metadata: self.swim.metadata)
+        self.swim.onPeriodicPingTick().forEach { directive in
             switch directive {
             case .membershipChanged(let change):
                 self.tryAnnounceMemberReachability(change: change, context: context)
@@ -119,10 +124,9 @@ internal struct SWIMActorShell {
             self.handlePingRequest(target: target, pingRequestOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber, context: context)
 
         case .pingResponse(let response):
-            context.log.warning(".pingResponse received in non-ask actor; this is wrong, please report a bug.", metadata: [
-                "swim/message": "\(response)",
-                "swim": "\(self.swim)",
-            ])
+            context.log.warning(".pingResponse received in non-ask actor; this is wrong, please report a bug.", metadata: self.swim.metadata([
+                "message": "\(response)",
+            ]))
         }
     }
 
