@@ -401,105 +401,51 @@ image::remote_watch_terminated.png[Remote Watch, when remote node crashes]
 // ==== SWIM -----------------------------------------------------------------------------------------------------------
 
 [[swim]]
-=== Distributed Failure Detector (SWIM-ish)
+=== Distributed Failure Detector (SWIM+Lifeguard)
 
-Swift Distributed Actors implements a variant of the https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM Membership Protocol]
-with https://arxiv.org/abs/1707.00788[Lifeguard extensions] for its low-level membership and failure detection.
+The cluster, by default, uses the https://github.com/apple/swift-cluster-membership[Swift Cluster Membership] provided
+SWIM protocol implementation as it's underlying low-level failure detection mechanism.
 
-==== SWIM Terminology
+NOTE: Refer to https://github.com/apple/swift-cluster-membership and the relevant
+  https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol]
+  and https://arxiv.org/abs/1707.00788[Lifeguard: Local Health Awareness for More Accurate Failure Detection] whitepapers to understand
+  the failude detection mechanism in depth. Below we'll provide a high-level overview that is compherensive enough to feel confident
+  running systems using the automatic failure detection in production.
 
-While the SWIM paper uses words consistently within its own context, we find that some of the terminology used
-can be confusing in the context of actors and presence of other higher level membership (such as the cluster provides).
+While SWIM is a complete membership protocol, the Actor Cluster also offers a more high-level membership view which provides
+stronger guarantees about peers moving through specific lifecycle steps. Generally, SWIM's membership and member states
+should be considered internal to the cluster and you should not interact with them directly in your application.
 
-We therefore apply the following name mappings:
+TIP: It is not necessary to interact with the SWIM-level membership and member statuses in an Actor Cluster,
+  instead always rely on the `Cluster.Membership` and related events, as they provide a higher level abstraction,
+  detached from failure detection mechanism while offering stronger consistency guarantees than the SWIM membership by itself.
 
-- the paper's `confirm` message is represented by `SWIM.MemberStatus.dead`
+NOTE: Refer to https://apple.github.io/swift-cluster-membership/docs/current/SWIM/Enums/SWIM.html for details of the SWIM implementation.
 
-==== SWIM Modifications
+==== SWIM Failure Detection & Actor Cluster Membership
 
-- Introduction of an `.unreachable` status, that is ordered after `.suspect` and before `.dead`
-- This is because the decision to move an unreachable node to `.dead` status is a large and important decision,
-in which user code may want to participate, e.g. by attempting "shoot the other node in the head" or other patterns,
-before triggering the `.dead` status, after which no further communication with given node will ever be possible anymore.
+The underlying SWIM implementation provides a weakly consistent view on the process group membership. In this context
+this means that we have some knowledge about the node, that was acquired by either communicating
+with the node directly, for example when initially connecting to the cluster, or because some other
+node shared information about it with us.
 
-- Preservation of `.unreachable` information
-- The original paper does not keep in memory information about dead nodes, it only gossips the information that a member
-is now dead, but does not keep tombstones for later reference
+SWIM statuses are: `alive`, `suspect`, `unreachable` and `dead` (as seen in `SWIM.MemberStatus`). The `.unreachable` status is an extension to the protocol
+made in order to allow the high-level downing providers to participate in the downing decision. When a member is determined
+as should-be-dead by SWIM, an unreachability event is emitted by the SWIM subsystem. Such event is translated to a normal
+`Cluster.Event.reachabilityChange` event and emitted through the `cluster.events` api:EventStream[struct] where any actor
+can pick it up and react to it. One such actor is the downing provider which uses a <<downing_strategies, downing strategy>>
+to react to such membership changes. For example, a downing strategy may be configured to immediately trust such reachability change
+(to `.unreachable`) and announce such member as api:Cluster.MemberStatus[enum]`.down`.
 
-- Layered membership mechanisms
-- Distributed Actors uses SWIM as their primary distributed failure detector, however by itself, SWIM does not provide some
-stronger guarantees about "do all other nodes know that I'm alive" which can be useful to build more predictable systems.
-- Such higher level membership is provided by the Cluster, and built on top of the SWIM provided member liveness.
-- Decoupling the `Membership` from SWIM itself also allows Distributed Actors to obtain their membership information by other means,
-such as static configuration, or external service discovery services, completely relying on those systems to provide the liveness checks.
+Such "downing decision," is then propagated back to the SWIM implementation in the form of a `confirmDead(member:)` call,
+meaning that the member will now also be considered "dead" in SWIM terms and any attempts to communicate with it anymore will cease.
 
-==== SWIM Membership
+In summary:
 
-SWIM provides a weakly consistent view on the process group membership. Membership in this context
-means that we have some knowledge about the node, that was acquired by either communicating with
-the node directly, for example when initially connecting to the cluster, or because some other
-node shared information about it with us. A node can be either `alive`, `suspect`, or `dead`.
-To avoid moving a node back into `alive` or `suspect` state because of older statuses that
-get replicated, we need to be able put them into temporal order. For this reason each node
-has an incarnation number assigned to it. This number is monotonically increasing and can only
-be incremented by the respective node itself and only if it is suspected by another node in its
-current incarnation. The ordering of statuses is as follows:
+- the SWIM implementation serves as a failure detector for the Actor Cluster,
+- `Cluster.Event` s allow actors to react in user-defined ways to changes of the cluster state,
+  - failure detectors emit `reachabilityChange` events which allow actors and downing strategies to act on them–regardless of what failure detector is being used.
+- configurable <<downing_strategies>> allow for taking high-level decisions about acting on failure detection provided information and performing `.down` actions,
+  - a downing strategy may also decide to _down itself_ when necessary, e.g. a strategy which opts for keeping a "larger reachable cluster part alive" etc.
 
-[[status_ordering]]
-`alive(N) < suspect(N) < alive(N+1) < suspect(N+1) < dead`
-
-A node that has been declared dead can never return from that status and has to be restarted
-to join the cluster as a new node. The information about dead nodes will be kept for a configurable
-amount of time, after which it will be removed to prevent the state on each node from growing
-too big. The timeout value should be chosen to be big enough to prevent faulty nodes from re-joining
-the cluster and is usually in the order of a few days.
-
-image::swim_lifecycle.svg[SWIM MemberStatus Lifecycle]
-
-
-==== SWIM Failure detection
-
-Each node will periodically try to ping a random peer to determine whether that node
-is still reachable. If the pinged node is alive and well, it will respond with an
-acknowledgement message and everything stays the same. If the pinged node does not
-respond within the configured timeout, the initiating node will request a configured
-number of other nodes to try and ping that node, to see if it is simply a point-to-point
-communication issue, or if the node is actually unreachable. If any of the requested nodes
-is able to reach the pinged node, it will forward the acknowledgement to the requesting
-node and the node will remain in the alive status. If none of the nodes can reach the pinged node,
-the initiating node will mark the pinged node as `suspect`. The diagram below visualizes
-this process.
-
-##TODO: Make requested nodes reply with NAck as proposed in Lifeguard ##
-
-image::SWIM/ping_pingreq_cycle.png[SWIM Ping Cycle]
-
-A node that is suspected to be unreachable will not immediately be marked as `dead` to reduce the
-number of false positives that can be caused by temporary high load on that node, which can
-cause delays in message processing, or partial network outages, where a number of nodes have
-no direct connection to the pinged node. A node will be marked dead, if it can't be reached
-within a configurable number of ping-cycles, which we call protocol periods. If a node can
-be reached before the maximum number of protocol periods are reached, it will be marked as
-`alive` again. Nodes will send the latest known status of a node together with a ping message,
-to inform the node about a possible suspicion, so that it can react and increment its incarnation
-number if necessary.
-
-==== SWIM Gossip
-
-SWIM uses an infection style gossip mechanism to replicate state across the cluster.
-The gossip payload contains information about other node's observed status, and will be
-disseminated throughout the cluster by piggybacking onto periodic health check messages,
-i.e. whenever a node is sending a ping, a ping request, or is responding with an
-acknowledgement, it will include the latest gossip with that message as well. When a
-node receives gossip, it has to apply the statuses to its local state according to the
-<<status_ordering,ordering stated above>>. If a node receives gossip about itself, it
-has to react accordingly. If it is suspected by another node in its current incarnation,
-it has to increment its incarnation in response. If it has been marked as dead, it has
-to shut itself down.
-
-==== SWIM Optimizations
-
-#TODO: Document the optimizations we use and why#
-
-See also https://github.com/apple/swift-distributed-actors/issues?q=is%3Aopen+is%3Aissue+label%3At%3Acluster%3Aswim for
-open tickets regarding improvements and adding other known extensions to the SWIM implementation. Help very welcome!
+All pieces of the system are user-configurable and can also be disabled and replaced with alternative implementations if necessary.
