@@ -115,7 +115,7 @@ extension Leadership {
                 context.system.cluster.events.subscribe(context.myself)
 
                 // FIXME: we have to add "own node" since we're not getting the .snapshot... so we have to manually act as if..
-                _ = self.membership.applyMembershipChange(Cluster.MembershipChange(node: context.system.cluster.uniqueNode, fromStatus: nil, toStatus: .joining))
+                _ = self.membership.applyMembershipChange(Cluster.MembershipChange(node: context.system.cluster.uniqueNode, previousStatus: nil, toStatus: .joining))
                 return self.runElection(context)
             }
         }

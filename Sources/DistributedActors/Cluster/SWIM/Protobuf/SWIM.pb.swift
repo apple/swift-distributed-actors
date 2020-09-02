@@ -375,6 +375,11 @@ public struct ProtoSWIMMember {
   /// Clears the value of `status`. Subsequent reads from it will return its default value.
   public mutating func clearStatus() {_uniqueStorage()._status = nil}
 
+  public var protocolPeriod: UInt64 {
+    get {return _storage._protocolPeriod}
+    set {_uniqueStorage()._protocolPeriod = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -941,11 +946,13 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "node"),
     2: .same(proto: "status"),
+    3: .same(proto: "protocolPeriod"),
   ]
 
   fileprivate class _StorageClass {
     var _node: ProtoUniqueNode? = nil
     var _status: ProtoSWIMStatus? = nil
+    var _protocolPeriod: UInt64 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -954,6 +961,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     init(copying source: _StorageClass) {
       _node = source._node
       _status = source._status
+      _protocolPeriod = source._protocolPeriod
     }
   }
 
@@ -971,6 +979,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._node)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._status)
+        case 3: try decoder.decodeSingularUInt64Field(value: &_storage._protocolPeriod)
         default: break
         }
       }
@@ -985,6 +994,9 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       if let v = _storage._status {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
+      if _storage._protocolPeriod != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._protocolPeriod, fieldNumber: 3)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -996,6 +1008,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         let rhs_storage = _args.1
         if _storage._node != rhs_storage._node {return false}
         if _storage._status != rhs_storage._status {return false}
+        if _storage._protocolPeriod != rhs_storage._protocolPeriod {return false}
         return true
       }
       if !storagesAreEqual {return false}

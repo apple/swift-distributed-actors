@@ -164,11 +164,16 @@ internal class ClusterShell {
         // notify the failure detector, that we shall assume this node as dead from here on.
         // it's gossip will also propagate the information through the cluster
         traceLog_Remote(system.cluster.uniqueNode, "Finish terminate association [\(remoteNode)]: Notifying SWIM, .confirmDead")
-        self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(remoteNode)))
+        if let swim = self._swimRef {
+            system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
+            swim.tell(.local(SWIM.LocalMessage.confirmDead(remoteNode)))
+        } else {
+            fatalError("NIL SWIM REF")
+        }
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
         if state.membership.contains(remoteNode) {
-            // Ensure to remove (completely) the member from the Membership, it is not even .leaving anymore.
+            // Ensure to down the "previous" member in the Membership, it is not even .leaving anymore.
             if state.membership.mark(remoteNode, as: .down) == nil {
                 // it was already removed, nothing to do
                 state.log.trace(
@@ -246,10 +251,7 @@ internal class ClusterShell {
         return pool
     }
 
-    // TODO: doc concurrency around this one (init in init)
     private var _swimRef: SWIM.Ref?
-
-    // TODO: doc concurrency around this one (init in init)
     private var clusterEvents: EventStream<Cluster.Event>!
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -334,7 +336,6 @@ internal class ClusterShell {
         case downCommand(Node) // TODO: add reason
         /// Used to signal a "down was issued" either by the user, or another part of the system.
         case downCommandMember(Cluster.Member)
-
         case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
     }
 
@@ -561,11 +562,12 @@ extension ClusterShell {
                 self.clusterEvents.publish(event)
             } // else no "effective change", thus we do not publish events
 
-            // 2) Collect and interpret leader actions which may result changing the membership and publishing events for the changes
+            // 3) Collect and interpret leader actions which may result changing the membership and publishing events for the changes
             let actions: [ClusterShellState.LeaderAction] = state.collectLeaderActions()
             state = self.interpretLeaderActions(context.system, state, actions)
 
             if case .membershipChange(let change) = event {
+                self.tryConfirmDeadToSWIM(context, state, change: change)
                 self.tryIntroduceGossipPeer(context, state, change: change)
             }
 
@@ -604,8 +606,10 @@ extension ClusterShell {
                 // a change COULD have also been a replacement, in which case we need to publish it as well the removal od the
                 if let replacementChange = effectiveChange.replacementDownPreviousNodeChange {
                     self.clusterEvents.publish(.membershipChange(replacementChange))
+                    self.tryConfirmDeadToSWIM(context, state, change: replacementChange)
                 }
                 self.clusterEvents.publish(.membershipChange(effectiveChange))
+                self.tryConfirmDeadToSWIM(context, state, change: effectiveChange)
             }
 
             // follow up with leader actions
@@ -628,8 +632,14 @@ extension ClusterShell {
         }
     }
 
+    func tryConfirmDeadToSWIM(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
+        if change.status.isAtLeast(.down) {
+            self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(change.member.uniqueNode)))
+        }
+    }
+
     func tryIntroduceGossipPeer(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
-        guard change.toStatus < .down else {
+        guard change.status < .down else {
             return
         }
         guard change.member.uniqueNode != state.localNode else {
@@ -1009,6 +1019,7 @@ extension ClusterShell {
         //    As the new association is stored, any reactions to these events will use the right underlying connection
         if let change = directive.membershipChange {
             state.events.publish(.membershipChange(change)) // TODO: need a test where a leader observes a replacement, and we ensure that it does not end up signalling up or removal twice?
+            self.tryConfirmDeadToSWIM(context, state, change: change)
             self.tryIntroduceGossipPeer(context, state, change: change)
         }
 
@@ -1045,7 +1056,9 @@ extension ClusterShell {
             // but we also enable the shell (or leadership) to update the leader if it needs changing.
             //
             // We MUST emit this `.down` before emitting the replacement's event
-            state.events.publish(.membershipChange(.init(member: replacedMember, toStatus: .down)))
+            let change = Cluster.MembershipChange(member: replacedMember, toStatus: .down)
+            state.events.publish(.membershipChange(change))
+            self.tryConfirmDeadToSWIM(context, state, change: change)
         }
     }
 
@@ -1209,7 +1222,7 @@ extension ClusterShell {
         self.clusterEvents.publish(.reachabilityChange(change))
         self.recordMetrics(context.system.metrics, membership: state.membership)
 
-        return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot
+        return self.ready(state: state)
     }
 
     /// Convenience function for directly handling down command in shell.
@@ -1217,19 +1230,27 @@ extension ClusterShell {
     func onDownCommand(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Cluster.Member) -> ClusterShellState {
         var state = state
 
-        if let change = state.membership.applyMembershipChange(.init(member: memberToDown, toStatus: .down)) {
-            context.system.cluster.updateMembershipSnapshot(state.membership)
-            self.clusterEvents.publish(.membershipChange(change))
-
-            if let logChangeLevel = state.settings.logMembershipChanges {
-                context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change)", metadata: [
-                    "cluster/membership/change": "\(change)",
-                    "cluster/membership": "\(state.membership)",
-                ])
-            }
+        guard let change = state.membership.applyMembershipChange(.init(member: memberToDown, toStatus: .down)) else {
+            // the change was ineffective, e.g. the node was already replaced by another node and down events were already sent
+            return state
         }
 
-        guard memberToDown.uniqueNode != state.localNode else {
+        // the change was applied, so we should update the membership and publish an event
+        context.system.cluster.updateMembershipSnapshot(state.membership)
+        self.clusterEvents.publish(.membershipChange(change))
+        self.tryConfirmDeadToSWIM(context, state, change: change)
+
+        if let logChangeLevel = state.settings.logMembershipChanges {
+            context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change)", metadata: [
+                "cluster/membership/change": "\(change)",
+                "cluster/membership": Logger.MetadataValue.array(state.membership.members(atMost: .down).map { "\($0)" }),
+            ])
+        }
+
+        // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
+        self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(memberToDown.uniqueNode)))
+
+        if memberToDown.uniqueNode == state.localNode {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
             context.log.warning(
@@ -1238,8 +1259,6 @@ extension ClusterShell {
                     "cluster/membership": "\(state.membership)",
                 ]
             )
-
-            self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(memberToDown.uniqueNode)))
 
             do {
                 let onDownAction = context.system.settings.cluster.onDownAction.make()
@@ -1251,14 +1270,14 @@ extension ClusterShell {
 
             state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
             return state
+        } else {
+            // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Terminate association and Down the (other) node
+
+            state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
+            self.terminateAssociation(context.system, state: &state, memberToDown.uniqueNode)
+            return state
         }
-
-        // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        // Terminate association and Down the (other) node
-
-        state = self.interpretLeaderActions(context.system, state, state.collectLeaderActions())
-        self.terminateAssociation(context.system, state: &state, memberToDown.uniqueNode)
-        return state
     }
 }
 

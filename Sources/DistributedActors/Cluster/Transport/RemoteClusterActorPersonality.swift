@@ -28,7 +28,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     let clusterShell: ClusterShell
     let system: ActorSystem // TODO: maybe don't need to store it and access via clusterShell?
 
-    var deadLetters: ActorRef<DeadLetter> {
+    var deadLetters: ActorRef<Message> {
         self.system.personalDeadLetters(recipient: self.address)
     }
 
@@ -80,7 +80,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
             self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
-            self.deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
+            self.deadLetters.tell(message, file: file, line: line)
         }
     }
 
@@ -96,7 +96,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
             self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
-            self.deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
+            self.system.personalDeadLetters(recipient: self.address).tell(message, file: file, line: line)
         }
     }
 

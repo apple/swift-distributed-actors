@@ -53,10 +53,13 @@ extension Cluster {
             return .init(member: replacedMember, toStatus: .down)
         }
 
-        public internal(set) var fromStatus: MemberStatus?
-        public let toStatus: MemberStatus
+        public internal(set) var previousStatus: MemberStatus?
+        public let status: MemberStatus
 
-        init(member: Member, toStatus: MemberStatus? = nil) {
+        let file: String
+        let line: UInt
+
+        init(member: Member, toStatus: MemberStatus? = nil, file: String = #file, line: UInt = #line) {
             // FIXME: enable these assertions
 //            assertBacktrace(
 //                toStatus == nil || !(toStatus == .removed && member.status != .down),
@@ -65,23 +68,23 @@ extension Cluster {
 //                yet attempted to move \(member) to \(toStatus, orElse: "nil")
 //                """
 //            )
-
+            self.replaced = nil
             if let to = toStatus {
                 var m = member
                 m.status = to
                 self.member = m
-                self.replaced = nil
-                self.fromStatus = member.status
-                self.toStatus = to
+                self.previousStatus = member.status
+                self.status = to
             } else {
                 self.member = member
-                self.replaced = nil
-                self.fromStatus = nil
-                self.toStatus = member.status
+                self.previousStatus = nil
+                self.status = member.status
             }
+            self.file = file
+            self.line = line
         }
 
-        init(node: UniqueNode, fromStatus: MemberStatus?, toStatus: MemberStatus) {
+        init(node: UniqueNode, previousStatus: MemberStatus?, toStatus: MemberStatus, file: String = #file, line: UInt = #line) {
             // FIXME: enable these assertions
 //          assertBacktrace(
 //                !(toStatus == .removed && fromStatus != .down),
@@ -92,19 +95,26 @@ extension Cluster {
 //            )
             self.member = .init(node: node, status: toStatus)
             self.replaced = nil
-            self.fromStatus = fromStatus
-            self.toStatus = toStatus
+            self.previousStatus = previousStatus
+            self.status = toStatus
+
+            self.file = file
+            self.line = line
         }
 
         /// Use to create a "replacement", when the previousNode and node are different (i.e. they should only differ in ID, not host/port)
-        init(replaced: Member, by newMember: Member) {
+        init(replaced: Member, by newMember: Member, file: String = #file, line: UInt = #line) {
             assert(replaced.uniqueNode.host == newMember.uniqueNode.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
             assert(replaced.uniqueNode.port == newMember.uniqueNode.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
+            assert(newMember.status != .down, "Attempted to replace a member \(replaced) with a .down member: \(newMember)! This should never happen.")
 
             self.replaced = replaced
             self.member = newMember
-            self.fromStatus = replaced.status
-            self.toStatus = newMember.status
+            self.previousStatus = replaced.status
+            self.status = newMember.status
+
+            self.file = file
+            self.line = line
         }
 
         public func hash(into hasher: inout Hasher) {
@@ -114,8 +124,8 @@ extension Cluster {
         public static func == (lhs: MembershipChange, rhs: MembershipChange) -> Bool {
             lhs.member == rhs.member &&
                 lhs.replaced == rhs.replaced &&
-                lhs.fromStatus == rhs.fromStatus &&
-                lhs.toStatus == rhs.toStatus
+                lhs.previousStatus == rhs.previousStatus &&
+                lhs.status == rhs.status
         }
     }
 }
@@ -129,28 +139,28 @@ extension Cluster.MembershipChange {
     }
 
     public var isJoining: Bool {
-        self.toStatus.isJoining
+        self.status.isJoining
     }
 
     public var isUp: Bool {
-        self.toStatus.isUp
+        self.status.isUp
     }
 
     public var isDown: Bool {
-        self.toStatus.isDown
+        self.status.isDown
     }
 
     public func isAtLeast(_ status: Cluster.MemberStatus) -> Bool {
-        self.toStatus >= status
+        self.status >= status
     }
 
     public var isLeaving: Bool {
-        self.toStatus.isLeaving
+        self.status.isLeaving
     }
 
     /// Slight rewording of API, as this is the membership _change_, thus it is a "removal", while the `toStatus` is "removed"
     public var isRemoval: Bool {
-        self.toStatus.isRemoved
+        self.status.isRemoved
     }
 }
 
@@ -164,9 +174,10 @@ extension Cluster.MembershipChange: CustomStringConvertible {
         }
         return base +
             " :: " +
-            "[\(self.fromStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
+            "[\(self.previousStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
             " -> " +
-            "[\(self.toStatus.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
+            "[\(self.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
+            " (created at: \(self.file):\(self.line))"
     }
 }
 
@@ -176,6 +187,27 @@ extension Cluster {
     /// Emitted when the reachability of a member changes, as determined by a failure detector (e.g. `SWIM`).
     public struct ReachabilityChange: Equatable {
         public let member: Cluster.Member
+
+        let file: String
+        let line: UInt
+
+        #if DEBUG
+        public init(member: Member, file: String = #file, line: UInt = #line) {
+            self.member = member
+            self.file = file
+            self.line = line
+        }
+
+        #else
+        public init(member: Member) {
+            self.member = member
+        }
+        #endif
+
+        /// - SeeAlso: `MemberReachability`
+        public var reachability: MemberReachability {
+            self.member.reachability
+        }
 
         /// This change is to a `.reachable` state of the `Member`
         public var toReachable: Bool {
@@ -198,14 +230,19 @@ extension Cluster {
         public let oldLeader: Cluster.Member?
         public let newLeader: Cluster.Member?
 
+        let file: String
+        let line: UInt
+
         /// A change is only returned when `oldLeader` and `newLeader` are different.
         /// In order to avoid issuing changes which would be no-ops, the initializer fails if they are equal.
-        public init?(oldLeader: Cluster.Member?, newLeader: Cluster.Member?) {
+        public init?(oldLeader: Cluster.Member?, newLeader: Cluster.Member?, file: String = #file, line: UInt = #line) {
             guard oldLeader != newLeader else {
                 return nil
             }
             self.oldLeader = oldLeader
             self.newLeader = newLeader
+            self.file = file
+            self.line = line
         }
     }
 }

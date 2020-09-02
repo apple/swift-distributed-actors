@@ -209,12 +209,13 @@ extension ActorRef {
         }
     }
 
+    // TODO: should this always be personalized dead letters instead?
     internal var _deadLetters: ActorRef<DeadLetter> {
         switch self.personality {
         case .cell(let cell):
             return cell.mailbox.deadLetters
         case .remote(let remote):
-            return remote.deadLetters
+            return remote.system.deadLetters
         case .adapter(let adapter):
             return adapter.deadLetters
         case .deadLetters:
@@ -584,10 +585,10 @@ public class Guardian {
                 switch system.settings.failure.onGuardianFailure {
                 case .shutdownActorSystem:
                     let message = """
-                                  Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ActorSystem! \
-                                  (This can be configured in `system.settings.failure.onGuardianFailure`). \
-                                  Failure was: \(failure)
-                                  """
+                    Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ActorSystem! \
+                    (This can be configured in `system.settings.failure.onGuardianFailure`). \
+                    Failure was: \(failure)
+                    """
                     system.log.error("\(message)", metadata: [
                         "actor/path": "\(self.address.path)",
                         "error": "\(failure)",
@@ -602,9 +603,9 @@ public class Guardian {
                     #else
                     case .systemExit(let code):
                         let message = """
-                                      Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))!\
-                                      Failure was: \(failure)
-                                      """
+                        Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))!\
+                        Failure was: \(failure)
+                        """
                         system.log.error("\(message)", metadata: [
                             "actor/path": "\(self.address.path)",
                             "error": "\(failure)",

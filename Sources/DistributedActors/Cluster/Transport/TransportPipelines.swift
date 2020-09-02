@@ -727,7 +727,7 @@ extension ClusterShell {
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
                     ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localNode: bindAddress)),
-                     ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME only include for debug -DSACT_TRACE_NIO things?
+                    // ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME: only include for debug -DSACT_TRACE_NIO things?
                     ("wire envelope handler", WireEnvelopeHandler(serialization: serializationPool.serialization, log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
                     ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),
@@ -791,7 +791,7 @@ extension ClusterShell {
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
                     ("initiating handshake handler", InitiatingHandshakeHandler(log: log, handshakeOffer: handshakeOffer, cluster: shell)),
-                     ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)), // FIXME make available via compilation flag
+                    // ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)), // FIXME: make available via compilation flag
                     ("envelope handler", WireEnvelopeHandler(serialization: serializationPool.serialization, log: log)),
                     ("outbound serialization handler", OutboundSerializationHandler(log: log, serializationPool: serializationPool)),
                     ("system message re-delivery", SystemMessageRedeliveryHandler(log: log, system: system, cluster: shell, serializationPool: serializationPool, outbound: outboundSysMsgs, inbound: inboundSysMsgs)),

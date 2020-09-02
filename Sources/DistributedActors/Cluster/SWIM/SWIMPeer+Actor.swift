@@ -57,8 +57,7 @@ extension SWIMPeer {
         let promise = context.system._eventLoopGroup.next().makePromise(of: SWIM.PingResponse.self)
 
         ref.ask(for: SWIM.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
-            pprint("PING replyTo = \(replyTo)")
-            return SWIM.Message.remote(.ping(pingOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
+            SWIM.Message.remote(.ping(pingOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }._onComplete { (result: Result<SWIM.Message, Error>) in
             switch result {
             case .success(.remote(.pingResponse(let response))):
@@ -132,8 +131,7 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
         self.ask(for: SWIM.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
-            pprint("PING replyTo = \(replyTo)")
-            return SWIM.Message.remote(.ping(pingOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
+            SWIM.Message.remote(.ping(pingOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }._onComplete { (result: Result<SWIM.Message, Error>) in
             switch result {
             case .success(.remote(.pingResponse(let response))):

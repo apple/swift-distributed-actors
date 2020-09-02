@@ -265,21 +265,19 @@ extension Cluster.Membership {
     /// Interpret and apply passed in membership change as the appropriate join/leave/down action.
     /// Applying a new node status that becomes a "replacement" of an existing member, returns a `Cluster.MembershipChange` that is a "replacement".
     ///
-    /// Attempting to apply a change with regards to a member which is _not_ part of this `Membership` will return `nil`.
+    /// Attempting to apply a change with regards to a member which is _not_ part of this `Membership` will return `nil`. FIXME: does it?
     ///
     /// - Returns: the resulting change that was applied to the membership; note that this may be `nil`,
     ///   if the change did not cause any actual change to the membership state (e.g. signaling a join of the same node twice).
     public mutating func applyMembershipChange(_ change: Cluster.MembershipChange) -> Cluster.MembershipChange? {
-        if case .removed = change.toStatus {
+        if case .removed = change.status {
             return self.removeCompletely(change.node)
         }
 
         if let knownUnique = self.uniqueMember(change.node) {
             // it is known uniquely, so we just update its status
-            return self.mark(knownUnique.uniqueNode, as: change.toStatus)
-        }
-
-        if let previousMember = self.member(change.node.node) {
+            return self.mark(knownUnique.uniqueNode, as: change.status)
+        } else if let previousMember = self.member(change.node.node), change.isDown || change.isRemoval {
             // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
             _ = self.removeCompletely(previousMember.uniqueNode) // the replacement event will handle the down notifications
             self._members[change.node] = change.member
@@ -346,7 +344,7 @@ extension Cluster.Membership {
     /// be closed to that now-replaced node, since we have replaced it with a new node.
     public mutating func join(_ node: UniqueNode) -> Cluster.MembershipChange? {
         var change = Cluster.MembershipChange(member: Cluster.Member(node: node, status: .joining))
-        change.fromStatus = nil
+        change.previousStatus = nil
         return self.applyMembershipChange(change)
     }
 
@@ -505,14 +503,14 @@ extension Cluster.Membership {
                 self._members[incomingMember.uniqueNode] = incomingMember
 
                 var change = Cluster.MembershipChange(member: incomingMember)
-                change.fromStatus = nil // since "new"
+                change.previousStatus = nil // since "new"
                 changes.append(change)
                 continue
             }
 
             // it is a known member ------------------------------------------------------------------------------------
             if let change = knownMember.moveForward(to: incomingMember.status) {
-                if change.toStatus.isRemoved {
+                if change.status.isRemoved {
                     self._members.removeValue(forKey: incomingMember.uniqueNode)
                 } else {
                     self._members[incomingMember.uniqueNode] = knownMember
@@ -600,7 +598,7 @@ extension Cluster.Membership {
 
         // any remaining `to` members, are new members
         for member in to._members.values {
-            entries.append(.init(node: member.uniqueNode, fromStatus: nil, toStatus: member.status))
+            entries.append(.init(node: member.uniqueNode, previousStatus: nil, toStatus: member.status))
         }
 
         return MembershipDiff(changes: entries)

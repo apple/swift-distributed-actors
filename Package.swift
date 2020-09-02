@@ -248,7 +248,9 @@ targets.append(
 #endif
 
 var dependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/apple/swift-cluster-membership.git", from: "0.1.0"),
+//     .package(url: "https://github.com/apple/swift-cluster-membership.git", from: "0.1.0"),
+     .package(url: "https://github.com/apple/swift-cluster-membership.git", .branch("main")),
+//    .package(path: "/Users/ktoso/code/swift-cluster-membership"),
 
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),

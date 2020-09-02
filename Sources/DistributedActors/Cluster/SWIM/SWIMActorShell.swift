@@ -15,7 +15,7 @@
 import ClusterMembership
 import enum Dispatch.DispatchTimeInterval
 import Logging
-import SWIM
+@testable import SWIM
 
 /// The SWIM shell is responsible for driving all interactions of the `SWIM.Instance` with the outside world.
 ///
@@ -96,7 +96,6 @@ internal struct SWIMActorShell {
 
     /// Scheduling a new protocol period and performing the actions for the current protocol period
     func handlePeriodicProtocolPeriodTick(context: MyselfContext) {
-        context.log.info("periodic tick...", metadata: self.swim.metadata)
         self.swim.onPeriodicPingTick().forEach { directive in
             switch directive {
             case .membershipChanged(let change):
@@ -137,8 +136,11 @@ internal struct SWIMActorShell {
             "swim/ping/seqNr": "\(sequenceNumber)",
         ]))
 
-        let directives = self.swim.onPing(pingOrigin: pingOrigin, payload: payload, sequenceNumber: sequenceNumber)
-        for directive in directives {
+        self.swim.onPing(
+            pingOrigin: pingOrigin,
+            payload: payload,
+            sequenceNumber: sequenceNumber
+        ).forEach { directive in
             switch directive {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective, context: context)
@@ -184,22 +186,6 @@ internal struct SWIMActorShell {
                 )
             }
         }
-
-//        if !self.swim.isMember(target) {
-//            self.withEnsuredAssociation(context, remoteNode: target.address.node) { result in
-//                switch result {
-//                case .success:
-//                    // The case when member is a suspect is already handled in `processGossipPayload`, since
-//                    // payload will always contain suspicion about target member
-//                    self.swim.addMember(target, status: .alive(incarnation: 0)) // TODO: push into SWIM?
-//                    self.sendPing(to: target, pingRequestOriginPeer: replyTo, context: context)
-//                case .failure(let error):
-//                    context.log.warning("Unable to obtain association for remote \(target.address)... Maybe it was tombstoned? Error: \(error)")
-//                }
-//            }
-//        } else {
-//            self.sendPing(to: target, pingRequestOriginPeer: replyTo, context: context)
-//        }
     }
 
     func receiveLocalMessage(message: SWIM.LocalMessage, context: MyselfContext) {
@@ -229,7 +215,7 @@ internal struct SWIMActorShell {
     ) {
         let payload = self.swim.makeGossipPayload(to: target)
 
-        context.log.trace("Sending ping", metadata: self.swim.metadata([
+        context.log.debug("Sending ping", metadata: self.swim.metadata([
             "swim/target": "\(target)",
             "swim/gossip/payload": "\(payload)",
             "swim/timeout": "\(timeout)",
@@ -340,33 +326,17 @@ internal struct SWIMActorShell {
         }
     }
 
-//    func handlePingResponse(
-//        response: SWIM.PingResponse,
-//        context: MyselfContext
-//    ) {
-//        /// If this message is in response to an indirect ping that was caused by an
-//        let pingRequest = self.inFlightPingRequestedPings.removeValue(forKey: response.sequenceNumber)
-//
-//        self.handlePingResponse(
-//            response: response,
-//            pingRequestOrigin: pingRequest?.origin,
-//            pingRequestSequenceNumber: pingRequest?.sequenceNumber,
-//            context: context
-//        )
-//    }
-
     func handlePingResponse(
         response: SWIM.PingResponse,
         pingRequestOrigin: SWIMPingRequestOriginPeer?,
         pingRequestSequenceNumber: SWIM.SequenceNumber?,
         context: MyselfContext
     ) {
-        let directives = self.swim.onPingResponse(
+        self.swim.onPingResponse(
             response: response,
             pingRequestOrigin: pingRequestOrigin,
             pingRequestSequenceNumber: pingRequestSequenceNumber
-        )
-        directives.forEach { directive in
+        ).forEach { directive in
             switch directive {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective, context: context)
@@ -400,9 +370,11 @@ internal struct SWIMActorShell {
 
     func handlePingRequestResponse(response: SWIM.PingResponse, pinged: SWIMPeer, context: MyselfContext) {
         // self.tracelog(context, .receive(pinged: pinged), message: response)
-        let directives = self.swim.onPingRequestResponse(response, pinged: pinged)
-        directives.forEach {
-            switch $0 {
+        self.swim.onPingRequestResponse(
+            response,
+            pinged: pinged
+        ).forEach { directive in
+            switch directive {
             case .gossipProcessed(let gossipDirective):
                 self.handleGossipPayloadProcessedDirective(gossipDirective, context: context)
 
@@ -437,158 +409,23 @@ internal struct SWIMActorShell {
     }
 
     func handleConfirmDead(deadNode uniqueNode: UniqueNode, context: MyselfContext) {
-        guard let member = self.swim.member(for: uniqueNode.asSWIMNode) else {
-            context.log.debug("Attempted to confirm dead an already dead or removed node: \(uniqueNode)")
-            return
-        }
-
-        let directive = self.swim.confirmDead(peer: member.peer)
+        let directive = self.swim.confirmDead(peer: uniqueNode.asSWIMNode.swimRef(context))
         switch directive {
         case .applied(let change):
-            context.log.debug("Confirmed node .dead: \(change)", metadata: [
+            context.log.warning("Confirmed node .dead: \(change)", metadata: self.swim.metadata([
                 "swim/change": "\(change)",
-            ])
+                "swim/toping": "\(self.swim.membersToPing)",
+            ]))
         case .ignored:
             return
         }
-//        let node = ClusterMembership.Node(uniqueNode: uniqueNode)
-//        if let member = self.swim.member(for: node) {
-//            // It is important to not infinitely loop cluster.down + confirmDead messages;
-//            // See: `.confirmDead` for more rationale
-//            if member.isDead {
-//                return // member is already dead, nothing else to do here.
-//            }
-//
-//            context.log.trace("Confirming .dead member \(reflecting: member.node)")
-//
-//            // We are diverging from the SWIM paper here in that we store the `.dead` state, instead
-//            // of removing the node from the member list. We do that in order to prevent dead nodes
-//            // from being re-added to the cluster.
-//            // TODO: add time of death to the status
-//            // TODO: GC tombstones after a day
-//
-//            switch self.swim.mark(member.peer, as: .dead) {
-//            case .applied(let .some(previousState), _):
-//                if previousState.isSuspect || previousState.isUnreachable {
-//                    context.log.warning(
-//                        "Marked [\(member)] as [.dead]. Was marked \(previousState) in protocol period [\(member.protocolPeriod)]",
-//                        metadata: [
-//                            "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-//                            "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
-//                        ]
-//                    )
-//                } else {
-//                    context.log.warning(
-//                        "Marked [\(member)] as [.dead]. Node was previously [.alive], and now forced [.dead].",
-//                        metadata: [
-//                            "swim/protocolPeriod": "\(self.swim.protocolPeriod)",
-//                            "swim/member": "\(member)", // TODO: make sure it is the latest status of it in here
-//                        ]
-//                    )
-//                }
-//            case .applied(nil, _):
-//                // TODO: marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
-//                context.log.warning("Marked [\(member)] as [.dead]. Node was not previously known to SWIM.")
-//                // TODO: should we not issue a escalateUnreachable here? depends how we learnt about that node...
-//
-//            case .ignoredDueToOlderStatus:
-//                // TODO: make sure a fatal error in SWIM.Shell causes a system shutdown?
-//                fatalError("Marking [\(member)] as [.dead] failed! This should never happen, dead is the terminal status. SWIM instance: \(self.swim)")
-//            }
-//        } else {
-//            context.log.warning("Attempted to .confirmDead(\(node)), yet no such member known to \(self)!") // TODO: would want to see if this happens when we fail these tests
-//            // even if not known, we invent such node and store it as dead
-//            self.swim.addMember(node.swimRef(context), status: .dead)
-//        }
     }
-
-//    func checkSuspicionTimeouts(context: MyselfContext) {
-//        for suspect in self.swim.suspects {
-//            if case .suspect(_, let suspectedBy) = suspect.status {
-//                let suspicionTimeout = self.swim.suspicionTimeout(suspectedByCount: suspectedBy.count)
-//                context.log.trace(
-//                    "Checking suspicion timeout for: \(suspect)...",
-//                    metadata: [
-//                        "swim/suspect": "\(suspect)",
-//                        "swim/suspectedBy": "\(suspectedBy.count)",
-//                        "swim/suspicionTimeout": "\(suspicionTimeout)",
-//                    ]
-//                )
-//
-//                // proceed with suspicion escalation to .unreachable if the timeout period has been exceeded
-//                // We don't use Deadline because tests can override TimeSource
-//                guard let startTime = suspect.suspicionStartedAt,
-//                    self.swim.isExpired(deadline: startTime + suspicionTimeout.nanoseconds) else {
-//                    continue // skip, this suspect is not timed-out yet
-//                }
-//
-//                guard let incarnation = suspect.status.incarnation else {
-//                    // suspect had no incarnation number? that means it is .dead already and should be recycled soon
-//                    return
-//                }
-//
-//                var unreachableSuspect = suspect
-//                unreachableSuspect.status = .unreachable(incarnation: incarnation)
-//                self.markMember(context, latest: unreachableSuspect)
-//            }
-//        }
-//
-//        context.system.metrics.recordSWIMMembers(self.swim.allMembers)
-//    }
-
-//    private func markMember(_ context: MyselfContext, latest: SWIM.Member) {
-//        switch self.swim.mark(latest.peer, as: latest.status) {
-//        case .applied(let previousStatus, _):
-//            context.log.trace(
-//                "Marked \(latest.node) as \(latest.status), announcing reachability change",
-//                metadata: [
-//                    "swim/member": "\(latest)",
-//                    "swim/previousStatus": "\(previousStatus, orElse: "nil")",
-//                ]
-//            )
-//            let statusChange = SWIM.MemberStatusChangedEvent(previousStatus: previousStatus, member: latest)
-//            self.tryAnnounceMemberReachability(change: statusChange, context: context)
-//        case .ignoredDueToOlderStatus:
-//            () // context.log.trace("No change \(latest), currentStatus remains [\(currentStatus)]. No reachability change to announce")
-//        }
-//    }
 
     func handleGossipPayloadProcessedDirective(_ directive: SWIM.Instance.GossipProcessedDirective, context: MyselfContext) {
         switch directive {
         case .applied(let change):
             self.tryAnnounceMemberReachability(change: change, context: context)
         }
-    }
-
-    func processGossipedMembership(_ directive: SWIM.Instance.GossipProcessedDirective, context: MyselfContext) {
-        switch directive {
-        case .applied(let change):
-            self.tryAnnounceMemberReachability(change: change, context: context)
-        }
-//        for member in members {
-//            case .connect(let node, let continueAddingMember):
-//            switch self.swim.onGossipPayload(about: member) {
-//                // ensuring a connection is asynchronous, but executes callback in actor context
-//                self.withEnsuredAssociation(context, remoteNode: node) { uniqueAddressResult in
-//                    switch uniqueAddressResult {
-//                    case .success(let uniqueAddress):
-//                        continueAddingMember(.success(uniqueAddress))
-//                    case .failure(let error):
-//                        continueAddingMember(.failure(error))
-//                        context.log.warning("Unable ensure association with \(node), could it have been tombstoned? Error: \(error)")
-//                    }
-//                }
-//
-//            case .ignored(let level, let message):
-//                if let level = level, let message = message {
-//                    context.log.log(level: level, message, metadata: self.swim.metadata)
-//                }
-//
-//            case .applied(let change, _, _):
-//                self.tryAnnounceMemberReachability(change: change, context: context)
-//            }
-//        }
-//    }
     }
 
     /// Announce to the `ClusterShell` a change in reachability of a member.
@@ -601,6 +438,9 @@ internal struct SWIMActorShell {
         guard change.isReachabilityChange else {
             // the change is from a reachable to another reachable (or an unreachable to another unreachable-like (e.g. dead) state),
             // and thus we must not act on it, as the shell was already notified before about the change into the current status.
+            //
+            // if this is a move from unreachable -> down, then the downing subsystem will have already sent out the down event,
+            // and we should not duplicate it.
             return
         }
 
@@ -617,7 +457,7 @@ internal struct SWIMActorShell {
             )
         default:
             context.log.info(
-                "Node \(change.member.node) determined [.\(change.status)] (was [\(change.previousStatus, orElse: "nil")].",
+                "Node \(change.member.node) determined [.\(change.status)] (was \(optional: change.previousStatus)).",
                 metadata: [
                     "swim/member": "\(change.member)",
                 ]

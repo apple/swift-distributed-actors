@@ -301,10 +301,10 @@ extension Serialization {
             guard let make = self.settings.specializedSerializerMakers[manifest] else {
                 throw SerializationError.unableToMakeSerializer(
                     hint: """
-                          Type: \(String(reflecting: type)), \
-                          Manifest: \(manifest), \
-                          Specialized serializer makers: \(self.settings.specializedSerializerMakers)
-                          """)
+                    Type: \(String(reflecting: type)), \
+                    Manifest: \(manifest), \
+                    Specialized serializer makers: \(self.settings.specializedSerializerMakers)
+                    """)
             }
 
             let serializer = make(self.allocator)

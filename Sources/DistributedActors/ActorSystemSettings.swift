@@ -45,6 +45,7 @@ public struct ActorSystemSettings {
             self.cluster.swim.logger = self.logging.logger
         }
     }
+
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var instrumentation: InstrumentationSettings = .default
 

@@ -731,10 +731,10 @@ extension OperationLogClusterReceptionist {
                 return
             }
 
-            if effectiveChange.fromStatus == nil {
+            if effectiveChange.previousStatus == nil {
                 // a new member joined, let's store and contact its receptionist
                 self.onNewClusterMember(context, change: effectiveChange)
-            } else if effectiveChange.toStatus.isAtLeast(.down) {
+            } else if effectiveChange.status.isAtLeast(.down) {
                 // a member was removed, we should prune it from our observations
                 self.pruneClusterMember(context, removedNode: effectiveChange.node)
             }
@@ -745,7 +745,7 @@ extension OperationLogClusterReceptionist {
     }
 
     private func onNewClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, change: Cluster.MembershipChange) {
-        guard change.fromStatus == nil else {
+        guard change.previousStatus == nil else {
             return // not a new member
         }
 

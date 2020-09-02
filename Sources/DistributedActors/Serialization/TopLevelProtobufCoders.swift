@@ -236,7 +236,7 @@ struct TopLevelProtobufBlobSingleValueDecodingContainer: SingleValueDecodingCont
 
         default:
             throw SerializationError.unableToDeserialize(hint:
-            "Attempted decode \(reflecting: type) from a \(Self.self) which only supports raw bytes (ByteBuffer or Data) \(type is Foundation.Data.Type)"
+                "Attempted decode \(reflecting: type) from a \(Self.self) which only supports raw bytes (ByteBuffer or Data) \(type is Foundation.Data.Type)"
             )
         }
     }

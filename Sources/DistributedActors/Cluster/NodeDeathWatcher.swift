@@ -75,7 +75,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         }
 
         // TODO: make sure we only handle ONCE?
-        if change.toStatus >= .down {
+        if change.status >= .down {
             // can be: down, leaving or removal.
             // on any of those we want to ensure we handle the "down"
             self.handleAddressDown(change)

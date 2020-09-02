@@ -380,8 +380,12 @@ extension ClusterShellState {
             // TODO: perhaps we instead just warn and ignore this; since it should be harmless
         }
 
-        let change: Cluster.MembershipChange? =
-            self.membership.applyMembershipChange(Cluster.MembershipChange(member: .init(node: handshake.remoteNode, status: .joining)))
+        let change: Cluster.MembershipChange?
+        if let replacedMember = self.membership.member(handshake.remoteNode.node) {
+            change = self.membership.applyMembershipChange(Cluster.MembershipChange(replaced: replacedMember, by: Cluster.Member(node: handshake.remoteNode, status: .joining)))
+        } else {
+            change = self.membership.applyMembershipChange(Cluster.MembershipChange(member: Cluster.Member(node: handshake.remoteNode, status: .joining)))
+        }
 
         return AssociatedDirective(
             membershipChange: change,

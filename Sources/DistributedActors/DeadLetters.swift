@@ -211,26 +211,25 @@ public final class DeadLetterOffice {
             return // system message was special handled; no need to log it anymore
         }
 
-        if self.system?.isShuttingDown ?? true {
-            // do not log dead letters while shutting down
-            // (as many many dead letters are expected, and could potentially flood logs with lots of scary looking, but expected dead letters)
-            return
-        }
-
-        // TODO: more metadata (from Envelope) (e.g. sender)
-        metadata["deadLetter/location"] = "\(file):\(line)"
-
         // in all other cases, we want to log the dead letter:
         self.log.info(
-            """
-            Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
-            \(recipientString).
-            """,
-            metadata: metadata
+            "Dead letter was not delivered \(recipientString)",
+            metadata: { () -> Logger.Metadata in
+                // TODO: more metadata (from Envelope) (e.g. sender)
+                if !recipientString.isEmpty {
+                    metadata["deadLetter/recipient"] = "\(recipientString)"
+                }
+                metadata["deadLetter/location"] = "\(file):\(line)"
+                metadata["deadLetter/message"] = "\(deadLetter.message)"
+                metadata["deadLetter/message/type"] = "\(String(reflecting: type(of: deadLetter.message)))"
+                return metadata
+            }()
         )
     }
 
     private func specialHandled(_ message: _SystemMessage, recipient: ActorAddress?) -> Bool {
+        // TODO: special handle $ask- replies; those mean we got a reply to an ask which timed out already
+
         switch message {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message

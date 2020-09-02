@@ -123,12 +123,12 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         // collect all events regarding the expectedDownNode's membership lifecycle
         // (the timeout is fairly large here to tolerate slow CI and variations how the events get propagated, normally they propagate quite quickly)
         let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
-        eventsOnOther.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
-        eventsOnOther.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
+        eventsOnOther.shouldContain(where: { change in change.status.isDown && (change.previousStatus == .joining || change.previousStatus == .up) })
+        eventsOnOther.shouldContain(Cluster.MembershipChange(node: expectedDownNode, previousStatus: .down, toStatus: .removed))
 
         let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
-        eventsOnThird.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
-        eventsOnThird.shouldContain(Cluster.MembershipChange(node: expectedDownNode, fromStatus: .down, toStatus: .removed))
+        eventsOnThird.shouldContain(where: { change in change.status.isDown && (change.previousStatus == .joining || change.previousStatus == .up) })
+        eventsOnThird.shouldContain(Cluster.MembershipChange(node: expectedDownNode, previousStatus: .down, toStatus: .removed))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -284,9 +284,9 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
             let probe = probes[remainingNode.cluster.uniqueNode]!
             let events = try probe.fishFor(Cluster.MembershipChange.self, within: .seconds(60), expectedDownMemberEventsFishing(on: remainingNode))
 
-            events.shouldContain(where: { change in change.toStatus.isDown && (change.fromStatus == .joining || change.fromStatus == .up) })
+            events.shouldContain(where: { change in change.status.isDown && (change.previousStatus == .joining || change.previousStatus == .up) })
             for expectedDownNode in nodesToDown {
-                events.shouldContain(Cluster.MembershipChange(node: expectedDownNode.cluster.uniqueNode, fromStatus: .down, toStatus: .removed))
+                events.shouldContain(Cluster.MembershipChange(node: expectedDownNode.cluster.uniqueNode, previousStatus: .down, toStatus: .removed))
             }
         }
     }

@@ -73,8 +73,9 @@ message SWIMStatus {
 }
 
 message SWIMMember {
-    UniqueNode node   = 1;
-    SWIMStatus status = 2;
+    UniqueNode node       = 1;
+    SWIMStatus status     = 2;
+    uint64 protocolPeriod = 3;
 }
 
 message SWIMGossipPayload {

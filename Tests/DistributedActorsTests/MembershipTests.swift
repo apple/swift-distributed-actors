@@ -177,7 +177,7 @@ final class MembershipTests: XCTestCase {
         change.replaced.shouldEqual(self.memberA)
         change.replaced!.status.shouldEqual(self.memberA.status)
         change.node.shouldEqual(replacesFirstNode)
-        change.toStatus.shouldEqual(.joining)
+        change.status.shouldEqual(.joining)
     }
 
     func test_apply_memberReplacement() throws {
@@ -193,7 +193,7 @@ final class MembershipTests: XCTestCase {
         change.replaced.shouldEqual(self.memberA)
         change.replaced!.status.shouldEqual(self.memberA.status)
         change.node.shouldEqual(firstReplacement.uniqueNode)
-        change.toStatus.shouldEqual(firstReplacement.status)
+        change.status.shouldEqual(firstReplacement.status)
     }
 
     func test_apply_memberRemoval() throws {
@@ -207,7 +207,7 @@ final class MembershipTests: XCTestCase {
 
         change.isReplacement.shouldBeFalse()
         change.node.shouldEqual(removal.uniqueNode)
-        change.toStatus.shouldEqual(removal.status)
+        change.status.shouldEqual(removal.status)
 
         membership.uniqueMember(self.memberA.uniqueNode).shouldBeNil()
     }
@@ -287,8 +287,8 @@ final class MembershipTests: XCTestCase {
 
         // testing string output as well as field on purpose
         // as if the fromStatus is not set we may infer it from other places; but in such change, we definitely want it in the `from`
-        change1?.fromStatus.shouldEqual(.joining)
-        change1?.toStatus.shouldEqual(.up)
+        change1?.previousStatus.shouldEqual(.joining)
+        change1?.status.shouldEqual(.up)
         "\(change1!)".shouldContain("1001 :: [joining] -> [     up]")
 
         membership.mark(member.uniqueNode, as: .joining).shouldBeNil() // can't move "back"
@@ -296,8 +296,8 @@ final class MembershipTests: XCTestCase {
 
         let change2 = membership.mark(member.uniqueNode, as: .down)
         change2.shouldNotBeNil()
-        change2?.fromStatus.shouldEqual(.up)
-        change2?.toStatus.shouldEqual(.down)
+        change2?.previousStatus.shouldEqual(.up)
+        change2?.status.shouldEqual(.down)
         "\(change2!)".shouldContain("1001 :: [     up] -> [   down]")
 
         membership.mark(member.uniqueNode, as: .joining).shouldBeNil() // can't move "back"
@@ -353,9 +353,9 @@ final class MembershipTests: XCTestCase {
         }
         change.isReplacement.shouldBeTrue()
         change.replaced.shouldEqual(self.memberA)
-        change.fromStatus.shouldEqual(.up)
+        change.previousStatus.shouldEqual(.up)
         change.node.shouldEqual(firstReplacement.uniqueNode)
-        change.toStatus.shouldEqual(.up)
+        change.status.shouldEqual(.up)
     }
 
     func test_mark_status_whenReplacingWithNewNode() {
@@ -367,7 +367,7 @@ final class MembershipTests: XCTestCase {
 
         let changed = membership.mark(twoReplacement.uniqueNode, as: .joining)!
         changed.member.uniqueNode.shouldEqual(twoReplacement.uniqueNode)
-        changed.toStatus.isJoining.shouldBeTrue()
+        changed.status.isJoining.shouldBeTrue()
 
         two.status = .down
         membership.shouldEqual([one, two, twoReplacement]) // `twoReplacement` replacement remains joining; is unchanged by mark performed to `two`
@@ -384,7 +384,7 @@ final class MembershipTests: XCTestCase {
 
         change.member.shouldEqual(replacement)
         change.node.shouldEqual(replacement.uniqueNode)
-        change.fromStatus.shouldEqual(existing.status)
+        change.previousStatus.shouldEqual(existing.status)
 
         change.replaced!.status.shouldEqual(existing.status) // though we have the replaced member, it will have its own previous status
         change.replaced.shouldEqual(existing)
@@ -474,8 +474,8 @@ final class MembershipTests: XCTestCase {
         diff.changes.count.shouldEqual(1)
         let diffEntry = diff.changes.first!
         diffEntry.node.shouldEqual(self.memberA.uniqueNode)
-        diffEntry.fromStatus?.shouldEqual(.up)
-        diffEntry.toStatus.shouldEqual(.leaving)
+        diffEntry.previousStatus?.shouldEqual(.up)
+        diffEntry.status.shouldEqual(.leaving)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenMemberRemoved() {
@@ -486,8 +486,8 @@ final class MembershipTests: XCTestCase {
         diff.changes.count.shouldEqual(1)
         let diffEntry = diff.changes.first!
         diffEntry.node.shouldEqual(self.memberA.uniqueNode)
-        diffEntry.fromStatus?.shouldEqual(.up)
-        diffEntry.toStatus.shouldEqual(.removed)
+        diffEntry.previousStatus?.shouldEqual(.up)
+        diffEntry.status.shouldEqual(.removed)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenMemberAdded() {
@@ -498,8 +498,8 @@ final class MembershipTests: XCTestCase {
         diff.changes.count.shouldEqual(1)
         let diffEntry = diff.changes.first!
         diffEntry.node.shouldEqual(self.memberD.uniqueNode)
-        diffEntry.fromStatus.shouldBeNil()
-        diffEntry.toStatus.shouldEqual(.joining)
+        diffEntry.previousStatus.shouldBeNil()
+        diffEntry.status.shouldEqual(.joining)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -565,7 +565,7 @@ final class MembershipTests: XCTestCase {
         changes.count.shouldEqual(1)
         changes.shouldEqual(
             [
-                Cluster.MembershipChange(node: self.nodeA, fromStatus: .up, toStatus: .down),
+                Cluster.MembershipChange(node: self.nodeA, previousStatus: .up, toStatus: .down),
                 // we do not ADD .down members to our view
             ]
         )
