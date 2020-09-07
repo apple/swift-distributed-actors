@@ -100,7 +100,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
 
     private func updateTargetNode(_ context: ActorContext<Message>, node: UniqueNode?) throws {
         guard self.targetNode != node else {
-            context.log.debug("Skip updating since node is the same as current targetNode", metadata: self.metadata(context))
+            context.log.debug("Skip updating target node; New node is already the same as current targetNode", metadata: self.metadata(context))
             return
         }
 
@@ -150,6 +150,8 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
 
     private func updateRef(_ context: ActorContext<Message>, node: UniqueNode?) {
         switch node {
+        case .some(let node) where node == context.system.cluster.uniqueNode:
+            self.ref = context.myself
         case .some(let node):
             // Since the singleton is spawned as a child of the manager, its incarnation is random and therefore we
             // can't construct its address despite knowing the path and node. Only the manager running on `targetNode`
@@ -160,7 +162,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             // to have proxies ask the `targetNode` proxy to "send me the ref once you have taken over"
             // and before then the proxies can either set `ref` to `nil` (to stash messages) or to `targetNode`
             // proxy as we do today. The challenge lies in serialization, as ActorSingletonProxy and ActorSingletonManager are generic.
-            let resolveContext = ResolveContext<Message>(address: ._singletonProxy(name: self.settings.name, on: node), system: context.system)
+            let resolveContext = ResolveContext<Message>(address: ._singletonProxy(name: self.settings.name, remote: node), system: context.system)
             let ref = context.system._resolve(context: resolveContext)
             self.updateRef(context, ref)
         case .none:
@@ -169,7 +171,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     }
 
     private func updateRef(_ context: ActorContext<Message>, _ newRef: ActorRef<Message>?) {
-        context.log.debug("Updating ref from [\(String(describing: self.ref))] to [\(String(describing: newRef))], flushing \(self.buffer.count) messages")
+        context.log.debug("Updating ref from [\(optional: self.ref)] to [\(optional: newRef)], flushing \(self.buffer.count) messages")
         self.ref = newRef
 
         // Unstash messages if we have the singleton
@@ -220,9 +222,7 @@ extension ActorSingletonProxy {
             "singleton/buffer": "\(self.buffer.count)/\(self.settings.bufferCapacity)",
         ]
 
-        if let targetNode = self.targetNode {
-            metadata["targetNode"] = "\(targetNode)"
-        }
+        metadata["targetNode"] = "\(optional: self.targetNode?.debugDescription)"
         if let ref = self.ref {
             metadata["ref"] = "\(ref.address)"
         }
@@ -238,8 +238,8 @@ extension ActorSingletonProxy {
 // MARK: Singleton path / address
 
 extension ActorAddress {
-    internal static func _singletonProxy(name: String, on node: UniqueNode) -> ActorAddress {
-        .init(local: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
+    internal static func _singletonProxy(name: String, remote node: UniqueNode) -> ActorAddress {
+        .init(remote: node, path: ._singletonProxy(name: name), incarnation: .wellKnown)
     }
 }
 
