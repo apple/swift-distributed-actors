@@ -39,7 +39,6 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
 
     // TODO: sender and other metadata
 
-    #if DEBUG
     let sentAtFile: String?
     let sentAtLine: UInt?
 
@@ -49,15 +48,6 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
         self.sentAtFile = sentAtFile
         self.sentAtLine = sentAtLine
     }
-
-    #else
-    public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
-        self.message = message
-        self.recipient = recipient
-        self.sentAtFile = sentAtFile
-        self.sentAtLine = sentAtLine
-    }
-    #endif
 }
 
 /// // Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.

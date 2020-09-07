@@ -176,21 +176,9 @@ extension Cluster {
     public struct ReachabilityChange: Equatable {
         public let member: Cluster.Member
 
-        let file: String
-        let line: UInt
-
-        #if DEBUG
-        public init(member: Member, file: String = #file, line: UInt = #line) {
-            self.member = member
-            self.file = file
-            self.line = line
-        }
-
-        #else
         public init(member: Member) {
             self.member = member
         }
-        #endif
 
         /// - SeeAlso: `MemberReachability`
         public var reachability: MemberReachability {

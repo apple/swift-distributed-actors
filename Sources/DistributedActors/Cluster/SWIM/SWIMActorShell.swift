@@ -15,7 +15,7 @@
 import ClusterMembership
 import enum Dispatch.DispatchTimeInterval
 import Logging
-@testable import SWIM
+import SWIM
 
 /// The SWIM shell is responsible for driving all interactions of the `SWIM.Instance` with the outside world.
 ///
@@ -412,10 +412,7 @@ internal struct SWIMActorShell {
         let directive = self.swim.confirmDead(peer: uniqueNode.asSWIMNode.swimRef(context))
         switch directive {
         case .applied(let change):
-            context.log.warning("Confirmed node .dead: \(change)", metadata: self.swim.metadata([
-                "swim/change": "\(change)",
-                "swim/toping": "\(self.swim.membersToPing)",
-            ]))
+            context.log.warning("Confirmed node .dead: \(change)", metadata: self.swim.metadata(["swim/change": "\(change)"]))
         case .ignored:
             return
         }
