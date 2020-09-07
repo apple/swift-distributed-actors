@@ -69,8 +69,8 @@ final class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
-    let manifest1 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: String(reflecting: Test1.self))
-    let manifest2 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: String(reflecting: Test2.self))
+    let manifest1 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: Serialization.getTypeHint(Test1.self))
+    let manifest2 = Serialization.Manifest(serializerID: Serialization.SerializerID.foundationJSON, hint: Serialization.getTypeHint(Test2.self))
 
     var system: ActorSystem!
     var testKit: ActorTestKit!
@@ -108,7 +108,11 @@ final class SerializationPoolTests: XCTestCase {
 
     override func tearDown() {
         try! self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
         try! self.elg.syncShutdownGracefully()
+        self.el = nil
+        self.elg = nil
     }
 
     func test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {
