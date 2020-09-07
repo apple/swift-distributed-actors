@@ -153,13 +153,13 @@ public struct Receptionist {
         /// - returns: `true` if the value was a newly inserted value, `false` otherwise
         func addRegistration(key: AnyReceptionKey, ref: AddressableActorRef) -> Bool {
             self.addRefKeyMapping(address: ref.address, key: key)
-            self.storeRegistrationNodeRelation(key: key, node: ref.address.node)
+            self.storeRegistrationNodeRelation(key: key, node: ref.address.uniqueNode)
             return self.addTo(dict: &self._registrations, key: key, value: ref)
         }
 
         func removeRegistration(key: AnyReceptionKey, ref: AddressableActorRef) -> Set<AddressableActorRef>? {
             _ = self.removeFromKeyMappings(ref)
-            self.removeSingleRegistrationNodeRelation(key: key, node: ref.address.node)
+            self.removeSingleRegistrationNodeRelation(key: key, node: ref.address.uniqueNode)
             return self.removeFrom(dict: &self._registrations, key: key, value: ref)
         }
 
@@ -248,14 +248,14 @@ public struct Receptionist {
             for key in keys {
                 // 1) we remove any registrations that it hosted
                 let registrations: Set<AddressableActorRef> = self._registrations.removeValue(forKey: key) ?? []
-                let remainingRegistrations = registrations.filter { $0.address.node != node }
+                let remainingRegistrations = registrations.filter { $0.address.uniqueNode != node }
                 if !remainingRegistrations.isEmpty {
                     self._registrations[key] = remainingRegistrations
                 }
 
                 // 2) and remove any of our subscriptions
                 let subs: Set<AnySubscribe> = self._subscriptions.removeValue(forKey: key) ?? []
-                let prunedSubs = subs.filter { $0.address.node != node }
+                let prunedSubs = subs.filter { $0.address.uniqueNode != node }
                 if remainingRegistrations.count != registrations.count {
                     // only if the set of registered actors for this key was actually affected by this prune
                     // we want to mark it as changed and ensure we contact all of such keys subscribers about the change.

@@ -61,7 +61,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
 
         // Ensure we store as .remote, so printouts work as expected (and include the explicit address)
         var address = address
-        address._location = .remote(address.node)
+        address._location = .remote(address.uniqueNode)
         self.address = address
 
         self.clusterShell = shell
@@ -105,7 +105,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
         // if let assoc = self._cachedAssociation.load() { return assoc }
         // else { get from shell and store here }
 
-        self.clusterShell.getEnsureAssociation(with: self.address.node)
+        self.clusterShell.getEnsureAssociation(with: self.address.uniqueNode)
     }
 
     func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemoteClusterActorPersonality<NewMessage> {

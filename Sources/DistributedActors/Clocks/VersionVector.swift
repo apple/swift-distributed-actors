@@ -201,11 +201,12 @@ extension VersionVector: Codable {
 /// `VersionDot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Version` needs
 /// to be `Hashable` we have to define a type.
 public struct VersionDot {
-    public let replicaID: ReplicaID
-    public let version: Version
     public typealias Version = UInt64
 
-    init(_ replicaID: ReplicaID, _ version: Version) {
+    public let replicaID: ReplicaID
+    public let version: Version
+
+    public init(_ replicaID: ReplicaID, _ version: Version) {
         self.replicaID = replicaID
         self.version = version
     }

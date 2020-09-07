@@ -460,6 +460,6 @@ extension DispatchTimeInterval: CustomPrettyStringConvertible {
     }
 
     var isEffectivelyInfinite: Bool {
-        self == .never
+        self.nanoseconds == .max
     }
 }

@@ -108,7 +108,9 @@ extension Cluster.LeadershipChange: ProtobufRepresentable {
         } else {
             self.newLeader = nil
         }
-        self.file = "" // FIXME:
-        self.line = 0 // FIXME:
+        #if DEBUG
+        self.file = ""
+        self.line = 0
+        #endif
     }
 }

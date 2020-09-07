@@ -114,7 +114,7 @@ internal struct ReceivesSystemMessagesDecoder {
 extension ActorAddress: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
-        try container.encode(node, forKey: ActorCoding.CodingKeys.node)
+        try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
         try container.encode(self.path, forKey: ActorCoding.CodingKeys.path)
         try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
     }

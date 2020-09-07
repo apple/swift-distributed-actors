@@ -24,7 +24,7 @@ extension SWIM.Message: ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         guard case SWIM.Message.remote(let message) = self else {
-            fatalError("SWIM.Message.local should never be sent remotely.")
+            fatalError("Only local SWIM.Message may be sent sent remotely, was: \(self)")
         }
 
         return try message.toProto(context: context)
@@ -140,7 +140,9 @@ extension SWIM.GossipPayload: ProtobufRepresentable {
     public func toProto(context: Serialization.Context) throws -> ProtoSWIMGossipPayload {
         var payload = ProtoSWIMGossipPayload()
         if case .membership(let members) = self {
-            payload.member = try members.map { try $0.toProto(context: context) }
+            payload.member = try members.map {
+                try $0.toProto(context: context)
+            }
         }
 
         return payload
@@ -150,7 +152,9 @@ extension SWIM.GossipPayload: ProtobufRepresentable {
         if proto.member.isEmpty {
             self = .none
         } else {
-            let members = try proto.member.map { proto in try SWIM.Member(fromProto: proto, context: context) }
+            let members = try proto.member.map { proto in
+                try SWIM.Member(fromProto: proto, context: context)
+            }
             self = .membership(members)
         }
     }
@@ -161,15 +165,17 @@ extension SWIM.Member: ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtoSWIMMember {
         var proto = ProtoSWIMMember()
-        proto.node = try self.peer.node.toProto(context: context)
+        guard let actorPeer = self.peer as? SWIM.Ref else {
+            throw SerializationError.unableToSerialize(hint: "Expected peer to be \(SWIM.Ref.self) but was \(self.peer)!")
+        }
+        proto.address = try actorPeer.toProto(context: context)
         proto.status = try self.status.toProto(context: context)
         proto.protocolPeriod = self.protocolPeriod
         return proto
     }
 
     public init(fromProto proto: ProtoSWIMMember, context: Serialization.Context) throws {
-        let node = try UniqueNode(fromProto: proto.node, context: context)
-        let address = ActorAddress._swim(on: node)
+        let address = try ActorAddress(fromProto: proto.address, context: context)
         let peer = context.resolveActorRef(SWIM.Message.self, identifiedBy: address)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
         let protocolPeriod = proto.protocolPeriod

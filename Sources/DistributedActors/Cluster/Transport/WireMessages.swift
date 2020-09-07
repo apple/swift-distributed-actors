@@ -39,7 +39,7 @@ internal enum Wire {
     }
 
     // TODO: such messages should go over a priority lane
-    internal struct HandshakeOffer: WireMessage {
+    internal struct HandshakeOffer: Equatable, WireMessage {
         internal var version: Version
 
         internal var originNode: UniqueNode

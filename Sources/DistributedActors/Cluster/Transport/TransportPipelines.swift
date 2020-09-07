@@ -416,7 +416,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             self.log.error("Outbound system message queue overflow! MUST abort association, system state integrity cannot be ensured (e.g. terminated signals may have been lost).", metadata: [
                 "recipient": "\(transportEnvelope.recipient)",
             ])
-            self.clusterShell.tell(.command(.downCommand(transportEnvelope.recipient.node.node)))
+            self.clusterShell.tell(.command(.downCommand(transportEnvelope.recipient.uniqueNode.node)))
         }
     }
 

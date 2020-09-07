@@ -63,10 +63,10 @@ public enum XPCSerialization {
             address = .init(
                 local: UniqueNode(
                     protocol: "xpc",
-                    systemName: a.node.node.systemName,
-                    host: a.node.host,
-                    port: a.node.port,
-                    nid: a.node.nid
+                    systemName: a.uniqueNode.node.systemName,
+                    host: a.uniqueNode.host,
+                    port: a.uniqueNode.port,
+                    nid: a.uniqueNode.nid
                 ),
                 path: a.path,
                 incarnation: a.incarnation
@@ -75,10 +75,10 @@ public enum XPCSerialization {
             address = .init(
                 remote: UniqueNode(
                     protocol: "xpc",
-                    systemName: a.node.node.systemName,
-                    host: a.node.host,
-                    port: a.node.port,
-                    nid: a.node.nid
+                    systemName: a.uniqueNode.node.systemName,
+                    host: a.uniqueNode.host,
+                    port: a.uniqueNode.port,
+                    nid: a.uniqueNode.nid
                 ),
                 path: a.path,
                 incarnation: a.incarnation

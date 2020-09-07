@@ -36,7 +36,10 @@ final class CRDTSerializationTests: ActorSystemXCTestCase {
         }
     }
 
-    var node: UniqueNode { .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random()) }
+    var node: UniqueNode {
+        self.system.cluster.uniqueNode
+    }
+
     lazy var ownerAlpha = try! ActorAddress(local: node, path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
     lazy var ownerBeta = try! ActorAddress(local: node, path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 

@@ -20,7 +20,7 @@ extension ActorAddress: ProtobufRepresentable {
 
     public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {
         var address = ProtoActorAddress()
-        let node = self.node
+        let node = self.uniqueNode
         address.node = try node.toProto(context: context)
 
         address.path.segments = self.segments.map { $0.value }

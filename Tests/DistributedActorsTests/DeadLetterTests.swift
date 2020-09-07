@@ -29,8 +29,7 @@ final class DeadLetterTests: ActorSystemXCTestCase {
 
         office.deliver("Hello")
 
-        try self.logCapture.awaitLogContaining(self.testKit, text: "[Hello]:Swift.String was not delivered")
-        try self.logCapture.awaitLogContaining(self.testKit, text: "/user/someone")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "was not delivered to [\"/user/someone")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

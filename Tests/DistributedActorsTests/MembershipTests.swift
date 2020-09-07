@@ -180,12 +180,13 @@ final class MembershipTests: XCTestCase {
         change.status.shouldEqual(.joining)
     }
 
-    func test_apply_memberReplacement() throws {
+    func test_apply_memberReplacement_withUpNode() throws {
         var membership = self.initialMembership
 
         let firstReplacement = Cluster.Member(node: UniqueNode(node: self.nodeA.node, nid: .init(111_111)), status: .up)
 
-        guard let change = membership.applyMembershipChange(Cluster.MembershipChange(member: firstReplacement)) else {
+        let changeToApply = Cluster.MembershipChange(member: firstReplacement)
+        guard let change = membership.applyMembershipChange(changeToApply) else {
             throw TestError("Expected a change, but didn't get one")
         }
 
@@ -194,6 +195,26 @@ final class MembershipTests: XCTestCase {
         change.replaced!.status.shouldEqual(self.memberA.status)
         change.node.shouldEqual(firstReplacement.uniqueNode)
         change.status.shouldEqual(firstReplacement.status)
+    }
+
+    func test_apply_withNodeNotPartOfClusterAnymore_leaving() throws {
+        var membership = self.initialMembership
+        _ = membership.removeCompletely(self.memberC.uniqueNode)
+
+        let changeToApply = Cluster.MembershipChange(member: self.memberC, toStatus: .leaving)
+        if let change = membership.applyMembershipChange(changeToApply) {
+            throw TestError("Expected no change, since memberC was already removed from membership; was: \(change)")
+        }
+    }
+
+    func test_apply_withNodeNotPartOfClusterAnymore_down() throws {
+        var membership = self.initialMembership
+        _ = membership.removeCompletely(self.memberC.uniqueNode)
+
+        let changeToApply = Cluster.MembershipChange(member: self.memberC, toStatus: .down)
+        if let change = membership.applyMembershipChange(changeToApply) {
+            throw TestError("Expected no change, since memberC was already removed from membership; was: \(change)")
+        }
     }
 
     func test_apply_memberRemoval() throws {

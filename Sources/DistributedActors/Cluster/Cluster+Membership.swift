@@ -263,9 +263,8 @@ extension Cluster.Membership: Codable {
 
 extension Cluster.Membership {
     /// Interpret and apply passed in membership change as the appropriate join/leave/down action.
-    /// Applying a new node status that becomes a "replacement" of an existing member, returns a `Cluster.MembershipChange` that is a "replacement".
     ///
-    /// Attempting to apply a change with regards to a member which is _not_ part of this `Membership` will return `nil`. FIXME: does it?
+    /// Applying a new node status that becomes a "replacement" of an existing member, returns a `Cluster.MembershipChange` that is a "replacement".
     ///
     /// - Returns: the resulting change that was applied to the membership; note that this may be `nil`,
     ///   if the change did not cause any actual change to the membership state (e.g. signaling a join of the same node twice).
@@ -277,7 +276,15 @@ extension Cluster.Membership {
         if let knownUnique = self.uniqueMember(change.node) {
             // it is known uniquely, so we just update its status
             return self.mark(knownUnique.uniqueNode, as: change.status)
-        } else if let previousMember = self.member(change.node.node), change.isDown || change.isRemoval {
+        }
+
+        if change.isAtLeast(.leaving) {
+            // if the *specific node* is not part of membership yet, and we're performing an leaving/down/removal,
+            // there is nothing else to be done here; a replacement potentially already exists, and we should not modify it.
+            return nil
+        }
+
+        if let previousMember = self.member(change.node.node) { // { , change.isDown || change.isRemoval {
             // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
             _ = self.removeCompletely(previousMember.uniqueNode) // the replacement event will handle the down notifications
             self._members[change.node] = change.member

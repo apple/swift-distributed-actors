@@ -20,19 +20,21 @@ import SwiftProtobuf
 import XCTest
 
 final class ProtobufRoundTripTests: ActorSystemXCTestCase {
-    func check<Value>(_ value: Value) throws {
-        let serialized = try self.system.serialization.serialize(value)
-        let back = try self.system.serialization.deserialize(as: Value.self, from: serialized)
-        "\(back)".shouldEqual("\(value)")
+    func check<Value: ProtobufRepresentable & Equatable>(_ value: Value) throws {
+        let context = Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
+        let proto = try value.toProto(context: context)
+        let back = try Value(fromProto: proto, context: context)
+        back.shouldEqual(value)
     }
 
     let allocator = ByteBufferAllocator()
-    let node = UniqueNode(node: Node(systemName: "system", host: "127.0.0.1", port: 8888), nid: .random())
-    let otherNode = UniqueNode(node: Node(systemName: "system", host: "888.0.0.1", port: 9999), nid: .random())
+    var node: UniqueNode {
+        self.system.cluster.uniqueNode
+    }
 
     var localActorAddress: ActorAddress {
         try! ActorPath._user.appending("hello")
-            .makeLocalAddress(on: .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random()), incarnation: .wellKnown)
+            .makeLocalAddress(on: self.system.cluster.uniqueNode, incarnation: .wellKnown)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -42,14 +44,13 @@ final class ProtobufRoundTripTests: ActorSystemXCTestCase {
         try self.check(self.localActorAddress)
     }
 
-    func test_roundTrip_ActorPath() throws {
-        try self.check(ActorPath._user.appending("hello").appending("more").appending("another"))
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handshake protocol
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
-        try self.check(Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetNode: self.node.node))
+        let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetNode: self.node.node)
+        let proto = ProtoHandshakeOffer(offer)
+        let back = try Wire.HandshakeOffer(fromProto: proto)
+        back.shouldEqual(offer)
     }
 }

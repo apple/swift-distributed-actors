@@ -142,7 +142,10 @@ extension ProtoHandshakeReject {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: HandshakeOffer
 
+// TODO: worth making it Proto representable or not?
 extension Wire.HandshakeOffer {
+    typealias ProtobufRepresentation = ProtoHandshakeOffer
+
     init(fromProto proto: ProtoHandshakeOffer) throws {
         guard proto.hasOriginNode else {
             throw SerializationError.missingField("originNode", type: String(reflecting: Wire.HandshakeOffer.self))

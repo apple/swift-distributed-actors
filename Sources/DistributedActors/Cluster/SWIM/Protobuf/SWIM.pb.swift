@@ -357,14 +357,14 @@ public struct ProtoSWIMMember {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var node: ProtoUniqueNode {
-    get {return _storage._node ?? ProtoUniqueNode()}
-    set {_uniqueStorage()._node = newValue}
+  public var address: ProtoActorAddress {
+    get {return _storage._address ?? ProtoActorAddress()}
+    set {_uniqueStorage()._address = newValue}
   }
-  /// Returns true if `node` has been explicitly set.
-  public var hasNode: Bool {return _storage._node != nil}
-  /// Clears the value of `node`. Subsequent reads from it will return its default value.
-  public mutating func clearNode() {_uniqueStorage()._node = nil}
+  /// Returns true if `address` has been explicitly set.
+  public var hasAddress: Bool {return _storage._address != nil}
+  /// Clears the value of `address`. Subsequent reads from it will return its default value.
+  public mutating func clearAddress() {_uniqueStorage()._address = nil}
 
   public var status: ProtoSWIMStatus {
     get {return _storage._status ?? ProtoSWIMStatus()}
@@ -944,13 +944,13 @@ extension ProtoSWIMStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
 extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SWIMMember"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "node"),
+    1: .same(proto: "address"),
     2: .same(proto: "status"),
     3: .same(proto: "protocolPeriod"),
   ]
 
   fileprivate class _StorageClass {
-    var _node: ProtoUniqueNode? = nil
+    var _address: ProtoActorAddress? = nil
     var _status: ProtoSWIMStatus? = nil
     var _protocolPeriod: UInt64 = 0
 
@@ -959,7 +959,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     private init() {}
 
     init(copying source: _StorageClass) {
-      _node = source._node
+      _address = source._address
       _status = source._status
       _protocolPeriod = source._protocolPeriod
     }
@@ -977,7 +977,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._node)
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._address)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._status)
         case 3: try decoder.decodeSingularUInt64Field(value: &_storage._protocolPeriod)
         default: break
@@ -988,7 +988,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._node {
+      if let v = _storage._address {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if let v = _storage._status {
@@ -1006,7 +1006,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._node != rhs_storage._node {return false}
+        if _storage._address != rhs_storage._address {return false}
         if _storage._status != rhs_storage._status {return false}
         if _storage._protocolPeriod != rhs_storage._protocolPeriod {return false}
         return true

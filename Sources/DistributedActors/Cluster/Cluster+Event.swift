@@ -56,10 +56,7 @@ extension Cluster {
         public internal(set) var previousStatus: MemberStatus?
         public let status: MemberStatus
 
-        let file: String
-        let line: UInt
-
-        init(member: Member, toStatus: MemberStatus? = nil, file: String = #file, line: UInt = #line) {
+        init(member: Member, toStatus: MemberStatus? = nil) {
             // FIXME: enable these assertions
 //            assertBacktrace(
 //                toStatus == nil || !(toStatus == .removed && member.status != .down),
@@ -80,11 +77,9 @@ extension Cluster {
                 self.previousStatus = nil
                 self.status = member.status
             }
-            self.file = file
-            self.line = line
         }
 
-        init(node: UniqueNode, previousStatus: MemberStatus?, toStatus: MemberStatus, file: String = #file, line: UInt = #line) {
+        init(node: UniqueNode, previousStatus: MemberStatus?, toStatus: MemberStatus) {
             // FIXME: enable these assertions
 //          assertBacktrace(
 //                !(toStatus == .removed && fromStatus != .down),
@@ -97,13 +92,10 @@ extension Cluster {
             self.replaced = nil
             self.previousStatus = previousStatus
             self.status = toStatus
-
-            self.file = file
-            self.line = line
         }
 
         /// Use to create a "replacement", when the previousNode and node are different (i.e. they should only differ in ID, not host/port)
-        init(replaced: Member, by newMember: Member, file: String = #file, line: UInt = #line) {
+        init(replaced: Member, by newMember: Member) {
             assert(replaced.uniqueNode.host == newMember.uniqueNode.host, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
             assert(replaced.uniqueNode.port == newMember.uniqueNode.port, "Replacement Cluster.MembershipChange should be for same non-unique node; Was: \(replaced), and \(newMember)")
             assert(newMember.status != .down, "Attempted to replace a member \(replaced) with a .down member: \(newMember)! This should never happen.")
@@ -112,9 +104,6 @@ extension Cluster {
             self.member = newMember
             self.previousStatus = replaced.status
             self.status = newMember.status
-
-            self.file = file
-            self.line = line
         }
 
         public func hash(into hasher: inout Hasher) {
@@ -176,8 +165,7 @@ extension Cluster.MembershipChange: CustomStringConvertible {
             " :: " +
             "[\(self.previousStatus?.rawValue ?? "unknown", leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
             " -> " +
-            "[\(self.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]" +
-            " (created at: \(self.file):\(self.line))"
+            "[\(self.status.rawValue, leftPadTo: Cluster.MemberStatus.maxStrLen)]"
     }
 }
 
@@ -225,24 +213,53 @@ extension Cluster {
 
 extension Cluster {
     /// Emitted when a change in leader is decided.
-    public struct LeadershipChange: Equatable {
+    public struct LeadershipChange: Hashable {
         // let role: Role if this leader was of a specific role, carry the info here? same for DC?
         public let oldLeader: Cluster.Member?
         public let newLeader: Cluster.Member?
 
-        let file: String
-        let line: UInt
+        #if DEBUG
+        internal let file: String
+        internal let line: UInt
+        #endif
 
-        /// A change is only returned when `oldLeader` and `newLeader` are different.
-        /// In order to avoid issuing changes which would be no-ops, the initializer fails if they are equal.
+        #if DEBUG
         public init?(oldLeader: Cluster.Member?, newLeader: Cluster.Member?, file: String = #file, line: UInt = #line) {
             guard oldLeader != newLeader else {
                 return nil
             }
             self.oldLeader = oldLeader
             self.newLeader = newLeader
+
             self.file = file
             self.line = line
+        }
+
+        #else
+        /// A change is only returned when `oldLeader` and `newLeader` are different.
+        /// In order to avoid issuing changes which would be no-ops, the initializer fails if they are equal.
+        public init?(oldLeader: Cluster.Member?, newLeader: Cluster.Member?) {
+            guard oldLeader != newLeader else {
+                return nil
+            }
+            self.oldLeader = oldLeader
+            self.newLeader = newLeader
+        }
+        #endif
+
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(self.oldLeader)
+            hasher.combine(self.newLeader)
+        }
+
+        public static func == (lhs: LeadershipChange, rhs: LeadershipChange) -> Bool {
+            if lhs.oldLeader != rhs.oldLeader {
+                return false
+            }
+            if lhs.newLeader != rhs.newLeader {
+                return false
+            }
+            return true
         }
     }
 }

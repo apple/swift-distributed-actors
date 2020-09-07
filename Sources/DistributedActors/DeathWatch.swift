@@ -180,7 +180,7 @@ internal struct DeathWatch<Message: ActorMessage> {
             self.watching[addressableWatchee] = OnTerminationMessage(customize: terminationMessage)
 
             // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
-            if addressableWatchee.address.node.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
+            if addressableWatchee.address.uniqueNode.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
                 self.subscribeNodeTerminatedEvents(myself: watcher, watchedAddress: addressableWatchee.address, file: file, line: line)
             }
         }
@@ -267,7 +267,7 @@ internal struct DeathWatch<Message: ActorMessage> {
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
     public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: _ReceivesSystemMessages) {
-        for watched: AddressableActorRef in self.watching.keys where watched.address.node == terminatedNode {
+        for watched: AddressableActorRef in self.watching.keys where watched.address.uniqueNode == terminatedNode {
             // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
             // for a remote ref we don't know for sure if it existed
             let existenceConfirmed = watched.refType.isLocal && !watched.address.path.starts(with: ._dead)
@@ -295,7 +295,7 @@ internal struct DeathWatch<Message: ActorMessage> {
         guard watchedAddress._isRemote else {
             return
         }
-        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: watchedAddress.node), file: file, line: line)
+        self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: watchedAddress.uniqueNode), file: file, line: line)
     }
 }
 

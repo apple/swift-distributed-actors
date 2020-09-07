@@ -53,7 +53,7 @@ internal final class XPCServiceCellDelegate<Message: ActorMessage>: CellDelegate
     init(system: ActorSystem, address: ActorAddress) throws {
         self._system = system
 
-        guard address.node.node.protocol == "xpc" else {
+        guard address.uniqueNode.node.protocol == "xpc" else {
             throw XPCServiceDelegateError(reason: "Address [\(address)] is NOT an xpc:// address!")
         }
         guard address.segments.first?.value == "xpc" else {

@@ -200,13 +200,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         })
         swim.tell(.local(.protocolPeriodTick))
 
-        let forwardedPing = try probeA.expectMessage()
-        guard case SWIM.Message.remote(.ping) = forwardedPing.message else {
-            throw self.testKit(systemSWIM).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
-        }
-        let suspiciousRef = forwardedPing.recipient
-
-        try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [swim.node]), for: suspiciousRef, on: swim, within: .seconds(1))
+        // eventually it will ping/pingRequest and as none of the swims reply it should mark as suspect
+        try self.awaitStatus(.suspect(incarnation: 0, suspectedBy: [swim.node]), for: refA, on: swim, within: .seconds(3))
     }
 
 //    func test_swim_shouldNotMarkSuspects_whenPingFailsButRequestedNodesSucceedToPing() throws {

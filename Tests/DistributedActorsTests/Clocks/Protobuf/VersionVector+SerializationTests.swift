@@ -22,7 +22,10 @@ final class VersionVectorSerializationTests: ActorSystemXCTestCase {
         }
     }
 
-    var node: UniqueNode { .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random()) }
+    var node: UniqueNode {
+        self.system.cluster.uniqueNode
+    }
+
     lazy var addressA = try! ActorAddress(local: node, path: ActorPath._user.appending("A"), incarnation: .wellKnown)
     lazy var addressB = try! ActorAddress(local: node, path: ActorPath._user.appending("B"), incarnation: .wellKnown)
 

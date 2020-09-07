@@ -46,7 +46,7 @@
 ///
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
-public struct ActorAddress: Equatable, Hashable {
+public struct ActorAddress {
     /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
     /// It is on purpose not exposed to end-user code, as well, and must remain so to not break the location transparency promises made by the runtime.
     ///
@@ -57,10 +57,10 @@ public struct ActorAddress: Equatable, Hashable {
     @usableFromInline
     internal var _location: ActorLocation
 
-    public var node: UniqueNode {
+    public var uniqueNode: UniqueNode {
         switch self._location {
         case .local(let node): return node
-        case .remote(let remote): return remote
+        case .remote(let node): return node
         }
     }
 
@@ -91,12 +91,20 @@ public struct ActorAddress: Equatable, Hashable {
         self.incarnation = incarnation
         self.path = path
     }
+}
 
+extension ActorAddress: Hashable {
     public static func == (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
         lhs.incarnation == rhs.incarnation && // quickest to check if the incarnations are the same
             // if they happen to be equal, we don't know yet for sure if it's the same actor or not, as incarnation is just a random ID
             // thus we need to compare the node and path as well
-            lhs.node == rhs.node && lhs.path == rhs.path
+            lhs.uniqueNode == rhs.uniqueNode && lhs.path == rhs.path
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.incarnation)
+        hasher.combine(self.uniqueNode)
+        hasher.combine(self.path)
     }
 }
 
@@ -104,7 +112,7 @@ extension ActorAddress: CustomStringConvertible {
     public var description: String {
         var res = ""
         if self._isRemote {
-            res += "\(self.node)"
+            res += "\(self.uniqueNode)"
         }
         res += "\(self.path)"
         return res
@@ -113,7 +121,7 @@ extension ActorAddress: CustomStringConvertible {
     public var detailedDescription: String {
         var res = ""
         if self._isRemote {
-            res += "\(reflecting: self.node)"
+            res += "\(reflecting: self.uniqueNode)"
         }
         res += "\(self.path)"
 
@@ -183,9 +191,9 @@ extension ActorAddress: PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorAddress: Comparable {
     public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
-        lhs.node < rhs.node ||
-            (lhs.node == rhs.node && lhs.path < rhs.path) ||
-            (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
+        lhs.uniqueNode < rhs.uniqueNode ||
+            (lhs.uniqueNode == rhs.uniqueNode && lhs.path < rhs.path) ||
+            (lhs.uniqueNode == rhs.uniqueNode && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
     }
 }
 
