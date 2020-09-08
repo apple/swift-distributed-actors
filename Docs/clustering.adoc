@@ -404,7 +404,7 @@ image::remote_watch_terminated.png[Remote Watch, when remote node crashes]
 === Distributed Failure Detector (SWIM+Lifeguard)
 
 The cluster, by default, uses the https://github.com/apple/swift-cluster-membership[Swift Cluster Membership] provided
-SWIM protocol implementation as it's underlying low-level failure detection mechanism.
+SWIM protocol implementation as its underlying low-level failure detection mechanism.
 
 NOTE: Refer to https://github.com/apple/swift-cluster-membership and the relevant
   https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol]
