@@ -165,7 +165,7 @@ final class MessageRefRouter: Actorable {
         if let target = targets[identifier] {
             target.tell(.handleMessage(message, replyTo: replyTo))
         } else {
-            // do some error handling
+            self.buffer.append((identifier, message, replyTo))
         }
     }
 }
@@ -200,7 +200,7 @@ final class MessageRouter: Actorable {
         if let target = targets[identifier] {
             target.handleMessage(message, replyTo: replyTo)
         } else {
-            // do some error handling
+            self.buffer.append((identifier, message, replyTo))
         }
     }
 }
