@@ -104,7 +104,7 @@ extension Cluster {
 
             // 3) if any removals happened, we need to prune the removed nodes from the seen table
             for change in changes
-                where change.toStatus.isRemoved && change.member.uniqueNode != self.owner {
+                where change.status.isRemoved && change.member.uniqueNode != self.owner {
                 self.seen.prune(change.member.uniqueNode)
             }
 

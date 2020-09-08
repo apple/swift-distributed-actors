@@ -24,10 +24,23 @@ enum WireEnvelopeError: Error {
     case emptyRecipient
 }
 
-// TODO: https://github.com/apple/swift-distributed-actors/issues/605 Implement these using ProtobufRepresentable
+extension Wire.Envelope: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoEnvelope
 
-extension Wire.Envelope {
-    init(_ proto: ProtoEnvelope) throws {
+    public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
+        var proto = ProtobufRepresentation()
+        proto.recipient = try self.recipient.toProto(context: context)
+
+        proto.manifest = .init()
+        if let hint = self.manifest.hint {
+            proto.manifest.hint = hint
+        }
+        proto.manifest.serializerID = self.manifest.serializerID.value
+        proto.payload = self.payload.readData()
+        return proto
+    }
+
+    init(fromProto proto: ProtobufRepresentation, context: Serialization.Context) throws {
         guard proto.hasRecipient else {
             throw WireEnvelopeError.emptyRecipient
         }
@@ -35,22 +48,9 @@ extension Wire.Envelope {
             throw WireEnvelopeError.missingManifest
         }
 
-        self.recipient = try ActorAddress(fromProto: proto.recipient)
+        self.recipient = try ActorAddress(fromProto: proto.recipient, context: context)
         self.payload = .data(proto.payload)
         self.manifest = .init(fromProto: proto.manifest)
-    }
-}
-
-extension ProtoEnvelope {
-    init(_ envelope: Wire.Envelope) {
-        self.recipient = ProtoActorAddress(envelope.recipient)
-
-        self.manifest = .init()
-        if let hint = envelope.manifest.hint {
-            self.manifest.hint = hint
-        }
-        self.manifest.serializerID = envelope.manifest.serializerID.value
-        self.payload = envelope.payload.readData()
     }
 }
 
@@ -142,7 +142,10 @@ extension ProtoHandshakeReject {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: HandshakeOffer
 
+// TODO: worth making it Proto representable or not?
 extension Wire.HandshakeOffer {
+    typealias ProtobufRepresentation = ProtoHandshakeOffer
+
     init(fromProto proto: ProtoHandshakeOffer) throws {
         guard proto.hasOriginNode else {
             throw SerializationError.missingField("originNode", type: String(reflecting: Wire.HandshakeOffer.self))

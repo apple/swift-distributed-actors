@@ -203,8 +203,8 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
                 // each of the rows is owned by an actor; each must have the full address in there
                 for replicaID in data.state.keys {
                     switch replicaID.storage {
-                    case .actorAddress(let address):
-                        address.node.shouldNotBeNil()
+                    case .actorAddress:
+                        () // OK
                     default:
                         throw testKit.fail("Unexpected replicaID which was not an actor address: \(replicaID)")
                     }

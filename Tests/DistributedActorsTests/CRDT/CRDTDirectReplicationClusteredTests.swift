@@ -31,8 +31,8 @@ final class CRDTDirectReplicationTests: ClusteredActorSystemsXCTestCase {
         self.remoteTestKit = super.testKit(self.remoteSystem)
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
+    lazy var ownerAlpha = try! ActorAddress(local: localSystem.cluster.uniqueNode, path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
+    lazy var ownerBeta = try! ActorAddress(local: localSystem.cluster.uniqueNode, path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 
     let timeout = TimeAmount.seconds(1)
 

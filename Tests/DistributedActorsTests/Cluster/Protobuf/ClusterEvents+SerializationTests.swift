@@ -26,7 +26,7 @@ final class ClusterEventsSerializationTests: ActorSystemXCTestCase {
     )
 
     func test_serializationOf_membershipChange() throws {
-        let change = Cluster.MembershipChange(node: UniqueNode(node: Node(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), fromStatus: .leaving, toStatus: .removed)
+        let change = Cluster.MembershipChange(node: UniqueNode(node: Node(systemName: "first", host: "1.1.1.1", port: 7337), nid: .random()), previousStatus: .leaving, toStatus: .removed)
         let event = Cluster.Event.membershipChange(change)
 
         let proto = try event.toProto(context: self.context)

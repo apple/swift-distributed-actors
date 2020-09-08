@@ -84,19 +84,9 @@ class SerializationTests: ActorSystemXCTestCase {
         pathAgain.shouldEqual(path)
     }
 
-    func test_serialize_actorAddress_shouldDemandContext() throws {
-        let err = try shouldThrow {
-            let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
-
-            let encoder = JSONEncoder()
-            _ = try encoder.encode(address)
-        }
-
-        "\(err)".shouldStartWith(prefix: "missingSerializationContext(DistributedActors.ActorAddress")
-    }
-
     func test_serialize_actorAddress_usingContext() throws {
-        let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
+        let node = UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: UniqueNodeID(11111))
+        let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(on: node, incarnation: .random())
 
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
@@ -116,7 +106,8 @@ class SerializationTests: ActorSystemXCTestCase {
         let addressAgain = try decoder.decode(ActorAddress.self, from: encoded)
         pinfo("Deserialized again: \(String(reflecting: addressAgain))")
 
-        "\(addressAgain)".shouldEqual("sact://SerializationTests@127.0.0.1:9001/user/hello")
+        "\(addressAgain)".shouldEqual("sact://one@127.0.0.1:1234/user/hello")
+        addressAgain.incarnation.shouldEqual(address.incarnation)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

@@ -36,8 +36,12 @@ final class CRDTSerializationTests: ActorSystemXCTestCase {
         }
     }
 
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
+    var node: UniqueNode {
+        self.system.cluster.uniqueNode
+    }
+
+    lazy var ownerAlpha = try! ActorAddress(local: node, path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
+    lazy var ownerBeta = try! ActorAddress(local: node, path: ActorPath._user.appending("beta"), incarnation: .wellKnown)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: CRDT.Identity

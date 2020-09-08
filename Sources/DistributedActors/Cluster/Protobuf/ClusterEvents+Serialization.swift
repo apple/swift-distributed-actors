@@ -59,10 +59,10 @@ extension Cluster.MembershipChange: ProtobufRepresentable {
         var proto = ProtoClusterMembershipChange()
 
         proto.node = try self.node.toProto(context: context)
-        if let fromStatus = self.fromStatus {
+        if let fromStatus = self.previousStatus {
             proto.fromStatus = fromStatus.toProto(context: context)
         }
-        proto.toStatus = self.toStatus.toProto(context: context)
+        proto.toStatus = self.status.toProto(context: context)
 
         return proto
     }
@@ -74,7 +74,7 @@ extension Cluster.MembershipChange: ProtobufRepresentable {
 
         self = try .init(
             node: .init(fromProto: proto.node, context: context),
-            fromStatus: .init(fromProto: proto.fromStatus, context: context),
+            previousStatus: .init(fromProto: proto.fromStatus, context: context),
             toStatus: .init(fromProto: proto.toStatus, context: context)
         )
     }
@@ -108,5 +108,9 @@ extension Cluster.LeadershipChange: ProtobufRepresentable {
         } else {
             self.newLeader = nil
         }
+        #if DEBUG
+        self.file = ""
+        self.line = 0
+        #endif
     }
 }

@@ -78,7 +78,7 @@ extension CRDT.GCounter {
     public static func makeOwned<Act>(
         by owner: Act.Myself.Context, id: String
     ) -> CRDT.ActorableOwned<CRDT.GCounter> where Act: Actorable {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        let ownerAddress = owner.address
         return .init(ownerContext: owner, id: CRDT.Identity(id), data: .init(replicaID: .actorAddress(ownerAddress)))
     }
 }
@@ -101,7 +101,7 @@ extension CRDT.LWWMap {
     public static func makeOwned<Act, Key, Value>(
         by owner: Act.Myself.Context, id: String, defaultValue: Value
     ) -> CRDT.ActorableOwned<CRDT.LWWMap<Key, Value>> where Act: Actorable {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        let ownerAddress = owner.address
         return .init(ownerContext: owner, id: CRDT.Identity(id), data: .init(replicaID: .actorAddress(ownerAddress), defaultValue: defaultValue))
     }
 }
@@ -124,7 +124,7 @@ extension CRDT.LWWRegister {
     public static func makeOwned<Act>(
         by owner: Act.Myself.Context, id: String, initialValue: Value
     ) -> CRDT.ActorableOwned<CRDT.LWWRegister<Value>> where Act: Actorable {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        let ownerAddress = owner.address
         return CRDT.ActorableOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaID: .actorAddress(ownerAddress), initialValue: initialValue))
     }
 }
@@ -175,7 +175,7 @@ extension CRDT.ORMap {
     public static func makeOwned<Act>(
         by owner: Act.Myself.Context, id: String, defaultValue: Value
     ) -> CRDT.ActorableOwned<CRDT.ORMap<Key, Value>> where Act: Actorable {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        let ownerAddress = owner.address
         return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaID: .actorAddress(ownerAddress), defaultValue: defaultValue))
     }
 }
@@ -206,7 +206,7 @@ extension CRDT.ORMultiMap {
     public static func makeOwned<Act>(
         by owner: Act.Myself.Context, id: String
     ) -> CRDT.ActorableOwned<CRDT.ORMultiMap<Key, Value>> where Act: Actorable {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        let ownerAddress = owner.address
         return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMultiMap<Key, Value>(replicaID: .actorAddress(ownerAddress)))
     }
 }
@@ -245,7 +245,7 @@ extension CRDT.ORSet {
     public static func makeOwned<Act, Element>(
         by owner: Act.Myself.Context, id: String
     ) -> CRDT.ActorableOwned<CRDT.ORSet<Element>> where Act: Actorable {
-        let ownerAddress = owner.address.ensuringNode(owner.system.settings.cluster.uniqueBindNode)
+        let ownerAddress = owner.address
         return .init(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORSet<Element>(replicaID: .actorAddress(ownerAddress)))
     }
 }

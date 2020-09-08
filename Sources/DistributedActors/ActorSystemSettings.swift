@@ -40,7 +40,12 @@ public struct ActorSystemSettings {
 
     public var crdt: CRDT.ReplicatorSettings = .default
 
-    public var logging: LoggingSettings = .default
+    public var logging: LoggingSettings = .default {
+        didSet {
+            self.cluster.swim.logger = self.logging.logger
+        }
+    }
+
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var instrumentation: InstrumentationSettings = .default
 
@@ -64,7 +69,9 @@ extension Array where Element == ActorTransport {
 /// log some labelled loggers and some not. Until we land such log handler we have to manually in-project opt-in/-out
 /// of logging some subsystems.
 public struct LoggingSettings {
-    public static let `default` = LoggingSettings()
+    public static var `default`: LoggingSettings {
+        .init()
+    }
 
     /// Customize the default log level of the `system.log` (and `context.log`) loggers.
     ///
@@ -82,10 +89,20 @@ public struct LoggingSettings {
 
     /// "Base" logger that will be used as template for all loggers created by the system (e.g. for `context.log` offered to actors).
     /// This may be used to configure specific systems to log to specific files, or to carry system-wide metadata throughout all loggers the actor system will use.
-    public var logger: Logger = LoggingSettings.makeDefaultLogger()
+    public var logger: Logger {
+        get {
+            self._logger
+        }
+        set {
+            self.customizedLogger = true
+            self._logger = newValue
+        }
+    }
 
+    internal var customizedLogger: Bool = false
+    private var _logger: Logger = LoggingSettings.makeDefaultLogger()
     static func makeDefaultLogger() -> Logger {
-        Logger(label: "<<ActorSystem>>") // replaced by specific system name during startup
+        Logger(label: "ActorSystem") // replaced by specific system name during startup
     }
 
     // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;

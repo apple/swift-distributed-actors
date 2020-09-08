@@ -142,7 +142,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(first, withExactly: second.settings.cluster.uniqueBindNode)
 
         // first we manually construct the "right second path"; Don't do this in normal production code
-        let uniqueSecondAddress = ActorAddress(node: second.cluster.uniqueNode, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.address.incarnation)
+        let uniqueSecondAddress = ActorAddress(local: second.cluster.uniqueNode, path: refOnSecondSystem.path, incarnation: refOnSecondSystem.address.incarnation)
         // to then obtain a second ref ON the `system`, meaning that the node within uniqueSecondAddress is a second one
         let resolvedRef = self.resolveRef(first, type: String.self, address: uniqueSecondAddress, on: second)
         // the resolved ref is a first resource on the `system` and points via the right association to the second actor
@@ -331,8 +331,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
             p2.tell("Got:\(message)")
             return .same
         })
-        var secondFullAddress = secondOne.address
-        secondFullAddress.node = second.cluster.uniqueNode
+        let secondFullAddress = ActorAddress(remote: second.cluster.uniqueNode, path: secondOne.path, incarnation: secondOne.address.incarnation)
 
         // we somehow obtained a ref to secondOne (on second node) without associating second yet
         // e.g. another node sent us that ref; This must cause buffering of sends to second and an association to be created.

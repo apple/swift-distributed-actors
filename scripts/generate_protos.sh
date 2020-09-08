@@ -29,6 +29,7 @@ public_protos=(
     -or -name 'SystemMessages.proto'
 
     -or -name 'Cluster.proto'
+    -or -name 'SWIM.proto'
     -or -name 'Membership.proto'
     -or -name 'ClusterEvents.proto'
 

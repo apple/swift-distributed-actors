@@ -498,6 +498,7 @@ public enum ProcessSpawnError: Error {
 
 extension UniqueNode {
     // Very naive parsing method for nodes; but good enough for our simple needs here.
+    // FIXME: should become throwing, nowadays faults are fatal
     internal static func parse(_ string: String) -> UniqueNode {
         var s: Substring = string[...]
         s = s.dropFirst("sact://".count)
@@ -509,7 +510,7 @@ extension UniqueNode {
         let _nid = String(s.prefix(while: { $0 != "@" }))
         s = s.dropFirst(_nid.count)
         s = s.dropFirst(":".count)
-        let nid = UniqueNodeID(UInt32(_nid)!)
+        let nid = UniqueNodeID(UInt64(_nid)!)
 
         let host = String(s.prefix(while: { $0 != ":" }))
         s = s.dropFirst(host.count)

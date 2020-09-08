@@ -19,46 +19,38 @@ import NIO
 import SwiftProtobuf
 import XCTest
 
-final class ProtobufRoundTripTests: XCTestCase {
-    func check<Value, Proto>(_ value: Value, toProto: (Value) throws -> Proto, fromProto: (Proto) throws -> Value) throws {
-        let proto = try toProto(value)
-        let back = try fromProto(proto)
-        "\(back)".shouldEqual("\(value)")
+final class ProtobufRoundTripTests: ActorSystemXCTestCase {
+    func check<Value: ProtobufRepresentable & Equatable>(_ value: Value) throws {
+        let context = Serialization.Context(log: self.system.log, system: self.system, allocator: self.system.serialization.allocator)
+        let proto = try value.toProto(context: context)
+        let back = try Value(fromProto: proto, context: context)
+        back.shouldEqual(value)
     }
 
     let allocator = ByteBufferAllocator()
-    let node = UniqueNode(node: Node(systemName: "system", host: "127.0.0.1", port: 8888), nid: .random())
-    let otherNode = UniqueNode(node: Node(systemName: "system", host: "888.0.0.1", port: 9999), nid: .random())
+    var node: UniqueNode {
+        self.system.cluster.uniqueNode
+    }
 
-    let localActorAddress = try! ActorPath._user.appending("hello").makeLocalAddress(incarnation: .wellKnown)
+    var localActorAddress: ActorAddress {
+        try! ActorPath._user.appending("hello")
+            .makeLocalAddress(on: self.system.cluster.uniqueNode, incarnation: .wellKnown)
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Core actor types
 
     func test_roundTrip_ActorAddress() throws {
-        try self.check(
-            self.localActorAddress,
-            toProto: ProtoActorAddress.init,
-            fromProto: ActorAddress.init
-        )
-    }
-
-    func test_roundTrip_ActorPath() throws {
-        try self.check(
-            ActorPath._user.appending("hello").appending("more").appending("another"),
-            toProto: ProtoActorPath.init,
-            fromProto: ActorPath.init
-        )
+        try self.check(self.localActorAddress)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handshake protocol
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
-        try self.check(
-            Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetNode: self.node.node),
-            toProto: ProtoHandshakeOffer.init,
-            fromProto: Wire.HandshakeOffer.init
-        )
+        let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetNode: self.node.node)
+        let proto = ProtoHandshakeOffer(offer)
+        let back = try Wire.HandshakeOffer(fromProto: proto)
+        back.shouldEqual(offer)
     }
 }

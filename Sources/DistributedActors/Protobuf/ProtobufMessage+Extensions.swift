@@ -33,9 +33,9 @@ extension SwiftProtobuf.Message {
     /// - Returns: A `ByteBuffer` value containing the binary serialization of the message.
     /// - Throws: `BinaryEncodingError` if encoding fails.
     func serializedByteBuffer(allocator allocate: ByteBufferAllocator, partial: Bool = false) throws -> ByteBuffer {
-        let data = try self.serializedData(partial: partial)
         // let data = try self.jsonString().data(using: .utf8)! // TODO allow a "debug mode with json payloads?"
 
+        let data = try self.serializedData(partial: partial)
         var buffer = allocate.buffer(capacity: data.count)
         buffer.writeBytes(data)
 

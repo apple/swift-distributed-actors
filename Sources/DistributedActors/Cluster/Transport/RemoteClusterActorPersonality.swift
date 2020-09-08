@@ -28,7 +28,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     let clusterShell: ClusterShell
     let system: ActorSystem // TODO: maybe don't need to store it and access via clusterShell?
 
-    var deadLetters: ActorRef<DeadLetter> {
+    var deadLetters: ActorRef<Message> {
         self.system.personalDeadLetters(recipient: self.address)
     }
 
@@ -57,7 +57,11 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     internal var instrumentation: ActorInstrumentation!
 
     init(shell: ClusterShell, address: ActorAddress, system: ActorSystem) {
-        precondition(address.isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
+        precondition(address._isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
+
+        // Ensure we store as .remote, so printouts work as expected (and include the explicit address)
+        var address = address
+        address._location = .remote(address.uniqueNode)
         self.address = address
 
         self.clusterShell = shell
@@ -76,7 +80,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
             self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
-            self.deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
+            self.deadLetters.tell(message, file: file, line: line)
         }
     }
 
@@ -92,20 +96,16 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
             self.instrumentation.actorTold(message: message, from: nil)
         case .tombstone:
             // TODO: metric for dead letter: self.instrumentation.deadLetter(message: message, from: nil)
-            self.deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
+            self.system.personalDeadLetters(recipient: self.address).tell(message, file: file, line: line)
         }
     }
 
     private var association: ClusterShell.StoredAssociationState {
-        guard let uniqueNode = self.address.node else {
-            fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug. The ref was: \(self)")
-        }
-
         // TODO: once we have UnsafeAtomicLazyReference initialize it here:
         // if let assoc = self._cachedAssociation.load() { return assoc }
         // else { get from shell and store here }
 
-        return self.clusterShell.getEnsureAssociation(with: uniqueNode)
+        self.clusterShell.getEnsureAssociation(with: self.address.uniqueNode)
     }
 
     func _unsafeAssumeCast<NewMessage: ActorMessage>(to: NewMessage.Type) -> RemoteClusterActorPersonality<NewMessage> {

@@ -84,14 +84,14 @@ public protocol AddressableActor {
     var asAddressable: AddressableActorRef { get }
 }
 
-public extension ActorRef {
+extension ActorRef {
     /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
     ///
     /// An `AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
     /// messages to such identified actor via this reference type.
     ///
     /// - SeeAlso: `AddressableActorRef` for a detailed discussion of its typical use-cases.
-    var asAddressable: AddressableActorRef {
+    public var asAddressable: AddressableActorRef {
         AddressableActorRef(self)
     }
 }
@@ -209,12 +209,13 @@ extension ActorRef {
         }
     }
 
+    // TODO: should this always be personalized dead letters instead?
     internal var _deadLetters: ActorRef<DeadLetter> {
         switch self.personality {
         case .cell(let cell):
             return cell.mailbox.deadLetters
         case .remote(let remote):
-            return remote.deadLetters
+            return remote.system.deadLetters
         case .adapter(let adapter):
             return adapter.deadLetters
         case .deadLetters:
@@ -454,7 +455,11 @@ open class CellDelegate<Message: ActorMessage> {
 internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix the name
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
-    let address: ActorAddress = ._localRoot
+    let address: ActorAddress
+
+    init(local node: UniqueNode) {
+        self.address = ActorAddress._localRoot(on: node)
+    }
 
     @usableFromInline
     internal func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
@@ -536,11 +541,11 @@ public class Guardian {
     private var stopping: Bool = false
     weak var system: ActorSystem?
 
-    init(parent: _ReceivesSystemMessages, name: String, system: ActorSystem) {
-        assert(parent.address == ActorAddress._localRoot, "A Guardian MUST live directly under the `/` path.")
+    init(parent: _ReceivesSystemMessages, name: String, localNode: UniqueNode, system: ActorSystem) {
+        assert(parent.address == ActorAddress._localRoot(on: localNode), "A Guardian MUST live directly under the `/` path.")
 
         do {
-            self._address = try ActorPath(root: name).makeLocalAddress(incarnation: .wellKnown)
+            self._address = try ActorPath(root: name).makeLocalAddress(on: localNode, incarnation: .wellKnown)
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }
@@ -579,10 +584,15 @@ public class Guardian {
                 }
                 switch system.settings.failure.onGuardianFailure {
                 case .shutdownActorSystem:
-                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ActorSystem! " +
-                        "(This can be configured in `system.settings.failure.onGuardianFailure`). " +
-                        "Failure was: \(failure)"
-                    system.log.error("\(message)", metadata: ["actor/path": "\(self.address.path)"])
+                    let message = """
+                    Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], SHUTTING DOWN ActorSystem! \
+                    (This can be configured in `system.settings.failure.onGuardianFailure`). \
+                    Failure was: \(failure)
+                    """
+                    system.log.error("\(message)", metadata: [
+                        "actor/path": "\(self.address.path)",
+                        "error": "\(failure)",
+                    ])
 
                     _ = try! Thread {
                         try! system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
@@ -592,8 +602,14 @@ public class Guardian {
                     // not supported on these operating systems
                     #else
                     case .systemExit(let code):
-                        let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"
-                        system.log.error("\(message)", metadata: ["actor/path": "\(self.address.path)"])
+                        let message = """
+                        Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))!\
+                        Failure was: \(failure)
+                        """
+                        system.log.error("\(message)", metadata: [
+                            "actor/path": "\(self.address.path)",
+                            "error": "\(failure)",
+                        ])
                         print(message) // TODO: to stderr
 
                         POSIXProcessUtils._exit(Int32(code))

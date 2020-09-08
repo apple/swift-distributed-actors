@@ -253,8 +253,12 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
                         "gossip/ack": "\(ack)",
                     ])
                     onGossipAck(ack)
-                case .failure:
-                    context.log.warning("Failed to ACK delivery [\(identifier.gossipIdentifier)] gossip \(payload) to \(target)")
+                case .failure(let error):
+                    context.log.debug("Did not receive ACK for of [\(identifier.gossipIdentifier)] gossip", metadata: [
+                        "payload": "\(payload)",
+                        "target": "\(target)",
+                        "error": "\(error)",
+                    ])
                 }
                 return .same
             }

@@ -17,6 +17,7 @@ import Logging
 import NIO
 import NIOFoundationCompat
 import SwiftProtobuf
+import SWIM
 
 import Foundation // for Codable
 
@@ -113,6 +114,7 @@ public class Serialization {
         settings.register(SystemMessageEnvelope.self)
 
         // cluster
+        settings.register(Wire.Envelope.self, hint: Wire.Envelope.typeHint, serializerID: .protobufRepresentable, alsoRegisterActorRef: false)
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
         settings.register(Cluster.MembershipGossip.self)
@@ -196,7 +198,7 @@ public class Serialization {
         )
 
         // == eagerly ensure serializers for message types which would not otherwise be registered for some reason ----
-        try! self._ensureAllRegisteredSerializers()
+        try! self._ensureAllRegisteredSerializers() // try!-crash on purpose
 
         #if SACT_TRACE_SERIALIZATION
         self.debugPrintSerializerTable(header: "SACT_TRACE_SERIALIZATION: Registered serializers")
@@ -297,7 +299,12 @@ extension Serialization {
 
         case Serialization.SerializerID.specializedWithTypeHint:
             guard let make = self.settings.specializedSerializerMakers[manifest] else {
-                throw SerializationError.unableToMakeSerializer(hint: "Type: \(String(reflecting: type)), Manifest: \(manifest), Specialized serializer makers: \(self.settings.specializedSerializerMakers)")
+                throw SerializationError.unableToMakeSerializer(
+                    hint: """
+                    Type: \(String(reflecting: type)), \
+                    Manifest: \(manifest), \
+                    Specialized serializer makers: \(self.settings.specializedSerializerMakers)
+                    """)
             }
 
             let serializer = make(self.allocator)
@@ -371,7 +378,22 @@ extension Serialization {
             case .data(let data):
                 return data
             case .nioByteBuffer(var buffer):
-                return buffer.readData(length: buffer.readableBytes)! // ! safe since reading readableBytes
+                // TODO: metrics how often we really have to copy
+                return buffer.readData(length: buffer.readableBytes)! // !-safe since reading readableBytes
+            }
+        }
+
+        /// Convert the buffer to `NIO.ByteBuffer`, or return the underlying one if available.
+        // FIXME: Avoid the copying, needs SwiftProtobuf changes
+        public func asByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
+            switch self {
+            case .data(let data):
+                // TODO: metrics how often we really have to copy
+                var buffer = allocator.buffer(capacity: data.count)
+                buffer.writeBytes(data)
+                return buffer
+            case .nioByteBuffer(let buffer):
+                return buffer
             }
         }
     }

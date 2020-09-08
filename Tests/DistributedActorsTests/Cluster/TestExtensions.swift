@@ -34,11 +34,12 @@ extension ClusterShellState {
         configureSettings(&settings)
         let log = Logger(label: "handshake-\(side)") // TODO: could be a mock logger we can assert on?
 
+        let node: UniqueNode = .init(systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
         return ClusterShellState(
             settings: settings,
             channel: EmbeddedChannel(),
-            events: EventStream(ref: ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
-            gossiperControl: GossiperControl(ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
+            events: EventStream(ref: ActorRef(.deadLetters(.init(log, address: ._deadLetters(on: node), system: nil)))),
+            gossiperControl: GossiperControl(ActorRef(.deadLetters(.init(log, address: ._deadLetters(on: node), system: nil)))),
             log: log
         )
     }

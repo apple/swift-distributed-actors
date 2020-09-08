@@ -33,134 +33,154 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-struct ProtoSWIMRemoteMessage {
+public struct ProtoSWIMRemoteMessage {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var request: OneOf_Request? {
-    get {return _storage._request}
-    set {_uniqueStorage()._request = newValue}
+  public var message: OneOf_Message? {
+    get {return _storage._message}
+    set {_uniqueStorage()._message = newValue}
   }
 
-  var ping: ProtoSWIMPing {
+  public var ping: ProtoSWIMPing {
     get {
-      if case .ping(let v)? = _storage._request {return v}
+      if case .ping(let v)? = _storage._message {return v}
       return ProtoSWIMPing()
     }
-    set {_uniqueStorage()._request = .ping(newValue)}
+    set {_uniqueStorage()._message = .ping(newValue)}
   }
 
-  var pingRequest: ProtoSWIMPingRequest {
+  public var pingRequest: ProtoSWIMPingRequest {
     get {
-      if case .pingRequest(let v)? = _storage._request {return v}
+      if case .pingRequest(let v)? = _storage._message {return v}
       return ProtoSWIMPingRequest()
     }
-    set {_uniqueStorage()._request = .pingRequest(newValue)}
+    set {_uniqueStorage()._message = .pingRequest(newValue)}
   }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var pingResponse: ProtoSWIMPingResponse {
+    get {
+      if case .pingResponse(let v)? = _storage._message {return v}
+      return ProtoSWIMPingResponse()
+    }
+    set {_uniqueStorage()._message = .pingResponse(newValue)}
+  }
 
-  enum OneOf_Request: Equatable {
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public enum OneOf_Message: Equatable {
     case ping(ProtoSWIMPing)
     case pingRequest(ProtoSWIMPingRequest)
+    case pingResponse(ProtoSWIMPingResponse)
 
   #if !swift(>=4.1)
-    static func ==(lhs: ProtoSWIMRemoteMessage.OneOf_Request, rhs: ProtoSWIMRemoteMessage.OneOf_Request) -> Bool {
+    public static func ==(lhs: ProtoSWIMRemoteMessage.OneOf_Message, rhs: ProtoSWIMRemoteMessage.OneOf_Message) -> Bool {
       switch (lhs, rhs) {
       case (.ping(let l), .ping(let r)): return l == r
       case (.pingRequest(let l), .pingRequest(let r)): return l == r
+      case (.pingResponse(let l), .pingResponse(let r)): return l == r
       default: return false
       }
     }
   #endif
   }
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoSWIMPing {
+public struct ProtoSWIMPing {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var replyTo: ProtoActorAddress {
-    get {return _storage._replyTo ?? ProtoActorAddress()}
-    set {_uniqueStorage()._replyTo = newValue}
+  public var origin: ProtoActorAddress {
+    get {return _storage._origin ?? ProtoActorAddress()}
+    set {_uniqueStorage()._origin = newValue}
   }
-  /// Returns true if `replyTo` has been explicitly set.
-  var hasReplyTo: Bool {return _storage._replyTo != nil}
-  /// Clears the value of `replyTo`. Subsequent reads from it will return its default value.
-  mutating func clearReplyTo() {_uniqueStorage()._replyTo = nil}
+  /// Returns true if `origin` has been explicitly set.
+  public var hasOrigin: Bool {return _storage._origin != nil}
+  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
+  public mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
-  var payload: ProtoSWIMPayload {
-    get {return _storage._payload ?? ProtoSWIMPayload()}
+  public var payload: ProtoSWIMGossipPayload {
+    get {return _storage._payload ?? ProtoSWIMGossipPayload()}
     set {_uniqueStorage()._payload = newValue}
   }
   /// Returns true if `payload` has been explicitly set.
-  var hasPayload: Bool {return _storage._payload != nil}
+  public var hasPayload: Bool {return _storage._payload != nil}
   /// Clears the value of `payload`. Subsequent reads from it will return its default value.
-  mutating func clearPayload() {_uniqueStorage()._payload = nil}
+  public mutating func clearPayload() {_uniqueStorage()._payload = nil}
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var sequenceNumber: UInt32 {
+    get {return _storage._sequenceNumber}
+    set {_uniqueStorage()._sequenceNumber = newValue}
+  }
 
-  init() {}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoSWIMPingRequest {
+public struct ProtoSWIMPingRequest {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var target: ProtoActorAddress {
+  public var target: ProtoActorAddress {
     get {return _storage._target ?? ProtoActorAddress()}
     set {_uniqueStorage()._target = newValue}
   }
   /// Returns true if `target` has been explicitly set.
-  var hasTarget: Bool {return _storage._target != nil}
+  public var hasTarget: Bool {return _storage._target != nil}
   /// Clears the value of `target`. Subsequent reads from it will return its default value.
-  mutating func clearTarget() {_uniqueStorage()._target = nil}
+  public mutating func clearTarget() {_uniqueStorage()._target = nil}
 
-  var replyTo: ProtoActorAddress {
-    get {return _storage._replyTo ?? ProtoActorAddress()}
-    set {_uniqueStorage()._replyTo = newValue}
+  public var origin: ProtoActorAddress {
+    get {return _storage._origin ?? ProtoActorAddress()}
+    set {_uniqueStorage()._origin = newValue}
   }
-  /// Returns true if `replyTo` has been explicitly set.
-  var hasReplyTo: Bool {return _storage._replyTo != nil}
-  /// Clears the value of `replyTo`. Subsequent reads from it will return its default value.
-  mutating func clearReplyTo() {_uniqueStorage()._replyTo = nil}
+  /// Returns true if `origin` has been explicitly set.
+  public var hasOrigin: Bool {return _storage._origin != nil}
+  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
+  public mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
-  var payload: ProtoSWIMPayload {
-    get {return _storage._payload ?? ProtoSWIMPayload()}
+  public var payload: ProtoSWIMGossipPayload {
+    get {return _storage._payload ?? ProtoSWIMGossipPayload()}
     set {_uniqueStorage()._payload = newValue}
   }
   /// Returns true if `payload` has been explicitly set.
-  var hasPayload: Bool {return _storage._payload != nil}
+  public var hasPayload: Bool {return _storage._payload != nil}
   /// Clears the value of `payload`. Subsequent reads from it will return its default value.
-  mutating func clearPayload() {_uniqueStorage()._payload = nil}
+  public mutating func clearPayload() {_uniqueStorage()._payload = nil}
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var sequenceNumber: UInt32 {
+    get {return _storage._sequenceNumber}
+    set {_uniqueStorage()._sequenceNumber = newValue}
+  }
 
-  init() {}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoSWIMPingResponse {
+public struct ProtoSWIMPingResponse {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var pingResponse: OneOf_PingResponse? {
+  public var pingResponse: OneOf_PingResponse? {
     get {return _storage._pingResponse}
     set {_uniqueStorage()._pingResponse = newValue}
   }
 
-  var ack: ProtoSWIMPingResponse.Ack {
+  public var ack: ProtoSWIMPingResponse.Ack {
     get {
       if case .ack(let v)? = _storage._pingResponse {return v}
       return ProtoSWIMPingResponse.Ack()
@@ -168,7 +188,7 @@ struct ProtoSWIMPingResponse {
     set {_uniqueStorage()._pingResponse = .ack(newValue)}
   }
 
-  var nack: ProtoSWIMPingResponse.Nack {
+  public var nack: ProtoSWIMPingResponse.Nack {
     get {
       if case .nack(let v)? = _storage._pingResponse {return v}
       return ProtoSWIMPingResponse.Nack()
@@ -176,14 +196,14 @@ struct ProtoSWIMPingResponse {
     set {_uniqueStorage()._pingResponse = .nack(newValue)}
   }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum OneOf_PingResponse: Equatable {
+  public enum OneOf_PingResponse: Equatable {
     case ack(ProtoSWIMPingResponse.Ack)
     case nack(ProtoSWIMPingResponse.Nack)
 
   #if !swift(>=4.1)
-    static func ==(lhs: ProtoSWIMPingResponse.OneOf_PingResponse, rhs: ProtoSWIMPingResponse.OneOf_PingResponse) -> Bool {
+    public static func ==(lhs: ProtoSWIMPingResponse.OneOf_PingResponse, rhs: ProtoSWIMPingResponse.OneOf_PingResponse) -> Bool {
       switch (lhs, rhs) {
       case (.ack(let l), .ack(let r)): return l == r
       case (.nack(let l), .nack(let r)): return l == r
@@ -193,82 +213,92 @@ struct ProtoSWIMPingResponse {
   #endif
   }
 
-  struct Ack {
+  public struct Ack {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    var target: ProtoActorAddress {
+    public var target: ProtoActorAddress {
       get {return _storage._target ?? ProtoActorAddress()}
       set {_uniqueStorage()._target = newValue}
     }
     /// Returns true if `target` has been explicitly set.
-    var hasTarget: Bool {return _storage._target != nil}
+    public var hasTarget: Bool {return _storage._target != nil}
     /// Clears the value of `target`. Subsequent reads from it will return its default value.
-    mutating func clearTarget() {_uniqueStorage()._target = nil}
+    public mutating func clearTarget() {_uniqueStorage()._target = nil}
 
-    var incarnation: UInt64 {
+    public var incarnation: UInt64 {
       get {return _storage._incarnation}
       set {_uniqueStorage()._incarnation = newValue}
     }
 
-    var payload: ProtoSWIMPayload {
-      get {return _storage._payload ?? ProtoSWIMPayload()}
+    public var payload: ProtoSWIMGossipPayload {
+      get {return _storage._payload ?? ProtoSWIMGossipPayload()}
       set {_uniqueStorage()._payload = newValue}
     }
     /// Returns true if `payload` has been explicitly set.
-    var hasPayload: Bool {return _storage._payload != nil}
+    public var hasPayload: Bool {return _storage._payload != nil}
     /// Clears the value of `payload`. Subsequent reads from it will return its default value.
-    mutating func clearPayload() {_uniqueStorage()._payload = nil}
+    public mutating func clearPayload() {_uniqueStorage()._payload = nil}
 
-    var unknownFields = SwiftProtobuf.UnknownStorage()
+    public var sequenceNumber: UInt32 {
+      get {return _storage._sequenceNumber}
+      set {_uniqueStorage()._sequenceNumber = newValue}
+    }
 
-    init() {}
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+    public init() {}
 
     fileprivate var _storage = _StorageClass.defaultInstance
   }
 
-  struct Nack {
+  public struct Nack {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    var target: ProtoActorAddress {
+    public var target: ProtoActorAddress {
       get {return _storage._target ?? ProtoActorAddress()}
       set {_uniqueStorage()._target = newValue}
     }
     /// Returns true if `target` has been explicitly set.
-    var hasTarget: Bool {return _storage._target != nil}
+    public var hasTarget: Bool {return _storage._target != nil}
     /// Clears the value of `target`. Subsequent reads from it will return its default value.
-    mutating func clearTarget() {_uniqueStorage()._target = nil}
+    public mutating func clearTarget() {_uniqueStorage()._target = nil}
 
-    var unknownFields = SwiftProtobuf.UnknownStorage()
+    public var sequenceNumber: UInt32 {
+      get {return _storage._sequenceNumber}
+      set {_uniqueStorage()._sequenceNumber = newValue}
+    }
 
-    init() {}
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+    public init() {}
 
     fileprivate var _storage = _StorageClass.defaultInstance
   }
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoSWIMStatus {
+public struct ProtoSWIMStatus {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var type: ProtoSWIMStatus.TypeEnum = .unspecified
+  public var type: ProtoSWIMStatus.TypeEnum = .unspecified
 
-  var incarnation: UInt64 = 0
+  public var incarnation: UInt64 = 0
 
-  var suspectedBy: [ProtoUniqueNode] = []
+  public var suspectedBy: [ProtoUniqueNode] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  enum TypeEnum: SwiftProtobuf.Enum {
-    typealias RawValue = Int
+  public enum TypeEnum: SwiftProtobuf.Enum {
+    public typealias RawValue = Int
     case unspecified // = 0
     case alive // = 1
     case suspect // = 2
@@ -276,11 +306,11 @@ struct ProtoSWIMStatus {
     case dead // = 4
     case UNRECOGNIZED(Int)
 
-    init() {
+    public init() {
       self = .unspecified
     }
 
-    init?(rawValue: Int) {
+    public init?(rawValue: Int) {
       switch rawValue {
       case 0: self = .unspecified
       case 1: self = .alive
@@ -291,7 +321,7 @@ struct ProtoSWIMStatus {
       }
     }
 
-    var rawValue: Int {
+    public var rawValue: Int {
       switch self {
       case .unspecified: return 0
       case .alive: return 1
@@ -304,14 +334,14 @@ struct ProtoSWIMStatus {
 
   }
 
-  init() {}
+  public init() {}
 }
 
 #if swift(>=4.2)
 
 extension ProtoSWIMStatus.TypeEnum: CaseIterable {
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [ProtoSWIMStatus.TypeEnum] = [
+  public static var allCases: [ProtoSWIMStatus.TypeEnum] = [
     .unspecified,
     .alive,
     .suspect,
@@ -322,66 +352,72 @@ extension ProtoSWIMStatus.TypeEnum: CaseIterable {
 
 #endif  // swift(>=4.2)
 
-struct ProtoSWIMMember {
+public struct ProtoSWIMMember {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var address: ProtoActorAddress {
+  public var address: ProtoActorAddress {
     get {return _storage._address ?? ProtoActorAddress()}
     set {_uniqueStorage()._address = newValue}
   }
   /// Returns true if `address` has been explicitly set.
-  var hasAddress: Bool {return _storage._address != nil}
+  public var hasAddress: Bool {return _storage._address != nil}
   /// Clears the value of `address`. Subsequent reads from it will return its default value.
-  mutating func clearAddress() {_uniqueStorage()._address = nil}
+  public mutating func clearAddress() {_uniqueStorage()._address = nil}
 
-  var status: ProtoSWIMStatus {
+  public var status: ProtoSWIMStatus {
     get {return _storage._status ?? ProtoSWIMStatus()}
     set {_uniqueStorage()._status = newValue}
   }
   /// Returns true if `status` has been explicitly set.
-  var hasStatus: Bool {return _storage._status != nil}
+  public var hasStatus: Bool {return _storage._status != nil}
   /// Clears the value of `status`. Subsequent reads from it will return its default value.
-  mutating func clearStatus() {_uniqueStorage()._status = nil}
+  public mutating func clearStatus() {_uniqueStorage()._status = nil}
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var protocolPeriod: UInt64 {
+    get {return _storage._protocolPeriod}
+    set {_uniqueStorage()._protocolPeriod = newValue}
+  }
 
-  init() {}
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoSWIMPayload {
+public struct ProtoSWIMGossipPayload {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var member: [ProtoSWIMMember] = []
+  public var member: [ProtoSWIMMember] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMRemoteMessage"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "SWIMRemoteMessage"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "ping"),
     2: .same(proto: "pingRequest"),
+    3: .same(proto: "pingResponse"),
   ]
 
   fileprivate class _StorageClass {
-    var _request: ProtoSWIMRemoteMessage.OneOf_Request?
+    var _message: ProtoSWIMRemoteMessage.OneOf_Message?
 
     static let defaultInstance = _StorageClass()
 
     private init() {}
 
     init(copying source: _StorageClass) {
-      _request = source._request
+      _message = source._message
     }
   }
 
@@ -392,52 +428,62 @@ extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1:
           var v: ProtoSWIMPing?
-          if let current = _storage._request {
+          if let current = _storage._message {
             try decoder.handleConflictingOneOf()
             if case .ping(let m) = current {v = m}
           }
           try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._request = .ping(v)}
+          if let v = v {_storage._message = .ping(v)}
         case 2:
           var v: ProtoSWIMPingRequest?
-          if let current = _storage._request {
+          if let current = _storage._message {
             try decoder.handleConflictingOneOf()
             if case .pingRequest(let m) = current {v = m}
           }
           try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._request = .pingRequest(v)}
+          if let v = v {_storage._message = .pingRequest(v)}
+        case 3:
+          var v: ProtoSWIMPingResponse?
+          if let current = _storage._message {
+            try decoder.handleConflictingOneOf()
+            if case .pingResponse(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {_storage._message = .pingResponse(v)}
         default: break
         }
       }
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      switch _storage._request {
+      switch _storage._message {
       case .ping(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       case .pingRequest(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      case .pingResponse(let v)?:
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       case nil: break
       }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMRemoteMessage, rhs: ProtoSWIMRemoteMessage) -> Bool {
+  public static func ==(lhs: ProtoSWIMRemoteMessage, rhs: ProtoSWIMRemoteMessage) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._request != rhs_storage._request {return false}
+        if _storage._message != rhs_storage._message {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -448,23 +494,26 @@ extension ProtoSWIMRemoteMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 }
 
 extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMPing"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "replyTo"),
+  public static let protoMessageName: String = "SWIMPing"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "origin"),
     2: .same(proto: "payload"),
+    3: .same(proto: "sequenceNumber"),
   ]
 
   fileprivate class _StorageClass {
-    var _replyTo: ProtoActorAddress? = nil
-    var _payload: ProtoSWIMPayload? = nil
+    var _origin: ProtoActorAddress? = nil
+    var _payload: ProtoSWIMGossipPayload? = nil
+    var _sequenceNumber: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
 
     private init() {}
 
     init(copying source: _StorageClass) {
-      _replyTo = source._replyTo
+      _origin = source._origin
       _payload = source._payload
+      _sequenceNumber = source._sequenceNumber
     }
   }
 
@@ -475,38 +524,43 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._origin)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._payload)
+        case 3: try decoder.decodeSingularUInt32Field(value: &_storage._sequenceNumber)
         default: break
         }
       }
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._replyTo {
+      if let v = _storage._origin {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if let v = _storage._payload {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
+      if _storage._sequenceNumber != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._sequenceNumber, fieldNumber: 3)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMPing, rhs: ProtoSWIMPing) -> Bool {
+  public static func ==(lhs: ProtoSWIMPing, rhs: ProtoSWIMPing) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._replyTo != rhs_storage._replyTo {return false}
+        if _storage._origin != rhs_storage._origin {return false}
         if _storage._payload != rhs_storage._payload {return false}
+        if _storage._sequenceNumber != rhs_storage._sequenceNumber {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -517,17 +571,19 @@ extension ProtoSWIMPing: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 }
 
 extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMPingRequest"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "SWIMPingRequest"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "target"),
-    2: .same(proto: "replyTo"),
+    2: .same(proto: "origin"),
     3: .same(proto: "payload"),
+    4: .same(proto: "sequenceNumber"),
   ]
 
   fileprivate class _StorageClass {
     var _target: ProtoActorAddress? = nil
-    var _replyTo: ProtoActorAddress? = nil
-    var _payload: ProtoSWIMPayload? = nil
+    var _origin: ProtoActorAddress? = nil
+    var _payload: ProtoSWIMGossipPayload? = nil
+    var _sequenceNumber: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -535,8 +591,9 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _target = source._target
-      _replyTo = source._replyTo
+      _origin = source._origin
       _payload = source._payload
+      _sequenceNumber = source._sequenceNumber
     }
   }
 
@@ -547,43 +604,48 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._target)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._replyTo)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._origin)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._payload)
+        case 4: try decoder.decodeSingularUInt32Field(value: &_storage._sequenceNumber)
         default: break
         }
       }
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._target {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._replyTo {
+      if let v = _storage._origin {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if let v = _storage._payload {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
+      if _storage._sequenceNumber != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._sequenceNumber, fieldNumber: 4)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMPingRequest, rhs: ProtoSWIMPingRequest) -> Bool {
+  public static func ==(lhs: ProtoSWIMPingRequest, rhs: ProtoSWIMPingRequest) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._target != rhs_storage._target {return false}
-        if _storage._replyTo != rhs_storage._replyTo {return false}
+        if _storage._origin != rhs_storage._origin {return false}
         if _storage._payload != rhs_storage._payload {return false}
+        if _storage._sequenceNumber != rhs_storage._sequenceNumber {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -594,8 +656,8 @@ extension ProtoSWIMPingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 }
 
 extension ProtoSWIMPingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMPingResponse"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "SWIMPingResponse"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "ack"),
     2: .same(proto: "nack"),
   ]
@@ -619,7 +681,7 @@ extension ProtoSWIMPingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -646,7 +708,7 @@ extension ProtoSWIMPingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       switch _storage._pingResponse {
       case .ack(let v)?:
@@ -659,7 +721,7 @@ extension ProtoSWIMPingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMPingResponse, rhs: ProtoSWIMPingResponse) -> Bool {
+  public static func ==(lhs: ProtoSWIMPingResponse, rhs: ProtoSWIMPingResponse) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -675,17 +737,19 @@ extension ProtoSWIMPingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 }
 
 extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = ProtoSWIMPingResponse.protoMessageName + ".Ack"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = ProtoSWIMPingResponse.protoMessageName + ".Ack"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "target"),
     2: .same(proto: "incarnation"),
     3: .same(proto: "payload"),
+    4: .same(proto: "sequenceNumber"),
   ]
 
   fileprivate class _StorageClass {
     var _target: ProtoActorAddress? = nil
     var _incarnation: UInt64 = 0
-    var _payload: ProtoSWIMPayload? = nil
+    var _payload: ProtoSWIMGossipPayload? = nil
+    var _sequenceNumber: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -695,6 +759,7 @@ extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _target = source._target
       _incarnation = source._incarnation
       _payload = source._payload
+      _sequenceNumber = source._sequenceNumber
     }
   }
 
@@ -705,7 +770,7 @@ extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._Messa
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -713,13 +778,14 @@ extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 1: try decoder.decodeSingularMessageField(value: &_storage._target)
         case 2: try decoder.decodeSingularUInt64Field(value: &_storage._incarnation)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._payload)
+        case 4: try decoder.decodeSingularUInt32Field(value: &_storage._sequenceNumber)
         default: break
         }
       }
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._target {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
@@ -730,11 +796,14 @@ extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if let v = _storage._payload {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
+      if _storage._sequenceNumber != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._sequenceNumber, fieldNumber: 4)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMPingResponse.Ack, rhs: ProtoSWIMPingResponse.Ack) -> Bool {
+  public static func ==(lhs: ProtoSWIMPingResponse.Ack, rhs: ProtoSWIMPingResponse.Ack) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -742,6 +811,7 @@ extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._target != rhs_storage._target {return false}
         if _storage._incarnation != rhs_storage._incarnation {return false}
         if _storage._payload != rhs_storage._payload {return false}
+        if _storage._sequenceNumber != rhs_storage._sequenceNumber {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -752,13 +822,15 @@ extension ProtoSWIMPingResponse.Ack: SwiftProtobuf.Message, SwiftProtobuf._Messa
 }
 
 extension ProtoSWIMPingResponse.Nack: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = ProtoSWIMPingResponse.protoMessageName + ".Nack"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = ProtoSWIMPingResponse.protoMessageName + ".Nack"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "target"),
+    2: .same(proto: "sequenceNumber"),
   ]
 
   fileprivate class _StorageClass {
     var _target: ProtoActorAddress? = nil
+    var _sequenceNumber: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -766,6 +838,7 @@ extension ProtoSWIMPingResponse.Nack: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
     init(copying source: _StorageClass) {
       _target = source._target
+      _sequenceNumber = source._sequenceNumber
     }
   }
 
@@ -776,33 +849,38 @@ extension ProtoSWIMPingResponse.Nack: SwiftProtobuf.Message, SwiftProtobuf._Mess
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._target)
+        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._sequenceNumber)
         default: break
         }
       }
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._target {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if _storage._sequenceNumber != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._sequenceNumber, fieldNumber: 2)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMPingResponse.Nack, rhs: ProtoSWIMPingResponse.Nack) -> Bool {
+  public static func ==(lhs: ProtoSWIMPingResponse.Nack, rhs: ProtoSWIMPingResponse.Nack) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._target != rhs_storage._target {return false}
+        if _storage._sequenceNumber != rhs_storage._sequenceNumber {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -813,14 +891,14 @@ extension ProtoSWIMPingResponse.Nack: SwiftProtobuf.Message, SwiftProtobuf._Mess
 }
 
 extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMStatus"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "SWIMStatus"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "type"),
     2: .same(proto: "incarnation"),
     3: .same(proto: "suspectedBy"),
   ]
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       switch fieldNumber {
       case 1: try decoder.decodeSingularEnumField(value: &self.type)
@@ -831,7 +909,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.type != .unspecified {
       try visitor.visitSingularEnumField(value: self.type, fieldNumber: 1)
     }
@@ -844,7 +922,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMStatus, rhs: ProtoSWIMStatus) -> Bool {
+  public static func ==(lhs: ProtoSWIMStatus, rhs: ProtoSWIMStatus) -> Bool {
     if lhs.type != rhs.type {return false}
     if lhs.incarnation != rhs.incarnation {return false}
     if lhs.suspectedBy != rhs.suspectedBy {return false}
@@ -854,7 +932,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 }
 
 extension ProtoSWIMStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "ALIVE"),
     2: .same(proto: "SUSPECT"),
@@ -864,15 +942,17 @@ extension ProtoSWIMStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMMember"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+  public static let protoMessageName: String = "SWIMMember"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "address"),
     2: .same(proto: "status"),
+    3: .same(proto: "protocolPeriod"),
   ]
 
   fileprivate class _StorageClass {
     var _address: ProtoActorAddress? = nil
     var _status: ProtoSWIMStatus? = nil
+    var _protocolPeriod: UInt64 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -881,6 +961,7 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     init(copying source: _StorageClass) {
       _address = source._address
       _status = source._status
+      _protocolPeriod = source._protocolPeriod
     }
   }
 
@@ -891,20 +972,21 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._address)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._status)
+        case 3: try decoder.decodeSingularUInt64Field(value: &_storage._protocolPeriod)
         default: break
         }
       }
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if let v = _storage._address {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
@@ -912,17 +994,21 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       if let v = _storage._status {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
+      if _storage._protocolPeriod != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._protocolPeriod, fieldNumber: 3)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMMember, rhs: ProtoSWIMMember) -> Bool {
+  public static func ==(lhs: ProtoSWIMMember, rhs: ProtoSWIMMember) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._address != rhs_storage._address {return false}
         if _storage._status != rhs_storage._status {return false}
+        if _storage._protocolPeriod != rhs_storage._protocolPeriod {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -932,13 +1018,13 @@ extension ProtoSWIMMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   }
 }
 
-extension ProtoSWIMPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "SWIMPayload"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+extension ProtoSWIMGossipPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = "SWIMGossipPayload"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "member"),
   ]
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       switch fieldNumber {
       case 1: try decoder.decodeRepeatedMessageField(value: &self.member)
@@ -947,14 +1033,14 @@ extension ProtoSWIMPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.member.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.member, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSWIMPayload, rhs: ProtoSWIMPayload) -> Bool {
+  public static func ==(lhs: ProtoSWIMGossipPayload, rhs: ProtoSWIMGossipPayload) -> Bool {
     if lhs.member != rhs.member {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

@@ -64,20 +64,24 @@ extension Cluster.MembershipGossip: ProtobufRepresentable {
             var replicaVersions: [VersionVector.ReplicaVersion] = []
             replicaVersions.reserveCapacity(row.version.state.count)
             for protoReplicaVersion in row.version.state {
+                let v: VersionVector.Version = protoReplicaVersion.version
+
                 let replicaID: ReplicaID
                 switch protoReplicaVersion.replicaID.value {
                 case .some(.uniqueNodeID(let id)):
                     guard let member = membership.member(byUniqueNodeID: .init(id)) else {
-                        throw SerializationError.unableToDeserialize(hint: "No member for nodeID \(id) in membership: \(membership)")
+                        continue
                     }
                     replicaID = .uniqueNode(member.uniqueNode)
                 case .some(.uniqueNode(let protoUniqueNode)):
                     replicaID = try .uniqueNode(.init(fromProto: protoUniqueNode, context: context))
-                case .none, .some(.actorAddress):
-                    throw SerializationError.unableToDeserialize(hint: "")
+                case .some(.actorAddress(let address)):
+                    context.log.warning("Unexpected .actorAddress key in replicaVersion of Cluster.MembershipGossip, which is expected to only use unique node ids as replica versions; was: \(address)")
+                    continue
+                case .none:
+                    continue
                 }
 
-                let v: VersionVector.Version = protoReplicaVersion.version
                 replicaVersions.append(VersionVector.ReplicaVersion(replicaID: replicaID, version: v))
             }
 

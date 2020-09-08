@@ -261,7 +261,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             eventsOnFirstSub.append(event)
 
             switch event {
-            case .membershipChange(let change) where change.toStatus.isDown:
+            case .membershipChange(let change) where change.status.isDown:
                 downFound = true
             default:
                 ()
@@ -272,14 +272,14 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         // OR
         // snapshot(first joining)
         // are both legal
-        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, fromStatus: nil, toStatus: .joining)))
-        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.uniqueNode, fromStatus: .joining, toStatus: .up)))
-        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, fromStatus: .joining, toStatus: .up)))
+        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, previousStatus: nil, toStatus: .joining)))
+        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.uniqueNode, previousStatus: .joining, toStatus: .up)))
+        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, previousStatus: .joining, toStatus: .up)))
         eventsOnFirstSub.shouldContain(.leadershipChange(Cluster.LeadershipChange(oldLeader: nil, newLeader: .init(node: first.cluster.uniqueNode, status: .joining))!)) // !-safe, since new/old leader known to be different
-        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.uniqueNode, fromStatus: nil, toStatus: .joining)))
-        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.uniqueNode, fromStatus: .joining, toStatus: .up)))
+        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.uniqueNode, previousStatus: nil, toStatus: .joining)))
+        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: third.cluster.uniqueNode, previousStatus: .joining, toStatus: .up)))
 
-        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, fromStatus: .up, toStatus: .down)))
+        eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, previousStatus: .up, toStatus: .down)))
 
         try self.testKit(first).eventually(within: .seconds(3)) {
             let p1s = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
@@ -333,14 +333,14 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         try testKit.eventually(within: .seconds(20)) {
             let event: Cluster.Event? = try p1.maybeExpectMessage()
             switch event {
-            case .membershipChange(.init(node: second.cluster.uniqueNode, fromStatus: .up, toStatus: .down)): ()
+            case .membershipChange(.init(node: second.cluster.uniqueNode, previousStatus: .up, toStatus: .down)): ()
             case let other: throw testKit.error("Expected `second` [     up] -> [  .down], on first node, was: \(other, orElse: "nil")")
             }
         }
         try testKit.eventually(within: .seconds(20)) {
             let event: Cluster.Event? = try p1.maybeExpectMessage()
             switch event {
-            case .membershipChange(.init(node: second.cluster.uniqueNode, fromStatus: .down, toStatus: .removed)): ()
+            case .membershipChange(.init(node: second.cluster.uniqueNode, previousStatus: .down, toStatus: .removed)): ()
             case let other: throw testKit.error("Expected `second` [     up] -> [  .down], on first node, was: \(other, orElse: "nil")")
             }
         }

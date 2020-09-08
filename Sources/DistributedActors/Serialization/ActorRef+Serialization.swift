@@ -114,16 +114,7 @@ internal struct ReceivesSystemMessagesDecoder {
 extension ActorAddress: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
-        if let node = self.node {
-            try container.encode(node, forKey: ActorCoding.CodingKeys.node)
-        } else {
-            guard let context = encoder.actorSerializationContext else {
-                throw SerializationError.missingSerializationContext(encoder, ActorAddress.self)
-            }
-
-            try container.encode(context.localNode, forKey: ActorCoding.CodingKeys.node)
-        }
-
+        try container.encode(self.uniqueNode, forKey: ActorCoding.CodingKeys.node)
         try container.encode(self.path, forKey: ActorCoding.CodingKeys.path)
         try container.encode(self.incarnation, forKey: ActorCoding.CodingKeys.incarnation)
     }
@@ -134,7 +125,7 @@ extension ActorAddress: Codable {
         let path = try container.decode(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
         let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
 
-        self.init(node: node, path: path, incarnation: ActorIncarnation(incarnation))
+        self.init(remote: node, path: path, incarnation: ActorIncarnation(incarnation))
     }
 }
 
@@ -246,7 +237,7 @@ extension UniqueNode: Codable {
         let host = try container.decode(String.self)
         let port = try container.decode(Int.self)
         self.node = Node(protocol: `protocol`, systemName: systemName, host: host, port: port)
-        self.nid = try UniqueNodeID(container.decode(UInt32.self))
+        self.nid = try UniqueNodeID(container.decode(UInt64.self))
     }
 }
 

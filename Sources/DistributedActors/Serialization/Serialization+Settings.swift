@@ -116,9 +116,7 @@ extension Serialization.Settings {
         serializerID overrideSerializerID: SerializerID? = nil,
         alsoRegisterActorRef: Bool = true
     ) -> Manifest {
-        // FIXME: THIS IS A WORKAROUND UNTIL WE CAN GET MANGLED NAMES
-        let hint = hintOverride ?? _typeName(type) // FIXME: _mangledTypeName https://github.com/apple/swift/pull/30318
-        // TODO: We could do educated guess work here -- if a type is protobuf representable, that's the coding we want
+        let hint = hintOverride ?? Serialization.getTypeHint(type)
 
         // TODO: add test for sending raw SwiftProtobuf.Message
         if overrideSerializerID == SerializerID.protobufRepresentable {

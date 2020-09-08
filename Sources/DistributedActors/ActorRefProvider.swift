@@ -113,7 +113,7 @@ extension RemoteActorRefProvider {
     }
 
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
-        if self.localNode == context.address.node {
+        if self.localNode == context.address.uniqueNode {
             return self.localProvider._resolveUntyped(context: context)
         } else {
             return AddressableActorRef(self._resolveAsRemoteRef(context, remoteAddress: context.address))

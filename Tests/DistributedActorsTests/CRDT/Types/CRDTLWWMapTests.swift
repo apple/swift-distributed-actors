@@ -17,8 +17,9 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTLWWMapTests: XCTestCase {
-    let replicaA: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .wellKnown))
-    let replicaB: ReplicaID = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .wellKnown))
+    var node: UniqueNode { .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random()) }
+    lazy var replicaA: ReplicaID = .actorAddress(try! ActorAddress(local: node, path: ActorPath._user.appending("a"), incarnation: .wellKnown))
+    lazy var replicaB: ReplicaID = .actorAddress(try! ActorAddress(local: node, path: ActorPath._user.appending("b"), incarnation: .wellKnown))
 
     func test_basicOperations() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaID: self.replicaA, defaultValue: 0)

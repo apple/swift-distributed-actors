@@ -56,7 +56,7 @@ final class MembershipGossipTests: XCTestCase {
         let directive = gossip.mergeForward(incoming: incoming)
 
         directive.effectiveChanges.shouldEqual(
-            [Cluster.MembershipChange(node: self.nodeB, fromStatus: nil, toStatus: .joining)]
+            [Cluster.MembershipChange(node: self.nodeB, previousStatus: nil, toStatus: .joining)]
         )
 
         gossip.shouldEqual(
@@ -91,8 +91,8 @@ final class MembershipGossipTests: XCTestCase {
         Set(directive.effectiveChanges).shouldEqual(
             Set(
                 [
-                    Cluster.MembershipChange(node: self.nodeB, fromStatus: nil, toStatus: .joining),
-                    Cluster.MembershipChange(node: self.nodeC, fromStatus: nil, toStatus: .joining),
+                    Cluster.MembershipChange(node: self.nodeB, previousStatus: nil, toStatus: .joining),
+                    Cluster.MembershipChange(node: self.nodeC, previousStatus: nil, toStatus: .joining),
                 ]
             )
         )
@@ -147,7 +147,7 @@ final class MembershipGossipTests: XCTestCase {
         // this test also covers so <none> does not accidentally cause changes into .removed, which would be catastrophic
         directive.causalRelation.shouldEqual(.concurrent)
         directive.effectiveChanges.shouldEqual(
-            [Cluster.MembershipChange(node: self.fourthNode, fromStatus: nil, toStatus: .joining)]
+            [Cluster.MembershipChange(node: self.fourthNode, previousStatus: nil, toStatus: .joining)]
         )
         gossip.shouldEqual(
             Cluster.MembershipGossip.parse(
@@ -236,7 +236,7 @@ final class MembershipGossipTests: XCTestCase {
                 // in dramatic situations (e.g. we add more nodes on one side than quorum, so it gets "its illegal quorum"),
                 // such is the case with any "dynamic" quorum however. We CAN and will provide strategies to select leaders which
                 // strongly militate such risk though.
-                Cluster.MembershipChange(node: self.nodeC, fromStatus: nil, toStatus: .up),
+                Cluster.MembershipChange(node: self.nodeC, previousStatus: nil, toStatus: .up),
                 // note that this has NO effect on the leader; we keep trusting "our" leader,
                 // leader election should kick in and reconcile those two
             ]
@@ -303,7 +303,7 @@ final class MembershipGossipTests: XCTestCase {
 
         directive.causalRelation.shouldEqual(.happenedBefore)
         directive.effectiveChanges.shouldEqual(
-            [Cluster.MembershipChange(node: self.nodeB, fromStatus: nil, toStatus: .joining)]
+            [Cluster.MembershipChange(node: self.nodeB, previousStatus: nil, toStatus: .joining)]
         )
 
         gossip.membership.members(atLeast: .joining).shouldContain(Cluster.Member(node: self.nodeB, status: .joining))
@@ -335,7 +335,7 @@ final class MembershipGossipTests: XCTestCase {
 
         directive.effectiveChanges.shouldEqual(
             [
-                Cluster.MembershipChange(node: self.nodeB, fromStatus: .down, toStatus: .removed),
+                Cluster.MembershipChange(node: self.nodeB, previousStatus: .down, toStatus: .removed),
             ]
         )
 
@@ -374,7 +374,7 @@ final class MembershipGossipTests: XCTestCase {
         directive.causalRelation.shouldEqual(.concurrent)
         directive.effectiveChanges.shouldEqual(
             [
-                Cluster.MembershipChange(node: self.nodeB, fromStatus: .down, toStatus: .removed),
+                Cluster.MembershipChange(node: self.nodeB, previousStatus: .down, toStatus: .removed),
             ]
         )
 
