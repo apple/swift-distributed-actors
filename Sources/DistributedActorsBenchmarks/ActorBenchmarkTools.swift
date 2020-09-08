@@ -27,7 +27,7 @@ internal class BenchmarkLatchPersonality<Message: Codable>: CellDelegate<Message
     }
 
     override var address: ActorAddress {
-        ActorAddress(path: ._system, incarnation: .wellKnown)
+        ActorAddress(local: .init(protocol: "test", systemName: "test", host: "127.0.0.1", port: 7337, nid: .random()), path: ._system, incarnation: .wellKnown)
     }
 
     var ref: ActorRef<Message> {

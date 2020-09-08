@@ -103,13 +103,9 @@ internal struct DowningStrategyShell {
     func markAsDown(_ context: ActorContext<Message>, members: Set<Cluster.Member>) {
         for member in members {
             context.log.info(
-                "Decision to [.down] member [\(member)]!",
-                metadata: self.metadata.merging(
-                    [
-                        "downing/node": "\(reflecting: member.uniqueNode)",
-                    ],
-                    uniquingKeysWith: { l, _ in l }
-                )
+                "Decision to [.down] member [\(member)]!", metadata: self.metadata([
+                    "downing/node": "\(reflecting: member.uniqueNode)",
+                ])
             )
             context.system.cluster.down(member: member)
         }
@@ -120,5 +116,9 @@ internal struct DowningStrategyShell {
             "tag": "downing",
             "downing/strategy": "\(type(of: self.strategy))",
         ]
+    }
+
+    func metadata(_ additional: Logger.Metadata) -> Logger.Metadata {
+        self.metadata.merging(additional, uniquingKeysWith: { _, r in r })
     }
 }

@@ -21,34 +21,39 @@ option swift_prefix = "Proto";
 import "ActorAddress.proto";
 
 message SWIMRemoteMessage {
-    oneof request {
-        SWIMPing ping = 1;
-        SWIMPingRequest pingRequest = 2;
+    oneof message {
+        SWIMPing ping                 = 1;
+        SWIMPingRequest pingRequest   = 2;
+        SWIMPingResponse pingResponse = 3;
     }
 }
 
 message SWIMPing {
-    ActorAddress replyTo = 1;
-    SWIMPayload payload = 2;
+    ActorAddress origin       = 1;
+    SWIMGossipPayload payload = 2;
+    uint32 sequenceNumber     = 3;
 }
 
 message SWIMPingRequest {
-    ActorAddress target = 1;
-    ActorAddress replyTo = 2;
-    SWIMPayload payload = 3;
+    ActorAddress target       = 1;
+    ActorAddress origin       = 2;
+    SWIMGossipPayload payload = 3;
+    uint32 sequenceNumber     = 4;
 }
 
 message SWIMPingResponse {
     message Ack {
-        ActorAddress target = 1;
-        uint64 incarnation = 2;
-        SWIMPayload payload = 3;
+        ActorAddress target       = 1;
+        uint64 incarnation        = 2;
+        SWIMGossipPayload payload = 3;
+        uint32 sequenceNumber     = 4;
     }
     message Nack {
-        ActorAddress target = 1;
+        ActorAddress target   = 1;
+        uint32 sequenceNumber = 2;
     }
     oneof pingResponse {
-        Ack ack = 1;
+        Ack ack   = 1;
         Nack nack = 2;
     }
 }
@@ -56,22 +61,23 @@ message SWIMPingResponse {
 message SWIMStatus {
     enum Type {
         UNSPECIFIED = 0;
-        ALIVE = 1;
-        SUSPECT = 2;
+        ALIVE       = 1;
+        SUSPECT     = 2;
         UNREACHABLE = 3;
-        DEAD = 4;
+        DEAD        = 4;
     }
 
-    Type type = 1;
-    uint64 incarnation = 2;
+    Type type                       = 1;
+    uint64 incarnation              = 2;
     repeated UniqueNode suspectedBy = 3;
 }
 
 message SWIMMember {
-    ActorAddress address = 1;
-    SWIMStatus status = 2;
+    ActorAddress address  = 1;
+    SWIMStatus status     = 2;
+    uint64 protocolPeriod = 3;
 }
 
-message SWIMPayload {
+message SWIMGossipPayload {
     repeated SWIMMember member = 1;
 }

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import struct Dispatch.DispatchTime
+import enum Dispatch.DispatchTimeInterval
 import struct Foundation.Date
 import struct NIO.TimeAmount
 
@@ -441,5 +442,24 @@ public struct WallTimeClock: Codable, Comparable, CustomStringConvertible {
 
     public var description: String {
         "\(self.timestamp.description)"
+    }
+}
+
+extension DispatchTimeInterval: CustomPrettyStringConvertible {
+    /// Total amount of nanoseconds represented by this interval.
+    ///
+    /// We need this to compare amounts, yet we don't want to make to Comparable publicly.
+    var nanoseconds: Int64 {
+        switch self {
+        case .nanoseconds(let ns): return Int64(ns)
+        case .microseconds(let us): return Int64(us) * 1000
+        case .milliseconds(let ms): return Int64(ms) * 1_000_000
+        case .seconds(let s): return Int64(s) * 1_000_000_000
+        default: return .max
+        }
+    }
+
+    var isEffectivelyInfinite: Bool {
+        self.nanoseconds == .max
     }
 }

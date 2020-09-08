@@ -201,11 +201,12 @@ extension VersionVector: Codable {
 /// `VersionDot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Version` needs
 /// to be `Hashable` we have to define a type.
 public struct VersionDot {
-    public let replicaID: ReplicaID
-    public let version: Version
     public typealias Version = UInt64
 
-    init(_ replicaID: ReplicaID, _ version: Version) {
+    public let replicaID: ReplicaID
+    public let version: Version
+
+    public init(_ replicaID: ReplicaID, _ version: Version) {
         self.replicaID = replicaID
         self.version = version
     }
@@ -251,7 +252,7 @@ public struct ReplicaID: Hashable {
     }
 
     public static func actor<M: Codable>(_ context: ActorContext<M>) -> ReplicaID {
-        .init(.actorAddress(context.address.ensuringNode(context.system.settings.cluster.uniqueBindNode)))
+        .init(.actorAddress(context.address))
     }
 
     // FIXME: don't do this as much, it risks creating one without a node address
@@ -267,14 +268,14 @@ public struct ReplicaID: Hashable {
         .init(.uniqueNodeID(uniqueNode.nid))
     }
 
-    internal static func uniqueNodeID(_ uniqueNodeID: UInt32) -> ReplicaID {
+    internal static func uniqueNodeID(_ uniqueNodeID: UInt64) -> ReplicaID {
         .init(.uniqueNodeID(.init(uniqueNodeID)))
     }
 
     func ensuringNode(_ node: UniqueNode) -> ReplicaID {
         switch self.storage {
         case .actorAddress(let address):
-            return .actorAddress(address.ensuringNode(node))
+            return .actorAddress(address)
         case .uniqueNode(let existingNode):
             assert(existingNode.nid == node.nid, "Attempted to ensureNode with non-matching node identifier, was: \(existingNode)], attempted: \(node)")
             return self
@@ -354,7 +355,7 @@ extension ReplicaID: Codable {
         case .uniqueNode:
             self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .value))
         case .uniqueNodeID:
-            self = try .uniqueNodeID(container.decode(UInt32.self, forKey: .value))
+            self = try .uniqueNodeID(container.decode(UInt64.self, forKey: .value))
         }
     }
 

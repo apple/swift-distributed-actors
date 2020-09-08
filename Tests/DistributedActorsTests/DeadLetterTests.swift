@@ -24,13 +24,12 @@ final class DeadLetterTests: ActorSystemXCTestCase {
     func test_deadLetters_logWithSourcePosition() throws {
         let log = self.logCapture.logger(label: "/dead/letters")
 
-        let address = try ActorAddress(path: ActorPath._user.appending("someone"), incarnation: .random())
+        let address = try ActorAddress(local: self.system.cluster.uniqueNode, path: ActorPath._user.appending("someone"), incarnation: .random())
         let office = DeadLetterOffice(log, address: address, system: system)
 
         office.deliver("Hello")
 
-        try self.logCapture.awaitLogContaining(self.testKit, text: "[Hello]:Swift.String was not delivered")
-        try self.logCapture.awaitLogContaining(self.testKit, text: "/user/someone")
+        try self.logCapture.awaitLogContaining(self.testKit, text: "was not delivered to [\"/user/someone")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

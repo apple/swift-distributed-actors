@@ -20,9 +20,10 @@ final class VersionVectorTests: XCTestCase {
     private typealias VV = VersionVector
     private typealias V = VersionVector.Version
 
-    private let replicaA = ReplicaID.actorAddress(try! ActorPath._user.appending("A").makeLocalAddress(incarnation: .random()))
-    private let replicaB = ReplicaID.actorAddress(try! ActorPath._user.appending("B").makeLocalAddress(incarnation: .random()))
-    private let replicaC = ReplicaID.actorAddress(try! ActorPath._user.appending("C").makeLocalAddress(incarnation: .random()))
+    let node: UniqueNode = .init(protocol: "sact", systemName: "Test", host: "127.0.0.1", port: 7337, nid: .random())
+    lazy var replicaA = ReplicaID.actorAddress(try! ActorPath._user.appending("A").makeLocalAddress(on: node, incarnation: .random()))
+    lazy var replicaB = ReplicaID.actorAddress(try! ActorPath._user.appending("B").makeLocalAddress(on: node, incarnation: .random()))
+    lazy var replicaC = ReplicaID.actorAddress(try! ActorPath._user.appending("C").makeLocalAddress(on: node, incarnation: .random()))
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector tests

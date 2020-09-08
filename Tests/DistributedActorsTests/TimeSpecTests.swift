@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
@@ -67,5 +67,15 @@ class TimeSpecTests: XCTestCase {
         XCTAssertTrue(self.nanos == self.nanos)
         XCTAssertTrue(self.seconds == self.seconds)
         XCTAssertTrue(self.total == self.total)
+    }
+}
+
+extension TimeSpec: Comparable {
+    public static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+        lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
+    }
+
+    public static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+        lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
     }
 }

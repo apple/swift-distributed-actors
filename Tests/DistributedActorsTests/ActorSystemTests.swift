@@ -111,7 +111,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
 
     func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {
         let path = try ActorPath._user.appending("test").appending("foo").appending("bar")
-        let address = ActorAddress(path: path, incarnation: .random())
+        let address = ActorAddress(local: self.system.cluster.uniqueNode, path: path, incarnation: .random())
         let context: ResolveContext<Never> = ResolveContext(address: address, system: self.system)
         let ref = self.system._resolve(context: context)
 

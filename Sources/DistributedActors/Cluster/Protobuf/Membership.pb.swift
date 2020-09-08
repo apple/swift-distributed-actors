@@ -213,7 +213,7 @@ public struct ProtoClusterMembershipGossip {
 
   /// The following fields will use compressed UniqueNode encoding and ONLY serialize them as their uniqueNodeID.
   /// During deserialization the fields can be resolved against the membership to obtain full UniqueNode values if necessary.
-  public var ownerUniqueNodeID: UInt32 {
+  public var ownerUniqueNodeID: UInt64 {
     get {return _storage._ownerUniqueNodeID}
     set {_uniqueStorage()._ownerUniqueNodeID = newValue}
   }
@@ -251,7 +251,7 @@ public struct ProtoClusterMembershipSeenTableRow {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var uniqueNodeID: UInt32 {
+  public var uniqueNodeID: UInt64 {
     get {return _storage._uniqueNodeID}
     set {_uniqueStorage()._uniqueNodeID = newValue}
   }
@@ -457,7 +457,7 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
 
   fileprivate class _StorageClass {
     var _membership: ProtoClusterMembership? = nil
-    var _ownerUniqueNodeID: UInt32 = 0
+    var _ownerUniqueNodeID: UInt64 = 0
     var _seenTable: ProtoClusterMembershipSeenTable? = nil
 
     static let defaultInstance = _StorageClass()
@@ -484,7 +484,7 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._membership)
-        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._ownerUniqueNodeID)
+        case 2: try decoder.decodeSingularUInt64Field(value: &_storage._ownerUniqueNodeID)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._seenTable)
         default: break
         }
@@ -498,7 +498,7 @@ extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._Me
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
       if _storage._ownerUniqueNodeID != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._ownerUniqueNodeID, fieldNumber: 2)
+        try visitor.visitSingularUInt64Field(value: _storage._ownerUniqueNodeID, fieldNumber: 2)
       }
       if let v = _storage._seenTable {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
@@ -561,7 +561,7 @@ extension ProtoClusterMembershipSeenTableRow: SwiftProtobuf.Message, SwiftProtob
   ]
 
   fileprivate class _StorageClass {
-    var _uniqueNodeID: UInt32 = 0
+    var _uniqueNodeID: UInt64 = 0
     var _version: ProtoVersionVector? = nil
 
     static let defaultInstance = _StorageClass()
@@ -586,7 +586,7 @@ extension ProtoClusterMembershipSeenTableRow: SwiftProtobuf.Message, SwiftProtob
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularUInt32Field(value: &_storage._uniqueNodeID)
+        case 1: try decoder.decodeSingularUInt64Field(value: &_storage._uniqueNodeID)
         case 2: try decoder.decodeSingularMessageField(value: &_storage._version)
         default: break
         }
@@ -597,7 +597,7 @@ extension ProtoClusterMembershipSeenTableRow: SwiftProtobuf.Message, SwiftProtob
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if _storage._uniqueNodeID != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._uniqueNodeID, fieldNumber: 1)
+        try visitor.visitSingularUInt64Field(value: _storage._uniqueNodeID, fieldNumber: 1)
       }
       if let v = _storage._version {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)

@@ -59,7 +59,7 @@ public struct ProtoVersionReplicaID {
     set {_uniqueStorage()._value = .uniqueNode(newValue)}
   }
 
-  public var uniqueNodeID: UInt32 {
+  public var uniqueNodeID: UInt64 {
     get {
       if case .uniqueNodeID(let v)? = _storage._value {return v}
       return 0
@@ -72,7 +72,7 @@ public struct ProtoVersionReplicaID {
   public enum OneOf_Value: Equatable {
     case actorAddress(ProtoActorAddress)
     case uniqueNode(ProtoUniqueNode)
-    case uniqueNodeID(UInt32)
+    case uniqueNodeID(UInt64)
 
   #if !swift(>=4.1)
     public static func ==(lhs: ProtoVersionReplicaID.OneOf_Value, rhs: ProtoVersionReplicaID.OneOf_Value) -> Bool {
@@ -245,8 +245,8 @@ extension ProtoVersionReplicaID: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
           if let v = v {_storage._value = .uniqueNode(v)}
         case 3:
           if _storage._value != nil {try decoder.handleConflictingOneOf()}
-          var v: UInt32?
-          try decoder.decodeSingularUInt32Field(value: &v)
+          var v: UInt64?
+          try decoder.decodeSingularUInt64Field(value: &v)
           if let v = v {_storage._value = .uniqueNodeID(v)}
         default: break
         }
@@ -262,7 +262,7 @@ extension ProtoVersionReplicaID: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case .uniqueNode(let v)?:
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       case .uniqueNodeID(let v)?:
-        try visitor.visitSingularUInt32Field(value: v, fieldNumber: 3)
+        try visitor.visitSingularUInt64Field(value: v, fieldNumber: 3)
       case nil: break
       }
     }

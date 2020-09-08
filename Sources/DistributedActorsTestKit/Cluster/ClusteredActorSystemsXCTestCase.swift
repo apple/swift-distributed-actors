@@ -414,7 +414,7 @@ extension ClusteredActorSystemsXCTestCase {
         let events = try eventStreamProbe.fishFor(Cluster.Event.self, within: .seconds(5)) {
             switch $0 {
             case .membershipChange(let change)
-                where change.node == node && change.toStatus.isAtLeast(.down):
+                where change.node == node && change.status.isAtLeast(.down):
                 return .catchComplete($0)
             default:
                 return .ignore
@@ -457,7 +457,7 @@ extension ClusteredActorSystemsXCTestCase {
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
         let remoteNode = targetSystem.settings.cluster.uniqueBindNode
 
-        let uniqueRemoteNode = ActorAddress(node: remoteNode, path: address.path, incarnation: address.incarnation)
+        let uniqueRemoteNode = ActorAddress(remote: remoteNode, path: address.path, incarnation: address.incarnation)
         let resolveContext = ResolveContext<M>(address: uniqueRemoteNode, system: system)
         return system._resolve(context: resolveContext)
     }

@@ -15,6 +15,8 @@
 // tag::cluster-sample[]
 import DistributedActors
 // end::cluster-sample[]
+import Logging
+import SWIM
 
 func parseHostPort(_ s: String) -> (String, Int) {
     let parts = s.split(separator: ":")
@@ -40,9 +42,14 @@ guard let port = (args.dropFirst().first.flatMap { n in Int(n) }) else {
 
 let joinAddress = args.dropFirst(2).first
 
+LoggingSystem.bootstrap(_SWIMPrettyMetadataLogHandler.init) // just much much nicer log printouts
+
 let system = ActorSystem("SampleCluster") { settings in
     settings.cluster.enabled = true
     settings.cluster.bindPort = port
+
+    settings.logging.logLevel = .info
+//    settings.cluster.swim.logger.logLevel = .trace
 
     settings.cluster.downingStrategy = .timeout(.default)
 
@@ -62,20 +69,33 @@ if let joinAddress = joinAddress {
 let eventsListener = try system.spawn(
     "eventsListener",
     of: Cluster.Event.self,
-    .receive { context, event in
-        context.log.info("Cluster Event: \(event)")
-        return .same
+    .setup { context in
+        var membership: Cluster.Membership = .empty
+        return .receive { context, event in
+            try? membership.apply(event: event)
+
+            let member: String
+            let status: String
+            switch event {
+            case Cluster.Event.membershipChange(let change):
+                member = "\(change.member.uniqueNode.debugDescription)"
+                status = "\(change.status)"
+            default:
+                member = ""
+                status = ""
+            }
+            context.log.info("Cluster Event: \(event)", metadata: [
+                "member": "\(member)",
+                "status": "\(status)",
+                "membership": Logger.MetadataValue.array(membership.members(atLeast: .joining).map({"\(String(reflecting: $0))"})),
+            ])
+            return .same
+        }
     }
 ) // <1>
 
 system.cluster.events.subscribe(eventsListener) // <2>
 // end::cluster-sample-event-listener[]
-
-// TODO: making this codable and making Chat Routlette example?
-// enum ChatMessage {
-//    case announcement(String)
-//    case text(String, from: ActorRef<ChatMessage>)
-// }
 
 // tag::cluster-sample-actors-discover-and-chat[]
 let chatter: ActorRef<String> = try system.spawn(

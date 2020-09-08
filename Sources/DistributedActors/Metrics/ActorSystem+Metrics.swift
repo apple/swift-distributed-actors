@@ -14,6 +14,7 @@
 
 import DistributedActorsConcurrencyHelpers
 import Metrics
+import SWIM
 
 /// Carries references to all metrics objects for simple and structured usage throughout the actor system.
 ///
@@ -155,59 +156,8 @@ final class ActorSystemMetrics {
         self._cluster_association_tombstones.record(count)
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: SWIM Failure Detector Metrics
-
-    let _swim_ping_pingResponse_time: Metrics.Timer
-    let _swim_pingReq_pingResponse_time: Metrics.Timer
-    let _swim_members_alive: Gauge
-    let _swim_members_suspect: Gauge
-    let _swim_members_unreachable: Gauge
-    let _swim_members_dead: Gauge
-
-    func recordSWIMMembers(_ members: SWIM.MembersValues) {
-        var alives = 0
-        var suspects = 0
-        var unreachables = 0
-        var deads = 0
-        for member in members {
-            switch member.status {
-            case .alive: alives += 1
-            case .suspect: suspects += 1
-            case .unreachable: unreachables += 1
-            case .dead: deads += 1
-            }
-        }
-
-        self._swim_members_alive.record(alives)
-        self._swim_members_suspect.record(suspects)
-        self._swim_members_unreachable.record(unreachables)
-        self._swim_members_dead.record(deads)
-    }
-
     func uptimeNanoseconds() -> Int64 {
         Deadline.now().uptimeNanoseconds
-    }
-
-    /// Use `startTimeNanos` to obtain value to pass in as `since`
-    func recordSWIMPingPingResponseTime(since start: Int64) {
-        let stop = self.uptimeNanoseconds()
-        let elapsed = max(0, stop - start)
-        guard elapsed > 0 else {
-            return
-        }
-
-        self._swim_ping_pingResponse_time.recordNanoseconds(elapsed)
-    }
-
-    func recordSWIMPingReqPingResponseTime(since start: Int64) {
-        let stop = self.uptimeNanoseconds()
-        let elapsed = max(0, stop - start)
-        guard elapsed > 0 else {
-            return
-        }
-
-        self._swim_pingReq_pingResponse_time.recordNanoseconds(elapsed)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -334,13 +284,5 @@ final class ActorSystemMetrics {
 
         let clusterAssociations = settings.makeLabel("cluster", "associations")
         self._cluster_association_tombstones = .init(label: clusterAssociations)
-
-        // ==== SWIM -----------------------------------------------
-        self._swim_ping_pingResponse_time = Metrics.Timer(label: settings.makeLabel("swim", "pingPingResponse"), dimensions: [("type", "ping")])
-        self._swim_pingReq_pingResponse_time = Metrics.Timer(label: settings.makeLabel("swim", "pingPingResponse"), dimensions: [("type", "ping-req")])
-        self._swim_members_alive = .init(label: settings.makeLabel("swim", "members"), dimensions: [("status", "alive")])
-        self._swim_members_suspect = .init(label: settings.makeLabel("swim", "members"), dimensions: [("status", "suspect")])
-        self._swim_members_unreachable = .init(label: settings.makeLabel("swim", "members"), dimensions: [("status", "unreachable")])
-        self._swim_members_dead = .init(label: settings.makeLabel("swim", "members"), dimensions: [("status", "dead")])
     }
 }

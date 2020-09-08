@@ -509,7 +509,12 @@ extension CallSiteInfo {
     ///
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func notEqualError(got it: Any, expected: Any, failTest: Bool = true) -> CallSiteError {
-        self.error("[\(it)] does not equal expected: [\(expected)]\n", failTest: failTest)
+        let padding = String(repeating: " ", count: "[error]".count)
+        return self.error("""
+        [\(it)] 
+        does not equal expected:
+        \(padding)[\(expected)]\n
+        """, failTest: failTest)
     }
 
     /// - Warning: Performs file IO in order to read source location line where failure happened

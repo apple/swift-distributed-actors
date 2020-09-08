@@ -17,7 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTEnvelopeSerializationTests: ActorSystemXCTestCase {
-    let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
+    var node: UniqueNode { .init(protocol: "sact", systemName: "\(Self.self)", host: "127.0.0.1", port: 7337, nid: .random()) }
+    lazy var ownerAlpha = try! ActorAddress(local: self.system.cluster.uniqueNode, path: ActorPath._user.appending("alpha"), incarnation: .wellKnown)
 
     func test_serializationOf_CRDTEnvelope_DeltaCRDTBox_GCounter() throws {
         var g1 = CRDT.GCounter(replicaID: .actorAddress(self.ownerAlpha))

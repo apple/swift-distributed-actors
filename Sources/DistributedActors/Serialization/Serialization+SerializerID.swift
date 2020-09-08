@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import SWIM
+
 extension Serialization {
     /// Used to identify a type (or instance) of a `Serializer`.
     public struct SerializerID: ExpressibleByIntegerLiteral, Hashable, Comparable, CustomStringConvertible {

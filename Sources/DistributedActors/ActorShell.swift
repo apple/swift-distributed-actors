@@ -169,8 +169,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
         super.init()
 
-        let addr = address.ensuringNode(system.settings.cluster.uniqueBindNode)
-        self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, addr)
+        self.instrumentation = system.settings.instrumentation.makeActorInstrumentation(self, address)
         self.instrumentation.actorSpawned()
         system.metrics.recordActorStart(self)
     }

@@ -25,7 +25,10 @@ internal enum Wire {
     public typealias Version = DistributedActors.Version
 
     /// Envelope type carrying messages over the network.
-    struct Envelope {
+    struct Envelope: Codable {
+        /// This is a very blessed type hint, as it encapsulates all messages and is _assumed_ on the receiving end as the outer wrapper.
+        static var typeHint: String = "_$Awe" // Swift Actors wire envelope
+
         var recipient: ActorAddress
 
         // TODO: metadata
@@ -36,7 +39,7 @@ internal enum Wire {
     }
 
     // TODO: such messages should go over a priority lane
-    internal struct HandshakeOffer: WireMessage {
+    internal struct HandshakeOffer: Equatable, WireMessage {
         internal var version: Version
 
         internal var originNode: UniqueNode

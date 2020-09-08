@@ -146,11 +146,16 @@ extension ClusterShell {
 
         state.log.info(
             "Leader removed member: \(memberToRemove), all nodes are certain to have seen it as [.down] before",
-            metadata: [
-                "tag": "leader-action",
-                "gossip/current": "\(state.latestGossip)",
-                "gossip/before": "\(previousGossip)",
-            ]
+            metadata: { () -> Logger.Metadata in
+                var metadata: Logger.Metadata = [
+                    "tag": "leader-action",
+                ]
+                if state.log.logLevel == .trace {
+                    metadata["gossip/current"] = "\(state.latestGossip)"
+                    metadata["gossip/before"] = "\(previousGossip)"
+                }
+                return metadata
+            }()
         )
 
         // TODO: will this "just work" as we removed from membership, so gossip will tell others...?

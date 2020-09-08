@@ -141,7 +141,7 @@ extension XPCActorTransport: XPCControl {
         // fake node; ensure that this does not get us in trouble; e.g. cluster trying to connect to this fake node etc
         let fakeNode = UniqueNode(protocol: "xpc", systemName: "", host: "localhost", port: 1, nid: .init(1)) // TODO: a bit ugly special "xpc://" would be nicer
         let targetAddress: ActorAddress = try ActorAddress(
-            node: fakeNode,
+            local: fakeNode,
             path: ActorPath([ActorPathSegment("xpc"), ActorPathSegment(serviceName)]),
             incarnation: .wellKnown
         )
