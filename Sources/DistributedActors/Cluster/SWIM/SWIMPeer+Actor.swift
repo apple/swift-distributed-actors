@@ -20,8 +20,6 @@ extension SWIM {
     public typealias PeerRef = ActorRef<SWIM.Message>
 
     public typealias Ref = ActorRef<SWIM.Message>
-//    public typealias PingOriginRef = ActorRef<SWIM.PingResponse>
-//    public typealias PingRequestOriginRef = ActorRef<SWIM.PingResponse>
     public typealias PingOriginRef = ActorRef<SWIM.Message> // same type, but actually an `ask` actor
     public typealias PingRequestOriginRef = ActorRef<SWIM.Message> // same type, but actually an `ask` actor
 

@@ -284,7 +284,7 @@ extension Cluster.Membership {
             return nil
         }
 
-        if let previousMember = self.member(change.node.node) { // { , change.isDown || change.isRemoval {
+        if let previousMember = self.member(change.node.node) {
             // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
             _ = self.removeCompletely(previousMember.uniqueNode) // the replacement event will handle the down notifications
             self._members[change.node] = change.member

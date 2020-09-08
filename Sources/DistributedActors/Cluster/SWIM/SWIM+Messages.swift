@@ -77,7 +77,7 @@ extension SWIM {
 
     public enum _TestingMessage: NonTransportableActorMessage {
         /// FOR TESTING: Expose the entire membership state
-        case _getMembershipState(replyTo: ActorRef<Set<SWIM.Member>>)
+        case _getMembershipState(replyTo: ActorRef<[SWIM.Member]>)
     }
 
     internal struct Gossip: Equatable {

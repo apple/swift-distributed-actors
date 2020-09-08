@@ -72,7 +72,7 @@ internal struct SWIMActorShell {
             case ._testing(let message):
                 switch message {
                 case ._getMembershipState(let replyTo):
-                    replyTo.tell(Set(shell.swim.members))
+                    replyTo.tell(Array(shell.swim.members))
                     return .same
                 }
             }

@@ -409,7 +409,7 @@ SWIM protocol implementation as it's underlying low-level failure detection mech
 NOTE: Refer to https://github.com/apple/swift-cluster-membership and the relevant
   https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol]
   and https://arxiv.org/abs/1707.00788[Lifeguard: Local Health Awareness for More Accurate Failure Detection] whitepapers to understand
-  the failude detection mechanism in depth. Below we'll provide a high-level overview that is compherensive enough to feel confident
+  the failure detection mechanism in depth. Below we'll provide a high-level overview that is comprehensive enough to feel confident
   running systems using the automatic failure detection in production.
 
 While SWIM is a complete membership protocol, the Actor Cluster also offers a more high-level membership view which provides

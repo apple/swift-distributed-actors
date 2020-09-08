@@ -48,7 +48,7 @@
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
 public struct ActorAddress {
     /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
-    /// It is on purpose not exposed to end-user code, as well, and must remain so to not break the location transparency promises made by the runtime.
+    /// It is on purpose not exposed to end-user code as well, and must remain so to not break the location transparency promises made by the runtime.
     ///
     /// Internally, this knowledge sometimes is necessary however.
     ///
