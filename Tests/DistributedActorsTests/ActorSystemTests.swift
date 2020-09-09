@@ -129,4 +129,23 @@ final class ActorSystemTests: ActorSystemXCTestCase {
 
         receptacle.wait(atMost: .seconds(3))!.shouldBeNil()
     }
+
+    func test_shutdown_callbackShouldBeInvokedWhenAlreadyShutdown() throws {
+        let system = ActorSystem("ShutMeDown")
+        let firstReceptacle = BlockingReceptacle<Error?>()
+
+        system.shutdown(afterShutdownCompleted: { error in
+            firstReceptacle.offerOnce(error)
+        })
+
+        firstReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
+
+        let secondReceptacle = BlockingReceptacle<Error?>()
+
+        system.shutdown(afterShutdownCompleted: { error in
+            secondReceptacle.offerOnce(error)
+        })
+
+        secondReceptacle.wait(atMost: .seconds(3))!.shouldBeNil()
+    }
 }
