@@ -386,6 +386,7 @@ public final class ActorSystem {
     public func shutdown(queue: DispatchQueue = DispatchQueue.global(), afterShutdownCompleted: @escaping (Error?) -> Void = { _ in () }) -> Shutdown {
         guard self.shutdownFlag.add(1) == 0 else {
             // shutdown already kicked off by someone else
+            afterShutdownCompleted(nil)
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
