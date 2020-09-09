@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Dispatch
 @testable import DistributedActors
 import DistributedActorsTestKit
-import Dispatch
-import ServiceDiscovery
 import NIO
+import ServiceDiscovery
 import XCTest
 
 final class ClusterDiscoveryTests: ActorSystemXCTestCase {
@@ -33,35 +33,35 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
         discovery.subscribed.wait()
 
         // [A], join A
-        discovery.sendNext(.success([A.uniqueNode.node]))
+        discovery.sendNext(.success([self.A.uniqueNode.node]))
         guard case .command(.handshakeWith(let node1)) = try clusterProbe.expectMessage() else {
             throw testKit.fail(line: #line - 1)
         }
-        node1.shouldEqual(A.uniqueNode.node)
+        node1.shouldEqual(self.A.uniqueNode.node)
 
         // [A, B], join B
-        discovery.sendNext(.success([A.uniqueNode.node, B.uniqueNode.node]))
+        discovery.sendNext(.success([self.A.uniqueNode.node, self.B.uniqueNode.node]))
         guard case .command(.handshakeWith(let node2)) = try clusterProbe.expectMessage() else {
             throw testKit.fail(line: #line - 1)
         }
-        node2.shouldEqual(B.uniqueNode.node)
+        node2.shouldEqual(self.B.uniqueNode.node)
         try clusterProbe.expectNoMessage(for: .milliseconds(300)) // i.e. it should not send another join for `A` we already did that
         // sending another join for A would be harmless in general, but let's avoid causing more work for the system?
 
         // [A, B]; should not really emit like this but even if it did, no reason to issue more joins
-        discovery.sendNext(.success([A.uniqueNode.node, B.uniqueNode.node]))
+        discovery.sendNext(.success([self.A.uniqueNode.node, self.B.uniqueNode.node]))
         try clusterProbe.expectNoMessage(for: .milliseconds(200))
 
         // [A], removals do not cause removals / downs, one could do this via a downing provider if one wanted to
-        discovery.sendNext(.success([A.uniqueNode.node]))
+        discovery.sendNext(.success([self.A.uniqueNode.node]))
         try clusterProbe.expectNoMessage(for: .milliseconds(200))
 
         // [A, B], B is back, this could mean it's a "new" B, so let's issue a join just to be sure.
-        discovery.sendNext(.success([A.uniqueNode.node, B.uniqueNode.node]))
+        discovery.sendNext(.success([self.A.uniqueNode.node, self.B.uniqueNode.node]))
         guard case .command(.handshakeWith(let node3)) = try clusterProbe.expectMessage() else {
             throw testKit.fail(line: #line - 1)
         }
-        node3.shouldEqual(B.uniqueNode.node)
+        node3.shouldEqual(self.B.uniqueNode.node)
     }
 
     func test_discovery_shouldHandleMappingsWhenDiscoveryHasItsOwnTypes() throws {
@@ -84,42 +84,40 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
         discovery.subscribed.wait()
 
         // [A], join A
-        discovery.sendNext(.success([ExampleK8sInstance(node: A.uniqueNode.node)]))
+        discovery.sendNext(.success([ExampleK8sInstance(node: self.A.uniqueNode.node)]))
         guard case .command(.handshakeWith(let node1)) = try clusterProbe.expectMessage() else {
             throw testKit.fail(line: #line - 1)
         }
-        node1.shouldEqual(A.uniqueNode.node)
+        node1.shouldEqual(self.A.uniqueNode.node)
 
         // [A, B], join B
-        discovery.sendNext(.success([ExampleK8sInstance(node: A.uniqueNode.node), ExampleK8sInstance(node: B.uniqueNode.node)]))
+        discovery.sendNext(.success([ExampleK8sInstance(node: self.A.uniqueNode.node), ExampleK8sInstance(node: self.B.uniqueNode.node)]))
         guard case .command(.handshakeWith(let node2)) = try clusterProbe.expectMessage() else {
             throw testKit.fail(line: #line - 1)
         }
-        node2.shouldEqual(B.uniqueNode.node)
+        node2.shouldEqual(self.B.uniqueNode.node)
         try clusterProbe.expectNoMessage(for: .milliseconds(300)) // i.e. it should not send another join for `A` we already did that
     }
-
 }
 
 class TestTriggeredServiceDiscovery<Service: Hashable, Instance: Hashable>: ServiceDiscovery {
-
     private(set) var defaultLookupTimeout: DispatchTimeInterval = .seconds(3)
 
     let lock: _Mutex = .init()
 
-    var onNext: (Result<[Instance], Error>) -> () = { _ in () }
-    var onComplete: (CompletionReason) -> () = { _ in () }
+    var onNext: (Result<[Instance], Error>) -> Void = { _ in () }
+    var onComplete: (CompletionReason) -> Void = { _ in () }
 
-    let subscribed: BlockingReceptacle<()> = .init()
+    let subscribed: BlockingReceptacle<Void> = .init()
 
-    func lookup(_ service: Service, deadline: DispatchTime?, callback: @escaping (Result<[Instance], Error>) -> ()) {
+    func lookup(_ service: Service, deadline: DispatchTime?, callback: @escaping (Result<[Instance], Error>) -> Void) {
         fatalError("Not used")
     }
 
     func subscribe(
         to service: Service,
-        onNext nextResultHandler: @escaping (Result<[Instance], Error>) -> (),
-        onComplete completionHandler: @escaping (CompletionReason) -> ()
+        onNext nextResultHandler: @escaping (Result<[Instance], Error>) -> Void,
+        onComplete completionHandler: @escaping (CompletionReason) -> Void
     ) -> CancellationToken {
         self.lock.synchronized {
             self.onNext = nextResultHandler

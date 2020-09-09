@@ -565,6 +565,10 @@ public struct Node: Hashable {
     public init(systemName: String, host: String, port: Int) {
         self.init(protocol: "sact", systemName: systemName, host: host, port: port)
     }
+
+    public init(host: String, port: Int) {
+        self.init(protocol: "sact", systemName: "", host: host, port: port)
+    }
 }
 
 extension Node: CustomStringConvertible, CustomDebugStringConvertible {
