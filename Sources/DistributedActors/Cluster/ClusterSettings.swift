@@ -15,6 +15,7 @@
 import Logging
 import NIO
 import NIOSSL
+import ServiceDiscovery
 import SWIM
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -38,6 +39,9 @@ public struct ClusterSettings {
     /// If `true` the ActorSystem start the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
+
+    /// If configured, the system will periodically
+    public var discovery: ServiceDiscoverySettings?
 
     /// Hostname used to accept incoming connections from other nodes
     public var bindHost: String {
@@ -187,12 +191,45 @@ public struct ClusterSettings {
         self.node = node
         self.nid = UniqueNodeID.random()
         self.tls = tls
-
         self.swim = SWIM.Settings()
         self.swim.unreachability = .enabled
         if node.systemName != "" {
             self.swim.metrics.systemName = node.systemName
         }
         self.swim.metrics.labelPrefix = "cluster.swim"
+        self.discovery = nil
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Cluster Service Discovery
+
+public struct ServiceDiscoverySettings {
+    internal let implementation: Any
+    private let _subscribe: (@escaping (Result<[Node], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken
+
+    public init<Discovery, S>(_ implementation: Discovery, service: S)
+        where Discovery: ServiceDiscovery, Discovery.Instance == Node,
+        S == Discovery.Service {
+        self.implementation = implementation
+        self._subscribe = { onNext, onComplete in
+            implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
+        }
+    }
+
+    public init<Discovery, S>(_ implementation: Discovery, service: S, mapInstanceToNode transformer: @escaping (Discovery.Instance) throws -> Node)
+        where Discovery: ServiceDiscovery,
+        S == Discovery.Service {
+        let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Node> = implementation.mapInstance(transformer)
+        self.implementation = mappedDiscovery
+        self._subscribe = { onNext, onComplete in
+            mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
+        }
+    }
+
+    /// Similar to `ServiceDiscovery.subscribe` however it allows the handling of the listings to be generic and handled by the actor system.
+    /// This function is only intended for internal use byt the `DiscoveryShell`.
+    func subscribe(onNext nextResultHandler: @escaping (Result<[Node], Error>) -> Void, onComplete completionHandler: @escaping (CompletionReason) -> Void) -> CancellationToken {
+        self._subscribe(nextResultHandler, completionHandler)
     }
 }
