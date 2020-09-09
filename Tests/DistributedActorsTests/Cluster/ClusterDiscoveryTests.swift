@@ -98,6 +98,25 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
         node2.shouldEqual(self.B.uniqueNode.node)
         try clusterProbe.expectNoMessage(for: .milliseconds(300)) // i.e. it should not send another join for `A` we already did that
     }
+
+    func test_discovery_stoppingActor_shouldCancelSubscription() throws {
+        let discovery = TestTriggeredServiceDiscovery<String, Node>()
+        let settings = ServiceDiscoverySettings(discovery, service: "example")
+        let clusterProbe = testKit.spawnTestProbe(expecting: ClusterShell.Message.self)
+        let ref = try system.spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
+
+        discovery.subscribed.wait()
+
+        // [A], join A
+        discovery.sendNext(.success([self.A.uniqueNode.node]))
+        guard case .command(.handshakeWith(let node1)) = try clusterProbe.expectMessage() else {
+            throw testKit.fail(line: #line - 1)
+        }
+        node1.shouldEqual(self.A.uniqueNode.node)
+
+        ref._sendSystemMessage(.stop)
+        _ = discovery.cancelled.wait(atMost: .seconds(3))
+    }
 }
 
 class TestTriggeredServiceDiscovery<Service: Hashable, Instance: Hashable>: ServiceDiscovery {
@@ -109,6 +128,7 @@ class TestTriggeredServiceDiscovery<Service: Hashable, Instance: Hashable>: Serv
     var onComplete: (CompletionReason) -> Void = { _ in () }
 
     let subscribed: BlockingReceptacle<Void> = .init()
+    let cancelled: BlockingReceptacle<CompletionReason> = .init()
 
     func lookup(_ service: Service, deadline: DispatchTime?, callback: @escaping (Result<[Instance], Error>) -> Void) {
         fatalError("Not used")
@@ -123,7 +143,9 @@ class TestTriggeredServiceDiscovery<Service: Hashable, Instance: Hashable>: Serv
             self.onNext = nextResultHandler
             self.onComplete = completionHandler
             subscribed.offerOnce(())
-            return .init()
+            return .init(completionHandler: { reason in
+                self.cancelled.offerOnce(reason)
+            })
         }
     }
 

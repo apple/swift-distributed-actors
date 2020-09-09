@@ -54,12 +54,13 @@ class ClusterDocExamples: XCTestCase {
 
         // tag::discovery-joining-config[]
         let system = ActorSystem("DiscoveryJoining") { settings in
-            settings.cluster.discovery = .init(
+            settings.cluster.discovery = ServiceDiscoverySettings(
                 SomeSpecificServiceDiscovery( /* configuration */ ),
                 service: "my-service" // `Service` type aligned with what SomeSpecificServiceDiscovery expects
             )
         }
         // end::discovery-joining-config[]
+        _ = system
     }
 
     func example_discovery_joining_seedNodes_2() {
@@ -83,7 +84,7 @@ class ClusterDocExamples: XCTestCase {
         }
         // tag::discovery-joining-config-2[]
         let system = ActorSystem("DiscoveryJoining") { settings in
-            settings.cluster.discovery = .init(
+            settings.cluster.discovery = ServiceDiscoverySettings(
                 SomeGenericServiceDiscovery( /* configuration */ ), // <1>
                 service: "my-service",
                 mapInstanceToNode: { (instance: SomeGenericServiceDiscovery.Instance) -> Node in // <2>
@@ -92,6 +93,7 @@ class ClusterDocExamples: XCTestCase {
             )
         }
         // end::discovery-joining-config-2[]
+        _ = system
     }
 
     func example_subscribe_events_apply() throws {

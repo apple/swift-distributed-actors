@@ -204,14 +204,15 @@ public struct ClusterSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster Service Discovery
 
+/// Configure initial contact point discovery to use a `ServiceDiscovery` implementation.
 public struct ServiceDiscoverySettings {
-    internal let implementation: Any
+    internal let implementation: AnyServiceDiscovery
     private let _subscribe: (@escaping (Result<[Node], Error>) -> Void, @escaping (CompletionReason) -> Void) -> CancellationToken
 
     public init<Discovery, S>(_ implementation: Discovery, service: S)
         where Discovery: ServiceDiscovery, Discovery.Instance == Node,
         S == Discovery.Service {
-        self.implementation = implementation
+        self.implementation = AnyServiceDiscovery(implementation)
         self._subscribe = { onNext, onComplete in
             implementation.subscribe(to: service, onNext: onNext, onComplete: onComplete)
         }
@@ -221,7 +222,7 @@ public struct ServiceDiscoverySettings {
         where Discovery: ServiceDiscovery,
         S == Discovery.Service {
         let mappedDiscovery: MapInstanceServiceDiscovery<Discovery, Node> = implementation.mapInstance(transformer)
-        self.implementation = mappedDiscovery
+        self.implementation = AnyServiceDiscovery(mappedDiscovery)
         self._subscribe = { onNext, onComplete in
             mappedDiscovery.subscribe(to: service, onNext: onNext, onComplete: onComplete)
         }
