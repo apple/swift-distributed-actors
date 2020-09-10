@@ -152,7 +152,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
         // any additional messages
         let terminated = try p.expectMessage()
         (terminated.address.name == "stopperOne" || terminated.address.name == "stopperTwo").shouldBeTrue()
-        try p.expectNoMessage(for: .seconds(2))
+        try p.expectNoMessage(for: .milliseconds(500))
     }
 
     class SignalToStringInterceptor<Message: ActorMessage>: Interceptor<Message> {
