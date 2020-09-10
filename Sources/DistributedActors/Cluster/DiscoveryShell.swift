@@ -12,9 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import Logging
-import NIO
 import ServiceDiscovery
 
 final class DiscoveryShell {

@@ -174,8 +174,9 @@ as a _replacement_ we speed up recovery of the cluster, by not having to wait fo
 It is also possible to make use of https://github.com/apple/swift-service-discovery[Swift Service Discovery] to automatically
 locate and `join` cluster nodes.
 
-Thanks to the Service Discovery API having various implementations, ranging from static files, DNS records to Amazon or Kubernetes APIs.
-The seed node discovery can be enabled by configuring the system's api:ServiceDiscoverySettings[struct], as follows:
+Thanks to the Service Discovery API having various implementations, you should be able to pick an existing
+implementation to suit your project's needs. The seed node discovery can be enabled by configuring the system's
+api:ServiceDiscoverySettings[struct], as follows:
 
 [source]
 ----
@@ -200,10 +201,10 @@ receive pushed information whenever the membership changes.
 NOTE: Note that discovery is not the same as issuing `.down`, and the removal of a node from the discovery service will _not_
   automatically remove it from the cluster. +
   +
-  If you want to defer all responsibility for listing up/down nodes to an external system, you can do so as well.
-  In order to handle joining nodes, configure the discovery system, and in order to hand marking nodes as down implement a api:DowningStrategy[protocol],
-  in terms of the discovery mechanism of your choice. You may want to give removed nodes a certain grace period before calling `cluster.down(nodeNotInDiscoveryAnymore)`,
-in order to prevent pruning nodes too aggressively, as well as consider if you want to keep or remove the membership and failure detection mechanisms offered by the cluster by default (e.g. disabling the SWIM failure detector).
+  You _can_ however configure your actor system to do this, by issuing `system.cluster.down(node)` whenever a node is noticed to be removed
+  from service discovery. If you would like to take this approach, you may want implement a api:DowningStrategy[protocol],
+  in terms of the discovery mechanism of your choice, as well as consider if you want to keep or remove the membership
+  and failure detection mechanisms offered by the cluster by default (e.g. disabling the SWIM failure detector).
 
 
 ==== Moving nodes from .joining to .up
