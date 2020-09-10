@@ -45,7 +45,10 @@ final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
         switch signal {
         case let terminated as Signals.Terminated:
             self.probe.tell(terminated) // we forward all termination signals to someone
+        case is Signals.PostStop:
+            () // ok
         default:
+            fatalError("Other signal: \(signal)")
             ()
         }
         return try target.interpretSignal(context: context, signal: signal)
@@ -119,7 +122,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
 
         let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
-        let spawnSomeStoppers: Behavior<String> = .setup { context in
+        let spawnSomeStoppers = Behavior<String>.setup { context in
             let one: ActorRef<String> = try context.spawnWatch(
                 "stopperOne",
                 .receiveMessage { _ in
@@ -149,7 +152,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
         // any additional messages
         let terminated = try p.expectMessage()
         (terminated.address.name == "stopperOne" || terminated.address.name == "stopperTwo").shouldBeTrue()
-        try p.expectNoMessage(for: .milliseconds(100))
+        try p.expectNoMessage(for: .seconds(2))
     }
 
     class SignalToStringInterceptor<Message: ActorMessage>: Interceptor<Message> {
@@ -165,7 +168,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
         }
     }
 
-    func test_interceptor_shouldRemainWHenReturningStoppingWithPostStop() throws {
+    func test_interceptor_shouldRemainWhenReturningStoppingWithPostStop() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .receiveMessage { _ in

@@ -143,11 +143,10 @@ internal struct DeathWatch<Message: ActorMessage> {
     // MARK: perform watch/unwatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    public mutating func watch<Watchee>(
+    mutating func watch<Watchee>(
         watchee: Watchee,
         with terminationMessage: Message?,
-        myself watcher: ActorRef<Message>,
-        parent: AddressableActorRef,
+        myself watcher: ActorShell<Message>,
         file: String, line: UInt
     ) where Watchee: DeathWatchable {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
@@ -155,15 +154,6 @@ internal struct DeathWatch<Message: ActorMessage> {
 
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard addressableWatchee.address != watcher.address else {
-            return
-        }
-
-        guard addressableWatchee.address != parent.address else {
-            // No need to store the parent in watchedBy, since we ALWAYS let the parent know about termination
-            // and do so by sending an ChildTerminated, which is a sub class of Terminated.
-            //
-            // What matters more is that the parent stores the child in its own `watching` -- since thanks to that
-            // it knows if it has to execute an DeathPact when the child terminates.
             return
         }
 
@@ -175,13 +165,23 @@ internal struct DeathWatch<Message: ActorMessage> {
 
             return
         } else {
-            // not yet watching
-            addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
+            // not yet watching, so let's add it:
             self.watching[addressableWatchee] = OnTerminationMessage(customize: terminationMessage)
+
+            if !watcher.children.contains(identifiedBy: watchee.asAddressable.address) {
+                // We ONLY send the watch message if it is NOT our own child;
+                //
+                // Because a child ALWAYS sends a .childTerminated to its parent on termination, so there is no need to watch it again,
+                // other than _us_ remembering that we issued such watch. A child can also never be remote, so the node deathwatcher does not matter either.
+                //
+                // A childTerminated is transformed into `Signals.ChildTerminated` which subclasses `Signals.Terminated`,
+                // so this way we achieve exactly one termination notification already.
+                addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: watcher.asAddressable), file: file, line: line)
+            }
 
             // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
             if addressableWatchee.address.uniqueNode.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
-                self.subscribeNodeTerminatedEvents(myself: watcher, watchedAddress: addressableWatchee.address, file: file, line: line)
+                self.subscribeNodeTerminatedEvents(myself: watcher.myself, watchedAddress: addressableWatchee.address, file: file, line: line)
             }
         }
     }
@@ -210,10 +210,19 @@ internal struct DeathWatch<Message: ActorMessage> {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: react to watch or unwatch signals
 
-    public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: ActorRef<Message>) {
+    public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: ActorRef<Message>, parent: AddressableActorRef) {
         guard watcher.address != myself.address else {
             traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
                 "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
+            return
+        }
+
+        guard watcher != parent else {
+            // This is fairly defensive, as the parent should already know to never send such message, but let's better be safe than sorry.
+            //
+            // no need to become watched by parent, we always notify our parent with `childTerminated` anyway already
+            // so if we added it also to `watchedBy` we would potentially send terminated twice: terminated and childTerminated,
+            // which is NOT good -- we only should notify it once, specifically with the childTerminated signal handled by the ActorShell itself.
             return
         }
 
@@ -283,7 +292,7 @@ internal struct DeathWatch<Message: ActorMessage> {
         traceLog_DeathWatch("[\(myself)] notifyWatchers that we are terminating. Watchers: \(self.watchedBy)...")
 
         for watcher in self.watchedBy {
-            traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died...")
+            traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died")
             watcher._sendSystemMessage(.terminated(ref: AddressableActorRef(myself), existenceConfirmed: true), file: #file, line: #line)
         }
     }

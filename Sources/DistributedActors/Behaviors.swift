@@ -125,7 +125,7 @@ extension Behavior {
                 if signal is Signals.PostStop {
                     try postStop(context)
                 }
-                return .same // will be ignored
+                return .stop // will be ignored
             },
             reason: .stopMyself
         )

@@ -396,6 +396,43 @@ final class DeathWatchTests: ActorSystemXCTestCase {
 
     struct TakePoisonError: Error {}
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Watching child actors
+
+    func test_ensureOnlySingleTerminatedSignal_emittedByWatchedChildDies() throws {
+        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe()
+        let pp: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+
+        let spawnSomeStoppers = Behavior<String>.setup { context in
+            let one: ActorRef<String> = try context.spawnWatch(
+                "stopper",
+                .receiveMessage { _ in
+                    .stop
+                }
+            )
+            one.tell("stop")
+
+            return .same
+        }.receiveSignal { _, signal in switch signal {
+        case let terminated as Signals.Terminated:
+            p.tell(terminated)
+        default:
+            () // ok
+        }
+        pp.tell("\(signal)")
+        return .same // ignore the child death, remain alive
+        }
+
+        let _: ActorRef<String> = try system.spawn("parent", spawnSomeStoppers)
+
+        let terminated = try p.expectMessage()
+        terminated.address.path.shouldEqual(try! ActorPath._user.appending("parent").appending("stopper"))
+        terminated.existenceConfirmed.shouldBeTrue()
+        terminated.nodeTerminated.shouldBeFalse()
+        terminated.shouldBe(Signals.ChildTerminated.self)
+        try p.expectNoMessage(for: .milliseconds(200))
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Watching dead letters ref
 
