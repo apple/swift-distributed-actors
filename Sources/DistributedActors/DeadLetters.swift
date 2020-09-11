@@ -206,8 +206,8 @@ public final class DeadLetterOffice {
             "Dead letter was not delivered \(recipientString)",
             metadata: { () -> Logger.Metadata in
                 // TODO: more metadata (from Envelope) (e.g. sender)
-                if !recipientString.isEmpty {
-                    metadata["deadLetter/recipient"] = "\(recipientString)"
+                if let recipient = deadLetter.recipient?.detailedDescription {
+                    metadata["deadLetter/recipient"] = "\(recipient)"
                 }
                 metadata["deadLetter/location"] = "\(file):\(line)"
                 metadata["deadLetter/message"] = "\(deadLetter.message)"

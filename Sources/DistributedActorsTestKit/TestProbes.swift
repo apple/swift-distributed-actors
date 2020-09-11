@@ -20,6 +20,7 @@ import XCTest
 internal enum ActorTestProbeCommand<M> {
     case watchCommand(who: AddressableActorRef, file: String, line: UInt)
     case unwatchCommand(who: AddressableActorRef)
+    case forwardCommand(send: () -> Void)
     case stopCommand
 
     case realMessage(message: M)
@@ -113,11 +114,15 @@ public class ActorTestProbe<Message: ActorMessage> {
 
             // probe commands:
             case .watchCommand(let who, let file, let line):
-                cell.deathWatch.watch(watchee: who, with: nil, myself: context.myself, parent: cell._parent, file: file, line: line)
+                cell.deathWatch.watch(watchee: who, with: nil, myself: context._downcastUnsafe, file: file, line: line)
                 return .same
 
             case .unwatchCommand(let who):
                 cell.deathWatch.unwatch(watchee: who, myself: context.myself)
+                return .same
+
+            case .forwardCommand(let send):
+                send()
                 return .same
 
             case .stopCommand:
@@ -654,6 +659,17 @@ extension ActorTestProbe {
     public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
         self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.asAddressable, file: file, line: line))
         return watchee
+    }
+
+    /// Instructs the probe to send a message on our behalf, this is useful to enforce ordering e.g. when the probe has to perform a watch,
+    /// followed by a message send and we want to ensure that the watch has been processed -- we can do so by forwarding a message through
+    /// the probe, which ensures ordering between the watch being sent and the message sent just now.
+    ///
+    /// Without this it may happen that we asked the probe to watch an actor, and send a message to the actor directly,
+    /// and our direct message arrives first, before the watch at the destination, causing potentially confusing behavior
+    /// in some very ordering delicate testing scenarios.
+    public func forward<Message>(_ message: Message, to target: ActorRef<Message>, file: String = #file, line: UInt = #line) where Message: Codable {
+        self.internalRef.tell(ProbeCommands.forwardCommand(send: { () in target.tell(message, file: file, line: line) }))
     }
 
     /// Instructs this probe to unwatch the passed in reference.

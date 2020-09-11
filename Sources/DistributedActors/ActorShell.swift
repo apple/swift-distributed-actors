@@ -33,8 +33,10 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     @usableFromInline
     var behavior: Behavior<Message>
 
+    @usableFromInline
     let _parent: AddressableActorRef
 
+    @usableFromInline
     let _address: ActorAddress
 
     let _props: Props
@@ -659,7 +661,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         with terminationMessage: Message? = nil,
         file: String = #file, line: UInt = #line
     ) -> Watchee where Watchee: DeathWatchable {
-        self.deathWatch.watch(watchee: watchee, with: terminationMessage, myself: self.myself, parent: self._parent, file: file, line: line)
+        self.deathWatch.watch(watchee: watchee, with: terminationMessage, myself: self, file: file, line: line)
         return watchee
     }
 
@@ -780,7 +782,7 @@ extension ActorShell {
     @inlinable internal func interpretSystemWatch(watcher: AddressableActorRef) {
         if self.behavior.isStillAlive {
             self.instrumentation.actorWatchReceived(watchee: self.address, watcher: watcher.address)
-            self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
+            self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself, parent: self._parent)
         } else {
             // so we are in the middle of terminating already anyway
             watcher._sendSystemMessage(.terminated(ref: self.asAddressable, existenceConfirmed: true))
