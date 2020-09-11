@@ -63,31 +63,33 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() throws {
-        let (local, remote) = setUpPair { settings in
-            settings.serialization.register(SerializationTestMessage.self)
-            settings.serialization.register(EchoTestMessage.self)
-        }
-
-        let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
-            .anonymous,
-            .receiveMessage { message in
-                probeOnRemote.tell("forwarded:\(message)")
-                return .same
+        try shouldNotThrow {
+            let (local, remote) = setUpPair { settings in
+                settings.serialization.register(SerializationTestMessage.self)
+                settings.serialization.register(EchoTestMessage.self)
             }
-        )
 
-        local.cluster.join(node: remote.cluster.uniqueNode.node)
+            let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
+            let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+                .anonymous,
+                .receiveMessage { message in
+                    probeOnRemote.tell("forwarded:\(message)")
+                    return .same
+                }
+            )
 
-        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+            local.cluster.join(node: remote.cluster.uniqueNode.node)
 
-        let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: refOnRemoteSystem.address, on: remote)
-        nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
+            try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
-        try probeOnRemote.expectNoMessage(for: .milliseconds(100))
+            let nonCodableResolvedRef = self.resolveRef(local, type: SerializationTestMessage.self, address: refOnRemoteSystem.address, on: remote)
+            nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
 
-        nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
-        try probeOnRemote.expectMessage("forwarded:SerializationTestMessage")
+            try probeOnRemote.expectNoMessage(for: .milliseconds(100))
+
+            nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
+            try probeOnRemote.expectMessage("forwarded:SerializationTestMessage")
+        }
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() throws {
