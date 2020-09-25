@@ -141,7 +141,7 @@ extension Serialization {
             return _typeName(messageType)
         }
         #else
-        if #available(macOS 10.16, iOS 14.0, *) {
+        /*if #available(macOS 10.16, iOS 14.0, *) {
             // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
             // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
             // to be deserialized (thus, we can disallow decoding random messages for security).
@@ -153,9 +153,9 @@ extension Serialization {
             } else {
                 return _typeName(messageType)
             }
-        } else {
+        } else {*/
             return _typeName(messageType)
-        }
+        //}
         #endif // os
         #else
         return _typeName(messageType)
