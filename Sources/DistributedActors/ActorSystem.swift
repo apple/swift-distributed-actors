@@ -390,6 +390,11 @@ public final class ActorSystem {
             return Shutdown(receptacle: self.shutdownReceptacle)
         }
 
+        /// Down this member as part of shutting down; it may have enough time to notify other nodes on an best effort basis.
+        if let myselfMember = self.cluster.membershipSnapshot.uniqueMember(self.cluster.uniqueNode) {
+            self.cluster.down(member: myselfMember)
+        }
+
         self.settings.plugins.stopAll(self)
 
         queue.async {
