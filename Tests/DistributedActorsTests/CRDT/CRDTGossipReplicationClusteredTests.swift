@@ -220,7 +220,7 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
 
     func test_gossip_shouldEventuallyStopSpreading() throws {
         let configure: (inout ActorSystemSettings) -> Void = { settings in
-            settings.crdt.gossipInterval = .milliseconds(300)
+            settings.crdt.gossipInterval = .milliseconds(200)
             settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
         }
         let first = self.setUpNode("first", configure)
@@ -259,7 +259,7 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
             let logs: [CapturedLogMessage] = self.capturedLogs(of: first)
                 .grep("Received gossip", metadata: ["gossip/identity": "counter"])
 
-            guard logs.count < 5 else {
+            guard logs.count < 10 else {
                 throw testKit.error("Received gossip more times than expected! Logs: \(lineByLine: logs)")
             }
         }
