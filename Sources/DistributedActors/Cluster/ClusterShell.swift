@@ -391,7 +391,8 @@ extension ClusterShell {
             // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
-                try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
+                let leadership = try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
+                context.watch(leadership) // if leadership fails fomr some reason, we are in trouble and need to know about it
             }
 
             // .down decisions made by:
@@ -400,7 +401,6 @@ extension ClusterShell {
                 try context.spawn(shell.naming, shell.behavior)
             }
 
-            // FIXME: all the ordering dance with creating of state and the address...
             context.log.info("Binding to: [\(uniqueBindAddress)]")
 
             let chanElf = self.bootstrapServerSide(
@@ -619,7 +619,7 @@ extension ClusterShell {
             return self.ready(state: state)
         }
 
-        return .setup { context in
+        return Behavior<Message>
             .receive { context, message in
                 switch message {
                 case .command(let command): return receiveShellCommand(context, command: command)
@@ -629,7 +629,11 @@ extension ClusterShell {
                 case .gossipFromGossiper(let gossip): return receiveMembershipGossip(context, state, gossip: gossip)
                 }
             }
-        }
+            .receiveSpecificSignal(Signals.Terminated.self) { context, signal in
+                context.log.error("Cluster actor \(signal.address) terminated unexpectedly! Will initiate cluster shutdown.")
+                context.system.shutdown()
+                return .same // the system shutdown will cause downing which we may want to still handle, and then will stop us
+            }
     }
 
     func tryConfirmDeadToSWIM(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
@@ -1182,6 +1186,11 @@ extension ClusterShell {
 
 extension ClusterShell {
     fileprivate func onShutdownCommand(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
+        // we exit the death-pact with any children we spawned, even if they fail now, we don't mind because we're shutting down
+        context.children.forEach { ref in
+            context.unwatch(ref)
+        }
+
         let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
         return context.awaitResult(of: state.channel.close(), timeout: context.system.settings.cluster.unbindTimeout) {
             // FIXME: also close all associations (!!!)
