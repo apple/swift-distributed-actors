@@ -121,14 +121,16 @@ final class DowningClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         // collect all events regarding the expectedDownNode's membership lifecycle
-        // (the timeout is fairly large here to tolerate slow CI and variations how the events get propagated, normally they propagate quite quickly)
+        // - the timeout is fairly large here to tolerate slow CI and variations how the events get propagated, normally they propagate quite quickly
+        // - we only check for "did it become down (or was it removed even already), because that's the purpose of these tests
+        //   - we have more specific tests which ensure that a down is issued followed by a removal (and here it happens usually as well,
+        //     but in order to de-sensitivize the test to timing, we only check for what we actually care about
+        // note also that technically we may only "so far" only get a down, and that's okay, the removal would follow soon
         let eventsOnOther = try eventsProbeOther.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: otherNotDownPairSystem))
-        eventsOnOther.shouldContain(where: { change in change.status.isDown && (change.previousStatus == .joining || change.previousStatus == .up) })
-        eventsOnOther.shouldContain(Cluster.MembershipChange(node: expectedDownNode, previousStatus: .down, toStatus: .removed))
+        eventsOnOther.shouldContain(where: { change in change.status.isAtLeast(.down) })
 
         let eventsOnThird = try eventsProbeThird.fishFor(Cluster.MembershipChange.self, within: .seconds(30), expectedDownMemberEventsFishing(on: thirdNeverDownSystem))
-        eventsOnThird.shouldContain(where: { change in change.status.isDown && (change.previousStatus == .joining || change.previousStatus == .up) })
-        eventsOnThird.shouldContain(Cluster.MembershipChange(node: expectedDownNode, previousStatus: .down, toStatus: .removed))
+        eventsOnThird.shouldContain(where: { change in change.status.isAtLeast(.down) })
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
