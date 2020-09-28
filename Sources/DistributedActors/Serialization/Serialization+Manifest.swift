@@ -132,34 +132,7 @@ extension Serialization {
     @inlinable
     @inline(__always)
     internal static func getTypeHint(_ messageType: Any.Type) -> String {
-        #if compiler(>=5.3)
-        #if os(Linux)
-        let (ptr, count) = _getMangledTypeName(messageType)
-        if count > 0 {
-            return String(cString: ptr)
-        } else {
-            return _typeName(messageType)
-        }
-        #else
-        if #available(macOS 10.16, iOS 14.0, *) {
-            // This is "special". A manifest containing a mangled type name can be summoned if the type remains unchanged
-            // on a receiving node. Summoning a type is basically `_typeByName` with extra checks that this type should be allowed
-            // to be deserialized (thus, we can disallow decoding random messages for security).
-            //
-            // We would eventually want "codingTypeName" or something similar
-            let (ptr, count) = _getMangledTypeName(messageType)
-            if count > 0 {
-                return String(cString: ptr)
-            } else {
-                return _typeName(messageType)
-            }
-        } else {
-            return _typeName(messageType)
-        }
-        #endif // os
-        #else
-        return _typeName(messageType)
-        #endif // swift-version
+        _typeName(messageType)
     }
 
     /// Summon a `Type` from a manifest whose `hint` contains a mangled name.
