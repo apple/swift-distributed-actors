@@ -52,7 +52,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
             return member
         } else {
             fatalError("""
-            ClusterShellState.localMember was nil! This should be impossible by construction, because a node ALWAYS knows about itself. 
+            ClusterShellState.selfMember was nil! This should be impossible by construction, because a node ALWAYS knows about itself. 
             Please report a bug on the distributed-actors issue tracker. Details:
             Membership: \(self.membership)
             Settings: \(self.settings)
