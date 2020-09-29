@@ -29,14 +29,14 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
 
     func test_handshake_happyPath() throws {
         let serverKernel = ClusterShellState.makeTestMock(side: .server)
-        let serverAddress = serverKernel.localNode
+        let serverAddress = serverKernel.selfNode
 
         let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 2222
         }
 
         // client
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.localNode, connectTo: serverAddress.node)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.node)
         let offer = clientInitiated.makeOffer()
 
         // server
@@ -55,11 +55,11 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
 
         // then
 
-        serverCompleted.localNode.shouldEqual(serverKernel.localNode)
-        serverCompleted.remoteNode.shouldEqual(clientKernel.localNode)
+        serverCompleted.localNode.shouldEqual(serverKernel.selfNode)
+        serverCompleted.remoteNode.shouldEqual(clientKernel.selfNode)
 
-        clientCompleted.remoteNode.shouldEqual(serverKernel.localNode)
-        clientCompleted.localNode.shouldEqual(clientKernel.localNode)
+        clientCompleted.remoteNode.shouldEqual(serverKernel.selfNode)
+        clientCompleted.localNode.shouldEqual(clientKernel.selfNode)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -67,14 +67,14 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
 
     func test_negotiate_server_shouldAcceptClient_newerPatch() throws {
         let serverKernel = ClusterShellState.makeTestMock(side: .server)
-        let serverAddress = serverKernel.localNode
+        let serverAddress = serverKernel.selfNode
 
         let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 2222
             settings._protocolVersion.patch += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.localNode, connectTo: serverAddress.node)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.node)
         let offer = clientInitiated.makeOffer()
 
         // server
@@ -92,14 +92,14 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
 
     func test_negotiate_server_shouldRejectClient_newerMajor() throws {
         let serverKernel = ClusterShellState.makeTestMock(side: .server)
-        let serverAddress = serverKernel.localNode
+        let serverAddress = serverKernel.selfNode
 
         let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 2222
             settings._protocolVersion.major += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.localNode, connectTo: serverAddress.node)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.node)
         let offer = clientInitiated.makeOffer()
 
         // server
@@ -123,14 +123,14 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
 
     func test_onTimeout_shouldReturnNewHandshakeOffersMultipleTimes() throws {
         let serverKernel = ClusterShellState.makeTestMock(side: .server)
-        let serverAddress = serverKernel.localNode
+        let serverAddress = serverKernel.selfNode
 
         let clientKernel = ClusterShellState.makeTestMock(side: .client) { settings in
             settings.node.port = 8228
         }
 
         // client
-        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.localNode, connectTo: serverAddress.node)
+        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localNode: clientKernel.selfNode, connectTo: serverAddress.node)
 
         guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")

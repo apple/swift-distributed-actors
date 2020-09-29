@@ -33,15 +33,15 @@ final class ClusterLeaderActionsTests: XCTestCase {
     var stateC: ClusterShellState!
 
     var nodeA: UniqueNode {
-        self.stateA.localNode
+        self.stateA.selfNode
     }
 
     var nodeB: UniqueNode {
-        self.stateB.localNode
+        self.stateB.selfNode
     }
 
     var nodeC: UniqueNode {
-        self.stateC.localNode
+        self.stateC.selfNode
     }
 
     override func setUp() {

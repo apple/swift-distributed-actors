@@ -147,7 +147,7 @@ internal struct HandshakeStateMachine {
 
         let offer: Wire.HandshakeOffer
         var boundAddress: UniqueNode {
-            self.state.localNode
+            self.state.selfNode
         }
 
         var protocolVersion: DistributedActors.Version {

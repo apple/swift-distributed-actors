@@ -28,8 +28,9 @@ internal protocol ReadOnlyClusterState {
     var handshakeBackoff: BackoffStrategy { get }
 
     /// Unique address of the current node.
-    var localNode: UniqueNode { get }
-    var localMember: Cluster.Member? { get } // TODO: enforce that we always have the localMember
+    var selfNode: UniqueNode { get }
+    var selfMember: Cluster.Member { get }
+
     var settings: ClusterSettings { get }
 }
 
@@ -45,9 +46,18 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     let channel: Channel
 
-    let localNode: UniqueNode
-    var localMember: Cluster.Member? {
-        self.membership.uniqueMember(self.localNode)
+    let selfNode: UniqueNode
+    var selfMember: Cluster.Member {
+        if let member = self.membership.uniqueMember(self.selfNode) {
+            return member
+        } else {
+            fatalError("""
+            ClusterShellState.localMember was nil! This should be impossible by construction, because a node ALWAYS knows about itself. 
+            Please report a bug on the distributed-actors issue tracker. Details:
+            Membership: \(self.membership)
+            Settings: \(self.settings)
+            """)
+        }
     }
 
     let eventLoopGroup: EventLoopGroup
@@ -58,7 +68,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     let allocator: ByteBufferAllocator
 
-    internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
+    var _handshakes: [Node: HandshakeStateMachine.State] = [:]
 
     let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip>
 
@@ -109,7 +119,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
-        self.localNode = settings.uniqueBindNode
+        self.selfNode = settings.uniqueBindNode
         self._latestGossip = Cluster.MembershipGossip(ownerNode: settings.uniqueBindNode)
 
         self.events = events
@@ -145,7 +155,7 @@ extension ClusterShellState {
 
         let initiated = HandshakeStateMachine.InitiatedState(
             settings: self.settings,
-            localNode: self.localNode,
+            localNode: self.selfNode,
             connectTo: remoteNode
         )
         let handshakeState = HandshakeStateMachine.State.initiated(initiated)
@@ -452,7 +462,7 @@ extension ClusterShellState {
             return .init(applied: changeWasApplied)
         }
 
-        self.log.trace("Membership updated on [\(self.localNode)] by \(event): \(pretty: self.membership)")
+        self.log.trace("Membership updated on [\(self.selfNode)] by \(event): \(pretty: self.membership)")
         return .init(applied: changeWasApplied)
     }
 
