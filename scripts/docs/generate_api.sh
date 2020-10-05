@@ -56,13 +56,13 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     cd "$source_kitten_source_path" && swift build -c release && cd "$root_path"
   fi
   # generate
-#  for module in "${modules[@]}"; do
-##    if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
-#      # always generate, otherwise we miss things when we're iterating on adding docs.
-#      echo "Generating $root_path/.build/sourcekitten/$module.json ..."
-#      "$source_kitten_path/sourcekitten" doc --spm-module "$module" > "$root_path/.build/sourcekitten/$module.json"
-##    fi
-#  done
+  for module in "${modules[@]}"; do
+#    if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
+      # always generate, otherwise we miss things when we're iterating on adding docs.
+      echo "Generating $root_path/.build/sourcekitten/$module.json ..."
+      "$source_kitten_path/sourcekitten" doc --spm-module "$module" > "$root_path/.build/sourcekitten/$module.json"
+#    fi
+  done
 fi
 
 # prep index
