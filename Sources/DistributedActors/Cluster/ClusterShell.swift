@@ -437,7 +437,7 @@ extension ClusterShell {
                     }
                 )
 
-                let state = ClusterShellState(
+                var state = ClusterShellState(
                     settings: clusterSettings,
                     channel: chan,
                     events: self.clusterEvents,
@@ -445,15 +445,14 @@ extension ClusterShell {
                     log: context.log
                 )
 
-                // loop through "self" cluster shell, which in result causes notifying all subscribers about cluster membership change
-                var firstGossip = Cluster.MembershipGossip(ownerNode: state.localNode)
-                _ = firstGossip.membership.join(state.localNode) // change will be put into effect by receiving the "self gossip"
-                firstGossip.incrementOwnerVersion()
-                context.system.cluster.updateMembershipSnapshot(state.membership)
-
-                gossiperControl.update(payload: firstGossip) // ????
-                context.myself.tell(.gossipFromGossiper(firstGossip))
-                // TODO: are we ok if we received another gossip first, not our own initial? should be just fine IMHO
+                // immediately join the owner node (us), as we always should be part of the membership
+                // this immediate join is important in case we immediately get a handshake from other nodes,
+                // and will need to reply to them with our `Member`.
+                if let change = state.latestGossip.membership.join(state.selfNode) {
+                    // always update the snapshot before emitting events
+                    context.system.cluster.updateMembershipSnapshot(state.membership)
+                    self.clusterEvents.publish(.membershipChange(change))
+                }
 
                 return self.ready(state: state)
             }
@@ -539,7 +538,7 @@ extension ClusterShell {
 
         /// Allows processing in one spot, all membership changes which we may have emitted in other places, due to joining, downing etc.
         func receiveChangeMembershipRequest(_ context: ActorContext<Message>, event: Cluster.Event) -> Behavior<Message> {
-            self.tracelog(context, .receive(from: state.localNode.node), message: event)
+            self.tracelog(context, .receive(from: state.selfNode.node), message: event)
             var state = state
 
             // 1) IMPORTANT: We MUST apply and act on the incoming event FIRST, before handling the other events.
@@ -646,7 +645,7 @@ extension ClusterShell {
         guard change.status < .down else {
             return
         }
-        guard change.member.uniqueNode != state.localNode else {
+        guard change.member.uniqueNode != state.selfNode else {
             return
         }
         // TODO: make it cleaner? though we decided to go with manual peer management as the ClusterShell owns it, hm
@@ -672,7 +671,7 @@ extension ClusterShell {
     internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> Behavior<Message> {
         var state = state
 
-        guard remoteNode != state.localNode.node else {
+        guard remoteNode != state.selfNode.node else {
             state.log.debug("Ignoring attempt to handshake with myself; Could have been issued as confused attempt to handshake as induced by discovery via gossip?")
             return .same
         }
@@ -761,28 +760,14 @@ extension ClusterShell {
         _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer
     ) -> Wire.HandshakeReject? {
-        guard let member = state.localMember else {
-            // no local member? this is bad
-            state.log.warning(
-                """
-                Received handshake while no local Cluster.Member available, this may indicate that we were removed form the cluster. 
-                Rejecting handshake
-                """)
-            return .init(
-                version: state.settings.protocolVersion,
-                targetNode: state.localNode,
-                originNode: offer.originNode,
-                reason: "Node cannot be part of cluster, no member available.",
-                whenHandshakeReplySent: nil
-            )
-        }
+        let member = state.selfMember
 
         if member.status.isAtLeast(.leaving) {
             state.log.notice("Received handshake while already [\(member.status)]")
 
             return .init(
                 version: state.settings.protocolVersion,
-                targetNode: state.localNode,
+                targetNode: state.selfNode,
                 originNode: offer.originNode,
                 reason: "Node already leaving cluster.",
                 whenHandshakeReplySent: nil
@@ -1129,7 +1114,7 @@ extension ClusterShell {
     }
 
     private func onRestInPeace(_ context: ActorContext<Message>, _ state: ClusterShellState, intendedNode: UniqueNode, fromNode: UniqueNode) -> Behavior<Message> {
-        let myselfNode = state.localNode
+        let myselfNode = state.selfNode
 
         guard myselfNode == myselfNode else {
             state.log.warning(
@@ -1196,12 +1181,12 @@ extension ClusterShell {
             // FIXME: also close all associations (!!!)
             switch $0 {
             case .success:
-                context.log.info("Unbound server socket [\(addrDesc)], node: \(reflecting: state.localNode)")
+                context.log.info("Unbound server socket [\(addrDesc)], node: \(reflecting: state.selfNode)")
                 self.serializationPool.shutdown()
                 signalOnceUnbound.offerOnce(())
                 return .stop
             case .failure(let err):
-                context.log.warning("Failed while unbinding server socket [\(addrDesc)], node: \(reflecting: state.localNode). Error: \(err)")
+                context.log.warning("Failed while unbinding server socket [\(addrDesc)], node: \(reflecting: state.selfNode). Error: \(err)")
                 self.serializationPool.shutdown()
                 signalOnceUnbound.offerOnce(())
                 throw err
@@ -1259,7 +1244,7 @@ extension ClusterShell {
         // whenever we down a node we must ensure to confirm it to swim, so it won't keep monitoring it forever needlessly
         self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(memberToDown.uniqueNode)))
 
-        if memberToDown.uniqueNode == state.localNode {
+        if memberToDown.uniqueNode == state.selfNode {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
             context.log.warning(

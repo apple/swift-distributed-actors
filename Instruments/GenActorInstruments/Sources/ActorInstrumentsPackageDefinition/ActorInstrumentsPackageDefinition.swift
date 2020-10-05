@@ -19,7 +19,7 @@ import SwiftyInstrumentsPackageDefinition
 
 // package
 fileprivate let packageID = "com.apple.actors.ActorInstruments"
-fileprivate let packageVersion: String = "0.5.0" // TODO: match with project version
+fileprivate let packageVersion: String = "0.6.0" // TODO: match with project version
 fileprivate let packageTitle = "Actors"
 
 // schema
