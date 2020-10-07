@@ -138,7 +138,10 @@ final class ActorSystemMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: SWIM (Cluster) Metrics
 
-    // See: `SWIM.Metrics`
+    // `SWIM.Metrics` are emitted by the SWIM.Instance automatically
+    //
+    // We however need to emit the swim.shell metrics from the peers:
+    let swimShell: SWIM.Metrics.ShellMetrics
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: System Messages
@@ -235,6 +238,12 @@ final class ActorSystemMetrics {
         let actorsLifecycleLabel = settings.makeLabel("actors", "lifecycle")
         self._actors_lifecycle_user = .init(label: actorsLifecycleLabel, positive: [rootUser, dimStart], negative: [rootUser, dimStop])
         self._actors_lifecycle_system = .init(label: actorsLifecycleLabel, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
+
+        // ==== SWIM / Shell ------------------------------------------------
+        var swimSettings = SWIM.Settings()
+        swimSettings.metrics.systemName = settings.systemName
+        swimSettings.metrics.labelPrefix = settings.systemMetricsPrefix
+        self.swimShell = SWIM.Metrics.ShellMetrics(settings: swimSettings)
 
         // ==== Serialization -----------------------------------------------
         self._system_msg_redelivery_buffer = .init(label: settings.makeLabel("system", "redelivery_buffer", "count"))

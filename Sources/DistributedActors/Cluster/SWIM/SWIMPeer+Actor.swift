@@ -14,7 +14,9 @@
 
 import ClusterMembership
 import enum Dispatch.DispatchTimeInterval
+import struct Dispatch.DispatchTime
 import SWIM
+import CoreMetrics
 
 extension SWIM {
     public typealias PeerRef = ActorRef<SWIM.Message>
@@ -47,6 +49,8 @@ extension SWIMPeer {
         context: ActorContext<SWIM.Message>,
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
+        let metrics = context.system.metrics.swimShell
+
         guard let ref = self as? SWIM.Ref else {
             onResponse(.failure(IllegalSWIMPeerTypeError("Expected self to ge \(SWIM.Ref.self) but was: \(self)")))
             return
@@ -54,13 +58,19 @@ extension SWIMPeer {
 
         let promise = context.system._eventLoopGroup.next().makePromise(of: SWIM.PingResponse.self)
 
+        let askStartTime = DispatchTime.now()
+        metrics.messageOutboundCount.increment()
+
         ref.ask(for: SWIM.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.ping(pingOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }._onComplete { (result: Result<SWIM.Message, Error>) in
             switch result {
             case .success(.remote(.pingResponse(let response))):
                 switch response {
-                case .ack, .timeout:
+                case .ack:
+                    metrics.pingResponseTime.recordInterval(since: askStartTime)
+                    promise.succeed(response)
+                case .timeout:
                     promise.succeed(response)
                 case .nack:
                     promise.fail(IllegalSWIMMessageTypeError("Unexpected .nack reply to .ping message! Was: \(response)"))
@@ -86,6 +96,8 @@ extension SWIMPeer {
         context: ActorContext<SWIM.Message>,
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
+        let metrics = context.system.metrics.swimShell
+
         guard let ref = self as? SWIM.Ref else {
             onResponse(.failure(IllegalSWIMPeerTypeError("Expected self to ge \(SWIM.Ref.self) but was: \(self)")))
             return
@@ -97,6 +109,9 @@ extension SWIMPeer {
         }
 
         let promise = context.system._eventLoopGroup.next().makePromise(of: SWIM.PingResponse.self)
+
+        let askStartTime = DispatchTime.now()
+        metrics.messageOutboundCount.increment()
 
         ref.ask(for: SWIM.PingRequestOriginRef.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.pingRequest(target: targetRef, pingRequestOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
@@ -128,13 +143,17 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
         sequenceNumber: SWIM.SequenceNumber,
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
+        let askStartTime = DispatchTime.now()
         self.ask(for: SWIM.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.ping(pingOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }._onComplete { (result: Result<SWIM.Message, Error>) in
             switch result {
             case .success(.remote(.pingResponse(let response))):
                 switch response {
-                case .ack, .timeout:
+                case .ack:
+                    CoreMetrics.Timer(label: "swim.roundTripTime.ping").recordInterval(since: askStartTime)
+                    onResponse(.success(response))
+                case .timeout:
                     onResponse(.success(response))
                 case .nack:
                     onResponse(.failure(IllegalSWIMMessageTypeError("Unexpected .nack reply to .ping message! Was: \(response)")))
@@ -161,11 +180,13 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
             return
         }
 
+        let askStartTime = DispatchTime.now()
         self.ask(for: SWIM.PingRequestOriginRef.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
             SWIM.Message.remote(.pingRequest(target: targetRef, pingRequestOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
         }._onComplete { (result: Result<SWIM.Message, Error>) in
             switch result {
             case .success(.remote(.pingResponse(let response))):
+                CoreMetrics.Timer(label: "swim.roundTripTime.pingRequest").recordInterval(since: askStartTime)
                 onResponse(.success(response))
             case .success(let message):
                 onResponse(.failure(IllegalSWIMMessageTypeError("Expected .ack, but received unexpected reply to .ping: \(message)")))
@@ -175,38 +196,6 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
         }
     }
 }
-
-///// :nodoc:
-// extension ActorRef: SWIMPingOriginPeer where Message == SWIM.PingResponse {
-//    public func ack(
-//        acknowledging sequenceNumber: SWIM.SequenceNumber,
-//        target: SWIMPeer,
-//        incarnation: SWIM.Incarnation,
-//        payload: SWIM.GossipPayload
-//    ) {
-//        guard let targetRef = target as? SWIM.Ref else {
-//            let error = IllegalSWIMPeerTypeError("Expected target to ge \(SWIM.Ref.self) but was: \(target)")
-//            fatalError("\(error)")
-//        }
-//
-//         self.tell(.ack(target: targetRef, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber))
-//    }
-// }
-//
-///// :nodoc:
-// extension ActorRef: SWIMPingRequestOriginPeer where Message == SWIM.PingResponse {
-//    public func nack(
-//        acknowledging sequenceNumber: SWIM.SequenceNumber,
-//        target: SWIMPeer
-//    ) {
-//        guard let targetRef = target as? SWIM.Ref else {
-//            let error = IllegalSWIMPeerTypeError("Expected target to ge \(SWIM.Ref.self) but was: \(target)")
-//            fatalError("\(error)")
-//        }
-//
-//         self.tell(.nack(target: target, sequenceNumber: sequenceNumber))
-//    }
-// }
 
 /// :nodoc:
 extension ActorRef: SWIMPingOriginPeer where Message == SWIM.Message {

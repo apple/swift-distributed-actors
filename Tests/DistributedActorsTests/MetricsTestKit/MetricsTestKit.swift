@@ -204,7 +204,7 @@ public protocol TestMetric {
     var last: (Date, Value)? { get }
 }
 
-public final class TestCounter: TestMetric, CounterHandler, Equatable {
+public final class TestCounter: TestMetric, CounterHandler, Equatable, CustomStringConvertible {
     public let id: String
     public let label: String
     public let dimensions: [(String, String)]
@@ -259,13 +259,16 @@ public final class TestCounter: TestMetric, CounterHandler, Equatable {
             values.last
         }
     }
+    public var description: String {
+        "TestCounter(label: \(label), dimensions: \(dimensions))"
+    }
 
     public static func == (lhs: TestCounter, rhs: TestCounter) -> Bool {
         lhs.id == rhs.id
     }
 }
 
-public final class TestRecorder: TestMetric, RecorderHandler, Equatable {
+public final class TestRecorder: TestMetric, RecorderHandler, Equatable, CustomStringConvertible {
     public let id: String
     public let label: String
     public let dimensions: [(String, String)]
@@ -318,13 +321,16 @@ public final class TestRecorder: TestMetric, RecorderHandler, Equatable {
             _values.last
         }
     }
+    public var description: String {
+        "TestRecorder(label: \(label), dimensions: \(dimensions))"
+    }
 
     public static func == (lhs: TestRecorder, rhs: TestRecorder) -> Bool {
         lhs.id == rhs.id
     }
 }
 
-public final class TestTimer: TestMetric, TimerHandler, Equatable {
+public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringConvertible {
     public let id: String
     public let label: String
     public var displayUnit: TimeUnit?
@@ -387,6 +393,9 @@ public final class TestTimer: TestMetric, TimerHandler, Equatable {
         self.lock.withLock {
             _values.last
         }
+    }
+    public var description: String {
+        "TestTimer(label: \(label), displayUnit: \(displayUnit), dimensions: \(dimensions))"
     }
 
     public static func == (lhs: TestTimer, rhs: TestTimer) -> Bool {
