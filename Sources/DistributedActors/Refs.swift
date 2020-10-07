@@ -251,7 +251,7 @@ extension ActorRef {
         file: String = #file, line: UInt = #line
     ) {
         let deserializationStartTime: DispatchTime?
-        if self._unwrapActorMetrics.active.contains(.deserialization) ?? false {
+        if self._unwrapActorMetrics.active.contains(.deserialization) {
             deserializationStartTime = DispatchTime.now()
         } else {
             deserializationStartTime = nil

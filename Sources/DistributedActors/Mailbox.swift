@@ -165,16 +165,19 @@ internal final class Mailbox<Message: ActorMessage> {
             // not return NULL), so even if messages get processed concurrently, it's safe
             // to decrement here.
             _ = self.decrementMessageCount()
+            self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount)
             return .mailboxFull
         }
 
         guard !oldStatus.isTerminating else {
             _ = self.decrementMessageCount()
+            self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount)
             return .mailboxTerminating
         }
 
         guard !oldStatus.isClosed else {
             _ = self.decrementMessageCount()
+            self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount)
             return .mailboxClosed
         }
 
@@ -182,8 +185,7 @@ internal final class Mailbox<Message: ActorMessage> {
         // whether this was the first activation, to signal the need to enqueue
         // this mailbox.
         self.userMessages.enqueue(envelope)
-
-        self.shell?._system?.metrics.recordMailboxMessageCount(Int(self.status.messageCount))
+        self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount + 1)
 
         if oldStatus.activations == 0, !oldStatus.isSuspended {
             return .needsScheduling
@@ -477,6 +479,7 @@ internal final class Mailbox<Message: ActorMessage> {
         let oldActivations = oldStatus.activations
 
         traceLog_Mailbox(shell.path, "Run complete...")
+        shell.metrics[gauge: .mailboxCount]?.record(status.messageCount - Status(processedActivations).messageCount)
 
         // issue directives to mailbox ---------------------------------------------------------------------------------
         if runResult == .shouldStop {

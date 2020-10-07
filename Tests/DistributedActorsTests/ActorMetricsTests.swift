@@ -54,4 +54,24 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         let gauge = try self.metrics.expectGauge("first.measuredActorGroup.deserialization.size")
         gauge.lastValue?.shouldEqual(6)
     }
+
+    func test_mailboxCount_reportsMetrics() throws {
+        let first = self.setUpNode("first")
+
+        let one: ActorRef<String> = try first.spawn(
+            "measuredActor",
+            props: .metrics(group: "measuredActorGroup", measure: [.mailbox]),
+            Behavior.receive { _, _ in .same }
+        )
+
+        for _ in 0...256 {
+            one.tell("hello")
+        }
+
+        sleep(5)
+        let gauge = try self.metrics.expectGauge("first.measuredActorGroup.mailbox.count")
+        pprint("gauge.values = \(gauge.values)")
+        gauge.values.shouldContain(256) // all messages en-queued
+        gauge.lastValue.shouldEqual(0) // after processing we must always go back to zero
+    }
 }
