@@ -945,6 +945,7 @@ internal protocol AbstractShellProtocol: _ActorTreeTraversable {
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
     var children: Children { get set } // lock-protected
     var asAddressable: AddressableActorRef { get }
+    var _props: Props { get }
 }
 
 extension AbstractShellProtocol {

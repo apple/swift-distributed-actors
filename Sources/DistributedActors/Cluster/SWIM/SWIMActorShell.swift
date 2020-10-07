@@ -30,6 +30,10 @@ internal struct SWIMActorShell {
         self.swim.settings
     }
 
+    var metrics: SWIM.Metrics {
+        self.swim.metrics
+    }
+
     internal init(_ swim: SWIM.Instance, clusterRef: ClusterShell.Ref) {
         self.swim = swim
         self.clusterRef = clusterRef
@@ -41,14 +45,8 @@ internal struct SWIMActorShell {
     /// Initial behavior, kicks off timers and becomes `ready`.
     static func behavior(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) -> Behavior<SWIM.Message> {
         .setup { context in
-            // A bit weird dance, but this way we make the instance use the actor's logger;
-            // This is always what we want inside an actor system anyway;
-            // And at the same time we do use the configured log level for the entire actor: instance and shell
-            var settings = settings
-            context.log.logLevel = settings.logger.logLevel
-            settings.logger = context.log
             let swim = SWIM.Instance(
-                settings: settings,
+                settings: Self.customizeSWIMSettings(settings: settings, context: context),
                 myself: context.myself
             )
             let shell = SWIMActorShell(swim, clusterRef: clusterRef)
@@ -56,6 +54,18 @@ internal struct SWIMActorShell {
 
             return SWIMActorShell.ready(shell: shell)
         }
+    }
+
+    /// Applies some default changes to the SWIM settings.
+    private static func customizeSWIMSettings(settings: SWIM.Settings, context: ActorContext<SWIM.Message>) -> SWIM.Settings {
+        // A bit weird dance, but this way we make the instance use the actor's logger;
+        // This is always what we want inside an actor system anyway;
+        // And at the same time we do use the configured log level for the entire actor: instance and shell
+        var settings = settings
+        context.log.logLevel = settings.logger.logLevel
+        settings.logger = context.log
+        settings.metrics.systemName = context.system.settings.metrics.systemName
+        return settings
     }
 
     static func ready(shell: SWIMActorShell) -> Behavior<SWIM.Message> {
@@ -115,6 +125,8 @@ internal struct SWIMActorShell {
     // MARK: Receiving messages
 
     func receiveRemoteMessage(message: SWIM.RemoteMessage, context: MyselfContext) {
+        self.metrics.shell.messageInboundCount.increment()
+
         switch message {
         case .ping(let replyTo, let payload, let sequenceNumber):
             self.handlePing(context: context, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
@@ -516,6 +528,12 @@ internal struct SWIMActorShell {
 extension SWIMActorShell {
     static let name: String = "swim"
     static let naming: ActorNaming = .unique(SWIMActorShell.name)
+
+    static func props() -> Props {
+        Props
+            ._wellKnown
+            .metrics(group: "swim.shell", measure: [.serialization, .deserialization])
+    }
 
     static let protocolPeriodTimerKey = TimerKey("\(SWIMActorShell.name)/periodic-ping")
 }

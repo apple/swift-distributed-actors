@@ -183,7 +183,11 @@ public struct ClusterSettings {
         self.node = node
         self.nid = UniqueNodeID.random()
         self.tls = tls
+
         self.swim = SWIM.Settings()
         self.swim.unreachability = .enabled
+        if node.systemName != "" {
+            self.swim.metrics.systemName = node.systemName
+        }
     }
 }

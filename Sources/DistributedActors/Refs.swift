@@ -13,7 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
+import Metrics
 import Logging
+import Dispatch
 import struct NIO.ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -137,6 +139,26 @@ extension ActorRef.Personality {
     }
 }
 
+extension ActorRef {
+    // :nodoc: INTERNAL API
+    public var _props: Props? {
+        switch self.personality {
+        case .cell(let cell):
+            return cell.actor?.props
+        case .remote:
+            return nil
+        case .adapter:
+            return nil // FIXME: store and access the target's props here!
+        case .guardian:
+            return nil
+        case .delegate:
+            return nil // FIXME: store and access the target's props here!
+        case .deadLetters:
+            return nil
+        }
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
@@ -169,7 +191,11 @@ public protocol _ReceivesSystemMessages: Codable {
     ///   must be performed in "one go" by `_deserializeDeliver`.
     func _tellOrDeadLetter(_ message: Any, file: String, line: UInt) // TODO: This must die?
 
+    // :nodoc: INTERNAL API
     func _dropAsDeadLetter(_ message: Any, file: String, line: UInt)
+
+    // :nodoc: INTERNAL API
+    var _props: Props? { get }
 
     /// :nodoc: INTERNAL API: This way remoting sends messages
     func _deserializeDeliver(
@@ -247,11 +273,29 @@ extension ActorRef {
         on pool: SerializationPool,
         file: String = #file, line: UInt = #line
     ) {
+        let deserializationStartTime: DispatchTime?
+        if self._props?.metrics.active.contains(.deserialization) ?? false {
+            deserializationStartTime = DispatchTime.now()
+        } else {
+            deserializationStartTime = nil
+        }
+
         pool.deserializeAny(
             from: messageBytes,
             using: manifest,
             recipientPath: self.path,
             callback: .init {
+                if let props = self._props {
+                    props.metrics[gauge: .deserializationSize]?.record(messageBytes.count)
+                    if props.metrics[gauge: .deserializationSize] != nil {
+                        pprint("\(self.address.path) .deserializationSize] = \(props.metrics[gauge: .deserializationSize]) <<<< \(messageBytes.count)")
+                    }
+                    props.metrics[timer: .deserializationTime]?.recordInterval(since: deserializationStartTime)
+                    if props.metrics[timer: .deserializationTime] != nil {
+                        pprint("\(self.address.path) .deserializationTime] = \(props.metrics[timer: .deserializationTime]) <<< \(deserializationStartTime)")
+                    }
+                }
+
                 switch $0 {
                 case .success(.message(let message)):
                     switch self.personality {
@@ -477,6 +521,11 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
     internal func _dropAsDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
+    }
+
+    // :nodoc: INTERNAL API
+    public var _props: Props? {
+        nil
     }
 
     @usableFromInline

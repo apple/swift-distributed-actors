@@ -23,9 +23,6 @@ public struct MetricsSettings {
         return it
     }
 
-    // TODO: override metrics here, so we can use them in testing for "await all terminated" and others (same as logger)
-    // public var overrideLogger: Logger?
-
     /// Configure the segments separator for use when creating labels;
     /// Some systems like graphite like "." as the separator, yet others may not treat this as legal character.
     ///
@@ -35,7 +32,20 @@ public struct MetricsSettings {
     /// Prefix all metrics with this segment.
     ///
     /// Defaults to the actor system's name.
-    public var systemName: String?
+    public var systemName: String? {
+        set {
+            guard newValue != "" && newValue != nil else {
+                self._systemName = nil
+                return
+            }
+
+            self._systemName = newValue
+        }
+        get {
+            self._systemName
+        }
+    }
+    internal var _systemName: String?
 
     /// Segment prefixed before all metrics exported automatically by the actor system.
     public var systemMetricsPrefix: String? = "sact"

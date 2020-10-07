@@ -44,6 +44,8 @@ public struct AddressableActorRef: DeathWatchable, Hashable {
     @usableFromInline
     let ref: _ReceivesSystemMessages
 
+    public let _props: Props?
+
     @usableFromInline
     let messageTypeId: ObjectIdentifier
     @usableFromInline
@@ -55,8 +57,14 @@ public struct AddressableActorRef: DeathWatchable, Hashable {
         switch ref.personality {
         case .remote:
             self.refType = .remote
-        default:
+            self._props = nil
+        case .cell(let cell):
             self.refType = .local
+            self._props = cell.actor?.props
+        default:
+            // TODO: this is good enough for now... it gets harder with delegates and adapters... need to revisit
+            self.refType = .local
+            self._props = nil
         }
     }
 

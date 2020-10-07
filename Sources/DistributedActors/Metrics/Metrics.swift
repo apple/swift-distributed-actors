@@ -156,9 +156,11 @@ final class ActorSystemMetrics {
         self._cluster_association_tombstones.record(count)
     }
 
-    func uptimeNanoseconds() -> Int64 {
-        Deadline.now().uptimeNanoseconds
-    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: SWIM (Cluster) Metrics
+
+    // See: `SWIM.Metrics`
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: System Messages
@@ -232,6 +234,13 @@ final class ActorSystemMetrics {
 
     /// Rate of messages being delivered as "dead letters" (e.g. delivered at recipients which already died, or similar)
     // let messages_deadLetters: Rate
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: General
+
+    func uptimeNanoseconds() -> Int64 {
+        Deadline.now().uptimeNanoseconds
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Initialization
