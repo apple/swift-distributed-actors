@@ -49,6 +49,9 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     @usableFromInline
     var instrumentation: ActorInstrumentation!
 
+    @usableFromInline
+    let metrics: ActiveActorMetrics
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Basic ActorContext capabilities
 
@@ -158,6 +161,8 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         self._deathWatch = DeathWatch(nodeDeathWatcher: system._nodeDeathWatcher ?? system.deadLetters.adapted())
 
         self.namingContext = ActorNamingContext()
+
+        self.metrics = ActiveActorMetrics(system: system, address: address, props: props.metrics)
 
         // TODO: replace with TestMetrics which we could use to inspect the start/stop counts
         #if SACT_TESTS_LEAKS
@@ -945,7 +950,7 @@ internal protocol AbstractShellProtocol: _ActorTreeTraversable {
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
     var children: Children { get set } // lock-protected
     var asAddressable: AddressableActorRef { get }
-    var _props: Props { get }
+    var metrics: ActiveActorMetrics { get }
 }
 
 extension AbstractShellProtocol {

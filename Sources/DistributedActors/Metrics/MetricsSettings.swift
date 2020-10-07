@@ -34,7 +34,7 @@ public struct MetricsSettings {
     /// Defaults to the actor system's name.
     public var systemName: String? {
         set {
-            guard newValue != "" && newValue != nil else {
+            guard newValue != "", newValue != nil else {
                 self._systemName = nil
                 return
             }
@@ -45,6 +45,7 @@ public struct MetricsSettings {
             self._systemName
         }
     }
+
     internal var _systemName: String?
 
     /// Segment prefixed before all metrics exported automatically by the actor system.

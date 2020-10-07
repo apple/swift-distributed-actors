@@ -529,7 +529,7 @@ extension SWIMActorShell {
     static let name: String = "swim"
     static let naming: ActorNaming = .unique(SWIMActorShell.name)
 
-    static func props() -> Props {
+    static var props: Props {
         Props
             ._wellKnown
             .metrics(group: "swim.shell", measure: [.serialization, .deserialization])

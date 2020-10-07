@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+@testable import CoreMetrics
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
 import Foundation
 @testable import Metrics
-@testable import CoreMetrics
 import NIO
 import XCTest
 
@@ -41,8 +41,8 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
 
         let ref: ActorRef<String> = try first.spawn(
             "measuredActor",
-            props: .metrics(group: "example", measure: [.serialization, .deserialization]),
-            Behavior.receive { context, message in
+            props: .metrics(group: "measuredActorGroup", measure: [.deserialization]),
+            Behavior.receive { _, _ in
                 .same
             }
         )
@@ -50,7 +50,8 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         let remoteRef = second._resolve(ref: ref, onSystem: first)
         remoteRef.tell("Hello!")
 
-        sleep(10)
-        try self.metrics.expectCounter("kappa")
+        sleep(6)
+        let gauge = try self.metrics.expectGauge("first.measuredActorGroup.deserialization.size")
+        gauge.lastValue?.shouldEqual(6)
     }
 }

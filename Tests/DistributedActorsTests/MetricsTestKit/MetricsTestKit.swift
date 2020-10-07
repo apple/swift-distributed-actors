@@ -27,8 +27,8 @@
 //===----------------------------------------------------------------------===//
 
 @testable import CoreMetrics
-@testable import Metrics
 import DistributedActors
+@testable import Metrics
 import XCTest
 
 /// Taken directly from swift-metrics's own test package.

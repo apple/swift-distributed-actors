@@ -156,7 +156,6 @@ final class ActorSystemMetrics {
         self._cluster_association_tombstones.record(count)
     }
 
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: SWIM (Cluster) Metrics
 

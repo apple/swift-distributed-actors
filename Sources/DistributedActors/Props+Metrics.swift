@@ -12,15 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+import CoreMetrics
 import Dispatch
 import NIO
-import CoreMetrics
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Metrics Props
 
 extension Props {
-
     /// It is too often too much to report metrics for every single actor, and thus metrics are often better reported in groups.
     /// Since actors may be running various behaviors, it is best to explicitly tag spawned actors with which group they should be reporting metrics to.
     ///
@@ -28,10 +27,10 @@ extension Props {
     /// to achieve this, one would tag all spawned workers using the same metrics `group`.
     public static func metrics(
         group: String,
-        measure activeMetrics: ActiveMetrics,
+        measure activeMetrics: ActiveMetricsOptionSet,
         _ configure: (inout MetricsProps) -> Void = { _ in () }
     ) -> Props {
-        Props().metrics(group: group, measure: activeMetrics, { configure(&$0) })
+        Props().metrics(group: group, measure: activeMetrics) { configure(&$0) }
     }
 
     /// It is too often too much to report metrics for every single actor, and thus metrics are often better reported in groups.
@@ -41,7 +40,7 @@ extension Props {
     /// to achieve this, one would tag all spawned workers using the same metrics `group`.
     public func metrics(
         group: String,
-        measure activeMetrics: ActiveMetrics,
+        measure activeMetrics: ActiveMetricsOptionSet,
         _ configure: (inout MetricsProps) -> Void = { _ in () }
     ) -> Props {
         var props = self
@@ -68,7 +67,7 @@ public struct ActorMetricsGroupName: ExpressibleByStringLiteral, ExpressibleByAr
 
 public struct MetricsProps: CustomStringConvertible {
     /// Set of built-in active metrics
-    public var active: ActiveMetrics
+    public var active: ActiveMetricsOptionSet
 
     public var enabled: Bool {
         !self.active.isEmpty
@@ -76,65 +75,88 @@ public struct MetricsProps: CustomStringConvertible {
 
     let group: String?
 
-    typealias AnyActiveMetric = Any // since there is no `Metric` protocol
-    let metrics: [ActiveMetricID: AnyActiveMetric]
-
-    public static var `disabled`: MetricsProps {
+    public static var disabled: MetricsProps {
         .init(group: nil, active: [])
     }
 
-    public init(group: String?, active: ActiveMetrics) {
+    public init(group: String?, active: ActiveMetricsOptionSet) {
         self.group = group
         self.active = active
-
-        // initialize metric objects required by this instance
-        guard !active.isEmpty else {
-            self.metrics = [:]
-            return
-        }
-
-        func label(_ name: String) -> String {
-            if let g = group {
-                return "\(g).\(name)"
-            } else {
-                return name
-            }
-        }
-
-        var metrics: [ActiveMetricID: AnyActiveMetric] = [:]
-        if active.contains(.serialization) {
-            metrics[.serializationSize] = Gauge(label: label("serialization.size"))
-            metrics[.serializationTime] = Gauge(label: label("serialization.time"))
-        }
-        if active.contains(.deserialization) {
-            metrics[.deserializationSize] = Gauge(label: label("deserialization.size"))
-            metrics[.deserializationTime] = Gauge(label: label("deserialization.time"))
-        }
-        if active.contains(.mailbox) {
-            // TODO: create mailbox metrics
-        }
-        if active.contains(.messageProcessing) {
-            // TODO: create messageProcessing metrics
-        }
-        if !metrics.isEmpty {
-            pprint("CREATED[\(group)] metrics = \(metrics)")
-        }
-        self.metrics = metrics
     }
 
     public var description: String {
-        "MetricsProps(active: \(self.active), group: \(self.group), metrics: \(self.metrics.keys))"
+        "MetricsProps(active: \(self.active), group: \(self.group))"
     }
 }
 
+@usableFromInline
 enum ActiveMetricID: Int, Hashable {
     case serializationTime
     case serializationSize
     case deserializationTime
     case deserializationSize
+
+    case messageProcessingTime
 }
 
-extension MetricsProps {
+/// Storage type for all metric instances an actor may be reporting.
+/// These may be accessed by various threads, including from outside of the actor (!).
+@usableFromInline
+struct ActiveActorMetrics {
+    @usableFromInline
+    typealias AnyActiveMetric = Any // since there is no `Metric` protocol
+
+    // Cheaper to check if a metric is enabled than the dictionary?
+    @usableFromInline
+    let active: ActiveMetricsOptionSet
+
+    @usableFromInline
+    let metrics: [ActiveMetricID: AnyActiveMetric]
+
+    static var noop: Self {
+        .init()
+    }
+
+    private init() {
+        self.active = []
+        self.metrics = [:]
+    }
+
+    init(system: ActorSystem, address: ActorAddress, props: MetricsProps) {
+        // initialize metric objects required by this instance
+        let active: ActiveMetricsOptionSet = props.active
+        self.active = active
+        guard !active.isEmpty else {
+            self.metrics = [:]
+            return
+        }
+
+        let systemName: String? = system.name.isEmpty ? nil : system.name
+        func label(_ name: String) -> String {
+            [systemName, props.group, name].compactMap { $0 }.joined(separator: ".")
+        }
+
+        var metrics: [ActiveMetricID: AnyActiveMetric] = [:]
+        if active.contains(.serialization) {
+            metrics[.serializationSize] = Gauge(label: label("serialization.size"))
+            metrics[.serializationTime] = CoreMetrics.Timer(label: label("serialization.time"))
+        }
+        if active.contains(.deserialization) {
+            metrics[.deserializationSize] = Gauge(label: label("deserialization.size"))
+            metrics[.deserializationTime] = CoreMetrics.Timer(label: label("deserialization.time"))
+        }
+        if active.contains(.mailbox) {
+            // TODO: create mailbox metrics
+        }
+        if active.contains(.messageProcessing) {
+            metrics[.messageProcessingTime] = CoreMetrics.Timer(label: label("processing.time"))
+        }
+        if !metrics.isEmpty {
+            pprint("CREATED[\(props.group)] metrics = \(metrics)")
+        }
+
+        self.metrics = metrics
+    }
 
     internal subscript(counter identifier: ActiveMetricID) -> CoreMetrics.Counter? {
         self.metrics[identifier] as? CoreMetrics.Counter
@@ -150,7 +172,7 @@ extension MetricsProps {
 }
 
 /// Defines which per actor (group) metrics are enabled for a given actor.
-public struct ActiveMetrics: OptionSet {
+public struct ActiveMetricsOptionSet: OptionSet {
     public let rawValue: Int
 
     public init(rawValue: Int) {
@@ -158,17 +180,17 @@ public struct ActiveMetrics: OptionSet {
     }
 
     // swiftformat:disable indent
-    static let mailbox            = ActiveMetrics(rawValue: 1 << 0)
-    static let messageProcessing  = ActiveMetrics(rawValue: 1 << 1)
+    static let mailbox = ActiveMetricsOptionSet(rawValue: 1 << 0)
+    static let messageProcessing = ActiveMetricsOptionSet(rawValue: 1 << 1)
 
-    static let serialization      = ActiveMetrics(rawValue: 1 << 2)
-    static let deserialization    = ActiveMetrics(rawValue: 1 << 3)
+    static let serialization = ActiveMetricsOptionSet(rawValue: 1 << 2)
+    static let deserialization = ActiveMetricsOptionSet(rawValue: 1 << 3)
     // swiftformat:enable indent
 
-    static let all: ActiveMetrics = [
+    static let all: ActiveMetricsOptionSet = [
         .mailbox,
         .messageProcessing,
         .serialization,
-        .deserialization
+        .deserialization,
     ]
 }
