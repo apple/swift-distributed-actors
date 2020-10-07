@@ -41,6 +41,8 @@ public final class TestMetrics: MetricsFactory {
     public typealias Label = String
     public typealias Dimensions = String
 
+    public let verbose: Bool
+
     public struct FullKey {
         let label: Label
         let dimensions: [(String, String)]
@@ -50,8 +52,8 @@ public final class TestMetrics: MetricsFactory {
     private var recorders = [FullKey: RecorderHandler]()
     private var timers = [FullKey: TimerHandler]()
 
-    public init() {
-        // nothing to do
+    public init(verbose: Bool = false) {
+        self.verbose = verbose
     }
 
     public func makeCounter(label: String, dimensions: [(String, String)]) -> CounterHandler {
@@ -59,8 +61,8 @@ public final class TestMetrics: MetricsFactory {
     }
 
     public func makeRecorder(label: String, dimensions: [(String, String)], aggregate: Bool) -> RecorderHandler {
-        let maker = { (label: String, dimensions: [(String, String)]) -> RecorderHandler in
-            TestRecorder(label: label, dimensions: dimensions, aggregate: aggregate)
+        let maker = { (label: String, dimensions: [(String, String)], verbose: Bool) -> RecorderHandler in
+            TestRecorder(label: label, dimensions: dimensions, aggregate: aggregate, verbose: verbose)
         }
         return self.make(label: label, dimensions: dimensions, registry: &self.recorders, maker: maker)
     }
@@ -69,9 +71,14 @@ public final class TestMetrics: MetricsFactory {
         self.make(label: label, dimensions: dimensions, registry: &self.timers, maker: TestTimer.init)
     }
 
-    private func make<Item>(label: String, dimensions: [(String, String)], registry: inout [FullKey: Item], maker: (String, [(String, String)]) -> Item) -> Item {
+    private func make<Item>(
+        label: String,
+        dimensions: [(String, String)],
+        registry: inout [FullKey: Item],
+        maker: (String, [(String, String)], Bool) -> Item
+    ) -> Item {
         self.lock.withLock {
-            let item = maker(label, dimensions)
+            let item = maker(label, dimensions, self.verbose)
             registry[.init(label: label, dimensions: dimensions)] = item
             return item
         }
@@ -201,6 +208,7 @@ public final class TestCounter: TestMetric, CounterHandler, Equatable {
     public let id: String
     public let label: String
     public let dimensions: [(String, String)]
+    let verbose: Bool
 
     public var key: TestMetrics.FullKey {
         .init(label: self.label, dimensions: self.dimensions)
@@ -209,24 +217,29 @@ public final class TestCounter: TestMetric, CounterHandler, Equatable {
     let lock = NSLock()
     private var values = [(Date, Int64)]()
 
-    init(label: String, dimensions: [(String, String)]) {
+    init(label: String, dimensions: [(String, String)], verbose: Bool) {
         self.id = NSUUID().uuidString
         self.label = label
         self.dimensions = dimensions
+        self.verbose = verbose
     }
 
     public func increment(by amount: Int64) {
         self.lock.withLock {
             self.values.append((Date(), amount))
         }
-        print("adding \(amount) to \(self.label)\(self.dimensions.map { "\($0):\($1)" })")
+        if self.verbose {
+            print("adding \(amount) to \(self.label)\(self.dimensions.map { "\($0):\($1)" })")
+        }
     }
 
     public func reset() {
         self.lock.withLock {
             self.values = []
         }
-        print("resetting \(self.label)")
+        if self.verbose {
+            print("resetting \(self.label)")
+        }
     }
 
     public var lastValue: Int64? {
@@ -257,19 +270,21 @@ public final class TestRecorder: TestMetric, RecorderHandler, Equatable {
     public let label: String
     public let dimensions: [(String, String)]
     public let aggregate: Bool
+    let verbose: Bool
 
     public var key: TestMetrics.FullKey {
         .init(label: self.label, dimensions: self.dimensions)
     }
 
     let lock = NSLock()
-    private var values = [(Date, Double)]()
+    private var _values = [(Date, Double)]()
 
-    init(label: String, dimensions: [(String, String)], aggregate: Bool) {
+    init(label: String, dimensions: [(String, String)], aggregate: Bool, verbose: Bool) {
         self.id = NSUUID().uuidString
         self.label = label
         self.dimensions = dimensions
         self.aggregate = aggregate
+        self.verbose = verbose
     }
 
     public func record(_ value: Int64) {
@@ -279,20 +294,28 @@ public final class TestRecorder: TestMetric, RecorderHandler, Equatable {
     public func record(_ value: Double) {
         self.lock.withLock {
             // this may loose precision but good enough as an example
-            values.append((Date(), Double(value)))
+            _values.append((Date(), Double(value)))
         }
-        print("recording \(value) in \(self.label)\(self.dimensions.map { "\($0):\($1)" })")
+        if self.verbose {
+            print("recording \(value) in \(self.label)\(self.dimensions.map { "\($0):\($1)" })")
+        }
     }
 
     public var lastValue: Double? {
         self.lock.withLock {
-            values.last?.1
+            _values.last?.1
+        }
+    }
+
+    public var values: [Double] {
+        self.lock.withLock {
+            _values.map { $1 }
         }
     }
 
     public var last: (Date, Double)? {
         self.lock.withLock {
-            values.last
+            _values.last
         }
     }
 
@@ -313,12 +336,14 @@ public final class TestTimer: TestMetric, TimerHandler, Equatable {
 
     let lock = NSLock()
     private var _values = [(Date, Int64)]()
+    let verbose: Bool
 
-    init(label: String, dimensions: [(String, String)]) {
+    init(label: String, dimensions: [(String, String)], verbose: Bool) {
         self.id = NSUUID().uuidString
         self.label = label
         self.displayUnit = nil
         self.dimensions = dimensions
+        self.verbose = verbose
     }
 
     public func preferDisplayUnit(_ unit: TimeUnit) {
@@ -341,7 +366,9 @@ public final class TestTimer: TestMetric, TimerHandler, Equatable {
         self.lock.withLock {
             _values.append((Date(), duration))
         }
-        print("recording \(duration) in \(self.label)\(self.dimensions.map { "\($0):\($1)" })")
+        if self.verbose {
+            print("recording \(duration) in \(self.label)\(self.dimensions.map { "\($0):\($1)" })")
+        }
     }
 
     public var lastValue: Int64? {

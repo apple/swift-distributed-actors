@@ -63,7 +63,7 @@ public struct MetricsProps: CustomStringConvertible {
     public var group: String
 
     public static var disabled: MetricsProps {
-        .init(group: nil, active: [])
+        .init(group: "", active: [])
     }
 
     public init(group: String, active: ActiveMetricsOptionSet) {
