@@ -360,6 +360,7 @@ internal final class Mailbox<Message: ActorMessage> {
 
     private func mailboxRun(_ shell: ActorShell<Message>) -> MailboxRunResult {
         let status = self.setProcessingSystemMessages()
+        shell.metrics[gauge: .mailboxCount]?.record(status.messageCount)
 
         guard !status.isClosed else {
             shell.log.warning("!!! BUG !!! Run was scheduled on already closed mailbox.")
@@ -479,25 +480,30 @@ internal final class Mailbox<Message: ActorMessage> {
         let oldActivations = oldStatus.activations
 
         traceLog_Mailbox(shell.path, "Run complete...")
-        shell.metrics[gauge: .mailboxCount]?.record(status.messageCount - Status(processedActivations).messageCount)
 
         // issue directives to mailbox ---------------------------------------------------------------------------------
         if runResult == .shouldStop {
             // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
             // as other conditions may hold, yet we really are ready to terminate immediately.
             traceLog_Mailbox(shell.path, "Terminating...")
+            shell.metrics[gauge: .mailboxCount]?.record(status.messageCount - Status(processedActivations).messageCount)
             return .close
         } else if runResult == .closed {
             traceLog_Mailbox(shell.path, "Terminating, completely closed now...")
+            shell.metrics[gauge: .mailboxCount]?.record(0)
             return .closed
         } else if (oldActivations > processedActivations && !oldStatus.isSuspended) || oldStatus.hasSystemMessages {
             traceLog_Mailbox(shell.path, "Rescheduling... \(oldActivations) :: \(processedActivations)")
             // if we received new system messages during user message processing, or we could not process
             // all user messages in this run, because we had more messages queued up than the maximum run
             // length, return `Reschedule` to signal the queue should be re-scheduled
+            //
+            // Metrics: don't update the metric count here, it would have ben updated by ongoing enqueues,
+            // and we'll update it as well when the run begins.
             return .reschedule
         } else {
             traceLog_Mailbox(shell.path, "Run complete, shouldReschedule:false")
+            shell.metrics[gauge: .mailboxCount]?.record(0)
             return .done
         }
     }
