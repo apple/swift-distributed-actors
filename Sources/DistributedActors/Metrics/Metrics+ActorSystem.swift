@@ -138,13 +138,8 @@ final class ActorSystemMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: SWIM (Cluster) Metrics
 
-    // `SWIM.Metrics` are emitted by the SWIM.Instance automatically
-    //
-    // We however need to emit the swim.shell metrics from the peers:
-    let swimShell: SWIM.Metrics.ShellMetrics
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: System Messages
+    // `SWIM.Metrics` are emitted by the `SWIM.Instance` automatically
+    // See also the metrics emitted in `ActorSWIMShell`
 
     let _system_msg_redelivery_buffer: Gauge
 
@@ -214,7 +209,7 @@ final class ActorSystemMetrics {
     // MARK: Messages
 
     /// Rate of messages being delivered as "dead letters" (e.g. delivered at recipients which already died, or similar)
-    // let messages_deadLetters: Rate
+    // let messages_deadLetters: Counter
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: General
@@ -238,12 +233,6 @@ final class ActorSystemMetrics {
         let actorsLifecycleLabel = settings.makeLabel("actors", "lifecycle")
         self._actors_lifecycle_user = .init(label: actorsLifecycleLabel, positive: [rootUser, dimStart], negative: [rootUser, dimStop])
         self._actors_lifecycle_system = .init(label: actorsLifecycleLabel, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
-
-        // ==== SWIM / Shell ------------------------------------------------
-        var swimSettings = SWIM.Settings()
-        swimSettings.metrics.systemName = settings.systemName
-        swimSettings.metrics.labelPrefix = settings.systemMetricsPrefix
-        self.swimShell = SWIM.Metrics.ShellMetrics(settings: swimSettings)
 
         // ==== Serialization -----------------------------------------------
         self._system_msg_redelivery_buffer = .init(label: settings.makeLabel("system", "redelivery_buffer", "count"))

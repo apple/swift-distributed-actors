@@ -165,19 +165,19 @@ internal final class Mailbox<Message: ActorMessage> {
             // not return NULL), so even if messages get processed concurrently, it's safe
             // to decrement here.
             _ = self.decrementMessageCount()
-            self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount)
+            // metrics: do not update metrics, whoever got the message count to capacity would have already reported the count
             return .mailboxFull
         }
 
         guard !oldStatus.isTerminating else {
             _ = self.decrementMessageCount()
-            self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount)
+            // metrics: do not update metrics, whoever caused termination would have already reported the mailbox count then
             return .mailboxTerminating
         }
 
         guard !oldStatus.isClosed else {
             _ = self.decrementMessageCount()
-            self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount)
+            // metrics: do not update metrics, closed only happens on a final run, so the message count would have been updated there
             return .mailboxClosed
         }
 

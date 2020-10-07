@@ -61,7 +61,11 @@ public struct ClusterSettings {
 
     /// Node representing this node in the cluster.
     /// Note that most of the time `uniqueBindNode` is more appropriate, as it includes this node's unique id.
-    public var node: Node
+    public var node: Node {
+        didSet {
+            self.swim.metrics.systemName = node.systemName
+        }
+    }
 
     /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var nid: UniqueNodeID
@@ -189,5 +193,6 @@ public struct ClusterSettings {
         if node.systemName != "" {
             self.swim.metrics.systemName = node.systemName
         }
+        self.swim.metrics.labelPrefix = "cluster.swim"
     }
 }

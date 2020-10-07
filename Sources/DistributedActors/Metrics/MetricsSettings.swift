@@ -49,19 +49,27 @@ public struct MetricsSettings {
     internal var _systemName: String?
 
     /// Segment prefixed before all metrics exported automatically by the actor system.
-    public var systemMetricsPrefix: String? = "sact"
+    ///
+    /// Effectively metrics are labelled as, e.g. `"first.sact.actors.lifecycle"`,
+    /// where `"first"` is `systemName` and `"sact"` is the `systemMetricsPrefix`.
+    public var systemMetricsPrefix: String? = nil
+
+    /// Segment prefixed to all SWIM metrics.
+    public var clusterSWIMMetricsPrefix: String? = "cluster.swim"
 
     func makeLabel(_ segments: String...) -> String {
-        let joined = segments.joined(separator: self.segmentSeparator)
+        let joinedSegments = segments.joined(separator: self.segmentSeparator)
+
+        // this is purposefully not using more fluent patterns, to avoid array allocations etc.
         switch (self.systemName, self.systemMetricsPrefix) {
         case (.some(let root), .some(let prefix)):
-            return "\(root)\(self.segmentSeparator)\(prefix)\(self.segmentSeparator)\(joined)"
+            return "\(root)\(self.segmentSeparator)\(prefix)\(self.segmentSeparator)\(joinedSegments)"
         case (.none, .some(let prefix)):
-            return "\(prefix)\(self.segmentSeparator)\(joined)"
+            return "\(prefix)\(self.segmentSeparator)\(joinedSegments)"
         case (.some(let root), .none):
-            return "\(root)\(self.segmentSeparator)\(joined)"
+            return "\(root)\(self.segmentSeparator)\(joinedSegments)"
         case (.none, .none):
-            return "\(joined)"
+            return joinedSegments
         }
     }
 }

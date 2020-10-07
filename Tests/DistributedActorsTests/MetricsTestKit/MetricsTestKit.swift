@@ -259,8 +259,9 @@ public final class TestCounter: TestMetric, CounterHandler, Equatable, CustomStr
             values.last
         }
     }
+
     public var description: String {
-        "TestCounter(label: \(label), dimensions: \(dimensions))"
+        "TestCounter(label: \(self.label), dimensions: \(self.dimensions))"
     }
 
     public static func == (lhs: TestCounter, rhs: TestCounter) -> Bool {
@@ -321,8 +322,9 @@ public final class TestRecorder: TestMetric, RecorderHandler, Equatable, CustomS
             _values.last
         }
     }
+
     public var description: String {
-        "TestRecorder(label: \(label), dimensions: \(dimensions))"
+        "TestRecorder(label: \(self.label), dimensions: \(self.dimensions))"
     }
 
     public static func == (lhs: TestRecorder, rhs: TestRecorder) -> Bool {
@@ -394,8 +396,9 @@ public final class TestTimer: TestMetric, TimerHandler, Equatable, CustomStringC
             _values.last
         }
     }
+
     public var description: String {
-        "TestTimer(label: \(label), displayUnit: \(displayUnit), dimensions: \(dimensions))"
+        "TestTimer(label: \(self.label), displayUnit: \(self.displayUnit, orElse: ""), dimensions: \(self.dimensions))"
     }
 
     public static func == (lhs: TestTimer, rhs: TestTimer) -> Bool {

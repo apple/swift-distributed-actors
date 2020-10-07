@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
+import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
 import Logging
 import SWIM
@@ -233,9 +234,12 @@ internal struct SWIMActorShell {
             "swim/timeout": "\(timeout)",
         ]))
 
+        let pingSentAt = DispatchTime.now()
+        self.metrics.shell.messageOutboundCount.increment()
         target.ping(payload: payload, timeout: timeout, sequenceNumber: sequenceNumber, context: context) { result in
             switch result {
             case .success(let pingResponse):
+                metrics.shell.pingResponseTime.recordInterval(since: pingSentAt)
                 self.handlePingResponse(
                     response: pingResponse,
                     pingRequestOrigin: pingRequestOrigin,
@@ -271,6 +275,16 @@ internal struct SWIMActorShell {
         let firstSuccessful = eventLoop.makePromise(of: SWIM.PingResponse.self)
         let pingTimeout = directive.timeout
         let peerToPing = directive.target
+
+        let startedSendingPingRequestsSentAt: DispatchTime = .now()
+        let pingRequestResponseTimeFirstTimer = self.swim.metrics.shell.pingRequestResponseTimeFirst
+        firstSuccessful.futureResult.whenComplete { result in
+            switch result {
+            case .success: pingRequestResponseTimeFirstTimer.recordInterval(since: startedSendingPingRequestsSentAt)
+            case .failure: ()
+            }
+        }
+
         for pingRequest in directive.requestDetails {
             let peerToPingRequestThrough = pingRequest.peerToPingRequestThrough
             let payload = pingRequest.payload
@@ -278,14 +292,17 @@ internal struct SWIMActorShell {
 
             context.log.trace("Sending ping request for [\(peerToPing)] to [\(peerToPingRequestThrough)] with payload: \(payload)")
 
-            // self.tracelog(.send(to: peerToPingRequestThrough), message: "pingRequest(target: \(nodeToPing), replyTo: \(self.peer), payload: \(payload), sequenceNumber: \(sequenceNumber))")
+            let pingRequestSentAt: DispatchTime = .now()
             let eachReplyPromise = eventLoop.makePromise(of: SWIM.PingResponse.self)
-            peerToPingRequestThrough.pingRequest(target: peerToPing, payload: payload, from: context.myself, timeout: pingTimeout, sequenceNumber: sequenceNumber) { result in
+
+            self.metrics.shell.messageOutboundCount.increment()
+            peerToPingRequestThrough.pingRequest(target: peerToPing, payload: payload, timeout: pingTimeout, sequenceNumber: sequenceNumber, context: context) { result in
                 eachReplyPromise.completeWith(result)
             }
             context.onResultAsync(of: eachReplyPromise.futureResult, timeout: .effectivelyInfinite) { result in
                 switch result {
                 case .success(let response):
+                    self.metrics.shell.pingRequestResponseTimeAll.recordInterval(since: pingRequestSentAt)
                     self.handleEveryPingRequestResponse(response: response, pinged: peerToPing, context: context)
                     if case .ack = response {
                         // We only cascade successful ping responses (i.e. `ack`s);
