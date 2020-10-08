@@ -23,9 +23,6 @@ public struct MetricsSettings {
         return it
     }
 
-    // TODO: override metrics here, so we can use them in testing for "await all terminated" and others (same as logger)
-    // public var overrideLogger: Logger?
-
     /// Configure the segments separator for use when creating labels;
     /// Some systems like graphite like "." as the separator, yet others may not treat this as legal character.
     ///
@@ -35,22 +32,44 @@ public struct MetricsSettings {
     /// Prefix all metrics with this segment.
     ///
     /// Defaults to the actor system's name.
-    public var systemName: String?
+    public var systemName: String? {
+        set {
+            guard newValue != "", newValue != nil else {
+                self._systemName = nil
+                return
+            }
+
+            self._systemName = newValue
+        }
+        get {
+            self._systemName
+        }
+    }
+
+    internal var _systemName: String?
 
     /// Segment prefixed before all metrics exported automatically by the actor system.
-    public var systemMetricsPrefix: String? = "sact"
+    ///
+    /// Effectively metrics are labelled as, e.g. `"first.sact.actors.lifecycle"`,
+    /// where `"first"` is `systemName` and `"sact"` is the `systemMetricsPrefix`.
+    public var systemMetricsPrefix: String?
+
+    /// Segment prefixed to all SWIM metrics.
+    public var clusterSWIMMetricsPrefix: String? = "cluster.swim"
 
     func makeLabel(_ segments: String...) -> String {
-        let joined = segments.joined(separator: self.segmentSeparator)
+        let joinedSegments = segments.joined(separator: self.segmentSeparator)
+
+        // this is purposefully not using more fluent patterns, to avoid array allocations etc.
         switch (self.systemName, self.systemMetricsPrefix) {
         case (.some(let root), .some(let prefix)):
-            return "\(root)\(self.segmentSeparator)\(prefix)\(self.segmentSeparator)\(joined)"
+            return "\(root)\(self.segmentSeparator)\(prefix)\(self.segmentSeparator)\(joinedSegments)"
         case (.none, .some(let prefix)):
-            return "\(prefix)\(self.segmentSeparator)\(joined)"
+            return "\(prefix)\(self.segmentSeparator)\(joinedSegments)"
         case (.some(let root), .none):
-            return "\(root)\(self.segmentSeparator)\(joined)"
+            return "\(root)\(self.segmentSeparator)\(joinedSegments)"
         case (.none, .none):
-            return "\(joined)"
+            return joinedSegments
         }
     }
 }

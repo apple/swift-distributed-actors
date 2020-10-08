@@ -386,13 +386,13 @@ extension ClusterShell {
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 
             let swimBehavior = SWIMActorShell.behavior(settings: clusterSettings.swim, clusterRef: context.myself)
-            self._swimRef = try context._downcastUnsafe._spawn(SWIMActorShell.naming, props: ._wellKnown, swimBehavior)
+            self._swimRef = try context.spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
 
             // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
                 let leadership = try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
-                context.watch(leadership) // if leadership fails fomr some reason, we are in trouble and need to know about it
+                context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
             }
 
             // .down decisions made by:

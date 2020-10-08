@@ -76,27 +76,6 @@ final class ActorSystemMetrics {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Mailbox
-
-    // let _mailbox_message_size: Gauge
-    let _mailbox_message_count: Recorder
-
-    @inline(__always)
-    func recordMailboxMessageCount(_ count: Int) {
-        self._mailbox_message_count.record(count)
-    }
-
-//    /// Report mailbox size, based on shell's props (e.g. into a group measurement)
-//    func mailbox_size<Anything>(_ shell: ActorShell<Anything>) -> Gauge? {
-//        if let group = shell._props.metrics.group {
-//            // TODO: get counter for specific group, such that: `dimensions: [("group": group)]`
-//            return self._mailbox_size
-//        } else {
-//            return nil
-//        }
-//    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Metrics
 
     /// cluster.members
@@ -156,12 +135,11 @@ final class ActorSystemMetrics {
         self._cluster_association_tombstones.record(count)
     }
 
-    func uptimeNanoseconds() -> Int64 {
-        Deadline.now().uptimeNanoseconds
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: System Messages
+    // MARK: SWIM (Cluster) Metrics
+
+    // `SWIM.Metrics` are emitted by the `SWIM.Instance` automatically
+    // See also the metrics emitted in `ActorSWIMShell`
 
     let _system_msg_redelivery_buffer: Gauge
 
@@ -231,7 +209,14 @@ final class ActorSystemMetrics {
     // MARK: Messages
 
     /// Rate of messages being delivered as "dead letters" (e.g. delivered at recipients which already died, or similar)
-    // let messages_deadLetters: Rate
+    // let messages_deadLetters: Counter
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: General
+
+    func uptimeNanoseconds() -> Int64 {
+        Deadline.now().uptimeNanoseconds
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Initialization
@@ -248,9 +233,6 @@ final class ActorSystemMetrics {
         let actorsLifecycleLabel = settings.makeLabel("actors", "lifecycle")
         self._actors_lifecycle_user = .init(label: actorsLifecycleLabel, positive: [rootUser, dimStart], negative: [rootUser, dimStop])
         self._actors_lifecycle_system = .init(label: actorsLifecycleLabel, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
-
-        // ==== Mailbox ---------------------------------------------
-        self._mailbox_message_count = .init(label: settings.makeLabel("mailbox", "message", "count"))
 
         // ==== Serialization -----------------------------------------------
         self._system_msg_redelivery_buffer = .init(label: settings.makeLabel("system", "redelivery_buffer", "count"))
