@@ -165,16 +165,19 @@ internal final class Mailbox<Message: ActorMessage> {
             // not return NULL), so even if messages get processed concurrently, it's safe
             // to decrement here.
             _ = self.decrementMessageCount()
+            // metrics: do not update metrics, whoever got the message count to capacity would have already reported the count
             return .mailboxFull
         }
 
         guard !oldStatus.isTerminating else {
             _ = self.decrementMessageCount()
+            // metrics: do not update metrics, whoever caused termination would have already reported the mailbox count then
             return .mailboxTerminating
         }
 
         guard !oldStatus.isClosed else {
             _ = self.decrementMessageCount()
+            // metrics: do not update metrics, closed only happens on a final run, so the message count would have been updated there
             return .mailboxClosed
         }
 
@@ -182,8 +185,7 @@ internal final class Mailbox<Message: ActorMessage> {
         // whether this was the first activation, to signal the need to enqueue
         // this mailbox.
         self.userMessages.enqueue(envelope)
-
-        self.shell?._system?.metrics.recordMailboxMessageCount(Int(self.status.messageCount))
+        self.shell?.metrics[gauge: .mailboxCount]?.record(oldStatus.messageCount + 1)
 
         if oldStatus.activations == 0, !oldStatus.isSuspended {
             return .needsScheduling
@@ -358,6 +360,7 @@ internal final class Mailbox<Message: ActorMessage> {
 
     private func mailboxRun(_ shell: ActorShell<Message>) -> MailboxRunResult {
         let status = self.setProcessingSystemMessages()
+        shell.metrics[gauge: .mailboxCount]?.record(status.messageCount)
 
         guard !status.isClosed else {
             shell.log.warning("!!! BUG !!! Run was scheduled on already closed mailbox.")
@@ -483,18 +486,24 @@ internal final class Mailbox<Message: ActorMessage> {
             // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
             // as other conditions may hold, yet we really are ready to terminate immediately.
             traceLog_Mailbox(shell.path, "Terminating...")
+            shell.metrics[gauge: .mailboxCount]?.record(status.messageCount - Status(processedActivations).messageCount)
             return .close
         } else if runResult == .closed {
             traceLog_Mailbox(shell.path, "Terminating, completely closed now...")
+            shell.metrics[gauge: .mailboxCount]?.record(0)
             return .closed
         } else if (oldActivations > processedActivations && !oldStatus.isSuspended) || oldStatus.hasSystemMessages {
             traceLog_Mailbox(shell.path, "Rescheduling... \(oldActivations) :: \(processedActivations)")
             // if we received new system messages during user message processing, or we could not process
             // all user messages in this run, because we had more messages queued up than the maximum run
             // length, return `Reschedule` to signal the queue should be re-scheduled
+            //
+            // Metrics: don't update the metric count here, it would have been updated by ongoing enqueues,
+            // and we'll update it as well when the run begins.
             return .reschedule
         } else {
             traceLog_Mailbox(shell.path, "Run complete, shouldReschedule:false")
+            shell.metrics[gauge: .mailboxCount]?.record(0)
             return .done
         }
     }

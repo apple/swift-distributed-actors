@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
+import CoreMetrics
+import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
 import SWIM
 
@@ -60,7 +62,9 @@ extension SWIMPeer {
             switch result {
             case .success(.remote(.pingResponse(let response))):
                 switch response {
-                case .ack, .timeout:
+                case .ack:
+                    promise.succeed(response)
+                case .timeout:
                     promise.succeed(response)
                 case .nack:
                     promise.fail(IllegalSWIMMessageTypeError("Unexpected .nack reply to .ping message! Was: \(response)"))
@@ -128,23 +132,7 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
         sequenceNumber: SWIM.SequenceNumber,
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
-        self.ask(for: SWIM.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
-            SWIM.Message.remote(.ping(pingOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
-        }._onComplete { (result: Result<SWIM.Message, Error>) in
-            switch result {
-            case .success(.remote(.pingResponse(let response))):
-                switch response {
-                case .ack, .timeout:
-                    onResponse(.success(response))
-                case .nack:
-                    onResponse(.failure(IllegalSWIMMessageTypeError("Unexpected .nack reply to .ping message! Was: \(response)")))
-                }
-            case .success(let message):
-                onResponse(.failure(IllegalSWIMMessageTypeError("Expected .ack, but received unexpected reply to .ping: \(message)")))
-            case .failure(let error):
-                onResponse(.failure(error))
-            }
-        }
+        fatalError("Use ping(payload:timeout:sequenceNumber:context:onResponse:) instead")
     }
 
     // Implementation note: origin is ignored on purpose, and that's okay since we perform the question via an `ask`
@@ -156,57 +144,9 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
         sequenceNumber: SWIM.SequenceNumber,
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
-        guard let targetRef = target as? SWIM.Ref else {
-            onResponse(.failure(IllegalSWIMPeerTypeError("Expected target to ge \(SWIM.Ref.self) but was: \(target)")))
-            return
-        }
-
-        self.ask(for: SWIM.PingRequestOriginRef.Message.self, timeout: .nanoseconds(timeout.nanoseconds)) { replyTo in
-            SWIM.Message.remote(.pingRequest(target: targetRef, pingRequestOrigin: replyTo, payload: payload, sequenceNumber: sequenceNumber))
-        }._onComplete { (result: Result<SWIM.Message, Error>) in
-            switch result {
-            case .success(.remote(.pingResponse(let response))):
-                onResponse(.success(response))
-            case .success(let message):
-                onResponse(.failure(IllegalSWIMMessageTypeError("Expected .ack, but received unexpected reply to .ping: \(message)")))
-            case .failure(let error):
-                onResponse(.failure(error))
-            }
-        }
+        fatalError("Use pingRequest(target:payload:timeout:sequenceNumber:context:onResponse:) instead")
     }
 }
-
-///// :nodoc:
-// extension ActorRef: SWIMPingOriginPeer where Message == SWIM.PingResponse {
-//    public func ack(
-//        acknowledging sequenceNumber: SWIM.SequenceNumber,
-//        target: SWIMPeer,
-//        incarnation: SWIM.Incarnation,
-//        payload: SWIM.GossipPayload
-//    ) {
-//        guard let targetRef = target as? SWIM.Ref else {
-//            let error = IllegalSWIMPeerTypeError("Expected target to ge \(SWIM.Ref.self) but was: \(target)")
-//            fatalError("\(error)")
-//        }
-//
-//         self.tell(.ack(target: targetRef, incarnation: incarnation, payload: payload, sequenceNumber: sequenceNumber))
-//    }
-// }
-//
-///// :nodoc:
-// extension ActorRef: SWIMPingRequestOriginPeer where Message == SWIM.PingResponse {
-//    public func nack(
-//        acknowledging sequenceNumber: SWIM.SequenceNumber,
-//        target: SWIMPeer
-//    ) {
-//        guard let targetRef = target as? SWIM.Ref else {
-//            let error = IllegalSWIMPeerTypeError("Expected target to ge \(SWIM.Ref.self) but was: \(target)")
-//            fatalError("\(error)")
-//        }
-//
-//         self.tell(.nack(target: target, sequenceNumber: sequenceNumber))
-//    }
-// }
 
 /// :nodoc:
 extension ActorRef: SWIMPingOriginPeer where Message == SWIM.Message {

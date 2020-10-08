@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import ClusterMembership
+import struct Dispatch.DispatchTime
 import enum Dispatch.DispatchTimeInterval
 import Logging
 import SWIM
@@ -30,6 +31,10 @@ internal struct SWIMActorShell {
         self.swim.settings
     }
 
+    var metrics: SWIM.Metrics {
+        self.swim.metrics
+    }
+
     internal init(_ swim: SWIM.Instance, clusterRef: ClusterShell.Ref) {
         self.swim = swim
         self.clusterRef = clusterRef
@@ -41,14 +46,8 @@ internal struct SWIMActorShell {
     /// Initial behavior, kicks off timers and becomes `ready`.
     static func behavior(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) -> Behavior<SWIM.Message> {
         .setup { context in
-            // A bit weird dance, but this way we make the instance use the actor's logger;
-            // This is always what we want inside an actor system anyway;
-            // And at the same time we do use the configured log level for the entire actor: instance and shell
-            var settings = settings
-            context.log.logLevel = settings.logger.logLevel
-            settings.logger = context.log
             let swim = SWIM.Instance(
-                settings: settings,
+                settings: Self.customizeSWIMSettings(settings: settings, context: context),
                 myself: context.myself
             )
             let shell = SWIMActorShell(swim, clusterRef: clusterRef)
@@ -56,6 +55,18 @@ internal struct SWIMActorShell {
 
             return SWIMActorShell.ready(shell: shell)
         }
+    }
+
+    /// Applies some default changes to the SWIM settings.
+    private static func customizeSWIMSettings(settings: SWIM.Settings, context: ActorContext<SWIM.Message>) -> SWIM.Settings {
+        // A bit weird dance, but this way we make the instance use the actor's logger;
+        // This is always what we want inside an actor system anyway;
+        // And at the same time we do use the configured log level for the entire actor: instance and shell
+        var settings = settings
+        context.log.logLevel = settings.logger.logLevel
+        settings.logger = context.log
+        settings.metrics.systemName = context.system.settings.metrics.systemName
+        return settings
     }
 
     static func ready(shell: SWIMActorShell) -> Behavior<SWIM.Message> {
@@ -115,6 +126,8 @@ internal struct SWIMActorShell {
     // MARK: Receiving messages
 
     func receiveRemoteMessage(message: SWIM.RemoteMessage, context: MyselfContext) {
+        self.metrics.shell.messageInboundCount.increment()
+
         switch message {
         case .ping(let replyTo, let payload, let sequenceNumber):
             self.handlePing(context: context, replyTo: replyTo, payload: payload, sequenceNumber: sequenceNumber)
@@ -221,9 +234,12 @@ internal struct SWIMActorShell {
             "swim/timeout": "\(timeout)",
         ]))
 
+        let pingSentAt = DispatchTime.now()
+        self.metrics.shell.messageOutboundCount.increment()
         target.ping(payload: payload, timeout: timeout, sequenceNumber: sequenceNumber, context: context) { result in
             switch result {
             case .success(let pingResponse):
+                self.metrics.shell.pingResponseTime.recordInterval(since: pingSentAt)
                 self.handlePingResponse(
                     response: pingResponse,
                     pingRequestOrigin: pingRequestOrigin,
@@ -259,6 +275,16 @@ internal struct SWIMActorShell {
         let firstSuccessful = eventLoop.makePromise(of: SWIM.PingResponse.self)
         let pingTimeout = directive.timeout
         let peerToPing = directive.target
+
+        let startedSendingPingRequestsSentAt: DispatchTime = .now()
+        let pingRequestResponseTimeFirstTimer = self.swim.metrics.shell.pingRequestResponseTimeFirst
+        firstSuccessful.futureResult.whenComplete { result in
+            switch result {
+            case .success: pingRequestResponseTimeFirstTimer.recordInterval(since: startedSendingPingRequestsSentAt)
+            case .failure: ()
+            }
+        }
+
         for pingRequest in directive.requestDetails {
             let peerToPingRequestThrough = pingRequest.peerToPingRequestThrough
             let payload = pingRequest.payload
@@ -266,14 +292,17 @@ internal struct SWIMActorShell {
 
             context.log.trace("Sending ping request for [\(peerToPing)] to [\(peerToPingRequestThrough)] with payload: \(payload)")
 
-            // self.tracelog(.send(to: peerToPingRequestThrough), message: "pingRequest(target: \(nodeToPing), replyTo: \(self.peer), payload: \(payload), sequenceNumber: \(sequenceNumber))")
+            let pingRequestSentAt: DispatchTime = .now()
             let eachReplyPromise = eventLoop.makePromise(of: SWIM.PingResponse.self)
-            peerToPingRequestThrough.pingRequest(target: peerToPing, payload: payload, from: context.myself, timeout: pingTimeout, sequenceNumber: sequenceNumber) { result in
+
+            self.metrics.shell.messageOutboundCount.increment()
+            peerToPingRequestThrough.pingRequest(target: peerToPing, payload: payload, timeout: pingTimeout, sequenceNumber: sequenceNumber, context: context) { result in
                 eachReplyPromise.completeWith(result)
             }
             context.onResultAsync(of: eachReplyPromise.futureResult, timeout: .effectivelyInfinite) { result in
                 switch result {
                 case .success(let response):
+                    self.metrics.shell.pingRequestResponseTimeAll.recordInterval(since: pingRequestSentAt)
                     self.handleEveryPingRequestResponse(response: response, pinged: peerToPing, context: context)
                     if case .ack = response {
                         // We only cascade successful ping responses (i.e. `ack`s);
@@ -516,6 +545,12 @@ internal struct SWIMActorShell {
 extension SWIMActorShell {
     static let name: String = "swim"
     static let naming: ActorNaming = .unique(SWIMActorShell.name)
+
+    static var props: Props {
+        Props
+            ._wellKnown
+            .metrics(group: "swim.shell", measure: [.serialization, .deserialization])
+    }
 
     static let protocolPeriodTimerKey = TimerKey("\(SWIMActorShell.name)/periodic-ping")
 }

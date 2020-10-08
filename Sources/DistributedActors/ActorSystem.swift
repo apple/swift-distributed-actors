@@ -33,11 +33,11 @@ public final class ActorSystem {
 
 //    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     // TODO: avoid the lock...
-    internal var _namingContext = ActorNamingContext()
+    internal var namingContext = ActorNamingContext()
     internal let namingLock = Lock()
     internal func withNamingContext<T>(_ block: (inout ActorNamingContext) throws -> T) rethrows -> T {
         try self.namingLock.withLock {
-            try block(&self._namingContext)
+            try block(&self.namingContext)
         }
     }
 

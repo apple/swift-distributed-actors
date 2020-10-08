@@ -150,6 +150,16 @@ internal extension ActorRef {
     }
 
     @usableFromInline
+    var _unwrapActorMetrics: ActiveActorMetrics {
+        switch self.personality {
+        case .cell(let cell):
+            return cell.actor?.metrics ?? ActiveActorMetrics.noop
+        default:
+            return ActiveActorMetrics.noop
+        }
+    }
+
+    @usableFromInline
     var _unsafeUnwrapRemote: RemoteClusterActorPersonality<Message> {
         switch self.personality {
         case .remote(let remote): return remote

@@ -13,7 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
+import Dispatch
 import Logging
+import Metrics
 import struct NIO.ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -169,6 +171,7 @@ public protocol _ReceivesSystemMessages: Codable {
     ///   must be performed in "one go" by `_deserializeDeliver`.
     func _tellOrDeadLetter(_ message: Any, file: String, line: UInt) // TODO: This must die?
 
+    // :nodoc: INTERNAL API
     func _dropAsDeadLetter(_ message: Any, file: String, line: UInt)
 
     /// :nodoc: INTERNAL API: This way remoting sends messages
@@ -247,11 +250,24 @@ extension ActorRef {
         on pool: SerializationPool,
         file: String = #file, line: UInt = #line
     ) {
+        let deserializationStartTime: DispatchTime?
+        if self._unwrapActorMetrics.active.contains(.deserialization) {
+            deserializationStartTime = DispatchTime.now()
+        } else {
+            deserializationStartTime = nil
+        }
+
         pool.deserializeAny(
             from: messageBytes,
             using: manifest,
             recipientPath: self.path,
             callback: .init {
+                let metrics = self._unwrapActorMetrics
+                if metrics.active.contains(.deserialization) {
+                    metrics[gauge: .deserializationSize]?.record(messageBytes.count)
+                    metrics[timer: .deserializationTime]?.recordInterval(since: deserializationStartTime)
+                }
+
                 switch $0 {
                 case .success(.message(let message)):
                     switch self.personality {

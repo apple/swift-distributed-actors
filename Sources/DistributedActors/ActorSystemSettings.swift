@@ -35,6 +35,7 @@ public struct ActorSystemSettings {
     public var cluster: ClusterSettings = .default {
         didSet {
             self.serialization.localNode = self.cluster.uniqueBindNode
+            self.metrics.systemName = self.cluster.node.systemName
         }
     }
 
