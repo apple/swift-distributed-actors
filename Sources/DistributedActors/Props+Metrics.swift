@@ -84,13 +84,13 @@ public struct ActiveMetricsOptionSet: OptionSet {
         self.rawValue = rawValue
     }
 
-    static let mailbox = ActiveMetricsOptionSet(rawValue: 1 << 0)
-    static let messageProcessing = ActiveMetricsOptionSet(rawValue: 1 << 1)
+    public static let mailbox = ActiveMetricsOptionSet(rawValue: 1 << 0)
+    public static let messageProcessing = ActiveMetricsOptionSet(rawValue: 1 << 1)
 
-    static let serialization = ActiveMetricsOptionSet(rawValue: 1 << 2)
-    static let deserialization = ActiveMetricsOptionSet(rawValue: 1 << 3)
+    public static let serialization = ActiveMetricsOptionSet(rawValue: 1 << 2)
+    public static let deserialization = ActiveMetricsOptionSet(rawValue: 1 << 3)
 
-    static let all: ActiveMetricsOptionSet = [
+    public static let all: ActiveMetricsOptionSet = [
         .mailbox,
         .messageProcessing,
         .serialization,

@@ -79,7 +79,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
             target: target.ref,
             timeout: .seconds(1),
             requestDetails: [
-                .init(peerToPingRequestThrough: through.ref, payload: .none, sequenceNumber: 1)
+                .init(peerToPingRequestThrough: through.ref, payload: .none, sequenceNumber: 1),
             ]
         )
 

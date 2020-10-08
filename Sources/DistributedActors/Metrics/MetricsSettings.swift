@@ -52,7 +52,7 @@ public struct MetricsSettings {
     ///
     /// Effectively metrics are labelled as, e.g. `"first.sact.actors.lifecycle"`,
     /// where `"first"` is `systemName` and `"sact"` is the `systemMetricsPrefix`.
-    public var systemMetricsPrefix: String? = nil
+    public var systemMetricsPrefix: String?
 
     /// Segment prefixed to all SWIM metrics.
     public var clusterSWIMMetricsPrefix: String? = "cluster.swim"

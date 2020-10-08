@@ -63,7 +63,7 @@ public struct ClusterSettings {
     /// Note that most of the time `uniqueBindNode` is more appropriate, as it includes this node's unique id.
     public var node: Node {
         didSet {
-            self.swim.metrics.systemName = node.systemName
+            self.swim.metrics.systemName = self.node.systemName
         }
     }
 

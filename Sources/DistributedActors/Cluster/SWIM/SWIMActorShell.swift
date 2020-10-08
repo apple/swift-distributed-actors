@@ -239,7 +239,7 @@ internal struct SWIMActorShell {
         target.ping(payload: payload, timeout: timeout, sequenceNumber: sequenceNumber, context: context) { result in
             switch result {
             case .success(let pingResponse):
-                metrics.shell.pingResponseTime.recordInterval(since: pingSentAt)
+                self.metrics.shell.pingResponseTime.recordInterval(since: pingSentAt)
                 self.handlePingResponse(
                     response: pingResponse,
                     pingRequestOrigin: pingRequestOrigin,

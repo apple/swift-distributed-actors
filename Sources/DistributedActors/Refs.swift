@@ -495,11 +495,6 @@ internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix th
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
 
-    // :nodoc: INTERNAL API
-    public var _props: Props? {
-        nil
-    }
-
     @usableFromInline
     internal func _deserializeDeliver(
         _ messageBytes: Serialization.Buffer, using manifest: Serialization.Manifest,

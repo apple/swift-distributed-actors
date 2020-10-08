@@ -498,7 +498,7 @@ internal final class Mailbox<Message: ActorMessage> {
             // all user messages in this run, because we had more messages queued up than the maximum run
             // length, return `Reschedule` to signal the queue should be re-scheduled
             //
-            // Metrics: don't update the metric count here, it would have ben updated by ongoing enqueues,
+            // Metrics: don't update the metric count here, it would have been updated by ongoing enqueues,
             // and we'll update it as well when the run begins.
             return .reschedule
         } else {

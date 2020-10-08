@@ -30,7 +30,7 @@ public final class ActorTestKit {
 
     private let spawnProbesLock = Lock()
     /// Access should be protected by `spawnProbesLock`, in order to guarantee unique names.
-    private var _namingContext = ActorNamingContext()
+    private var namingContext = ActorNamingContext()
 
     public let settings: ActorTestKitSettings
 
@@ -76,9 +76,9 @@ extension ActorTestKit {
         // system use its own sequence number -- which should only be in use for the user actors.
         let name: String
         if let naming = naming {
-            name = naming.makeName(&self._namingContext)
+            name = naming.makeName(&self.namingContext)
         } else {
-            name = ActorTestProbe<Message>.naming.makeName(&self._namingContext)
+            name = ActorTestProbe<Message>.naming.makeName(&self.namingContext)
         }
 
         return ActorTestProbe(
@@ -108,9 +108,9 @@ extension ActorTestKit {
         // system use its own sequence number -- which should only be in use for the user actors.
         let name: String
         if let naming = naming {
-            name = naming.makeName(&self._namingContext)
+            name = naming.makeName(&self.namingContext)
         } else {
-            name = ActorTestProbe<Act.Message>.naming.makeName(&self._namingContext)
+            name = ActorTestProbe<Act.Message>.naming.makeName(&self.namingContext)
         }
 
         return ActorableTestProbe(
