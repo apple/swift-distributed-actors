@@ -64,6 +64,11 @@ var targets: [PackageDescription.Target] = [
          dependencies: ["DistributedActors"]
      ),
 
+    .target(
+         name: "ActorVirtualNamespacePlugin",
+         dependencies: ["DistributedActors"]
+     ),
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: XPC
 
