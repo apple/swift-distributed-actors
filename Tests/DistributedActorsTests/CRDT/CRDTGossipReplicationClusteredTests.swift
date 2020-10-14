@@ -34,7 +34,18 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         settings.serialization.register(CRDT.ORSet<String>.self)
         settings.serialization.register(CRDT.LWWMap<String, String?>.self)
         settings.serialization.register(CRDT.LWWRegister<String?>.self)
+        settings.serialization.register(CodableExampleValue.self)
+        settings.serialization.register(CRDT.LWWMap<String, CodableExampleValue>.self)
+        settings.serialization.register(CRDT.LWWRegister<CodableExampleValue>.self)
         settings.serialization.register(String?.self)
+    }
+
+    struct CodableExampleValue: Equatable, Codable, ExpressibleByStringLiteral {
+        let value: String
+
+        init(stringLiteral value: StringLiteralType) {
+            self.value = value
+        }
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -157,6 +168,35 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         two.tell(.set(key: "b", value: "bar", .local))
 
         let gossipTwoExpectMap: [String: String?] = ["a": "foo", "aa": nil, "b": "bar"]
+        try self.expectMap(probe: p1, expected: gossipTwoExpectMap)
+        try self.expectMap(probe: p2, expected: gossipTwoExpectMap)
+    }
+
+    func test_gossip_localLWWMapUpdate_toOtherNode_codableValue() throws {
+        let configure: (inout ActorSystemSettings) -> Void = { settings in
+            settings.crdt.gossipInterval = .seconds(1)
+            settings.crdt.gossipIntervalRandomFactor = 0 // no random factor, exactly 1second intervals
+        }
+        let first = self.setUpNode("first", configure)
+        let second = self.setUpNode("second", configure)
+        try self.joinNodes(node: first, with: second, ensureMembers: .up)
+
+        let p1 = self.testKit(first).spawnTestProbe("probe-one", expecting: CRDT.LWWMap<String, CodableExampleValue>.self)
+        let p2 = self.testKit(second).spawnTestProbe("probe-two", expecting: CRDT.LWWMap<String, CodableExampleValue>.self)
+
+        let one = try first.spawn("one", self.ownsLWWMap(p: p1, defaultValue: "<nil>"))
+        let two = try second.spawn("two", self.ownsLWWMap(p: p2, defaultValue: "<nil>"))
+
+        one.tell(.set(key: "a", value: "foo", .local))
+        one.tell(.set(key: "aa", value: "baz", .local))
+
+        let gossipOneExpectMap: [String: CodableExampleValue] = ["a": "foo", "aa": "baz"]
+        try self.expectMap(probe: p1, expected: gossipOneExpectMap)
+        try self.expectMap(probe: p2, expected: gossipOneExpectMap)
+
+        two.tell(.set(key: "b", value: "bar", .local))
+
+        let gossipTwoExpectMap: [String: CodableExampleValue] = ["a": "foo", "aa": "baz", "b": "bar"]
         try self.expectMap(probe: p1, expected: gossipTwoExpectMap)
         try self.expectMap(probe: p2, expected: gossipTwoExpectMap)
     }
@@ -293,11 +333,11 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         }
     }
 
-    private func expectMap(probe: ActorTestProbe<CRDT.LWWMap<String, String?>>, expected: [String: String?], file: StaticString = #file, line: UInt = #line) throws {
+    private func expectMap<Value>(probe: ActorTestProbe<CRDT.LWWMap<String, Value>>, expected: [String: Value], file: StaticString = #file, line: UInt = #line) throws {
         let testKit: ActorTestKit = self._testKits.first!
 
         try testKit.eventually(within: .seconds(10)) {
-            let replicated: CRDT.LWWMap<String, String?> = try probe.expectMessage(within: .seconds(10), file: file, line: line)
+            let replicated: CRDT.LWWMap<String, Value> = try probe.expectMessage(within: .seconds(10), file: file, line: line)
             pinfo("[\(probe.name)] received updated crdt: \(replicated)")
 
             guard expected == replicated.underlying else {

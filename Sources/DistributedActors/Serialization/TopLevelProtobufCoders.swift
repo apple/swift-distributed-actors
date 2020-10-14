@@ -20,8 +20,6 @@ import NIOFoundationCompat
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Top-Level Bytes-Blob Encoder
 
-// TODO: TopLevelDataEncoder
-
 final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     let allocator: ByteBufferAllocator
 
@@ -78,7 +76,7 @@ final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
 
     func unkeyedContainer() -> UnkeyedEncodingContainer {
         fatalErrorBacktrace("Attempted \(#function) in \(self)")
-        // TopLevelProtobufBlobEncoderContainer(superEncoder: self)
+        // TopLevelProtobufBlobUnkeyedEncodingContainer(superEncoder: self)
     }
 
     func singleValueContainer() -> SingleValueEncodingContainer {
@@ -100,7 +98,9 @@ struct TopLevelProtobufBlobSingleValueEncodingContainer: SingleValueEncodingCont
         case let repr as AnyProtobufRepresentable:
             try repr.encode(to: self.superEncoder)
         case let data as Data:
-            try data.encode(to: self.superEncoder)
+            try self.superEncoder.store(data: data)
+        case let bytes as [UInt8]:
+            try self.superEncoder.store(bytes: bytes)
         default:
             throw SerializationError.unableToSerialize(hint: "Attempted encode \(T.self) into a \(Self.self) which only supports ProtobufRepresentable")
         }
