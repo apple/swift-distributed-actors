@@ -32,10 +32,13 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
 
     override func configureActorSystem(settings: inout ActorSystemSettings) {
         settings.serialization.register(CRDT.ORSet<String>.self)
-        settings.serialization.register(CRDT.LWWMap<String, ValueHolder<String?>>.self)
-        settings.serialization.register(CRDT.LWWRegister<ValueHolder<String?>>.self)
-        settings.serialization.register(ValueHolder<String?>.self)
+        settings.serialization.register(CRDT.LWWMap<String, String?>.self)
+        settings.serialization.register(CRDT.LWWRegister<String?>.self)
+        settings.serialization.register(String?.self)
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Owns Set
 
     enum OwnsSetMessage: NonTransportableActorMessage {
         case insert(String, CRDT.OperationConsistency)
@@ -58,6 +61,9 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         }
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Owns Counter
+
     func ownsCounter(p: ActorTestProbe<CRDT.GCounter>?) -> Behavior<Int> {
         .setup { context in
             let counter: CRDT.ActorOwned<CRDT.GCounter> = CRDT.GCounter.makeOwned(by: context, id: "counter")
@@ -71,6 +77,9 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
             }
         }
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Owns Map
 
     enum OwnsMapMessage<Value: Codable>: NonTransportableActorMessage {
         case set(key: String, value: Value, CRDT.OperationConsistency)
@@ -123,14 +132,6 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         try self.expectSet(probe: p2, expected: ["a", "aa", "b"])
     }
 
-    struct ValueHolder<Value: Codable & Equatable>: Codable, Equatable {
-        let value: Value?
-
-        init(_ value: Value? = nil) {
-            self.value = value
-        }
-    }
-
     func test_gossip_localLWWMapUpdate_toOtherNode() throws {
         let configure: (inout ActorSystemSettings) -> Void = { settings in
             settings.crdt.gossipInterval = .seconds(1)
@@ -140,24 +141,22 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         let second = self.setUpNode("second", configure)
         try self.joinNodes(node: first, with: second, ensureMembers: .up)
 
-        let p1 = self.testKit(first).spawnTestProbe("probe-one", expecting: CRDT.LWWMap<String, ValueHolder<String?>>.self)
-        let p2 = self.testKit(second).spawnTestProbe("probe-two", expecting: CRDT.LWWMap<String, ValueHolder<String?>>.self)
+        let p1 = self.testKit(first).spawnTestProbe("probe-one", expecting: CRDT.LWWMap<String, String?>.self)
+        let p2 = self.testKit(second).spawnTestProbe("probe-two", expecting: CRDT.LWWMap<String, String?>.self)
 
-        // TODO: JSON serialization blows up on Swift 5.2.4 Linux with top-level values so we must wrap (https://bugs.swift.org/browse/SR-13173). Change nilPlaceholder to `:String? = .none` once fixed
-        let nilPlaceholder = ValueHolder<String?>()
-        let one = try first.spawn("one", self.ownsLWWMap(p: p1, defaultValue: nilPlaceholder))
-        let two = try second.spawn("two", self.ownsLWWMap(p: p2, defaultValue: nilPlaceholder))
+        let one = try first.spawn("one", self.ownsLWWMap(p: p1, defaultValue: nil))
+        let two = try second.spawn("two", self.ownsLWWMap(p: p2, defaultValue: nil))
 
-        one.tell(.set(key: "a", value: .init("foo"), .local))
-        one.tell(.set(key: "aa", value: nilPlaceholder, .local))
+        one.tell(.set(key: "a", value: "foo", .local))
+        one.tell(.set(key: "aa", value: nil, .local))
 
-        let gossipOneExpectMap: [String: ValueHolder<String?>] = ["a": .init("foo"), "aa": nilPlaceholder]
+        let gossipOneExpectMap: [String: String?] = ["a": .init("foo"), "aa": nil]
         try self.expectMap(probe: p1, expected: gossipOneExpectMap)
         try self.expectMap(probe: p2, expected: gossipOneExpectMap)
 
-        two.tell(.set(key: "b", value: .init("bar"), .local))
+        two.tell(.set(key: "b", value: "bar", .local))
 
-        let gossipTwoExpectMap: [String: ValueHolder<String?>] = ["a": .init("foo"), "aa": nilPlaceholder, "b": .init("bar")]
+        let gossipTwoExpectMap: [String: String?] = ["a": "foo", "aa": nil, "b": "bar"]
         try self.expectMap(probe: p1, expected: gossipTwoExpectMap)
         try self.expectMap(probe: p2, expected: gossipTwoExpectMap)
     }
@@ -294,11 +293,11 @@ final class CRDTGossipReplicationClusteredTests: ClusteredActorSystemsXCTestCase
         }
     }
 
-    private func expectMap(probe: ActorTestProbe<CRDT.LWWMap<String, ValueHolder<String?>>>, expected: [String: ValueHolder<String?>], file: StaticString = #file, line: UInt = #line) throws {
+    private func expectMap(probe: ActorTestProbe<CRDT.LWWMap<String, String?>>, expected: [String: String?], file: StaticString = #file, line: UInt = #line) throws {
         let testKit: ActorTestKit = self._testKits.first!
 
         try testKit.eventually(within: .seconds(10)) {
-            let replicated: CRDT.LWWMap<String, ValueHolder<String?>> = try probe.expectMessage(within: .seconds(10), file: file, line: line)
+            let replicated: CRDT.LWWMap<String, String?> = try probe.expectMessage(within: .seconds(10), file: file, line: line)
             pinfo("[\(probe.name)] received updated crdt: \(replicated)")
 
             guard expected == replicated.underlying else {
