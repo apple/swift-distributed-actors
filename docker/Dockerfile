@@ -13,12 +13,10 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 
 # dependencies
-RUN apt-get update && apt-get install -y wget
-RUN apt-get update && apt-get install -y lsof dnsutils netcat-openbsd net-tools curl jq # used by integration tests
-
-# ruby and jazzy for docs generation
-RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev
-RUN gem install jazzy --no-ri --no-rdoc
+RUN apt-get update && apt-get install -y wget \
+    lsof dnsutils netcat-openbsd net-tools curl jq \
+    ruby ruby-dev libsqlite3-dev
+RUN if [ "${ubuntu_version}" != "xenial" ] ; then  gem install jazzy --no-ri --no-rdoc ; fi
 RUN gem install asciidoctor -v 1.5.8 --no-ri --no-rdoc
 RUN gem install asciidoctor-pdf --pre --no-ri --no-rdoc
 RUN gem install asciidoctor-diagram -v 1.5.8 --no-ri --no-rdoc
