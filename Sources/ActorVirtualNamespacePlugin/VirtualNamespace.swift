@@ -18,9 +18,7 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Virtual Namespace
 
-
-
-internal final class ActorVirtualNamespace<Message: ActorMessage> {
+internal final class VirtualNamespace<Message: ActorMessage> {
     /// Settings for the `ActorVirtualNamespace`
     let settings: ActorVirtualNamespaceSettings
 
