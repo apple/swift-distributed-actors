@@ -16,28 +16,13 @@ import DistributedActors
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor singleton plugin
+// MARK: Virtual namespace plugin
 
-/// The actor singleton plugin ensures that there is no more than one instance of an actor that is defined to be
-/// singleton running in the cluster.
-///
-/// An actor singleton may run on any node in the cluster. Use `ActorVirtualNamespaceSettings.allocationStrategy` to control
-/// its allocation. On candidate nodes where the singleton might run, use `ActorSystem.singleton.ref(type:name:props:behavior)`
-/// to define actor behavior. Otherwise, call `ActorSystem.singleton.ref(type:name:)` to obtain a ref. The returned
-/// `ActorRef` is in reality a proxy which handle situations where the singleton is shifted to different nodes.
-///
-/// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
-///            the singleton allocation.
-/// - SeeAlso: The `ActorVirtualNamespace` mechanism is conceptually similar to Erlang/OTP's <a href="http://erlang.org/doc/design_principles/distributed_applications.html">`DistributedApplication`</a>,
-///            and <a href="https://doc.akka.io/docs/akka/current/cluster-singleton.html">`ClusterVirtualNamespace` in Akka</a>.
-public final class ActorVirtualNamespacePlugin {
-    private var singletons: [String: BoxedActorVirtualNamespace] = [:]
-    private let singletonsLock = Lock()
-
+public final class VirtualNamespacePlugin {
     public init() {}
 
     // FIXME: document that may crash, it may right?
-    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorVirtualNamespaceSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
+    func ref<Message: ActorMessage>(of type: Message.Type, settings: VirtualNamespaceSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
         try self.singletonsLock.withLock {
             if let existing = self.singletons[settings.name] {
                 guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {

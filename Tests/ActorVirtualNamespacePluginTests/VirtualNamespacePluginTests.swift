@@ -12,17 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import ActorSingletonPlugin
+@testable import ActorVirtualNamespacePlugin
 import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorSingletonPluginTests: ActorSystemXCTestCase {
+final class VirtualNamespacePluginTests: ActorSystemXCTestCase {
     func test_noCluster_ref() throws {
         // Singleton should work just fine without clustering
         let system = ActorSystem("test") { settings in
             settings.cluster.enabled = false
-            settings += ActorSingletonPlugin()
+            settings += VirtualNamespacePlugin()
         }
 
         defer {
@@ -42,29 +42,4 @@ final class ActorSingletonPluginTests: ActorSystemXCTestCase {
         try replyProbe.expectMessage("Hello Charlene!")
     }
 
-    func test_noCluster_actor() throws {
-        // Singleton should work just fine without clustering
-        let system = ActorSystem("test") { settings in
-            settings.cluster.enabled = false
-            settings += ActorSingletonPlugin()
-        }
-
-        defer {
-            try! system.shutdown().wait()
-        }
-
-        let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
-
-        // singleton.host Actorable
-        let actor = try system.singleton.host(GreeterSingleton.self, name: GreeterSingleton.name) { _ in GreeterSingleton("Hi") }
-        // TODO: https://github.com/apple/swift-distributed-actors/issues/344
-        // let string = try probe.expectReply(actor.greet(name: "Charlie", _replyTo: replyProbe.ref))
-        actor.ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
-        try replyProbe.expectMessage("Hi Charlie!")
-
-        // singleton.actor (proxy-only)
-        let actorProxy = try system.singleton.actor(of: GreeterSingleton.self, name: GreeterSingleton.name)
-        actorProxy.ref.tell(.greet(name: "Charlene", _replyTo: replyProbe.ref))
-        try replyProbe.expectMessage("Hi Charlene!")
-    }
 }

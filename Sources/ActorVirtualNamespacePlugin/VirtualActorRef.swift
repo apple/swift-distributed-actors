@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -15,6 +15,38 @@
 import DistributedActors
 import Logging
 
+internal class VirtualActorPersonality<Message>: CellDelegate<Message> {
+    override let system: ActorSystem
+    override var address: ActorAddress
+
+    let namespace: ActorRef<Namespace.Message>
+
+    override init(system: ActorSystem, address: ActorAddress) {
+        self.system = system
+        self.address = address
+    }
+
+    override func sendMessage(_ message: Message, file: String, line: UInt) {
+
+    }
+
+    override func sendSystemMessage(_ message: _SystemMessage, file: String, line: UInt) {
+        namespace.tell
+    }
+
+    override func sendClosure(file: String, line: UInt, _ f: @escaping () throws -> ()) {
+        fatalErrorBacktrace("\(#function) is not supported on remote or virtual actors.")
+    }
+
+    override func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String, line: UInt) {
+        super.sendSubMessage(message, identifier: identifier, subReceiveAddress: subReceiveAddress, file: file, line: line)
+    }
+
+    override func sendAdaptedMessage(_ message: Any, file: String, line: UInt) {
+        super.sendAdaptedMessage(message, file: file, line: line)
+    }
+}
+
 /// Represents a reference to a "virtual" actor, which means that the actor may not (currently) exist in memory,
 /// (or may have never existed _yet_), but will be created upon the first message delivery to it.
 ///
@@ -25,8 +57,7 @@ import Logging
 ///
 /// It is by design that one can not `watch` such reference, as it's existence should not matter to end users of this API,
 /// i.e. even if the actor were to stop or move to other nodes, the same ref remains valid forever, thus watching it would be misleading.
-// TODO: message deliveries and redeliveries we can build as helpers and make it even easier.
-struct VirtualActorRef<Message>: ReceivesMessages {
+public struct VirtualActorRef<Message: Codable>: ReceivesMessages {
     let identity: VirtualIdentity
     private let namespace: VirtualNamespace<Message>
 

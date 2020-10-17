@@ -143,6 +143,11 @@ var targets: [PackageDescription.Target] = [
         dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
     ),
 
+    .testTarget(
+        name: "ActorVirtualNamespacePluginPluginTests",
+        dependencies: ["ActorVirtualNamespacePlugin", "DistributedActorsTestKit"]
+    ),
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
 
