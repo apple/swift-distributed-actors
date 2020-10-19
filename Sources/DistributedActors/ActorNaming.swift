@@ -27,7 +27,7 @@ extension ActorNaming {
     /// - Faults: when passed in name contains illegal characters. See `ActorNaming` for detailed rules about actor naming.
     public static func unique(_ name: String) -> ActorNaming {
         ActorNaming.validateUserProvided(nameOrPrefix: name)
-        return .init(unchecked: .unique(name))
+        return .init(_unchecked: .unique(name))
     }
 
     /// Naming strategy prefixing a sequence of names with a common prefix, followed by a `-` character and an identifier,
@@ -37,12 +37,12 @@ extension ActorNaming {
     /// - Faults: when passed in name contains illegal characters. See `ActorNaming` for detailed rules about actor naming.
     public static func prefixed(with prefix: String) -> ActorNaming {
         ActorNaming.validateUserProvided(nameOrPrefix: prefix)
-        return .init(unchecked: .prefixed(prefix: prefix, suffixScheme: .letters))
+        return .init(_unchecked: .prefixed(prefix: prefix, suffixScheme: .letters))
     }
 
     /// Shorthand for defining "anonymous" actor names, which carry
     public static var anonymous: ActorNaming {
-        .init(unchecked: .prefixed(prefix: "$anonymous", suffixScheme: .letters))
+        .init(_unchecked: .prefixed(prefix: "$anonymous", suffixScheme: .letters))
     }
 
     /// Performs some initial name validation, like user provided names not being allowed to start with $ etc.
@@ -58,22 +58,24 @@ extension ActorNaming {
 
 extension ActorNaming {
     /// Special naming scheme applied to `ask` actors.
-    internal static var ask: ActorNaming = .init(unchecked: .prefixed(prefix: "$ask", suffixScheme: .letters))
+    internal static var ask: ActorNaming = .init(_unchecked: .prefixed(prefix: "$ask", suffixScheme: .letters))
 
     /// Naming for adapters (`context.messageAdapter`)
-    internal static let adapter: ActorNaming = .init(unchecked: .unique("$messageAdapter"))
+    internal static let adapter: ActorNaming = .init(_unchecked: .unique("$messageAdapter"))
 }
 
 /// Used while spawning actors to identify how its name should be created.
 public struct ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
-    // We keep an internal enum, but do not expose it as we may want to add more naming strategies in the future?
-    internal enum _Naming {
+    /// :nodoc:
+    /// We keep an internal enum, but do not expose it as we may want to add more naming strategies in the future?
+    public enum _Naming {
         case unique(String)
         // case uniqueNumeric(NumberingScheme)
         case prefixed(prefix: String, suffixScheme: SuffixScheme)
     }
 
-    internal enum SuffixScheme {
+    /// :nodoc: INTERNAL API
+    public enum SuffixScheme {
         /// Scheme optimized for sequential related to each other entities, such as workers, or process identifiers.
         /// resulting in sequential numeric values: `1, 2, 3, ..., 9, 10, 11, 12, ...`
         ///
@@ -124,10 +126,11 @@ public struct ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterp
 
     internal let naming: _Naming
 
+    /// :nodoc:
     /// Directly create target naming, WITHOUT performing any validation (!),
     /// used to create e.g. $ prefixed names for automatically spawned actors like "ask" or similar.
-    internal init(unchecked: _Naming) {
-        self.naming = unchecked
+    public init(_unchecked: _Naming) {
+        self.naming = _unchecked
     }
 
     public init(stringLiteral value: String) {

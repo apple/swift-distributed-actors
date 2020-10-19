@@ -711,7 +711,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
                 return .init(.adapter(adapter))
             }
 
-            let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
+            let naming = ActorNaming(_unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
             let name = naming.makeName(&self.namingContext)
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
             let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)

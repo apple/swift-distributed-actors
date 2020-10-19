@@ -60,14 +60,14 @@ var targets: [PackageDescription.Target] = [
     // MARK: Plugins
 
     .target(
-         name: "ActorSingletonPlugin",
-         dependencies: ["DistributedActors"]
-     ),
+        name: "ActorSingletonPlugin",
+        dependencies: ["DistributedActors"]
+    ),
 
     .target(
-         name: "ActorVirtualNamespacePlugin",
-         dependencies: ["DistributedActors"]
-     ),
+        name: "VirtualNamespacePlugin",
+        dependencies: ["DistributedActors"]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: XPC
@@ -144,8 +144,8 @@ var targets: [PackageDescription.Target] = [
     ),
 
     .testTarget(
-        name: "ActorVirtualNamespacePluginPluginTests",
-        dependencies: ["ActorVirtualNamespacePlugin", "DistributedActorsTestKit"]
+        name: "VirtualNamespacePluginTests",
+        dependencies: ["VirtualNamespacePlugin", "DistributedActorsTestKit"]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------

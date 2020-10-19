@@ -29,7 +29,7 @@ final class ActorNamingTests: XCTestCase {
 
     func test_makeName_sequentialNumeric() {
         var context = ActorNamingContext()
-        let naming = ActorNaming(unchecked: .prefixed(prefix: "hello", suffixScheme: .sequentialNumeric))
+        let naming = ActorNaming(_unchecked: .prefixed(prefix: "hello", suffixScheme: .sequentialNumeric))
 
         for i in 0 ... 100 {
             let name = naming.makeName(&context)
@@ -39,7 +39,7 @@ final class ActorNamingTests: XCTestCase {
 
     func test_makeName_letters() {
         var context = ActorNamingContext()
-        let naming = ActorNaming(unchecked: .prefixed(prefix: "hello", suffixScheme: .letters))
+        let naming = ActorNaming(_unchecked: .prefixed(prefix: "hello", suffixScheme: .letters))
 
         naming.makeName(&context).shouldEqual("hello-y")
         naming.makeName(&context).shouldEqual("hello-b")

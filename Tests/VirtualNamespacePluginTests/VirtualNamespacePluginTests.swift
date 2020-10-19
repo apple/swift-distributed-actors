@@ -12,34 +12,40 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import ActorVirtualNamespacePlugin
 import DistributedActors
 import DistributedActorsTestKit
 import XCTest
+import VirtualNamespacePlugin
 
 final class VirtualNamespacePluginTests: ActorSystemXCTestCase {
+
     func test_noCluster_ref() throws {
-        // Singleton should work just fine without clustering
-        let system = ActorSystem("test") { settings in
+        let system = self.setUpNode("test") { settings in
             settings.cluster.enabled = false
             settings += VirtualNamespacePlugin()
         }
 
-        defer {
-            try! system.shutdown().wait()
-        }
-
         let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
 
-        // singleton.host behavior
-        let ref = try system.singleton.host(GreeterSingleton.Message.self, name: GreeterSingleton.name, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello")))
-        ref.tell(.greet(name: "Charlie", _replyTo: replyProbe.ref))
-        try replyProbe.expectMessage("Hello Charlie!")
+        let ref = try system.virtual.ref("caplin-the-capybara", TestVirtualActor.behavior)
+        ref.tell(.hello(replyTo: replyProbe.ref))
 
-        // singleton.ref (proxy-only)
-        let proxyRef = try system.singleton.ref(of: GreeterSingleton.Message.self, name: GreeterSingleton.name)
-        proxyRef.tell(.greet(name: "Charlene", _replyTo: replyProbe.ref))
-        try replyProbe.expectMessage("Hello Charlene!")
+        try replyProbe.expectMessage("Hello!")
+    }
+}
+
+enum TestVirtualActor {
+    enum Message: NonTransportableActorMessage {
+        case hello(replyTo: ActorRef<String>)
     }
 
+    static var behavior: Behavior<Message> {
+        .receive { context, message in
+            switch message {
+            case .hello(let replyTo):
+                replyTo.tell("Hello!")
+            }
+            return .same
+        }
+    }
 }

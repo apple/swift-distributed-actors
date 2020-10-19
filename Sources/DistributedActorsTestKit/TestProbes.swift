@@ -40,7 +40,7 @@ public class ActorTestProbe<Message: ActorMessage> {
     /// By default test probes are named as `$testProbe-###`.
     public static var naming: ActorNaming {
         // has to be computed property since: static stored properties are not supported in generic types
-        ActorNaming(unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
+        ActorNaming(_unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
     }
 
     typealias ProbeCommands = ActorTestProbeCommand<Message>

@@ -16,13 +16,10 @@ import DistributedActors
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Virtual Namespace
+// MARK: Virtual namespace settings
 
-internal final class VirtualNamespaceActor<Message: ActorMessage> {
-    enum Message {
-        case forward(identity: String, Message) // TODO: Baggage
-    }
-    var behavior: Behavior<Message> = .receive { context, message in 
-
+public struct VirtualNamespaceSettings {
+    public static var `default`: VirtualNamespaceSettings {
+        .init()
     }
 }

@@ -90,7 +90,7 @@ extension ActorTestKit {
                 testProbeProps.dispatcher = .callingThread
                 #endif
 
-                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+                return try system.spawn(.init(_unchecked: .unique(name)), props: testProbeProps, probeBehavior)
             },
             settings: self.settings
         )
@@ -122,7 +122,7 @@ extension ActorTestKit {
                 testProbeProps.dispatcher = .callingThread
                 #endif
 
-                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+                return try system.spawn(.init(_unchecked: .unique(name)), props: testProbeProps, probeBehavior)
             },
             settings: self.settings
         )
