@@ -225,7 +225,7 @@ extension CASPaxos {
                 context.onResultAsync(of: EventLoopFuture.whenAllComplete(futureAcceptances, on: context.system._eventLoopGroup.next()), timeout: .seconds(10)) { result in
                     guard case .success(let acceptances) = result else {
                         context.log.warning("Failed to gather responses: \(result)")
-                        returnPromise.fail(CASPaxosError.TODO)
+                        returnPromise.fail(CASPaxosError.TODO("Failed to gather acceptances"))
                         return .same
                     }
 

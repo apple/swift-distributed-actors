@@ -103,7 +103,7 @@ enum CASPaxosError: Error, NonTransportableActorMessage {
     /// It is illegal to send multiple CAS concurrently to the same key
     case concurrentRequestError
 
-    case TODO // placeholder error; FIXME: remove this
+    case TODO(String) // placeholder error; FIXME: remove this
 
     case changeFunctionFailed(Error)
 

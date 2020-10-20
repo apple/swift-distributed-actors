@@ -36,6 +36,7 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
 
     // ==== Active Peers -----------------------------------------------------------------------------------------------
 
+    /// Lists all *other* peers of this namespace.
     var namespacePeers: Set<NamespaceRef>
 
     var casPaxos: CASPaxos<UniqueNode>.Ref!
@@ -90,8 +91,9 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
     }
 
     private func deliver(message: M, to uniqueName: String, context: ActorContext<Message>) {
-        context.log.debug("Deliver message to TODO:MOCK:$virtual/\(M.self)/\(uniqueName)", metadata: [ // TODO: the proper path
+        context.log.debug("Deliver message to TODO:MOCK:$virtual/\(String(reflecting: M.self))/\(uniqueName)", metadata: [ // TODO: the proper path
             "message": "\(message)",
+            "target": "$virtual/\(String(reflecting: M.self))/\(uniqueName)", // TODO: fake path
         ])
 
         if let ref = self.activeRefs[uniqueName] {
@@ -120,16 +122,30 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
 extension VirtualNamespaceActor {
     private func subscribeToVirtualNamespacePeers(context: ActorContext<Message>) {
         context.receptionist.subscribeMyself(to: Reception.Key(NamespaceRef.self, id: "$namespace")) { listing in
-            let newRefs = Set(listing.refs)
+            let refs = Set(listing.refs.filter { $0.address != context.address })
 
-            // TODO: if we lost a member, we may need to restart
+            guard self.namespacePeers != refs else {
+                // nothing changed
+                return
+            }
+
+            self.namespacePeers = refs // FIXME: detect removed/added peers and act on it (!!! this impl is too naive)
         }
     }
 
     private func subscribeToVirtualActors(context: ActorContext<Message>) {
         // TODO: what if there's many namespaces for the same type; we'd need to use different keys
-        context.receptionist.subscribeMyself(to: Reception.Key<ActorRef<M>>(id: "$virtual")) { _ in
+        context.receptionist.subscribeMyself(to: Reception.Key<ActorRef<M>>(id: "$virtual")) { listing in
             // TODO: update active ones
+            for ref in listing.refs {
+                if let existing = self.activeRefs[ref.path.name] {
+                    if existing.address == ref.address {
+                        continue // nothing changed
+                    } else {
+                        context.log.warning("TRYING TO STORE \(ref) AS \(ref.path.name); OVER EXISTING \(existing)") // FIXME
+                    }
+                }
+            }
         }
     }
 }
@@ -140,12 +156,27 @@ extension VirtualNamespaceActor {
 extension VirtualNamespaceActor {
     // TODO: implement a consensus round to decide who should host this
     private func activate(_ uniqueName: String, context: ActorContext<Message>) throws {
-        let decision = self.activationConsensus(uniqueName: uniqueName, context: context)
+        let decisionFuture = self.activationConsensus(uniqueName: uniqueName, context: context)
 
-        context.onResultAsync(of: decision, timeout: self.settings.activationTimeout) { result in
+        context.onResultAsync(of: decisionFuture, timeout: self.settings.activationTimeout) { result in
             switch result {
             case .success(let decision):
-                try self.activateLocal(uniqueName: uniqueName, context: context)
+                do {
+                    if decision.uniqueNode == context.address.uniqueNode {
+                        try self.activateLocal(uniqueName: uniqueName, context: context)
+                    } else if let target = self.namespacePeers.first(where: { $0.address.uniqueNode == decision.uniqueNode }) {
+                        self.activateRemote(uniqueName: uniqueName, target: target, context: context)
+                    } else {
+                        context.log.warning("Attempted to activate and flush on \(decision.uniqueNode), yet peer was not known!")
+                        // TODO: consider dropping stashed messages for it
+                    }
+                } catch {
+                    context.log.warning("Failed to activate on \(decision), uniqueName: \(uniqueName)", metadata: [
+                        "error": "\(error)",
+                    ])
+                }
+                return .same
+
             case .failure(let error):
                 context.log.warning("Failed to activate virtual actor", metadata: [
                     "virtual/actor/name": "\(uniqueName)",
@@ -159,43 +190,98 @@ extension VirtualNamespaceActor {
     private func activateLocal(uniqueName: String, context: ActorContext<Message>) throws {
         let ref = try context.spawn(.unique(uniqueName), self.managedBehavior)
         self.activeRefs[uniqueName] = ref
-        self.onActivated(ref, context: context)
+
+        context.log.info("Activated virtual actor locally: \(ref)", metadata: [
+            "virtual/namespace": "\(self.namespaceName)",
+            "virtual/actor/name": "\(uniqueName)",
+        ])
+        self.flushDirectly(actor: ref, context: context)
     }
 
-    private func activateRemote(uniqueName: String, ref: ActorRef<M>, context: ActorContext<Message>) throws {}
+    private func activateRemote(uniqueName: String, target: NamespaceRef, context: ActorContext<Message>) {
+        context.log.info("ACTIVATE remote \(uniqueName), on \(target)")
+
+        // TODO: forward messages to this one
+        context.log.info("Activated virtual actor remotely:", metadata: [
+            "virtual/namespace": "\(self.namespaceName)",
+        ])
+        self.flushIndirectly(uniqueName: uniqueName, namespacePeer: target, context: context)
+    }
 
     // FIXME: Utilize CASPaxos here to make the decision.
-    internal func activationConsensus(uniqueName: String, context: ActorContext<Message>) -> EventLoopFuture<VirtualActorActivation.Decision<M>> {
-        let decisionPromise = context.system._eventLoopGroup.next().makePromise(of: VirtualActorActivation.Decision<M>.self)
+    internal func activationConsensus(uniqueName: String, context: ActorContext<Message>) -> EventLoopFuture<VirtualActorActivation.Decision> {
+        let decisionPromise = context.system._eventLoopGroup.next().makePromise(of: VirtualActorActivation.Decision.self)
+
+        // Since we have no peers we have no choice but to start locally
+        // TODO: add a minimum cluster size requirement etc
+        guard !self.namespacePeers.isEmpty else {
+            decisionPromise.succeed(VirtualActorActivation.Decision(context.address.uniqueNode))
+            return decisionPromise.futureResult
+        }
+
+        // ==== activate remotely/locally -------------------------------------------
+
+        var allPeers = self.namespacePeers
+        allPeers.insert(context.myself)
+        let preferredDestinationPeer = allPeers.randomElement()! // !-safe, we are guaranteed to have at least one candidate
+
+        /// Attempt to set the uniqueName key in our CAS instance to the preferred destination
+        let allocationDecision: AskResponse<UniqueNode?> =
+            self.casPaxos.change(key: uniqueName, timeout: .seconds(3)) { old in
+                preferredDestinationPeer.address.uniqueNode
+            }
+
+        context.onResultAsync(of: allocationDecision, timeout: .effectivelyInfinite) {
+            switch $0 {
+            case .failure(let error):
+                context.log.warning("Failed to activate / perform CAS round to decide where to activate \(uniqueName), will retry...") // FIXME: implement following up
+                decisionPromise.fail(error)
+                return .same
+
+            case .success(let decidedNode):
+                guard let decidedNode = decidedNode else {
+                    decisionPromise.fail(CASPaxosError.TODO("FIXME: allocated... to nil? nonsense, try again")) // FIXME
+                    return .same
+                }
+                decisionPromise.succeed(VirtualActorActivation.Decision(decidedNode))
+                return .same
+            }
+        }
+
 
         return decisionPromise.futureResult
     }
 
-    private func onActivated(_ active: ActorRef<M>, context: ActorContext<Message>) {
-        context.log.info("Activated virtual actor: \(active.address.uniqueNode == context.system.cluster.uniqueNode ? "locally" : "remotely")", metadata: [
-            "virtual/namespace": "\(self.namespaceName)",
-            "virtual/actor/name": "\(active.path.name)",
-        ])
-
-        let uniqueName = active.path.name
-
-        if let stashedMessages = self.pendingActivation.removeValue(forKey: uniqueName) {
-            context.log.debug("Flushing \(stashedMessages.count) messages to \(active)")
+    private func flushDirectly(actor: ActorRef<M>, context: ActorContext<Message>) {
+        if let stashedMessages = self.pendingActivation.removeValue(forKey: actor.path.name) {
+            context.log.debug("Flushing \(stashedMessages.count) messages to local \(actor)")
             for message in stashedMessages {
-                active.tell(message) // TODO: retain original send location and baggage
+                actor.tell(message) // TODO: retain original send location and baggage
             }
         } else {
-            context.log.trace("Activated \(active), no messages to flush.")
+            context.log.trace("Activated \(actor) locally, no messages to flush.")
         }
     }
+
+    private func flushIndirectly(uniqueName: String, namespacePeer: NamespaceRef, context: ActorContext<Message>) {
+        if let stashedMessages = self.pendingActivation.removeValue(forKey: uniqueName) {
+            context.log.debug("Flushing \(stashedMessages.count) messages to \(uniqueName) through \(namespacePeer)")
+            for message in stashedMessages {
+                namespacePeer.tell(.forward(identity: uniqueName, message)) // TODO: retain original send location and baggage
+            }
+        } else {
+            context.log.trace("Activated \(uniqueName) on \(namespacePeer), no messages to flush.")
+        }
+    }
+
 }
 
 enum VirtualActorActivation {
-    struct Decision<Message: Codable>: Codable {
-        let ref: ActorRef<Message>
+    struct Decision {
+        var uniqueNode: UniqueNode
 
-        var uniqueNode: UniqueNode {
-            self.ref.address.uniqueNode
+        init(_ uniqueNode: UniqueNode) {
+            self.uniqueNode = uniqueNode
         }
     }
 

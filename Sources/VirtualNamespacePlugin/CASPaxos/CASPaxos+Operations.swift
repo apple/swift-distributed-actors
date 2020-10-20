@@ -19,7 +19,7 @@ import NIO
 extension ActorRef {
 
     // TODO: nicer signature, i.e. throw the Error and flatten the result
-    func change<Value>(key: String, change: @escaping CASPaxos<Value>.ChangeFunction, timeout: DistributedActors.TimeAmount) -> AskResponse<Value?>
+    func change<Value>(key: String, timeout: DistributedActors.TimeAmount, change: @escaping CASPaxos<Value>.ChangeFunction) -> AskResponse<Value?>
         where Value: Codable, Message == CASPaxos<Value>.Message {
         self.ask(timeout: timeout) {
             CASPaxos<Value>.Message.local(.change(key: key, change: change, replyTo: $0))
@@ -29,16 +29,16 @@ extension ActorRef {
     /// Set an initial value, i.e. only set it if it was not set before
     func initialize<Value>(key: String, initialValue: Value, timeout: DistributedActors.TimeAmount) -> AskResponse<Value?>
         where Value: Codable, Message == CASPaxos<Value>.Message {
-        self.change(key: key, change: {
+        self.change(key: key, timeout: timeout, change: {
             switch $0 {
             case nil: return initialValue
             case .some(let existingValue): return existingValue
             }
-        }, timeout: timeout)
+        })
     }
 
     func read<Value>(key: String, timeout: DistributedActors.TimeAmount) -> AskResponse<Value?>
         where Value: Codable, Message == CASPaxos<Value>.Message {
-        self.change(key: key, change: { $0 }, timeout: timeout)
+        self.change(key: key, timeout: timeout, change: { $0 })
     }
 }

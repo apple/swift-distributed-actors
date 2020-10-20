@@ -33,11 +33,23 @@ public final class VirtualNamespacePlugin {
         self.namespaces = [:]
     }
 
+    ///
+    ///
+    /// - Parameters:
+    ///   - uniqueName:
+    ///   - type:
+    ///   - system:
+    ///   - props:
+    ///   - namespaceName: if nil, the namespace name will be derived from the `type`
+    ///   - behavior:
+    /// - Returns:
+    /// - Throws:
     func ref<Message: Codable>(
         _ uniqueName: String,
         of type: Message.Type,
         system: ActorSystem,
         props: Props? = nil,
+        namespaceName: String? = nil,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message> {
         guard let namespace: ActorRef<VirtualNamespaceActor<Message>.Message> = (try self.lock.withLock {
@@ -48,7 +60,7 @@ public final class VirtualNamespacePlugin {
             } else {
                 // FIXME: proper paths
                 let namespaceBehavior = VirtualNamespaceActor(name: "\(Message.self)", managing: behavior, settings: self.settings).behavior
-                let namespaceName = ActorNaming(_unchecked: .unique("$namespace-\(namespaceID.id.hashValue)")) // FIXME: the name should be better
+                let namespaceName = ActorNaming(_unchecked: .unique("$namespace-\(namespaceName ?? namespaceID.namespaceNamePart)")) // FIXME: the name should be better
                 let namespace = try system._spawnSystemActor(namespaceName, namespaceBehavior)
                 self.namespaces[namespaceID] = .init(ref: namespace, deadLetters: system.deadLetters)
                 return namespace
@@ -87,13 +99,27 @@ public final class VirtualNamespacePlugin {
 
 struct NamespaceID: Hashable {
     let id: ObjectIdentifier
+    let namespaceNamePart: String
 
     init<Message: Codable>(messageType: Message.Type) {
         self.id = ObjectIdentifier(messageType)
+        self.namespaceNamePart = String(reflecting: Message.self)
     }
 
     init<Act: Actorable>(actorType: Act.Type) {
         self.id = ObjectIdentifier(actorType)
+        self.namespaceNamePart = String(reflecting: Act.Message.self)
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func ==(lhs: NamespaceID, rhs: NamespaceID) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        return true
     }
 }
 
