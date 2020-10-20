@@ -30,7 +30,7 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
     // ==== Namespace configuration ------------------------------------------------------------------------------------
 
     /// Name of the `VirtualNamespace` managed by this actor
-    private let name: String
+    private let namespaceName: String
 
     private let settings: VirtualNamespaceSettings
 
@@ -38,14 +38,14 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
 
     var namespacePeers: Set<NamespaceRef>
 
-    let casPaxos: CASPaxos<M>.Ref
+    var casPaxos: CASPaxos<UniqueNode>.Ref!
 
     // ==== Virtual Actors ---------------------------------------------------------------------------------------------
 
     /// Active actors
     var activeRefs: [String: ActorRef<M>] = [:]
 
-    /// Actors pending activation; so we need to queue up messages to be delivered to them
+    /// Actors (their unique names) pending activation; so we need to queue up messages to be delivered to them
     var pendingActivation: [String: [M]] = [:]
 
     // ==== Managed actor behavior / configuration ---------------------------------------------------------------------
@@ -58,15 +58,22 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
     // ==== ------------------------------------------------------------------------------------------------------------
 
     init(name: String, managing behavior: Behavior<M>, settings: VirtualNamespaceSettings) {
-        self.name = name
-        self.managedBehavior = behavior
+        self.namespaceName = name
         self.settings = settings
+
+        self.namespacePeers = []
+
+        self.managedBehavior = behavior
     }
 
     var behavior: Behavior<Message> {
         .setup { context in
             self.subscribeToVirtualNamespacePeers(context: context)
             self.subscribeToVirtualActors(context: context)
+
+            /// CAS is used to decide on which unique node to host a specific uniqueName
+            let casPaxos = CASPaxos<UniqueNode>(name: "\(self.namespaceName)", failureTolerance: 1)
+            self.casPaxos = try context.spawn("cas", casPaxos.behavior) // FIXME: configurable tolerance
 
             return .receive { context, message in
                 switch message {
@@ -166,7 +173,7 @@ extension VirtualNamespaceActor {
 
     private func onActivated(_ active: ActorRef<M>, context: ActorContext<Message>) {
         context.log.info("Activated virtual actor: \(active.address.uniqueNode == context.system.cluster.uniqueNode ? "locally" : "remotely")", metadata: [
-            "virtual/namespace": "\(self.name)",
+            "virtual/namespace": "\(self.namespaceName)",
             "virtual/actor/name": "\(active.path.name)",
         ])
 

@@ -377,7 +377,7 @@ extension PathRelationships {
     }
 
     /// Create a generic path to identify a child path of the current path.
-    func makeChildPath(name: String) throws -> ActorPath {
+    public func makeChildPath(name: String) throws -> ActorPath {
         try ActorPath(self.segments).appending(name)
     }
 }

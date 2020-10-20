@@ -16,35 +16,33 @@ import DistributedActors
 import NIO
 
 final class CASPaxos<Value: Codable> {
-    typealias ChangeFunction = (Value) throws -> Value
+
+    typealias ChangeFunction = (Value?) throws -> Value?
     typealias BallotValue = (BallotNumber, Value)
 
     typealias Ref = ActorRef<CASPaxos<Value>.Message>
     typealias AcceptorRef = ActorRef<Acceptor.Message>
     typealias ProposerRef = ActorRef<Proposer.Message>
 
-    enum Message: NonTransportableActorMessage {
-        case change(key: String, change: ChangeFunction, replyTo: ActorRef<Result<Value, CASPaxosError>>)
-        case clusterEvent(Cluster.Event)
+    enum Message: Codable {
+        case local(LocalMessage)
+        case acceptorMessage(CASPaxos<Value>.Acceptor.Message)
     }
 
-    struct CASInstance {
-        let proposer: ProposerRef
-        let acceptor: AcceptorRef
+    enum LocalMessage: NonTransportableActorMessage {
+        case change(key: String, change: ChangeFunction, replyTo: ActorRef<Value?>)
     }
 
     let failureTolerance: Int
-    var expectedReplies: Int {
-        self.failureTolerance + 1
-    }
 
     /// Name of this CASPaxos instance
     let name: String
 
-    /// CAS instances for every key in use.
-    var instances: [String: CASInstance]
+    var proposer: CASPaxos<Value>.ProposerRef! // TODO: CASPaxos itself could become the Proposer?
+    var acceptor: CASPaxos<Value>.AcceptorRef!
 
-    var membership: Cluster.Membership = .empty
+    /// Only *other* peers.
+    var peers: LazyFilterSequence<LazyMapSequence<Set<AddressableActorRef>, CASPaxos<Value>.Ref>>?
 
     ///
     /// - Parameter failureTolerance: Number (`F`) of failed nodes during a CAS operation which still allow for a successful write.
@@ -52,72 +50,43 @@ final class CASPaxos<Value: Codable> {
     init(name: String, failureTolerance: Int) {
         self.name = name
         self.failureTolerance = failureTolerance
-        self.instances = [:]
+        self.peers = nil
+
     }
 
     var behavior: Behavior<Message> {
-        Behavior<Message>.setup { context in
-            context.system.cluster.events.subscribe(context.messageAdapter {
-                Message.clusterEvent($0)
-            })
+        return Behavior<Message>.setup { context in
+            // register myself and listen for other peers
+            context.receptionist.registerMyself(with: .casPaxos(instanceName: self.name))
+            context.receptionist.subscribeMyself(to: .casPaxos(instanceName: self.name)) { (listing: Reception.Listing<CASPaxos<Value>.Ref>) in
+                let peers = listing.refs.filter { $0.address != context.myself.address }
+                self.peers = peers
+                listing.refs.forEach { context.watch($0) }
+            }
 
-            context.receptionist.registerMyself(with: .casPaxos(instanceName: ""))
+            self.proposer = try context.spawn("proposer", props: ._wellKnown, Proposer(failureTolerance: self.failureTolerance).behavior)
+            self.acceptor = try context.spawn("acceptor", props: ._wellKnown, Acceptor().behavior)
 
             return .receiveMessage { message in
                 switch message {
-                case .clusterEvent(let event):
-                    self.onClusterEvent(event: event, context: context)
-                case .change(let key, let change, let replyTo):
-                    self.onChange(key: key, change: change, replyTo: replyTo, context: context)
+                case .local(.change(let key, let change, let replyTo)):
+                    self.performChange(key: key, change: change, replyTo: replyTo, context: context)
+
+                case .acceptorMessage(let acceptorMessage):
+                    self.acceptor.tell(acceptorMessage)
                 }
+
                 return .same
             }
         }
     }
 
-    private func onClusterEvent(event: Cluster.Event, context: ActorContext<Message>) {
-        do {
-            try self.membership.apply(event: event)
-        } catch {
-            context.log.warning("Failed to apply cluster event: \(event)")
-        }
-    }
-
-    private func onChange(key: String, change: @escaping ChangeFunction, replyTo: ActorRef<Result<Value, CASPaxosError>>, context: ActorContext<Message>) {
-        let upMembers = self.membership.count(withStatus: .up)
-        guard upMembers >= self.expectedReplies else {
-            context.log.warning("Unable to perform change on [\(key)], not enough [.up] members: [\(upMembers)/\(self.expectedReplies)]")
-            replyTo.tell(.failure(CASPaxosError.notEnoughMembers(members: upMembers, necessaryMembers: self.expectedReplies)))
-            return
+    func performChange(key: String, change: @escaping ChangeFunction, replyTo: ActorRef<Value?>, context: ActorContext<Message>) {
+        guard let peers = self.peers else {
+            fatalError("respond with an error into replyTo")
         }
 
-        let instance: CASInstance
-        if let _instance = self.instances[key] {
-            instance = _instance
-        } else {
-            instance = CASInstance(
-                proposer: try! context.spawn("proposer-\(key)", Proposer().behavior), // FIXME: fix this try!
-                acceptor: try! context.spawn("acceptor-\(key)", Acceptor().behavior) // FIXME: fix this try!
-            )
-        }
-
-        instance.proposer.tell(Self.Proposer.Message.local(.change(key: key, change: change, replyTo: replyTo)))
-    }
-}
-
-// TODO: parameterized extensions would help here
-extension ActorRef {
-    // TODO: nicer signature, i.e. throw the Error and flatten the result
-    func change<Value>(key: String, change: @escaping CASPaxos<Value>.ChangeFunction, timeout: DistributedActors.TimeAmount) -> AskResponse<Result<Value, CASPaxosError>>
-        where Value: Codable, Message == CASPaxos<Value>.Message {
-        self.ask(timeout: timeout) {
-            CASPaxos<Value>.Message.change(key: key, change: change, replyTo: $0)
-        }
-    }
-
-    func read<Value>(key: String, timeout: DistributedActors.TimeAmount) -> AskResponse<Result<Value, CASPaxosError>>
-        where Value: Codable, Message == CASPaxos<Value>.Message {
-        self.change(key: key, change: { $0 }, timeout: timeout)
+        self.proposer.tell(Self.Proposer.Message.local(.change(key: key, change: change, peers: peers, replyTo: replyTo)))
     }
 }
 
@@ -128,8 +97,15 @@ enum CASPaxosError: Error, NonTransportableActorMessage {
     /// since we'll never get quorum for it.
     case notEnoughMembers(members: Int, necessaryMembers: Int)
 
+    case noPrepareQuorum(oks: Int, necessary: Int)
+    case noAcceptQuorum(oks: Int, necessary: Int)
+
     /// It is illegal to send multiple CAS concurrently to the same key
     case concurrentRequestError
+
+    case TODO // placeholder error; FIXME: remove this
+
+    case changeFunctionFailed(Error)
 
     // Other error
     case error(Error)

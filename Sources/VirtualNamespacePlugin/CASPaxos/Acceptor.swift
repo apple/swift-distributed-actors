@@ -28,7 +28,7 @@ extension CASPaxos {
         enum Message: Codable {
             typealias _Value = Value
             case prepare(key: String, ballot: BallotNumber, replyTo: ActorRef<Preparation>) // TODO: extras
-            case accept(key: String, ballot: BallotNumber, value: Value, promise: BallotNumber, replyTo: ActorRef<Acceptance>) // TODO: extras
+            case accept(key: String, ballot: BallotNumber, value: Value?, promise: BallotNumber, replyTo: ActorRef<Acceptance>) // TODO: extras
         }
 
         // ==== --------------------------------------------------------------------------------------------------------
@@ -101,14 +101,14 @@ extension CASPaxos {
         // ==== --------------------------------------------------------------------------------------------------------
 
         var behavior: Behavior<Message> {
-            .receive { _, message in
+            .receive { context, message in
                 switch message {
                 case .prepare(let key, let ballot, let replyTo):
-                    let preparation = self.prepare(key: key, ballot: ballot)
+                    let preparation = self.prepare(key: key, ballot: ballot, context: context)
                     replyTo.tell(preparation)
 
                 case .accept(let key, let ballot, let value, let promise, let replyTo):
-                    let acceptance = self.accept(key: key, ballot: ballot, state: value, promise: promise)
+                    let acceptance = self.accept(key: key, ballot: ballot, value: value, promise: promise, context: context)
                     replyTo.tell(acceptance)
                 }
 
@@ -116,7 +116,7 @@ extension CASPaxos {
             }
         }
 
-        func prepare(key: String, ballot: BallotNumber) -> Preparation {
+        func prepare(key: String, ballot: BallotNumber, context: ActorContext<Message>) -> Preparation {
             var info = self.storage[key, default: Stored(promise: .zero, ballot: .zero, value: nil)]
 
             if info.promise >= ballot {
@@ -133,19 +133,29 @@ extension CASPaxos {
             return .prepared(ballot: info.ballot, value: info.value)
         }
 
-        func accept(key: String, ballot: BallotNumber, state: Value, promise: BallotNumber) -> Acceptance {
+        func accept(key: String, ballot: BallotNumber, value: Value?, promise: BallotNumber, context: ActorContext<Message>) -> Acceptance {
             var info = self.storage[key, default: Stored(promise: .zero, ballot: .zero, value: nil)]
 
             if info.promise > ballot {
+                // [caspaxos]
+                // Returns a conflict if it already saw a greater ballot number.
+                context.log.warning("Already saw info.promise [\(info.promise)] > ballot [\(ballot)], conflict.") // TODO: more metadata
                 return .conflict(ballot: info.promise)
             }
 
             if info.ballot >= ballot {
+                context.log.warning("Already saw info.promise [\(info.ballot)] > ballot [\(ballot)], conflict.") // TODO: more metadata
                 return .conflict(ballot: info.ballot)
             }
 
-            self.storage[key] = Stored(promise: promise, ballot: ballot, value: state)
+            // [caspaxos]
+            // Erases the promise, marks the received tuple (ballot number, value) as the accepted value
+            let accepted = Stored(promise: promise, ballot: ballot, value: value)
+            context.log.info("Accept \(accepted)") // TODO: more metadata
+            self.storage[key] = accepted
 
+            // [caspaxos]
+            // ... and returns a confirmation
             return .ok
         }
     }
