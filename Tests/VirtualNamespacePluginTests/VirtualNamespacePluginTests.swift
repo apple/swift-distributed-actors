@@ -14,11 +14,10 @@
 
 import DistributedActors
 import DistributedActorsTestKit
-import XCTest
 import VirtualNamespacePlugin
+import XCTest
 
 final class VirtualNamespacePluginTests: ActorSystemXCTestCase {
-
     func test_noCluster_ref() throws {
         let system = self.setUpNode("test") { settings in
             settings.cluster.enabled = false
@@ -40,7 +39,7 @@ enum TestVirtualActor {
     }
 
     static var behavior: Behavior<Message> {
-        .receive { context, message in
+        .receive { _, message in
             switch message {
             case .hello(let replyTo):
                 replyTo.tell("Hello!")

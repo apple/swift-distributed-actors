@@ -16,7 +16,6 @@ import DistributedActors
 import Logging
 
 internal class VirtualActorPersonality<Message: Codable>: CellDelegate<Message> {
-
     let _system: ActorSystem
     override var system: ActorSystem {
         self._system
@@ -45,7 +44,7 @@ internal class VirtualActorPersonality<Message: Codable>: CellDelegate<Message> 
         self.namespace.tell(.forwardSystemMessage(identity: self.address.name, message), file: #file, line: #line)
     }
 
-    override func sendClosure(file: String, line: UInt, _ f: @escaping () throws -> ()) {
+    override func sendClosure(file: String, line: UInt, _ f: @escaping () throws -> Void) {
         fatalError("\(#function) is not supported on remote or virtual actors.")
     }
 

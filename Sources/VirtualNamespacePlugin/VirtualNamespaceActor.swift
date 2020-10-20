@@ -14,6 +14,7 @@
 
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Virtual Namespace
@@ -24,24 +25,48 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
         case forwardSystemMessage(identity: String, _SystemMessage) // TODO: Baggage
     }
 
-    private var membership: Cluster.Membership = .empty
+    typealias NamespaceRef = ActorRef<Message>
+
+    // ==== Namespace configuration ------------------------------------------------------------------------------------
+
+    /// Name of the `VirtualNamespace` managed by this actor
+    private let name: String
+
+    private let settings: VirtualNamespaceSettings
+
+    // ==== Active Peers -----------------------------------------------------------------------------------------------
+
+    var namespacePeers: Set<NamespaceRef>
+
+    let casPaxos: CASPaxos<M>.Ref
+
+    // ==== Virtual Actors ---------------------------------------------------------------------------------------------
 
     /// Active actors
-    private var activeRefs: [String: ActorRef<M>] = [:]
+    var activeRefs: [String: ActorRef<M>] = [:]
 
     /// Actors pending activation; so we need to queue up messages to be delivered to them
-    private var pendingActivation: [String: [M]] = [:]
+    var pendingActivation: [String: [M]] = [:]
 
-    private let managedBehavior: Behavior<M>
+    // ==== Managed actor behavior / configuration ---------------------------------------------------------------------
 
-    init(managing behavior: Behavior<M>) {
+    /// The behavior that this namespace is managing.
+    /// If this node is to host another instance of an unique actor, we will instantiate a new actor with this behavior.
+    let managedBehavior: Behavior<M>
+    // TODO: private let managedProps: Props for the managed actor
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+
+    init(name: String, managing behavior: Behavior<M>, settings: VirtualNamespaceSettings) {
+        self.name = name
         self.managedBehavior = behavior
+        self.settings = settings
     }
 
     var behavior: Behavior<Message> {
         .setup { context in
-            self.subscribeToClusterEvents(context: context)
-            self.subscribeToVirtualByTypeListing(context: context)
+            self.subscribeToVirtualNamespacePeers(context: context)
+            self.subscribeToVirtualActors(context: context)
 
             return .receive { context, message in
                 switch message {
@@ -57,20 +82,8 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
         }
     }
 
-    private func subscribeToClusterEvents(context: ActorContext<Message>) {
-        context.system.cluster.events.subscribe(context.subReceive(Cluster.Event.self) { event in
-            try? self.membership.apply(event: event)
-        })
-    }
-
-    private func subscribeToVirtualByTypeListing(context: ActorContext<Message>) {
-        context.receptionist.subscribeMyself(to: Reception.Key(ActorRef<Message>.self)) { listing in
-
-        }
-    }
-
     private func deliver(message: M, to uniqueName: String, context: ActorContext<Message>) {
-        context.log.debug("Deliver message to TODO:MOCK:$virtual/\(M.self)/\(uniqueName)", metadata: [// TODO the proper path
+        context.log.debug("Deliver message to TODO:MOCK:$virtual/\(M.self)/\(uniqueName)", metadata: [ // TODO: the proper path
             "message": "\(message)",
         ])
 
@@ -92,32 +105,109 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
             }
         }
     }
+}
 
-    // TODO: implement a consensus round to decide who should host this
-    private func activate(_ uniqueName: String, context: ActorContext<Message>) throws {
-        let ref = try context.spawn(.unique(uniqueName), self.managedBehavior)
-        self.activeRefs[uniqueName] = ref
-        self.onActivated(uniqueName, context: context)
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Peer management
+
+extension VirtualNamespaceActor {
+    private func subscribeToVirtualNamespacePeers(context: ActorContext<Message>) {
+        context.receptionist.subscribeMyself(to: Reception.Key(NamespaceRef.self, id: "$namespace")) { listing in
+            let newRefs = Set(listing.refs)
+
+            // TODO: if we lost a member, we may need to restart
+        }
     }
 
-    private func onActivated(_ uniqueName: String, context: ActorContext<Message>) {
-        guard let active = self.activeRefs[uniqueName] else {
-            context.log.warning("Thought we activated \(uniqueName) but it was not in activeRefs!")
-            return
+    private func subscribeToVirtualActors(context: ActorContext<Message>) {
+        // TODO: what if there's many namespaces for the same type; we'd need to use different keys
+        context.receptionist.subscribeMyself(to: Reception.Key<ActorRef<M>>(id: "$virtual")) { _ in
+            // TODO: update active ones
         }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: VirtualNamespace: Activations
+
+extension VirtualNamespaceActor {
+    // TODO: implement a consensus round to decide who should host this
+    private func activate(_ uniqueName: String, context: ActorContext<Message>) throws {
+        let decision = self.activationConsensus(uniqueName: uniqueName, context: context)
+
+        context.onResultAsync(of: decision, timeout: self.settings.activationTimeout) { result in
+            switch result {
+            case .success(let decision):
+                try self.activateLocal(uniqueName: uniqueName, context: context)
+            case .failure(let error):
+                context.log.warning("Failed to activate virtual actor", metadata: [
+                    "virtual/actor/name": "\(uniqueName)",
+                    "error": "\(error)",
+                ])
+            }
+            return .same
+        }
+    }
+
+    private func activateLocal(uniqueName: String, context: ActorContext<Message>) throws {
+        let ref = try context.spawn(.unique(uniqueName), self.managedBehavior)
+        self.activeRefs[uniqueName] = ref
+        self.onActivated(ref, context: context)
+    }
+
+    private func activateRemote(uniqueName: String, ref: ActorRef<M>, context: ActorContext<Message>) throws {}
+
+    // FIXME: Utilize CASPaxos here to make the decision.
+    internal func activationConsensus(uniqueName: String, context: ActorContext<Message>) -> EventLoopFuture<VirtualActorActivation.Decision<M>> {
+        let decisionPromise = context.system._eventLoopGroup.next().makePromise(of: VirtualActorActivation.Decision<M>.self)
+
+        return decisionPromise.futureResult
+    }
+
+    private func onActivated(_ active: ActorRef<M>, context: ActorContext<Message>) {
+        context.log.info("Activated virtual actor: \(active.address.uniqueNode == context.system.cluster.uniqueNode ? "locally" : "remotely")", metadata: [
+            "virtual/namespace": "\(self.name)",
+            "virtual/actor/name": "\(active.path.name)",
+        ])
+
+        let uniqueName = active.path.name
 
         if let stashedMessages = self.pendingActivation.removeValue(forKey: uniqueName) {
             context.log.debug("Flushing \(stashedMessages.count) messages to \(active)")
             for message in stashedMessages {
                 active.tell(message) // TODO: retain original send location and baggage
             }
+        } else {
+            context.log.trace("Activated \(active), no messages to flush.")
         }
     }
 }
 
-struct AnyVirtualNamespaceActorRef {
+enum VirtualActorActivation {
+    struct Decision<Message: Codable>: Codable {
+        let ref: ActorRef<Message>
 
-    var _tell: (Any, String, UInt) -> ()
+        var uniqueNode: UniqueNode {
+            self.ref.address.uniqueNode
+        }
+    }
+
+    struct Placement: Codable {
+        let node: UniqueNode
+        let targetNodeStats: PlacementNodeStats
+    }
+
+    struct PlacementNodeStats: Codable {
+        let hostedActors: Int
+        // TODO: additional information like average load etc
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: AnyVirtualNamespaceActorRef
+
+struct AnyVirtualNamespaceActorRef {
+    var _tell: (Any, String, UInt) -> Void
     var underlying: _ReceivesSystemMessages
 
     init<Message: Codable>(ref: ActorRef<Message>, deadLetters: ActorRef<DeadLetter>) {
@@ -132,7 +222,7 @@ struct AnyVirtualNamespaceActorRef {
     }
 
     func asNamespaceRef<Message: Codable>(of: Message.Type) -> ActorRef<VirtualNamespaceActor<Message>.Message>? {
-        return underlying as? ActorRef<VirtualNamespaceActor<Message>.Message>
+        self.underlying as? ActorRef<VirtualNamespaceActor<Message>.Message>
     }
 
     func tell(message: Any, file: String = #file, line: UInt = #line) {

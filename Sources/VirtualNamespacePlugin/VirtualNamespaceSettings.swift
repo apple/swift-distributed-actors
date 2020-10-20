@@ -22,4 +22,11 @@ public struct VirtualNamespaceSettings {
     public static var `default`: VirtualNamespaceSettings {
         .init()
     }
+
+    /// The amount of time an initial actor activation is allowed to take.
+    ///
+    /// During this time messages towards this actor will be buffered.
+    ///
+    /// A failed activation will result
+    public var activationTimeout: TimeAmount = .seconds(3)
 }

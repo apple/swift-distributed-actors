@@ -24,7 +24,7 @@ public final class VirtualNamespacePlugin {
 
     private let lock: Lock
 
-    // TODO can we make this a bit more nice / type safe rather than the cast inside the any wrapper?
+    // TODO: can we make this a bit more nice / type safe rather than the cast inside the any wrapper?
     private var namespaces: [NamespaceID: AnyVirtualNamespaceActorRef]
 
     public init(settings: VirtualNamespaceSettings = .default) {
@@ -47,8 +47,8 @@ public final class VirtualNamespacePlugin {
                 return namespace.asNamespaceRef(of: Message.self)
             } else {
                 // FIXME: proper paths
-                let namespaceBehavior = VirtualNamespaceActor(managing: behavior).behavior
-                let namespaceName = ActorNaming(_unchecked: .unique("$virtual-manager-\(namespaceID.id.hashValue)")) // FIXME the name should be better
+                let namespaceBehavior = VirtualNamespaceActor(name: "\(Message.self)", managing: behavior, settings: self.settings).behavior
+                let namespaceName = ActorNaming(_unchecked: .unique("$namespace-\(namespaceID.id.hashValue)")) // FIXME: the name should be better
                 let namespace = try system._spawnSystemActor(namespaceName, namespaceBehavior)
                 self.namespaces[namespaceID] = .init(ref: namespace, deadLetters: system.deadLetters)
                 return namespace

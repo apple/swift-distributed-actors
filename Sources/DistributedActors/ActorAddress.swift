@@ -57,6 +57,7 @@ public struct ActorAddress {
     @usableFromInline
     internal var _location: ActorLocation
 
+    /// The `UniqueNode` on which the actor pointed to by this address exists.
     public var uniqueNode: UniqueNode {
         switch self._location {
         case .local(let node): return node
