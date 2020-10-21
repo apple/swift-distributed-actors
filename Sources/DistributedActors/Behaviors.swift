@@ -26,6 +26,27 @@ public struct Behavior<Message: ActorMessage> {
     }
 }
 
+/// :nodoc:
+public protocol _AnyBehavior {
+    /// :nodoc:
+    func spawn(factory: ActorRefFactory, name naming: ActorNaming, props: Props, file: String, line: UInt) throws -> _ReceivesSystemMessages
+    /// :nodoc:
+    var messageType: Any.Type { get }
+}
+
+extension Behavior: _AnyBehavior {
+    /// :nodoc:
+    public func spawn(factory: ActorRefFactory, name naming: ActorNaming, props: Props, file: String = #file, line: UInt = #line) throws -> _ReceivesSystemMessages {
+        try factory.spawn(naming, of: Message.self, props: props, file: file, line: line, self)
+    }
+
+    /// :nodoc:
+    public var messageType: Any.Type {
+        Message.self
+    }
+}
+
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Message Handling
 

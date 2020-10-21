@@ -24,13 +24,24 @@ public final class VirtualNamespacePlugin {
 
     private let lock: Lock
 
-    // TODO: can we make this a bit more nice / type safe rather than the cast inside the any wrapper?
-    private var namespaces: [NamespaceID: AnyVirtualNamespaceActorRef]
+    let managedBehaviors: [NamespaceID: _AnyBehavior]
 
-    public init(settings: VirtualNamespaceSettings = .default) {
+//    // TODO: can we make this a bit more nice / type safe rather than the cast inside the any wrapper?
+//    private var namespaces: [NamespaceID: AnyVirtualNamespaceActorRef]
+
+    var pluginRef: ActorRef<VirtualNamespacePluginActor.Message>!
+
+    public init(
+        settings: VirtualNamespaceSettings = .default,
+        behavior: _AnyBehavior, // TODO accept many behaviors?
+        props: Props? = nil
+    ) {
         self.settings = settings
         self.lock = Lock()
-        self.namespaces = [:]
+        // self.namespaces = [:]
+        self.managedBehaviors = [
+            NamespaceID(messageType: behavior.messageType): behavior
+        ]
     }
 
     ///
@@ -47,31 +58,15 @@ public final class VirtualNamespacePlugin {
     func ref<Message: Codable>(
         _ uniqueName: String,
         of type: Message.Type,
-        system: ActorSystem,
-        props: Props? = nil,
-        namespaceName: String? = nil,
-        _ behavior: Behavior<Message>
+        system: ActorSystem
     ) throws -> ActorRef<Message> {
-        guard let namespace: ActorRef<VirtualNamespaceActor<Message>.Message> = (try self.lock.withLock {
-            let namespaceID = NamespaceID(messageType: type)
-
-            if let namespace = self.namespaces[namespaceID] {
-                return namespace.asNamespaceRef(of: Message.self)
-            } else {
-                // FIXME: proper paths
-                let namespaceBehavior = VirtualNamespaceActor(name: "\(Message.self)", managing: behavior, settings: self.settings).behavior
-                let namespaceName = ActorNaming(_unchecked: .unique("$namespace-\(namespaceName ?? namespaceID.namespaceNamePart)")) // FIXME: the name should be better
-                let namespace = try system._spawnSystemActor(namespaceName, namespaceBehavior)
-                self.namespaces[namespaceID] = .init(ref: namespace, deadLetters: system.deadLetters)
-                return namespace
-            }
-        }) else {
-            return system.personalDeadLetters(recipient: .init(local: system.cluster.uniqueNode, path: ._virtual, incarnation: .wellKnown))
+        let pluginRef = self.lock.withLock {
+            self.pluginRef!
         }
 
         let virtualPersonality = try VirtualActorPersonality<Message>(
             system: system,
-            namespace: namespace,
+            plugin: pluginRef,
             address: ActorAddress.virtualAddress(local: system.cluster.uniqueNode, identity: uniqueName)
         )
         let virtualRef = ActorRef(.delegate(virtualPersonality))
@@ -83,68 +78,75 @@ public final class VirtualNamespacePlugin {
     func actor<Act: Actorable>(
         _ uniqueName: String,
         of type: Act.Type,
-        system: ActorSystem,
-        props: Props? = nil,
-        _ makeInstance: @escaping (Actor<Act>.Context) -> Act
+        system: ActorSystem
     ) throws -> Actor<Act> {
-        let behavior =
-            Behavior<Act.Message>.setup { context in
-                Act.makeBehavior(instance: makeInstance(.init(underlying: context)))
-            }
-
-        let ref = try self.ref(uniqueName, of: type.Message.self, system: system, props: props, behavior)
-        return Actor(ref: ref)
+        try Actor(ref: self.ref(uniqueName, of: type.Message.self, system: system))
     }
 }
 
-struct NamespaceID: Hashable {
-    let id: ObjectIdentifier
-    let namespaceNamePart: String
+struct NamespaceID: Codable, Hashable {
+    let typeName: String
+    let namespaceName: String
 
-    init<Message: Codable>(messageType: Message.Type) {
-        self.id = ObjectIdentifier(messageType)
-        self.namespaceNamePart = String(reflecting: Message.self)
-    }
-
-    init<Act: Actorable>(actorType: Act.Type) {
-        self.id = ObjectIdentifier(actorType)
-        self.namespaceNamePart = String(reflecting: Act.Message.self)
+    init(messageType: Any.Type) {
+        // self.id = ObjectIdentifier(messageType)
+        self.typeName = _typeName(messageType)
+        self.namespaceName = String(reflecting: messageType)
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        hasher.combine(self.typeName)
     }
 
     static func ==(lhs: NamespaceID, rhs: NamespaceID) -> Bool {
-        if lhs.id != rhs.id {
-            return false
-        }
-        return true
+        lhs.typeName == rhs.typeName
     }
 }
 
 extension ActorAddress {
+    // /system/$virtual
+    static func virtualPlugin(remote node: UniqueNode) -> ActorAddress {
+        .init(remote: node, path: ActorPath._virtual, incarnation: .wellKnown)
+    }
+
     static func virtualAddress(local: UniqueNode, identity: String) throws -> ActorAddress {
         .init(local: local, path: try ActorPath._virtual.appending(identity), incarnation: .wellKnown)
     }
 }
 
 extension ActorPath {
-    internal static let _virtual: ActorPath = try! ActorPath._root.appending("$virtual")
+    internal static let _virtual: ActorPath = try! ActorPath._system.appending("$virtual")
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol conformance
 
 extension VirtualNamespacePlugin: Plugin {
-    static let pluginKey = PluginKey<VirtualNamespacePlugin>(plugin: "virtualNamespace")
+    static let pluginKey = PluginKey<VirtualNamespacePlugin>(plugin: "$virtualNamespace")
 
     public var key: Key {
         Self.pluginKey
     }
 
+    public func configure(settings: inout ActorSystemSettings) {
+        settings.serialization.register(CASPaxos<UniqueNode>.Message.self)
+    }
+
     public func start(_ system: ActorSystem) -> Result<Void, Error> {
         system.log.info("Initialized plugin: \(Self.self)")
+        do {
+            self.pluginRef = try system._spawnSystemActor(
+                ActorNaming(_unchecked: .unique("$virtual")),
+                VirtualNamespacePluginActor(
+                    settings: settings,
+                    managedBehaviors: self.managedBehaviors
+                ).behavior,
+                props: ._wellKnown
+            )
+        } catch {
+            return .failure(error)
+        }
+
         return .success(())
     }
 
@@ -152,9 +154,7 @@ extension VirtualNamespacePlugin: Plugin {
     public func stop(_ system: ActorSystem) -> Result<Void, Error> {
         system.log.info("Stopping plugin: \(Self.self)")
         self.lock.withLock {
-            for (_, namespace) in self.namespaces {
-                namespace.stop()
-            }
+            self.pluginRef.tell(.stop)
         }
         return .success(())
     }
@@ -162,48 +162,4 @@ extension VirtualNamespacePlugin: Plugin {
 
 extension ActorNaming {
     static var virtual: ActorNaming = "$virtual"
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: VirtualNamespace refs and actors
-
-extension ActorSystem {
-    /// Entry point to interacting with the `VirtualNamespace`
-    public var virtual: VirtualNamespaceControl {
-        .init(self)
-    }
-}
-
-public struct VirtualNamespaceControl {
-    private let system: ActorSystem
-
-    internal init(_ system: ActorSystem) {
-        self.system = system
-    }
-
-    private var namespacePlugin: VirtualNamespacePlugin {
-        let key = VirtualNamespacePlugin.pluginKey
-        guard let singletonPlugin = self.system.settings.plugins[key] else {
-            fatalError("No plugin found for key: [\(key)], installed plugins: \(self.system.settings.plugins)")
-        }
-        return singletonPlugin
-    }
-
-    public func ref<Message: Codable>(
-        _ uniqueName: String,
-        of type: Message.Type = Message.self,
-        props: Props? = nil,
-        _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message> {
-        try self.namespacePlugin.ref(uniqueName, of: type, system: self.system, props: props, behavior)
-    }
-
-    public func actor<Act: Actorable>(
-        _ uniqueName: String,
-        of type: Act.Type = Act.self,
-        props: Props? = nil,
-        _ makeInstance: @escaping (Actor<Act>.Context) -> Act
-    ) throws -> Actor<Act> {
-        try self.namespacePlugin.actor(uniqueName, of: type, system: self.system, props: props, makeInstance)
-    }
 }

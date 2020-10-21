@@ -91,6 +91,10 @@ extension ActorSingletonPlugin: Plugin {
         Self.pluginKey
     }
 
+    public func configure(settings: inout ActorSystemSettings) {
+        // nothing to configure
+    }
+
     public func start(_ system: ActorSystem) -> Result<Void, Error> {
         .success(())
     }

@@ -302,7 +302,13 @@ extension OperationLogClusterReceptionist {
             self.instrumentation.actorSubscribed(key: anyKey, address: message._addressableActorRef.address)
 
             context.watch(message._addressableActorRef)
-            context.log.trace("Subscribed \(message._addressableActorRef.address) to \(anyKey)")
+            context.log.trace(
+                "Subscribed \(message._addressableActorRef.address) to \(anyKey)",
+                metadata: [
+                    "receptionist/key": "\(anyKey)",
+                    "receptionist/subscribed": "\(message._addressableActorRef.address)",
+                ]
+            )
             boxedMessage.replyWith(self.storage.registrations(forKey: anyKey) ?? [])
         }
     }

@@ -15,14 +15,17 @@
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import NIO
+import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Virtual Namespace
 
+protocol VirtualNamespaceActorMessage {}
+
 internal final class VirtualNamespaceActor<M: ActorMessage> {
-    enum Message: NonTransportableActorMessage {
-        case forward(identity: String, M) // TODO: Baggage
-        case forwardSystemMessage(identity: String, _SystemMessage) // TODO: Baggage
+    enum Message: VirtualNamespaceActorMessage, NonTransportableActorMessage {
+        case forward(uniqueName: String, M) // TODO: Baggage
+        case forwardSystemMessage(uniqueName: String, _SystemMessage) // TODO: Baggage
     }
 
     typealias NamespaceRef = ActorRef<Message>
@@ -44,7 +47,7 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
     // ==== Virtual Actors ---------------------------------------------------------------------------------------------
 
     /// Active actors
-    var activeRefs: [String: ActorRef<M>] = [:]
+    var activeLocalRefs: [String: ActorRef<M>] = [:]
 
     /// Actors (their unique names) pending activation; so we need to queue up messages to be delivered to them
     var pendingActivation: [String: [M]] = [:]
@@ -58,7 +61,11 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
 
     // ==== ------------------------------------------------------------------------------------------------------------
 
-    init(name: String, managing behavior: Behavior<M>, settings: VirtualNamespaceSettings) {
+    init(
+        name: String,
+        managedBehavior: _AnyBehavior,
+        settings: VirtualNamespaceSettings
+    ) {
         self.namespaceName = name
         self.settings = settings
 
@@ -81,7 +88,7 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
                 case .forward(let id, let message):
                     self.deliver(message: message, to: id, context: context)
 
-                case .forwardSystemMessage(let id, let message):
+                case .forwardSystemMessage(let key, let message):
                     fatalError("\(message)")
                 }
 
@@ -91,25 +98,40 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
     }
 
     private func deliver(message: M, to uniqueName: String, context: ActorContext<Message>) {
-        context.log.debug("Deliver message to TODO:MOCK:$virtual/\(String(reflecting: M.self))/\(uniqueName)", metadata: [ // TODO: the proper path
-            "message": "\(message)",
-            "target": "$virtual/\(String(reflecting: M.self))/\(uniqueName)", // TODO: fake path
-        ])
+        let virtualFakePath = "$virtual/\(String(reflecting: M.self))/\(uniqueName)"
 
-        if let ref = self.activeRefs[uniqueName] {
-            context.log.debug("Delivering directly")
+        if let ref = self.activeLocalRefs[uniqueName] {
+            assert(
+                self.pendingActivation[uniqueName] == nil,
+                """
+                Active ref found for \(uniqueName) yet also present in pendingActivation. 
+                  activeLocalRefs: \(self.activeLocalRefs)
+                  pendingActivation: \(self.pendingActivation)
+                """
+            )
+            context.log.debug("Delivering directly", metadata: [
+                "virtual/uniqueName": "\(uniqueName)",
+                "virtual/path": "\(virtualFakePath)",
+            ])
             ref.tell(message)
         } else {
-            context.log.debug("Pending activation...")
+            context.log.debug("Pending activation: \(uniqueName)", metadata: [
+                "virtual/uniqueName": "\(uniqueName)",
+                "virtual/path": "\(virtualFakePath)",
+            ])
             self.pendingActivation[uniqueName, default: []].append(message)
-            context.log.warning("Stashed \(message)... waiting for actor to be activated.")
+            context.log.warning("Stashed \(message)... waiting for actor to be activated.", metadata: [
+                "virtual/uniqueName": "\(uniqueName)",
+                "virtual/path": "\(virtualFakePath)",
+            ])
 
             do {
                 try self.activate(uniqueName, context: context)
             } catch {
                 context.log.warning("Failed to activate \(uniqueName)", metadata: [
                     "error": "\(error)",
-                    "uniqueName": "\(uniqueName)",
+                    "virtual/uniqueName": "\(uniqueName)",
+                    "virtual/path": "\(virtualFakePath)",
                 ])
             }
         }
@@ -138,7 +160,7 @@ extension VirtualNamespaceActor {
         context.receptionist.subscribeMyself(to: Reception.Key<ActorRef<M>>(id: "$virtual")) { listing in
             // TODO: update active ones
             for ref in listing.refs {
-                if let existing = self.activeRefs[ref.path.name] {
+                if let existing = self.activeLocalRefs[ref.path.name] {
                     if existing.address == ref.address {
                         continue // nothing changed
                     } else {
@@ -187,13 +209,14 @@ extension VirtualNamespaceActor {
         }
     }
 
+    /// Activate (spawn) actor locally and flush messages to it.
     private func activateLocal(uniqueName: String, context: ActorContext<Message>) throws {
         let ref = try context.spawn(.unique(uniqueName), self.managedBehavior)
-        self.activeRefs[uniqueName] = ref
+        self.activeLocalRefs[uniqueName] = ref
 
         context.log.info("Activated virtual actor locally: \(ref)", metadata: [
-            "virtual/namespace": "\(self.namespaceName)",
             "virtual/actor/name": "\(uniqueName)",
+            "virtual/actor/targetPeer": "\(context.address.uniqueNode)",
         ])
         self.flushDirectly(actor: ref, context: context)
     }
@@ -202,13 +225,35 @@ extension VirtualNamespaceActor {
         context.log.info("ACTIVATE remote \(uniqueName), on \(target)")
 
         // TODO: forward messages to this one
-        context.log.info("Activated virtual actor remotely:", metadata: [
-            "virtual/namespace": "\(self.namespaceName)",
+        context.log.info("Activated virtual actor remotely: \(uniqueName)", metadata: [
+            "virtual/actor/name": "\(uniqueName)",
+            "virtual/actor/targetPeer": "\(target.address.uniqueNode)",
         ])
         self.flushIndirectly(uniqueName: uniqueName, namespacePeer: target, context: context)
     }
 
     // FIXME: Utilize CASPaxos here to make the decision.
+    /// Performs a `CASPaxos` round to identify where the `uniqueName` should be allocated and activated.
+    ///
+    /// If this node is selected, then we spawn the actor locally, otherwise we receive a node which is going to be the host of the actor.
+    /// We will NOT receive a direct actor address, but rather will communicate with the node's `VirtualNamespaceActor` which will *forward*
+    /// the message to the destination.
+    ///
+    /// ### Uniqueness guarantees
+    /// // TODO: document
+    ///
+    /// ### Message delivery guarantees
+    /// The usual Distributed Actors semantics hold here as well: pair-wise ordered, at-most-once delivery.
+    ///
+    /// Message loss IS possible and not guarded against by this subsystem by itself; if you need guaranteed delivery,
+    /// consider implementing an ACK mechanism on top of your messages sent to virtual actors. As usual with such patterns,
+    /// be careful to account for the possibility that a message may have been processed, but only the ACK has not made
+    /// it back to your request originator when implementing such patterns.
+    ///
+    /// - Parameters:
+    ///   - uniqueName:
+    ///   - context:
+    /// - Returns:
     internal func activationConsensus(uniqueName: String, context: ActorContext<Message>) -> EventLoopFuture<VirtualActorActivation.Decision> {
         let decisionPromise = context.system._eventLoopGroup.next().makePromise(of: VirtualActorActivation.Decision.self)
 
@@ -216,14 +261,24 @@ extension VirtualNamespaceActor {
         // TODO: add a minimum cluster size requirement etc
         guard !self.namespacePeers.isEmpty else {
             decisionPromise.succeed(VirtualActorActivation.Decision(context.address.uniqueNode))
+            context.log.info("No remote peers, assuming this node should activate \(uniqueName)", metadata: [
+                "namespace/peers": Logger.MetadataValue.array(self.namespacePeers.map { "\($0)" }),
+                "namespace/actor/name": "\(uniqueName)",
+                "namespace/actor/stashedMessages": "\(self.pendingActivation[uniqueName]?.count ?? 0)",
+            ])
             return decisionPromise.futureResult
         }
 
         // ==== activate remotely/locally -------------------------------------------
-
         var allPeers = self.namespacePeers
         allPeers.insert(context.myself)
         let preferredDestinationPeer = allPeers.randomElement()! // !-safe, we are guaranteed to have at least one candidate
+
+        context.log.info("Performing CASPaxos round to determine where to allocate \(uniqueName)", metadata: [
+            "namespace/peers": Logger.MetadataValue.array(allPeers.map { "\($0)" }),
+            "namespace/actor/name": "\(uniqueName)",
+            "namespace/actor/stashedMessages": "\(self.pendingActivation[uniqueName]?.count ?? 0)",
+        ])
 
         /// Attempt to set the uniqueName key in our CAS instance to the preferred destination
         let allocationDecision: AskResponse<UniqueNode?> =
@@ -267,7 +322,7 @@ extension VirtualNamespaceActor {
         if let stashedMessages = self.pendingActivation.removeValue(forKey: uniqueName) {
             context.log.debug("Flushing \(stashedMessages.count) messages to \(uniqueName) through \(namespacePeer)")
             for message in stashedMessages {
-                namespacePeer.tell(.forward(identity: uniqueName, message)) // TODO: retain original send location and baggage
+                namespacePeer.tell(.forward(uniqueName: uniqueName, message)) // TODO: retain original send location and baggage
             }
         } else {
             context.log.trace("Activated \(uniqueName) on \(namespacePeer), no messages to flush.")
@@ -303,12 +358,20 @@ struct AnyVirtualNamespaceActorRef {
     var _tell: (Any, String, UInt) -> Void
     var underlying: _ReceivesSystemMessages
 
-    init<Message: Codable>(ref: ActorRef<Message>, deadLetters: ActorRef<DeadLetter>) {
+    // TODO: make it more typesafe
+    init<Message: Codable & VirtualNamespaceActorMessage>(ref: ActorRef<Message>, deadLetters: ActorRef<DeadLetter>) {
         self.underlying = ref
         self._tell = { any, file, line in
             if let msg = any as? Message {
                 ref.tell(msg, file: file, line: line)
             } else {
+                fatalError("""
+                           \(any)
+                                  : \(String(reflecting: type(of: any))) 
+                           was not 
+                                  : \(String(reflecting: Message.self))
+                           """)
+                
                 deadLetters.tell(DeadLetter(any, recipient: ref.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
             }
         }
@@ -318,7 +381,8 @@ struct AnyVirtualNamespaceActorRef {
         self.underlying as? ActorRef<VirtualNamespaceActor<Message>.Message>
     }
 
-    func tell(message: Any, file: String = #file, line: UInt = #line) {
+    func tell(message: VirtualNamespaceActorMessage, file: String = #file, line: UInt = #line) {
+        pprint("self.underlying = \(self.underlying) <<<<< \(file):\(line)")
         self._tell(message, file, line)
     }
 

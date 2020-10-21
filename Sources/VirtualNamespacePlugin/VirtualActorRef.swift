@@ -26,22 +26,28 @@ internal class VirtualActorPersonality<Message: Codable>: CellDelegate<Message> 
         self._address
     }
 
-    let namespace: ActorRef<VirtualNamespaceActor<Message>.Message>
+    private var uniqueName: String {
+        self.address.name
+    }
 
-    init(system: ActorSystem, namespace: ActorRef<VirtualNamespaceActor<Message>.Message>, address: ActorAddress) {
+    let plugin: ActorRef<VirtualNamespacePluginActor.Message>
+    // let namespace: ActorRef<VirtualNamespaceActor<Message>.Message>
+
+    init(system: ActorSystem, plugin: ActorRef<VirtualNamespacePluginActor.Message>, address: ActorAddress) {
         precondition(address.path.starts(with: ._virtual), "Virtual actors MUST be nested under the \(ActorPath._virtual) actor path, was: \(address)")
+        self.plugin = plugin
         self._system = system
-        self.namespace = namespace
+        // self.namespace = namespace
         self._address = address
         super.init()
     }
 
     override func sendMessage(_ message: Message, file: String, line: UInt) {
-        self.namespace.tell(.forward(identity: self.address.name, message), file: #file, line: #line)
+        self.plugin.tell(.forward(namespaceType: Message.self, message: VirtualNamespaceActor<Message>.Message.forward(uniqueName: self.uniqueName, message)), file: #file, line: #line)
     }
 
     override func sendSystemMessage(_ message: _SystemMessage, file: String, line: UInt) {
-        self.namespace.tell(.forwardSystemMessage(identity: self.address.name, message), file: #file, line: #line)
+        fatalError("\(#function) is not supported on remote or virtual actors.") // FIXME: it should be possible, we should be able to watch them I suppose?
     }
 
     override func sendClosure(file: String, line: UInt, _ f: @escaping () throws -> Void) {
@@ -49,10 +55,10 @@ internal class VirtualActorPersonality<Message: Codable>: CellDelegate<Message> 
     }
 
     override func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String, line: UInt) {
-        super.sendSubMessage(message, identifier: identifier, subReceiveAddress: subReceiveAddress, file: file, line: line)
+        fatalError("\(#function) is not supported on remote or virtual actors.")
     }
 
     override func sendAdaptedMessage(_ message: Any, file: String, line: UInt) {
-        super.sendAdaptedMessage(message, file: file, line: line)
+        fatalError("\(#function) is not supported on remote or virtual actors.")
     }
 }

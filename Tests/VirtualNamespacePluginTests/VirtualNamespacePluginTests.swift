@@ -17,16 +17,65 @@ import DistributedActorsTestKit
 import VirtualNamespacePlugin
 import XCTest
 
-final class VirtualNamespacePluginTests: ActorSystemXCTestCase {
-    func test_noCluster_ref() throws {
+final class VirtualNamespacePluginTests: ClusteredActorSystemsXCTestCase {
+    override var alwaysPrintCaptureLogs: Bool {
+        true
+    }
+
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
+            "/system/cluster/swim",
+            "/system/cluster/gossip",
+            "/system/replicator/gossip",
+            "/system/cluster/leadership",
+            "/system/cluster",
+        ]
+    }
+
+    func test_noCluster_virtualRef() throws {
         let system = self.setUpNode("test") { settings in
             settings.cluster.enabled = false
-            settings += VirtualNamespacePlugin()
+            settings += VirtualNamespacePlugin(
+                behavior: TestVirtualActor.behavior
+            )
         }
 
         let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
 
-        let ref = try system.virtual.ref("caplin-the-capybara", TestVirtualActor.behavior)
+        let ref = try system.virtual.ref("caplin-the-capybara", of: TestVirtualActor.Message.self)
+        ref.tell(.hello(replyTo: replyProbe.ref))
+
+        try replyProbe.expectMessage("Hello!")
+    }
+
+    func test_cluster_virtualRef() throws {
+        let first = self.setUpNode("first") { settings in
+            settings += VirtualNamespacePlugin(
+                behavior: TestVirtualActor.behavior
+            )
+            settings.serialization.crashOnDeserializationFailure = true
+        }
+        let second = self.setUpNode("second") { settings in
+            settings += VirtualNamespacePlugin(
+                behavior: TestVirtualActor.behavior
+            )
+            settings.serialization.crashOnDeserializationFailure = true
+        }
+        let third = self.setUpNode("third") { settings in
+            settings += VirtualNamespacePlugin(
+                behavior: TestVirtualActor.behavior
+            )
+            settings.serialization.crashOnDeserializationFailure = true
+        }
+
+        second.cluster.join(node: first.cluster.uniqueNode)
+        third.cluster.join(node: first.cluster.uniqueNode)
+
+        sleep(5)
+
+        let replyProbe = ActorTestKit(first).spawnTestProbe(expecting: String.self)
+
+        let ref = try first.virtual.ref("caplin-the-capybara", of: TestVirtualActor.Message.self)
         ref.tell(.hello(replyTo: replyProbe.ref))
 
         try replyProbe.expectMessage("Hello!")

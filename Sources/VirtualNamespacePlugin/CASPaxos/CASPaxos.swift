@@ -57,8 +57,8 @@ final class CASPaxos<Value: Codable> {
     var behavior: Behavior<Message> {
         return Behavior<Message>.setup { context in
             // register myself and listen for other peers
-            context.receptionist.registerMyself(with: .casPaxos(instanceName: self.name))
-            context.receptionist.subscribeMyself(to: .casPaxos(instanceName: self.name)) { (listing: Reception.Listing<CASPaxos<Value>.Ref>) in
+            context.receptionist.registerMyself(with: .casPaxos(instanceName: "$namespace"))
+            context.receptionist.subscribeMyself(to: .casPaxos(instanceName: "$namespace")) { (listing: Reception.Listing<CASPaxos<Value>.Ref>) in
                 let peers = listing.refs.filter { $0.address != context.myself.address }
                 self.peers = peers
                 listing.refs.forEach { context.watch($0) }

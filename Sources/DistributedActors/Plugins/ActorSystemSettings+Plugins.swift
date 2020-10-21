@@ -41,6 +41,13 @@ public struct PluginsSettings {
     }
 
     /// Starts all plugins in the same order as they were added.
+    internal func configure(settings: inout ActorSystemSettings) {
+        for plugin in self.plugins {
+            plugin.configure(settings: &settings)
+        }
+    }
+
+    /// Starts all plugins in the same order as they were added.
     internal func startAll(_ system: ActorSystem) {
         for plugin in self.plugins {
             if case .failure(let error) = plugin.start(system) {

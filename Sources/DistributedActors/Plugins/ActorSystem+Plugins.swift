@@ -15,7 +15,16 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol
 
+/// Plugins should implement the `Plugin` protocol.
 public protocol AnyPlugin {
+
+    /// Gives the plugin a chance to configure the system before it starts.
+    ///
+    /// Typical use-cases include configuring serialization to trust types that the plugin will be using etc.
+    ///
+    /// - Parameter settings: the settings of the being started actor system.
+    func configure(settings: inout ActorSystemSettings)
+
     /// Starts the plugin.
     // TODO: return a Future<> once we have such abstraction, such that plugin can ensure "to be ready" within some time
     func start(_ system: ActorSystem) -> Result<Void, Error>
@@ -48,6 +57,10 @@ internal struct BoxedPlugin: AnyPlugin {
             fatalError("Type mismatch, expected: [\(String(reflecting: P.self))] got [\(self.underlying)]")
         }
         return unwrapped
+    }
+
+    func configure(settings: inout ActorSystemSettings) {
+        self.underlying.configure(settings: &settings)
     }
 
     func start(_ system: ActorSystem) -> Result<Void, Error> {

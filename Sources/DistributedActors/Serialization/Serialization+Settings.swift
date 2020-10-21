@@ -45,6 +45,12 @@ extension Serialization {
         // TODO: We are using an internal function here to allow us to automatically enable the more strict mode in release builds.
         public var insecureSerializeNotRegisteredMessages: Bool = _isDebugAssertConfiguration()
 
+        /// When `true`, if a deserialization failure is encountered rather than logging a warning and dropping the message,
+        /// crash the entire process.
+        ///
+        /// - Warning: This setting is only intended for development-time and should not be used in production.
+        public var crashOnDeserializationFailure: Bool = false
+
         /// Serializes all messages, also when passed only locally between actors.
         ///
         /// This option to ensure no reference types are "leaked" through message passing,

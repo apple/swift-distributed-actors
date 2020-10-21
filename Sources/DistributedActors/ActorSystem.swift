@@ -52,7 +52,7 @@ public final class ActorSystem {
 
     /// Allows inspecting settings that were used to configure this actor system.
     /// Settings are immutable and may not be changed once the system is running.
-    public let settings: ActorSystemSettings
+    public let settings: ActorSystemSettings!
 
     // initialized during startup
     private let lazyInitializationLock: ReadWriteLock
@@ -166,6 +166,7 @@ public final class ActorSystem {
     public init(settings: ActorSystemSettings) {
         var settings = settings
         self.name = settings.cluster.node.systemName
+        settings.plugins.configure(settings: &settings)
 
         // rely on swift-backtrace for pretty backtraces on crashes
         if settings.installSwiftBacktrace {
