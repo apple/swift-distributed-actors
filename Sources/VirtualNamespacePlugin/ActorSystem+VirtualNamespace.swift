@@ -16,7 +16,6 @@ import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import NIO
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: VirtualNamespace refs and actors
 
@@ -27,7 +26,7 @@ extension ActorSystem {
     }
 }
 
-public struct VirtualNamespaceControl {
+public struct VirtualNamespaceExtension {
     private let system: ActorSystem
     private let namespacePlugin: VirtualNamespacePlugin
 
@@ -40,9 +39,23 @@ public struct VirtualNamespaceControl {
         self.namespacePlugin = plugin
     }
 
+    public func namespace<Message>(behavior: Behavior<Message>) -> VirtualNamespaceControl {
+        self.namespacePlugin.activate()
+        return .init(system: self.system, namespacePlugin: self.namespacePlugin)
+    }
+}
+
+public struct VirtualNamespaceControl {
+    private let system: ActorSystem
+    private let namespacePlugin: VirtualNamespacePlugin
+
+    public init(system: ActorSystem, namespacePlugin: VirtualNamespacePlugin) {
+        self.system = system
+        self.namespacePlugin = namespacePlugin
+    }
+
     public func ref<Message: Codable>(
         _ uniqueName: String,
-        of type: Message.Type = Message.self
     ) throws -> ActorRef<Message> {
         try self.namespacePlugin.ref(uniqueName, of: type, system: self.system)
     }

@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import NIO
 import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Proposer
@@ -72,7 +72,7 @@ extension CASPaxos {
                             replyTo.tell(newValue)
                         case .failure(let error):
                             context.log.warning("Failed CAS: \(error) for \(key)")
-                             // FIXME!!: we need to signal errors back to the `replyTo`
+                            // FIXME!!: we need to signal errors back to the `replyTo`
                         }
                     }
                     return .same

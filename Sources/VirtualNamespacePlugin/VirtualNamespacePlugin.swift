@@ -33,14 +33,14 @@ public final class VirtualNamespacePlugin {
 
     public init(
         settings: VirtualNamespaceSettings = .default,
-        behavior: _AnyBehavior, // TODO accept many behaviors?
+        behavior: _AnyBehavior, // TODO: accept many behaviors?
         props: Props? = nil
     ) {
         self.settings = settings
         self.lock = Lock()
         // self.namespaces = [:]
         self.managedBehaviors = [
-            NamespaceID(messageType: behavior.messageType): behavior
+            NamespaceID(messageType: behavior.messageType): behavior,
         ]
     }
 
@@ -98,7 +98,7 @@ struct NamespaceID: Codable, Hashable {
         hasher.combine(self.typeName)
     }
 
-    static func ==(lhs: NamespaceID, rhs: NamespaceID) -> Bool {
+    static func == (lhs: NamespaceID, rhs: NamespaceID) -> Bool {
         lhs.typeName == rhs.typeName
     }
 }
@@ -138,7 +138,7 @@ extension VirtualNamespacePlugin: Plugin {
             self.pluginRef = try system._spawnSystemActor(
                 ActorNaming(_unchecked: .unique("$virtual")),
                 VirtualNamespacePluginActor(
-                    settings: settings,
+                    settings: self.settings,
                     managedBehaviors: self.managedBehaviors
                 ).behavior,
                 props: ._wellKnown
@@ -158,8 +158,4 @@ extension VirtualNamespacePlugin: Plugin {
         }
         return .success(())
     }
-}
-
-extension ActorNaming {
-    static var virtual: ActorNaming = "$virtual"
 }

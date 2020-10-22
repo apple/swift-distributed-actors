@@ -17,7 +17,6 @@ import NIO
 
 // TODO: parameterized extensions would help here
 extension ActorRef {
-
     // TODO: nicer signature, i.e. throw the Error and flatten the result
     func change<Value>(key: String, timeout: DistributedActors.TimeAmount, change: @escaping CASPaxos<Value>.ChangeFunction) -> AskResponse<Value?>
         where Value: Codable, Message == CASPaxos<Value>.Message {

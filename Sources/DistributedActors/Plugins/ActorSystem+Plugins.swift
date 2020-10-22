@@ -17,7 +17,6 @@
 
 /// Plugins should implement the `Plugin` protocol.
 public protocol AnyPlugin {
-
     /// Gives the plugin a chance to configure the system before it starts.
     ///
     /// Typical use-cases include configuring serialization to trust types that the plugin will be using etc.

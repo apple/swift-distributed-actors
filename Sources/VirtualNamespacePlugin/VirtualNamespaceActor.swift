@@ -14,8 +14,8 @@
 
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
-import NIO
 import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Virtual Namespace
@@ -71,7 +71,7 @@ internal final class VirtualNamespaceActor<M: ActorMessage> {
 
         self.namespacePeers = []
 
-        self.managedBehavior = behavior
+        self.managedBehavior = self.behavior
     }
 
     var behavior: Behavior<Message> {
@@ -164,7 +164,7 @@ extension VirtualNamespaceActor {
                     if existing.address == ref.address {
                         continue // nothing changed
                     } else {
-                        context.log.warning("TRYING TO STORE \(ref) AS \(ref.path.name); OVER EXISTING \(existing)") // FIXME
+                        context.log.warning("TRYING TO STORE \(ref) AS \(ref.path.name); OVER EXISTING \(existing)") // FIXME:
                     }
                 }
             }
@@ -282,7 +282,7 @@ extension VirtualNamespaceActor {
 
         /// Attempt to set the uniqueName key in our CAS instance to the preferred destination
         let allocationDecision: AskResponse<UniqueNode?> =
-            self.casPaxos.change(key: uniqueName, timeout: .seconds(3)) { old in
+            self.casPaxos.change(key: uniqueName, timeout: .seconds(3)) { _ in
                 preferredDestinationPeer.address.uniqueNode
             }
 
@@ -295,14 +295,13 @@ extension VirtualNamespaceActor {
 
             case .success(let decidedNode):
                 guard let decidedNode = decidedNode else {
-                    decisionPromise.fail(CASPaxosError.TODO("FIXME: allocated... to nil? nonsense, try again")) // FIXME
+                    decisionPromise.fail(CASPaxosError.TODO("FIXME: allocated... to nil? nonsense, try again")) // FIXME:
                     return .same
                 }
                 decisionPromise.succeed(VirtualActorActivation.Decision(decidedNode))
                 return .same
             }
         }
-
 
         return decisionPromise.futureResult
     }
@@ -328,7 +327,6 @@ extension VirtualNamespaceActor {
             context.log.trace("Activated \(uniqueName) on \(namespacePeer), no messages to flush.")
         }
     }
-
 }
 
 enum VirtualActorActivation {
@@ -366,12 +364,12 @@ struct AnyVirtualNamespaceActorRef {
                 ref.tell(msg, file: file, line: line)
             } else {
                 fatalError("""
-                           \(any)
-                                  : \(String(reflecting: type(of: any))) 
-                           was not 
-                                  : \(String(reflecting: Message.self))
-                           """)
-                
+                \(any)
+                       : \(String(reflecting: type(of: any))) 
+                was not 
+                       : \(String(reflecting: Message.self))
+                """)
+
                 deadLetters.tell(DeadLetter(any, recipient: ref.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
             }
         }

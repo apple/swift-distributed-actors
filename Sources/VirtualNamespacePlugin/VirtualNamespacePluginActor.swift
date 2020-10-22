@@ -14,8 +14,8 @@
 
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
-import NIO
 import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Virtual Namespace
@@ -67,7 +67,7 @@ internal final class VirtualNamespacePluginActor {
         }
     }
 
-    private func ensureNamespace(_ type: Any.Type, context: ActorContext<Message>, _ closure: (AnyVirtualNamespaceActorRef) -> ()) throws {
+    private func ensureNamespace(_ type: Any.Type, context: ActorContext<Message>, _ closure: (AnyVirtualNamespaceActorRef) -> Void) throws {
         let namespaceID = NamespaceID(messageType: type)
         if let namespace = self.namespaces[namespaceID] {
             closure(namespace)

@@ -16,7 +16,6 @@ import DistributedActors
 import NIO
 
 final class CASPaxos<Value: Codable> {
-
     typealias ChangeFunction = (Value?) throws -> Value?
     typealias BallotValue = (BallotNumber, Value)
 
@@ -51,11 +50,10 @@ final class CASPaxos<Value: Codable> {
         self.name = name
         self.failureTolerance = failureTolerance
         self.peers = nil
-
     }
 
     var behavior: Behavior<Message> {
-        return Behavior<Message>.setup { context in
+        Behavior<Message>.setup { context in
             // register myself and listen for other peers
             context.receptionist.registerMyself(with: .casPaxos(instanceName: "$namespace"))
             context.receptionist.subscribeMyself(to: .casPaxos(instanceName: "$namespace")) { (listing: Reception.Listing<CASPaxos<Value>.Ref>) in

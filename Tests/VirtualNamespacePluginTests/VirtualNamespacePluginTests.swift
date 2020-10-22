@@ -35,14 +35,13 @@ final class VirtualNamespacePluginTests: ClusteredActorSystemsXCTestCase {
     func test_noCluster_virtualRef() throws {
         let system = self.setUpNode("test") { settings in
             settings.cluster.enabled = false
-            settings += VirtualNamespacePlugin(
-                behavior: TestVirtualActor.behavior
-            )
+            settings += VirtualNamespacePlugin()
         }
 
         let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
 
-        let ref = try system.virtual.ref("caplin-the-capybara", of: TestVirtualActor.Message.self)
+        let namespace = try system.virtual.namespace(TestVirtualActor.behavior)
+        let ref = namespace.ref("caplin-the-capybara")
         ref.tell(.hello(replyTo: replyProbe.ref))
 
         try replyProbe.expectMessage("Hello!")
@@ -50,21 +49,15 @@ final class VirtualNamespacePluginTests: ClusteredActorSystemsXCTestCase {
 
     func test_cluster_virtualRef() throws {
         let first = self.setUpNode("first") { settings in
-            settings += VirtualNamespacePlugin(
-                behavior: TestVirtualActor.behavior
-            )
+            settings += VirtualNamespacePlugin()
             settings.serialization.crashOnDeserializationFailure = true
         }
         let second = self.setUpNode("second") { settings in
-            settings += VirtualNamespacePlugin(
-                behavior: TestVirtualActor.behavior
-            )
+            settings += VirtualNamespacePlugin()
             settings.serialization.crashOnDeserializationFailure = true
         }
         let third = self.setUpNode("third") { settings in
-            settings += VirtualNamespacePlugin(
-                behavior: TestVirtualActor.behavior
-            )
+            settings += VirtualNamespacePlugin()
             settings.serialization.crashOnDeserializationFailure = true
         }
 
@@ -75,7 +68,8 @@ final class VirtualNamespacePluginTests: ClusteredActorSystemsXCTestCase {
 
         let replyProbe = ActorTestKit(first).spawnTestProbe(expecting: String.self)
 
-        let ref = try first.virtual.ref("caplin-the-capybara", of: TestVirtualActor.Message.self)
+        let namespace = first.virtual.namespace(behavior: TestVirtualActor.behavior)
+        let ref = try first.virtual.ref("caplin-the-capybara")
         ref.tell(.hello(replyTo: replyProbe.ref))
 
         try replyProbe.expectMessage("Hello!")
