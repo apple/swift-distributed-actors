@@ -142,6 +142,7 @@ seems trivial to spot on paper, it happens sometimes if no caution is taken duri
 this way it is ensured that there is at least one node "overlap" and the two clusters situation would not happen. Alternatively (and simpler),
 it is also possible to simply issue `join()` towards all nodes discovered via service discovery.
 
+[[joining_nodes]]
 ==== Joining nodes (manually)
 
 In order for actors to be able to communicate across nodes, the nodes have to form a cluster (except alternative transports, which we do not discuss in this chapter).
@@ -153,7 +154,7 @@ Joining nodes is fairly simple and can be performed at any time by by issuing a 
 include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=joining]
 ----
 <1> Enable clustering (so the node binds to a local port and begins listening for connections), and optionally change which address to bind to.
-<2> Join the other node, forming a 2-node cluster. The address could be discovered using some mechanism, or known up front and configured into the app. #TODO to be replaced with discovery mechanism / seed nodes#
+<2> Join the other node, forming a 2-node cluster. The address could be discovered using some mechanism, or known up front and configured into the app.
 
 Once the nodes have established connections, you are ready to transparently send messages across the network.
 Joining nodes also means that they will participate in health checking using the configured failure detector.
@@ -168,14 +169,43 @@ as a _replacement_ we speed up recovery of the cluster, by not having to wait fo
 
 [[node_discovery]]
 [[service_discovery]]
-==== Seed node discovery using Service Discovery
+==== Automated node joining using Service Discovery
 
-By using Swift Service Discovery we are able to utilize a multitude of existing service discovery implementations to
-discover nodes which we should join. Popular techniques include using DNS SRV records to list all nodes of a service,
-or using external cluster management APIs such as Kubernetes or AWS APIs to discover "neighbors" that this a new node
-should form a cluster with.
+It is also possible to make use of https://github.com/apple/swift-service-discovery[Swift Service Discovery] to automatically
+locate and `join` cluster nodes.
 
-#TODO: Service Discovery is something we're working on right now, but will shortly offer: k8s, dns and file based ones.#
+Thanks to the Service Discovery API having various implementations, you should be able to pick an existing
+implementation to suit your project's needs. The seed node discovery can be enabled by configuring the system's
+api:ServiceDiscoverySettings[struct], as follows:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=discovery-joining-config]
+----
+
+If the `ServiceDiscovery` is compatible with `ServiceDiscovery.Instance = DistributedActors.Node`,
+or the following if a mapping has to be performed from the looked up Instance type to the Node type
+which the actor runtime can use to perform join actions:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=discovery-joining-config-2]
+----
+<1> This discovery mechanism uses a type specific to its implementation for instances (e.g. `Instance = SomeGenericNode`)
+<2> We need to perform a mapping from that type, which is unknown to the actors library to api:Node[struct] which the library can handle and perform a `join` with.
+
+How the polling or being notified dynamically about changes in the discovery mechanism is performed depends on the selected discovery mechanism.
+For example, a DNS discovery implementation is likely to resort to periodically polling for SRV records or similar, while other mechanisms may
+receive pushed information whenever the membership changes.
+
+NOTE: Note that discovery is not the same as issuing `.down`, and the removal of a node from the discovery service will _not_
+  automatically remove it from the cluster. +
+  +
+  You _can_ however configure your actor system to do this, by issuing `system.cluster.down(node)` whenever a node is noticed to be removed
+  from service discovery. If you would like to take this approach, you may want implement a api:DowningStrategy[protocol],
+  in terms of the discovery mechanism of your choice, as well as consider if you want to keep or remove the membership
+  and failure detection mechanisms offered by the cluster by default (e.g. disabling the SWIM failure detector).
+
 
 ==== Moving nodes from .joining to .up
 

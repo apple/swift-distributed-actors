@@ -81,31 +81,6 @@ internal class ClusterShell {
         }
     }
 
-//    /// As a retry we strongly assume that the association already exists, if not, it has to be a tombstone
-//    ///
-//    /// We also increment the retry counter.
-//    /// - Returns: `nil` is already associated, so no reason to retry, otherwise the retry statistics
-//    internal func retryAssociation(with node: Node) -> Association.Retries? {
-//        self._associationsLock.withLock {
-//            // TODO: a bit terrible; perhaps key should be Node and then confirm by UniqueNode?
-//            // this used to be separated in the State keeping them by Node and here we kept by unique though that caused other challenges
-//            pprint("self._associations = \(self._associations)")
-//            let maybeAssociation = self._associations.first { $0.key.node == node }?.value
-//
-//            guard let association = maybeAssociation else {
-//                return nil // weird, we always should have one since were RE-trying, but ok, let's simply give up.
-//            }
-//
-//            if let retries = association.retryAssociating() {
-//                // TODO: sanity check locks and that we do count retries
-//                return retries
-//            } else {
-//                // no need to retry, seems it completed already!
-//                return nil
-//            }
-//        }
-//    }
-
     internal func getSpecificExistingAssociation(with node: UniqueNode) -> Association? {
         self._associationsLock.withLock {
             self._associations[node]
@@ -167,8 +142,6 @@ internal class ClusterShell {
         if let swim = self._swimRef {
             system.log.warning("Confirm .dead to underlying SWIM, node: \(reflecting: remoteNode)")
             swim.tell(.local(SWIM.LocalMessage.confirmDead(remoteNode)))
-        } else {
-            fatalError("NIL SWIM REF")
         }
 
         // it is important that we first check the contains; as otherwise we'd re-add a .down member for what was already removed (!)
@@ -385,17 +358,23 @@ extension ClusterShell {
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 
+            // 1) failure detector:
             let swimBehavior = SWIMActorShell.behavior(settings: clusterSettings.swim, clusterRef: context.myself)
             self._swimRef = try context.spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
 
-            // automatic leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
+            // 2) discovering of new members:
+            if let discoverySettings = clusterSettings.discovery {
+                _ = try context.spawn(DiscoveryShell.naming, DiscoveryShell(settings: discoverySettings, cluster: context.myself).behavior)
+            }
+
+            // 3) leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
                 let leadership = try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
                 context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
             }
 
-            // .down decisions made by:
+            // 4) downing strategy (automatic downing)
             if let downing = clusterSettings.downingStrategy.make(context.system.cluster.settings) {
                 let shell = DowningStrategyShell(downing)
                 try context.spawn(shell.naming, shell.behavior)
