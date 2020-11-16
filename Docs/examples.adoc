@@ -14,33 +14,33 @@ The 5 philosophers are competing for 5 shared forks so they can have their meal 
 
 The problem's solution is implemented using actors representing both the forks and philosophers.
 
-See example code here: https://github.com/apple/swift-distributed-actors/tree/master/Sources/Swift Distributed ActorsSampleDiningPhilosophers[Sources/Swift Distributed ActorsSampleDiningPhilosophers]
+See example code here: https://github.com/apple/swift-distributed-actors/tree/main/Samples/Sources/SampleDiningPhilosophers[Samples/Sources/SampleDiningPhilosophers]
 
 Run it by:
 
 [source]
 ----
-git clone https://github.com/apple/swift-distributed-actors
-cd sact
-swift run Swift Distributed ActorsSampleDiningPhilosophers
+git clone https://github.com/apple/swift-distributed-actors sact
+cd sact/Samples
+swift run SampleDiningPhilosophers
 ----
 
 
 === Distributed Dining Philosophers
 
-Same as the normal dining philosophers example, however differing in the set-up step: this time the philosophers and forks
-are distributed across a number of nodes. Thus some philosophers have an advantage in reaching for forks, since they only
-have to message the forks locally! Will any of the philosophers starve? Run the examples to find out.
+Same as the normal dining philosophers example, however differing in the set-up step: this time the philosophers and forks are distributed across a number of nodes, thus some philosophers have an advantage in reaching for forks since they only have to message the forks locally!
+Will any of the philosophers starve?
+Run the examples to find out.
 
-See example code here: https://github.com/apple/swift-distributed-actors/tree/master/Sources/Swift Distributed ActorsSampleDiningPhilosophers[Sources/Swift Distributed ActorsSampleDiningPhilosophers]
+See example code here: https://github.com/apple/swift-distributed-actors/tree/main/Samples/Sources/SampleDiningPhilosophers[Samples/Sources/SampleDiningPhilosophers]
 
 Run it by:
 
 [source]
 ----
-git clone https://github.com/apple/swift-distributed-actors
-cd sact
-swift run Swift Distributed ActorsSampleDiningPhilosophers dist
+git clone https://github.com/apple/swift-distributed-actors sact
+cd sact/Samples
+swift run SampleDiningPhilosophers dist
 ----
 
 === Full-blown Examples ✗

@@ -6,8 +6,7 @@
 
 Actors at their heart are the sum of their behaviors (which may capture state), and a mailbox that is executed by the runtime.
 
-This chapter introduces the low-level api:Behavior[struct] API which allows for building powerful and dynamic behaviors,
-which may encapsulate and enable advanced patterns such as backoff, suspending and others.
+This chapter introduces the low-level api:Behavior[struct] API which allows for building powerful and dynamic behaviors, which may encapsulate and enable advanced patterns such as backoff, suspending and others.
 
 TIP: For the majority of use-cases building applications, it is recommended to use the <<actorable, Actorable>> APIs instead.
 
@@ -15,21 +14,14 @@ TIP: For the majority of use-cases building applications, it is recommended to u
 
 Actors are _always_ defined by the api:Behavior[struct] that they are running (or "acting out" if you want to take the actor analogy one step further).
 
-Two main "styles" of defining actor behaviors are available:
-  - one being "class-oriented" in which mutable state is stored within an actor's behavior `class`
+Two main "styles" of defining actor behaviors are available: one being "class-oriented" in which mutable state is stored within an actor's behavior `class`, and the other being "function-oriented" in which state is organized around discrete behaviors.
 
-Generally speaking the functional style is recommended as it allows for cleaner designs and forces the definition of more
-understandable state _named_ transitions, rather than protecting a "bunch of state" with the actor message handling mechanisms.
+TIP: The function-oriented style is preferable as it leads to cleaner, smaller single-purpose behaviors, which are combined into small state machine-like constructs by becoming another behavior whenever the actors state needs to change. It also forces the definition of more understandable state _named_ transitions, rather than protecting a "bunch of state" with the actor message handling mechanisms.
 
-TIP: The function-oriented style is preferable as it leads to cleaner, smaller single-purpose behaviors,
-     which are combined into small state machine-like constructs by becoming another behavior whenever the actors state needs to change.
+For some actors (or teams) the class-oriented style may however feel more natural, and while we recommend the more functional style, either styles can be successfully used to build distributed applications.
 
-For some actors (or teams) the class-oriented style may however feel more natural, and while we recommend the more functional style,
-either styles can be successfully used to build distributed applications.
-
-NOTE: It _is_ possible to mix and match behaviors defined in either styles, even the same actor may become a class-oriented
-      behavior from a functional-style one and vice versa. This may come in handy for some states in an actor's lifecycle
-      which can be nicely expressed in one of the styles, but not necessarily the other.
+NOTE: It _is_ possible to mix and match behaviors defined in either styles, even the same actor may become a class-oriented behavior from a functional-style one and vice versa.
+This may come in handy for some states in an actor's lifecycle which can be nicely expressed in one of the styles, but not necessarily the other.
 
 You might be surprised to find out that there is no "Actor" class to extend from in Swift Distributed Actors. #TODO fixme wording here..#
 This is because conceptually and Actor is the sum of three parts:
@@ -40,51 +32,48 @@ This is because conceptually and Actor is the sum of three parts:
 
 ==== Behaviors
 
-Those three elements together form one functioning actor. In other words, an actor is a behavior that is able to be run
-with messages from a mailbox. It is by design that the actor itself cannot be seen nor reached from user code, this
-allows Swift Distributed Actors to provide the memory isolation safety that actors are known for -- i.e. there is
+Those three elements together form one functioning actor.
+In other words, an actor is a behavior that is able to be run with messages from a mailbox.
+It is by design that the actor itself cannot be seen nor reached from user code, this allows Swift Distributed Actors to provide the memory isolation safety that actors are known for.
 
-Another reason is, that semantically, it is not possible to "combine actors" as they are their own individual entities
-and always have to guarantee isolation from any 3rd parties. However, it is possible and tremendously useful to combine
-actor `Behaviors`.
+Another reason is that, semantically, it is not possible to "combine actors" as they are their own individual entities and always have to guarantee isolation from any 3rd parties.
+It is, however, possible and tremendously useful to combine actor `Behaviors`.
 
 TIP: All actors are defined in terms of their api:Behavior[struct].
 
-For getting started, we'll focus on the most important behavior group, the `receive` functions, as they allow an
-actor to react to messages. The `receive` behavior comes in a few different flavors. Firstly, the `receiveMessage`
-is one of the more useful versions as it allows us to simply react on a message, and return the next behavior that the
-actor should _become_:
+For getting started, we'll focus on the most important behavior group, the `receive` functions, as they allow an actor to react to messages.
+The `receive` behavior comes in a few different flavors.
+Firstly, the `receiveMessage` is one of the more useful versions as it allows us to simply react on a message, and return the next behavior that the actor should _become_:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receiveMessage_behavior]
 ----
-<1> Defines a reusable behavior that can receive `Greetings` messages. You can `spawn` multiple actors of the same behavior after all.
+<1> Defines a reusable behavior that can receive `Greetings` messages -- you can `spawn` multiple actors of the same behavior after all.
 <2> We do something with the message; here we only print it, but things will soon be much more exciting.
 <3> Lastly we return the "next behavior", since all behaviors are small state machines.
 
-As you can see, this already defines a mini state machine, albeit not a very interesting one, as the behavior will
-continuously become the `.same` one.
-
+As you can see, this already defines a mini state machine, albeit not a very interesting one, as the behavior will continuously become the `.same` one.
 
 You might be curious how the message type looks like, now that we've seen a behavior to handle them.
-In our example we do not yet worry about the serialization of the messages, so it can be in fact any type,
-however we strongly recommend
+In our example we do not yet worry about the serialization of the messages, so it can be in fact any type, however we strongly recommend
 
 [[spawning_actors]]
 [[spawning_behaviors]]
 === Spawning Actors
 
-TIP: Starting actors is referred to as "spawning" them. In the same way one refers to spawning new threads by a thread pool or operating system.
-
+TIP: Starting actors is referred to as "spawning" them.
+In the same way one refers to spawning new threads by a thread pool or operating system.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=spawn]
 ----
 <1> All Actors "live" within an `ActorSystem`, so in order to work with actors we need to first start a system.
-<2> An actor's "Behavior" contains all the logic and state that it will work with. There are numerous ways to define one, we'll learn about them very soon.
-<3> We `spawn` our actor using the `behavior` and we give it a `name` while we are at it as well. Names are tremendously helpful for understanding and debugging your application.
+<2> An actor's "Behavior" contains all the logic and state that it will work with.
+    There are numerous ways to define one, we'll learn about them very soon.
+<3> We `spawn` our actor using the `behavior` and we give it a `name` while we are at it as well.
+Names are tremendously helpful for understanding and debugging your application.
 
 === Sending messages
 
@@ -94,35 +83,32 @@ Sending messages to actors is straight forward and can be done thanks to the api
 
 #TODO: ActorRef link should be ActorRef<Message>#
 
-For example, now that we have obtained a reference to
+For example, now that we have obtained a reference to `greeterBehavior`, we can call it like:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=tell_1]
 ----
-<1> We _tell_ our actor our name, so that it can greet us. This is an asynchronous fire-and-forget message sent to the actor.
+<1> We _tell_ our actor our name, so that it can greet us.
+    This is an asynchronous fire-and-forget message sent to the actor.
 
-TIP: Sending messages to actors always has the same form, regardless if they are local or remote.
-     (This is one of the ways the _location transparency_ property surfaces in the APIs.)
+TIP: Sending messages to actors always has the same form, regardless if they are local or remote (This is one of the ways the _location transparency_ property surfaces in the APIs).
 
 #TODO: complete this section#
 
 ==== Sending questions using `ask` (request-reply)
 
-While `tell` should be preferred for most actor-to-actor communication, an alternative, focused on request-reply interactions,
-method exists to send "questions" to other actors, expecting a reply back.
+While `tell` should be preferred for most actor-to-actor communication, an alternative method focused on request-reply interactions exists to send "questions" to other actors, expecting a reply back.
 
-Using the `ref.ask(for:timeout:makeQuestion:)` method, we send a message to the target actor and expect that it will reply to
-a special ask-actor, which in turn completes the returned `AskResponse<ResponseType>` (similar to how completing a `Promise`
-would complete a `Future`, although by using messaging -- meaning that the reply can come from any actor in a cluster, also a remote one).
+Using the `ref.ask(for:timeout:makeQuestion:)` method, we send a message to the target actor and expect that it will reply to a special ask-actor, which in turn completes the returned `AskResponse<ResponseType>`.
+This is similar to how completing a `Promise` would complete a `Future`, although by using messaging the reply can come from any actor in a cluster, including a remote one.
 
 An api:AskResponse[enum] can also be handled from outside of actor code, making it an useful integration pattern between actor and non-actor code.
 
-Note that providing a `timeout` is _not_ optional, as in order to avoid potential deadlocks if a question was sent to an already dead actor.
-If no response is received within the specified `timeout`, the ask-response will fail with a `api:TimeoutError[struct]`.
+Note that providing a `timeout` is _not_ optional.
+In order to avoid potential deadlocks if a question was sent to an already dead actor, if no response is received within the specified `timeout`, the ask-response will fail with a `api:TimeoutError[struct]`.
 
-NOTE: `ask` is also useful when interacting with actors from "outside" (i.e. from not-actors), since the returned value
-      can be acted on asynchronously whenever it gets completed -- like a `Future`.
+NOTE: `ask` is also useful when interacting with actors from "outside" (i.e. from not-actors), since the returned value can be acted on asynchronously whenever it gets completed -- like a `Future`.
 
 The following example shows a simple "from outside" question being asked to an actor:
 
@@ -130,74 +116,71 @@ The following example shows a simple "from outside" question being asked to an a
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask_outside]
 ----
-<1> `replyTo` is an actor ref of the type specified with the `for` parameter of ask and is used to receive the response
+<1> `replyTo` is an actor ref of the type specified with the `for` parameter of `ask`, and is used to receive the response
 <2> Create the message that will be sent to the ref that `ask` is called on
 <3> Retrieve the result from the `api:AskResponse[enum]`.
 
 WARNING: _Never_ invoke any kind of blocking operation such as `future.wait()` inside of an actor!
-         Same as blocking an event loop, blocking inside actors will cause starvation for other actors sharing the same dispatcher.
-         Rather than blocking, consider using one of the built-in functions for asynchronous values inter-op documented below.
+Same as blocking an event loop, blocking inside actors will cause starvation for other actors sharing the same dispatcher.
+Rather than blocking, consider using one of the built-in functions for asynchronous values inter-op documented below.
 
-It is also possible to use `ask` from within actors, for simple request-response interactions with other actors,
-which may not want to be encoded in the asking-actors message protocol. Since sometimes, especially during initialization,
-an actor may need to "wait" until an asynchronous response to arrives, it is possible to use the `context.onResultAsync`
-as well as `context.awaitResult` functions to suspend the actor _without blocking the thread_ until the response arrives:
+It is also possible to use `ask` from within actors for simple request-response interactions with other actors which may not want to be encoded in the asking-actors message protocol.
+
+Sometimes, especially during initialization, an actor may need to "wait" until an asynchronous response to arrives.
+In these cases the `context.onResultAsync` and `context.awaitResult` functions may be used to suspend the actor _without blocking the thread_ until the response arrives:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask_inside]
 ----
-<1> First thing the `caplin` actor does, is to `ask` the `greeter` for a greeting,
-<2> Since it depends on that greeting to become the `greeted` state, it awaits on the reply using `context.awaitResultThrowing`,
-    which will either invoke the callback with the received reply, or throw if the timeout is exceeded.
-<3> Once the question is replied to, caplin will wake up from its suspended state and execute the callback, logging the greeting and becoming the `greeted()` behavior.
+<1> First thing the `caplin` actor does is to `ask` the `greeter` for a greeting.
+<2> It depends on that greeting to become the `greeted` state, and it awaits the reply using `context.awaitResultThrowing`.
+    This will either invoke the callback with the received reply, or throw if the timeout is exceeded.
+<3> Once the question is replied to, `caplin` will wake up from its suspended state and execute the callback, logging the greeting and becoming the `greeted()` behavior.
 
-Worth noting here is that `caplin` itself was never able to receive _any_ messages -- its `Message` type was bound to `Never` after all,
-which is a way of expressing that an actor cannot receive any messages. Yet at the same time, thanks to using the `ask` mechanism,
-it was able to communicate in a request-response fashion with the `greeter`.
+Worth noting here is that `caplin` itself was never able to receive _any_ messages -- its `Message` type was bound to `Never` after all, which is a way of expressing that an actor cannot receive any messages.
+Yet at the same time, thanks to using the `ask` mechanism, it was able to communicate in a request-response fashion with the `greeter`.
 
+To learn more about the semantics of these asynchronous result inter-op behaviors, refer to their respective documentation sections:
 
-To learn more about the semantics of these asynchronous result inter-op behaviors you want to refer to their respective documentation sections:
-
-- <<onResultAsync>> for non-awaiting safe executing of callbacks on the Actor using `context.onResultAsync`,
-- and <<awaitResult>> for awaiting for a value before becoming another behavior using `context.awaitResult`.
+* <<onResultAsync>> for non-awaiting safe executing of callbacks on the Actor using `context.onResultAsync`.
+* <<awaitResult>> for awaiting for a value before becoming another behavior using `context.awaitResult`.
 
 === Actor Lifecycle
 
 Each actor follows a well-defined lifecycle from the moment it is spawned until the moment it terminates.
 
-The following diagram illustrates lifecycle transitions and signals which are delivered to an actor as it undergoes these
-transitions. Note that in normal situations, i.e. without faulty behaviors, the diagram is a simple linear transition from
-`Running` through `Stopped` to `Terminated`. All other states and transitions come into play only in face of faulty behaviors.
+The following diagram illustrates lifecycle transitions and signals which are delivered to an actor as it undergoes these transitions.
+Note that in normal situations, i.e. without faulty behaviors, the diagram is a simple linear transition from `Running` through `Stopped` to `Terminated`.
+All other states and transitions come into play only in face of faulty behaviors.
 
 image::actor_lifecycle.png[Actor Lifecycle]
 
-1. Start: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing it to execute all nested `.setup` behaviors.
-2. Stop Myself: An actor may decide to stop itself by returning a api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
+1. *Start*: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing it to execute all nested `.setup` behaviors.
+2. *Stop Myself*: An actor may decide to stop itself by returning a api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
     See also <<Stopping the Current Actor (Myself)>>.
-3. Stop by Parent: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
-    Such stop signal _cannot_ be ignored by the child, and will take effect as soon as it is received by the child. See also <<Stopping Child Actors>>.
-4. PostStop: Once the actor has `Stopped` and drained its mailbox (to dead letters), it will process one last signal: `PostStop` which may be handled.
-    However, regardless of the next behavior returned by handling this signal, the actor will always proceed to the `Terminated` state.
-    Once `Terminated`, the actor will never again wake up nor process any more messages nor signals.
-5. Supervision: If an actor throws an error or causes a fault it will transition to Failing 🔥, and invoke its supervisor will be invoked, to see if the actor should be restated or not.
+3. *Stop by Parent*: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor _cannot_ ignore, and will take effect as soon as it is received.
+    See also <<Stopping Child Actors>>.
+4. *PostStop*: Once the actor has `Stopped` and drained its mailbox (sending any remaining messages to to dead letters), it will process the `PostStop` signal, which may be handled.
+    Regardless of the next behavior returned by handling this signal, the actor will always proceed to the `Terminated` state.
+    Once `Terminated`, the actor will never again wake up nor process any more messages or signals.
+5. *Supervision*: If an actor throws an error or causes a fault it will transition to Failing 🔥, and its supervisor will be invoked to see if the actor should be restated or not.
     To learn more about <<Supervision>> and the various supervision strategies, refer to the <<Failure Handling>> chapter of the documentation.
-6. Supervision (restart): If the configured supervisor decides that the actor should be restarted (now, or upon a delay), an :api:Signals[enum,alias='Signals.PreRestart'] signal will be delivered to the _current (failing) behavior_,
-    before a new instance of the _initial behavior_ will be created to replace the faulty one. This means that any state kept enclosed by the faulty behavior will be lost – and the actor can resume operations
-    from a clean slate, however _while preserving its mailbox and identity_.
-7. Supervision (fail): If the supervisor decides that the actor should _not_ be restarted (e.g. because it exhausted its permitted restart count, or the fault captured is too serious to ignore),
-    the actor will transition to `Stopped` and `Terminated`, similar to how it would behave if it were stopping itself manually. #TODO: I think we want to signal in PostStop that this is because we failed, and not a manual stop#
+6. *Supervision (restart)*: If the configured supervisor decides that the actor should be restarted (now, or upon a delay), an :api:Signals[enum,alias='Signals.PreRestart'] signal will be delivered to the _current (failing) behavior_, and a new instance of the _initial behavior_ will be created to replace the faulty one.
+    This means that any state kept enclosed by the faulty behavior will be lost and the actor can resume operations from a clean slate _while preserving its mailbox and identity_.
+7. *Supervision (fail)*: If the supervisor decides that the actor should _not_ be restarted, e.g. because it exhausted its permitted restart count or the fault captured is too serious to ignore, the actor will transition to `Stopped` and `Terminated`, similar to how it would behave if it were stopping itself manually.
+    #TODO: I think we want to signal in `PostStop` that this is because we failed, and not a manual stop#
 
 === Stopping Actors
 
-An actor can be stopped either by its own decision to do so, a failure occurring, or its parent sending it a stop signal which the actor must abide to.
+An actor can be stopped either by its own decision to do so, a failure occurring, or its parent sending it a stop signal which the actor must obey.
 
 ==== Stopping the Current Actor (Myself)
 
-While an actor is running there exist only two ways in which it may decide to end up _stopping itself_, either by:
+While an actor is running there exist only two ways in which it may decide to end up _stopping itself_:
 
-- **stopping** – returning a api:Behavior[struct,alias='Behavior.stop'] as the next behavior.
-- **crashing** – by throwing an `Error` or causing a fault.
+* **Stopping** – returning a api:Behavior[struct,alias='Behavior.stop'] as the next behavior.
+* **Crashing** – by throwing an `Error` or causing a fault.
 ** In which case <<supervision>> will handle the failure and determine what to do about it. The default is stopping the actor.
 
 To see this in a more realistic example let's have a look at the following snippet:
@@ -210,7 +193,7 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_1]
 <2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning a api:Behavior[struct,alias='Behavior.stop'].
 
 This example also showcases that we do not necessarily have to bind the business logic to the fact that it is being executed inside an actor.
-As shown in the snippet, we can interpret states returned by the underlying logic as states the actor should transition in its lifecycle.
+As shown in the snippet, we can interpret states returned by the underlying logic as states the actor should transition to in its lifecycle.
 
 In practice such snippets would often be extracted into their own functions or extensions onto the domain objects, for example:
 
@@ -219,24 +202,21 @@ In practice such snippets would often be extracted into their own functions or e
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_refactored]
 ----
 
-Note that returning `.stop` also _guarantees_ that no further messages will be processed after the stopped behavior
-has been returned. You may also use the `.stop(postStop:)` overloads to perform cleanup operations, or even store your
-own "stopped" that would perform some cleanup logic if there was a need to do the similar cleanup for various actors in
-your system.
+Note that returning `.stop` also _guarantees_ that no further messages will be processed after the stopped behavior has been returned.
+You may also use the `.stop(postStop:)` overloads to perform cleanup operations, or even store your own "stopped" that would perform some cleanup logic if there was a need to do similar cleanup for various actors in your system.
 
-NOTE: It is NOT possible to stop yourself by calling the `context.stop(child:)` function to stop `myself`.
-      This is to not encourage another way of doing the same thing, and make stopping easier to track -- as it should always result from a `return .stop` or a failure. This makes analyzing existing code bases simpler, as there are only the two cases to look for.
+NOTE: It is **NOT** possible to stop yourself by calling the `context.stop(child:)` function to stop `myself`.
+This is to not encourage another way of doing the same thing, and make stopping easier to track, as it should always result from a `return .stop` or a failure.
+This makes analyzing existing code bases simpler, as there are only two cases to look for.
 
 ==== Stopping Child Actors
 
-A parent actor may stop _its own_ child actors by using `context.stop(child:)` on them,
-which is implemented as a system message send asking the child to stop.
+A parent actor may stop _its own_ child actors by using `context.stop(child:)` on them, which is implemented as a system message asking the child to stop.
 
-WARN: Attempting to `ActorContext.stop(child:)` a reference that is _not_ a child of the current actor will result in an
-      `ActorContextError` being throw.
+WARNING: Attempting to `ActorContext.stop(child:)` a reference that is _not_ a child of the current actor will result in an `ActorContextError` being thrown.
 
-The child MAY NOT refuse such stop command and it is effective immediately once the message arrives at the child actor.
-Bear in mind though that this stopping operation, by virtue of being a message send, is an asynchronous operation.
+The child **MAY NOT** refuse such stop command and it is effective immediately once the message arrives at the child actor.
+Bear in mind that this stopping operation, by virtue of being a message send, is an asynchronous operation.
 
 #TODO: complete this section#
 
@@ -244,46 +224,44 @@ Bear in mind though that this stopping operation, by virtue of being a message s
 
 For a given actor, the following is guaranteed:
 
-- if an actor returns the `.stop` behavior, no further messages will be delivered to its message (or signal) receive blocks,
-  - with the single exception of the :api:Signals[enum,alias='Signals.PostStop'] which is delivered once the actor has stopped and before it has completely Terminated.
-- if any other actors have been watching this actor, they will be informed about its termination using `.terminated` messages.
+* If an actor returns the `.stop` behavior, no further messages will be delivered to its message (or signal) receive blocks.
+**  The single exception is api:Signals[enum,alias='Signals.PostStop'], which is delivered once the actor has stopped and before it has completely Terminated.
+* If any other actors have been watching this actor, they will be informed about its termination using `.terminated` messages.
 
 Internal guarantees:
 
-- if the `.stop` behavior is returned during handling system messages, no further user messages shall be processed.
-- all pending (system) already enqueued to the actors mailboxes messages SHOULD be drained to dead letters or dropped.
-- once the `.stop` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `CLOSED` (dead),
-  - during the time between `TERMINATING` and `CLOSED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
-  - all incoming messages, which hit an "at-least-TERMINATING" actor shall be immediately be DROPPED, without being enqueued at all. This is to avoid waking up the actor infinitely.
-- resources (e.g. the held behavior) shall only be released once the CLOSED state has been reached.
+* If the `.stop` behavior is returned during handling system messages, no further user messages shall be processed.
+* All pending (system) messages already enqueued to the actors mailboxes SHOULD be drained to dead letters or dropped.
+* Once the `.stop` behavior is returned the actor should immediately be treated as `TERMINATING`, although it is not yet `CLOSED` (dead).
+** During the time between `TERMINATING` and `CLOSED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
+** All incoming messages, which hit an "at-least-TERMINATING" actor shall immediately be DROPPED, without being enqueued at all.
+    This is to avoid waking up the actor infinitely.
+* Resources (e.g. the held behavior) shall only be released once the CLOSED state has been reached.
 
 Parent-child relationships add a few more guarantees:
 
-- a parent is always notified about its child's failures
-  - these DO NOT cause it to kill itself
-- if the parent spawns AND watches the child though, the same death pact principles apply,
-  and a failing child WILL cause the parent to terminate as well.
+* A parent is always notified about its child's failures.
+** These **DO NOT** cause it to kill itself
+* If the parent spawns **AND** watches the child, the same death pact principles apply, and a failing child **WILL** cause the parent to terminate as well.
 
 [[props]]
 === Configuring Actors with Props
 
-api:Props[struct] can be seen as accompanying data to an actors behavior, that is used by Swift Distributed Actors to configure or
-apply special handling to the actor once it is started.
+api:Props[struct] can be seen as accompanying data to an actors behavior, to be used by Swift Distributed Actors to configure or apply special handling to the actor once it is started.
 
-TIP: "Props" are what an theater actor may use during a performance. For example, a skull would be a classic example of
-     a "prop" used while performing the William Shakespeare's Hamlet Act III, scene 1, saying _"To be, or not to be, that is the question: [...]."_
-     In the same sense, api:Props[struct] for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
+TIP: "Props" are what an theater actor may use during a performance.
+For example, a skull would be a classic example of a "prop" used while performing William Shakespeare's Hamlet Act III, scene 1, saying _"To be, or not to be, that is the question: [...]."_
+In the same sense api:Props[struct] for Swift Distributed Actors are accompanying objects/settings which help the actor perform its duties.
 
 Props can be defined once and used for starting any number of actors (as they are effectively only immutable "settings").
-You can change props by using by mutating the value type
+You can change props by mutating the value type.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=props_example]
 ----
 
-Most commonly one would use `Props` to configure an actor's supervision strategy (which is described in more detail in the <<failure_handling>>
-section of the guide), or its `dispatcher`.
+Most commonly one would use `Props` to configure an actor's supervision strategy (which is described in more detail in the <<Failure Handling>> section of the guide), or its `dispatcher`.
 
 
 [[suggested_props_pattern]]
@@ -291,23 +269,19 @@ section of the guide), or its `dispatcher`.
 
 #TODO: deprecate this and replace with "shell" pattern I guess?#
 
-Sometimes when implementing behaviors which may be spawned by other users, it may be useful to centralize the props creation
-along with its default "suggested" settings. The _Suggested Props_ pattern explains a common style in which this can be solved.
+Sometimes when implementing behaviors which may be spawned by other users, it may be useful to centralize the props creation along with its default "suggested" settings.
+The _Suggested Props_ pattern explains a common style in which this can be solved.
 
-The pattern involves exposing, along with a behavior that users may spawn also an api:Props[struct] instance with
-pre-configured dispatcher, supervision or other settings.
+The pattern involves exposing supervision or other settings, along with a behavior that users may spawn as a api:Props[struct] instance with pre-configured dispatcher.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=suggested_props_pattern]
 ----
 
-Having that said, this pattern puts more burden on the spawner and specifically should not be used to abuse supervision
-as replacement for classical do/catch `Error` handling. If it is known that an actor may encounter some Error it is very
-likely more appropriate to handle this using traditional `do/catch` blocks inside the actor, rather than relying on supervision.
-Worth pointing out here is that supervision only allows to either restart or stop the actor; no "ignore this error,
-everything is actually fine" is allowed, yet such strategy can be implemented using a classical `do/catch` where in the
-catch one could log a warning about the "harmless" error having occurred.
+Having that said, this pattern puts more burden on the spawner and specifically should not be used to abuse supervision as replacement for classical do/catch `Error` handling.
+If it is known that an actor may encounter some Error it is very likely more appropriate to handle this using traditional `do/catch` blocks inside the actor rather than relying on supervision.
+Worth pointing out here is that supervision only allows restarting or stopping the actor; no "ignore this error, everything is actually fine" is allowed, yet such strategy can be implemented using a classical `do/catch` where in the catch one could log a warning about the "harmless" error having occurred.
 
 === Actor Paths and Hierarchy
 
@@ -319,41 +293,41 @@ Similar to real life, one can only send messages to an actor or friend if we kno
 The "sending" capability is expressed by obtaining an api:ActorRef[struct], which also contains the actor's address.
 There can be many references (even on different nodes in a cluster) to the same actor, however its address remains the same.
 
-The address contains a UID which is sometimes referred to as the "Incarnation" ID. This UID is used to clarify identity in
-the following situation:
+The address contains a UID, which is sometimes referred to as the "Incarnation" ID.
+This UID is used to clarify identity in the following situation:
 
-- an actor is spawned under the `/user/animal/caplin` path;
-  - it gains a unique identifier which is appended to its path like this automatically: `/user/animal/caplin#34535`.
-- the actor hands out a few references to itself to other actors for future use.
-- the actor decides it has performed its task and should now stop itself.
-- after the actor stops, the `/user/animal` parent decides that another `caplin` should be spawned, to perform some tasks that Caplins are good at.
-  - another _new_ actor is spawned under the _same path_ `/user/animal/caplin` and most likely will perform the same kind of work as the "previous Caplin"
-- the new actor resides on the _same path_ however has a _different identity_ (and UID, which represents it)!
-- meanwhile, actors who were told about the original Caplin's `ActorRef` decide to send a message to it.
-- thanks to the different UID the system knows that these messages are _not_ intended for the _current_ Caplin -- as it has a different identity.
-  - note that this matters mostly for distributed systems, since in local systems the identity issue is resolved by simply
-    holding references to actor mailboxes; however semantically the model is exactly the same: the "old incarnation" is now gone.
-- messages sent to the "old" api:ActorRef[struct] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
+* An actor is spawned under the `/user/animal/caplin` path.
+** It gains a unique identifier which is appended to its path like this automatically: `/user/animal/caplin#34535`.
+* The actor hands out a few references to itself to other actors for future use.
+* The actor decides it has performed its task and should now stop itself.
+* After the actor stops, the `/user/animal` parent decides that another `caplin` should be spawned, to perform some tasks that Caplins are good at.
+** A _new_ actor is spawned under the _same `/user/animal/caplin` path_, and most likely will perform the same kind of work as the "previous Caplin".
+* The new actor resides on the _same path_, however it has a _different identity_ (and UID, which represents it)!
+* Meanwhile, actors who were told about the original Caplin's `ActorRef` decide to send a message to it.
+** Thanks to the different UID the system knows that these messages are _not_ intended for the _current_ Caplin as it has a different identity.
+** Note that this matters mostly for distributed systems, since in local systems the identity issue is resolved by simply holding references to actor mailboxes.
+    Semantically, however, the model is exactly the same: the "old incarnation" is now gone.
+* Messages sent to the "old" api:ActorRef[struct] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
 
 [[receptionist]]
 === Locating Actors using the Receptionist
 
-The receptionist is a system actor that allows users to register actors under a api:Receptionist[enum,alias='Receptionist.RegistrationKey'] so that
-it can be looked up in other parts of the system. Usually actor references should be passed around to allow actors to communicate,
-but there are cases where this is not convenient or possible. One such example is communication in a cluster. To share a reference
-with another node in the cluster, we have to send that reference to it, but that is only possible, if we already have a reference
-to an actor on that node. So by registering the actors we want to make accessible from other nodes in the cluster, we have a way
-of sharing them by communicating with a local ref only. The registered actors will then automatically be made available on all
-nodes in the cluster and can be looked up by sending a message to the local receptionist.
+The receptionist is a system actor that allows users to register actors under a api:Receptionist[struct,alias='Receptionist.RegistrationKey'] so that it can be looked up in other parts of the system.
+Usually actor references should be passed around to allow actors to communicate, but there are cases where this is not convenient or possible -- communication in a cluster, for example.
+To share a reference with another node in the cluster we have to send that reference to it, but that is only possible if we already have a reference to an actor on that node.
+By registering the actors we want to make accessible from other nodes in the cluster, we have a way
+of sharing them by communicating only with a local ref.
+The registered actors will then automatically be made available on all nodes in the cluster and can be looked up by sending a message to the local receptionist.
 
-First we need to register the actor on the node it lives on. This is usually done in the `.setup` behavior.
+First we need to register the actor on the node it lives on.
+This is usually done in the `.setup` behavior.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_register]
 ----
-<1> Create the key under which the actor will be registered (can be re-used between calls)
-<2> Send a api:Receptionist[enum,alias='register'] message to receptionist to register the actor under given `key`
+<1> Create the key under which the actor will be registered (can be re-used between calls).
+<2> Send a api:Receptionist[struct,alias='register'] message to receptionist to register the actor under given `key`.
 
 Now we can lookup all actors that are registered under that key.
 
@@ -361,53 +335,48 @@ Now we can lookup all actors that are registered under that key.
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_lookup]
 ----
-<1> Send `api:Receptionist[enum,alias='Receptionist.Lookup']` message to receptionist to get a `api:Receptionist[enum,alias='Receptionist.Listing']` with all registered actors for the key
+<1> Send a `api:Receptionist[struct,alias='Receptionist.Lookup']` message to receptionist to get a `api:Receptionist[struct,alias='Receptionist.Listing']` with all registered actors for the key.
 
-If we are interested in changes to the registration, e.g. when a registered actor gets unregistered, because it terminated,
-or a new one was added, we can subscribe to those changes.
+If we are interested in changes to the registration, e.g. when a registered actor gets unregistered, because it terminated, or a new one was added, we can subscribe to those changes.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_subscribe]
 ----
-<1> Send `api:Receptionist[enum,alias='Receptionist.Subscribe']` message to receptionist to receive an updated `api:Receptionist[enum,alias='Receptionist.Listing']` on every change to the registrations under the key
+<1> Send a `api:Receptionist[struct,alias='Receptionist.Subscribe']` message to receptionist to receive an updated `api:Receptionist[struct,alias='Receptionist.Listing']` on every change to the registrations under the key.
 
 === Interop with non-actor code
 
-In any reasonably complex system, different libraries will be used and we need to find ways to make them interact with each other.
-Actors are no exception to this. In this chapter we will look at ways to integrate actors nicely with non-actor code, so that
-we can use existing APIs from actors and also receive and process responses from actors outside of actor code.
+In any reasonably complex system, different libraries will be used and we need to find ways to make them interact with each other, and Actors are no exception to this.
+In this chapter we will look at ways to integrate actors nicely with non-actor code so that actors can use existing APIs, and we can also receive and process responses from actors outside of actor code.
 
 ==== Sending results of asynchronous operations to actors
 
 Our code often has to interact with external systems like databases or other services.
-Those calls are usually being executed asynchronously and the result is being made available either as an asynchronous result type,
-like a future, or as parameter to a callback that needs to be passed in when calling an asynchronous API. Once we have the result,
-we can send it to an actor, alternatively converting it to a message that the actor understands beforehand.
+Those calls are usually being executed asynchronously and the result is being made available either as an asynchronous result type, like a future, or as parameter to a callback that needs to be passed in when calling an asynchronous API.
+Once we have the result we can send it to an actor, alternatively converting it to a message that the actor understands beforehand.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_dispatch]
 ----
-<1> An actor that expects to receive the result of some asynchronous computation
-<2> Computation is being sent to a DispatchQueue
-<3> Execute computation
-<4> Wrap result in a message and send it to the actor
+<1> An actor that expects to receive the result of some asynchronous computation.
+<2> Computation is being sent to a `DispatchQueue`.
+<3> Execute computation.
+<4> Wrap result in a message and send it to the actor.
 
-Another example is calling an asynchronous API from within an actor. We can't modify the internal actor state from within
-asynchronous callbacks, because that would create a race condition and also violate the actor model concept of communicating
-only through message passing, so instead we have to send a message to the actor from the callback.
+Another example is calling an asynchronous API from within an actor.
+We can't modify the internal actor state from within asynchronous callbacks, because that would create a race condition and also violate the actor model concept of communicating only through message passing, so instead we have to send a message to the actor from the callback.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_insideActor]
 ----
-<1> Execute asynchronous call with callback
-<2> Wrap result in a message and send it to the actor
-<3> Handle the result in inside the actor
+<1> Execute asynchronous call with callback.
+<2> Wrap result in a message and send it to the actor.
+<3> Handle the result in inside the actor.
 
-While this is quite convenient, it also means that the response has to be included in the `Message` type the actor understands,
-so anyone who holds a reference to that actor can send this message to it.
+While this is quite convenient, it also means that the response has to be included in the `Message` type the actor understands, so anyone who holds a reference to that actor can send this message to it.
 
 [source]
 ----
@@ -419,15 +388,11 @@ include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_in
 
 #TODO: Add better description of what problem are we facing and then how to solve it#
 
-In order to avoid having to add internal messages to the public message type, actors offer functionality to process asynchronous results
-as a continuation within the actor itself, so it will be executed within the same context and in sequence with all the
-other messages.
+In order to avoid having to add internal messages to the public message type, actors offer functionality to process asynchronous results as a continuation within the actor itself, so it will be executed within the same context and in sequence with all the other messages.
 
-We can handle asynchronous results by providing a continuation, that will be run after the result is available, to `onResultAsync` or
-`onResultAsyncThrowing` on `api:ActorContext[class]`. This will ensure that the continuations are run within the same actor context
-to ensure the message processing guarantees are not violated and avoid data races. All messages that are received while the
-async result is not completed will be processed as usual, so the actor should not depend on the result to make progress (we will
-explain how to handle that case later in this document).
+We can handle asynchronous results by providing a continuation, which will be run after the result is available, to `onResultAsync` or `onResultAsyncThrowing` on `api:ActorContext[class]`.
+This will ensure that the continuations are run within the same actor context so that message processing guarantees are not violated, and data races are avoided.
+All messages that are received while the async result is not completed will be processed as usual, so the actor should not depend on the result to make progress (we will explain how to handle that case later in this document).
 
 Assume we have an actor that asynchronously fetches data from a database and caches the results for some time.
 
@@ -444,40 +409,39 @@ We can implement the actor as follows:
 ----
 include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_onResultAsync]
 ----
-<1> We create a cache that store users we have fetched for 30 seconds
-<2> If we have have the user cached, we return the cached value
-<3> Otherwise we fetch it from the database
-<4> Now we register the continuation to run when the result is available
-<5> If the request was successful, we store the user in the cache and send it to the `replyTo` ref
-<6> If we could not find the user in the database either, we response with `.unknownUser`
-<7> If the request failed, we respond with `lookupFailed`
+<1> We create a cache that stores users we have fetched for 30 seconds.
+<2> If we have have the user cached, we return the cached value.
+<3> Otherwise we fetch it from the database.
+<4> Now we register the continuation to run when the result is available.
+<5> If the request was successful, we store the user in the cache and send it to the `replyTo` ref.
+<6> If we could not find the user in the database either, we response with `.unknownUser`.
+<7> If the request failed, we respond with `lookupFailed`.
 
 [[awaitResult]]
-==== Awaiting on asynchronous results on Behavior transitions
+==== Waiting for asynchronous results on Behavior transitions
 
-Some actors need to fetch initial state before they can start processing other messages or need to wait for an asynchronous
-result before resuming to process user messages. This can be achieved with the `awaitResult` and `awaitResultThrowing` calls
-on `api:ActorContext[class]`. They create a behavior that suspends processing of user messages until the asynchronous result has been
-received, or the timeout has expired.
+Some actors need to fetch initial state before they can start processing other messages or need to wait for an asynchronous result before resuming user message processing.
+This can be achieved with the `awaitResult` and `awaitResultThrowing` calls on `api:ActorContext[class]`.
+They create a behavior that suspends processing of user messages until the asynchronous result has been
+received or the timeout has expired.
 
-Imagine an actor that understands following message protocol, that allows a user to request adding a prefix to a string:
+Imagine an actor that understands following message protocol, which allows a user to request adding a prefix to a string:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_awaitResult_enum_Messages]
 ----
 
-Now if we have that prefix stored in a database, we need to fetch it before we can prefix any strings, but we don't want users to be able to change
-the prefix, so we can't add it to the message protocol, but we also can't block inside the actor. Using `awaitResult`, we can fetch the data
-asynchronously and after receiving the result, start processing the user requests.
+Now if we have that prefix stored in a database we need to fetch it before we can prefix any strings, but we don't want users to be able to change the prefix so we can't add it to the message protocol, but we also can't block inside the actor.
+Using `awaitResult` we can fetch the data asynchronously, and after receiving the result start processing the user requests.
 
 [source]
 ----
 include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_awaitResult]
 ----
-<1> Call operation that returns a `NIO.EventLoopFuture`
-<2> Awaiting the result causes the actor to suspend user message processing, but it keeps processing system messages. So e.g. stopping a suspended actor is still possible.
-<3> After successfully retrieving the prefix from the database we can start processing the requests
+<1> Call operation that returns a `NIO.EventLoopFuture`.
+<2> Awaiting the result causes the actor to suspend user message processing, but it keeps processing system messages, so stopping a suspended actor is still possible, for example.
+<3> After successfully retrieving the prefix from the database we can start processing the requests.
 <4> In case the asynchronous operation fails, we can throw the produced error which will be treated like any error that occurs in the actor.
 
 Most of the time when facing situations where the actor needs the result of an async operation to proceed, failure of the async operation should also crash the actor.
@@ -489,9 +453,7 @@ include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_awaitResultTh
 ----
 
 CAUTION: `awaitResult` and `awaitResultThrowing` cause the actor to suspend, meaning it won't process any user messages until it is resumed.
-This will lead to growth of the mailbox and can cause significant delays in message processing. Therefore these functions should be
-used with caution and only when absolutely necessary and with reasonably small timeouts to avoid problems caused by unresponsive
-services.
+This will lead to growth of the mailbox and can cause significant delays in message processing, therefore these functions should be used with caution and only when absolutely necessary, and with reasonably small timeouts to avoid problems caused by unresponsive services.
 
 [[event_stream]]
 === EventStream
@@ -505,10 +467,10 @@ Usage:
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=eventStream]
 ----
-<1> Create an `EventStream` that publishes events of type `Event`
-<2> Subscribe `ref` to receive events from the stream
-<3> Publish on event to all subscribers
-<4> Unsubscribe `ref` from the event stream
+<1> Create an `EventStream` that publishes events of type `Event`.
+<2> Subscribe `ref` to receive events from the stream.
+<3> Publish an event to all subscribers.
+<4> Unsubscribe `ref` from the event stream.
 
 [[subreceive]]
 === SubReceive
