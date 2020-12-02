@@ -2,37 +2,31 @@
 [[xpc]]
 == ⚠️ PoC: XPC Transport
 
-> As Actors are "only" an abstraction of identifiable entities that communicate _only_ using messaging,
-> they can be used to abstract and ease interactions not only over network but also between processes.
+> As Actors are "only" an abstraction of identifiable entities that communicate _only_ using messaging, they can be used to abstract and ease interactions not only over network but also between processes.
 >
-> On Apple platforms the recommended IPC mechanism is XPC, and Actors support it as a transport in order to communicate
-> with XPC services defined in Swift, or raw C api.
+> On Apple platforms the recommended IPC mechanism is XPC, and Actors support it as a transport in order to communicate with XPC services defined in Swift, or raw C api.
 
-WARNING: The XPC transport for Actors is only a Proof-of-Concept, and thus is **highly experimental and incomplete**.
-         If you are interested in this transport, please reach out to the team to discuss.
+WARNING: The XPC transport for Actors is only a Proof-of-Concept, and thus is *highly experimental and incomplete*.
+If you are interested in this transport, please reach out to the team to discuss.
 
 NOTE: See also <<actorable>>, which can be used to define and interact with XPC services as described below.
 
 === About XPC
 
-https://developer.apple.com/documentation/xpc[XPC] is a system library provided on Apple platforms that provides
-a way to implement inter-process communication (based on property lists). XPC services are managed by `launchd`,
-and thus defining them has to follow some special rules about where they are located within an `*.app`.
+https://developer.apple.com/documentation/xpc[XPC] is a system library provided on Apple platforms that provides a way to implement inter-process communication (based on property lists).
+XPC services are managed by `launchd`, and thus defining them has to follow some special rules about where they are located within an `*.app`.
 
-This module allows for building and interacting with XPC services using the familiar `Actorable` and actor abstractions,
-allowing to learn a smaller set of APIs and implementing inter-process communication in the same manner (using the same
-core concepts) as one would implement inter-thread or intra-node (clustered) systems.
+This module allows for building and interacting with XPC services using the familiar `Actorable` and actor abstractions, allowing learning a smaller set of APIs and implementing inter-process communication in the same manner (using the same core concepts) as one would implement inter-thread or intra-node (clustered) systems.
 
 === Getting Started: (Actorable) XPC Service
 
-Actors along with the `GenActors` source generator may be used to implement and consume XPC services in Swift.
-The user experience is
+Actors, along with the `GenActors` source generator, may be used to implement and consume XPC services in Swift.
+The user experience is the same for either one.
 
 ==== Defining an XPC protocol
 
 The most common way of interacting with XPC services is through a known `protocol`.
-In Actors, this is expressible by defining an protocol conforming to `XPCActorableProtocol`,
-and generating the needed Actorable message passing infrastructure by invoking `swift run GenActors`.
+In Actors, this is expressible by defining a protocol conforming to `XPCActorableProtocol` and generating the needed Actorable message passing infrastructure by invoking `swift run GenActors`.
 
 The following protocol defines an ipc interface that we will be able to invoke from the parent application:
 
@@ -45,17 +39,15 @@ include::{dir_sact_samples}/XPCActorServiceAPI/GreetingsService.swift[tag=xpc_ex
 
 Implementing the protocol is the same as implementing any other <<actorable>>.
 
-We need to conform to the `GreetingsService` protocol as well as to the api:Actorable[protocol] in order to trigger
-the source generation for it:
+We need to conform to the `GreetingsService` protocol as well as to the api:Actorable[protocol] in order to trigger the source generation for it:
 
 [source]
 ----
 include::{dir_sact_samples}/XPCActorServiceProvider/GreetingsServiceImpl.swift[tag=xpc_example]
 ----
 
-The XPC service will be spawned on-demand (i.e. on the first message being sent to the service), and is actually
-an entire fresh process. We need to therefore implement a special `main.swift` for purpose of being spawned on demand
-by `launchd` when the service should be started:
+The XPC service will be spawned on-demand (i.e. on the first message being sent to the service), and is actually an entire fresh process.
+We therefore need to implement a special `main.swift` for purpose of being spawned on demand by `launchd` when the service should be started:
 
 [source]
 ----
@@ -66,8 +58,7 @@ include::{dir_sact_samples}/XPCActorServiceProvider/main.swift[tag=xpc_example]
 
 Consuming an api:Actorable[protocol] defined protocol is straight-forward.
 
-Make sure to include the `.xpc` transport in the system's settings during its startup, as this will ensure the lookups
-of XPC services are going to
+Make sure to include the `.xpc` transport in the system's settings during its startup, as this will ensure the lookups of XPC services.
 
 [source]
 ----
@@ -76,19 +67,18 @@ include::{dir_sact_samples}/XPCActorCaller/main.swift[tag=xpc_example]
 
 === Complete example
 
-For a complete example refer to https://github.com/apple/swift-distributed-actors/tree/master/Samples/Sources`Samples/Sources/` in which you will find the various bits of n XPC using application:
+For a complete example refer to https://github.com/apple/swift-distributed-actors/tree/master/Samples/Sources[Samples/Sources/] in which you will find the various bits of an XPC using application:
 
-- `XPCActorServiceAPI` - which defines the shared protocol between the application and the service,
-- `XPCActorCaller` - the main _executable_, which calls the XPC service,
-- `XPCActorServiceProvider` - the _executable_, containing the service implementation,
-- `XPCSupportFiles` - which are the raw `*.plist` files used to configure/announce the application and the xpc service.
+* `XPCActorServiceAPI` - which defines the shared protocol between the application and the service.
+* `XPCActorCaller` - the main _executable_, which calls the XPC service.
+* `XPCActorServiceProvider` - the _executable_, containing the service implementation.
+* `XPCSupportFiles` - which are the raw `*.plist` files used to configure/announce the application and the xpc service.
 
-The entire application is assembled together using the `Makefile`, so no use of XCode directly is required,
-the application can be built just using SwiftPM and some file movements as explained in the `Makefile`.
+The entire application is assembled together using the `Makefile`, so no use of XCode directly is required.
+The application can be built using only SwiftPM and some file movements as explained in the `Makefile`.
 
 You can run the example by running:
 
-[source]
 ----
 make
   # swift run GenActors --clean
@@ -104,11 +94,9 @@ Similar to the `Terminated` signal for plain actors, XPC services also signal me
 
 Two signals are available:
 
-- `Signals.XPC.Interrupted` - Will be delivered to the connection's event handler if the remote service exited.
-   The connection is still live even in this case, and resending a message will cause the service to be launched on-demand.
-   This error serves as a client's indication that it should resynchronize any state that it had given the service.
-- `Signals.XPC.Invalidated` - Will be delivered to the connection's event handler if the named service
-   provided to xpc_connection_create() could not be found in the XPC service namespace. The connection is useless and should be disposed of.
-   - This signal *is equivalent* to a `Signals.Terminated` and extends it as well, i.e. just watching and reacting to termination
-     of an actor using the normal watch functions and reacting to it in `receiveSignal` follows the same semantics as actor termination --
-     in a way, the actor that _is_ the service, has terminated and may not be communicated with anymore.
+* `Signals.XPC.Interrupted` - Will be delivered to the connection's event handler if the remote service exited.
+    The connection is still alive in this case, and resending a message will cause the service to be launched on-demand.
+    This error serves as a client's indication that it should resynchronize any state that it had given the service.
+* `Signals.XPC.Invalidated` - Will be delivered to the connection's event handler if the named service provided to xpc_connection_create() could not be found in the XPC service namespace.
+    The connection is useless and should be disposed of.
+** This signal *is equivalent* to a `Signals.Terminated` and extends it as well, i.e. just watching and reacting to termination of an actor using the normal watch functions and reacting to it in `receiveSignal` follows the same semantics as actor termination -- in a way, the actor that _is_ the service has terminated and may not be communicated with anymore.

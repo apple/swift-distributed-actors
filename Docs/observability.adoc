@@ -9,14 +9,14 @@
 
 ==== Actor metrics
 
-#TODO: we should expose metrics like actor count, throughput, mailbox states etc. using the SSWG metrics APIs.#
+#TODO: we should expose metrics like actor count, throughput, mailbox states, etc. using the SSWG metrics APIs.#
 
 === Tracing
 
 #TODO: We carry trace information in our envelopes, we should decide how to expose those.#
 
-Actor messages are always carried within an `Envelope`. This envelope can easily be extended to carry additional metadata
-such as trace information.
+Actor messages are always carried within an `Envelope`.
+This envelope can easily be extended to carry additional metadata such as trace information.
 
 === Metadata propagation
 
@@ -24,6 +24,6 @@ such as trace information.
 
 === Motivating Example
 
-TODO: talk about MMO or some IoT things. Or some other massively multiplayer thing. where actors are lovely to model the entities.
+TODO: talk about MMO, some IoT things, or some other massively multiplayer thing where actors are lovely to model the entities.
 
 This should become our example, so here we can say "click here to follow the guided example", or continue to read about the concepts.

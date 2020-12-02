@@ -2,39 +2,36 @@
 [[serialization]]
 == Serialization
 
-> The Actor system provides _transparent serialization_, allowing to avoid entangling of business logic and any serialization (coding, decoding) logic with your actors.
+> The Actor system provides _transparent serialization_, allowing you to avoid entangling business logic and any serialization (coding, decoding) logic with your actors.
 
-Serialization of actor messages is handled transparently, meaning that you can simply send https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types[Codable] messages
-to other actors and they will decode and receive them properly, without any additional coding work needing to be done.
+Serialization of actor messages is handled transparently, meaning that you can simply send https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types[Codable] messages to other actors and they will decode and receive them properly, without any additional work needing to be done.
 
-Serialization is only employed to messages which are sent across process or network boundaries (unless `serializeLocalMessages` is enabled). Helper types are provided for encoding messages using <<serialization_protobuf,Protocol Buffers>>, and any custom serializer (e.g. flat buffers, or your custom binary format) are possible to plug-in on a type-by-type basis.
+Serialization is only employed for messages which are sent across process or network boundaries (unless `serializeLocalMessages` is enabled).
+Helper types are provided for encoding messages using <<serialization_protobuf,Protocol Buffers>>, and any custom serializer (e.g. flat buffers, or your custom binary format) are possible to plug-in on a type-by-type basis.
 
-NOTE: For security reasons, in **production environments** we strongly recommend registering all types which are meant for serialization, for details on how to do this see <<serialization_production>>.
+NOTE: For security reasons, in *production environments* we strongly recommend registering all types which are meant for serialization.
+For details on how to do this see <<serialization_production>>.
 
 [[quickstart_serialization]]
 === Quickstart: Sending (Remote) Messages
 
-In order to take your local-only actor system, to the next level and allow its actors to communicate over the network,
-you should follow the following 3 steps:
+In order to take your local-only actor system to the next level and allow its actors to communicate over the network, you should follow the following 3 steps:
 
-- Step 1: Ensure that your system has multiple nodes to host your actors as explained in  <<cluster_quickstart>>,
-- Step 2: Since all actor messages are enforced to be `Codable`, you can send them _just the same way as before_ to (now remote) actors: `remoteActor.hello()` (or when using ActorRefs: `remoteActorRef.tell(.hello)`),
-  * In order to locate actors on different nodes, you can use the <<receptionist_cluster>>,
-- Step 3: "There's no step 3." https://www.youtube.com/watch?v=YHzM4avGrKI[*]
+* *Step 1*: Ensure that your system has multiple nodes to host your actors as explained in  <<cluster_quickstart>>.
+* *Step 2*: Since all actor messages are enforced to be `Codable`, you can send them _just the same way as before_ to (now remote) actors: `remoteActor.hello()` (or when using ActorRefs: `remoteActorRef.tell(.hello)`).
+** In order to locate actors on different nodes, you can use the <<receptionist_cluster>>.
+* *Step 3*: "There's no step 3." https://www.youtube.com/watch?v=YHzM4avGrKI[*]
 
 Having that said, there are a few more steps to take when deploying an actor system into **production**, which we'll explore in the following section.
 
 [[serialization_production]]
 === Serialization considerations for Production Deployments
 
-By default in DEBUG mode, the system operates in `inboundSerializerManifestMappings` mode (see api:Serialization.Settings[class]),
-which will log warnings whenever a "not registered" type is sent or received; the system will however to attempt to (de-)serialize
-any such message.
+In DEBUG mode, the system operates in `inboundSerializerManifestMappings` mode by default (see api:Serialization.Settings[class]), which will log warnings whenever a "not registered" type is sent or received; the system will, however, attempt to (de-)serialize any such message.
 
-In release mode (when building with `swift build -c release`), the `inboundSerializerManifestMappings` is automatically changed to
-`false`, meaning that messages which have not been registered fail to (de-)serialize.
+In release mode (when building with `swift build -c release`), the `inboundSerializerManifestMappings` is automatically changed to `false`, meaning that messages which have not been registered fail to (de-)serialize.
 
-In order to register messages for a production deployment, it is recommended to work locally in debug mode, gather logs which highlight which messages are needed to be sent, and then codify this in the system's setup, like shown below:
+In order to register messages for a production deployment it is recommended to work locally in debug mode, gather logs which highlight which messages are needed to be sent, and then codify this in the system's setup, as shown below:
 
 [source]
 ----
@@ -47,19 +44,19 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_r
 === Codable Messages
 
 As messages are constrained to conform to `Codable`, all messages are in principle able to be sent over the wire.
-Serialization however is only applied when messages cross process or network boundaries.
+Serialization is only applied when messages cross process or network boundaries.
 
-NOTE: While messages locally are passed simply by storing the passed message in the recipients mailbox and thus technically _could_ store references to shared state -- beware of such designs as they lead to hard to make distributed (or process isolated) designs, and will break the actor's concurrency guarantees if the shared data-structure is mutable.
+NOTE: While messages locally are passed simply by storing the message in the recipients mailbox and thus technically _could_ store references to shared state, beware of such designs as they lead to hard-to-make distributed (or process isolated) designs, and will break the actor's concurrency guarantees if the shared data-structure is mutable.
 
 ==== Selecting the default Codable Coders
 
-NOTE: By default, Foundation's JSON and PropertyList (binary or xml) coders are supported.
-+
+NOTE: By default, Foundation's JSON and PropertyList (binary or xml) coders are supported. +
 You can configure which coder should be used by default by setting `settings.serialization.defaultSerializerID`.
 
-The ActorSystem's serialization infrastructure allows for specifying what coder should be used for certain messages.
+The ActorSystem's serialization infrastructure allows for specifying which coder should be used for certain messages.
 
-If a type is safe to be serialized (see <<serialization_register>>), it will be serialized using the serializer associated with its type. If no serializer is specified for its specific type, the default Codable coder will be used.
+If a type is safe to be serialized (see <<serialization_register>>), it will be serialized using the serializer associated with its type.
+If no serializer is specified for its specific type, the default Codable coder will be used.
 
 You can configure which coder should be used by default when encoding messages by setting `settings.serialization.defaultSerializer`.
 
@@ -70,16 +67,17 @@ It is possible to specify a different serializer for specific messages, this is 
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_specific_coder]
 ----
 
-
 ==== Manually implementing Codable for Enums with Associated Values
 
-WARNING: Messages are most often enums with associated values, for which Swift does not synthesize Codable conformances today. We are aiming to solve this in Swift itself by improving its synthesising capabilities, please bear with us while we work to make this happen.
+WARNING: Messages are most often enums with associated values, for which Swift does not synthesize Codable conformances today. +
+    +
+We are aiming to solve this in Swift itself by improving its synthesising capabilities, please bear with us while we work to make this happen.
 
-Most of the time you should be able to lean on Swift's synthesis of Codable conformances. However, sometimes you may have
-to implement such conformance yourself. While there is plenty guides about doing so online, we would like to explicitly
-outline the suggested style of encoding enums with associated values (as many messages often are).
+Most of the time you should be able to lean on Swift's synthesis of Codable conformances.
+However, sometimes you may have to implement such conformance yourself.
+While there are plenty of guides about doing so online, we would like to explicitly outline the suggested style of encoding enums with associated values (as many messages often are).
 
-NOTE: When using <<actorable>> you do not need ot implement the conformance for `MyActorable.Message` because it is generated for you using the `GenActors` source generator.
+NOTE: When using <<actorable>> you do not need to implement the conformance for `MyActorable.Message` because it is generated for you using the `GenActors` source generator.
 
 We suggest the use of the following pattern to encoding enums with associated values:
 
@@ -92,30 +90,25 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_c
 
 There are a few things to consider while choosing a serializer:
 
-- Schema evolution capabilities
-- Backward compatibility
-- Performance
+* Schema evolution capabilities
+* Backward compatibility
+* Performance
 
-Generally speaking, the recommendation is <<serialization_protobuf,Protocol Buffers>> or similar mechanisms for production use,
-whereas <<serialization_codable,Codable>> is more suitable for quick-start projects and experimentation.
+Generally speaking, the recommendation is <<serialization_protobuf,Protocol Buffers>> or similar mechanisms for production use, whereas <<serialization_codable,Codable>> is more suitable for quick-start projects and experimentation.
 
 NOTE: It is not necessary to define any serialization format while developing in-process actors only. +
-      This goes hand-in-hand with Swift's concept of https://en.wikipedia.org/wiki/Progressive_disclosure[progressive disclosure]--you
-      only have to care about serialization when you need it.
+This goes hand-in-hand with Swift's concept of https://en.wikipedia.org/wiki/Progressive_disclosure[progressive disclosure] -- you only have to care about serialization when you need it.
 
-Swift Distributed Actors does not enforce all messages to be serializable since some messages may never need to leave the local system,
-thus it would be too restrictive to require all messages to conform to a serializable format. Messages that are intended to cross
-node boundaries, however, must be serializable.
+Swift Distributed Actors does not enforce all messages to be serializable since some messages may never need to leave the local system, thus it would be too restrictive to require all messages to conform to a serializable format.
+Messages that are intended to cross node boundaries, however, must be serializable.
 
 [[serialization_protobuf]]
 === Serializing Messages with Protocol Buffers
 
-https://developers.google.com/protocol-buffers/[Google's Protocol Buffers], or protobuf, are a popular serialization format due to
-its flexibility for schema evolution and superior performance. Using protobuf or a similar serialization mechanism with externally
-defined schema is recommended for production use of actors, as it enables simple and controlled schema changes.
+https://developers.google.com/protocol-buffers/[Google's Protocol Buffers], or protobuf, is a popular serialization format due to its flexibility for schema evolution and superior performance.
+Using protobuf or a similar serialization mechanism with externally defined schema is recommended for production use of actors as it enables simple and controlled schema changes.
 
-It is _not_ recommended to use the protobuf message types directly as your actor messages, but rather treat them as a transport-only layer,
-for translation to and from your domain objects (i.e., messages defined by yourself as `struct` or `enum`).
+It is _not_ recommended to use the protobuf message types directly as your actor messages, but rather treat them as a transport-only layer, for translation to and from your domain objects (i.e., messages defined by yourself as `struct` or `enum`).
 
 #TODO: Example should include ActorRef<Response> to show how to use ActorAddress.proto#
 
@@ -137,13 +130,15 @@ And we define the protobuf message type for it:
 include::{dir_sact_doc_tests}/DocumentationProtos/SerializationDocExamples.proto[tag=serialization_protobuf]
 ----
 
-Next we generate the Swift output using https://github.com/apple/swift-protobuf[Swift Protobuf]. For example: `protoc --swift_out=Sources/ Protos/Example.proto`
+Next we generate the Swift output using https://github.com/apple/swift-protobuf[Swift Protobuf].
+For example: `protoc --swift_out=Sources/ Protos/Example.proto`
 
 It produces a `ProtoParkingGarageStatus` struct in `Example.pb.swift`, with which we can conform `ParkingGarageStatus` to api:ProtobufRepresentable[protocol].
 
 ==== Step 2: Conform messages to `ProtobufRepresentable`
 
-api:ProtobufRepresentable[protocol] is a helper protocol for conversion between Swift and protobuf message types. To conform implement the `toProto` and `init` methods:
+api:ProtobufRepresentable[protocol] is a helper protocol for conversion between Swift and protobuf message types.
+To conform implement the `toProto` and `init` methods:
 
 .Example: Conform message to ProtobufRepresentable
 [source]
@@ -154,11 +149,9 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_p
 ==== Step 3: Register `ProtobufRepresentable` types for serialization
 
 In order to let Swift Distributed Actors know which serialization engine to use, a serializer has to be registered for each type.
-Since it is very important that the _right_ serializer is picked up by another node in a cluster, serializers _must_ be
-given unique identifiers (which matters in case of upgrading your system where the message types change).
+Since it is very important that the _right_ serializer is picked up by another node in a cluster, serializers _must_ be given unique identifiers (which matters in case of upgrades to your system where the message types change).
 
-To register the message types intended for use in the cluster they have to be registered at system bootstrap,
-using the optional trailing settings configuration closure:
+To register the message types intended for use in the cluster, they have to be registered at system bootstrap using the optional trailing settings configuration closure:
 
 .Configuring ActorSystem to use protobuf serializers for the passed in types
 [source]
@@ -166,17 +159,16 @@ using the optional trailing settings configuration closure:
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_protobuf]
 ----
 
-The `settings` argument passed to the configuration closure is an api:ActorSystemSettings[struct], which can be used to
-configure various parts of the actor system.
+The `settings` argument passed to the configuration closure is an api:ActorSystemSettings[struct], which can be used to configure various parts of the actor system.
 
-NOTE: Serialization identifiers until 16 are reserved for Swift Distributed Actors's internal use.
-  If you want to register a different serialization format, please use numbers from greater or equal to 17.
+NOTE: Serialization identifiers up to 16 are reserved for Swift Distributed Actors's internal use.
+If you want to register a different serialization format, please use numbers greater than or equal to 17.
 
 ==== Step 4: Send messages as usual
 
-And finally, we use our messages in an actor interaction. The following function snippet is meant to reply to a query about a parking garage.
-The sender of the query here is called a `driver` (as-in, a driver looking for a parking garage with empty spots near a popular theater or cinema),
-and according to some logic we reply to it with the parking garage's availability:
+Finally, we use our messages in an actor interaction.
+The following function snippet is meant to reply to a query about a parking garage.
+The sender of the query here is called a `driver` (as-in, a driver looking for a parking garage with empty spots near a popular theater or cinema), and according to some logic we reply to it with the parking garage's availability:
 
 .Sending messages to a (potentially) remote Actor
 [source]
@@ -184,29 +176,24 @@ and according to some logic we reply to it with the parking garage's availabilit
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=sending_serialized_protobuf_messages]
 ----
 
-What is most notable here, is that the actor code needs not concern itself _at all_ about any serialization details
-of the messages and actors it interacts with. This is one of the many ways the property of _location transparency_ shows up.
-Regardless of the actor being local or remote, this allows us to focus on the interactions, rather than sprinkle serialization
-and/or network call concerns into the middle of our business logic.
+What is most notable here is that the actor code need not concern itself _at all_ about any serialization details of the messages and actors it interacts with.
+This is one of the many ways the property of _location transparency_ shows up.
+Regardless of the actor being local or remote, this allows us to focus on the interactions, rather than sprinkling serialization and/or network call concerns into the middle of our business logic.
 
-
-WARNING: Due to this permissive style of sending messages, it technically is possible to accidentally send a message
-         intended only for local messaging to a remote actor, in which case such send would fail and a serialization
-         error would be logged. +
-         +
-         It is possible to configure `Serialization` to always serialize all messages, so you would catch such mistakes even when testing locally. <<verify-serialization>>
+WARNING: Due to this permissive style of sending messages, it technically is possible to accidentally send a message intended only for local messaging to a remote actor, in which case such send would fail and a serialization error would be logged. +
+    +
+It is possible to configure `Serialization` to always serialize all messages, so you would catch such mistakes even when testing locally.
+See: <<verify-serialization>>.
 
 === Using Custom Serialization
 
-If for some reason `ProtobufRepresentable` and `Codable` are not the serialization mechanisms you want to employ to serialize your messages,
-it is possible to use any custom serialization mechanism by plugging it into Swift Distributed Actors' api:Serialization[class] layer.
+If for some reason `ProtobufRepresentable` and `Codable` are not the serialization mechanisms you want to employ to serialize your messages, it is possible to use any custom serialization mechanism by plugging it into Swift Distributed Actors' api:Serialization[class] layer.
 
 NOTE: Alternatively, you may also want to explore if it is possible and/or feasible to extend the alternative serialization engine to cooperate with `ProtobufRepresentable` or `Codable` types.
 
-NOTE: When using `ProtobufRepresentable` or `Codable` messages, you don't need to do anything special. As long as the message containing your
-`ActorRef<Message>` and the `Message` type itself are registered as `ProtobufRepresentable` or `Codable` serializable, the serialization engine
-will "just work", and (de-)serializing refs will work transparently. This section only matters for use cases where you
-implement your own serializers.
+NOTE: When using `ProtobufRepresentable` or `Codable` messages, you don't need to do anything special.\
+As long as the message containing your `ActorRef<Message>` and the `Message` type itself are registered as `ProtobufRepresentable` or `Codable` serializable, the serialization engine will "just work", and (de-)serializing refs will work transparently.
+This section only matters for use cases where you implement your own serializers.
 
 The following example will serialize a simple `enum` into a simple custom format.
 
@@ -218,8 +205,7 @@ The following example will serialize a simple `enum` into a simple custom format
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_custom_messages]
 ----
 
-You can use the api:NonTransportableActorMessage[protocol] to provide throwing implementations of `encode(to:)`/`init(from:)`
-codable functions, and instead implement the serialization using a custom serializer.
+You can use the api:NonTransportableActorMessage[protocol] to provide throwing implementations of `encode(to:)`/`init(from:)` codable functions, and instead implement the serialization using a custom serializer.
 
 ==== Step 2: Define custom serializer
 
@@ -234,8 +220,7 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_serializ
 
 ==== Step 3: Register custom types for serialization
 
-Next, we register the custom type and serializer by using the plain `register(:for:underId:)` function where the first parameter
-is a api:Serializer[class] factory which will be passed a system's configured nio:ByteBufferAllocator[struct].
+Next, we register the custom type and serializer by using the plain `register(:for:underId:)` function where the first parameter is a api:Serializer[class] factory which will be passed a system's configured nio:ByteBufferAllocator[struct].
 
 .Configuring ActorSystem to use custom serializers for the passed in types
 [source]
@@ -244,40 +229,38 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_
 ----
 
 The serializer which will be invoked to serialize a message is selected by the system based on the bindings performed during system startup.
-When a message is sent over the wire, the id of the serializer that was used to serialize the message will be carried with it,
-such that the receiving end can invoke the right serializer to deserialize the payload.
+When a message is sent over the wire, the id of the serializer that was used to serialize the message will be carried with it, so that the receiving end can invoke the right serializer to deserialize the payload.
 
-NOTE: Great care should be taken so that the serializer ids are not changed without care when intending to perform rolling
-upgrades of nodes -- as otherwise an incorrect serializer might be selected to deserialize a message.
+NOTE: Great care should be taken so that the serializer ids are not changed without care when intending to perform rolling upgrades of nodes -- as otherwise an incorrect serializer might be selected to deserialize a message.
 
-NOTE: Serialization identifiers until 1000 are reserved for Swift Distributed Actors's internal use. #TODO sadly we have to register for every specific type... This is the correct thing to do for protocol evolution, but makes getting started harder. We can't register for "any codable" (or I can't figure out how), due to how Swift's MetaTypes work.#
+NOTE: Serialization identifiers up through 1000 are reserved for Swift Distributed Actors's internal use.
+#TODO sadly we have to register for every specific type... This is the correct thing to do for protocol evolution, but makes getting started harder.
+We can't register for "any codable" (or I can't figure out how), due to how Swift's MetaTypes work.#
 
 ==== (De-)Serializing `ActorRef`
 
-Serializing and deserializing actor references (i.e. both `Actor<Act>` and `ActorRef<Message>` types) is somewhat special
-since an actor ref has to refer to an actual "live" entity, rather than simply be deserialized into a plain data structure.
+Serializing and deserializing actor references (i.e. both `Actor<Act>` and `ActorRef<Message>` types) is somewhat special, since an actor ref has to refer to an actual "live" entity rather than simply be deserialized into a plain data structure.
 
-In order to hook into the api:ActorSystem[class] that invokes the serializer, a special `ActorSerializationContext`
-is injected into serializers when they are bound to a system. If your serializer needs to handle `ActorRef`s or similar
-actor specific types, you can accept this context like this:
+In order to hook into the api:ActorSystem[class] that invokes the serializer, a special `ActorSerializationContext` is injected into serializers when they are bound to a system.
+If your serializer needs to handle `ActorRef`s or similar actor specific types, you can accept this context like this:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_actorRef_serializer]
 ----
 <1> Implement `setSerializationContext` and store the context in a property.
-<2> Use the `context` to resolve the actor path to an `ActorRef`. If the path does not point to an _alive_ actor, the reference will automatically point to `/system/deadLetters`.
+<2> Use the `context` to resolve the actor path to an `ActorRef`.
+If the path does not point to an _alive_ actor, the reference will automatically point to `/system/deadLetters`.
 
 #TODO: I think we don't constructor inject this because Codable things AFAIR... but we may want to double check if we could constructor inject anyway somehow?#
 
 [[verify-serialization]]
 === Message Serialization Verification
 
-Since messages may be serialized using various different techniques, the check to see if a message can be serialized has to be performed at runtime.
+Since messages may be serialized using various techniques, the check to see if a message can be serialized has to be performed at runtime.
 
-To avoid situations where one forgets to register a serializer for a given type, it is possible to run the actor system with
-the `settings.serialization.serializeLocalMessages` option enabled. This causes all messages sent between actors to be serialized (even if they are not remote),
-which allows us to catch the mistake of forgetting to enable a serializer for a specific type early.
+To avoid situations where one forgets to register a serializer for a given type, it is possible to run the actor system with the `settings.serialization.serializeLocalMessages` option enabled.
+This causes all messages sent between actors to be serialized (even if they are not remote), which allows us to catch the mistake of forgetting to enable a serializer for a specific type early.
 
 TIP: This option is only intended for testing, as there is performance penalty associated with it.
 
@@ -290,18 +273,19 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=configure_seria
 
 This will cause the _sending_ actor (or process, in case of sending messages from outside of an actor) to crash with a fault, similar to the following:
 
-     Fatal error: Serialization check failed for message [NotSerializable()]:NotSerializable.
-     Make sure this type has either a serializer registered OR is marked as `NonTransportableActorMessageNeeded`.
-     This check was performed since `settings.serialization.serializeLocalMessages` was enabled.: file Mailbox.swift, line 260
+----
+ Fatal error: Serialization check failed for message [NotSerializable()]:NotSerializable.
+ Make sure this type has either a serializer registered OR is marked as `NonTransportableActorMessageNeeded`.
+ This check was performed since `settings.serialization.serializeLocalMessages` was enabled.: file Mailbox.swift, line 260
+----
 
 === Internals: Serialization With Manifests
 
-The ActorSystem serialization infrastructure is based around so-called api:Serialization.Manifest[class],
-which carries both type "hint" as well as the serializer ID of the serializer (e.g. the _specific_ coder implementation)
-that was used to serialize the payload. Thanks to these two pieces of information, it is possible for the actor system
-to transparently pick the right serializer when deserializing messages on the receiving end.
+The ActorSystem serialization infrastructure is based around so-called api:Serialization.Manifest[class], which carries both a type "hint" as well as the ID of the serializer (e.g. the _specific_ coder implementation) that was used to serialize the payload.
+Thanks to these two pieces of information it is possible for the actor system to transparently pick the right serializer when deserializing messages on the receiving end.
 
-In simplified terms, messages are sent in envelopes, those envelopes contain metadata as well as the message payload itself.
+In simplified terms, messages are sent in envelopes.
+These envelopes contain metadata as well as the message payload itself.
 The following ASCII diagram explains the general idea:
 
 
@@ -321,50 +305,41 @@ The following ASCII diagram explains the general idea:
  +-------------------------------------------+
 ----
 
-The serialization into/from this wrapped wire format is performed automatically, and the `typeHint` is also able to capture
-generic information of the carried message.
+The serialization into/from this wrapped wire format is performed automatically, and the `typeHint` is also able to capture generic information of the carried message.
 
-It is possible to summon a type from a `Serialization.Manifest` by using the `system.serialization.summonType(manifest)` function (though statically still typed as `Any.Type`). It is also then possible to, if the type is Codable, invoke it's decoding `init(from:)` - which is what the serialization infrastructure does transparently.
+It is possible to summon a type from a `Serialization.Manifest` by using the `system.serialization.summonType(manifest)` function (though statically still typed as `Any.Type`).
+It is also then possible to, if the type is Codable, invoke its decoding `init(from:)` -- which is what the serialization infrastructure does transparently.
 
 ==== Troubleshooting Manifest Issues
 
-When using automatic manifests powered by `_getMangledTypeName` and their recovery into types using `_typeByName`,
-it is important that the messages being sent are _NOT_ `private`, as then the `_typeByName` function (and as such the `serialization.summonType`)
-will not be able to return a proper type from its mangled name.
+When using automatic manifests powered by `_getMangledTypeName` and their recovery into types using `_typeByName`, it is important that the messages being sent are _NOT_ `private`, as then the `_typeByName` function (and as such the `serialization.summonType`) will not be able to return a proper type from its mangled name.
 
 ==== Advanced: Using Manifests manually
 
-While usually the Codable infrastructure should handle all messages automatically, you may sometimes find yourself in need of
-manually carrying a "some Codable" value in your message. A typical scenario where this might happen is when implementing a
-generic distributed algorithm, which will have to carry "some Codable payload that the user will provide", and the library code
-should not concern itself about the details of those payloads -- maybe they will be serialized using JSON, maybe protocol buffers, or maybe using some other custom format. The library is also not in a position to determine if a type is "safe" to deserialize or not. These are all decisions that are made by end users in their systems, and configured when starting the actor system.
+While usually the Codable infrastructure should handle all messages automatically, you may sometimes find yourself in need of manually carrying a "some Codable" value in your message.
+A typical scenario where this might happen is when implementing a generic distributed algorithm, which will have to carry "some Codable payload that the user will provide", and the library code should not concern itself about the details of those payloads -- maybe they will be serialized using JSON, maybe protocol buffers, or maybe using some other custom format.
+The library is also not in a position to determine if a type is "safe" to deserialize or not.
+These are all decisions that are made by end users in their systems, and configured when starting the actor system.
 
-We strongly recommend to sticking to the manifest and serialization infrastructure when doing so, as it allows to go
-through the same "is this type trusted or not" when performing (de-)serialization of such payloads.
+We strongly recommend sticking to the manifest and serialization infrastructure when doing so, as it allows going through the same "is this type trusted or not" check when performing (de-)serialization of such payloads.
 
-Here is a simple example how one might implement a serialization of such "carry anything" while adhering to the system's
-type safe-list of types:
+Here is a simple example how one might implement a serialization of such "carry anything" while adhering to the system's type safe-list of types:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialize_manifest_any]
 ----
 
-
 ==== A Note on Serialization.Manifest.typHint Size
 
-WARNING: Most of the time you should NOT be needing to drop down to this level. Make all your types Codable and let the infrastructure do the rest. We document this pattern, for those _few_ cases where it might prove beneficial _or_ necessary for other reasons.
+WARNING: Most of the time you should *NOT* need to drop down to this level -- make all your types Codable and let the infrastructure do the rest.
+We document this pattern for those _few_ cases where it might prove beneficial _or_ necessary for other reasons.
 
-Automatic type hints result may result in (relatively) _large_ strings that identify the
-types. Especially if payloads are highly optimized binary formats, such as protocol buffers or similar. It may happen
-that type hints dominate the message size; If this is of concern to you, you can `register(MyType.self, hint: "Z")`
-a type hint override, which will be used rather than the fully qualified name (or mangled name on Swift 5.3) for the type hint.
+Automatic type hints may result in (relatively) _large_ strings that identify the types, especially if payloads are highly optimized binary formats such as protocol buffers or similar.
+It may happen that type hints dominate the message size.
+If this is of concern to you, you can `register(MyType.self, hint: "Z")` a type hint override, which will be used rather than the fully qualified name (or mangled name on Swift 5.3) for the type hint.
 
-Specialized serializers may not even need type hints _at all_ if they use some other mechanism to identify the message type,
-or if they are registered with a specific serializer ID for a specific type they deserialize.
+Specialized serializers may not even need type hints _at all_ if they use some other mechanism to identify the message type, or if they are registered with a specific serializer ID for a specific type they deserialize.
 
-
-WARNING: **Using Swift 5.3:** The serialization is based on _mangledTypeName when used with Swift 5.3, which is very useful for prototyping,
-  however is also very fragile, as small changes in the types (such as a change of a type from a `struct` to a `class`,
-  will cause the type to be NOT the same anymore, and thus being unable to deserialize (decode) it on the receiving node
-  if it "still" knows about that type being a struct. This makes versioning and evolution of messages hard.
+WARNING: *Using Swift 5.3:* The serialization is based on `_mangledTypeName` when used with Swift 5.3, which is very useful for prototyping but is also very fragile, as small changes in the types (such as a change of a type from a `struct` to a `class`) will cause the type to *NOT* be the same anymore, and thus being unable to deserialize (decode) it on the receiving node if it "still" knows about that type being a struct.
+This makes versioning and evolution of messages hard.
