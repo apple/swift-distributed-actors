@@ -46,6 +46,7 @@ asciidoctor \
   -r asciidoctor-diagram \
   -b multipage_html5 \
   -D $target_dir \
+  -a sourceversion=${version} \
   $root_path/Docs/index.adoc
 
 cp -r $root_path/Docs/images $target_dir/

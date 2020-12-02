@@ -1,4 +1,5 @@
 
+[[internals]]
 == Internals ✗
 
 === Actors ✗
@@ -17,43 +18,36 @@ image::internals/faultHandling_mailbox_poc.png[]
 
 ==== Gossip
 
-Membership gossip is implemented using "seen tables" and `ConvergentGossip` (#TODO: use GossipLogic rather than this, and remove Convergent Gossip#).
+Membership in `gossip` is implemented using "seen tables" and `ConvergentGossip` (#TODO: use GossipLogic rather than this, and remove Convergent Gossip#).
 
-Membership is known to have "converged" if all members have at least seen the same - or later - version of a local membership.
-This is tremendously important e.g. for removing nodes, which may ONLY happen when a member was previously seen down.
-Thanks to issuing the `.down -> .removed` only under convergence, we can guarantee that all members have definitely
-seen the now removed node as `.down` before, thus the removal will be interpreted correctly as such, and not as a new node
-that the other side knows about, but we did not.
+Membership is known to have "converged" if all members have at least seen the same, or later, version of a local membership.
+This is tremendously important, e.g. for removing nodes, which may *ONLY* happen when a member was previously seen down.
+Thanks to issuing the `.down -> .removed` only under convergence, we can guarantee that all members have definitely seen the now removed node as `.down` before, thus the removal will be interpreted correctly as such, and not as a new node that the other side knows about but we did not.
 
 === Wire Protocol
 
-#These are simplified WIP things while we work things out and then propose a proper protocol format.#
+#These are a simplified WIP while we work things out and then propose a proper protocol format.#
 
 
 ==== Handshake
 
 Swift Distributed Actors is P2P, and other than connection establishment "server" or "client" does not really matter.
-For purpose of establishing a handshake however we will use the terms "client-side" and "server-side",
-even though after the nodes have an association in place, they are equally able to perform all actions
-and the connection is used in full-duplex mode.
+For purpose of establishing a handshake, however, we will use the terms "client-side" and "server-side", even though after the nodes have an association in place they are equally able to perform all actions, and the connection is used in full-duplex mode.
 
-Handshake, initiated by "client-side"
-
-"Client-side"
-- allocate WIP association (not ready yet)
-- store handshake in progress
-- send `HandshakeOffer`
-  - contains this nodes `UniqueNode`,
-  - and `Address` of target
-
-"Server-side"
-- accept connection and receive `HandshakeOffer`
-- validate and allocate `Association`, the association is complete on this end already
-  - an Association is "ready" when it has both `UniqueNode`
-    - TODO: Assign an UID to an association as well to easier identify it, when we send data in envelopes
-- send back `HandshakeAccept` with
-  - own `UniqueNode`
-
+* Handshake, initiated by "client-side"
+* "Client-side"
+** Allocate WIP association (not ready yet)
+** Store handshake in progress
+** Send `HandshakeOffer`
+*** Contains this node's `UniqueNode`
+*** Contains `Address` of target
+* "Server-side"
+** Accept connection and receive `HandshakeOffer`
+** Validate and allocate `Association`, the association is complete on this end already
+*** An Association is "ready" when it has both ``UniqueNode``s
+**** TODO: Assign a UID to an association as well for easier identification when we send data in envelopes
+** Send back `HandshakeAccept`
+*** Contains this node's `UniqueNode`
 
 Data formats:
 
@@ -75,9 +69,10 @@ We currently do:
 
 #TODO: we may want to have handshake be inside envelope? not sure yet#
 
-#I would like to be able for the initial message to already contain data. It would also allow us
-to perform "quick sends" where we just send Handshake with data, and mark that this is already last message;
-This would work well and nice on QUIC, tho on TCP we don't care. It would enable connectionless "just send this one thing" more nicely.#
+#I would like to be able to have the initial message already contain data. It would also allow us
+to perform "quick sends" where we just send Handshake with data and mark that this is already last message.
+This would work well and nice on QUIC, tho on TCP we don't care.
+It would enable connectionless "just send this one thing" more nicely.#
 
 ```
   0                   1                   2                   3
@@ -110,7 +105,6 @@ Reply with
 ```
 
 Thanks to replying with unique address origin can now create an association.
-
 
 [plantuml]
 ....
@@ -155,32 +149,25 @@ R -[#red]-x L: HandshakeReject
 
 Note that handshakes may "race" from both nodes to each other concurrently, thus the system has to "pick one".
 
-
-
-
 ==== Watch and clustering
 
-In case of a clustered system, the `FailureDetector` drives decisions about when a node should be marked as leaving/down etc.
+In case of a clustered system, the `FailureDetector` drives decisions about when a node should be marked as leaving/down, etc.
 
-Any actor, when it performs a watch of a remote actor (known by the presence of an address in the actor's path),
-also registers to be notified about termination of given address.
+Any actor, when it performs a watch of a remote actor (known by the presence of an address in the actor's path), also registers to be notified about termination of the given address.
 
-Upon determining a remote node is terminated, the local `FailureDetector` signals all local actors that have been watching
-at least one actor on given (now terminated) address, by sending an `.addressTerminated` system message to them.
+Upon determining a remote node is terminated, the local `FailureDetector` signals all local actors that have been watching at least one actor on the given (now terminated) address by sending an `.addressTerminated` system message to them.
 
-From there on, each actor automatically handles this system message, by triggering a api:Signals.Terminated[enum] signal,
-for each of the actors it has been watching on this address. This way the sending of terminated signal is as parallel as many there have been watchers.
-And each actor utilizes as much time to process its _own_ watched actors as it has watched, so actors which did not watch any remote actors
-are not awoken to perform any checks.
-
+From there on, each actor automatically handles this system message by triggering a api:Signals.Terminated[enum] signal for each of the actors it has been watching on this address.
+This way the sending of terminated signal is as parallel as the number of watchers, and each actor utilizes as much time to process its _own_ watched actors as it has watched, so actors which did not watch any remote actors are not awoken to perform any checks.
 
 #TODO consider and explain races of lookups; should be correct by construction (since a watch needs a message send) but do make sure#
 
 ==== Vocabulary
 
-- peer - any "peer", could be an actor or a node, used in peer-to-peer / gossip situations
-- member - a member of the cluster, participating in gossip and with its own lifecycle etc
-- node - any node we are talking to, it may not YET be part of the cluster, i.e. every member is a node, but not every node is a member
-- convergence - a situation in which "we know that all other members know" about some information at some given time T (usually in "vector clock time")
-- leader - a leader is a special member within within membership, and may perform special tasks; Leaders are NOT guaranteed to be globally unique (!), it is just a role filed by some node
-- *Control - common pattern for an actor based thing to expose a subset of operations as a "control object", e.g. "RemoteControl" (pun intended), "GossipControl" etc.
+Peer:: Any "peer", could be an actor or a node, used in peer-to-peer / gossip situations.
+Member:: A member of the cluster, participating in gossip, and with its own lifecycle, etc.
+Node:: Any node we are talking to, it may not YET be part of the cluster, i.e. every member is a node, but not every node is a member.
+Convergence:: A situation in which "we know that all other members know" about some information at some given time T (usually in "vector clock time").
+Leader:: A leader is a special member within within the cluster, and may perform special tasks.
+    Leaders are NOT guaranteed to be globally unique (!), it is just a role filled by a random node.
+*Control:: Common pattern for an actor based thing to expose a subset of operations as a "control object," e.g. "RemoteControl" (pun intended), "GossipControl," etc.

@@ -42,8 +42,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receiveMessage_behavior() throws {
         // tag::receiveMessage_behavior[]
-        let behavior: Behavior<Greetings> = .receiveMessage { message in
-            // <1>
+        let behavior: Behavior<Greetings> = .receiveMessage { message in // <1>
             print("Received \(message)") // <2>
             return .same // <3>
         }
@@ -55,8 +54,7 @@ class ActorDocExamples: XCTestCase {
         // tag::spawn[]
         let system = ActorSystem("ExampleSystem") // <1>
 
-        let greeterBehavior: Behavior<String> = .receiveMessage { name in
-            // <2>
+        let greeterBehavior: Behavior<String> = .receiveMessage { name in // <2>
             print("Hello \(name)!")
             return .same
         }
