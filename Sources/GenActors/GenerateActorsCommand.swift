@@ -18,10 +18,10 @@ import Logging
 
 struct GenerateActorsCommand: ParsableCommand {
     @Flag(help: "Remove *all* +Gen... source files before generating a new batch of files")
-    var clean: Bool
+    var clean = false
 
-    @Option(default: "info", help: "Print verbose information while analyzing and generating sources")
-    var logLevel: String
+    @Option(help: "Print verbose information while analyzing and generating sources")
+    var logLevel: String = "info"
 
     var logLevelValue: Logger.Level {
         switch self.logLevel {
@@ -37,14 +37,14 @@ struct GenerateActorsCommand: ParsableCommand {
     }
 
     @Flag(name: .shortAndLong, help: "Print verbose all generated sources")
-    var printGenerated: Bool
+    var printGenerated = false
 
     @Argument()
-    var scanTargets: [String]
+    var scanTargets = [String]()
 }
 
 extension GenerateActorsCommand {
-    public func run() throws {
+    mutating public func run() throws {
         let gen = GenerateActors(command: self)
         _ = try gen.run()
     }
