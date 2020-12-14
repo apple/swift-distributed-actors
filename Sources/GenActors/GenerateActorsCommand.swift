@@ -44,7 +44,7 @@ struct GenerateActorsCommand: ParsableCommand {
 }
 
 extension GenerateActorsCommand {
-   public mutating func run() throws {
+    public mutating func run() throws {
         let gen = GenerateActors(command: self)
         _ = try gen.run()
     }
