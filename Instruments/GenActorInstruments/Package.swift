@@ -4,12 +4,10 @@
 import PackageDescription
 
 var targets: [PackageDescription.Target] = [
-
     .target(
         name: "SwiftyInstrumentsPackageDefinition",
         dependencies: []
     ),
-
 ]
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
@@ -19,7 +17,6 @@ var targets: [PackageDescription.Target] = [
 
 targets.append(
     contentsOf: [
-
         // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Actor Instruments Package Definition
 

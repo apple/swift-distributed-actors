@@ -56,14 +56,13 @@ var targets: [PackageDescription.Target] = [
         ]
     ),
 
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Plugins
 
     .target(
-         name: "ActorSingletonPlugin",
-         dependencies: ["DistributedActors"]
-     ),
+        name: "ActorSingletonPlugin",
+        dependencies: ["DistributedActors"]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: XPC

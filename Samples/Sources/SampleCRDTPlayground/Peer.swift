@@ -15,7 +15,6 @@
 import DistributedActors
 
 extension CRDTPlayground {
-
     func peer(
         writeConsistency: CRDT.OperationConsistency,
         stopWhen: @escaping (CRDT.ORSet<String>) -> Bool
@@ -30,13 +29,12 @@ extension CRDTPlayground {
 
             set.onUpdate { id, state in
                 // context.log.info("Updated [\(id)], state: \(state.elements)")
-                if !loggedComplete && stopWhen(state) {
+                if !loggedComplete, stopWhen(state) {
                     let end = Deadline.now().uptimeNanoseconds
                     loggedComplete = true
                     context.log.notice("Completed [\(id)]: \(TimeAmount.nanoseconds(end - actorStart).prettyDescription)")
                 }
             }
-
 
             return .receiveMessage { element in
                 let startWrite = Deadline.now().uptimeNanoseconds

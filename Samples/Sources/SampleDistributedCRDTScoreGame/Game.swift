@@ -17,7 +17,6 @@ import DistributedActors
 let roundsMax = 20
 
 extension ScoreGame {
-
     func game(with players: [ActorRef<GameEvent>]) -> Behavior<String> {
         .setup { context in
             var round = 0

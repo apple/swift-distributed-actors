@@ -238,7 +238,7 @@ extension PackageDefinition {
                     type: .duration, // TODO: is this right?
                     expression: "?duration",
                     hidden: true
-                )
+                ),
             ]
             self.collect(builder())
 
@@ -263,7 +263,7 @@ extension PackageDefinition {
                 for v in variables {
                     precondition(
                         "\(self.startPattern)".contains("\(v)") ||
-                        "\(self.endPattern)".contains("\(v)"),
+                            "\(self.endPattern)".contains("\(v)"),
                         """
                         Variable '?\(v)' must appear in pattern to be used in a later expression.
                         Start Pattern: \(self.startPattern)
@@ -357,7 +357,7 @@ extension PackageDefinition {
                     hidden: true
                 ),
             ]
-            
+
             self.collect(builder())
             self.validate()
         }
@@ -532,7 +532,7 @@ public struct Column: Encodable, SchemaElementConvertible, MnemonicConvertible {
     }
 
     var notHidden: Bool {
-        return !self.hidden
+        !self.hidden
     }
 
     public func asSchemaElement() -> SchemaElement {
@@ -1197,8 +1197,8 @@ extension PackageDefinition.Instrument {
         ///
         /// - SeeAlso: https://help.apple.com/instruments/developer/mac/current/#/dev455934374
         public struct Histogram: Encodable, GraphLaneElementConvertible {
-             /// Specifies a filter that should be applied to the input data in table-ref
-             public var slice: [Slice] // 1-3
+            /// Specifies a filter that should be applied to the input data in table-ref
+            public var slice: [Slice] // 1-3
 
             // /// Flags the histogram as being ideal for a particular time resolution.
             // best-for-resolution {1,3}
@@ -1540,7 +1540,7 @@ extension PackageDefinition.Instrument {
         func hasColumn(_ col: Mnemonic) -> Bool {
             self.schemaRef.hasColumn(col)
         }
-        
+
         public init(_ table: PackageDefinition.Instrument.CreateTable) {
             self.id = table.id
             self.schemaRef = table.schemaRef
