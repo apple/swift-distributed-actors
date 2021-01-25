@@ -321,7 +321,7 @@ extension Cluster.Membership {
             _ = self.join(wannabeLeader.uniqueNode)
         }
 
-        // we sanity check that the wanna-be leader is already a member
+        // we soundness check that the wanna-be leader is already a member
         guard self._members[wannabeLeader.uniqueNode] != nil else {
             throw Cluster.MembershipError.nonMemberLeaderSelected(self, wannabeLeader: wannabeLeader)
         }

@@ -414,7 +414,7 @@ public struct Mnemonic: Encodable, ExpressibleByStringLiteral, Hashable, CustomS
     public let name: String
 
     /// The mnemonic was set via an explicit reference to a Column or similar,
-    /// and thus we should assume we can run sanity checks including it (e.g. if a targeted schema
+    /// and thus we should assume we can run checks including it (e.g. if a targeted schema
     /// includes a column identified with this mnemonic etc).
     public var definedUsingWellTypedReference: Bool
 

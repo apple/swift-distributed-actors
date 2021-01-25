@@ -34,7 +34,7 @@ class SerializationTests: ActorSystemXCTestCase {
         }
     }
 
-    func test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
+    func test_soundness_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
         let allocator = ByteBufferAllocator()
         var buf = allocator.buffer(capacity: 5)
         buf.writeString("hello")

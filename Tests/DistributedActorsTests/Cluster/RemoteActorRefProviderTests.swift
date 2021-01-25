@@ -53,7 +53,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
         "\(madeUpRef)".shouldEqual("ActorRef<String>(sact://system@3.3.3.3:2322/user/henry/hacker)")
 
         // Note: Attempting to send to it will not work, we have not associated and there's no real system around here
-        // so this concludes the trivial test here; at least it shows that we resolve and sanity checks how we print remote refs
+        // so this concludes the trivial test here; at least it shows that we resolve and soundness checks how we print remote refs
         //
         // Remote refs _on purpose_ do not say in their printout that they are "RemoteActorRef" since users should only think
         // about actor refs; and that it happens to have a remote address is the detail to focus on, not the underlying type.

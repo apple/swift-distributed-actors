@@ -25,9 +25,9 @@ services:
       - MAX_ALLOCS_ALLOWED_001_actor_address=5
       - MAX_ALLOCS_ALLOWED_002_actor_spawn=56
 
-  sanity:
+  soundness:
     <<: *common
-    command: /bin/bash -cl "./scripts/sanity.sh"
+    command: /bin/bash -cl "./scripts/soundness.sh"
 
   unit-tests:
     <<: *common

@@ -20,7 +20,7 @@ var targets: [PackageDescription.Target] = [
 targets.append(
     contentsOf: [
 
-        // ==== ----------------------------------------------------------------------------------------------------------------
+        // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Actor Instruments Package Definition
 
         .target(
@@ -31,7 +31,7 @@ targets.append(
             ]
         ),
 
-        // ==== ------------------------------------------------------------------------------------------------------------
+        // ==== --------------------------------------------------------------------------------------------------------
         // MARK: GenActorInstruments
 
         .target(
@@ -54,7 +54,7 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~ for rendering the PackageDefinition XML ~~~
     .package(url: "https://github.com/MaxDesiatov/XMLCoder.git", from: "0.11.1"), // MIT
-    .package(url: "https://github.com/apple/swift-argument-parser", .exact("0.0.6")), // not API stable, Apache v2
+    .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
 ]
 
 let package = Package(

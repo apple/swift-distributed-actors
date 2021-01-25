@@ -666,7 +666,7 @@ extension ClusterShell {
                 // nothing to do, we already associated
                 return .same
             case .tombstone:
-                // TODO: sanity check if this isn't about handshaking with a replacement, then we should continue;
+                // TODO: soundness check if this isn't about handshaking with a replacement, then we should continue;
                 return .same
             }
         }

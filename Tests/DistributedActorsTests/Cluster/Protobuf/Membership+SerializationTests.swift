@@ -86,6 +86,6 @@ final class MembershipSerializationTests: ActorSystemXCTestCase {
 
         let back = try system.serialization.deserialize(as: Cluster.MembershipGossip.self, from: serialized)
         "\(pretty: back)".shouldStartWith(prefix: "\(pretty: gossip)") // nicer human readable error
-        back.shouldEqual(gossip) // the actual sanity check
+        back.shouldEqual(gossip) // the actual soundness check
     }
 }

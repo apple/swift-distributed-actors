@@ -261,7 +261,7 @@ In these scenarios it is most useful to work with subscriptions and react to the
 
 ==== Membership Snapshot
 
-Sometimes however, one just wants to perform a sanity check or printout without having to subscribe to the membership events actively.
+Sometimes however, one just wants to perform a check or printout without having to subscribe to the membership events actively.
 Note, however, that no strong guarantees are made about "how up to date" that value is, and even the moment after one has checked it, it may have already changed, e.g. another member has become leader.
 Take this into consideration when opting to use this style of `Cluster.Membership` interaction.
 
