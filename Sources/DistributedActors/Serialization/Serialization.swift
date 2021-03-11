@@ -769,7 +769,7 @@ public enum SerializationError: Error {
     case serializationError(_: Error, file: String, line: UInt)
 
     // --- registration errors ---
-    case alreadyDefined(hint: String, serializerID: Serialization.SerializerID, serializerID: AnySerializer?)
+    case alreadyDefined(hint: String, serializerID: Serialization.SerializerID)
     case reservedSerializerID(hint: String)
 
     // --- lookup errors ---
