@@ -15,7 +15,6 @@
 import DistributedActors
 
 struct ScoreGame {
-
     /// Enable networking on this node, and select which port it should bind to.
     private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
         settings.cluster.enabled = true
@@ -23,11 +22,10 @@ struct ScoreGame {
     }
 
     /// Register any types that should be trusted for serialization (messages which are sent across the wire).
-    private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
-    }
+    private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {}
 
     func run(nodes nodesN: Int, for time: TimeAmount) throws {
-        let nodes = (1...nodesN).map { n in
+        let nodes = (1 ... nodesN).map { n in
             ActorSystem("\(n)") { settings in
                 self.configureMessageSerializers(&settings)
                 self.configureClustering(&settings, port: 1110 + n)

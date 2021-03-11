@@ -15,7 +15,6 @@
 import DistributedActors
 
 extension ScoreGame {
-
     enum GameEvent: Codable {
         case turn
     }
@@ -35,7 +34,7 @@ extension ScoreGame {
             return .receiveMessage {
                 switch $0 {
                 case .turn:
-                    let points = Int.random(in: 0...10)
+                    let points = Int.random(in: 0 ... 10)
                     myScore += points
                     context.log.info("Scored \(points), write consistency: \(consistency)")
                     _ = totalScore.increment(by: points, writeConsistency: consistency, timeout: .seconds(1))
@@ -51,6 +50,7 @@ extension ScoreGame.GameEvent {
     enum DiscriminatorKeys: String, Codable {
         case turn
     }
+
     enum CodingKeys: CodingKey {
         case _case
         case scorePoints

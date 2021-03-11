@@ -231,7 +231,6 @@ extension Column {
         type: .uint32,
         expression: "?regs"
     )
-
 }
 
 @available(OSX 10.14, *)
@@ -578,7 +577,6 @@ public struct ActorInstrumentsPackageDefinition {
         }
     }
 
-
     public var packageDefinition: PackageDefinition {
         PackageDefinition(
             id: packageID,
@@ -598,7 +596,7 @@ public struct ActorInstrumentsPackageDefinition {
 
             // messages (ask)
             Schemas.actorAskedInterval
-            
+
             // watches
             Schemas.actorWatches
 
@@ -634,7 +632,7 @@ public struct ActorInstrumentsPackageDefinition {
                         table: tableActorLifecycleSpawns
                     ) {
                         Graph.Histogram(
-                            // TODO slice?
+                            // TODO: slice?
                             nanosecondsPerBucket: Int(TimeAmount.seconds(1).nanoseconds),
                             mode: .count(.actorPath)
                         )
@@ -647,8 +645,8 @@ public struct ActorInstrumentsPackageDefinition {
                         Graph.Histogram(
                             slice: [
                                 Instrument.Slice(
-                                    column: .actorStopReason, "stop" // FIXME:also count crashes as stops
-                                )
+                                    column: .actorStopReason, "stop" // FIXME: also count crashes as stops
+                                ),
                             ],
                             nanosecondsPerBucket: Int(TimeAmount.seconds(1).nanoseconds),
                             mode: .count(.actorPath)

@@ -23,7 +23,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         printf '   * Generating Instruments/GenActorInstruments...'
 
         swift run --package-path="Instruments/GenActorInstruments" \
-            ActorInstrumentsPackageDefinition --output .build/GenActorInstruments-sanity.instrpkg
+            ActorInstrumentsPackageDefinition --output .build/GenActorInstruments-soundness.instrpkg
 
           printf " \033[0;32mokay.\033[0m\n"
     else

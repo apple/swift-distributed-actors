@@ -94,7 +94,7 @@ final class MembershipTests: XCTestCase {
         ]
 
         left.shouldNotEqual(right)
-        right.shouldNotEqual(left) // sanity check, since hand implemented equality
+        right.shouldNotEqual(left) // soundness check, since hand implemented equality
     }
 
     func test_member_equality() {

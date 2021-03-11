@@ -32,7 +32,7 @@ class Docs_quickstart_types {
         // end::quickstart_types[]
         _ = set
 
-        // compilation sanity checks it works well in a different module
+        // compilation soundness checks it works well in a different module
         _ = CRDT.GCounter(replicaID: replicaID)
         _ = CRDT.LWWMap<String, String>(replicaID: replicaID, defaultValue: "Hello")
         _ = CRDT.ORMap<String, CRDT.ORSet<String>>(replicaID: replicaID, defaultValue: CRDT.ORSet<String>(replicaID: replicaID))

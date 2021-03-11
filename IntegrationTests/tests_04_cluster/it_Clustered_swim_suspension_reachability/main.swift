@@ -40,7 +40,9 @@ let system = ActorSystem("System") { settings in
     settings.cluster.downingStrategy = .none
 }
 
-let ref = try system.spawn("streamWatcher", of: Cluster.Event.self,
+let ref = try system.spawn(
+    "streamWatcher",
+    of: Cluster.Event.self,
     .receive { context, event in
         context.log.info("Event: \(event)")
         return .same

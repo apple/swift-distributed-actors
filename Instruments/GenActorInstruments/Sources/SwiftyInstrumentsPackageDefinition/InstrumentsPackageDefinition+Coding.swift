@@ -317,7 +317,6 @@ extension PackageDefinition.Instrument.ImportParameter {
         try container.encode(self.fromScope, forKey: .fromScope)
         try container.encode(self.name, forKey: .name)
     }
-
 }
 
 extension PackageDefinition.Instrument.CreateTable {
@@ -416,7 +415,7 @@ extension PackageDefinition.Instrument.Graph.Lane {
 
         try self.plots.forEach { try container.encode($0, forKey: .plot) }
         try self.plotTemplates.forEach { try container.encode($0, forKey: .plotTemplates) }
-         try self.histograms.forEach { try container.encode($0, forKey: .histograms)}
+        try self.histograms.forEach { try container.encode($0, forKey: .histograms) }
         // try self.histogramsTemplates.forEach { try container.encode($0, forKey: .histogramsTemplates)} // TODO: implement this
     }
 }

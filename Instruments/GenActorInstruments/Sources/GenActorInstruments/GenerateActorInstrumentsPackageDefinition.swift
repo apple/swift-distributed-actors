@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftyInstrumentsPackageDefinition
 import ArgumentParser
 import DistributedActors
 import Foundation
-import XMLCoder
 import Logging
+import SwiftyInstrumentsPackageDefinition
+import XMLCoder
 
 public struct InstrumentsPackageDefinitionGenerator {
     let log: Logger = Logger(label: "gen-package-def")
@@ -45,12 +45,10 @@ public struct InstrumentsPackageDefinitionGenerator {
             self.log.info("Rendered: \(self.settings.output)")
             self.log.info("To format the generates XML you may want to pipe through: xmllint --output Instruments/ActorInstruments/ActorInstruments/ActorInstruments.instrpkg --format -")
 
-
             self.log.info("""
-                          To generate package using Xcode: 
-                              open ./Instruments/ActorInstruments/ActorInstruments.xcodeproj
-                          """)
-
+            To generate package using Xcode: 
+                open ./Instruments/ActorInstruments/ActorInstruments.xcodeproj
+            """)
 
             if self.settings.stdout {
                 print(renderedXML)
@@ -89,4 +87,3 @@ extension InstrumentsPackageDefinitionGenerator {
         var output: String
     }
 }
-

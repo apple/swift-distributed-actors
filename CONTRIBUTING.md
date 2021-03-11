@@ -60,12 +60,12 @@ We require that your commit messages match our template. The easiest way to do t
 
     git config commit.template dev/git.commit.template
 
-### Run `./scripts/sanity.sh`
+### Run `./scripts/soundness.sh`
 
-The scripts directory contains a [sanity.sh script](https://github.com/apple/swift-metrics/blob/master/scripts/sanity.sh) 
+The scripts directory contains a [soundness.sh script](https://github.com/apple/swift-metrics/blob/master/scripts/soundness.sh) 
 that enforces additional checks, like license headers and formatting style.
 
-Please make sure to `./scripts/sanity.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
+Please make sure to `./scripts/soundness.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
 on minor changes such as a missing `self.` or similar formatting issues.
 
 > The script also executes the above mentioned `generate_linux_tests.rb`.
@@ -76,8 +76,8 @@ For frequent contributors, we recommend adding the script as a [git pre-push hoo
 cat << EOF > .git/hooks/pre-push
 #!/bin/bash
 
-if [[ -f "scripts/sanity.sh" ]]; then
-  scripts/sanity.sh
+if [[ -f "scripts/soundness.sh" ]]; then
+  scripts/soundness.sh
 fi
 EOF
 ```

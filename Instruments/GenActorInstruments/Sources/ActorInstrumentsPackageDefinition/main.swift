@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Logging
 import GenActorInstruments
+import Logging
 
 LoggingSystem.bootstrap(StreamLogHandler.standardError)
 

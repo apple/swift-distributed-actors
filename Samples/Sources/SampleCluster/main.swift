@@ -87,7 +87,7 @@ let eventsListener = try system.spawn(
             context.log.info("Cluster Event: \(event)", metadata: [
                 "member": "\(member)",
                 "status": "\(status)",
-                "membership": Logger.MetadataValue.array(membership.members(atLeast: .joining).map({"\(String(reflecting: $0))"})),
+                "membership": Logger.MetadataValue.array(membership.members(atLeast: .joining).map { "\(String(reflecting: $0))" }),
             ])
             return .same
         }
