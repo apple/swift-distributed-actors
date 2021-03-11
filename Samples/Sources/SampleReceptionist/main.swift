@@ -24,7 +24,7 @@ extension Reception.Key {
     }
 }
 
-let actors = 10_000
+let actors = 10000
 
 enum HotelGuest {
     typealias Ref = ActorRef<String>
@@ -32,8 +32,8 @@ enum HotelGuest {
     static var behavior: Behavior<String> = .setup { context in
         context.receptionist.registerMyself(with: .guests)
 
-        return .receiveMessage { message in
-            return .same
+        return .receiveMessage { _ in
+            .same
         }
     }
 }
@@ -44,7 +44,7 @@ enum HotelOwner {
             try system.spawn("guest-\(id)", HotelGuest.behavior)
         }
 
-        return .receive { context, message in
+        return .receive { _, _ in
             .same
         }
     }

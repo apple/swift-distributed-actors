@@ -110,7 +110,6 @@ final class Philosopher: Actorable {
         self.context.log.info("\(self.context.address.name) began eating!")
         self.context.timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
     }
-
 }
 
 extension Philosopher {

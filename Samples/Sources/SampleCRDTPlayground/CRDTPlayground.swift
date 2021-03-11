@@ -15,7 +15,6 @@
 import DistributedActors
 
 struct CRDTPlayground {
-
     /// Enable networking on this node, and select which port it should bind to.
     private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
         settings.cluster.enabled = true
@@ -27,7 +26,7 @@ struct CRDTPlayground {
     }
 
     func run(nodes nodesN: Int, for time: TimeAmount) throws {
-        let nodes = (1...nodesN).map { n in
+        let nodes = (1 ... nodesN).map { n in
             ActorSystem("\(n)") { settings in
                 self.configureMessageSerializers(&settings)
                 self.configureClustering(&settings, port: 1110 + n)

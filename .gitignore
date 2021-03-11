@@ -29,4 +29,4 @@ IntegrationTests/tests_04_cluster/.build
 .swiftpm/
 Package.resolved
 
-.GenActorInstruments-sanity.instrpkg 
+.GenActorInstruments-soundness.instrpkg

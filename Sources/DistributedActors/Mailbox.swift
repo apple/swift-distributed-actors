@@ -140,7 +140,7 @@ internal final class Mailbox<Message: ActorMessage> {
             traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), someone scheduled already")
 
         case .mailboxTerminating:
-            // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
+            // TODO: soundness check; we can't immediately send it to dead letters just yet since first all user messages
             //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed
             //       and we can immediately send things to dead letters then.
             sendAndDropAsDeadLetter()

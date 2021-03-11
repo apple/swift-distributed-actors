@@ -131,7 +131,7 @@ fileprivate func xpc_eventHandler(_ storage: XPCStorage, peer: xpc_connection_t,
         return
     }
 
-    // TODO: sanity check where to etc?
+    // TODO: soundness check where to etc?
 
     // --- deserialize and deliver ---
     let message: Any

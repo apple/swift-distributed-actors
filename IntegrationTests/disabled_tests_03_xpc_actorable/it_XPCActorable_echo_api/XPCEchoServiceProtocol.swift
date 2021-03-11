@@ -16,7 +16,6 @@ import DistributedActors
 import DistributedActorsXPC
 
 public protocol XPCEchoServiceProtocol: XPCActorableProtocol {
-
     // @actor
     func echo(string: String) -> String
 
