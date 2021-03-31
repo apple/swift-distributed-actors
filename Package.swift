@@ -352,7 +352,7 @@ let products: [PackageDescription.Product] = [
 var package = Package(
     name: "swift-distributed-actors",
     platforms: [
-        .macOS(.v10_10),
+        .macOS(.v10_11), // TODO: workaround for rdar://76035286
         .iOS(.v8),
         // ...
     ],

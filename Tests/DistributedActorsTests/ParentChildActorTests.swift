@@ -509,10 +509,8 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
                 switch msg {
                 case "spawn":
                     for count in 1 ... childCount {
-                        let behavior: Behavior<Never> = .receiveMessage { _ in
-                            .ignore
-                        }
-                        let ref: ActorRef<Never> = try context.spawn(
+                        let behavior: Behavior<Int> = .receiveMessage { _ in .ignore }
+                        let ref: ActorRef<Int> = try context.spawn(
                             "child",
                             behavior.receiveSignal { _, signal in
                                 if signal is Signals.PostStop {

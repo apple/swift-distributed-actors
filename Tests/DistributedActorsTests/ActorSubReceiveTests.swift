@@ -22,7 +22,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
 
-        let behavior: Behavior<Never> = .setup { context in
+        let behavior: Behavior<Int> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { message in
                 p.tell("subreceive:\(message)")
             }
@@ -44,7 +44,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<TestSubReceiveType<Void>>.self)
 
-        let behavior: Behavior<Never> = .setup { context in
+        let behavior: Behavior<Int> = .setup { context in
             let subRef = context.subReceive("test-sub", TestSubReceiveType<Void>.self) { message in
                 p.tell("subreceive:\(message)")
             }
@@ -68,7 +68,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<Set<String>>.self)
 
-        let behavior: Behavior<Never> = .setup { context in
+        let behavior: Behavior<Int> = .setup { context in
             let subRef = context.subReceive(Set<String>.self) { message in
                 p.tell("subreceive:\(message.count)")
             }

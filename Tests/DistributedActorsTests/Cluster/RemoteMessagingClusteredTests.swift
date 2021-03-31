@@ -201,7 +201,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
-        let _: ActorRef<Never> = try local.spawn(
+        let _: ActorRef<Int> = try local.spawn(
             "localRef",
             .setup { context in
                 let child: ActorRef<String> = try context.spawn(

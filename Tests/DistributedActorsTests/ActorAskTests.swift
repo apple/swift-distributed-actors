@@ -128,7 +128,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             }
         )
 
-        let _: ActorRef<Never> = try system.spawn(
+        let _: ActorRef<Int> = try system.spawn(
             "askingAndOnResultAsyncThrowing",
             .setup { context in
                 let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in
