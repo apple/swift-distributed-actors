@@ -8,14 +8,29 @@ import PackageDescription
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
 // TODO: Follow up to https://github.com/apple/swift-distributed-actors/issues/23 by removing Files and Stencil, then we can remove this workaround
-let globalSwiftSettings: [SwiftSetting]
+var globalSwiftSettings: [SwiftSetting]
+
+var globalConcurrencyFlags: [String] = []
+#if swift(>=5.4)
+globalConcurrencyFlags.append(contentsOf: [
+    "-Xfrontend", "-enable-experimental-concurrency",
+    // "-Xfrontend", "-enable-experimental-distributed",
+])
+#endif
+
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
     print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
+    var allUnsafeFlags = globalConcurrencyFlags
+    allUnsafeFlags.append(contentsOf: [
+        "-warnings-as-errors",
+    ])
     globalSwiftSettings = [
-        SwiftSetting.unsafeFlags(["-warnings-as-errors"]),
+        SwiftSetting.unsafeFlags(allUnsafeFlags),
     ]
 } else {
-    globalSwiftSettings = []
+    globalSwiftSettings = [
+        SwiftSetting.unsafeFlags(globalConcurrencyFlags),
+    ]
 }
 
 var targets: [PackageDescription.Target] = [
@@ -45,6 +60,14 @@ var targets: [PackageDescription.Target] = [
 
     .target(
         name: "GenActors",
+        dependencies: [
+            "DistributedActors",
+            "GenActorsLib",
+        ]
+    ),
+
+    .target(
+        name: "GenActorsLib",
         dependencies: [
             "DistributedActors",
             .product(name: "SwiftSyntax", package: "SwiftSyntax"),
@@ -273,7 +296,11 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
 ]
 
-#if swift(>=5.3)
+#if swift(>=5.4)
+dependencies.append(
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2021-03-25-a"))
+)
+#elseif swift(>=5.3)
 dependencies.append(
     .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50300.0"))
 )
@@ -324,6 +351,11 @@ let products: [PackageDescription.Product] = [
 
 var package = Package(
     name: "swift-distributed-actors",
+    platforms: [
+        .macOS(.v10_11), // TODO: workaround for rdar://76035286
+        .iOS(.v8),
+        // ...
+    ],
     products: products,
 
     dependencies: dependencies,

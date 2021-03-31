@@ -92,7 +92,7 @@ extension Actor.Context: ChildActorRefFactory {
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message> where Message: Codable {
-        try self.spawn(naming, of: type, props: props, file: file, line: line, behavior)
+        try self._underlying.spawn(naming, of: type, props: props, file: file, line: line, behavior)
     }
 }
 

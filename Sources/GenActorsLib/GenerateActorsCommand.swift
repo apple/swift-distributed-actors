@@ -16,7 +16,7 @@ import ArgumentParser
 import DistributedActors
 import Logging
 
-struct GenerateActorsCommand: ParsableCommand {
+public struct GenerateActorsCommand: ParsableCommand {
     @Flag(help: "Remove *all* +Gen... source files before generating a new batch of files")
     var clean: Bool = false
 
@@ -41,6 +41,8 @@ struct GenerateActorsCommand: ParsableCommand {
 
     @Argument()
     var scanTargets: [String] = []
+
+    public init() {}
 }
 
 extension GenerateActorsCommand {

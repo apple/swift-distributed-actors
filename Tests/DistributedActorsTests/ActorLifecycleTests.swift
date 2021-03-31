@@ -91,7 +91,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let spawner: Behavior<String> = .receive { context, name in
             let fromName = context.path
-            let _: ActorRef<Never> = try context.system.spawn(
+            let _: ActorRef<Int> = try context.system.spawn(
                 "\(name)",
                 .setup { context in
                     p.tell("me:\(context.path) spawned from \(fromName)")
