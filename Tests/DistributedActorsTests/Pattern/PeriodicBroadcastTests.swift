@@ -26,7 +26,7 @@ final class PeriodicBroadcastTests: ActorSystemXCTestCase {
 
         _ = try self.system.spawn(
             .anonymous,
-            of: Never.self,
+            of: Int.self,
             .setup { context in
                 let bcast: PeriodicBroadcastControl<String> = try PeriodicBroadcast.start(context)
 

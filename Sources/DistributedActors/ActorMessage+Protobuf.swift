@@ -123,7 +123,7 @@ extension InternalProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable -- ProtobufRepresentable --> Protocol Buffers
 
-extension InternalProtobufRepresentable where Self: ActorMessage {
+extension InternalProtobufRepresentable {
     init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
         let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)
@@ -134,7 +134,7 @@ extension InternalProtobufRepresentable where Self: ActorMessage {
     }
 }
 
-extension ProtobufRepresentable where Self: ActorMessage {
+extension ProtobufRepresentable {
     public init(context: Serialization.Context, from buffer: Serialization.Buffer, using manifest: Serialization.Manifest) throws {
         let proto = try ProtobufRepresentation(serializedData: buffer.readData())
         try self.init(fromProto: proto, context: context)

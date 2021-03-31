@@ -121,6 +121,11 @@ var dependencies: [Package.Dependency] = [
 
 let package = Package(
     name: "swift-distributed-actors-samples",
+    platforms: [
+        .macOS(.v10_11), // TODO: workaround for rdar://76035286
+        .iOS(.v8),
+        // ...
+    ],
     products: [
         /* ---  samples --- */
 

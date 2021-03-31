@@ -108,7 +108,7 @@ internal enum POSIXProcessUtils {
         // Spawn
 
         let status = argv.withNULLTerminatedCArrayOfStrings { argv in
-            posix_spawn(&pid, argv[0], &childFDActions, nil, argv, envp)
+            posix_spawn(&pid, argv[0]!, &childFDActions, nil, argv, envp)
         }
 
         guard status == 0 else {

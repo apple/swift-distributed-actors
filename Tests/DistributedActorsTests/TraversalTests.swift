@@ -31,7 +31,7 @@ final class TraversalTests: ActorSystemXCTestCase {
         // we use the probe to make sure all actors are started before we start asserting on the tree
         let probe = self.testKit.spawnTestProbe(expecting: ActorReady.self)
 
-        let tellProbeWhenReady: Behavior<Never> = .setup { context in
+        let tellProbeWhenReady: Behavior<Int> = .setup { context in
             probe.tell(ActorReady(name: context.name))
             return .receiveMessage { _ in .same }
         }
@@ -40,7 +40,7 @@ final class TraversalTests: ActorSystemXCTestCase {
             "hello",
             .setup { context in
                 probe.tell(ActorReady(name: context.name))
-                let _: ActorRef<Never> = try context.spawn("world", tellProbeWhenReady)
+                let _: ActorRef<Int> = try context.spawn("world", tellProbeWhenReady)
                 return .receiveMessage { _ in .same }
             }
         )
@@ -49,9 +49,9 @@ final class TraversalTests: ActorSystemXCTestCase {
             "other",
             .setup { context in
                 probe.tell(ActorReady(name: context.name))
-                let _: ActorRef<Never> = try context.spawn("inner-1", tellProbeWhenReady)
-                let _: ActorRef<Never> = try context.spawn("inner-2", tellProbeWhenReady)
-                let _: ActorRef<Never> = try context.spawn("inner-3", tellProbeWhenReady)
+                let _: ActorRef<Int> = try context.spawn("inner-1", tellProbeWhenReady)
+                let _: ActorRef<Int> = try context.spawn("inner-2", tellProbeWhenReady)
+                let _: ActorRef<Int> = try context.spawn("inner-3", tellProbeWhenReady)
                 return .receiveMessage { _ in .same }
             }
         )
