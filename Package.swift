@@ -287,7 +287,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
-    .package(url: "https://github.com/apple/swift-service-discovery.git", from: "0.1.0"),
+    .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
 
     // ~~~ only for GenActors ~~~
     // swift-syntax is Swift version dependent, and added  as such below
