@@ -298,7 +298,7 @@ var dependencies: [Package.Dependency] = [
 
 #if swift(>=5.4)
 dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2021-03-25-a"))
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50400.0"))
 )
 #elseif swift(>=5.3)
 dependencies.append(
