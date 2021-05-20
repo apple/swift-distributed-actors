@@ -11,7 +11,7 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = []
-#if swift(>=5.4)
+#if swift(>=5.4) && os(Linux)
 globalConcurrencyFlags.append(contentsOf: [
     "-Xfrontend", "-enable-experimental-concurrency",
     // "-Xfrontend", "-enable-experimental-distributed",
