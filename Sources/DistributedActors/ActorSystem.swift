@@ -80,15 +80,6 @@ public final class ActorSystem {
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: CRDT Replicator
-
-    // TODO: Use "set once" atomic structure
-    private var _replicator: ActorRef<CRDT.Replicator.Message>!
-    internal var replicator: ActorRef<CRDT.Replicator.Message> {
-        self._replicator
-    }
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
 
     // TODO: Use "set once" atomic structure
@@ -280,13 +271,6 @@ public final class ActorSystem {
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 
-        let lazyReplicator = try! self._prepareSystemActor(
-            CRDT.Replicator.naming,
-            CRDT.Replicator.Shell(settings: settings.crdt).behavior,
-            props: ._wellKnown
-        )
-        self._replicator = lazyReplicator.ref
-
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
         #endif
@@ -297,7 +281,6 @@ public final class ActorSystem {
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
-        lazyReplicator.wakeUp()
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }

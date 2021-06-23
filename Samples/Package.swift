@@ -20,16 +20,6 @@ var targets: [PackageDescription.Target] = [
         path: "Sources/SampleGenActorsDiningPhilosophers"
     ),
     .target(
-        name: "SampleDistributedCRDTScoreGame",
-        dependencies: ["DistributedActors"],
-        path: "Sources/SampleDistributedCRDTScoreGame"
-    ),
-    .target(
-        name: "SampleCRDTPlayground",
-        dependencies: ["DistributedActors"],
-        path: "Sources/SampleCRDTPlayground"
-    ),
-    .target(
         name: "SampleLetItCrash",
         dependencies: ["DistributedActors"],
         path: "Sources/SampleLetItCrash"

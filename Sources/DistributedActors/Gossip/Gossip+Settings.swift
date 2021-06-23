@@ -29,8 +29,8 @@ extension Gossiper {
         /// - warning: MUST be between: `<0; 1>` (inclusive)
         public var intervalRandomFactor: Double = 0.2 {
             willSet {
-                precondition(newValue >= 0, "settings.crdt.gossipIntervalRandomFactor MUST BE >= 0, was: \(newValue)")
-                precondition(newValue <= 1, "settings.crdt.gossipIntervalRandomFactor MUST BE <= 1, was: \(newValue)")
+                precondition(newValue >= 0, "intervalRandomFactor MUST BE >= 0, was: \(newValue)")
+                precondition(newValue <= 1, "intervalRandomFactor MUST BE <= 1, was: \(newValue)")
             }
         }
 

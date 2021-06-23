@@ -107,23 +107,6 @@ extension Serialization {
         internal static let SWIMMessage: SerializerID = .checkProtobufRepresentable(SWIM.Message.self)
         internal static let SWIMPingResponse: SerializerID = .checkProtobufRepresentable(SWIM.PingResponse.self)
 
-        internal static let CRDTReplicatorMessage: SerializerID = .checkProtobufRepresentable(CRDT.Replicator.Message.self)
-        internal static let CRDTEnvelope: SerializerID = .checkProtobufRepresentable(CRDT.Envelope.self)
-        internal static let CRDTWriteResult: SerializerID = .protobufRepresentable
-        internal static let CRDTReadResult: SerializerID = .protobufRepresentable
-        internal static let CRDTDeleteResult: SerializerID = .protobufRepresentable
-        internal static let CRDTGCounter: SerializerID = .protobufRepresentable
-        internal static let CRDTGCounterDelta: SerializerID = .protobufRepresentable
-        internal static let CRDTORSet: SerializerID = .protobufRepresentable
-        internal static let CRDTORSetDelta: SerializerID = .protobufRepresentable
-        internal static let CRDTORMap: SerializerID = .protobufRepresentable
-        internal static let CRDTORMapDelta: SerializerID = .protobufRepresentable
-        internal static let CRDTORMultiMap: SerializerID = .protobufRepresentable
-        internal static let CRDTORMultiMapDelta: SerializerID = .protobufRepresentable
-        internal static let CRDTLWWMap: SerializerID = .protobufRepresentable
-        internal static let CRDTLWWMapDelta: SerializerID = .protobufRepresentable
-        internal static let CRDTLWWRegister: SerializerID = .protobufRepresentable
-
         // op log receptionist
         internal static let PushOps: SerializerID = .foundationJSON
         internal static let AckOps: SerializerID = .foundationJSON
