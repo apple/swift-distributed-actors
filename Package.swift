@@ -10,13 +10,9 @@ import PackageDescription
 // TODO: Follow up to https://github.com/apple/swift-distributed-actors/issues/23 by removing Files and Stencil, then we can remove this workaround
 var globalSwiftSettings: [SwiftSetting]
 
-var globalConcurrencyFlags: [String] = []
-//#if swift(>=5.4)
-//globalConcurrencyFlags.append(contentsOf: [
-//    "-Xfrontend", "-enable-experimental-concurrency",
-//    // "-Xfrontend", "-enable-experimental-distributed",
-//])
-//#endif
+var globalConcurrencyFlags: [String] = [
+    "-Xfrontend", "-enable-experimental-distributed",
+]
 
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
     print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
@@ -298,22 +294,10 @@ var dependencies: [Package.Dependency] = [
 
 #if swift(>=5.5)
 dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2021-05-18-a"))
-)
-#elseif swift(>=5.4)
-dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50400.0"))
-)
-#elseif swift(>=5.3)
-dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50300.0"))
-)
-#elseif swift(>=5.2)
-dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .exact("0.50200.0"))
+    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a"))
 )
 #else
-fatalError("Currently only Swift 5.2+ is supported, if you need earlier Swift support please reach out to to the team.")
+fatalError("Swift Distributed Actors requires Swift 5.5 because of the language integration of 'distributed actors'")
 #endif
 
 let products: [PackageDescription.Product] = [
