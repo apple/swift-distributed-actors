@@ -88,7 +88,7 @@ public struct GossiperControl<Gossip: Codable, Acknowledgement: Codable> {
 
 /// Used to identify which identity a payload is tied with.
 /// E.g. it could be used to mark the CRDT instance the gossip is carrying, or which "entity" a gossip relates to.
-// FIXME: just force GossipIdentifier to be codable, avoid this hacky dance?
+// TODO: just force GossipIdentifier to be codable, avoid this dance?
 public protocol GossipIdentifier {
     var gossipIdentifier: String { get }
 

@@ -39,8 +39,6 @@ public struct ActorSystemSettings {
         }
     }
 
-    public var crdt: CRDT.ReplicatorSettings = .default
-
     public var logging: LoggingSettings = .default {
         didSet {
             self.cluster.swim.logger = self.logging.logger

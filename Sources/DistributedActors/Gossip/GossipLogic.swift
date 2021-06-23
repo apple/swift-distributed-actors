@@ -16,7 +16,7 @@ import Logging
 
 /// Arbitrary gossip logic, used to drive the `GossipShell` which performs the actual gossiping.
 ///
-/// A gossip logic is generally responsible for a single gossip identifier, roughtly translating to a piece of information
+/// A gossip logic is generally responsible for a single gossip identifier, roughly translating to a piece of information
 /// or subsystem the gossip information represents. For example, a membership gossip subsystem may run under the general "membership" identifier,
 /// while other gossip subsystems like CRDT replication may have their logic tuned respectively to each `CRDT.Identity`, ensuring that each
 /// piece of information is spread to all other members.

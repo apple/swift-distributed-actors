@@ -843,18 +843,6 @@ public struct ActorInstrumentsPackageDefinition {
                 slice: nil // "all"
             )
 
-            serializationInstrument(
-                idSuffix: "crdt",
-                title: "CRDT Serialization",
-                purpose: "Inspecting all CRDT serialization",
-                hint: "CRDT",
-                slice: Instrument.Slice(
-                    column: .recipientPath,
-                    "/system/replicator",
-                    "/system/replicator/gossip"
-                )
-            )
-
             Instrument(
                 id: "com.apple.actors.instrument.receptionist",
                 title: "Receptionist",
