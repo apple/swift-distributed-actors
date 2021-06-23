@@ -624,7 +624,8 @@ extension ActorSystem: _ActorTreeTraversable {
         }
 
         var resolved: ActorRef<Message>?
-        // TODO: The looping through transports could be ineffective... but realistically we want to ask the XPC once if it's a ref "to it" or a normal one...
+        // TODO: The looping through transports could be ineffective... but realistically we dont have many
+        // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
         for transport in context.system.settings.transports {
             resolved = transport._resolve(context: context)
             if let successfullyResolved = resolved {
@@ -647,7 +648,8 @@ extension ActorSystem: _ActorTreeTraversable {
         }
 
         var resolved: AddressableActorRef?
-        // TODO: The looping through transports could be ineffective... but realistically we want to ask the XPC once if it's a ref "to it" or a normal one...
+        // TODO: The looping through transports could be ineffective... but realistically we dont have many
+        // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
         for transport in context.system.settings.transports {
             resolved = transport._resolveUntyped(context: context)
 

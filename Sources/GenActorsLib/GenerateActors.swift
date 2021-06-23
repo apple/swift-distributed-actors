@@ -29,7 +29,6 @@ final class GenerateActors {
     let fileScanNameSuffix: String = ""
     let fileScanNameSuffixWithExtension: String = ".swift"
     let fileGenActorNameSuffixWithExtension: String = "+GenActor.swift"
-    let fileGenXPCProtocolStubSuffixWithExtension: String = "+XPCProtocolStub.swift"
     let fileGenCodableNameSuffixWithExtension: String = "+GenCodable.swift"
 
     public init(command: GenerateActorsCommand) {
@@ -91,7 +90,6 @@ final class GenerateActors {
 extension GenerateActors {
     private func isGeneratedFile(file: File) -> Bool {
         file.name.hasSuffix(self.fileGenActorNameSuffixWithExtension) ||
-            file.name.hasSuffix(self.fileGenXPCProtocolStubSuffixWithExtension) ||
             file.name.hasSuffix(self.fileGenCodableNameSuffixWithExtension)
     }
 
@@ -171,7 +169,6 @@ extension GenerateActors {
             }
 
             _ = try generateGenActorFile(parent, actorable: actorable)
-            _ = try generateXPCProtocolStubFile(parent, actorable: actorable, resolvedActorables: resolvedActorables)
             _ = try generateGenCodableFile(parent, actorable: actorable)
         }
     }
@@ -192,55 +189,6 @@ extension GenerateActors {
         try targetFile.append(renderedShell)
 
         self.log.debug("Generated: \(targetFile.path)")
-        return targetFile
-    }
-
-    /// For `XPCActorableProtocol` we need to generate a `...Stub` type as it is impossible to write `Actor<Protocol>`,
-    /// yet that is exactly what we'd like to express -- "this is a reference to some implementation of Protocol, and we do not know what it is".
-    ///
-    // FIXME: Would be fixed if we could say Actor<some Protocol> I suppose?
-    private func generateXPCProtocolStubFile(_ parent: Folder, actorable: ActorableTypeDecl, resolvedActorables: [ActorableTypeDecl]) throws -> File? {
-        guard actorable.type == .protocol, actorable.inheritedTypes.contains("XPCActorableProtocol") else {
-            return nil
-        }
-
-        let genFolder = try parent.createSubfolderIfNeeded(withName: "GenActors")
-        let targetFile = try genFolder.createFile(named: "\(actorable.name)\(self.fileGenXPCProtocolStubSuffixWithExtension)")
-
-        try targetFile.append(Rendering.generatedFileHeader)
-        try targetFile.append("\n")
-
-        try actorable.imports.forEach { importBlock in
-            try targetFile.append("\(importBlock)")
-        }
-
-        try targetFile.append("\n")
-        let renderedShell = try Rendering.XPCProtocolStubTemplate(actorable: actorable).render(self.command)
-        try targetFile.append(renderedShell)
-
-        self.log.info("Generated XPCActorableProtocol stub: \(targetFile.path)...")
-
-        // parse and gen the generated file, as we need the actor functions more than we need the Stub actually (!)
-        let stubActorables = try self.parse(fileToParse: targetFile)
-
-        // we need to resolve the stub actorable in order to generate _box methods for it
-        var all = resolvedActorables
-        all.append(contentsOf: stubActorables)
-        var resolvedStubActorables = ResolveActorables.resolve(all)
-        resolvedStubActorables = resolvedStubActorables.filter { resolved in
-            // TODO: naive, can be improved; but we need to get out only the resolved Stubs here basically
-            stubActorables.contains(where: { stub in stub.fullName == resolved.fullName })
-        }
-
-        try resolvedStubActorables.forEach { stubActorable in
-            let generatedGenActor = try self.generateGenActorFile(parent, actorable: stubActorable, skipGenBehavior: true)
-            self.log.debug("Generated \(self.fileGenActorNameSuffixWithExtension) for \(stubActorable.name): \(generatedGenActor.path)")
-
-            if let generatedGenCodable = try self.generateGenCodableFile(parent, actorable: stubActorable) {
-                self.log.debug("Generated \(self.fileGenCodableNameSuffixWithExtension) for \(stubActorable.name): \(generatedGenCodable.path)")
-            }
-        }
-
         return targetFile
     }
 

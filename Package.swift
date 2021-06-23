@@ -76,27 +76,11 @@ var targets: [PackageDescription.Target] = [
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Plugins
+    // MARK: Plugins // TODO: rename since may be confused with package plugins?
 
     .target(
         name: "ActorSingletonPlugin",
         dependencies: ["DistributedActors"]
-    ),
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: XPC
-
-    .target(
-        name: "CDistributedActorsXPC",
-        dependencies: []
-    ),
-    .target(
-        name: "DistributedActorsXPC",
-        dependencies: [
-            "DistributedActors",
-            "CDistributedActorsXPC",
-            .product(name: "Files", package: "Files"),
-        ]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -115,7 +99,6 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsDocumentationTests",
         dependencies: [
             "DistributedActors",
-            "DistributedActorsXPC",
             "ActorSingletonPlugin",
             "DistributedActorsTestKit",
         ]
@@ -234,38 +217,6 @@ var targets: [PackageDescription.Target] = [
     ),
 ]
 
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-targets.append(
-    contentsOf: [
-        /* --- XPC Integration Tests --- */
-        .target(
-            name: "it_XPCActorable_echo",
-            dependencies: [
-                "DistributedActorsXPC",
-                "it_XPCActorable_echo_api",
-            ],
-            path: "IntegrationTests/disabled_tests_03_xpc_actorable/it_XPCActorable_echo"
-        ),
-        .target(
-            name: "it_XPCActorable_echo_api",
-            dependencies: [
-                "DistributedActorsXPC",
-            ],
-            path: "IntegrationTests/disabled_tests_03_xpc_actorable/it_XPCActorable_echo_api"
-        ),
-        .target(
-            name: "it_XPCActorable_echo_service",
-            dependencies: [
-                "DistributedActorsXPC",
-                "it_XPCActorable_echo_api",
-                "Files",
-            ],
-            path: "IntegrationTests/disabled_tests_03_xpc_actorable/it_XPCActorable_echo_service"
-        ),
-    ]
-)
-#endif
-
 var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-cluster-membership.git", from: "0.3.0"),
 
@@ -322,12 +273,6 @@ let products: [PackageDescription.Product] = [
     .library(
         name: "ActorSingletonPlugin",
         targets: ["ActorSingletonPlugin"]
-    ),
-
-    /* --- XPC --- */
-    .library(
-        name: "DistributedActorsXPC",
-        targets: ["DistributedActorsXPC"]
     ),
 
     /* ---  performance --- */

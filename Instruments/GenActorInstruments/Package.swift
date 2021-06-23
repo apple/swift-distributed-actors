@@ -13,7 +13,6 @@ var targets: [PackageDescription.Target] = [
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
 // ==== ------------------------------------------------------------------------------------------------------------
-// MARK: XPCActorable Examples (only available on Apple platforms)
 
 targets.append(
     contentsOf: [

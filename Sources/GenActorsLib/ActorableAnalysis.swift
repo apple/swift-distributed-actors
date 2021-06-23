@@ -71,11 +71,6 @@ final class GatherActorables: SyntaxVisitor {
             return .visitChildren
         }
 
-        // This is another marker protocol and we do not need to generate anything for it
-        guard name != "XPCActorableProtocol" else {
-            return .skipChildren
-        }
-
         self.wipActorable = ActorableTypeDecl(
             sourceFile: self.path,
             type: type,
@@ -536,7 +531,7 @@ final class IsActorableVisitor: SyntaxVisitor {
                 .trimmingCharacters(in: .punctuationCharacters)
                 .replacingOccurrences(of: "DistributedActors.", with: "")
 
-            if typeName == "Actorable" || typeName == "XPCActorableProtocol" {
+            if typeName == "Actorable" {
                 self.actorable = true
                 return .skipChildren
             }
