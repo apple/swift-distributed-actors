@@ -862,8 +862,7 @@ extension ActorShell {
         #endif
 
         if let terminated = signal as? Signals.Terminated {
-            // it is a Terminated sub-class, and thus shares semantics with it,
-            // e.g. an XPC Service being Invalidated.
+            // it is a Terminated sub-class, and thus shares semantics with it.
             try self.interpretTerminatedSignal(who: terminated.address, terminated: terminated)
         } else {
             let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: signal)

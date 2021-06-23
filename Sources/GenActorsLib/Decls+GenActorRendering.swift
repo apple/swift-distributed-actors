@@ -136,22 +136,6 @@ extension Rendering {
             """
         )
 
-        static let behaviorStubTemplate = Template(
-            templateString:
-            """
-            // ==== ----------------------------------------------------------------------------------------------------------------
-            // MARK: DO NOT EDIT: Generated {{baseName}} behavior
-
-            extension {{baseName}} {
-
-                public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
-                    fatalError("Behavior STUB for XPCActorableProtocol. Not intended to be instantiated.")
-                }
-            }
-
-            """
-        )
-
         static let actorTellTemplate = Template(
             templateString:
             """
@@ -247,56 +231,6 @@ extension Rendering {
         }
     }
 
-    struct XPCProtocolStubTemplate: Renderable {
-        let actorable: ActorableTypeDecl
-
-        static let stubStructTemplate = Template(
-            templateString:
-            """
-            // ==== ----------------------------------------------------------------------------------------------------------------
-            // MARK: DO NOT EDIT: Generated {{baseName}}Stub for XPCService consumers of the {{baseName}} XPCActorableProtocol
-
-            /// DO NOT EDIT: Generated {{baseName}} messages
-            ///
-            /// This type serves only as "stub" in order for callers of an XPCService implementing {{baseName}} to be 
-            /// able to express `Actor<{{baseName}}>`.
-            public struct {{baseName}}Stub: Actorable, {{baseName}} {
-                private init() {
-                    // Just a Stub, no-one should ever be instantiating it.
-                }
-            {% for tell in funcTells %}
-            {{ tell }}{% endfor %}
-            }
-            """
-        )
-
-        func render(_ settings: GenerateActorsCommand) throws -> String {
-            let context: [String: Any] = [
-                "baseName": self.actorable.fullName,
-                "funcTells": try self.actorable.funcs.map { funcDecl in
-                    try CodePrinter.content { printer in
-                        printer.indent()
-                        try funcDecl.renderFuncStub(printer: &printer)
-                    }
-                },
-            ]
-
-            var rendered: String = "\n"
-            switch self.actorable.type {
-            case .protocol:
-                rendered.append(try Self.stubStructTemplate.render(context))
-                rendered.append("\n")
-            default:
-                break
-            }
-
-            if settings.printGenerated {
-                print(rendered)
-            }
-
-            return rendered
-        }
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -707,14 +641,6 @@ extension ActorFuncDecl {
     func renderFuncTell(_ actor: ActorableTypeDecl, printer: inout CodePrinter) throws {
         self.message.renderFunc(printer: &printer, actor: actor) { printer in
             message.renderTellOrAskMessage(boxWith: nil, printer: &printer)
-        }
-    }
-
-    func renderFuncStub(printer: inout CodePrinter) throws {
-        self.message.renderStubFunc(printer: &printer) { printer in
-            printer.print("""
-            fatalError("Function STUB for XPCActorableProtocol [\(self.message.name)], function: \\(#function).")
-            """)
         }
     }
 

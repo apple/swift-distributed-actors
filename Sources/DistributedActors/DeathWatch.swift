@@ -179,10 +179,7 @@ internal struct DeathWatch<Message: ActorMessage> {
                 addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: watcher.asAddressable), file: file, line: line)
             }
 
-            // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
-            if addressableWatchee.address.uniqueNode.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
-                self.subscribeNodeTerminatedEvents(myself: watcher.myself, watchedAddress: addressableWatchee.address, file: file, line: line)
-            }
+            self.subscribeNodeTerminatedEvents(myself: watcher.myself, watchedAddress: addressableWatchee.address, file: file, line: line)
         }
     }
 
