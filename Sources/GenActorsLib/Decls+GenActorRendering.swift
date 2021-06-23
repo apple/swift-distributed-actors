@@ -34,7 +34,6 @@ enum Rendering {
 extension Rendering {
     struct ActorShellTemplate: Renderable {
         let actorable: ActorableTypeDecl
-        let stubGenBehavior: Bool
 
         static let messageForNonProtocolTemplate = Template(
             templateString:
@@ -213,12 +212,8 @@ extension Rendering {
 
             switch self.actorable.type {
             case .struct, .class, .enum, .extension:
-                if self.stubGenBehavior {
-                    rendered.append(try Self.behaviorStubTemplate.render(context))
-                } else {
-                    rendered.append(try Self.behaviorTemplate.render(context))
-                    rendered.append(try Self.actorTellTemplate.render(context))
-                }
+                rendered.append(try Self.behaviorTemplate.render(context))
+                rendered.append(try Self.actorTellTemplate.render(context))
             case .protocol:
                 rendered.append(try Self.boxingForProtocolTemplate.render(context))
             }
@@ -230,7 +225,6 @@ extension Rendering {
             return rendered
         }
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -379,23 +373,6 @@ extension ActorableMessageDecl {
 
             printer.outdent()
         }
-    }
-
-    func renderStubFunc(printer: inout CodePrinter, printBody: (inout CodePrinter) -> Void) {
-        self.renderStubFuncDecl(printer: &printer)
-        printer.print(" {")
-        printer.indent()
-        printBody(&printer)
-        printer.outdent()
-        printer.print("}")
-    }
-
-    func renderStubFuncDecl(printer: inout CodePrinter) {
-        let access = self.access.map {
-            "\($0) "
-        } ?? ""
-
-        printer.print("\(access)func \(self.name)(\(self.renderFuncParams))\(self.returnType.renderRawTypeDeclPart)", skipNewline: true)
     }
 
     var renderFuncParams: String {
