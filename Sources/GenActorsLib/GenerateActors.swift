@@ -185,7 +185,7 @@ extension GenerateActors {
         }
 
         try targetFile.append("\n")
-        let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable, stubGenBehavior: skipGenBehavior).render(self.command)
+        let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render(self.command)
         try targetFile.append(renderedShell)
 
         self.log.debug("Generated: \(targetFile.path)")
