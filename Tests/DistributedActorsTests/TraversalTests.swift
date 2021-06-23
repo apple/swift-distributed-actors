@@ -81,8 +81,7 @@ final class TraversalTests: ActorSystemXCTestCase {
             [
                 "system",
                 "receptionist",
-                "replicator",
-                "gossip",
+                // "gossip", // TODO: should it also be here?
                 "clusterEvents",
                 "user",
                 "other",

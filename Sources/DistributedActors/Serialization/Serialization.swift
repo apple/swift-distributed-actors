@@ -152,26 +152,6 @@ public class Serialization {
         settings.register(VersionDot.self, serializerID: .protobufRepresentable)
         settings.register(VersionVector.self, serializerID: .protobufRepresentable)
 
-        // crdts
-        // TODO: all this registering will go away with _mangledTypeName
-        settings.register(CRDT.Identity.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.VersionedContainer<String>.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.VersionContext.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.VersionedContainerDelta<String>.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.VersionedContainerDelta<Int>.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.Replicator.Message.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.Envelope.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.Replicator.RemoteCommand.WriteResult.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.Replicator.RemoteCommand.ReadResult.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.Replicator.RemoteCommand.DeleteResult.self, serializerID: .protobufRepresentable)
-        settings.register(CRDT.GCounter.self, serializerID: Serialization.ReservedID.CRDTGCounter)
-        settings.register(CRDT.GCounterDelta.self, serializerID: Serialization.ReservedID.CRDTGCounterDelta)
-
-        // crdt gossip
-        settings.register(CRDT.GossipAck.self)
-        settings.register(GossipShell<CRDT.Gossip, CRDT.GossipAck>.Message.self)
-        settings.register(CRDT.Gossip.self)
-
         // errors
         settings.register(ErrorEnvelope.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.register(BestEffortStringError.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands

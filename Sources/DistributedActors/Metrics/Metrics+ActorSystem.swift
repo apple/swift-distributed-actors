@@ -181,16 +181,6 @@ final class ActorSystemMetrics {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: CRDT Metrics
-
-    /// How many active CRDTs in total do we have?
-    // let crdt_owned_active: AddGauge
-
-    /// Timing how long it takes to converge (i.e. an update to reach all members)
-    // TODO: how to measure this without huge overhead, maybe opt in
-    // let crdt_convergence_time:
-
-    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actors Group-metrics (i.e. all actors of given "type" or "role")
 
     /// how much time does an actor (group) spend processing messages (executing a .receive)
