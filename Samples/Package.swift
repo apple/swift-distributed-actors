@@ -69,7 +69,7 @@ var dependencies: [Package.Dependency] = [
     // ~~~~~~~ only for samples ~~~~~~~
 
     // for metrics examples:
-    .package(url: "https://github.com/MrLotU/SwiftPrometheus", from: "1.0.0-alpha.5"), // Apache v2 license
+    .package(url: "https://github.com/MrLotU/SwiftPrometheus", from: "1.0.0-alpha.11"), // Apache v2 license
 ]
 
 let package = Package(
