@@ -1,4 +1,4 @@
-// swift-tools-version:5.2
+// swift-tools-version:5.5
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import class Foundation.ProcessInfo
@@ -54,16 +54,8 @@ var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GenActors
 
-    .target(
+    .executableTarget(
         name: "GenActors",
-        dependencies: [
-            "DistributedActors",
-            "GenActorsLib",
-        ]
-    ),
-
-    .target(
-        name: "GenActorsLib",
         dependencies: [
             "DistributedActors",
             .product(name: "SwiftSyntax", package: "SwiftSyntax"),
@@ -143,35 +135,35 @@ var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
 
-    .target(
+    .executableTarget(
         name: "it_ProcessIsolated_escalatingWorkers",
         dependencies: [
             "DistributedActors",
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_escalatingWorkers"
     ),
-    .target(
+    .executableTarget(
         name: "it_ProcessIsolated_respawnsServants",
         dependencies: [
             "DistributedActors",
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_respawnsServants"
     ),
-    .target(
+    .executableTarget(
         name: "it_ProcessIsolated_noLeaking",
         dependencies: [
             "DistributedActors",
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_noLeaking"
     ),
-    .target(
+    .executableTarget(
         name: "it_ProcessIsolated_backoffRespawn",
         dependencies: [
             "DistributedActors",
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
     ),
-    .target(
+    .executableTarget(
         name: "it_Clustered_swim_suspension_reachability",
         dependencies: [
             "DistributedActors",
@@ -182,7 +174,7 @@ var targets: [PackageDescription.Target] = [
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks
 
-    .target(
+    .executableTarget(
         name: "DistributedActorsBenchmarks",
         dependencies: [
             "DistributedActors",

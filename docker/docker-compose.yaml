@@ -31,11 +31,11 @@ services:
 
   unit-tests:
     <<: *common
-    command: /bin/bash -cl "swift test --enable-test-discovery"
+    command: /bin/bash -cl "swift test"
 
   unit-tests-until-failure:
     <<: *common
-    command: /bin/bash -cl "while swift test --enable-test-discovery; do :; done"
+    command: /bin/bash -cl "while swift test; do :; done"
 
   integration-tests:
     <<: *common
@@ -43,7 +43,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -cl "swift -version; SACT_WARNINGS_AS_ERRORS=yes swift test --enable-test-discovery -Xswiftc -DSACT_TESTS_LEAKS && ./scripts/integration_tests.sh"
+    command: /bin/bash -cl "swift -version; SACT_WARNINGS_AS_ERRORS=yes swift test -Xswiftc -DSACT_TESTS_LEAKS && ./scripts/integration_tests.sh"
 
   bench:
     <<: *common
