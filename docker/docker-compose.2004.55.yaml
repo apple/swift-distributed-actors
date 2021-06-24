@@ -1,0 +1,33 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-distributed-actors:20.04-5.5
+    build:
+      args:
+        base_image: "swiftlang/swift:nightly-5.5-focal"
+
+  unit-tests:
+    image: swift-distributed-actors:20.04-5.5
+
+  unit-tests-until-failure:
+    image: swift-distributed-actors:20.04-5.5
+
+  integration-tests:
+    image: swift-distributed-actors:20.04-5.5
+
+  test:
+    image: swift-distributed-actors:20.04-5.5
+
+  bench:
+    image: swift-distributed-actors:20.04-5.5
+
+  shell:
+    image: swift-distributed-actors:20.04-5.5
+
+  sample-crash:
+    image: swift-distributed-actors:20.04-5.5
+
+  sample-crash-actor:
+    image: swift-distributed-actors:20.04-5.5
