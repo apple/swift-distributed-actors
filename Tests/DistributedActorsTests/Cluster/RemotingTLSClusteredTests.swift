@@ -191,22 +191,28 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
 
         let local = self.setUpNode("local") { settings in
             settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource1],
-                privateKey: testKeySource1,
-                certificateVerification: .fullVerification,
-                trustRoots: .certificates([testCertificate2])
+                privateKey: testKeySource1
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate2])
             )
+            settings.cluster.tls?.certificateVerification = .fullVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate2])
         }
 
         let remote = setUpNode("remote") { settings in
             settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource2],
-                privateKey: testKeySource2,
-                certificateVerification: .fullVerification,
-                trustRoots: .certificates([testCertificate1])
+                privateKey: testKeySource2
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate1])
             )
+            settings.cluster.tls?.certificateVerification = .fullVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate1])
         }
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
@@ -221,22 +227,28 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
 
         let local = self.setUpNode("local") { settings in
             settings.cluster.node.host = "127.0.0.1"
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
-                privateKey: testKey,
-                certificateVerification: .fullVerification,
-                trustRoots: .certificates([testCertificate])
+                privateKey: testKey
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate])
             )
+            settings.cluster.tls?.certificateVerification = .fullVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
         }
 
         let remote = setUpNode("remote") { settings in
             settings.cluster.node.host = "127.0.0.1"
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
-                privateKey: testKey,
-                certificateVerification: .fullVerification,
-                trustRoots: .certificates([testCertificate])
+                privateKey: testKey
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate])
             )
+            settings.cluster.tls?.certificateVerification = .fullVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
         }
 
         let testKit = ActorTestKit(local)
@@ -268,22 +280,28 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
         let local = self.setUpNode("local") { settings in
             settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
-                privateKey: testKey,
-                certificateVerification: .noHostnameVerification,
-                trustRoots: .certificates([testCertificate])
+                privateKey: testKey
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate])
             )
+            settings.cluster.tls?.certificateVerification = .noHostnameVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
         }
 
         let remote = setUpNode("remote") { settings in
             settings.cluster.node.host = "localhost"
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
-                privateKey: testKey,
-                certificateVerification: .noHostnameVerification,
-                trustRoots: .certificates([testCertificate])
+                privateKey: testKey
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate])
             )
+            settings.cluster.tls?.certificateVerification = .noHostnameVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
         }
 
         local.cluster.join(node: remote.cluster.uniqueNode.node)
@@ -303,24 +321,30 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
         let local = self.setUpNode("local") { settings in
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
-                privateKey: testKey,
-                certificateVerification: .noHostnameVerification,
-                trustRoots: .certificates([testCertificate])
+                privateKey: testKey
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate])
             )
+            settings.cluster.tls?.certificateVerification = .noHostnameVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
             settings.cluster.tlsPassphraseCallback = { setter in
                 setter([UInt8]("test".utf8))
             }
         }
 
         let remote = setUpNode("remote") { settings in
-            settings.cluster.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.makeServerConfiguration(
                 certificateChain: [testCertificateSource],
-                privateKey: testKey,
-                certificateVerification: .noHostnameVerification,
-                trustRoots: .certificates([testCertificate])
+                privateKey: testKey
+//                    ,
+//                certificateVerification: .fullVerification,
+//                trustRoots: .certificates([testCertificate])
             )
+            settings.cluster.tls?.certificateVerification = .noHostnameVerification
+            settings.cluster.tls?.trustRoots = .certificates([testCertificate])
             settings.cluster.tlsPassphraseCallback = { setter in
                 setter([UInt8]("test".utf8))
             }
