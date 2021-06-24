@@ -11,7 +11,7 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
-    "-Xfrontend", "-enable-experimental-distributed",
+//    "-Xfrontend", "-enable-experimental-distributed",
 ]
 
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
