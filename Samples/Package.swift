@@ -1,4 +1,4 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.5
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -7,45 +7,53 @@ var targets: [PackageDescription.Target] = [
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Samples
 
-    .target(
+    .executableTarget(
         name: "SampleDiningPhilosophers",
-        dependencies: ["DistributedActors"],
+        dependencies: [
+            .product(name: "DistributedActors", package: "swift-distributed-actors"),
+        ],
         path: "Sources/SampleDiningPhilosophers"
     ),
-    .target(
+    .executableTarget(
         name: "SampleGenActorsDiningPhilosophers",
         dependencies: [
-            "DistributedActors",
+            .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
         path: "Sources/SampleGenActorsDiningPhilosophers"
     ),
-    .target(
+    .executableTarget(
         name: "SampleLetItCrash",
-        dependencies: ["DistributedActors"],
+        dependencies: [
+            .product(name: "DistributedActors", package: "swift-distributed-actors"),
+        ],
         path: "Sources/SampleLetItCrash"
     ),
-    .target(
+    .executableTarget(
         name: "SampleCluster",
-        dependencies: ["DistributedActors"],
+        dependencies: [
+            .product(name: "DistributedActors", package: "swift-distributed-actors"),
+        ],
         path: "Sources/SampleCluster"
     ),
-    .target(
+    .executableTarget(
         name: "SampleReceptionist",
-        dependencies: ["DistributedActors"],
+        dependencies: [
+            .product(name: "DistributedActors", package: "swift-distributed-actors"),
+        ],
         path: "Sources/SampleReceptionist"
     ),
-    .target(
+    .executableTarget(
         name: "SampleMetrics",
         dependencies: [
-            "DistributedActors",
-            "SwiftPrometheus",
+            .product(name: "DistributedActors", package: "swift-distributed-actors"),
+            .product(name: "SwiftPrometheus", package: "SwiftPrometheus"),
         ],
         path: "Sources/SampleMetrics"
     ),
-    .target(
+    .executableTarget(
         name: "SampleGenActors",
         dependencies: [
-            "DistributedActors",
+            .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
         path: "Sources/SampleGenActors"
     ),
@@ -56,7 +64,7 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "NoopTests",
         dependencies: [
-            "DistributedActorsTestKit",
+            .product(name: "DistributedActorsTestKit", package: "swift-distributed-actors"),
         ],
         path: "Tests/NoopTests"
     ),
@@ -64,7 +72,7 @@ var targets: [PackageDescription.Target] = [
 
 var dependencies: [Package.Dependency] = [
     // ~~~~~~~     parent       ~~~~~~~
-    .package(path: "../"),
+    .package(name: "swift-distributed-actors", path: "../"),
 
     // ~~~~~~~ only for samples ~~~~~~~
 

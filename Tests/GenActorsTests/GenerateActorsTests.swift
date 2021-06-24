@@ -16,7 +16,7 @@ import DistributedActors
 import DistributedActorsTestKit
 import Files
 import Foundation
-import GenActorsLib
+import GenActors
 import XCTest
 
 final class GenerateActorsTests: XCTestCase {
