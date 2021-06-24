@@ -22,7 +22,7 @@ import Prometheus
 // MARK: Option A) Prometheus backend
 
 let prom = PrometheusClient()
-MetricsSystem.bootstrap(prom)
+MetricsSystem.bootstrap(PrometheusMetricsFactory(client: prom))
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: StatsD backend
