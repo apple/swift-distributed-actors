@@ -19,7 +19,10 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleGenActorsDiningPhilosophers"
+        path: "Sources/SampleGenActorsDiningPhilosophers",
+        plugins: [
+            .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
     .executableTarget(
         name: "SampleLetItCrash",
@@ -55,7 +58,10 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleGenActors"
+        path: "Sources/SampleGenActors",
+        plugins: [
+            .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
 
     /* --- tests --- */
@@ -95,6 +101,10 @@ let package = Package(
             targets: ["SampleDiningPhilosophers"]
         ),
         .executable(
+            name: "SampleGenActorsDiningPhilosophers",
+            targets: ["SampleGenActorsDiningPhilosophers"]
+        ),
+        .executable(
             name: "SampleLetItCrash",
             targets: ["SampleLetItCrash"]
         ),
@@ -110,7 +120,6 @@ let package = Package(
             name: "SampleGenActors",
             targets: ["SampleGenActors"]
         ),
-
     ],
 
     dependencies: dependencies,

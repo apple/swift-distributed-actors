@@ -43,7 +43,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "NIOExtras", package: "swift-nio-extras"),
-            .product(name: "SwiftProtobuf", package: "SwiftProtobuf"),
+            .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "Metrics", package: "swift-metrics"),
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
@@ -52,19 +52,26 @@ var targets: [PackageDescription.Target] = [
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: GenActors
+    // MARK: Distributed Actors Generator
 
     .executableTarget(
-        name: "GenActors",
+        name: "DistributedActorsGenerator",
         dependencies: [
             "DistributedActors",
-            .product(name: "SwiftSyntax", package: "SwiftSyntax"),
+            .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
 
             .product(name: "Stencil", package: "Stencil"), // TODO: remove this dependency
             .product(name: "Files", package: "Files"), // TODO: remove this dependency
         ]
+    ),
+
+    .plugin(
+        name: "DistributedActorsGeneratorPlugin",
+        capability: .buildTool(),
+        dependencies: ["DistributedActorsGenerator"],
+        path: "Sources/DistributedActorsGeneratorPlugin"
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -120,11 +127,12 @@ var targets: [PackageDescription.Target] = [
     ),
 
     .testTarget(
-        name: "GenActorsTests",
+        name: "DistributedActorsGeneratorTests",
         dependencies: [
-            "GenActors",
+            "DistributedActorsGenerator",
             "DistributedActorsTestKit",
-        ]
+        ],
+        plugins: ["DistributedActorsGeneratorPlugin"]
     ),
 
     .testTarget(
@@ -216,7 +224,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
 
-    .package(name: "SwiftProtobuf", url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
+    .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
     // ~~~ workaround for backtraces ~~~
     .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
@@ -227,20 +235,21 @@ var dependencies: [Package.Dependency] = [
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
     .package(url: "https://github.com/apple/swift-service-discovery.git", from: "1.0.0"),
+]
 
-    // ~~~ only for GenActors ~~~
-    // swift-syntax is Swift version dependent, and added  as such below
+// ~~~ only for DistributedActorsGenerator ~~~
+dependencies += [
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.1"), // BSD license
     .package(url: "https://github.com/JohnSundell/Files", from: "4.1.0"), // MIT license
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
 ]
-
+// swift-syntax is Swift version dependent, and added as such below
 #if swift(>=5.5)
 dependencies.append(
-    .package(name: "SwiftSyntax", url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a"))
+    .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a"))
 )
 #else
-fatalError("Swift Distributed Actors requires Swift 5.5 because of the language integration of 'distributed actors'")
+fatalError("Currently only Swift 5.5+ is supported, if you need earlier Swift support please reach out to to the team.")
 #endif
 
 let products: [PackageDescription.Product] = [
@@ -253,24 +262,24 @@ let products: [PackageDescription.Product] = [
         targets: ["DistributedActorsTestKit"]
     ),
 
-    /* --- GenActors --- */
-
-    .executable(
-        name: "GenActors",
-        targets: ["GenActors"]
-    ),
-
-    /* --- Plugins --- */
+    /* --- Functional Plugins --- */
 
     .library(
         name: "ActorSingletonPlugin",
         targets: ["ActorSingletonPlugin"]
     ),
 
-    /* ---  performance --- */
+    /* --- SwiftPM Plugins --- */
+
+    .plugin(
+        name: "DistributedActorsGeneratorPlugin",
+        targets: ["DistributedActorsGeneratorPlugin"]
+    ),
+
+    // code generation tool, used by the plugin
     .executable(
-        name: "DistributedActorsBenchmarks",
-        targets: ["DistributedActorsBenchmarks"]
+        name: "DistributedActorsGenerator",
+        targets: ["DistributedActorsGenerator"]
     ),
 ]
 
@@ -287,7 +296,9 @@ var package = Package(
 
     targets: targets.map { target in
         var swiftSettings = target.swiftSettings ?? []
-        swiftSettings.append(contentsOf: globalSwiftSettings)
+        if target.type != .plugin {
+            swiftSettings.append(contentsOf: globalSwiftSettings)
+        }
         if !swiftSettings.isEmpty {
             target.swiftSettings = swiftSettings
         }
