@@ -174,11 +174,11 @@ extension GenerateActors {
     // simple bucketing based on the first letter
     private func computeTargetFile(for actorable: ActorableTypeDecl, in targetDirectory: Folder, buckets: Int) throws -> File {
         guard buckets > 0 else {
-            preconditionFailure("invalid buckets")
+            preconditionFailure("invalid buckets. \(buckets) must be > 0")
         }
 
         guard let firstLetter = actorable.name.lowercased().first else {
-            preconditionFailure("invalid actorable name")
+            preconditionFailure("invalid actorable name: \(actorable.name)")
         }
 
         let letterIndex = Self.letters.firstIndex(of: firstLetter)

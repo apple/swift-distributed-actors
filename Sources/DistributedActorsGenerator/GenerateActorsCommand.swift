@@ -74,7 +74,6 @@ extension GenerateActorsCommand {
             targetDirectory: targetDirectory,
             buckets: self.buckets,
             targets: self.targets // ,
-            // clean: self.clean
         )
     }
 }

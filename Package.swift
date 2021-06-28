@@ -249,7 +249,7 @@ dependencies.append(
     .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a"))
 )
 #else
-fatalError("Currently only Swift 5.5+ is supported, if you need earlier Swift support please reach out to to the team.")
+fatalError("Currently only Swift 5.5+ is supported, if you need earlier Swift support please reach out to the team.")
 #endif
 
 let products: [PackageDescription.Product] = [
