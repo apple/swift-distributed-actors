@@ -486,7 +486,19 @@ internal final class Mailbox<Message: ActorMessage> {
             // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
             // as other conditions may hold, yet we really are ready to terminate immediately.
             traceLog_Mailbox(shell.path, "Terminating...")
-            shell.metrics[gauge: .mailboxCount]?.record(status.messageCount - Status(processedActivations).messageCount)
+            let processedActivationsCount = Status(processedActivations).messageCount
+            if status.messageCount >= processedActivationsCount {
+                shell.metrics[gauge: .mailboxCount]?.record(status.messageCount - processedActivationsCount)
+            } else {
+                // TODO: Figure out why this can ever happen
+                shell.log.warning(
+                    "Mailbox closed with more processed activations (\(processedActivationsCount)) than messages (\(status.messageCount))",
+                    metadata: [
+                        "status": "\(status)",
+                        "processedActivations": "\(processedActivations)",
+                    ]
+                )
+            }
             return .close
         } else if runResult == .closed {
             traceLog_Mailbox(shell.path, "Terminating, completely closed now...")
