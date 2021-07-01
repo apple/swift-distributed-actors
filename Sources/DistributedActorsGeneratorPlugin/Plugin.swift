@@ -22,7 +22,7 @@ let buckets = 5 // # of buckets for consistent hashing
 let outputFiles = !inputFiles.isEmpty ? (0 ..< buckets).map { targetBuildContext.pluginWorkDirectory.appending("GeneratedDistributedActors_\($0).swift") } : []
 
 commandConstructor.addBuildCommand(
-    displayName: "Generating distributed actors",
+    displayName: "Generating distributed actors for \(targetBuildContext.targetName)",
     executable: generatorPath,
     arguments: [
         "--source-directory", targetBuildContext.targetDirectory.string,
