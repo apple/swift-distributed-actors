@@ -60,7 +60,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
 #    if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
       # always generate, otherwise we miss things when we're iterating on adding docs.
       echo "Generating $root_path/.build/sourcekitten/$module.json ..."
-      "$source_kitten_path/sourcekitten" doc --spm-module "$module" > "$root_path/.build/sourcekitten/$module.json"
+      "$source_kitten_path/sourcekitten" doc --module-name "$module" > "$root_path/.build/sourcekitten/$module.json"
 #    fi
   done
 fi
