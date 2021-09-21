@@ -14,21 +14,29 @@
 
 import PackagePlugin
 
-let generatorPath = try targetBuildContext.tool(named: "DistributedActorsGenerator").path
+@main struct MyPlugin: BuildToolPlugin {
+    func createBuildCommands(context: TargetBuildContext) throws -> [Command] {
+        let generatorPath = try context.tool(named: "DistributedActorsGenerator").path
 
-let inputFiles = targetBuildContext.inputFiles.map { $0.path }.filter { $0.extension?.lowercased() == "swift" }
+        let inputFiles = context.inputFiles.map { $0.path }.filter { $0.extension?.lowercased() == "swift" }
 
-let buckets = 5 // # of buckets for consistent hashing
-let outputFiles = !inputFiles.isEmpty ? (0 ..< buckets).map { targetBuildContext.pluginWorkDirectory.appending("GeneratedDistributedActors_\($0).swift") } : []
+        let buckets = 5 // # of buckets for consistent hashing
+        let outputFiles = !inputFiles.isEmpty ? (0 ..< buckets).map {
+            context.pluginWorkDirectory.appending("GeneratedDistributedActors_\($0).swift")
+        } : []
 
-commandConstructor.addBuildCommand(
-    displayName: "Generating distributed actors for \(targetBuildContext.targetName)",
-    executable: generatorPath,
-    arguments: [
-        "--source-directory", targetBuildContext.targetDirectory.string,
-        "--target-directory", targetBuildContext.pluginWorkDirectory.string,
-        "--buckets", "\(buckets)",
-    ],
-    inputFiles: inputFiles,
-    outputFiles: outputFiles
-)
+        let command = Command.buildCommand(
+            displayName: "Generating distributed actors for \(context.targetName)",
+            executable: generatorPath,
+            arguments: [
+                "--source-directory", context.targetDirectory.string,
+                "--target-directory", context.pluginWorkDirectory.string,
+                "--buckets", "\(buckets)",
+            ],
+            inputFiles: inputFiles,
+            outputFiles: outputFiles
+        )
+
+        return [command]
+    }
+}
