@@ -28,9 +28,7 @@ if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
         SwiftSetting.unsafeFlags(allUnsafeFlags),
     ]
 } else {
-    globalSwiftSettings = [
-        SwiftSetting.unsafeFlags(globalConcurrencyFlags),
-    ]
+    globalSwiftSettings = []
 }
 
 var targets: [PackageDescription.Target] = [
