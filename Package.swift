@@ -11,12 +11,12 @@ import PackageDescription
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = []
-//#if swift(>=5.4)
-//globalConcurrencyFlags.append(contentsOf: [
+// #if swift(>=5.4)
+// globalConcurrencyFlags.append(contentsOf: [
 //    "-Xfrontend", "-enable-experimental-concurrency",
 //    // "-Xfrontend", "-enable-experimental-distributed",
-//])
-//#endif
+// ])
+// #endif
 
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
     print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
