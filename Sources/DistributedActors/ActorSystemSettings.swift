@@ -30,7 +30,7 @@ public struct ActorSystemSettings {
 
     public var receptionist: ReceptionistSettings = .default
 
-    public var transports: [ActorTransport] = []
+    public var transports: [_InternalActorTransport] = []
     public var serialization: Serialization.Settings = .default
     public var cluster: ClusterSettings = .default {
         didSet {
@@ -55,8 +55,8 @@ public struct ActorSystemSettings {
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }
 
-extension Array where Element == ActorTransport {
-    public static func += <T: ActorTransport>(transports: inout Self, transport: T) {
+extension Array where Element == _InternalActorTransport {
+    public static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
         transports.append(transport)
     }
 }
@@ -181,9 +181,9 @@ extension ActorSystemSettings {
             NoopActorInstrumentation(id: id, address: address)
         }
 
-        /// - SeeAlso: `ActorTransportInstrumentation`
-        public var makeActorTransportInstrumentation: () -> ActorTransportInstrumentation = { () in
-            NoopActorTransportInstrumentation()
+        /// - SeeAlso: `_InternalActorTransportInstrumentation`
+        public var make_InternalActorTransportInstrumentation: () -> _InternalActorTransportInstrumentation = { () in
+            Noop_InternalActorTransportInstrumentation()
         }
 
         /// - SeeAlso: `ReceptionistInstrumentation`
@@ -197,7 +197,7 @@ extension ActorSystemSettings {
             }
 
             if let instrumentFactory = provider.actorTransportInstrumentation {
-                self.makeActorTransportInstrumentation = instrumentFactory
+                self.make_InternalActorTransportInstrumentation = instrumentFactory
             }
 
             if let instrumentFactory = provider.receptionistInstrumentation {
@@ -209,6 +209,6 @@ extension ActorSystemSettings {
 
 public protocol ActorSystemInstrumentationProvider {
     var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
-    var actorTransportInstrumentation: (() -> ActorTransportInstrumentation)? { get }
+    var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? { get }
     var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }
 }

@@ -362,16 +362,16 @@ public struct ActorInstrumentsPackageDefinition {
             Column.errorType
         }
 
-        static let actorTransportSerializationInterval = PackageDefinition.OSSignpostIntervalSchema(
+        static let _InternalActorTransportSerializationInterval = PackageDefinition.OSSignpostIntervalSchema(
             id: "actor-transport-serialization-interval",
             title: "Serialization",
 
-            subsystem: "\(OSSignpostActorTransportInstrumentation.subsystem)",
-            category: "\(OSSignpostActorTransportInstrumentation.category)",
-            name: "\(OSSignpostActorTransportInstrumentation.nameSerialization)",
+            subsystem: "\(OSSignpost_InternalActorTransportInstrumentation.subsystem)",
+            category: "\(OSSignpost_InternalActorTransportInstrumentation.category)",
+            name: "\(OSSignpost_InternalActorTransportInstrumentation.nameSerialization)",
 
-            startPattern: OSSignpostActorTransportInstrumentation.actorMessageSerializeStartPattern,
-            endPattern: OSSignpostActorTransportInstrumentation.actorMessageSerializeEndPattern
+            startPattern: OSSignpost_InternalActorTransportInstrumentation.actorMessageSerializeStartPattern,
+            endPattern: OSSignpost_InternalActorTransportInstrumentation.actorMessageSerializeEndPattern
         ) {
             Column.recipientNode
             Column.recipientPath
@@ -388,16 +388,16 @@ public struct ActorInstrumentsPackageDefinition {
             Column.serializedBytesImpact
         }
 
-        static let actorTransportDeserializationInterval = PackageDefinition.OSSignpostIntervalSchema(
+        static let _InternalActorTransportDeserializationInterval = PackageDefinition.OSSignpostIntervalSchema(
             id: "actor-transport-deserialization-interval",
             title: "Deserialization",
 
-            subsystem: "\(OSSignpostActorTransportInstrumentation.subsystem)",
-            category: "\(OSSignpostActorTransportInstrumentation.category)",
-            name: "\(OSSignpostActorTransportInstrumentation.nameDeserialization)",
+            subsystem: "\(OSSignpost_InternalActorTransportInstrumentation.subsystem)",
+            category: "\(OSSignpost_InternalActorTransportInstrumentation.category)",
+            name: "\(OSSignpost_InternalActorTransportInstrumentation.nameDeserialization)",
 
-            startPattern: OSSignpostActorTransportInstrumentation.actorMessageDeserializeStartPattern,
-            endPattern: OSSignpostActorTransportInstrumentation.actorMessageDeserializeEndPattern
+            startPattern: OSSignpost_InternalActorTransportInstrumentation.actorMessageDeserializeStartPattern,
+            endPattern: OSSignpost_InternalActorTransportInstrumentation.actorMessageDeserializeEndPattern
         ) {
             Column.recipientNode
             Column.recipientPath
@@ -496,21 +496,21 @@ public struct ActorInstrumentsPackageDefinition {
             purpose: purpose,
             icon: .virtualMemory
         ) {
-            let actorTransportSerializationInterval = Instrument.CreateTable(Schemas.actorTransportSerializationInterval)
-            actorTransportSerializationInterval
+            let _InternalActorTransportSerializationInterval = Instrument.CreateTable(Schemas._InternalActorTransportSerializationInterval)
+            _InternalActorTransportSerializationInterval
 
-            let actorTransportDeserializationInterval = Instrument.CreateTable(Schemas.actorTransportDeserializationInterval)
-            actorTransportDeserializationInterval
+            let _InternalActorTransportDeserializationInterval = Instrument.CreateTable(Schemas._InternalActorTransportDeserializationInterval)
+            _InternalActorTransportDeserializationInterval
 
             Instrument.Graph(title: "\(hint) Message Serialization") {
-                Graph.Lane(title: "Serialization", table: actorTransportSerializationInterval) {
+                Graph.Lane(title: "Serialization", table: _InternalActorTransportSerializationInterval) {
                     Graph.Plot(
                         valueFrom: .serializedBytes,
                         colorFrom: .serializedBytesImpact,
                         labelFrom: .serializedBytes
                     )
                 }
-                Graph.Lane(title: "Deserialization", table: actorTransportDeserializationInterval) {
+                Graph.Lane(title: "Deserialization", table: _InternalActorTransportDeserializationInterval) {
                     Graph.Plot(
                         valueFrom: .serializedBytes,
                         colorFrom: .serializedBytesImpact,
@@ -524,7 +524,7 @@ public struct ActorInstrumentsPackageDefinition {
             List(
                 title: "Serialized: \(hint)",
                 slice: slice,
-                table: actorTransportSerializationInterval
+                table: _InternalActorTransportSerializationInterval
             ) {
                 "start"
                 "duration"
@@ -536,7 +536,7 @@ public struct ActorInstrumentsPackageDefinition {
 
             Aggregation(
                 title: "Serialized Messages (by Recipient)",
-                table: actorTransportSerializationInterval,
+                table: _InternalActorTransportSerializationInterval,
                 hierarchy: [
                     .column(.recipientNode),
                     .column(.recipientPath),
@@ -552,7 +552,7 @@ public struct ActorInstrumentsPackageDefinition {
             List(
                 title: "Deserialized: \(hint)",
                 slice: slice,
-                table: actorTransportDeserializationInterval
+                table: _InternalActorTransportDeserializationInterval
             ) {
                 "start"
                 "duration"

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import Backtrace
 import CDistributedActorsMailbox
 import Dispatch
@@ -19,31 +20,40 @@ import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
 
+struct AnyMessageRecipient: Hashable {
+    let ref: AddressableActorRef
+}
+
 /// An `ActorSystem` is a confined space which runs and manages Actors.
 ///
 /// Most applications need _no-more-than_ a single `ActorSystem`.
 /// Rather, the system should be configured to host the kinds of dispatchers that the application needs.
 ///
 /// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
-public final class ActorSystem {
+public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable {
     public let name: String
 
     // initialized during startup
     internal var _deadLetters: ActorRef<DeadLetter>!
 
 //    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
-    // TODO: avoid the lock...
-    internal var namingContext = ActorNamingContext()
-    internal let namingLock = Lock()
+    internal var namingContext = ActorNamingContext() // TODO(distributed): change the purpose of this slightly, per type perhaps?
+    internal let namingLock = Lock() // TODO(distributed): avoid the lock if possible
     internal func withNamingContext<T>(_ block: (inout ActorNamingContext) throws -> T) rethrows -> T {
         try self.namingLock.withLock {
             try block(&self.namingContext)
         }
     }
 
+    // Access MUST be protected with `namingLock`.
+    // FIXME(distributed): not sure if this is how we want it... but trees are going away...
+    private var _managedRefs: [ActorAddress: ReceivesMessages] = [:]
+    private var _managedDistributedActors: [ActorAddress: DistributedActor] = [:]
+    private var _reservedNames: Set<ActorAddress> = []
+
     private let dispatcher: InternalMessageDispatcher
 
-    // TODO: converge into one tree? // YEAH
+    // TODO: converge? // YEAH
     // Note: This differs from Akka, we do full separate trees here
     private var systemProvider: _ActorRefProvider!
     private var userProvider: _ActorRefProvider!
@@ -442,6 +452,100 @@ extension ActorSystem: CustomStringConvertible {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
+
+@available(macOS 10.15, *)
+extension ActorSystem {
+
+    // ==== ---------------------------------------------------------------------
+    // - MARK: Resolving actors by identity
+
+    public func decodeIdentity(from decoder: Decoder) throws -> AnyActorIdentity {
+        let address = try ActorAddress(from: decoder)
+        return AnyActorIdentity(address)
+    }
+
+    public func resolve<Act>(_ identity: AnyActorIdentity, as actorType: Act.Type) throws -> Act?
+        where Act: DistributedActor {
+        guard let address = identity.underlying as? ActorAddress else {
+            // we only support resolving our own address types:
+            return nil
+        }
+
+        return self.namingLock.withLock {
+            guard let managed = self._managedDistributedActors[address] else {
+                log.info("Resolved as remote reference", metadata: [
+                    "actor/address": "\(address.detailedDescription)",
+                ])
+                return nil
+            }
+
+            log.info("Resolved as local instance", metadata: [
+                "actor/address": "\(address)",
+                "actor": "\(managed)",
+            ])
+            return managed as? Act
+        }
+    }
+
+    // ==== ---------------------------------------------------------------------
+    // - MARK: Actor Lifecycle
+
+    public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity
+        where Act: DistributedActor {
+
+        // TODO: just assign address, refs eventually to go away?
+        let path = try! ActorPath._user.appending(String(describing: Act.self)) // FIXME: strip generics
+        let address = ActorAddress(local: self.cluster.uniqueNode, path: path, incarnation: .random())
+
+        log.info("Assign identity", metadata: [
+            "actor/type": "\(actorType)",
+            "actor/address": "\(address.detailedDescription)",
+        ])
+
+        return self.namingLock.withLock {
+            self._reservedNames.insert(address)
+            return AnyActorIdentity(address)
+        }
+    }
+
+    public func actorReady<Act>(_ actor: Act) where Act: DistributedActor {
+        guard let address = actor.id.underlying as? ActorAddress else {
+            fatalError("Cannot create distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(actor.id)")
+        }
+
+        log.info("Actor ready", metadata: [
+            "actor/address": "\(address.detailedDescription)",
+            "actor/type": "\(type(of: actor))",
+        ])
+
+        self.namingLock.withLockVoid {
+            guard self._reservedNames.remove(address) != nil else {
+                fatalError("Attempted to ready actor for which name was not reserved! Address: \(address), reserved names: \(self._reservedNames)")
+            }
+        }
+
+        guard let SpawnAct = Act.self as? AnyDistributedClusterActor.Type else {
+            fatalError("\(Act.self) was not AnyDistributedClusterActor, so we cannot spawn a reference for it! Actor identity was: \(actor.id)")
+        }
+
+        func doSpawn<SpawnAct: AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
+            log.info("Spawn any for \(SpawnAct.self)")
+            return try! SpawnAct._spawnAny(instance: actor as! SpawnAct, on: self)
+        }
+
+        let anyRef: AddressableActorRef = _openExistential(SpawnAct, do: doSpawn)
+
+        self.namingLock.withLockVoid {
+            log.info("Store \(anyRef)")
+        }
+    }
+
+    /// Called during actor deinit/destroy.
+    public func resignIdentity(_ id: AnyActorIdentity) {
+        pprint("RESIGN IDENTITY: \(id)")
+    }
+
+}
 
 extension ActorSystem: ActorRefFactory {
     @discardableResult

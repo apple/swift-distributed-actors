@@ -24,7 +24,7 @@ import os.signpost
 @available(iOS 12.0, *)
 @available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
-public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumentation {
+public struct OSSignpost_InternalActorTransportInstrumentation: _InternalActorTransportInstrumentation {
     static let subsystem: StaticString = "com.apple.actors"
     static let category: StaticString = "Serialization"
 
@@ -37,7 +37,7 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
 
     public init() {
         self.signpostID = OSSignpostID(
-            log: OSSignpostActorTransportInstrumentation.logTransportSerialization
+            log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization
         )
     }
 }
@@ -49,7 +49,7 @@ public struct OSSignpostActorTransportInstrumentation: ActorTransportInstrumenta
 @available(iOS 12.0, *)
 @available(tvOS 12.0, *)
 @available(watchOS 3.0, *)
-extension OSSignpostActorTransportInstrumentation {
+extension OSSignpost_InternalActorTransportInstrumentation {
     static let actorMessageSerializeStartPattern: StaticString =
         """
         serialize;\
@@ -79,60 +79,60 @@ extension OSSignpostActorTransportInstrumentation {
         """
 
     public func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {
-        guard OSSignpostActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
+        guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
 
         os_signpost(
             .begin,
-            log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
+            log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameSerialization,
-            signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageSerializeStartPattern,
             "todo", "\(recipient)", String(reflecting: type(of: message)), "\(message)"
         )
     }
 
     public func remoteActorMessageSerializeEnd(id: AnyObject, bytes: Int) {
-        guard OSSignpostActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
+        guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
 
         os_signpost(
             .end,
-            log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
+            log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameSerialization,
-            signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageSerializeEndPattern,
             bytes
         )
     }
 
     public func remoteActorMessageDeserializeStart(id: AnyObject, recipient: ActorPath, bytes: Int) {
-        guard OSSignpostActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
+        guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
 
         os_signpost(
             .begin,
-            log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
+            log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameDeserialization,
-            signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageDeserializeStartPattern,
             "todo", "\(recipient)", bytes
         )
     }
 
     public func remoteActorMessageDeserializeEnd(id: AnyObject, message: Any?) {
-        guard OSSignpostActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
+        guard OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization.signpostsEnabled else {
             return
         }
 
         os_signpost(
             .end,
-            log: OSSignpostActorTransportInstrumentation.logTransportSerialization,
+            log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization,
             name: Self.nameDeserialization,
-            signpostID: .init(log: OSSignpostActorTransportInstrumentation.logTransportSerialization, object: id),
+            signpostID: .init(log: OSSignpost_InternalActorTransportInstrumentation.logTransportSerialization, object: id),
             Self.actorMessageDeserializeEndPattern,
             "\(message.map { "\($0)" } ?? "<nil>")", "\(message.map { String(reflecting: type(of: $0)) } ?? "<unknown-type>")"
         )

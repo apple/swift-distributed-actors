@@ -190,6 +190,18 @@ extension AskResponse: AsyncResult {
             return .nioFuture(promise.futureResult)
         }
     }
+
+    /// Be very careful with using this as the resume will not run on the ActorSystem provided actor context!
+    /// // TODO(distributed): this will be solved when we move to swift concurrency as the actor runtime
+    public var value: Value {
+        get async throws {
+            try await withCheckedThrowingContinuation { cc in
+                _onComplete {
+                    cc.resume(with: $0)
+                }
+            }
+        }
+    }
 }
 
 extension AskResponse {

@@ -13,44 +13,32 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import _Distributed
+import Logging
 import class NIO.EventLoopFuture
 
-public protocol Parking: Actorable {
-    // @actor
-    func park()
-
-    static func _boxParking(_ message: GeneratedActor.Messages.Parking) -> Self.Message
+public protocol Parking {
+    func park() async throws
 }
 
-// TODO: allow not public
-public protocol Ticketing: Actorable {
-    // @actor
-    func makeTicket()
-
-    static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> Self.Message
+public protocol Ticketing {
+    func makeTicket() async throws
 }
 
-// TODO: take into account that type may not be public
-public struct JackOfAllTrades: Ticketing, Parking, Actorable {
-    let context: Actor<JackOfAllTrades>.Context
+public distributed actor JackOfAllTrades: Ticketing, Parking {
 
-    public init(context: Actor<JackOfAllTrades>.Context) {
-        self.context = context
-    }
+    lazy var log = Logger(actor: self)
 
-    // @actor
-    public func hello(replyTo: ActorRef<String>) {
-        context.log.info("hello")
+    public distributed func hello(replyTo: ActorRef<String>) {
+        log.info("hello")
         replyTo.tell("Hello")
     }
 
-    // @actor
-    public func makeTicket() {
-        context.log.info("makeTicket")
+    public distributed func makeTicket() {
+        log.info("makeTicket")
     }
 
-    // @actor
-    public func park() {
-        context.log.info("park")
+    public distributed func park() {
+        log.info("park")
     }
 }

@@ -12,6 +12,8 @@ var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
     "-Xfrontend", "-enable-experimental-distributed",
+    "-Xfrontend", "-validate-tbd-against-ir=none",
+    "-Xfrontend", "-disable-availability-checking", // FIXME: must remove this
 ]
 
 if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
@@ -49,15 +51,16 @@ var targets: [PackageDescription.Target] = [
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
         ]
+//        ,
+//        plugins: ["DistributedActorsGeneratorPlugin"]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Distributed Actors Generator
+    // MARK: SwiftPM Plugin: Distributed Actors Generator
 
     .executableTarget(
         name: "DistributedActorsGenerator",
         dependencies: [
-            "DistributedActors",
             .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -97,6 +100,9 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
             "ActorSingletonPlugin",
             "DistributedActorsTestKit",
+        ],
+        exclude: [
+          "DocumentationProtos/",
         ]
     ),
 
@@ -135,6 +141,16 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "ActorSingletonPluginTests",
         dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
+    ),
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+
+    .executableTarget(
+        name: "Playground",
+        dependencies: [
+          "DistributedActors",
+        ],
+        plugins: ["DistributedActorsGeneratorPlugin"]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -185,12 +201,17 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
             "SwiftBenchmarkTools",
         ],
-        exclude: ["README.md"]
+        exclude: [
+          "README.md",
+          "BenchmarkProtos/bench.proto",
+        ]
     ),
     .target(
         name: "SwiftBenchmarkTools",
         dependencies: ["DistributedActors"],
-        exclude: ["README_SWIFT.md"]
+        exclude: [
+          "README_SWIFT.md"
+        ]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -208,13 +229,17 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "CDistributedActorsAtomics",
         dependencies: [],
-        exclude: ["README.md"]
+        exclude: [
+          "README.md"
+        ]
     ),
 
     .target(
         name: "DistributedActorsConcurrencyHelpers",
         dependencies: ["CDistributedActorsAtomics"],
-        exclude: ["README.md"]
+        exclude: [
+          "README.md"
+        ]
     ),
 ]
 
@@ -227,7 +252,9 @@ var dependencies: [Package.Dependency] = [
 
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
-    // ~~~ workaround for backtraces ~~~
+//    .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.1"),
+
+    // ~~~ backtraces ~~~
     .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
 
     // ~~~ SSWG APIs ~~~
@@ -246,13 +273,8 @@ dependencies += [
 // swift-syntax is Swift version dependent, and added as such below
 #if swift(>=5.6)
 dependencies.append(
-//    .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a"))
-    .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a"))
+    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a")
 //    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main")
-)
-#elseif swift(>=5.5)
-dependencies.append(
-    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a")
 )
 #else
 fatalError("Only Swift 5.6+ is supported, because the dependency on the 'distributed actor' language feature")

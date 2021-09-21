@@ -316,7 +316,7 @@ extension ActorRef {
         case .guardian(let guardian):
             return guardian.system
         case .deadLetters(let deadLetters):
-            return deadLetters.system
+            return deadLetters.system // FIXME: do we really need this
         case .delegate(let delegate):
             return delegate.system
         case .remote(let remote):
@@ -421,7 +421,7 @@ public extension ActorRef where Message == DeadLetter {
 // MARK: Cell Delegate
 
 /// :nodoc: INTERNAL API: May change without prior notice.
-/// EXTENSION POINT: Can be used to offer `ActorRef`s to other "special" entities, such as other `ActorTransport`s etc.
+/// EXTENSION POINT: Can be used to offer `ActorRef`s to other "special" entities, such as other `_InternalActorTransport`s etc.
 ///
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.

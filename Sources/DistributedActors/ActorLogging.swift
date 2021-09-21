@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import DistributedActorsConcurrencyHelpers
 import Foundation
 import Logging
@@ -65,6 +66,19 @@ internal final class LoggingContext {
         } else {
             return self._storage
         }
+    }
+}
+
+extension Logger {
+
+    /// Create a logger specific to this actor.
+    // TODO(distributed): reconsider if this is the best pattern?
+    public init<Act: DistributedActor>(actor: Act) {
+        var log = Logger(label: "\(actor.id)")
+        if let address = actor.id.underlying as? ActorAddress {
+            log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(address.path)
+        }
+        self = log
     }
 }
 

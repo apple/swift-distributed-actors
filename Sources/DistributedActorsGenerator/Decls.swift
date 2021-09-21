@@ -14,13 +14,10 @@
 
 import SwiftSyntax
 
-struct ActorableTypeDecl {
+struct ActorTypeDecl {
     enum DeclType {
         case `protocol`
-        case `class`
-        case `struct`
-        case `enum`
-        case `extension`
+        case `distributedActor`
     }
 
     /// File where the actorable was defined
@@ -50,7 +47,7 @@ struct ActorableTypeDecl {
         }
     }
 
-    var generateCodableConformance: Bool
+    let generateCodableConformance: Bool = false
 
     var messageFullyQualifiedName: String {
         switch self.type {
@@ -69,16 +66,16 @@ struct ActorableTypeDecl {
 
     /// If this decl implements other actorable protocols, those should be included here
     /// Available only after post processing phase
-    var actorableProtocols: Set<ActorableTypeDecl> = []
+    var actorableProtocols: Set<ActorTypeDecl> = []
 
     /// Cleared and Actorable protocols are moved to actorableProtocols in post processing
     var inheritedTypes: Set<String> = []
 
     /// Those functions need to be made into message protocol and generate stuff for them
-    var funcs: [ActorFuncDecl] = []
+    var funcs: [DistributedFuncDecl] = []
 
     /// Only expected in case of a `protocol` for
-    var boxingFunc: ActorFuncDecl?
+    var boxingFunc: DistributedFuncDecl?
 
     /// Stores if the `receiveTerminated` implementation is `throws` or not
     /// The default is true since the protocols signature is such, however if users implement it without throws
@@ -159,12 +156,12 @@ struct ActorableTypeDecl {
 }
 
 // TODO: Identity should include module name
-extension ActorableTypeDecl: Hashable {
+extension ActorTypeDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.name)
     }
 
-    public static func == (lhs: ActorableTypeDecl, rhs: ActorableTypeDecl) -> Bool {
+    public static func == (lhs: ActorTypeDecl, rhs: ActorTypeDecl) -> Bool {
         if lhs.name != rhs.name {
             return false
         }
@@ -172,18 +169,18 @@ extension ActorableTypeDecl: Hashable {
     }
 }
 
-extension ActorableTypeDecl: Comparable {
-    public static func < (lhs: ActorableTypeDecl, rhs: ActorableTypeDecl) -> Bool {
+extension ActorTypeDecl: Comparable {
+    public static func < (lhs: ActorTypeDecl, rhs: ActorTypeDecl) -> Bool {
         lhs.name < rhs.name
     }
 }
 
-struct ActorFuncDecl {
+struct DistributedFuncDecl {
     let message: ActorableMessageDecl
 }
 
-extension ActorFuncDecl: Equatable {
-    public static func == (lhs: ActorFuncDecl, rhs: ActorFuncDecl) -> Bool {
+extension DistributedFuncDecl: Equatable {
+    public static func == (lhs: DistributedFuncDecl, rhs: DistributedFuncDecl) -> Bool {
         lhs.message == rhs.message
     }
 }
