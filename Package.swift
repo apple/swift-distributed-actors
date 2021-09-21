@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.6
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import class Foundation.ProcessInfo
@@ -244,9 +244,13 @@ dependencies += [
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
 ]
 // swift-syntax is Swift version dependent, and added as such below
-#if swift(>=5.5)
+#if swift(>=5.6)
 dependencies.append(
-    .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a"))
+    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-DEVELOPMENT-SNAPSHOT-2021-09-09-a")
+)
+#elseif swift(>=5.5)
+dependencies.append(
+    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a")
 )
 #else
 fatalError("Currently only Swift 5.5+ is supported, if you need earlier Swift support please reach out to the team.")
