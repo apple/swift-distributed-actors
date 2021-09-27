@@ -105,13 +105,6 @@ extension ActorSingletonPlugin: Plugin {
         return .success(())
     }
 
-//    public func stop(_ transport: ActorClusterTransport) async throws {
-//        self.singletonsLock.withLock {
-//            for (_, singleton) in self.singletons {
-//                try await singleton.stop(transport)
-//            }
-//        }
-//    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

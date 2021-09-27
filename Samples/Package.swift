@@ -3,6 +3,18 @@
 
 import PackageDescription
 
+var globalSwiftSettings: [SwiftSetting]
+
+var globalConcurrencyFlags: [String] = [
+  "-Xfrontend", "-enable-experimental-distributed",
+  "-Xfrontend", "-validate-tbd-against-ir=none",
+  "-Xfrontend", "-disable-availability-checking", // FIXME: must remove this
+]
+
+globalSwiftSettings = [
+  SwiftSetting.unsafeFlags(globalConcurrencyFlags),
+]
+
 var targets: [PackageDescription.Target] = [
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Samples
@@ -12,7 +24,11 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleDiningPhilosophers"
+        path: "Sources/SampleDiningPhilosophers",
+        exclude: [
+          "dining-philosopher-fsm.graffle",
+          "dining-philosopher-fsm.svg",
+        ]
     ),
     .executableTarget(
         name: "SampleGenActorsDiningPhilosophers",
@@ -89,7 +105,7 @@ var dependencies: [Package.Dependency] = [
 let package = Package(
     name: "swift-distributed-actors-samples",
     platforms: [
-        .macOS(.v10_11), // TODO: workaround for rdar://76035286
+        .macOS(.v10_15),
         .iOS(.v8),
         // ...
     ],
@@ -124,7 +140,16 @@ let package = Package(
 
     dependencies: dependencies,
 
-    targets: targets,
+    targets: targets.map { target in
+      var swiftSettings = target.swiftSettings ?? []
+      if target.type != .plugin {
+        swiftSettings.append(contentsOf: globalSwiftSettings)
+      }
+      if !swiftSettings.isEmpty {
+        target.swiftSettings = swiftSettings
+      }
+      return target
+    },
 
     cxxLanguageStandard: .cxx11
 )

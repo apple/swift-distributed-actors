@@ -133,6 +133,15 @@ public struct ClusterSettings {
     public var autoLeaderElection: LeadershipSelectionSettings = .lowestReachable(minNumberOfMembers: 2)
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Distributed Actor Calls
+
+    /// If no other timeout is specified, this timeout is applied to every distributed call.
+    /// A "distributed call" is any function call of a distributed function on a 'remote' distributed actor.
+    ///
+    /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
+    public var callTimeout: TimeAmount = .seconds(5)
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings
 
     /// If set, all communication with other nodes will be secured using TLS

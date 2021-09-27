@@ -20,7 +20,7 @@ import Logging
 @main
 public struct GenerateActorsCommand: ParsableCommand {
     @Option(help: "Print verbose information while analyzing and generating sources")
-    var logLevel: String = "info"
+    var logLevel: String = "trace" // ProcessInfo.processInfo.environment["SACT_GEN_LOGLEVEL"] ?? "info"
 
     var logLevelValue: Logger.Level {
         switch self.logLevel {

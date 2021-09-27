@@ -60,9 +60,6 @@ internal struct BoxedPlugin: AnyPlugin {
         self.underlying.stop(system)
     }
 
-//    func stop(_ transport: ActorClusterTransport) async throws {
-//        try await self.underlying.stop(transport)
-//    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

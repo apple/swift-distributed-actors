@@ -71,8 +71,8 @@ extension GenerateActors {
         }
     }
 
-    private func parseAll(filesToScan: [File], directoriesToScan: [Directory]) throws -> [ActorableTypeDecl] {
-        var unresolvedActorables: [ActorableTypeDecl] = []
+    private func parseAll(filesToScan: [File], directoriesToScan: [Directory]) throws -> [DistributedActorTypeDecl] {
+        var unresolvedActorables: [DistributedActorTypeDecl] = []
 
         try filesToScan.forEach { file in
             let actorablesInFile = try self.parse(fileToParse: file)
@@ -95,7 +95,7 @@ extension GenerateActors {
         return unresolvedActorables
     }
 
-    func parse(fileToParse: File) throws -> [ActorTypeDecl] {
+    func parse(fileToParse: File) throws -> [DistributedActorTypeDecl] {
         self.log.debug("Parsing: \(fileToParse.path)")
 
         let sourceFile = try SyntaxParser.parse(fileToParse.url)
@@ -115,14 +115,14 @@ extension GenerateActors {
 // MARK: Generating sources
 
 extension GenerateActors {
-    private func generateAll(_ actorables: [ActorableTypeDecl], in targetDirectory: Directory, buckets: Int) throws {
+    private func generateAll(_ actorables: [DistributedActorTypeDecl], in targetDirectory: Directory, buckets: Int) throws {
         try actorables.forEach { actorable in
             _ = try generateGenActorFile(for: actorable, in: targetDirectory, buckets: buckets)
             _ = try generateGenCodableFile(for: actorable, in: targetDirectory, buckets: buckets)
         }
     }
 
-    private func generateGenActorFile(for actorable: ActorTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
+    private func generateGenActorFile(for actorable: DistributedActorTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
         let targetFile = try self.computeTargetFile(for: actorable, in: targetDirectory, buckets: buckets)
 
         try targetFile.append(Rendering.generatedFileHeader)
@@ -145,7 +145,7 @@ extension GenerateActors {
     }
 
     /// Generate Codable conformances for the `Message` type -- until we don't have auto synthesis of it for enums with associated values.
-    private func generateGenCodableFile(for actorable: ActorableTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File? {
+    private func generateGenCodableFile(for actorable: DistributedActorTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File? {
         guard actorable.generateCodableConformance else {
             return nil // skip generating
         }
@@ -171,7 +171,7 @@ extension GenerateActors {
     }
 
     // simple bucketing based on the first letter
-    private func computeTargetFile(for actorable: ActorTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
+    private func computeTargetFile(for actorable: DistributedActorTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
         guard buckets > 0 else {
             preconditionFailure("invalid buckets. \(buckets) must be > 0")
         }

@@ -31,8 +31,13 @@ distributed actor TestDistributedActor {
     }
 
     distributed func greet(name: String) -> String {
-        print("ACTOR [\(self)] RECEIVED \(#function)")
+        print("ACTOR [\(self) \((self.id.underlying as! ActorAddress).detailedDescription)] RECEIVED \(#function)")
+        (self.actorTransport as! ActorSystem).log.warning("ACTOR [\(self) \((self.id.underlying as! ActorAddress).detailedDescription)] RECEIVED \(#function)")
         return "Hello, \(name)!"
+    }
+
+    private func priv() -> String {
+        "ignore this in source gen"
     }
 }
 
@@ -42,9 +47,16 @@ distributed actor TestDistributedActor {
 final class DistributedActorsGeneratorTests: ClusteredActorSystemsXCTestCase {
     // The Tests/GenActorsTests/ directory
     var testFolder = try! File(path: #file).parent!.parent!.subfolder(at: "DistributedActorsGeneratorTests")
-
     override var captureLogs: Bool {
         false
+    }
+
+    override func configureLogCapture(settings: inout LogCapture.Settings) {
+        settings.excludeActorPaths = [
+            "/system/cluster/swim",
+            "/system/cluster",
+            "/system/cluster/gossip",
+        ]
     }
 
     var first: ActorSystem!
@@ -52,8 +64,14 @@ final class DistributedActorsGeneratorTests: ClusteredActorSystemsXCTestCase {
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.first = self.setUpNode("first")
-        self.second = self.setUpNode("second")
+        self.first = self.setUpNode("first") { settings in
+            settings.cluster.callTimeout = .seconds(1)
+            settings.serialization.register(TestDistributedActor.Message.self)
+        }
+        self.second = self.setUpNode("second") { settings in
+            settings.cluster.callTimeout = .seconds(1)
+            settings.serialization.register(TestDistributedActor.Message.self)
+        }
 
         self.first.cluster.join(node: self.second.cluster.uniqueNode.node)
         try! assertAssociated(first, withAtLeast: second.cluster.uniqueNode)
@@ -77,14 +95,19 @@ final class DistributedActorsGeneratorTests: ClusteredActorSystemsXCTestCase {
 
     func test_TestActor_greet_remote() async throws {
         let actor: TestDistributedActor = TestDistributedActor(transport: first)
-        let remote: TestDistributedActor = try TestDistributedActor.resolve(actor.id, using: second)
+        let addressOnFirst = actor.id.underlying as! ActorAddress
+        pinfo("address on '\(first.name)': \(addressOnFirst.detailedDescription)")
 
+        let actuallyRemoteIdentity = AnyActorIdentity(addressOnFirst._asRemote) // FIXME(distributed: this is a workaround because of how cluster addresses and resolve works; this won't be needed
+
+        let remote = try TestDistributedActor.resolve(actuallyRemoteIdentity /* TODO: use actor.id here */, using: second)
         let addressOnSecond = remote.id.underlying as! ActorAddress
         pinfo("address on '\(second.name)': \(addressOnSecond.detailedDescription)")
         addressOnSecond._isRemote.shouldBeTrue()
         second.log.warning("Resolved: \((remote.id.underlying as! ActorAddress).detailedDescription)")
 
         let reply = try await remote.greet(name: "Caplin")
+        pinfo("GOT REPLY: \(reply)")
         reply.shouldEqual("Hello, Caplin!")
     }
 }

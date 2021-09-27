@@ -14,7 +14,7 @@
 
 import SwiftSyntax
 
-struct ActorTypeDecl {
+struct DistributedActorTypeDecl {
     enum DeclType {
         case `protocol`
         case `distributedActor`
@@ -66,7 +66,7 @@ struct ActorTypeDecl {
 
     /// If this decl implements other actorable protocols, those should be included here
     /// Available only after post processing phase
-    var actorableProtocols: Set<ActorTypeDecl> = []
+    var actorableProtocols: Set<DistributedActorTypeDecl> = []
 
     /// Cleared and Actorable protocols are moved to actorableProtocols in post processing
     var inheritedTypes: Set<String> = []
@@ -156,12 +156,12 @@ struct ActorTypeDecl {
 }
 
 // TODO: Identity should include module name
-extension ActorTypeDecl: Hashable {
+extension DistributedActorTypeDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.name)
     }
 
-    public static func == (lhs: ActorTypeDecl, rhs: ActorTypeDecl) -> Bool {
+    public static func == (lhs: DistributedActorTypeDecl, rhs: DistributedActorTypeDecl) -> Bool {
         if lhs.name != rhs.name {
             return false
         }
@@ -169,8 +169,8 @@ extension ActorTypeDecl: Hashable {
     }
 }
 
-extension ActorTypeDecl: Comparable {
-    public static func < (lhs: ActorTypeDecl, rhs: ActorTypeDecl) -> Bool {
+extension DistributedActorTypeDecl: Comparable {
+    public static func < (lhs: DistributedActorTypeDecl, rhs: DistributedActorTypeDecl) -> Bool {
         lhs.name < rhs.name
     }
 }

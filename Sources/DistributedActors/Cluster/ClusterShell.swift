@@ -337,7 +337,8 @@ internal class ClusterShell {
     }
 
     private var behavior: Behavior<Message> {
-        self.bind()
+        pinfo("HELLO")
+        return self.bind()
     }
 
     private let props: Props =
@@ -354,7 +355,9 @@ extension ClusterShell {
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Message> {
-        .setup { context in
+        pinfo("BIND cluster return behavior...")
+        return .setup { context in
+            pinfo("CANONICALIZED cluster")
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 

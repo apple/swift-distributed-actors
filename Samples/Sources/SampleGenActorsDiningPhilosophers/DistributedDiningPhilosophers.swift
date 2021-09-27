@@ -41,18 +41,18 @@ struct DistributedDiningPhilosophers {
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
-        let fork1 = try systemA.spawn("fork1", Fork.init)
-        let fork2 = try systemB.spawn("fork2", Fork.init)
-        let fork3 = try systemB.spawn("fork3", Fork.init)
-        let fork4 = try systemC.spawn("fork4", Fork.init)
-        let fork5 = try systemC.spawn("fork5", Fork.init)
+        let fork1 = Fork(name: "fork-1", transport: systemA)
+        let fork2 = Fork(name: "fork-2", transport: systemB)
+        let fork3 = Fork(name: "fork-3", transport: systemB)
+        let fork4 = Fork(name: "fork-4", transport: systemC)
+        let fork5 = Fork(name: "fork-5", transport: systemC)
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        _ = try systemA.spawn("Konrad") { Philosopher(context: $0, leftFork: fork5, rightFork: fork1) }
-        _ = try systemB.spawn("Dario") { Philosopher(context: $0, leftFork: fork1, rightFork: fork2) }
-        _ = try systemB.spawn("Johannes") { Philosopher(context: $0, leftFork: fork2, rightFork: fork3) }
-        _ = try systemC.spawn("Cory") { Philosopher(context: $0, leftFork: fork3, rightFork: fork4) }
-        _ = try systemC.spawn("Norman") { Philosopher(context: $0, leftFork: fork4, rightFork: fork5) }
+        let philosopher1 = Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: systemA)
+        let philosopher2 = Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: systemB)
+        let philosopher3 = Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: systemB)
+        let philosopher4 = Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: systemC)
+        let philosopher5 = Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: systemC)
 
         try systemA.park(atMost: time)
     }

@@ -152,6 +152,7 @@ extension ActorAddress {
 extension ActorAddress {
     /// :nodoc:
     @inlinable
+    @available(*, deprecated, message: "The isRemote/Local information is now stored inside 'distributed actor', no need for these")
     public var _isLocal: Bool {
         switch self._location {
         case .local: return true
@@ -161,8 +162,35 @@ extension ActorAddress {
 
     /// :nodoc:
     @inlinable
+    @available(*, deprecated, message: "The isRemote/Local information is now stored inside 'distributed actor', no need for these")
     public var _isRemote: Bool {
         !self._isLocal
+    }
+
+    /// :nodoc:
+    @inlinable
+    @available(*, deprecated, message: "Temporary workaround until we move completely to new infra for 'distributed actor'")
+    public var _asRemote: Self {
+        let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        print("""
+              AS REMOTE: 
+                was local: \(self.detailedDescription)
+                remote   : \(remote.detailedDescription)
+              """)
+        return remote
+    }
+
+    /// :nodoc:
+    @inlinable
+    @available(*, deprecated, message: "Temporary workaround until we move completely to new infra for 'distributed actor'")
+    public var _asLocal: Self {
+        let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        print("""
+              AS LOCAL: 
+                was remote: \(self.detailedDescription)
+                local     : \(local.detailedDescription)
+              """)
+        return local
     }
 }
 

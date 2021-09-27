@@ -50,12 +50,6 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
     }
 }
 
-/// // Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.
-/// // This type is used by serialization to notice that a message shall be delivered as dead letter
-/// // (rather than attempting to cast the deserialized payload to the "found type" (which would be `Never` or `MessageForDeadRecipient`).
-// @usableFromInline
-// internal protocol MessageForDeadRecipient: NonTransportableActorMessage {}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSystem.deadLetters
 
@@ -90,38 +84,6 @@ extension ActorSystem {
         self._deadLetters
     }
 }
-
-//extension ActorClusterTransport {
-//    /// Dead letters reference dedicated to a specific address.
-//    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
-//        // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
-//
-//        guard recipient.uniqueNode == self.settings.cluster.uniqueBindNode else {
-//            /// While it should not realistically happen that a dead letter is obtained for a remote reference,
-//            /// we do allow for construction of such ref. It can be used to signify a ref is known to resolve to
-//            /// a known to be down cluster node.
-//            ///
-//            /// We don't apply the special /dead path, as to not complicate diagnosing who actually terminated or if we were accidentally sent
-//            /// a remote actor ref that was dead(!)
-//            return ActorRef(.deadLetters(.init(self.log, address: recipient, transport: self))).adapt(from: Message.self)
-//        }
-//
-//        let localRecipient: ActorAddress
-//        if recipient.path.segments.first == ActorPath._dead.segments.first {
-//            // drop the node from the address; and we know the pointed at ref is already dead; do not prefix it again
-//            localRecipient = ActorAddress(local: self.settings.cluster.uniqueBindNode, path: recipient.path, incarnation: recipient.incarnation)
-//        } else {
-//            // drop the node from the address; and prepend it as known-to-be-dead
-//            localRecipient = ActorAddress(local: self.settings.cluster.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
-//        }
-//        return ActorRef(.deadLetters(.init(self.log, address: localRecipient, transport: self))).adapt(from: Message.self)
-//    }
-//
-//    /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
-//    public var deadLetters: ActorRef<DeadLetter> {
-//        self._deadLetters
-//    }
-//}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Dead letter office
@@ -184,14 +146,6 @@ public final class DeadLetterOffice {
             system?.isShuttingDown ?? false
         }
     }
-
-//    init(_ log: Logger, address: ActorAddress, transport: ActorClusterTransport?) {
-//        self.log = log
-//        self._address = address
-//        self.isShuttingDown = { [weak transport] in
-//            transport?.isShuttingDown ?? false
-//        }
-//    }
 
     @usableFromInline
     var address: ActorAddress {

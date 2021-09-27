@@ -33,7 +33,7 @@ enum Rendering {
 
 extension Rendering {
     struct ActorShellTemplate: Renderable {
-        let actorable: ActorTypeDecl
+        let actorable: DistributedActorTypeDecl
 
         static let messageForNonProtocolTemplate = Template(
             templateString:
@@ -90,8 +90,10 @@ extension Rendering {
             extension {{baseName}} {
                 // TODO(distributed): this is unfortunate but we can't seem to implement this in the library as we can't get to the specific Message type...
                 public static func _spawnAny(instance: {{baseName}}, on system: ActorSystem) throws -> AddressableActorRef {
-                    let naming = ActorNaming.prefixed(with: String(describing: Self.self)) 
-                    let ref = try system.spawn(naming, Self.makeBehavior(instance: instance))
+                    let ref = system._spawnDistributedActor( // TODO(distributed): hopefully avoid surfacing this function entirely
+                        Self.makeBehavior(instance: instance), 
+                        identifiedBy: instance.id
+                    )
                     return ref.asAddressable
                 }
 
@@ -287,7 +289,7 @@ extension Rendering {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Rendering extensions
 
-extension ActorTypeDecl {
+extension DistributedActorTypeDecl {
     /// Render if we should store this as `let`.
     var renderStoreInstanceAs: String {
         "let"
@@ -389,7 +391,7 @@ extension ActorableMessageDecl {
 //        printer.print("}")
 //    }
 
-    func renderFunc(printer: inout CodePrinter, actor: ActorTypeDecl, printBody: (inout CodePrinter) -> Void) {
+    func renderFunc(printer: inout CodePrinter, actor: DistributedActorTypeDecl, printBody: (inout CodePrinter) -> Void) {
         self.renderRemoteFuncDecl(printer: &printer, actor: actor)
         printer.print(" {")
         printer.indent()
@@ -398,7 +400,7 @@ extension ActorableMessageDecl {
         printer.print("}")
     }
 
-    func renderTellFuncDecl(printer: inout CodePrinter, actor: ActorTypeDecl) {
+    func renderTellFuncDecl(printer: inout CodePrinter, actor: DistributedActorTypeDecl) {
         let access = self.access.map { "\($0) " } ?? ""
 
         printer.print("\(access)func \(self.name)", skipNewline: true)
@@ -438,7 +440,7 @@ extension ActorableMessageDecl {
         printer.print("  @_dynamicReplacement(for:\(replacedFuncIdent))")
     }
 
-    func renderRemoteFuncDecl(printer: inout CodePrinter, actor: ActorTypeDecl) {
+    func renderRemoteFuncDecl(printer: inout CodePrinter, actor: DistributedActorTypeDecl) {
         self.renderDynamicFunctionReplacementAttr(printer: &printer)
 
         let access = self.access.map { "\($0) " } ?? ""
@@ -570,7 +572,7 @@ extension ActorableMessageDecl {
     }
 
     /// Implements the generated func _remote_method(...) by passing the parameters as a message, by telling or asking.
-    func renderTellOrAskMessage(boxWith boxProtocol: ActorTypeDecl? = nil, printer: inout CodePrinter) {
+    func renderTellOrAskMessage(boxWith boxProtocol: DistributedActorTypeDecl? = nil, printer: inout CodePrinter) {
 
         // TODO: make this nicer... the ID could serve as the ref
         printer.print("guard let system = self.actorTransport as? ActorSystem else {")
@@ -592,28 +594,28 @@ extension ActorableMessageDecl {
 
         switch self.returnType {
         case .nioEventLoopFuture(let futureValueType):
-            printer.print("return try await ref.ask(for: Result<\(futureValueType), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.print("return try await ref.ask(for: Result<\(futureValueType), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
         case .actorReply(let replyValueType), .askResponse(let replyValueType):
-            printer.print("return try await ref.ask(for: Result<\(replyValueType), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.print("return try await ref.ask(for: Result<\(replyValueType), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
         case .type(let t):
             if self.throwing {
-                printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+                printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
                 printer.indent()
             } else {
-                printer.print("return try await ref.ask(for: \(t).self, timeout: .effectivelyInfinite) { _replyTo in")
+                printer.print("return try await ref.ask(for: \(t).self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
                 printer.indent()
             }
         case .result(let t, _):
-            printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
         case .void:
-            printer.print("try await ref.ask(for: Result<_Done, ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.print("try await ref.ask(for: Result<_Done, ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             // printer.print("ref.tell(", skipNewline: true)
             printer.indent()
         case .behavior(let t):
-            printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             // printer.print("ref.tell(", skipNewline: true)
             printer.indent()
         }
@@ -631,7 +633,7 @@ extension ActorableMessageDecl {
 //        }
     }
 
-    func renderPassMessage(boxWith boxProtocol: ActorTypeDecl?, skipNewline: Bool, printer: inout CodePrinter) {
+    func renderPassMessage(boxWith boxProtocol: DistributedActorTypeDecl?, skipNewline: Bool, printer: inout CodePrinter) {
         if let boxName = boxProtocol?.boxFuncName {
             printer.print("Act.", skipNewline: true)
             printer.print(boxName, skipNewline: true)
@@ -725,13 +727,13 @@ extension DistributedFuncDecl {
 //        }
 //    }
 
-    func renderRemoteImplFunc(_ actor: ActorTypeDecl, printer: inout CodePrinter) throws {
+    func renderRemoteImplFunc(_ actor: DistributedActorTypeDecl, printer: inout CodePrinter) throws {
         self.message.renderFunc(printer: &printer, actor: actor) { printer in
             message.renderTellOrAskMessage(boxWith: nil, printer: &printer)
         }
     }
 
-    func renderBoxFuncTell(_ actorableProtocol: ActorTypeDecl, printer: inout CodePrinter) throws {
+    func renderBoxFuncTell(_ actorableProtocol: DistributedActorTypeDecl, printer: inout CodePrinter) throws {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
 
         self.message.renderFunc(printer: &printer, actor: actorableProtocol) { printer in
@@ -740,7 +742,7 @@ extension DistributedFuncDecl {
     }
 
     // TODO: dedup with the boxed one
-    func renderFuncSwitchCase(partOfProtocol ownerProtocol: ActorTypeDecl?, printer: inout CodePrinter) throws {
+    func renderFuncSwitchCase(partOfProtocol ownerProtocol: DistributedActorTypeDecl?, printer: inout CodePrinter) throws {
         printer.print("case ", skipNewline: true)
 
         if let boxProto = ownerProtocol {

@@ -17,7 +17,7 @@ import SwiftSyntax
 
 extension Rendering {
     struct MessageCodableTemplate: Renderable {
-        let actorable: ActorTypeDecl
+        let actorable: DistributedActorTypeDecl
 
         static let messageCodableConformanceTemplate = Template(
             templateString:

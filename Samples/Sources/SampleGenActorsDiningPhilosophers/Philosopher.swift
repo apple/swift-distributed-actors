@@ -1,27 +1,44 @@
-import DistributedActors
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
-final class Philosopher: Actorable {
-    private let context: Myself.Context
-    private let leftFork: Actor<Fork>
-    private let rightFork: Actor<Fork>
+import _Distributed
+import DistributedActors
+import Logging
+
+distributed actor Philosopher {
+    private let log: Logger
+
+    private let name: String
+    private let leftFork: Fork
+    private let rightFork: Fork
     private var state: State = .thinking
 
-    init(context: Myself.Context, leftFork: Actor<Fork>, rightFork: Actor<Fork>) {
-        self.context = context
+    init(name: String, leftFork: Fork, rightFork: Fork, transport: ActorTransport) {
+        self.name = name
         self.leftFork = leftFork
         self.rightFork = rightFork
+        self.log = Logger(label: name)
+
+        Task.detached {
+//            context.watch(self.leftFork)
+//            context.watch(self.rightFork)
+            log.info("\(context.address.name) joined the table!")
+            try await self.think()
+        }
     }
 
-    // @actor
-    func preStart(context: Actor<Philosopher>.Context) {
-        context.watch(self.leftFork)
-        context.watch(self.rightFork)
-        context.log.info("\(context.address.name) joined the table!")
-        self.think()
-    }
-
-    // @actor
-    func think() {
+    distributed func think() {
         if case .takingForks(let leftIsTaken, let rightIsTaken) = self.state {
             if leftIsTaken {
                 leftFork.putBack()
@@ -36,13 +53,12 @@ final class Philosopher: Actorable {
 
         self.state = .thinking
         self.context.timers.startSingle(key: TimerKey("think"), message: .attemptToTakeForks, delay: .seconds(1))
-        self.context.log.info("\(self.context.address.name) is thinking...")
+        self.log.info("\(self.context.address.name) is thinking...")
     }
 
-    // @actor
-    func attemptToTakeForks() {
+    distributed func attemptToTakeForks() {
         guard self.state == .thinking else {
-            self.context.log.error("\(self.context.address.name) tried to take a fork but was not in the thinking state!")
+            self.log.error("\(self.context.address.name) tried to take a fork but was not in the thinking state!")
             return
         }
 
@@ -52,12 +68,12 @@ final class Philosopher: Actorable {
             self.context.onResultAsync(of: fork.take(), timeout: .seconds(5)) { result in
                 switch result {
                 case .failure(let error):
-                    self.context.log.warning("Failed to reach for fork! Error: \(error)")
+                    self.log.warning("Failed to reach for fork! Error: \(error)")
                 case .success(let didTakeFork):
                     if didTakeFork {
                         self.forkTaken(fork)
                     } else {
-                        self.context.log.info("\(self.context.address.name) wasn't able to take a fork!")
+                        self.log.info("\(self.context.address.name) wasn't able to take a fork!")
                         self.think()
                     }
                 }
@@ -69,11 +85,10 @@ final class Philosopher: Actorable {
     }
 
     /// Message sent to oneself after a timer exceeds and we're done `eating` and can become `thinking` again.
-    // @actor
-    func stopEating() {
+    distributed func stopEating() {
         self.leftFork.putBack()
         self.rightFork.putBack()
-        self.context.log.info("\(self.context.address.name) is done eating and replaced both forks!")
+        self.log.info("\(self.context.address.name) is done eating and replaced both forks!")
         self.think()
     }
 
@@ -84,20 +99,20 @@ final class Philosopher: Actorable {
         }
 
         guard case .takingForks(let leftForkIsTaken, let rightForkIsTaken) = self.state else {
-            self.context.log.error("Received fork \(fork) but was not in .takingForks state. State was \(self.state)! Ignoring...")
+            self.log.error("Received fork \(fork) but was not in .takingForks state. State was \(self.state)! Ignoring...")
             fork.putBack()
             return
         }
 
         switch fork {
         case self.leftFork:
-            self.context.log.info("\(self.context.address.name) received their left fork!")
+            self.log.info("\(self.context.address.name) received their left fork!")
             self.state = .takingForks(leftTaken: true, rightTaken: rightForkIsTaken)
         case self.rightFork:
-            self.context.log.info("\(self.context.address.name) received their right fork!")
+            self.log.info("\(self.context.address.name) received their right fork!")
             self.state = .takingForks(leftTaken: leftForkIsTaken, rightTaken: true)
         default:
-            self.context.log.error("Received unknown fork! Got: \(fork). Known forks: \(self.leftFork), \(self.rightFork)")
+            self.log.error("Received unknown fork! Got: \(fork). Known forks: \(self.leftFork), \(self.rightFork)")
         }
 
         if case .takingForks(true, true) = self.state {
@@ -107,8 +122,8 @@ final class Philosopher: Actorable {
 
     private func becomeEating() {
         self.state = .eating
-        self.context.log.info("\(self.context.address.name) began eating!")
-        self.context.timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
+        self.log.info("\(self.context.address.name) began eating!")
+        (self.actorTransport as! ActorSystem).timers.startSingle(key: TimerKey("eat"), message: .stopEating, delay: .seconds(3))
     }
 }
 

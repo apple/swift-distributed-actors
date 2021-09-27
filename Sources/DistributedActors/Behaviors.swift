@@ -546,7 +546,13 @@ public extension Behavior {
         case .ignore: fatalError("Illegal attempt to interpret message with .ignore behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
         case .unhandled: fatalError("Illegal attempt to interpret message with .unhandled behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
 
-        case .setup: fatalError("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket.", file: file, line: line)
+        case .setup:
+            return fatalErrorBacktrace("""
+                                       Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
+                                       Message: \(message): \(type(of: message))
+                                       Actor address: \(context.address.detailedDescription)
+                                       System: \(context.system)
+                                       """, file: file, line: line)
 
         case .stop:
             return .unhandled
