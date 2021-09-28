@@ -14,7 +14,11 @@
 
 import DistributedActors
 
-struct DistributedDiningPhilosophers {
+final class DistributedDiningPhilosophers {
+
+    private var forks: [Fork] = []
+    private var philosophers: [Philosopher] = []
+
     func run(for time: TimeAmount) throws {
         let systemA = ActorSystem("DistributedPhilosophers") { settings in
             settings.cluster.enabled = true
@@ -41,19 +45,29 @@ struct DistributedDiningPhilosophers {
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
+        // Node A
         let fork1 = Fork(name: "fork-1", transport: systemA)
+        // Node B
         let fork2 = Fork(name: "fork-2", transport: systemB)
         let fork3 = Fork(name: "fork-3", transport: systemB)
+        // Node C
         let fork4 = Fork(name: "fork-4", transport: systemC)
         let fork5 = Fork(name: "fork-5", transport: systemC)
+        self.forks = [fork1, fork2, fork3, fork4, fork5]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        let philosopher1 = Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: systemA)
-        let philosopher2 = Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: systemB)
-        let philosopher3 = Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: systemB)
-        let philosopher4 = Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: systemC)
-        let philosopher5 = Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: systemC)
+        self.philosophers = [
+            // Node A
+            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: systemA),
+            // Node B
+            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: systemB),
+            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: systemB),
+            // Node C
+            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: systemC),
+            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: systemC),
+        ]
 
         try systemA.park(atMost: time)
+
     }
 }

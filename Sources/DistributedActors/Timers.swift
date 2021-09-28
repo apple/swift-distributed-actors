@@ -15,9 +15,10 @@
 import Dispatch
 import Logging
 import struct NIO.TimeAmount
+import _Distributed
 
 @usableFromInline
-struct Timer<Message> {
+struct Timer<Message> { // FIXME(distributed): deprecate and remove in favor of DistributedActorTimers
     @usableFromInline
     let key: TimerKey
     @usableFromInline
@@ -34,7 +35,7 @@ struct Timer<Message> {
 struct TimerEvent {
     let key: TimerKey
     let generation: Int
-    let owner: AddressableActorRef
+    let owner: ActorAddress
 }
 
 /// A `TimerKey` is used to identify a timer. It can be stored and re-used.
@@ -78,7 +79,7 @@ extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation
     }
 }
 
-public class Timers<Message: ActorMessage> {
+public final class Timers<Message: ActorMessage> {
     @usableFromInline
     internal var timerGen: Int = 0
 
@@ -157,7 +158,7 @@ public class Timers<Message: ActorMessage> {
         self.cancel(for: key)
 
         let generation = self.nextTimerGen()
-        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.asAddressable)
+        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.address)
         let handle: Cancelable
         let cb = self.timerCallback
         if repeated {

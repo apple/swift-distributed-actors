@@ -193,7 +193,7 @@ extension AskResponse: AsyncResult {
 
     /// Be very careful with using this as the resume will not run on the ActorSystem provided actor context!
     /// // TODO(distributed): this will be solved when we move to swift concurrency as the actor runtime
-    public var value: Value {
+    public var _value: Value {
         get async throws {
             try await withCheckedThrowingContinuation { cc in
                 _onComplete {

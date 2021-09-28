@@ -13,20 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import _Distributed
 
-let system = ActorSystem()
-
-let greeter: Actor<Greeter> = try! system.spawn("greeter", Greeter.init)
-
-greeter.greet(name: "Caplin")
-greeter.greet(name: "Caplin")
-greeter.greet(name: "Caplin")
-greeter.greet(name: "Caplin")
-greeter.greet(name: "Caplin")
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: De-sugared
-
-greeter.ref.tell(.greet(name: "Caplin"))
-
-Thread.sleep(.seconds(1))
+distributed actor Greeter {
+    distributed func greet(name: String) {
+        print("Hello \(name)")
+    }
+}

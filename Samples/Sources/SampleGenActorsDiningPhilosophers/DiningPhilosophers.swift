@@ -14,7 +14,11 @@
 
 import DistributedActors
 
-struct DiningPhilosophers {
+final class DiningPhilosophers {
+
+    private var forks: [Fork] = []
+    private var philosophers: [Philosopher] = []
+
     func run(for time: TimeAmount) throws {
         let system = ActorSystem("Philosophers")
 
@@ -24,13 +28,16 @@ struct DiningPhilosophers {
         let fork3 = Fork(name: "fork-3", transport: system)
         let fork4 = Fork(name: "fork-4", transport: system)
         let fork5 = Fork(name: "fork-5", transport: system)
+        self.forks = [fork1, fork2, fork3, fork4, fork5]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        let philosopher1 = Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: system)
-        let philosopher2 = Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: system)
-        let philosopher3 = Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: system)
-        let philosopher4 = Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: system)
-        let philosopher5 = Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: system)
+        self.philosophers = [
+            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: system),
+            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: system),
+            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: system),
+            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: system),
+            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: system),
+        ]
 
         Thread.sleep(time)
     }

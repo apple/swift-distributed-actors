@@ -623,7 +623,7 @@ extension ActorableMessageDecl {
 //        if isAsk {
             self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
             printer.outdent()
-            printer.print("}.value")
+            printer.print("}._value")
 //            printer.outdent()
 //            printer.print(")")
 //        } else {
