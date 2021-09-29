@@ -56,7 +56,9 @@ internal enum POSIXProcessUtils {
 
         defer {
             for pair in envp ..< envp + env.count {
-                free(UnsafeMutableRawPointer(pair.pointee))
+                if let pointee = pair.pointee {
+                    free(UnsafeMutableRawPointer(pointee))
+                }
             }
             envp.deallocate()
         }
