@@ -187,11 +187,13 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActors",
             "SwiftBenchmarkTools",
-        ]
+        ],
+        exclude: ["README.md"]
     ),
     .target(
         name: "SwiftBenchmarkTools",
-        dependencies: ["DistributedActors"]
+        dependencies: ["DistributedActors"],
+        exclude: ["README_SWIFT.md"]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -208,12 +210,14 @@ var targets: [PackageDescription.Target] = [
 
     .target(
         name: "CDistributedActorsAtomics",
-        dependencies: []
+        dependencies: [],
+        exclude: ["README.md"]
     ),
 
     .target(
         name: "DistributedActorsConcurrencyHelpers",
-        dependencies: ["CDistributedActorsAtomics"]
+        dependencies: ["CDistributedActorsAtomics"],
+        exclude: ["README.md"]
     ),
 ]
 
@@ -222,7 +226,7 @@ var dependencies: [Package.Dependency] = [
 
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
+    .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.16.1"),
 
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
