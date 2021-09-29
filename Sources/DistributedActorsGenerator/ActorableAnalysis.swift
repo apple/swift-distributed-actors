@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import Files
 import Foundation
 import Logging
 import SwiftSyntax
@@ -27,7 +26,7 @@ let RST = "\u{001B}[0;0m"
 final class GatherActorables: SyntaxVisitor {
     var log: Logger
 
-    let path: File
+    let file: File
 
     var imports: [String] = []
 
@@ -37,8 +36,8 @@ final class GatherActorables: SyntaxVisitor {
     // Stack of types a declaration is nested in. E.g. an actorable struct declared in an enum for namespacing.
     var nestingStack: [String] = []
 
-    init(_ path: File, _ logLevel: Logger.Level) {
-        self.path = path
+    init(_ file: File, _ logLevel: Logger.Level) {
+        self.file = file
         self.log = Logger(label: "\(GatherActorables.self)")
         self.log.logLevel = logLevel
     }
@@ -70,7 +69,7 @@ final class GatherActorables: SyntaxVisitor {
         }
 
         self.wipActorable = ActorableTypeDecl(
-            sourceFile: self.path,
+            sourceFile: self.file,
             type: type,
             name: name,
             generateCodableConformance: true
@@ -81,7 +80,7 @@ final class GatherActorables: SyntaxVisitor {
         }
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
-        self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path) ...")
+        self.log.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.file.path) ...")
 
         return .visitChildren
     }
@@ -183,7 +182,7 @@ final class GatherActorables: SyntaxVisitor {
         }
 
         // TODO: It could be interesting to express actors as enums, that would be their "states"
-        fatalError("Enums cannot be Actorable, define [\(name)] (in \(self.path)) as a struct or class instead. Offending node: \(node)")
+        fatalError("Enums cannot be Actorable, define [\(name)] (in \(self.file)) as a struct or class instead. Offending node: \(node)")
     }
 
     override func visitPost(_ node: EnumDeclSyntax) {

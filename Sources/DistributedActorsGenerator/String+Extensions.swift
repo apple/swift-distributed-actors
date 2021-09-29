@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -11,6 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+
+import Foundation
 
 extension String {
     func findFirstNot(character: Character) -> String.Index? {
@@ -43,5 +45,13 @@ extension String {
         let first = self.findFirstNot(character: character) ?? startIndex
         let last = self.findLastNot(character: character) ?? endIndex
         return String(self[first ..< last])
+    }
+    
+    func expandingTildeInPath(fileManager: FileManager = FileManager.default) -> String {
+        var path = self
+        if path.hasPrefix("~") {
+            path = fileManager.homeDirectoryForCurrentUser.path + path.dropFirst()
+        }
+        return path
     }
 }

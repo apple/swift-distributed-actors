@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,7 +14,6 @@
 
 import ArgumentParser
 import DistributedActors
-import Files
 import Foundation
 import Logging
 import SwiftSyntax
@@ -29,18 +28,18 @@ final class GenerateActors {
         self.printGenerated = printGenerated
     }
 
-    public func run(sourceDirectory: Folder, targetDirectory: Folder, buckets: Int, targets: [String] = []) throws {
+    public func run(sourceDirectory: Directory, targetDirectory: Directory, buckets: Int, targets: [String] = []) throws {
         var sourceDirectory = sourceDirectory
-        if sourceDirectory.containsSubfolder(named: "Sources") {
-            sourceDirectory = try sourceDirectory.subfolder(at: "Sources")
+        if sourceDirectory.hasSubdirectory(named: "Sources") {
+            sourceDirectory = try sourceDirectory.subdirectory(at: "Sources")
         }
 
-        let filteredSourceDirectories = try targets.map { try sourceDirectory.subfolder(at: $0) }
+        let filteredSourceDirectories = try targets.map { try sourceDirectory.subdirectory(at: $0) }
         let foldersToScan = !filteredSourceDirectories.isEmpty ? filteredSourceDirectories : [sourceDirectory]
 
         self.cleanAll(from: targetDirectory)
 
-        let unresolvedActorables = try parseAll(filesToScan: [], foldersToScan: foldersToScan)
+        let unresolvedActorables = try parseAll(filesToScan: [], directoriesToScan: foldersToScan)
 
         // resolves protocol adoption across files; e.g. a protocol defined in another file can be implemented in another
         // TODO: does not work cross module yet (it would break)
@@ -59,7 +58,7 @@ final class GenerateActors {
 // MARK: Parsing sources
 
 extension GenerateActors {
-    private func cleanAll(from directory: Folder) {
+    private func cleanAll(from directory: Directory) {
         self.log.info("Cleaning up \(directory.path)")
         directory.files.forEach { file in
             do {
@@ -70,7 +69,7 @@ extension GenerateActors {
         }
     }
 
-    private func parseAll(filesToScan: [File], foldersToScan: [Folder]) throws -> [ActorableTypeDecl] {
+    private func parseAll(filesToScan: [File], directoriesToScan: [Directory]) throws -> [ActorableTypeDecl] {
         var unresolvedActorables: [ActorableTypeDecl] = []
 
         try filesToScan.forEach { file in
@@ -78,10 +77,10 @@ extension GenerateActors {
             unresolvedActorables.append(contentsOf: actorablesInFile)
         }
 
-        try foldersToScan.forEach { folder in
-            self.log.debug("Scanning [\(folder.path)] for actorables...")
-            let actorFilesToScan = folder.files.recursive.filter { f in
-                f.extension?.lowercased() == "swift"
+        try directoriesToScan.forEach { directory in
+            self.log.debug("Scanning [\(directory.path)] for actorables...")
+            let actorFilesToScan = directory.files.recursive.filter { f in
+                f.extension.lowercased() == "swift"
             }.filter {
                 !self.isGeneratedFile(file: $0)
             }
@@ -97,11 +96,9 @@ extension GenerateActors {
     func parse(fileToParse: File) throws -> [ActorableTypeDecl] {
         self.log.debug("Parsing: \(fileToParse.path)")
 
-        let url = URL(fileURLWithPath: fileToParse.path)
-        let sourceFile = try SyntaxParser.parse(url)
+        let sourceFile = try SyntaxParser.parse(fileToParse.url)
 
-        let path = try File(path: url.path)
-        let gather = GatherActorables(path, self.log.logLevel)
+        let gather = GatherActorables(fileToParse, self.log.logLevel)
         gather.walk(sourceFile)
 
         // perform a resolve within the file
@@ -116,14 +113,14 @@ extension GenerateActors {
 // MARK: Generating sources
 
 extension GenerateActors {
-    private func generateAll(_ actorables: [ActorableTypeDecl], in targetDirectory: Folder, buckets: Int) throws {
+    private func generateAll(_ actorables: [ActorableTypeDecl], in targetDirectory: Directory, buckets: Int) throws {
         try actorables.forEach { actorable in
             _ = try generateGenActorFile(for: actorable, in: targetDirectory, buckets: buckets)
             _ = try generateGenCodableFile(for: actorable, in: targetDirectory, buckets: buckets)
         }
     }
 
-    private func generateGenActorFile(for actorable: ActorableTypeDecl, in targetDirectory: Folder, buckets: Int) throws -> File {
+    private func generateGenActorFile(for actorable: ActorableTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
         let targetFile = try self.computeTargetFile(for: actorable, in: targetDirectory, buckets: buckets)
 
         try targetFile.append(Rendering.generatedFileHeader)
@@ -146,7 +143,7 @@ extension GenerateActors {
     }
 
     /// Generate Codable conformances for the `Message` type -- until we don't have auto synthesis of it for enums with associated values.
-    private func generateGenCodableFile(for actorable: ActorableTypeDecl, in targetDirectory: Folder, buckets: Int) throws -> File? {
+    private func generateGenCodableFile(for actorable: ActorableTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File? {
         guard actorable.generateCodableConformance else {
             return nil // skip generating
         }
@@ -172,7 +169,7 @@ extension GenerateActors {
     }
 
     // simple bucketing based on the first letter
-    private func computeTargetFile(for actorable: ActorableTypeDecl, in targetDirectory: Folder, buckets: Int) throws -> File {
+    private func computeTargetFile(for actorable: ActorableTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
         guard buckets > 0 else {
             preconditionFailure("invalid buckets. \(buckets) must be > 0")
         }

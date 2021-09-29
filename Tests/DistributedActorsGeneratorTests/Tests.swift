@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,15 +13,14 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import DistributedActorsGenerator
+@testable import DistributedActorsGenerator
 import DistributedActorsTestKit
-import Files
 import Foundation
 import XCTest
 
 final class DistributedActorsGeneratorTests: XCTestCase {
     // The Tests/GenActorsTests/ directory
-    var testFolder = try! File(path: #file).parent!.parent!.subfolder(at: "DistributedActorsGeneratorTests")
+    var testDirectory = try! File(path: #file).parent!.parent!.subdirectory(at: "DistributedActorsGeneratorTests")
 
     var system: ActorSystem!
     var testKit: ActorTestKit!
@@ -37,7 +36,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
 
     func test_Generate() throws {
         let targetDirectory = FileManager.default.temporaryDirectory
-        try self.generate(source: self.testFolder.path, target: targetDirectory.path)
+        try self.generate(source: self.testDirectory.path, target: targetDirectory.path)
         XCTAssertTrue(FileManager.default.fileExists(atPath: targetDirectory.path))
     }
 
@@ -140,7 +139,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
     // MARK: Imports
 
     func test_imports_shouldBe_carriedToGenActorFile() throws {
-        let sourceDirectory = try self.testFolder.subfolder(at: "TestActorable")
+        let sourceDirectory = try self.testDirectory.subdirectory(at: "TestActorable")
         let targetDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try self.generate(source: sourceDirectory.path, target: targetDirectory.path, buckets: 1)
 
@@ -152,7 +151,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
     }
 
     func test_imports_shouldBe_carriedToGenCodableFile() throws {
-        let sourceDirectory = try self.testFolder.subfolder(at: "TestActorable")
+        let sourceDirectory = try self.testDirectory.subdirectory(at: "TestActorable")
         let targetDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try self.generate(source: sourceDirectory.path, target: targetDirectory.path, buckets: 1)
 
@@ -167,7 +166,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
     // MARK: Storing instance in right type of reference
 
     func test_ClassActorableInstance() throws {
-        let sourceDirectory = try self.testFolder.subfolder(at: "LifecycleActor")
+        let sourceDirectory = try self.testDirectory.subdirectory(at: "LifecycleActor")
         let targetDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try self.generate(source: sourceDirectory.path, target: targetDirectory.path, buckets: 1)
 
@@ -182,7 +181,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
     // MARK: Codable support
 
     func test_codableMessage_skipGeneration() throws {
-        let sourceDirectory = try self.testFolder.subfolder(at: "SkipCodableActorable")
+        let sourceDirectory = try self.testDirectory.subdirectory(at: "SkipCodableActorable")
         let targetDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try self.generate(source: sourceDirectory.path, target: targetDirectory.path, buckets: 1)
 
@@ -196,7 +195,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
     // MARK: Ignoring certain methods from exposing
 
     func test_LifecycleActor_doesNotContainUnderscorePrefixedMessage() throws {
-        let sourceDirectory = try self.testFolder.subfolder(at: "LifecycleActor")
+        let sourceDirectory = try self.testDirectory.subdirectory(at: "LifecycleActor")
         let targetDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try self.generate(source: sourceDirectory.path, target: targetDirectory.path, buckets: 1)
 
@@ -208,7 +207,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
     }
 
     func test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods() throws {
-        let sourceDirectory = try self.testFolder.subfolder(at: "LifecycleActor")
+        let sourceDirectory = try self.testDirectory.subdirectory(at: "LifecycleActor")
         let targetDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try self.generate(source: sourceDirectory.path, target: targetDirectory.path, buckets: 1)
 
@@ -221,7 +220,7 @@ final class DistributedActorsGeneratorTests: XCTestCase {
     }
 
     func test_TestActorable_doesNotContainGenerated_privateFuncs() throws {
-        let sourceDirectory = try self.testFolder.subfolder(at: "TestActorable")
+        let sourceDirectory = try self.testDirectory.subdirectory(at: "TestActorable")
         let targetDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try self.generate(source: sourceDirectory.path, target: targetDirectory.path, buckets: 1)
 
