@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2020-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,7 +14,6 @@
 
 import ArgumentParser
 import DistributedActors
-import Files
 import Foundation
 import Logging
 
@@ -63,10 +62,10 @@ extension GenerateActorsCommand {
             fatalError("target directory is required")
         }
 
-        let sourceDirectory = try Folder(path: self.sourceDirectory)
+        let sourceDirectory = try Directory(path: self.sourceDirectory)
 
         try FileManager.default.createDirectory(atPath: self.targetDirectory, withIntermediateDirectories: true)
-        let targetDirectory = try Folder(path: self.targetDirectory)
+        let targetDirectory = try Directory(path: self.targetDirectory)
 
         let generator = GenerateActors(logLevel: self.logLevelValue, printGenerated: self.printGenerated)
         _ = try generator.run(
