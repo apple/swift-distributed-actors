@@ -46,7 +46,7 @@ extension String {
         let last = self.findLastNot(character: character) ?? endIndex
         return String(self[first ..< last])
     }
-    
+
     func expandingTildeInPath(fileManager: FileManager = FileManager.default) -> String {
         var path = self
         if path.hasPrefix("~") {
