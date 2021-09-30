@@ -63,7 +63,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
 
             .product(name: "Stencil", package: "Stencil"), // TODO: remove this dependency
-            .product(name: "Files", package: "Files"), // TODO: remove this dependency
         ]
     ),
 
@@ -244,7 +243,6 @@ var dependencies: [Package.Dependency] = [
 // ~~~ only for DistributedActorsGenerator ~~~
 dependencies += [
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.1"), // BSD license
-    .package(url: "https://github.com/JohnSundell/Files", from: "4.1.0"), // MIT license
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
 ]
 
@@ -297,7 +295,7 @@ let products: [PackageDescription.Product] = [
 var package = Package(
     name: "swift-distributed-actors",
     platforms: [
-        .macOS(.v10_11), // TODO: workaround for rdar://76035286
+        .macOS(.v10_12),
         .iOS(.v8),
         // ...
     ],
