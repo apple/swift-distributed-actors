@@ -190,7 +190,7 @@ extension Rendering {
 
             return rendered
         }
-        
+
         private func renderFuncSwitchCases() throws -> String {
             var first = true
             let switchCases = try self.actorable.funcs.map { funcDecl in
@@ -203,12 +203,12 @@ extension Rendering {
                     try funcDecl.renderFuncSwitchCase(partOfProtocol: nil, printer: &printer)
                 }
             }
-            
+
             var printer = CodePrinter()
             printer.print(switchCases)
             return printer.content
         }
-        
+
         private func renderFuncBoxSwitchCases(actorableProtocols: [ActorableTypeDecl]) throws -> String {
             var first = true
             let boxSwitchCases = try actorableProtocols.flatMap { box in
@@ -223,22 +223,22 @@ extension Rendering {
                     }
                 }
             }
-            
+
             var printer = CodePrinter()
             printer.print(boxSwitchCases)
             return printer.content
         }
-        
+
         private func renderBoxFuncs(actorableProtocols: [ActorableTypeDecl]) throws -> String {
             let boxFuncs = try actorableProtocols.map { inheritedProtocol in
                 try inheritedProtocol.renderBoxingFunc(in: self.actorable)
             }
-            
+
             var printer = CodePrinter(startingIndentation: 1)
             printer.print(boxFuncs, indentFirstLine: false)
             return printer.content
         }
-        
+
         private func renderFuncTells() throws -> String {
             var printer = CodePrinter(startingIndentation: 1)
             try self.actorable.funcs.forEach { funcDecl in
@@ -246,12 +246,12 @@ extension Rendering {
             }
             return printer.content
         }
-        
+
         private func renderFuncBoxTells() throws -> String {
             guard self.actorable.type == .protocol else {
                 return ""
             }
-            
+
             var printer = CodePrinter(startingIndentation: 1)
             try self.actorable.funcs.forEach { actorableFunc in
                 try actorableFunc.renderBoxFuncTell(self.actorable, printer: &printer)
@@ -303,7 +303,7 @@ extension ActorableTypeDecl {
 
         var res: [String] = renderedDirectFuncs
         res.append(contentsOf: renderedActorableProtocolBoxes)
-        
+
         var printer = CodePrinter(startingIndentation: 2)
         printer.print(res, indentFirstLine: false)
         return printer.content

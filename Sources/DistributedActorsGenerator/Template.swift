@@ -14,7 +14,7 @@
 
 struct Template {
     let templateString: String
-    
+
     func render(_ context: [String: String]) -> String {
         context.reduce(self.templateString) { result, entry in
             result.replacingOccurrences(of: "{{\(entry.key)}}", with: entry.value)

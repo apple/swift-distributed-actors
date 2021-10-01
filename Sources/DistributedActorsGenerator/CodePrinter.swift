@@ -95,7 +95,7 @@ struct CodePrinter {
             }
         }
     }
-    
+
     mutating func print(_ blocks: [String], indentFirstLine: Bool = true) {
         if !indentFirstLine {
             self.dontIndentNext()
