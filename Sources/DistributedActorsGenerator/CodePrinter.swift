@@ -95,6 +95,13 @@ struct CodePrinter {
             }
         }
     }
+    
+    mutating func print(_ blocks: [String], indentFirstLine: Bool = true) {
+        if !indentFirstLine {
+            self.dontIndentNext()
+        }
+        blocks.forEach { self.print($0, skipNewline: false) }
+    }
 
     var padding: String {
         String(repeating: String(repeating: " ", count: 4), count: self.indentation)
