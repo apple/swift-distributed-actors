@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019-2020 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,7 +14,6 @@
 
 import DistributedActors
 import NIO
-import Stencil
 import SwiftSyntax
 
 protocol Renderable {
@@ -44,12 +43,11 @@ extension Rendering {
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
 
-                {{messageAccess}} enum Message: ActorMessage { {% for case in funcCases %}
-                    {{case}} {% endfor %}
+                {{messageAccess}} enum Message: ActorMessage {
+                    {{funcCases}}
                 }
-                {%for tell in boxFuncs %}
-                {{ tell }} 
-                {% endfor %}
+
+                {{boxFuncs}}
             }
             """
         )
@@ -61,8 +59,8 @@ extension Rendering {
             // MARK: DO NOT EDIT: Generated {{baseName}} messages 
 
             extension GeneratedActor.Messages {
-                {{messageAccess}} enum {{baseName}}: ActorMessage { {% for case in funcCases %}
-                    {{case}} {% endfor %} 
+                {{messageAccess}} enum {{baseName}}: ActorMessage {
+                    {{funcCases}}
                 }
             }
 
@@ -76,9 +74,7 @@ extension Rendering {
             // MARK: DO NOT EDIT: Boxing {{baseName}} for any inheriting actorable `A` 
 
             extension Actor where Act: {{actorableProtocol}} {
-            {%for tell in funcBoxTells %}
-            {{ tell }} 
-            {% endfor %}
+            {{funcBoxTells}}
             }
 
             """
@@ -100,11 +96,9 @@ extension Rendering {
                         instance.preStart(context: context)
 
                         return Behavior<Message>.receiveMessage { message in
-                            switch message { 
-                            {% for case in funcSwitchCases %}
-                            {{case}} {% endfor %}
-                            {% for case in funcBoxSwitchCases %}
-                            {{case}} {% endfor %}
+                            switch message {
+                            {{funcSwitchCases}}
+                            {{funcBoxSwitchCases}}
                             }
                             return .same
                         }.receiveSignal { _context, signal in 
@@ -142,9 +136,7 @@ extension Rendering {
             // MARK: Extend Actor for {{baseName}}
 
             extension Actor{{extensionWhereClause}} {
-            {% for tell in funcTells %}
-            {{ tell }} 
-            {% endfor %}
+            {{funcTells}}
             }
 
             """
@@ -153,7 +145,7 @@ extension Rendering {
         func render() throws -> String {
             let actorableProtocols = self.actorable.actorableProtocols.sorted()
 
-            let context: [String: Any] = [
+            let context: [String: String] = [
                 "baseName": self.actorable.fullName,
                 "actorableProtocol": self.actorable.type == .protocol ? self.actorable.name : "",
 
@@ -167,35 +159,13 @@ extension Rendering {
                     "" :
                     " where Act.Message == \(self.actorable.fullName).Message",
 
-                "funcSwitchCases": try self.actorable.funcs.map { funcDecl in
-                    try CodePrinter.content { printer in
-                        try funcDecl.renderFuncSwitchCase(partOfProtocol: nil, printer: &printer)
-                    }
-                },
-                "funcBoxSwitchCases": try actorableProtocols.flatMap { box in
-                    try box.funcs.map { funcDecl in
-                        try CodePrinter.content { printer in
-                            try funcDecl.renderFuncSwitchCase(partOfProtocol: box, printer: &printer)
-                        }
-                    }
-                },
+                "funcSwitchCases": try self.renderFuncSwitchCases(),
+                "funcBoxSwitchCases": try self.renderFuncBoxSwitchCases(actorableProtocols: actorableProtocols),
 
-                "boxFuncs": try actorableProtocols.map { inheritedProtocol in
-                    try inheritedProtocol.renderBoxingFunc(in: self.actorable)
-                },
+                "boxFuncs": try self.renderBoxFuncs(actorableProtocols: actorableProtocols),
 
-                "funcTells": try self.actorable.funcs.map { funcDecl in
-                    try CodePrinter.content { printer in
-                        printer.indent()
-                        try funcDecl.renderFuncTell(self.actorable, printer: &printer)
-                    }
-                },
-                "funcBoxTells": self.actorable.type == .protocol ? try self.actorable.funcs.map { actorableFunc in
-                    try CodePrinter.content { printer in
-                        printer.indent()
-                        try actorableFunc.renderBoxFuncTell(self.actorable, printer: &printer)
-                    }
-                } : [],
+                "funcTells": try self.renderFuncTells(),
+                "funcBoxTells": try self.renderFuncBoxTells(),
 
                 "tryIfReceiveTerminatedIsThrowing": self.actorable.receiveTerminatedIsThrowing ? "try " : " ",
                 "tryIfReceiveSignalIsThrowing": self.actorable.receiveSignalIsThrowing ? "try " : " ",
@@ -204,21 +174,89 @@ extension Rendering {
             var rendered: String = "\n"
             switch self.actorable.type {
             case .protocol:
-                rendered.append(try Self.messageForProtocolTemplate.render(context))
+                rendered.append(Self.messageForProtocolTemplate.render(context))
             default:
-                rendered.append(try Self.messageForNonProtocolTemplate.render(context))
+                rendered.append(Self.messageForNonProtocolTemplate.render(context))
                 rendered.append("\n")
             }
 
             switch self.actorable.type {
             case .struct, .class, .enum, .extension:
-                rendered.append(try Self.behaviorTemplate.render(context))
-                rendered.append(try Self.actorTellTemplate.render(context))
+                rendered.append(Self.behaviorTemplate.render(context))
+                rendered.append(Self.actorTellTemplate.render(context))
             case .protocol:
-                rendered.append(try Self.boxingForProtocolTemplate.render(context))
+                rendered.append(Self.boxingForProtocolTemplate.render(context))
             }
 
             return rendered
+        }
+
+        private func renderFuncSwitchCases() throws -> String {
+            var first = true
+            let switchCases = try self.actorable.funcs.map { funcDecl in
+                try CodePrinter.content { printer in
+                    if first {
+                        printer.dontIndentNext()
+                        first = false
+                    }
+                    printer.indent(by: 4)
+                    try funcDecl.renderFuncSwitchCase(partOfProtocol: nil, printer: &printer)
+                }
+            }
+
+            var printer = CodePrinter()
+            printer.print(switchCases)
+            return printer.content
+        }
+
+        private func renderFuncBoxSwitchCases(actorableProtocols: [ActorableTypeDecl]) throws -> String {
+            var first = true
+            let boxSwitchCases = try actorableProtocols.flatMap { box in
+                try box.funcs.map { funcDecl in
+                    try CodePrinter.content { printer in
+                        if first {
+                            printer.dontIndentNext()
+                            first = false
+                        }
+                        printer.indent(by: 4)
+                        try funcDecl.renderFuncSwitchCase(partOfProtocol: box, printer: &printer)
+                    }
+                }
+            }
+
+            var printer = CodePrinter()
+            printer.print(boxSwitchCases)
+            return printer.content
+        }
+
+        private func renderBoxFuncs(actorableProtocols: [ActorableTypeDecl]) throws -> String {
+            let boxFuncs = try actorableProtocols.map { inheritedProtocol in
+                try inheritedProtocol.renderBoxingFunc(in: self.actorable)
+            }
+
+            var printer = CodePrinter(startingIndentation: 1)
+            printer.print(boxFuncs, indentFirstLine: false)
+            return printer.content
+        }
+
+        private func renderFuncTells() throws -> String {
+            var printer = CodePrinter(startingIndentation: 1)
+            try self.actorable.funcs.forEach { funcDecl in
+                try funcDecl.renderFuncTell(self.actorable, printer: &printer)
+            }
+            return printer.content
+        }
+
+        private func renderFuncBoxTells() throws -> String {
+            guard self.actorable.type == .protocol else {
+                return ""
+            }
+
+            var printer = CodePrinter(startingIndentation: 1)
+            try self.actorable.funcs.forEach { actorableFunc in
+                try actorableFunc.renderBoxFuncTell(self.actorable, printer: &printer)
+            }
+            return printer.content
         }
     }
 }
@@ -254,7 +292,7 @@ extension ActorableTypeDecl {
         "case .\(self.boxFuncName)(let boxed):"
     }
 
-    var renderCaseDecls: [String] {
+    var renderCaseDecls: String {
         let renderedDirectFuncs = self.funcs.map {
             $0.renderCaseDecl()
         }
@@ -266,11 +304,13 @@ extension ActorableTypeDecl {
         var res: [String] = renderedDirectFuncs
         res.append(contentsOf: renderedActorableProtocolBoxes)
 
-        return res
+        var printer = CodePrinter(startingIndentation: 2)
+        printer.print(res, indentFirstLine: false)
+        return printer.content
     }
 
     func renderBoxingFunc(in owner: ActorableTypeDecl) throws -> String {
-        let context: [String: Any] = [
+        let context: [String: String] = [
             "baseName": "\(owner.fullName)",
             "access": "public",
             "boxCaseName": "\(self.nameFirstLowercased)",
@@ -278,8 +318,8 @@ extension ActorableTypeDecl {
             "messageToBoxType": "GeneratedActor.Messages.\(self.name)",
         ]
 
-        return try Template(
-            stringLiteral:
+        return Template(
+            templateString:
             """
             /// Performs boxing of {{messageToBoxType}} messages such that they can be received by Actor<{{baseName}}>
                 {{access}} static func {{boxFuncName}}(_ message: {{messageToBoxType}}) -> {{baseName}}.Message {
@@ -640,7 +680,7 @@ extension ActorFuncDecl {
         }
 
         printer.print(":")
-        printer.indent(by: 5)
+        printer.indent()
 
         if self.message.throwing, self.message.returnType.rendersReturn {
             printer.print("do {")
