@@ -61,8 +61,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
-
-            .product(name: "Stencil", package: "Stencil"), // TODO: remove this dependency
         ]
     ),
 
@@ -242,7 +240,6 @@ var dependencies: [Package.Dependency] = [
 
 // ~~~ only for DistributedActorsGenerator ~~~
 dependencies += [
-    .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.1"), // BSD license
     .package(url: "https://github.com/apple/swift-argument-parser", .upToNextMinor(from: "0.3.2")), // not API stable, Apache v2
 ]
 

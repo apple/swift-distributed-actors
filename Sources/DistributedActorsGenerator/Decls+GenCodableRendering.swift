@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import Stencil
 import SwiftSyntax
 
 extension Rendering {
@@ -31,24 +30,24 @@ extension Rendering {
             extension {{baseName}} {
                 // TODO: Check with Swift team which style of discriminator to aim for
                 public enum DiscriminatorKeys: String, Decodable {
-                    {{ discriminatorCases }}
+                    {{discriminatorCases}}
                 }
 
                 public enum CodingKeys: CodingKey {
-                    {{ codingKeys }}
+                    {{codingKeys}}
                 }
 
                 public init(from decoder: Decoder) throws {
                     let container = try decoder.container(keyedBy: CodingKeys.self)
                     switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-                    {{ decodeCases }}
+                    {{decodeCases}}
                     }
                 }
 
                 public func encode(to encoder: Encoder) throws {
                     var container = encoder.container(keyedBy: CodingKeys.self)
                     switch self {
-                    {{ encodeCases }}
+                    {{encodeCases}}
                     }
                 }
             }
@@ -170,7 +169,7 @@ extension Rendering {
                 encodeCases.outdent()
             }
 
-            return try Self.messageCodableConformanceTemplate.render(
+            return Self.messageCodableConformanceTemplate.render(
                 [
                     "baseName": baseName,
                     "discriminatorCases": discriminatorCases.content,
