@@ -158,6 +158,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     public convenience init(_ name: String, settings: ActorSystemSettings) {
         var settings = settings
         settings.cluster.node.systemName = name
+        settings.metrics.systemName = name
         self.init(settings: settings)
     }
 
@@ -192,13 +193,14 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         self.lazyInitializationLock = initializationLock
 
         if !settings.logging.customizedLogger {
-            settings.logging.logger = Logger(label: self.name)
+            settings.logging._logger = Logger(label: self.name)
+            settings.logging._logger.logLevel = settings.logging.logLevel
         }
         var rootLogger = settings.logging.logger
         if settings.cluster.enabled {
-            rootLogger[metadataKey: "actor/node"] = "\(settings.cluster.uniqueBindNode)"
+            rootLogger[metadataKey: "cluster/node"] = "\(settings.cluster.uniqueBindNode)"
         } else {
-            rootLogger[metadataKey: "actor/nodeName"] = "\(self.name)"
+            rootLogger[metadataKey: "cluster/node"] = "\(self.name)"
         }
         self.log = rootLogger
 
@@ -301,6 +303,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         self.settings.plugins.startAll(self)
 
         self.log.info("Actor System [\(self.name)] initialized.")
+        assert(self.log[metadataKey: "cluster/node"] != nil)
         if settings.cluster.enabled {
             self.log.info("Actor System Settings in effect: Cluster.autoLeaderElection: \(self.settings.cluster.autoLeaderElection)")
             self.log.info("Actor System Settings in effect: Cluster.downingStrategy: \(self.settings.cluster.downingStrategy)")
@@ -496,7 +499,7 @@ extension ActorSystem {
         let props = Props() // TODO: pick up from task-local?
         let address = try! self._reserveName(using: self.userProvider, type: Act.self, props: props)
 
-        log.warning("Assign identity", metadata: [
+        log.trace("Assign identity", metadata: [
             "actor/type": "\(actorType)",
             "actor/address": "\(address.detailedDescription)",
         ])
@@ -517,7 +520,10 @@ extension ActorSystem {
 
         // TODO: can we skip the Any... and use the underlying existential somehow?
         guard let SpawnAct = Act.self as? AnyDistributedClusterActor.Type else {
-            fatalError("\(Act.self) was not AnyDistributedClusterActor, so we cannot spawn a reference for it! Actor identity was: \(actor.id)")
+            fatalError(
+                "\(Act.self) was not AnyDistributedClusterActor! Actor identity was: \(actor.id). " +
+                "Was the source generation plugin configured for this target? " +
+                "Add `plugins: [\"DistributedActorsGeneratorPlugin\"]` to your target.")
         }
 
         func doSpawn<SpawnAct: AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
@@ -615,7 +621,7 @@ extension ActorSystem: ActorRefFactory {
                            """)
             }
 
-            pnote("RESERVED: \(address.detailedDescription) >>> \(self._reservedNames.map(\.detailedDescription))")
+//            pnote("RESERVED: \(address.detailedDescription) >>> \(self._reservedNames.map(\.detailedDescription))")
             return address
         }
     }

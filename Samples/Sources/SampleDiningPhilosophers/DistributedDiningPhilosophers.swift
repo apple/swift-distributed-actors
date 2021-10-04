@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,46 +14,65 @@
 
 import DistributedActors
 
-struct DistributedDiningPhilosophers {
+final class DistributedDiningPhilosophers {
+
+    private var forks: [Fork] = []
+    private var philosophers: [Philosopher] = []
+
     func run(for time: TimeAmount) throws {
-        let systemA = ActorSystem("DistributedPhilosophers") { settings in
+        let systemA = ActorSystem("Node-A") { settings in
             settings.cluster.enabled = true
             settings.cluster.bindPort = 1111
         }
-        let systemB = ActorSystem("DistributedPhilosophers") { settings in
+        let systemB = ActorSystem("Node-B") { settings in
             settings.cluster.enabled = true
             settings.cluster.bindPort = 2222
+            settings.logging.logLevel = .error
         }
-        let systemC = ActorSystem("DistributedPhilosophers") { settings in
-            settings.cluster.enabled = true
-            settings.cluster.bindPort = 3333
-        }
+//        let systemC = ActorSystem("Node-C") { settings in
+//            settings.cluster.enabled = true
+//            settings.cluster.bindPort = 3333
+//            settings.logging.logLevel = .error
+//        }
 
         print("~~~~~~~ started 3 actor systems ~~~~~~~")
 
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
         systemA.cluster.join(node: systemB.settings.cluster.node)
-        systemA.cluster.join(node: systemC.settings.cluster.node)
-        systemC.cluster.join(node: systemB.settings.cluster.node)
+//        systemA.cluster.join(node: systemC.settings.cluster.node)
+//        systemC.cluster.join(node: systemB.settings.cluster.node)
 
         Thread.sleep(.seconds(2))
 
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
-        let fork1: Fork.Ref = try systemA.spawn("fork-1", Fork.behavior)
-        let fork2: Fork.Ref = try systemB.spawn("fork-2", Fork.behavior)
-        let fork3: Fork.Ref = try systemB.spawn("fork-3", Fork.behavior)
-        let fork4: Fork.Ref = try systemC.spawn("fork-4", Fork.behavior)
-        let fork5: Fork.Ref = try systemC.spawn("fork-5", Fork.behavior)
+        // Node A
+        let fork1 = Fork(name: "fork-1", transport: systemA)
+        // Node B
+        let fork2 = Fork(name: "fork-2", transport: systemB)
+//        let fork3 = Fork(name: "fork-3", transport: systemB)
+        // Node C
+//        let fork4 = Fork(name: "fork-4", transport: systemC)
+//        let fork5 = Fork(name: "fork-5", transport: systemC)
+        self.forks = [fork1, fork2
+//                      , fork3
+//                      , fork4, fork5
+        ]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        _ = try systemA.spawn("Konrad", Philosopher(left: fork5, right: fork1).behavior)
-        _ = try systemB.spawn("Dario", Philosopher(left: fork1, right: fork2).behavior)
-        _ = try systemB.spawn("Johannes", Philosopher(left: fork2, right: fork3).behavior)
-        _ = try systemC.spawn("Cory", Philosopher(left: fork3, right: fork4).behavior)
-        _ = try systemC.spawn("Norman", Philosopher(left: fork4, right: fork5).behavior)
+        self.philosophers = [
+            // Node A
+            Philosopher(name: "Konrad", leftFork: fork2, rightFork: fork1, transport: systemA),
+            // Node B
+            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: systemB),
+//            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: systemB),
+            // Node C
+//            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: systemC),
+//            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: systemC),
+        ]
 
         try systemA.park(atMost: time)
+
     }
 }

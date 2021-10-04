@@ -549,9 +549,9 @@ public extension Behavior {
         case .setup:
             return fatalErrorBacktrace("""
                                        Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
-                                       Message: \(message): \(type(of: message))
-                                       Actor address: \(context.address.detailedDescription)
-                                       System: \(context.system)
+                                         System: \(context.system)
+                                         Address: \(context.address.detailedDescription)
+                                         Message: \(message): \(type(of: message))
                                        """, file: file, line: line)
 
         case .stop:

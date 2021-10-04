@@ -39,6 +39,12 @@ public struct ClusterSettings {
     /// If `true` the ActorSystem start the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
+    public mutating func enable() {
+        self.enabled = true
+    }
+    public mutating func disable() {
+        self.enabled = false
+    }
 
     /// If configured, the system will periodically
     public var discovery: ServiceDiscoverySettings?

@@ -79,10 +79,10 @@ public struct LoggingSettings {
     /// or need to pass metadata through all loggers in the actor system.
     public var logLevel: Logger.Level {
         get {
-            self.logger.logLevel
+            self._logger.logLevel
         }
         set {
-            self.logger.logLevel = newValue
+            self._logger.logLevel = newValue
         }
     }
 
@@ -99,9 +99,9 @@ public struct LoggingSettings {
     }
 
     internal var customizedLogger: Bool = false
-    private var _logger: Logger = LoggingSettings.makeDefaultLogger()
+    internal var _logger: Logger = LoggingSettings.makeDefaultLogger()
     static func makeDefaultLogger() -> Logger {
-        Logger(label: "ActorSystem") // replaced by specific system name during startup
+        Logger(label: "ActorSystem-initializing") // replaced by specific system name during startup
     }
 
     // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;

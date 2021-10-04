@@ -12,7 +12,6 @@ var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
     "-Xfrontend", "-enable-experimental-distributed",
-    "-Xfrontend", "-validate-tbd-against-ir=none",
     "-Xfrontend", "-disable-availability-checking", // FIXME: must remove this
 ]
 

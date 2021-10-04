@@ -70,7 +70,7 @@ internal final class Mailbox<Message: ActorMessage> {
             _ = shell._system?.userMailboxInitCounter.add(1)
         }
         #endif
-        pprint("INITIALIZED MAILBOX FOR: \(shell.address)")
+        pinfo("INITIALIZED MAILBOX FOR: \(shell.address)")
         self.shell = shell
         self.userMessages = MPSCLinkedQueue()
         self.systemMessages = MPSCLinkedQueue()
@@ -103,15 +103,12 @@ internal final class Mailbox<Message: ActorMessage> {
         self.deadLetters = system.deadLetters
         self.address = system.deadLetters.address
 
-        pprint("INITIALIZED MAILBOX FOR: \(system)")
-
         // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
         self.serializeAllMessages = system.settings.serialization.serializeLocalMessages
     }
 
     @inlinable
     func sendMessage(envelope: Payload, file: String, line: UInt) {
-        pprint("SEND_MESSAGE MAILBOX: \(self.address);;;; payload = \(envelope)")
 
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
@@ -393,6 +390,9 @@ internal final class Mailbox<Message: ActorMessage> {
         if status.hasSystemMessages {
             while runResult != .shouldStop, runResult != .closed, let message = self.systemMessages.dequeue() {
                 do {
+                    if (shell.path.description.contains("/system/cluster")) {
+                        pnote("interpret system message: \(message)")
+                    }
                     try runResult = shell.interpretSystemMessage(message: message)
                 } catch {
                     shell.fail(error)
@@ -444,6 +444,9 @@ internal final class Mailbox<Message: ActorMessage> {
                             fatalError("Received message [\(_message)]:\(type(of: _message)), expected \(Message.self)")
                         }
 
+                        if (shell.path.description.contains("/system/cluster")) {
+                            pnote("interpret message: \(message)")
+                        }
                         runResult = try shell.interpretMessage(message: message)
                     case .closure(let carry):
                         traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)")

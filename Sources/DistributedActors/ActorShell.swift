@@ -155,7 +155,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         self.behavior = behavior
         self._address = address
         self._props = props
-        self._log = .make(system.log, path: address.path)
+        self._log = Logger.make(system.log, path: address.path)
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
         self._deathWatch = DeathWatch(nodeDeathWatcher: system._nodeDeathWatcher ?? system.deadLetters.adapted())

@@ -7,7 +7,6 @@ var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
   "-Xfrontend", "-enable-experimental-distributed",
-  "-Xfrontend", "-validate-tbd-against-ir=none",
   "-Xfrontend", "-disable-availability-checking", // FIXME: must remove this
 ]
 
@@ -28,38 +27,30 @@ var targets: [PackageDescription.Target] = [
         exclude: [
           "dining-philosopher-fsm.graffle",
           "dining-philosopher-fsm.svg",
-        ]
-    ),
-    .executableTarget(
-        name: "SampleGenActorsDiningPhilosophers",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleGenActorsDiningPhilosophers",
         plugins: [
-            .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
         ]
-    ),
-    .executableTarget(
-        name: "SampleLetItCrash",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
-        ],
-        path: "Sources/SampleLetItCrash"
     ),
     .executableTarget(
         name: "SampleCluster",
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleCluster"
+        path: "Sources/SampleCluster",
+        plugins: [
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
     .executableTarget(
         name: "SampleReceptionist",
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleReceptionist"
+        path: "Sources/SampleReceptionist",
+        plugins: [
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
     .executableTarget(
         name: "SampleMetrics",
@@ -67,7 +58,10 @@ var targets: [PackageDescription.Target] = [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
             .product(name: "SwiftPrometheus", package: "SwiftPrometheus"),
         ],
-        path: "Sources/SampleMetrics"
+        path: "Sources/SampleMetrics",
+        plugins: [
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
     .executableTarget(
         name: "SampleGenActors",
@@ -115,14 +109,6 @@ let package = Package(
         .executable(
             name: "SampleDiningPhilosophers",
             targets: ["SampleDiningPhilosophers"]
-        ),
-        .executable(
-            name: "SampleGenActorsDiningPhilosophers",
-            targets: ["SampleGenActorsDiningPhilosophers"]
-        ),
-        .executable(
-            name: "SampleLetItCrash",
-            targets: ["SampleLetItCrash"]
         ),
         .executable(
             name: "SampleCluster",

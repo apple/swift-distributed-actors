@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,59 +12,46 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import DistributedActors
+import Logging
 
-public final class Fork {
-    public typealias Ref = ActorRef<Fork.Message>
-    public typealias SelfBehavior = Behavior<Fork.Message>
+distributed actor Fork: CustomStringConvertible {
+    private lazy var log: Logger = Logger(actor: self)
 
-    public enum Message: Codable { // Codable only necessary for running distributed
-        /// A Philosopher may attempt to take a fork from the table by sending a take message to it
-        case take(by: ActorRef<Fork.Reply>)
-        /// A Philosopher puts the fork back when the other fork is busy
-        case putBack(by: ActorRef<Fork.Reply>)
+    private let name: String
+    private var isTaken: Bool = false
+
+    init(name: String, transport: ActorTransport) {
+        defer { transport.actorReady(self) }
+        self.name = name
     }
 
-    public enum Reply: Codable { // Codable only necessary for running distributed
-        /// when a Fork was successfully picked up by a Philosopher it will receive this response
-        case pickedUp(fork: Fork.Ref)
-        /// if a Fork was in use by some other Philosopher, we tell the 2nd one (who lost the "race")
-        /// that the fork is already being used and that it should try again in a little bit.
-        case busy(fork: Fork.Ref)
-    }
-
-    public static var behavior: SelfBehavior {
-        available()
-    }
-
-    private static func available() -> SelfBehavior {
-        .receive { context, message in
-            switch message {
-            case .take(let who):
-                who.tell(.pickedUp(fork: context.myself))
-                return taken(context, by: who)
-
-            case .putBack(let who):
-                fatalError("\(uniquePath: who) attempted to put back an already available fork \(uniquePath: context.myself)!")
-            }
+    distributed func take() -> Bool {
+        if self.isTaken {
+            return false
         }
+
+        self.isTaken = true
+        return true
     }
 
-    private static func taken(_ context: ActorContext<Fork.Message>, by owner: ActorRef<Fork.Reply>) -> SelfBehavior {
-        .receiveMessage { message in
-            switch message {
-            case .putBack(let who) where owner.address == owner.address:
-                context.log.info("\(uniquePath: who) is putting back the fork \(uniquePath: context.myself)...")
-                return available()
-
-            case .putBack(let who):
-                fatalError("\(uniquePath: who) attempted to put back \(uniquePath: context.myself), yet it is owned by \(uniquePath: owner)! That's wrong.")
-
-            case .take(let who):
-                context.log.info("\(uniquePath: who) attempted to take \(uniquePath: context.myself), yet already taken by \(uniquePath: owner)...")
-                who.tell(.busy(fork: context.myself))
-                return .same
-            }
+    distributed func putBack() throws {
+        guard self.isTaken else {
+            let error = ForkError.puttingBackNotTakenFork
+            log.error("Attempted to put back fork that was not taken!", metadata: [
+                "error": "\(error)",
+            ])
+            throw error
         }
+        self.isTaken = false
     }
+
+    public nonisolated var description: String {
+        "\(Self.self)(\(self.id))"
+    }
+}
+
+enum ForkError: Error, Codable {
+    case puttingBackNotTakenFork
 }

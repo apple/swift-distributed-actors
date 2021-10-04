@@ -69,31 +69,47 @@ internal final class LoggingContext {
     }
 }
 
-extension Logger {
-
-    /// Create a logger specific to this actor.
-    // TODO(distributed): reconsider if this is the best pattern?
-    public init<Act: DistributedActor>(actor: Act) {
-        var log = Logger(label: "\(actor.id)")
-        if let address = actor.id.underlying as? ActorAddress {
-            log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(address.path)
-        }
-        self = log
-    }
-}
-
 /// Specialized `Logger` factory, populating the logger with metadata about its "owner" actor (or system),
 /// such as it's path or node on which it resides.
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 extension Logger {
+
+    /// Create a logger specific to this actor.
+    // TODO(distributed): reconsider if this is the best pattern?
+    public init<Act: DistributedActor>(actor: Act) {
+        var log: Logger
+        if let transport = actor.actorTransport as? ActorSystem,
+           let address = actor.id._unwrapActorAddress {
+            log = Logger.make(transport.settings.logging.logger, path: address.path)
+        } else {
+            log = Logger(label: "\(actor.id.underlying)")
+        }
+
+        if let address = actor.id.underlying as? ActorAddress {
+            log[metadataKey: "actor/path"] = "\(address.path)"
+            log[metadataKey: "cluster/node"] = "\(address.uniqueNode)"
+        }
+
+        assert(log[metadataKey: "cluster/node"] != nil, "was: \(actor.id)")
+
+        pprint("LOGGER FOR \(actor.id) >>>>>>>>>>>> \(log)")
+
+        self = log
+    }
+
     public static func make<T>(context: ActorContext<T>) -> Logger {
         Logger.make(context.log, path: context.path)
     }
 
     internal static func make(_ base: Logger, path: ActorPath) -> Logger {
-        var log = base
+        var log = Logger(label: "\(path)")
+        log[metadataKey: "cluster/node"] = base[metadataKey: "cluster/node"]
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
+        pinfo("""
+              MAKE LOGGER: path: \(path) >>>> base: \(base) >>>> \(base[metadataKey: "cluster/node"])
+                  >>>>> \(log)
+              """)
         return log
     }
 }
@@ -184,14 +200,10 @@ public struct ActorOriginLogHandler: LogHandler {
         }
 
         let actorSystemIdentity: String
-        if let d = l.effectiveMetadata?.removeValue(forKey: "actor/node") {
+        if let d = l.effectiveMetadata?.removeValue(forKey: "cluster/node") {
             actorSystemIdentity = "[\(d)]"
         } else {
-            if let name = l.effectiveMetadata?.removeValue(forKey: "actor/nodeName") {
-                actorSystemIdentity = "[\(name)]"
-            } else {
-                actorSystemIdentity = ""
-            }
+            actorSystemIdentity = ""
         }
 
         var msg = ""

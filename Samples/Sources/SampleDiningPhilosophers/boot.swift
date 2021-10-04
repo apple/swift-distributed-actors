@@ -14,6 +14,7 @@
 
 import DistributedActors
 import NIO
+import Logging
 
 /*
  * Swift Distributed Actors implementation of the classic "Dining Philosophers" problem.
@@ -34,12 +35,15 @@ import NIO
     print("| USAGE: swift run SampleDiningPhilosophers [dist]        |")
     print("===-----------------------------------------------------===")
 
+    LoggingSystem.bootstrap(SamplePrettyLogHandler.init)
+
+    let time = TimeAmount.seconds(120)
+
     switch CommandLine.arguments.dropFirst().first {
     case "dist":
-      try DistributedDiningPhilosophers().run(for: .seconds(10))
+      try! DistributedDiningPhilosophers().run(for: time)
     default:
-      try DiningPhilosophers().run(for: .seconds(10))
+      try! DiningPhilosophers().run(for: time)
     }
   }
-
 }
