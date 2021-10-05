@@ -146,7 +146,7 @@ distributed actor Philosopher {
 
     private func becomeEating() {
         self.state = .eating
-        self.log.info("\(self.self.name) began eating!")
+        self.log.notice("\(self.self.name) began eating!")
         self.timers.startSingle(key: .becomeHungry, delay: .seconds(3)) {
             await self.stopEating()
         }

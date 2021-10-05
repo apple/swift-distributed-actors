@@ -13,9 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import DistributedActorsGenerator
+@testable import DistributedActorsGenerator
 import DistributedActorsTestKit
-import Files
 import Foundation
 import XCTest
 
@@ -45,11 +44,6 @@ distributed actor TestDistributedActor {
 // MARK: Tests
 
 final class DistributedActorsGeneratorTests: ClusteredActorSystemsXCTestCase {
-    // The Tests/GenActorsTests/ directory
-    var testFolder = try! File(path: #file).parent!.parent!.subfolder(at: "DistributedActorsGeneratorTests")
-    override var captureLogs: Bool {
-        false
-    }
 
     override func configureLogCapture(settings: inout LogCapture.Settings) {
         settings.excludeActorPaths = [

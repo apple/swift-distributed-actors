@@ -442,25 +442,33 @@ internal class Supervisor<Message: ActorMessage> {
     @inlinable
     internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: @escaping () throws -> Behavior<Message>) throws -> Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
-        return try self.interpretSupervised0(target: target, context: context, processingAction: .continuation(closure))
+        return try self.interpretSupervised0(
+                target: target, context: context, processingAction: .continuation(closure))
     }
 
     @inlinable
     internal final func startSupervised(target: Behavior<Message>, context: ActorContext<Message>) throws -> Behavior<Message> {
         traceLog_Supervision("CALLING START")
-        return try self.interpretSupervised0(target: target, context: context, processingAction: .start)
+        return try self.interpretSupervised0(
+                target: target, context: context,
+                processingAction: .start)
     }
 
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
     @inlinable
     @inline(__always)
     final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> Behavior<Message> {
-        try self.interpretSupervised0(target: target, context: context, processingAction: processingAction, nFoldFailureDepth: 1) // 1 since we already have "one failure"
+        try self.interpretSupervised0(
+                target: target, context: context,
+                processingAction: processingAction, nFoldFailureDepth: 1) // 1 since we already have "one failure"
     }
 
     @inlinable
     @inline(__always)
-    final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingAction: ProcessingAction<Message>, nFoldFailureDepth: Int) throws -> Behavior<Message> {
+    final func interpretSupervised0(target: Behavior<Message>,
+                                    context: ActorContext<Message>,
+                                    processingAction: ProcessingAction<Message>,
+                                    nFoldFailureDepth: Int) throws -> Behavior<Message> {
         do {
             switch processingAction {
             case .start:

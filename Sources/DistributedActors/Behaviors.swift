@@ -73,6 +73,7 @@ extension Behavior {
         }
     }
 
+    @usableFromInline
     func receiveAsync(_ recv: @Sendable @escaping (ActorContext<Message>, Message) async throws -> Behavior<Message>,
                       _ message: Message) -> Behavior<Message> {
         .setup { context in
@@ -82,6 +83,7 @@ extension Behavior {
         }
     }
 
+    @usableFromInline
     func receiveMessageAsync(_ recv: @Sendable @escaping (Message) async throws -> Behavior<Message>,
                              _ message: Message) -> Behavior<Message> {
         .setup { context in
@@ -546,12 +548,14 @@ public extension Behavior {
         case .ignore: fatalError("Illegal attempt to interpret message with .ignore behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
         case .unhandled: fatalError("Illegal attempt to interpret message with .unhandled behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
 
-        case .setup:
+        case .setup(let setup):
             return fatalErrorBacktrace("""
                                        Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
                                          System: \(context.system)
                                          Address: \(context.address.detailedDescription)
                                          Message: \(message): \(type(of: message))
+                                         Behavior: \(self)
+                                         Setup: \(setup)
                                        """, file: file, line: line)
 
         case .stop:
@@ -564,9 +568,9 @@ public extension Behavior {
         case .suspended:
             fatalError("""
             No message should ever be delivered to a .suspended behavior!
-            Message: \(message)
-            Actor: \(context)
-            This is a bug, please open a ticket.
+              Message: \(message)
+              Actor: \(context)
+              This is a bug, please open a ticket.
             """, file: file, line: line)
         }
     }

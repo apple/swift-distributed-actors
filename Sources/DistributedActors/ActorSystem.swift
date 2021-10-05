@@ -38,7 +38,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
 //    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     internal var namingContext = ActorNamingContext() // TODO(distributed): change the purpose of this slightly, per type perhaps?
-    internal let namingLock = Lock() // TODO(distributed): avoid the lock if possible
+    internal let namingLock = Lock()
     internal func withNamingContext<T>(_ block: (inout ActorNamingContext) throws -> T) rethrows -> T {
         try self.namingLock.withLock {
             try block(&self.namingContext)
@@ -196,13 +196,13 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
             settings.logging._logger = Logger(label: self.name)
             settings.logging._logger.logLevel = settings.logging.logLevel
         }
-        var rootLogger = settings.logging.logger
+
         if settings.cluster.enabled {
-            rootLogger[metadataKey: "cluster/node"] = "\(settings.cluster.uniqueBindNode)"
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.cluster.uniqueBindNode)"
         } else {
-            rootLogger[metadataKey: "cluster/node"] = "\(self.name)"
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(self.name)"
         }
-        self.log = rootLogger
+        self.log = settings.logging.baseLogger
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
@@ -212,7 +212,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         }
 
         // dead letters init
-        self._deadLetters = ActorRef(.deadLetters(.init(rootLogger, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
+        self._deadLetters = ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
@@ -292,18 +292,18 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         // Wake up all the delayed actors. This MUST be the last thing to happen
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
+        lazyCluster?.wakeUp()
         lazyReceptionist.wakeUp()
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
-        lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
 
         /// Starts plugins after the system is fully initialized
         self.settings.plugins.startAll(self)
 
         self.log.info("Actor System [\(self.name)] initialized.")
-        assert(self.log[metadataKey: "cluster/node"] != nil)
+        assert(self.log[metadataKey: "cluster/node"] != nil, "Actor System logger must contain 'cluster/node' metadata")
         if settings.cluster.enabled {
             self.log.info("Actor System Settings in effect: Cluster.autoLeaderElection: \(self.settings.cluster.autoLeaderElection)")
             self.log.info("Actor System Settings in effect: Cluster.downingStrategy: \(self.settings.cluster.downingStrategy)")
@@ -621,7 +621,6 @@ extension ActorSystem: ActorRefFactory {
                            """)
             }
 
-//            pnote("RESERVED: \(address.detailedDescription) >>> \(self._reservedNames.map(\.detailedDescription))")
             return address
         }
     }
@@ -644,6 +643,7 @@ extension ActorSystem: ActorRefFactory {
         startImmediately: Bool = true
     ) throws -> ActorRef<Message>
         where Message: ActorMessage {
+        try behavior.validateAsInitial()
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
 
         // TODO: lock inside provider, not here

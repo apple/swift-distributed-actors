@@ -33,7 +33,7 @@ enum Rendering {
 
 extension Rendering {
     struct ActorShellTemplate: Renderable {
-        let actorable: DistributedActorTypeDecl
+        let actorable: DistributedActorDecl
 
         static let messageForNonProtocolTemplate = Template(
             templateString:
@@ -155,7 +155,7 @@ extension Rendering {
             // MARK: _remote distributed func implementations for {{baseName}}
 
             extension {{baseName}} {
-            {{funcTells}}
+            {{remoteImplFuncs}}
             }
 
             """
@@ -183,13 +183,7 @@ extension Rendering {
 
                 "boxFuncs": try self.renderBoxFuncs(actorableProtocols: actorableProtocols),
 
-                "funcTells": try self.renderFuncTells(),
-                "remoteImplFuncs": try self.actorable.funcs.map { funcDecl in
-                    try CodePrinter.content { printer in
-                        printer.indent()
-                        try funcDecl.renderRemoteImplFunc(self.actorable, printer: &printer)
-                    }
-                },
+                "remoteImplFuncs": try self.renderRemoteFuncImpls(),
                 "funcBoxTells": try self.renderFuncBoxTells(),
 
                 "tryIfReceiveTerminatedIsThrowing": self.actorable.receiveTerminatedIsThrowing ? "try " : " ",
@@ -234,7 +228,7 @@ extension Rendering {
             return printer.content
         }
 
-        private func renderFuncBoxSwitchCases(actorableProtocols: [ActorableTypeDecl]) throws -> String {
+        private func renderFuncBoxSwitchCases(actorableProtocols: [DistributedActorDecl]) throws -> String {
             var first = true
             let boxSwitchCases = try actorableProtocols.flatMap { box in
                 try box.funcs.map { funcDecl in
@@ -254,7 +248,7 @@ extension Rendering {
             return printer.content
         }
 
-        private func renderBoxFuncs(actorableProtocols: [ActorableTypeDecl]) throws -> String {
+        private func renderBoxFuncs(actorableProtocols: [DistributedActorDecl]) throws -> String {
             let boxFuncs = try actorableProtocols.map { inheritedProtocol in
                 try inheritedProtocol.renderBoxingFunc(in: self.actorable)
             }
@@ -264,11 +258,12 @@ extension Rendering {
             return printer.content
         }
 
-        private func renderFuncTells() throws -> String {
+        private func renderRemoteFuncImpls() throws -> String {
             var printer = CodePrinter(startingIndentation: 1)
-            try self.actorable.funcs.forEach { funcDecl in
-                try funcDecl.renderFuncTell(self.actorable, printer: &printer)
+            for funcDecl in self.actorable.funcs {
+                try funcDecl.renderRemoteImplFunc(self.actorable, printer: &printer)
             }
+
             return printer.content
         }
 
@@ -289,7 +284,7 @@ extension Rendering {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Rendering extensions
 
-extension DistributedActorTypeDecl {
+extension DistributedActorDecl {
     /// Render if we should store this as `let`.
     var renderStoreInstanceAs: String {
         "let"
@@ -320,7 +315,7 @@ extension DistributedActorTypeDecl {
         return printer.content
     }
 
-    func renderBoxingFunc(in owner: ActorTypeDecl) throws -> String {
+    func renderBoxingFunc(in owner: DistributedActorDecl) throws -> String {
         let context: [String: String] = [
             "baseName": "\(owner.fullName)",
             "access": "public",
@@ -341,7 +336,7 @@ extension DistributedActorTypeDecl {
     }
 }
 
-extension ActorableMessageDecl {
+extension DistributedMessageDecl {
     var returnIfBecome: String {
         switch self.returnType {
         case .behavior:
@@ -361,10 +356,10 @@ extension ActorableMessageDecl {
             self.effectiveParams.map { first, second, tpe in
                 // FIXME: super naive... replace with something more proper
                 let type = tpe
-                    .replacingOccurrences(of: "<Self>", with: "<\(self.actorableName)>")
-                    .replacingOccurrences(of: "<Self,", with: "<\(self.actorableName),")
-                    .replacingOccurrences(of: ",Self>", with: ",\(self.actorableName)>")
-                    .replacingOccurrences(of: ", Self>", with: ", \(self.actorableName)>")
+                    .replacingOccurrences(of: "<Self>", with: "<\(self.actorName)>")
+                    .replacingOccurrences(of: "<Self,", with: "<\(self.actorName),")
+                    .replacingOccurrences(of: ",Self>", with: ",\(self.actorName)>")
+                    .replacingOccurrences(of: ", Self>", with: ", \(self.actorName)>")
                     .replacingOccurrences(of: "@escaping", with: "")
 
                 if let name = first, name == "_" {
@@ -391,7 +386,7 @@ extension ActorableMessageDecl {
 //        printer.print("}")
 //    }
 
-    func renderFunc(printer: inout CodePrinter, actor: DistributedActorTypeDecl, printBody: (inout CodePrinter) -> Void) {
+    func renderFunc(printer: inout CodePrinter, actor: DistributedActorDecl, printBody: (inout CodePrinter) -> Void) {
         self.renderRemoteFuncDecl(printer: &printer, actor: actor)
         printer.print(" {")
         printer.indent()
@@ -400,7 +395,7 @@ extension ActorableMessageDecl {
         printer.print("}")
     }
 
-    func renderTellFuncDecl(printer: inout CodePrinter, actor: DistributedActorTypeDecl) {
+    func renderTellFuncDecl(printer: inout CodePrinter, actor: DistributedActorDecl) {
         let access = self.access.map { "\($0) " } ?? ""
 
         printer.print("\(access)func \(self.name)", skipNewline: true)
@@ -440,7 +435,7 @@ extension ActorableMessageDecl {
         printer.print("  @_dynamicReplacement(for:\(replacedFuncIdent))")
     }
 
-    func renderRemoteFuncDecl(printer: inout CodePrinter, actor: DistributedActorTypeDecl) {
+    func renderRemoteFuncDecl(printer: inout CodePrinter, actor: DistributedActorDecl) {
         self.renderDynamicFunctionReplacementAttr(printer: &printer)
 
         let access = self.access.map { "\($0) " } ?? ""
@@ -478,10 +473,10 @@ extension ActorableMessageDecl {
         self.params.map { first, second, tpe in
             // FIXME: super naive... replace with something more proper
             let type = tpe
-                .replacingOccurrences(of: "<Self>", with: "<\(self.actorableName)>")
-                .replacingOccurrences(of: "<Self,", with: "<\(self.actorableName),")
-                .replacingOccurrences(of: ",Self>", with: ",\(self.actorableName)>")
-                .replacingOccurrences(of: ", Self>", with: ", \(self.actorableName)>")
+                .replacingOccurrences(of: "<Self>", with: "<\(self.actorName)>")
+                .replacingOccurrences(of: "<Self,", with: "<\(self.actorName),")
+                .replacingOccurrences(of: ",Self>", with: ",\(self.actorName)>")
+                .replacingOccurrences(of: ", Self>", with: ", \(self.actorName)>")
 
             if let name = first {
                 if name == second {
@@ -572,7 +567,7 @@ extension ActorableMessageDecl {
     }
 
     /// Implements the generated func _remote_method(...) by passing the parameters as a message, by telling or asking.
-    func renderTellOrAskMessage(boxWith boxProtocol: DistributedActorTypeDecl? = nil, printer: inout CodePrinter) {
+    func renderTellOrAskMessage(boxWith boxProtocol: DistributedActorDecl? = nil, printer: inout CodePrinter) {
 
         // TODO: make this nicer... the ID could serve as the ref
         printer.print("guard let system = self.actorTransport as? ActorSystem else {")
@@ -620,20 +615,12 @@ extension ActorableMessageDecl {
             printer.indent()
         }
 
-//        if isAsk {
-            self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
-            printer.outdent()
-            printer.print("}._value")
-//            printer.outdent()
-//            printer.print(")")
-//        } else {
-//            self.renderPassMessage(boxWith: boxProtocol, skipNewline: true, printer: &printer)
-//            printer.print(")")
-//            printer.outdent()
-//        }
+        self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
+        printer.outdent()
+        printer.print("}._value")
     }
 
-    func renderPassMessage(boxWith boxProtocol: DistributedActorTypeDecl?, skipNewline: Bool, printer: inout CodePrinter) {
+    func renderPassMessage(boxWith boxProtocol: DistributedActorDecl?, skipNewline: Bool, printer: inout CodePrinter) {
         if let boxName = boxProtocol?.boxFuncName {
             printer.print("Act.", skipNewline: true)
             printer.print(boxName, skipNewline: true)
@@ -651,7 +638,7 @@ extension ActorableMessageDecl {
     }
 }
 
-extension ActorableMessageDecl.ReturnType {
+extension DistributedMessageDecl.ReturnType {
     var renderReturnDeclPart: String {
         switch self {
         case .void:
@@ -721,19 +708,14 @@ extension ActorableMessageDecl.ReturnType {
 }
 
 extension DistributedFuncDecl {
-//    func renderFuncTell(_ actor: ActorTypeDecl, printer: inout CodePrinter) throws {
-//        self.message.renderFunc(printer: &printer, actor: actor) { printer in
-//            message.renderTellOrAskMessage(boxWith: nil, printer: &printer)
-//        }
-//    }
 
-    func renderRemoteImplFunc(_ actor: DistributedActorTypeDecl, printer: inout CodePrinter) throws {
+    func renderRemoteImplFunc(_ actor: DistributedActorDecl, printer: inout CodePrinter) throws {
         self.message.renderFunc(printer: &printer, actor: actor) { printer in
             message.renderTellOrAskMessage(boxWith: nil, printer: &printer)
         }
     }
 
-    func renderBoxFuncTell(_ actorableProtocol: DistributedActorTypeDecl, printer: inout CodePrinter) throws {
+    func renderBoxFuncTell(_ actorableProtocol: DistributedActorDecl, printer: inout CodePrinter) throws {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
 
         self.message.renderFunc(printer: &printer, actor: actorableProtocol) { printer in
@@ -742,7 +724,7 @@ extension DistributedFuncDecl {
     }
 
     // TODO: dedup with the boxed one
-    func renderFuncSwitchCase(partOfProtocol ownerProtocol: DistributedActorTypeDecl?, printer: inout CodePrinter) throws {
+    func renderFuncSwitchCase(partOfProtocol ownerProtocol: DistributedActorDecl?, printer: inout CodePrinter) throws {
         printer.print("case ", skipNewline: true)
 
         if let boxProto = ownerProtocol {

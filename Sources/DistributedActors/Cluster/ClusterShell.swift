@@ -230,10 +230,14 @@ internal class ClusterShell {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Shell, reference used for issuing commands to the cluster
 
+    private let refLock = Lock() // TODO(distributed): avoid the lock if possible
+
     private var _ref: ClusterShell.Ref?
     var ref: ClusterShell.Ref {
+        refLock.lock()
+        defer { refLock.unlock() }
+
         // since this is initiated during system startup, nil should never happen
-        // TODO: slap locks around it...
         guard let it = self._ref else {
             return fatalErrorBacktrace("Accessing ClusterShell.ref failed, was nil! This should never happen as access should only happen after start() was invoked.")
         }
@@ -256,7 +260,7 @@ internal class ClusterShell {
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func start(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> LazyStart<Message> {
-        let instrumentation = system.settings.instrumentation.make_InternalActorTransportInstrumentation()
+        let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
 
@@ -337,7 +341,6 @@ internal class ClusterShell {
     }
 
     private var behavior: Behavior<Message> {
-        pinfo("HELLO")
         return self.bind()
     }
 
@@ -355,9 +358,7 @@ extension ClusterShell {
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Message> {
-        pinfo("BIND cluster return behavior...")
         return .setup { context in
-            pinfo("CANONICALIZED cluster")
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 

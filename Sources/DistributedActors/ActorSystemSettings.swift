@@ -41,7 +41,7 @@ public struct ActorSystemSettings {
 
     public var logging: LoggingSettings = .default {
         didSet {
-            self.cluster.swim.logger = self.logging.logger
+            self.cluster.swim.logger = self.logging.baseLogger
         }
     }
 
@@ -86,9 +86,15 @@ public struct LoggingSettings {
         }
     }
 
-    /// "Base" logger that will be used as template for all loggers created by the system (e.g. for `context.log` offered to actors).
-    /// This may be used to configure specific systems to log to specific files, or to carry system-wide metadata throughout all loggers the actor system will use.
-    public var logger: Logger {
+    /// "Base" logger that will be used as template for all loggers created by the system.
+    ///
+    /// Do not use this logger directly, but rather use `system.log` or  `Logger(actor:)`,
+    /// as they have more useful metadata configured on them which is obtained during cluster
+    /// initialization.
+    ///
+    /// This may be used to configure specific systems to log to specific files,
+    /// or to carry system-wide metadata throughout all loggers the actor system will use.
+    public var baseLogger: Logger {
         get {
             self._logger
         }
@@ -182,7 +188,7 @@ extension ActorSystemSettings {
         }
 
         /// - SeeAlso: `_InternalActorTransportInstrumentation`
-        public var make_InternalActorTransportInstrumentation: () -> _InternalActorTransportInstrumentation = { () in
+        public var makeInternalActorTransportInstrumentation: () -> _InternalActorTransportInstrumentation = { () in
             Noop_InternalActorTransportInstrumentation()
         }
 
@@ -197,7 +203,7 @@ extension ActorSystemSettings {
             }
 
             if let instrumentFactory = provider.actorTransportInstrumentation {
-                self.make_InternalActorTransportInstrumentation = instrumentFactory
+                self.makeInternalActorTransportInstrumentation = instrumentFactory
             }
 
             if let instrumentFactory = provider.receptionistInstrumentation {

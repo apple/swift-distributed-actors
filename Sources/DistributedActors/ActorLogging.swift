@@ -80,20 +80,15 @@ extension Logger {
     public init<Act: DistributedActor>(actor: Act) {
         var log: Logger
         if let transport = actor.actorTransport as? ActorSystem,
-           let address = actor.id._unwrapActorAddress {
-            log = Logger.make(transport.settings.logging.logger, path: address.path)
+            let address = actor.id._unwrapActorAddress {
+            log = Logger.make(transport.log, path: address.path)
         } else {
             log = Logger(label: "\(actor.id.underlying)")
         }
 
         if let address = actor.id.underlying as? ActorAddress {
             log[metadataKey: "actor/path"] = "\(address.path)"
-            log[metadataKey: "cluster/node"] = "\(address.uniqueNode)"
         }
-
-        assert(log[metadataKey: "cluster/node"] != nil, "was: \(actor.id)")
-
-        pprint("LOGGER FOR \(actor.id) >>>>>>>>>>>> \(log)")
 
         self = log
     }
@@ -106,10 +101,6 @@ extension Logger {
         var log = Logger(label: "\(path)")
         log[metadataKey: "cluster/node"] = base[metadataKey: "cluster/node"]
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
-        pinfo("""
-              MAKE LOGGER: path: \(path) >>>> base: \(base) >>>> \(base[metadataKey: "cluster/node"])
-                  >>>>> \(log)
-              """)
         return log
     }
 }

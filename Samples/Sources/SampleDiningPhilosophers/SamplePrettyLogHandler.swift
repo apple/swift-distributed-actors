@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import _Distributed
-import DistributedActors
+@testable import DistributedActors
 import Logging
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
@@ -30,8 +30,8 @@ import WASILibc
 
 /// Logger that prints "pretty" for showcasing the cluster nicely in sample applications.
 struct SamplePrettyLogHandler: LogHandler {
-    let CONSOLE_RESET = "\u{001B}[0;0m"
-    let CONSOLE_BOLD = "\u{001B}[1m"
+    static let CONSOLE_RESET = "\u{001B}[0;0m"
+    static let CONSOLE_BOLD = "\u{001B}[1m"
 
     public static func make(label: String) -> SamplePrettyLogHandler {
         return SamplePrettyLogHandler(label: label)
@@ -57,6 +57,7 @@ struct SamplePrettyLogHandler: LogHandler {
         self.label = label
     }
 
+    /// TODO: this implementation of getting a nice printout is a bit messy, but good enough for our sample apps
     public func log(level: Logger.Level,
                     message: Logger.Message,
                     metadata: Logger.Metadata?,
@@ -64,53 +65,49 @@ struct SamplePrettyLogHandler: LogHandler {
                     file: String,
                     function: String,
                     line: UInt) {
-        pprint("label = \(label)")
 
         var metadataString: String = ""
         var nodeInfo: String = ""
-        if var metadata = metadata {
-            metadata = metadata.merging(self.metadata, uniquingKeysWith: { _, new in new })
-            if let node = metadata.removeValue(forKey: "cluster/node") {
-                nodeInfo += "\(node)"
-            } else {
-                nodeInfo += "<local>"
-            }
 
-            pprint("""
-                   >>>>>>> \(label) >>>>>>>>
-                           META: \(metadata)
-                      SELF META: \(self.metadata)
-                           NODE: \(nodeInfo)
-                   """)
+        var effectiveMetadata = (metadata ?? [:]).merging(self.metadata, uniquingKeysWith: { _, new in new })
+        if let node = effectiveMetadata.removeValue(forKey: "cluster/node") {
+            nodeInfo += "\(node)"
+        }
+        let label: String
+        if let path = effectiveMetadata.removeValue(forKey: "actor/path")?.description,
+           self.label == path {
+            label = path
+        } else {
+            label = ""
+        }
 
-            if !metadata.isEmpty {
-                metadataString = "\n// metadata:\n"
-                for key in metadata.keys.sorted() {
-                    let value: Logger.MetadataValue = metadata[key]!
-                    let valueDescription = self.prettyPrint(metadata: value)
+        if !effectiveMetadata.isEmpty {
+            metadataString = "\n// metadata:\n"
+            for key in effectiveMetadata.keys.sorted() {
+                let value: Logger.MetadataValue = effectiveMetadata[key]!
+                let valueDescription = self.prettyPrint(metadata: value)
 
-                    var allString = "\n// \"\(key)\": \(valueDescription)"
-                    if allString.contains("\n") {
-                        allString = String(
-                                allString.split(separator: "\n").map { valueLine in
-                                    if valueLine.starts(with: "// ") {
-                                        return "\(valueLine)\n"
-                                    } else {
-                                        return "// \(valueLine)\n"
-                                    }
-                                }.joined(separator: "")
-                        )
-                    }
-                    metadataString.append(allString)
+                var allString = "\n// \"\(key)\": \(valueDescription)"
+                if allString.contains("\n") {
+                    allString = String(
+                            allString.split(separator: "\n").map { valueLine in
+                                if valueLine.starts(with: "// ") {
+                                    return "\(valueLine)\n"
+                                } else {
+                                    return "// \(valueLine)\n"
+                                }
+                            }.joined(separator: "")
+                    )
                 }
-                metadataString = String(metadataString.dropLast(1))
+                metadataString.append(allString)
             }
+            metadataString = String(metadataString.dropLast(1))
         }
 
 
         let file = file.split(separator: "/").last ?? ""
         let line = line
-        print("\(self.timestamp()) [\(file):\(line)] [\(nodeInfo)\(self.CONSOLE_BOLD)\(self.label)\(self.CONSOLE_RESET)] [\(level)] \(message)\(metadataString)")
+        print("\(self.timestamp()) [\(file):\(line)] [\(nodeInfo)\(Self.CONSOLE_BOLD)\(label)\(Self.CONSOLE_RESET)] [\(level)] \(message)\(metadataString)")
     }
 
 
@@ -125,7 +122,7 @@ struct SamplePrettyLogHandler: LogHandler {
             valueDescription = "\n  \(array.map { "\($0)" }.joined(separator: "\n  "))"
         case .dictionary(let metadata):
             for k in metadata.keys {
-                valueDescription += "\(CONSOLE_BOLD)\(k)\(CONSOLE_RESET): \(self.prettyPrint(metadata: metadata[k]!))"
+                valueDescription += "\(Self.CONSOLE_BOLD)\(k)\(Self.CONSOLE_RESET): \(self.prettyPrint(metadata: metadata[k]!))"
             }
         }
 

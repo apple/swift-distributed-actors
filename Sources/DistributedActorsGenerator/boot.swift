@@ -13,14 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import DistributedActors
 import Foundation
 import Logging
 
 @main
 public struct GenerateActorsCommand: ParsableCommand {
     @Option(help: "Print verbose information while analyzing and generating sources")
-    var logLevel: String = "trace" // ProcessInfo.processInfo.environment["SACT_GEN_LOGLEVEL"] ?? "info"
+    var logLevel: String = ProcessInfo.processInfo.environment["SACT_GEN_LOGLEVEL"] ?? "debug" // FIXME: change to nothing
 
     var logLevelValue: Logger.Level {
         switch self.logLevel {

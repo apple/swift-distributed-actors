@@ -14,7 +14,7 @@
 
 import SwiftSyntax
 
-struct DistributedActorTypeDecl {
+struct DistributedActorDecl {
     enum DeclType {
         case `protocol`
         case `distributedActor`
@@ -66,7 +66,7 @@ struct DistributedActorTypeDecl {
 
     /// If this decl implements other actorable protocols, those should be included here
     /// Available only after post processing phase
-    var actorableProtocols: Set<DistributedActorTypeDecl> = []
+    var actorableProtocols: Set<DistributedActorDecl> = []
 
     /// Cleared and Actorable protocols are moved to actorableProtocols in post processing
     var inheritedTypes: Set<String> = []
@@ -156,12 +156,12 @@ struct DistributedActorTypeDecl {
 }
 
 // TODO: Identity should include module name
-extension DistributedActorTypeDecl: Hashable {
+extension DistributedActorDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.name)
     }
 
-    public static func == (lhs: DistributedActorTypeDecl, rhs: DistributedActorTypeDecl) -> Bool {
+    public static func == (lhs: DistributedActorDecl, rhs: DistributedActorDecl) -> Bool {
         if lhs.name != rhs.name {
             return false
         }
@@ -169,14 +169,14 @@ extension DistributedActorTypeDecl: Hashable {
     }
 }
 
-extension DistributedActorTypeDecl: Comparable {
-    public static func < (lhs: DistributedActorTypeDecl, rhs: DistributedActorTypeDecl) -> Bool {
+extension DistributedActorDecl: Comparable {
+    public static func < (lhs: DistributedActorDecl, rhs: DistributedActorDecl) -> Bool {
         lhs.name < rhs.name
     }
 }
 
 struct DistributedFuncDecl {
-    let message: ActorableMessageDecl
+    let message: DistributedMessageDecl
 }
 
 extension DistributedFuncDecl: Equatable {
@@ -185,13 +185,8 @@ extension DistributedFuncDecl: Equatable {
     }
 }
 
-struct ActorableMessageDecl {
-    let actorableName: String
-    var actorableNameFirstLowercased: String { // TODO: more DRY
-        var res: String = self.actorableName.first!.lowercased()
-        res.append(contentsOf: self.actorableName.dropFirst())
-        return res
-    }
+struct DistributedMessageDecl {
+    let actorName: String
 
     let access: String?
     var outerType: String?
@@ -293,14 +288,14 @@ struct ActorableMessageDecl {
     }
 }
 
-extension ActorableMessageDecl: Hashable {
+extension DistributedMessageDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
 //        hasher.combine(access) // FIXME? rules are a bit more complex in reality here, since enclosing scope etc
         hasher.combine(self.name) // FIXME: take into account enclosing scope
         hasher.combine(self.throwing)
     }
 
-    public static func == (lhs: ActorableMessageDecl, rhs: ActorableMessageDecl) -> Bool {
+    public static func == (lhs: DistributedMessageDecl, rhs: DistributedMessageDecl) -> Bool {
 //        if lhs.access != rhs.access { // FIXME? rules are a bit more complex in reality here, since enclosing scope etc
 //            return false
 //        }

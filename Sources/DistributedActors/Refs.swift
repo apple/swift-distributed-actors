@@ -66,6 +66,9 @@ public struct ActorRef<Message: ActorMessage>: ReceivesMessages, DeathWatchable,
     public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
+//            if ("\(message)".contains("handshakeWith(")) {
+//                pprint("send = \(message)", file: file, line: line)
+//            }
             cell.sendMessage(message, file: file, line: line)
         case .remote(let remote):
             remote.sendUserMessage(message, file: file, line: line)

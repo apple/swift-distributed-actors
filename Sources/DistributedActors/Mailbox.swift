@@ -70,7 +70,6 @@ internal final class Mailbox<Message: ActorMessage> {
             _ = shell._system?.userMailboxInitCounter.add(1)
         }
         #endif
-        pinfo("INITIALIZED MAILBOX FOR: \(shell.address)")
         self.shell = shell
         self.userMessages = MPSCLinkedQueue()
         self.systemMessages = MPSCLinkedQueue()
@@ -201,8 +200,6 @@ internal final class Mailbox<Message: ActorMessage> {
     /// any chance to interact with this mailbox yet
     @inlinable
     func enqueueStart() {
-        pprint("MAILBOX: ENQUEUE START \(self.address)")
-
         let oldStatus = self.setHasSystemMessages()
         guard oldStatus.activations == 0 else {
             fatalError("!!! BUG !!! Status was \(oldStatus), expected 0.")
@@ -385,14 +382,21 @@ internal final class Mailbox<Message: ActorMessage> {
             runResult = .shouldSuspend
         }
 
+
+//        if (shell.address.path == ActorPath._clusterShell) {
+//            print(">>>>> mailbox run = \(shell.address.fullDescription)")
+//        }
+
         // system messages run -----------------------------------------------------------------------------------------
 
         if status.hasSystemMessages {
-            while runResult != .shouldStop, runResult != .closed, let message = self.systemMessages.dequeue() {
+            while runResult != .shouldStop,
+                  runResult != .closed,
+                  let message = self.systemMessages.dequeue() {
                 do {
-                    if (shell.path.description.contains("/system/cluster")) {
-                        pnote("interpret system message: \(message)")
-                    }
+//                    if (shell.address.path.segments.last!.description == "cluster") {
+//                        pprint(">>>>> mailbox run system = \(shell.address) <<<<< \(message)")
+//                    }
                     try runResult = shell.interpretSystemMessage(message: message)
                 } catch {
                     shell.fail(error)
@@ -444,9 +448,6 @@ internal final class Mailbox<Message: ActorMessage> {
                             fatalError("Received message [\(_message)]:\(type(of: _message)), expected \(Message.self)")
                         }
 
-                        if (shell.path.description.contains("/system/cluster")) {
-                            pnote("interpret message: \(message)")
-                        }
                         runResult = try shell.interpretMessage(message: message)
                     case .closure(let carry):
                         traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)")

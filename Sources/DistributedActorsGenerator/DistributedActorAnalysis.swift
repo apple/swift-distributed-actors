@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Files
 import Foundation
 import Logging
 import SwiftSyntax
@@ -26,7 +25,7 @@ let RST = "\u{001B}[0;0m"
 final class GatherDistributedActors: SyntaxVisitor {
     var log: Logger
 
-    let basePath: Folder
+    let basePath: Directory
     var moduleName: String {
         basePath.name
     }
@@ -34,13 +33,13 @@ final class GatherDistributedActors: SyntaxVisitor {
 
     var imports: [String] = []
 
-    var actorDecls: [DistributedActorTypeDecl] = []
-    var wipDecl: DistributedActorTypeDecl!
+    var actorDecls: [DistributedActorDecl] = []
+    var wipDecl: DistributedActorDecl!
 
     // Stack of types a declaration is nested in. E.g. an actorable struct declared in an enum for namespacing.
     var nestingStack: [String] = []
 
-    init(basePath: Folder, path: File, log: Logger) {
+    init(basePath: Directory, path: File, log: Logger) {
         self.basePath = basePath
         self.path = path
         self.log = log
@@ -111,7 +110,7 @@ final class GatherDistributedActors: SyntaxVisitor {
             return .visitChildren
         }
 
-        self.wipDecl = DistributedActorTypeDecl(
+        self.wipDecl = DistributedActorDecl(
             sourceFile: self.path,
             type: .distributedActor,
             name: name
@@ -163,8 +162,8 @@ final class GatherDistributedActors: SyntaxVisitor {
     private func collectGenericDecls(
         _ genericParameterClause: GenericParameterClauseSyntax?,
         _ genericWhereClause: GenericWhereClauseSyntax?
-    ) -> DistributedActorTypeDecl.GenericInformation? {
-        let genericDecls: [DistributedActorTypeDecl.GenericDecl]
+    ) -> DistributedActorDecl.GenericInformation? {
+        let genericDecls: [DistributedActorDecl.GenericDecl]
         if let genericParameterClause = genericParameterClause {
             genericDecls = genericParameterClause
                 .genericParameterList.map { param in
@@ -174,7 +173,7 @@ final class GatherDistributedActors: SyntaxVisitor {
             genericDecls = []
         }
 
-        let whereDecls: [DistributedActorTypeDecl.WhereClauseDecl]
+        let whereDecls: [DistributedActorDecl.WhereClauseDecl]
         if let genericWhereClause = genericWhereClause {
             whereDecls = genericWhereClause.requirementList.map { requirement in
                 .init("\(requirement)")
@@ -263,8 +262,8 @@ final class GatherDistributedActors: SyntaxVisitor {
 
         // TODO: we could require it to be async as well or something
         let funcDecl = DistributedFuncDecl(
-            message: ActorableMessageDecl(
-                actorableName: self.wipDecl.name,
+            message: DistributedMessageDecl(
+                actorName: self.wipDecl.name,
                 access: access,
                 name: name,
                 params: node.signature.gatherParams(),
@@ -317,10 +316,10 @@ extension FunctionSignatureSyntax {
 // MARK: Resolve types, e.g. inherited Actorable protocols
 
 struct ResolveDistributedActors {
-    static func resolve(_ decls: [DistributedActorTypeDecl]) -> [DistributedActorTypeDecl] {
+    static func resolve(_ decls: [DistributedActorDecl]) -> [DistributedActorDecl] {
         Self.validateActorableProtocols(decls)
 
-        var protocolLookup: [String: DistributedActorTypeDecl] = [:]
+        var protocolLookup: [String: DistributedActorDecl] = [:]
         for act in decls where act.type == .protocol {
             // TODO: in reality should be FQN, for cross module support
             protocolLookup[act.name] = act
@@ -328,7 +327,7 @@ struct ResolveDistributedActors {
         let actorableTypes: Set<String> = Set(protocolLookup.keys)
 
         // yeah this is n^2 would not need this if we could use the type-/macro-system to do this for us?
-        let resolvedActorables: [DistributedActorTypeDecl] = decls.map { actorable in
+        let resolvedActorables: [DistributedActorDecl] = decls.map { actorable in
             let inheritedByNameMatches = actorable.inheritedTypes.intersection(actorableTypes)
 
             guard !inheritedByNameMatches.isEmpty else {
@@ -366,7 +365,7 @@ struct ResolveDistributedActors {
     }
 
     /// **Faults** when an `protocol` inheriting `Actorable` does not provide a boxing
-    static func validateActorableProtocols(_ actorables: [DistributedActorTypeDecl]) {
+    static func validateActorableProtocols(_ actorables: [DistributedActorDecl]) {
         let protocols = actorables.filter {
             $0.type == .protocol
         }

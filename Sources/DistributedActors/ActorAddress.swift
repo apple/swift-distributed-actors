@@ -134,6 +134,18 @@ extension ActorAddress: CustomStringConvertible {
             return "\(res)#\(self.incarnation.value)"
         }
     }
+
+    public var fullDescription: String {
+        var res = ""
+        res += "\(reflecting: self.uniqueNode)"
+        res += "\(self.path)"
+
+        if self.incarnation == ActorIncarnation.wellKnown {
+            return res
+        } else {
+            return "\(res)#\(self.incarnation.value)"
+        }
+    }
 }
 
 extension ActorAddress {

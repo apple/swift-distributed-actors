@@ -12,12 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
 import SwiftSyntax
 
 extension Rendering {
     struct MessageCodableTemplate: Renderable {
-        let actorable: DistributedActorTypeDecl
+        let actorable: DistributedActorDecl
 
         static let messageCodableConformanceTemplate = Template(
             templateString:
