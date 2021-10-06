@@ -60,7 +60,7 @@ final class GenerateActors {
 
 extension GenerateActors {
     private func cleanAll(from directory: Directory) {
-        self.log.info("Cleaning up \(directory.path)")
+        self.log.debug("Cleaning up: \(directory.path)")
         directory.files.forEach { file in
             do {
                 try file.delete()

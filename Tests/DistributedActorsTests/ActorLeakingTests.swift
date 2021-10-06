@@ -272,7 +272,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
     }
 
     func test_actor_whichLogsShouldNotCauseLeak_onDisabledLevel() throws {
-        return pnote("!!! Skipping test \(#function) !!!") // FIXME(distributed): disabled test
+        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): disabled test
 
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
