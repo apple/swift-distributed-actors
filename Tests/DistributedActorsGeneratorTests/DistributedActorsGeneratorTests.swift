@@ -80,29 +80,33 @@ final class DistributedActorsGeneratorTests: ClusteredActorSystemsXCTestCase {
     // MARK: Generated actors
     // we have a version of the generated code checked in so these tests depend on the plugin!
 
-    func test_TestActor_greet() async throws {
-        let actor: TestDistributedActor = TestDistributedActor(transport: first)
+    func test_TestActor_greet() throws {
+        try runAsyncAndBlock {
+            let actor: TestDistributedActor = TestDistributedActor(transport: first)
 
-        let reply = try await actor.greet(name: "Caplin")
-        reply.shouldEqual("Hello, Caplin!")
+            let reply = try await actor.greet(name: "Caplin")
+            reply.shouldEqual("Hello, Caplin!")
+        }
     }
 
-    func test_TestActor_greet_remote() async throws {
-        let actor: TestDistributedActor = TestDistributedActor(transport: first)
-        let addressOnFirst = actor.id.underlying as! ActorAddress
-        pinfo("address on '\(first.name)': \(addressOnFirst.detailedDescription)")
+    func test_TestActor_greet_remote() throws {
+        try runAsyncAndBlock {
+            let actor: TestDistributedActor = TestDistributedActor(transport: first)
+            let addressOnFirst = actor.id.underlying as! ActorAddress
+            pinfo("address on '\(first.name)': \(addressOnFirst.detailedDescription)")
 
-        let actuallyRemoteIdentity = AnyActorIdentity(addressOnFirst._asRemote) // FIXME(distributed: this is a workaround because of how cluster addresses and resolve works; this won't be needed
+            let actuallyRemoteIdentity = AnyActorIdentity(addressOnFirst._asRemote) // FIXME(distributed: this is a workaround because of how cluster addresses and resolve works; this won't be needed
 
-        let remote = try TestDistributedActor.resolve(actuallyRemoteIdentity /* TODO: use actor.id here */, using: second)
-        let addressOnSecond = remote.id.underlying as! ActorAddress
-        pinfo("address on '\(second.name)': \(addressOnSecond.detailedDescription)")
-        addressOnSecond._isRemote.shouldBeTrue()
-        second.log.warning("Resolved: \((remote.id.underlying as! ActorAddress).detailedDescription)")
+            let remote = try TestDistributedActor.resolve(actuallyRemoteIdentity /* TODO: use actor.id here */, using: second)
+            let addressOnSecond = remote.id.underlying as! ActorAddress
+            pinfo("address on '\(second.name)': \(addressOnSecond.detailedDescription)")
+            addressOnSecond._isRemote.shouldBeTrue()
+            second.log.warning("Resolved: \((remote.id.underlying as! ActorAddress).detailedDescription)")
 
-        let reply = try await remote.greet(name: "Caplin")
-        pinfo("GOT REPLY: \(reply)")
-        reply.shouldEqual("Hello, Caplin!")
+            let reply = try await remote.greet(name: "Caplin")
+            pinfo("GOT REPLY: \(reply)")
+            reply.shouldEqual("Hello, Caplin!")
+        }
     }
 }
 

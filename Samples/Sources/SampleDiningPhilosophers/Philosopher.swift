@@ -16,7 +16,7 @@ import _Distributed
 import DistributedActors
 import Logging
 
-distributed actor Philosopher {
+distributed actor Philosopher: CustomStringConvertible {
     private let name: String
     private lazy var log: Logger = Logger(actor: self)
 
@@ -150,6 +150,12 @@ distributed actor Philosopher {
         self.timers.startSingle(key: .becomeHungry, delay: .seconds(3)) {
             await self.stopEating()
         }
+    }
+}
+
+extension Philosopher {
+    public nonisolated var description: String {
+        "\(Self.self)(\(self.id.underlying))"
     }
 }
 

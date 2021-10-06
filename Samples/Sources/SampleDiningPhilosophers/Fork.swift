@@ -17,7 +17,11 @@ import DistributedActors
 import Logging
 
 distributed actor Fork: CustomStringConvertible {
-    private lazy var log: Logger = Logger(actor: self)
+    private lazy var log: Logger = {
+        var l = Logger(actor: self)
+        l[metadataKey: "name"] = "\(self.name)"
+        return l
+    }()
 
     private let name: String
     private var isTaken: Bool = false
@@ -38,17 +42,14 @@ distributed actor Fork: CustomStringConvertible {
 
     distributed func putBack() throws {
         guard self.isTaken else {
-            let error = ForkError.puttingBackNotTakenFork
-            log.error("Attempted to put back fork that was not taken!", metadata: [
-                "error": "\(error)",
-            ])
-            throw error
+            log.error("Attempted to put back fork that was not taken!")
+            throw ForkError.puttingBackNotTakenFork
         }
         self.isTaken = false
     }
 
     public nonisolated var description: String {
-        "\(Self.self)(\(self.id))"
+        "\(Self.self)(\(self.id.underlying))"
     }
 }
 
