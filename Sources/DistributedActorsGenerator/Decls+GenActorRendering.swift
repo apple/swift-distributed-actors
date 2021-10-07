@@ -607,17 +607,15 @@ extension DistributedMessageDecl {
             printer.indent()
         case .void:
             printer.print("try await ref.ask(for: Result<_Done, ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
-            // printer.print("ref.tell(", skipNewline: true)
             printer.indent()
         case .behavior(let t):
             printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
-            // printer.print("ref.tell(", skipNewline: true)
             printer.indent()
         }
 
         self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
         printer.outdent()
-        printer.print("}._value")
+        printer.print("}._unsafeAsyncValue")
     }
 
     func renderPassMessage(boxWith boxProtocol: DistributedActorDecl?, skipNewline: Bool, printer: inout CodePrinter) {
@@ -631,10 +629,6 @@ extension DistributedMessageDecl {
         }
 
         self.passEffectiveParamsWithBraces(printer: &printer, skipNewline: skipNewline)
-
-//        if boxProtocol != nil {
-//            printer.print(")", skipNewline: skipNewline)
-//        }
     }
 }
 

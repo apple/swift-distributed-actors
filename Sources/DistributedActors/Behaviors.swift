@@ -555,7 +555,6 @@ public extension Behavior {
                                          Address: \(context.address.detailedDescription)
                                          Message: \(message): \(type(of: message))
                                          Behavior: \(self)
-                                         Setup: \(setup)
                                        """, file: file, line: line)
 
         case .stop:

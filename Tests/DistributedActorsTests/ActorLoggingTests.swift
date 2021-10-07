@@ -59,8 +59,6 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel() throws {
-        throw XCTSkip("We fixed that this now uses the LogCapture, and that always materializes, so remove or adjust the test") // FIXME: re-enable this
-
         let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
 
@@ -90,8 +88,6 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata() throws {
-        throw XCTSkip("We fixed that this now uses the LogCapture, and that always materializes, so remove or adjust the test") // FIXME: re-enable this
-
         let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
 
