@@ -13,7 +13,7 @@ See also, [STYLE_GUIDE.md](STYLE_GUIDE.md) for some additional style hints.
 
 You can use the provided docker images to debug and execute tests inside docker:
 
-```
+``` 
 docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1604.51.yaml run shell
 ```
 
