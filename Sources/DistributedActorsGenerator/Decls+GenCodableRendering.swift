@@ -12,12 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
 import SwiftSyntax
 
 extension Rendering {
     struct MessageCodableTemplate: Renderable {
-        let actorable: ActorableTypeDecl
+        let actorable: DistributedActorDecl
 
         static let messageCodableConformanceTemplate = Template(
             templateString:
@@ -28,7 +27,6 @@ extension Rendering {
             // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
             extension {{baseName}} {
-                // TODO: Check with Swift team which style of discriminator to aim for
                 public enum DiscriminatorKeys: String, Decodable {
                     {{discriminatorCases}}
                 }
@@ -121,7 +119,7 @@ extension Rendering {
                         decodeCases.print("let \(secondName) = try container.decode(\(type).self, forKey: CodingKeys.\(decl.message.name)_\(name))")
                     }
                 }
-                decodeCases.print("self = .\(decl.message.name)\(CodePrinter.content(decl.message.passEffectiveParamsWithBraces))")
+                decodeCases.print("self = .\(decl.message.name)\(CodePrinter.content { printer in decl.message.passEffectiveParamsWithBraces(printer: &printer) })")
                 decodeCases.outdent()
             }
 

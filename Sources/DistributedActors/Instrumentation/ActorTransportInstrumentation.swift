@@ -13,10 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorTransportInstrumentation
+// MARK: _InternalActorTransportInstrumentation
 
 // TODO: all these to accept trace context or something similar
-public protocol ActorTransportInstrumentation {
+public protocol _InternalActorTransportInstrumentation {
     // FIXME: recipient address, not just path
     func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any)
     func remoteActorMessageSerializeEnd(id: AnyObject, bytes: Int)
@@ -28,9 +28,9 @@ public protocol ActorTransportInstrumentation {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Noop ActorTransportInstrumentation
+// MARK: Noop _InternalActorTransportInstrumentation
 
-struct NoopActorTransportInstrumentation: ActorTransportInstrumentation {
+struct Noop_InternalActorTransportInstrumentation: _InternalActorTransportInstrumentation {
     func remoteActorMessageSerializeStart(id: AnyObject, recipient: ActorPath, message: Any) {}
 
     func remoteActorMessageSerializeEnd(id: AnyObject, bytes: Int) {}

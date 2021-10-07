@@ -63,6 +63,7 @@ public func FIXME<T>(_ hint: String, function: StaticString = #function, file: S
 }
 
 // TODO: Remove this once we're happy with swift-backtrace always printing backtrace (also on macos)
+@usableFromInline
 internal func fatalErrorBacktrace<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
     sact_dump_backtrace()
     fatalError(hint, file: file, line: line)
@@ -81,7 +82,17 @@ private func _createTimeFormatter() -> DateFormatter {
 }
 
 /// Short for "pretty print", useful for debug tracing
-public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
+public func pprint(_ message: String, file: String = #file, line: UInt = #line) {
+    print("""
+    [pprint]\
+    [\(_createTimeFormatter().string(from: Date()))] \
+    [\(file):\(line)]\
+    [\(_hackyPThreadThreadId())]: \
+    \(message)
+    """)
+}
+
+public func pprint(_ message: StaticString, file: String = #file, line: UInt = #line) {
     print("""
     [pprint]\
     [\(_createTimeFormatter().string(from: Date()))] \

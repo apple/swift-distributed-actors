@@ -16,7 +16,7 @@
 ///
 /// The most important behavior is `Behavior.receive` since it allows handling incoming messages with a simple block.
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
-public struct Behavior<Message: ActorMessage> {
+public struct Behavior<Message: ActorMessage>: @unchecked Sendable {
     @usableFromInline
     let underlying: _Behavior<Message>
 
@@ -43,6 +43,76 @@ extension Behavior {
     /// - SeeAlso: `receive` convenience if you also need to access the `ActorContext`.
     public static func receiveMessage(_ handle: @escaping (Message) throws -> Behavior<Message>) -> Behavior {
         Behavior(underlying: .receiveMessage(handle))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Async Message handling
+
+extension Behavior {
+
+    func receiveAsync0(_ recv: @Sendable @escaping (Message) async throws -> Behavior<Message>,
+                       context: ActorContext<Message>,
+                       message: Message) -> Behavior<Message> {
+        let loop = context.system._eventLoopGroup.next()
+        let promise = loop.makePromise(of: Behavior<Message>.self)
+
+        // TODO: pretty sub-optimal, but we'll flatten this all out eventually
+        Task {
+            do {
+                let next = try await recv(message)
+                promise.succeed(next)
+            } catch {
+                promise.fail(error)
+            }
+        }
+
+        return context.awaitResultThrowing(of: promise.futureResult, timeout: .effectivelyInfinite) { next in
+            // become the "next" behavior, realistically with 'distributed actor' this is always '.same'
+            next
+        }
+    }
+
+    @usableFromInline
+    func receiveAsync(_ recv: @Sendable @escaping (ActorContext<Message>, Message) async throws -> Behavior<Message>,
+                      _ message: Message) -> Behavior<Message> {
+        .setup { context in
+            receiveAsync0({ message in
+                try await recv(context, message)
+            }, context: context, message: message)
+        }
+    }
+
+    @usableFromInline
+    func receiveMessageAsync(_ recv: @Sendable @escaping (Message) async throws -> Behavior<Message>,
+                             _ message: Message) -> Behavior<Message> {
+        .setup { context in
+            receiveAsync0(recv, context: context, message: message)
+        }
+    }
+
+    /// Defines a behavior that will be executed with an incoming message by its hosting actor.
+    /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
+    ///
+    /// The function is asynchronous and is allowed to suspend.
+    ///
+    /// WARNING: Use this ONLY with 'distributed actor' which will guarantee the actor hops are correct.
+    ///
+    /// - SeeAlso: `_receiveMessageAsync` convenience behavior for when you do not need to access the `ActorContext`.
+    public static func _receiveAsync(_ handle: @Sendable @escaping (ActorContext<Message>, Message) async throws -> Behavior<Message>) -> Behavior {
+        Behavior(underlying: .receiveAsync(handle))
+    }
+
+    /// Defines a behavior that will be executed with an incoming message by its hosting actor.
+    ///
+    ///
+    /// The function is asynchronous and is allowed to suspend.
+    ///
+    /// WARNING: Use this ONLY with 'distributed actor' which will guarantee the actor hops are correct.
+    ///
+    /// - SeeAlso: `_receiveAsync` convenience if you also need to access the `ActorContext`.
+    public static func _receiveMessageAsync(_ handle: @Sendable @escaping (Message) async throws -> Behavior<Message>) -> Behavior {
+        Behavior(underlying: .receiveMessageAsync(handle))
     }
 }
 
@@ -328,7 +398,10 @@ internal enum _Behavior<Message: ActorMessage> {
     case setup(_ onStart: (ActorContext<Message>) throws -> Behavior<Message>)
 
     case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>)
+    case receiveAsync(_ handle: @Sendable (ActorContext<Message>, Message) async throws -> Behavior<Message>)
+
     case receiveMessage(_ handle: (Message) throws -> Behavior<Message>)
+    case receiveMessageAsync(_ handle: @Sendable (Message) async throws -> Behavior<Message>)
 
     indirect case stop(postStop: Behavior<Message>?, reason: StopReason)
     indirect case failed(behavior: Behavior<Message>, cause: Supervision.Failure)
@@ -463,7 +536,9 @@ public extension Behavior {
     func interpretMessage(context: ActorContext<Message>, message: Message, file: StaticString = #file, line: UInt = #line) throws -> Behavior<Message> {
         switch self.underlying {
         case .receiveMessage(let recv): return try recv(message)
+        case .receiveMessageAsync(let recv): return self.receiveMessageAsync(recv, message)
         case .receive(let recv): return try recv(context, message)
+        case .receiveAsync(let recv): return self.receiveAsync(recv, message)
         case .signalHandling(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case .intercept(let inner, let interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case .orElse(let first, let second): return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
@@ -473,7 +548,14 @@ public extension Behavior {
         case .ignore: fatalError("Illegal attempt to interpret message with .ignore behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
         case .unhandled: fatalError("Illegal attempt to interpret message with .unhandled behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
 
-        case .setup: fatalError("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket.", file: file, line: line)
+        case .setup(let setup):
+            return fatalErrorBacktrace("""
+                                       Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
+                                         System: \(context.system)
+                                         Address: \(context.address.detailedDescription)
+                                         Message: \(message): \(type(of: message))
+                                         Behavior: \(self)
+                                       """, file: file, line: line)
 
         case .stop:
             return .unhandled
@@ -485,9 +567,9 @@ public extension Behavior {
         case .suspended:
             fatalError("""
             No message should ever be delivered to a .suspended behavior!
-            Message: \(message)
-            Actor: \(context)
-            This is a bug, please open a ticket.
+              Message: \(message)
+              Actor: \(context)
+              This is a bug, please open a ticket.
             """, file: file, line: line)
         }
     }
@@ -528,6 +610,8 @@ public extension Behavior {
             }
 
         case .receiveMessage, .receive:
+            return .unhandled
+        case .receiveMessageAsync, .receiveAsync:
             return .unhandled
         case .setup:
             return .unhandled
@@ -729,6 +813,8 @@ internal extension Behavior {
                     return canonical
 
                 case .receive, .receiveMessage:
+                    return canonical
+                 case .receiveAsync, .receiveMessageAsync:
                     return canonical
                 }
             }

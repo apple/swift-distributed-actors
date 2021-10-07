@@ -344,7 +344,7 @@ extension ActorRef: ReceptionistGuest {
 ///     - `Receptionist.Register`
 ///     - `Receptionist.Subscribe`
 /// :nodoc: INTERNAL API
-public class ReceptionistMessage: Codable {}
+public class ReceptionistMessage: Codable, @unchecked Sendable {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: internal untyped protocols

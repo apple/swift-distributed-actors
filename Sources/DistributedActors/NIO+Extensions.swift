@@ -87,19 +87,3 @@ internal extension ByteBuffer {
     }
 }
 
-// MARK: ELF extensions
-
-internal extension EventLoopFuture {
-    /// Useful for "println debugging" ¯\_(ツ)_/¯
-    @discardableResult
-    func pprintResults(hint: String, file: StaticString = #file, line: UInt = #line, function: String = #function) -> Self {
-        self.whenFailure { err in
-            pprint("[\(hint)] ELF @ \(function) failed: \(err)", file: file, line: line)
-        }
-        self.whenSuccess { r in
-            pprint("[\(hint)] ELF @ \(function) success: \(r)", file: file, line: line)
-        }
-
-        return self
-    }
-}

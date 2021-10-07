@@ -24,7 +24,7 @@ import NIO
 ///
 /// You can customize which coder/decoder should be used by registering specialized manifests for the message type,
 /// or having the type conform to one of the special `...Representable` (e.g. `ProtobufRepresentable`) protocols.
-public typealias ActorMessage = Codable
+public typealias ActorMessage = Codable // FIXME: MAKE THIS SENDABLE: & Sendable
 
 /// A `Never` can never be sent as message, even more so over the wire.
 extension Never: NonTransportableActorMessage {}

@@ -29,6 +29,7 @@ import NIO
 /// invoking `ActorSystem.spawn(name:actorable:)` are automatically translated in safe message dispatches.
 ///
 /// ***NOTE:*** It is our hope to replace the code generation needed here with language features in Swift itself.
+// @available(*, deprecated, message: "Replaced with 'distributed actor' language feature")
 public protocol Actorable {
     associatedtype Message: ActorMessage
 

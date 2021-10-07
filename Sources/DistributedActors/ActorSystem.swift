@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import Backtrace
 import CDistributedActorsMailbox
 import Dispatch
@@ -25,7 +26,7 @@ import NIO
 /// Rather, the system should be configured to host the kinds of dispatchers that the application needs.
 ///
 /// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
-public final class ActorSystem {
+public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable {
     public let name: String
 
     // initialized during startup
@@ -43,7 +44,12 @@ public final class ActorSystem {
 
     private let dispatcher: InternalMessageDispatcher
 
-    // TODO: converge into one tree? // YEAH
+    // Access MUST be protected with `namingLock`.
+    private var _managedRefs: [ActorAddress: _ReceivesSystemMessages] = [:]
+    private var _managedDistributedActors: [ActorAddress: DistributedActor] = [:]
+    private var _reservedNames: Set<ActorAddress> = []
+
+    // TODO: converge into one tree
     // Note: This differs from Akka, we do full separate trees here
     private var systemProvider: _ActorRefProvider!
     private var userProvider: _ActorRefProvider!
@@ -72,7 +78,6 @@ public final class ActorSystem {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Receptionist
-
     // TODO: Use "set once" atomic structure
     private var _receptionistRef: ActorRef<Receptionist.Message>!
     public var receptionist: SystemReceptionist {
@@ -170,8 +175,6 @@ public final class ActorSystem {
         // TODO: should we share this, or have a separate ELG for IO?
         self._eventLoopGroup = eventLoopGroup
 
-        self.settings = settings
-
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
         // initialize top level guardians
@@ -182,15 +185,17 @@ public final class ActorSystem {
         self.lazyInitializationLock = initializationLock
 
         if !settings.logging.customizedLogger {
-            settings.logging.logger = Logger(label: self.name)
+            settings.logging._logger = Logger(label: self.name)
+            settings.logging._logger.logLevel = settings.logging.logLevel
         }
-        var rootLogger = settings.logging.logger
+
         if settings.cluster.enabled {
-            rootLogger[metadataKey: "actor/node"] = "\(settings.cluster.uniqueBindNode)"
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(settings.cluster.uniqueBindNode)"
         } else {
-            rootLogger[metadataKey: "actor/nodeName"] = "\(self.name)"
+            settings.logging._logger[metadataKey: "cluster/node"] = "\(self.name)"
         }
-        self.log = rootLogger
+        self.settings = settings
+        self.log = settings.logging.baseLogger
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
@@ -200,13 +205,12 @@ public final class ActorSystem {
         }
 
         // dead letters init
-        self._deadLetters = ActorRef(.deadLetters(.init(rootLogger, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
+        self._deadLetters = ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
         let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", localNode: settings.cluster.uniqueBindNode, system: self))
         // TODO: want to reconciliate those into one, and allow /dead as well
-
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
 
@@ -240,7 +244,6 @@ public final class ActorSystem {
 
         // node watcher MUST be prepared before receptionist (or any other actor) because it (and all actors) need it if we're running clustered
         var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
-        var lazyCluster: LazyStart<ClusterShell.Message>?
 
         if let cluster = self._cluster {
             // try!-safe, this will spawn under /system/... which we have full control over,
@@ -251,17 +254,16 @@ public final class ActorSystem {
                 systemStream: true,
                 customBehavior: ClusterEventStream.Shell.behavior
             )
-            lazyCluster = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
-
+            let clusterRef = try! cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
             initializationLock.withWriterLockVoid {
-                self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
+                self._clusterControl = ClusterControl(settings.cluster, clusterRef: clusterRef, eventStream: clusterEvents)
             }
 
             // Node watcher MUST be started AFTER cluster and clusterEvents
             lazyNodeDeathWatcher = try! self._prepareSystemActor(
-                NodeDeathWatcherShell.naming,
-                NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-                props: ._wellKnown
+                    NodeDeathWatcherShell.naming,
+                    NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
+                    props: ._wellKnown
             )
             self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
         }
@@ -276,7 +278,6 @@ public final class ActorSystem {
         #endif
 
         _ = self.metrics // force init of metrics
-
         // Wake up all the delayed actors. This MUST be the last thing to happen
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
@@ -284,7 +285,7 @@ public final class ActorSystem {
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
-        lazyCluster?.wakeUp()
+        // lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
 
         /// Starts plugins after the system is fully initialized
@@ -440,15 +441,15 @@ extension ActorSystem: CustomStringConvertible {
     }
 }
 
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
-
 extension ActorSystem: ActorRefFactory {
     @discardableResult
     public func spawn<Message>(
-        _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
-        file: String = #file, line: UInt = #line,
-        _ behavior: Behavior<Message>
+            _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
+            file: String = #file, line: UInt = #line,
+            _ behavior: Behavior<Message>
     ) throws -> ActorRef<Message> where Message: ActorMessage {
         try self.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
@@ -462,9 +463,9 @@ extension ActorSystem: ActorRefFactory {
     /// This also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system.
     /// Appropriate supervision strategies should be configured for these types of actors.
     public func _spawnSystemActor<Message>(
-        _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
+            _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage {
+            where Message: ActorMessage {
         try self.serialization._ensureSerializer(Message.self)
         return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
     }
@@ -480,9 +481,9 @@ extension ActorSystem: ActorRefFactory {
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
     internal func _prepareSystemActor<Message>(
-        _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
+            _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
     ) throws -> LazyStart<Message>
-        where Message: ActorMessage {
+            where Message: ActorMessage {
         // try self._serialization._ensureSerializer(Message.self)
         let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, startImmediately: false)
         return LazyStart(ref: ref)
@@ -490,11 +491,11 @@ extension ActorSystem: ActorRefFactory {
 
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
-        using provider: _ActorRefProvider,
-        _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
-        startImmediately: Bool = true
+            using provider: _ActorRefProvider,
+            _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
+            startImmediately: Bool = true
     ) throws -> ActorRef<Message>
-        where Message: ActorMessage {
+            where Message: ActorMessage {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
@@ -524,17 +525,86 @@ extension ActorSystem: ActorRefFactory {
         }
 
         return try provider.spawn(
-            system: self,
-            behavior: behavior, address: address,
-            dispatcher: dispatcher, props: props,
-            startImmediately: startImmediately
+                system: self,
+                behavior: behavior, address: address,
+                dispatcher: dispatcher, props: props,
+                startImmediately: startImmediately
         )
+    }
+
+    // Actual spawn implementation, minus the leading "$" check on names;
+    internal func _spawn<Message>(
+            using provider: _ActorRefProvider,
+            _ behavior: Behavior<Message>, address: ActorAddress, props: Props = Props(),
+            startImmediately: Bool = true
+    ) throws -> ActorRef<Message>
+            where Message: ActorMessage {
+        try behavior.validateAsInitial()
+
+        let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
+
+        let dispatcher: MessageDispatcher
+        switch props.dispatcher {
+        case .default:
+            dispatcher = self.dispatcher
+        case .callingThread:
+            dispatcher = CallingThreadDispatcher()
+        case .dispatchQueue(let queue):
+            dispatcher = DispatchQueueDispatcher(queue: queue)
+        case .nio(let group):
+            dispatcher = NIOEventLoopGroupDispatcher(group)
+        default:
+            fatalError("selected dispatcher [\(props.dispatcher)] not implemented yet; ") // FIXME: remove any not implemented ones simply from API
+        }
+
+        return try provider.spawn(
+                system: self,
+                behavior: behavior, address: address,
+                dispatcher: dispatcher, props: props,
+                startImmediately: startImmediately
+        )
+    }
+
+    // Reserve an actor address.
+    internal func _reserveName<Act>(
+            using provider: _ActorRefProvider,
+            type: Act.Type, props: Props = Props(),
+            startImmediately: Bool = true
+    ) throws -> ActorAddress where Act: DistributedActor {
+        let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
+
+        // TODO: lock inside provider, not here
+        // FIXME: protect the naming context access and name reservation; add a test
+        return try self.withNamingContext { namingContext in
+            let naming = ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
+            let name = naming.makeName(&namingContext)
+
+            let address = try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
+            guard self._reservedNames.insert(address).inserted else {
+                fatalError("""
+                           Attempted to reserve duplicate actor address: \(address.detailedDescription), 
+                           reserved: \(self._reservedNames.map(\.detailedDescription))
+                           """)
+            }
+
+            return address
+        }
+    }
+
+    // FIXME(distributed): this exists because generated _spawnAny, we need to get rid of that _spawnAny
+    public func _spawnDistributedActor<Message>(
+            _ behavior: Behavior<Message>, identifiedBy id : AnyActorIdentity) -> ActorRef<Message> where Message: ActorMessage {
+        guard let address = id.underlying as? ActorAddress else {
+            fatalError("Cannot spawn distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(id)")
+        }
+
+        let props = Props() // TODO: pick up props from task-local?
+        return try! self._spawn(using: self.userProvider, behavior, address: address, props: props) // try!-safe, since the naming must have been correct
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Beginnings of 'system time'
-
 extension ActorSystem {
     /// Returns `Deadline` set `timeAmount` away from the systems current `now` time.
     // TODO: Programmatic timers are not yet implemented, but would be in use here to offer and set the "now"
@@ -548,7 +618,6 @@ extension ActorSystem {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal actor tree traversal utilities
-
 extension ActorSystem: _ActorTreeTraversable {
     /// Prints Actor hierarchy as a "tree".
     ///
@@ -601,7 +670,6 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.personalDeadLetters
         }
 //        }
-
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
         }
@@ -647,6 +715,103 @@ extension ActorSystem: _ActorTreeTraversable {
         case "user": return self.userProvider._resolveUntyped(context: context)
         case "dead": return context.system.deadLetters.asAddressable
         default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor Transport
+
+extension ActorSystem {
+
+    // ==== --------------------------------------------------------------------
+    // - MARK: Resolving actors by identity
+
+    public func decodeIdentity(from decoder: Decoder) throws -> AnyActorIdentity {
+        let address = try ActorAddress(from: decoder)
+        return AnyActorIdentity(address)
+    }
+
+    public func resolve<Act>(_ identity: AnyActorIdentity, as actorType: Act.Type) throws -> Act?
+            where Act: DistributedActor {
+        guard let address = identity.underlying as? ActorAddress else {
+            // we only support resolving our own address types:
+            return nil
+        }
+
+        return self.namingLock.withLock {
+            guard let managed = self._managedDistributedActors[address] else {
+                log.info("Resolved as remote reference", metadata: [
+                    "actor/address": "\(address.detailedDescription)",
+                ])
+                return nil
+            }
+
+            log.info("Resolved as local instance", metadata: [
+                "actor/address": "\(address)",
+                "actor": "\(managed)",
+            ])
+            return managed as? Act
+        }
+    }
+
+    // ==== --------------------------------------------------------------------
+    // - MARK: Actor Lifecycle
+
+    public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity
+            where Act: DistributedActor {
+
+        let props = Props() // TODO: pick up from task-local?
+        let address = try! self._reserveName(using: self.userProvider, type: Act.self, props: props)
+
+        log.trace("Assign identity", metadata: [
+            "actor/type": "\(actorType)",
+            "actor/address": "\(address.detailedDescription)",
+        ])
+
+        return self.namingLock.withLock {
+            self._reservedNames.insert(address)
+            return AnyActorIdentity(address)
+        }
+    }
+
+    public func actorReady<Act>(_ actor: Act) where Act: DistributedActor {
+        let address = actor.id._forceUnwrapActorAddress
+
+        log.info("Actor ready", metadata: [
+            "actor/address": "\(address.detailedDescription)",
+            "actor/type": "\(type(of: actor))",
+        ])
+
+        // TODO: can we skip the Any... and use the underlying existential somehow?
+        guard let SpawnAct = Act.self as? AnyDistributedClusterActor.Type else {
+            fatalError(
+                    "\(Act.self) was not AnyDistributedClusterActor! Actor identity was: \(actor.id). " +
+                            "Was the source generation plugin configured for this target? " +
+                            "Add `plugins: [\"DistributedActorsGeneratorPlugin\"]` to your target.")
+        }
+
+        func doSpawn<SpawnAct: AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
+            log.info("Spawn any for \(SpawnAct.self)")
+            // FIXME(distributed): hopefully remove this and perform the spawn in the cluster library?
+            return try! SpawnAct._spawnAny(instance: actor as! SpawnAct, on: self)
+        }
+
+        let anyRef: AddressableActorRef = _openExistential(SpawnAct, do: doSpawn)
+
+        self.namingLock.withLockVoid {
+            log.info("Store \(anyRef.address.detailedDescription)")
+        }
+    }
+
+    /// Called during actor deinit/destroy.
+    public func resignIdentity(_ id: AnyActorIdentity) {
+        let address = id._forceUnwrapActorAddress
+
+        self.namingLock.withLockVoid {
+            if let ref = self._managedRefs.removeValue(forKey: address) {
+                ref._sendSystemMessage(.stop, file: #file, line: #line)
+            }
         }
     }
 }

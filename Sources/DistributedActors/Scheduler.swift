@@ -25,17 +25,19 @@ protocol Cancelable {
     var isCanceled: Bool { get }
 }
 
-internal protocol Scheduler {
+internal protocol Scheduler: Sendable {
     func scheduleOnce(delay: TimeAmount, _ f: @escaping () -> Void) -> Cancelable
+    func scheduleOnceAsync(delay: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable
 
     func scheduleOnce<Message>(delay: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable
 
     func schedule(initialDelay: TimeAmount, interval: TimeAmount, _ f: @escaping () -> Void) -> Cancelable
+    func scheduleAsync(initialDelay: TimeAmount, interval: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable
 
     func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable
 }
 
-class FlagCancelable: Cancelable {
+final class FlagCancelable: Cancelable, @unchecked Sendable {
     private let flag = Atomic<Bool>(value: false)
 
     func cancel() {
@@ -56,9 +58,19 @@ extension DispatchWorkItem: Cancelable {
 }
 
 // TODO: this is mostly only a placeholder impl; we'd need a proper wheel timer most likely
-extension DispatchQueue: Scheduler {
+extension DispatchQueue: Scheduler, @unchecked Sendable {
     func scheduleOnce(delay: TimeAmount, _ f: @escaping () -> Void) -> Cancelable {
         let workItem = DispatchWorkItem(block: f)
+        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(delay.nanoseconds)), execute: workItem)
+        return workItem
+    }
+
+    func scheduleOnceAsync(delay: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable {
+        let workItem = DispatchWorkItem { () -> () in
+            Task {
+                await f()
+            }
+        }
         self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(delay.nanoseconds)), execute: workItem)
         return workItem
     }
@@ -77,6 +89,24 @@ extension DispatchQueue: Scheduler {
                 let nextDeadline = DispatchTime.now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(interval.nanoseconds))
                 f()
                 self.asyncAfter(deadline: nextDeadline, execute: sched)
+            }
+        }
+
+        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(initialDelay.nanoseconds)), execute: sched)
+
+        return cancellable
+    }
+
+    func scheduleAsync(initialDelay: TimeAmount, interval: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable {
+        let cancellable = FlagCancelable()
+
+        @Sendable func sched() {
+            if !cancellable.isCanceled {
+                let nextDeadline = DispatchTime.now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(interval.nanoseconds))
+                Task {
+                    await f()
+                    self.asyncAfter(deadline: nextDeadline, execute: sched)
+                }
             }
         }
 

@@ -235,7 +235,7 @@ class ActorRefAdapterTests: ActorSystemXCTestCase {
     func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() throws {
         let logCapture = LogCapture()
         let system = ActorSystem("\(type(of: self))-2") { settings in
-            settings.logging.logger = logCapture.logger(label: settings.cluster.node.systemName)
+            settings.logging.baseLogger = logCapture.logger(label: settings.cluster.node.systemName)
         }
         defer { try! system.shutdown().wait() }
 

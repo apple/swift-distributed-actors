@@ -50,12 +50,6 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
     }
 }
 
-/// // Marker protocol used as `Message` type when a resolve fails to locate an actor given an address.
-/// // This type is used by serialization to notice that a message shall be delivered as dead letter
-/// // (rather than attempting to cast the deserialized payload to the "found type" (which would be `Never` or `MessageForDeadRecipient`).
-// @usableFromInline
-// internal protocol MessageForDeadRecipient: NonTransportableActorMessage {}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorSystem.deadLetters
 
@@ -141,12 +135,16 @@ extension ActorSystem {
 public final class DeadLetterOffice {
     let _address: ActorAddress
     let log: Logger
-    weak var system: ActorSystem?
+     weak var system: ActorSystem?
+    let isShuttingDown: () -> Bool
 
     init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {
         self.log = log
         self._address = address
         self.system = system
+        self.isShuttingDown = { [weak system] in
+            system?.isShuttingDown ?? false
+        }
     }
 
     @usableFromInline
@@ -187,7 +185,7 @@ public final class DeadLetterOffice {
             // should not really happen, as the only way to get a remote ref is to resolve it, and a remote resolve always yields a remote ref
             // thus, it is impossible to resolve a remote address into a dead ref; however keeping this path in case we manually make such mistake
             // somewhere in internals, and can spot it then easily
-            if recipient.path.starts(with: ._system), self.system?.isShuttingDown ?? false {
+            if recipient.path.starts(with: ._system), self.isShuttingDown() {
                 return // do not log dead letters to /system actors while shutting down
             }
 
@@ -237,12 +235,7 @@ public final class DeadLetterOffice {
             let ignored = recipient?.path == ._clusterShell
             return ignored
         default:
-            if let system = self.system {
-                // ignore other messages if we are shutting down, there will be many dead letters now
-                return system.isShuttingDown
-            } else {
-                return false
-            }
+            return self.isShuttingDown()
         }
     }
 }

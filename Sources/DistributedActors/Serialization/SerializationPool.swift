@@ -39,11 +39,11 @@ public final class SerializationPool {
     internal let deserializationWorkerPool: AffinityThreadPool
 
     @usableFromInline
-    internal let instrumentation: ActorTransportInstrumentation
+    internal let instrumentation: _InternalActorTransportInstrumentation
 
-    internal init(settings: SerializationPoolSettings, serialization: Serialization, instrumentation: ActorTransportInstrumentation? = nil) throws {
+    internal init(settings: SerializationPoolSettings, serialization: Serialization, instrumentation: _InternalActorTransportInstrumentation? = nil) throws {
         self.serialization = serialization
-        self.instrumentation = instrumentation ?? NoopActorTransportInstrumentation()
+        self.instrumentation = instrumentation ?? Noop_InternalActorTransportInstrumentation()
         var workerMapping: [ActorPath: Int] = [:]
         for (index, group) in settings.serializationGroups.enumerated() {
             for path in group {

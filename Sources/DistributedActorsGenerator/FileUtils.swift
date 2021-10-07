@@ -18,8 +18,18 @@ struct Directory: CustomStringConvertible {
     let url: URL
     let fileManager: FileManager
 
+    #if os(Windows)
+    static let PathSegmentSeparator: Character = "\\"
+    #else
+    static let PathSegmentSeparator: Character = "/"
+    #endif
+
     var path: String {
         self.url.path
+    }
+
+    var name: String {
+        self.url.path.split(separator: Self.PathSegmentSeparator).last.map(String.init) ?? ""
     }
 
     var parent: Directory? {
@@ -79,6 +89,11 @@ struct File: CustomStringConvertible {
 
     var path: String {
         self.url.path
+    }
+
+    func path(relativeTo directory: Directory) -> String {
+        let url = URL(string: self.url.absoluteString, relativeTo: directory.url)
+        return url?.relativePath ?? "\(self.url.relativePath)"
     }
 
     var `extension`: String {

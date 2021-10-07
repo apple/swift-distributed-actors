@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,6 +14,7 @@
 
 import DistributedActors
 import NIO
+import Logging
 
 /*
  * Swift Distributed Actors implementation of the classic "Dining Philosophers" problem.
@@ -26,15 +27,23 @@ import NIO
  * http://www.dalnefre.com/wp/2010/08/dining-philosophers-in-humus
  */
 
-print("===-----------------------------------------------------===")
-print("|            Dining Philosophers Sample App               |")
-print("|                                                         |")
-print("| USAGE: swift run SampleDiningPhilosophers [dist]        |")
-print("===-----------------------------------------------------===")
+@main struct Main {
+  static func main() async {
+    print("===-----------------------------------------------------===")
+    print("|            Dining Philosophers Sample App               |")
+    print("|                                                         |")
+    print("| USAGE: swift run SampleDiningPhilosophers [dist]        |")
+    print("===-----------------------------------------------------===")
 
-switch CommandLine.arguments.dropFirst().first {
-case "dist":
-    try DistributedDiningPhilosophers().run(for: .seconds(10))
-default:
-    try DiningPhilosophers().run(for: .seconds(10))
+    LoggingSystem.bootstrap(SamplePrettyLogHandler.init)
+
+    let time = TimeAmount.seconds(20)
+
+    switch CommandLine.arguments.dropFirst().first {
+    case "dist":
+      try! await DistributedDiningPhilosophers().run(for: time)
+    default:
+      try! DiningPhilosophers().run(for: time)
+    }
+  }
 }

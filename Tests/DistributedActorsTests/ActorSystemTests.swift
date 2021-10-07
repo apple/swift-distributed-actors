@@ -82,6 +82,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     }
 
     func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() throws {
+        throw XCTSkip("Needs to be re-enabled") // FIXME: re-enable this test
         let system2 = ActorSystem("ShutdownSystem")
         let shutdown1 = system2.shutdown()
         let shutdown2 = system2.shutdown()

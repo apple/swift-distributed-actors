@@ -13,14 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import DistributedActors
 import Foundation
 import Logging
 
 @main
 public struct GenerateActorsCommand: ParsableCommand {
     @Option(help: "Print verbose information while analyzing and generating sources")
-    var logLevel: String = "info"
+    var logLevel: String = ProcessInfo.processInfo.environment["SACT_GEN_LOGLEVEL"] ?? "info"
 
     var logLevelValue: Logger.Level {
         switch self.logLevel {
@@ -38,11 +37,11 @@ public struct GenerateActorsCommand: ParsableCommand {
     @Flag(name: .shortAndLong, help: "Print verbose all generated sources")
     var printGenerated: Bool = false
 
-    @Option(help: "Source diretory to scan")
-    var sourceDirectory: String = ""
+    @Option(help: "Source directory to scan")
+    var sourceDirectory: String
 
-    @Option(help: "Target diretory to generate in")
-    var targetDirectory: String = ""
+    @Option(help: "Target directory to generate in")
+    var targetDirectory: String
 
     @Option(help: "Number of buckets to generate")
     var buckets: Int = 1
@@ -55,6 +54,10 @@ public struct GenerateActorsCommand: ParsableCommand {
 
 extension GenerateActorsCommand {
     public func run() throws {
+
+        // Configure a logger that looks and feels more natural in the build log output
+        LoggingSystem.bootstrap(PluginLogHandler.init)
+
         guard !self.sourceDirectory.isEmpty else {
             fatalError("source directory is required")
         }
@@ -67,12 +70,12 @@ extension GenerateActorsCommand {
         try FileManager.default.createDirectory(atPath: self.targetDirectory, withIntermediateDirectories: true)
         let targetDirectory = try Directory(path: self.targetDirectory)
 
-        let generator = GenerateActors(logLevel: self.logLevelValue, printGenerated: self.printGenerated)
+        let generator = GenerateActors(basePath: sourceDirectory, logLevel: self.logLevelValue, printGenerated: self.printGenerated)
         _ = try generator.run(
             sourceDirectory: sourceDirectory,
             targetDirectory: targetDirectory,
             buckets: self.buckets,
-            targets: self.targets // ,
+            targets: self.targets
         )
     }
 }
