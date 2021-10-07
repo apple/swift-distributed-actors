@@ -98,8 +98,7 @@ extension Logger {
     }
 
     internal static func make(_ base: Logger, path: ActorPath) -> Logger {
-        var log = Logger(label: "\(path)")
-        log[metadataKey: "cluster/node"] = base[metadataKey: "cluster/node"]
+        var log = base // yes
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
         return log
     }

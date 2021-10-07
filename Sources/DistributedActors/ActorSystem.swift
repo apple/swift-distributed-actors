@@ -175,8 +175,6 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         // TODO: should we share this, or have a separate ELG for IO?
         self._eventLoopGroup = eventLoopGroup
 
-        self.settings = settings
-
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
         // initialize top level guardians
@@ -196,6 +194,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         } else {
             settings.logging._logger[metadataKey: "cluster/node"] = "\(self.name)"
         }
+        self.settings = settings
         self.log = settings.logging.baseLogger
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
