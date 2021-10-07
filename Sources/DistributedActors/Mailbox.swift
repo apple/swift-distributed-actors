@@ -310,7 +310,12 @@ internal final class Mailbox<Message: ActorMessage> {
         let oldStatus = self.setHasSystemMessages()
 
         guard oldStatus.isTerminating else {
-            fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
+            fatalError("""
+                       !!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor.
+                       Address: \(self.address)
+                       Actor: \(self.shell)
+                       System: \(self.shell?._system?.description ?? "<no system>")
+                       """)
         }
 
         self.systemMessages.enqueue(.tombstone)
