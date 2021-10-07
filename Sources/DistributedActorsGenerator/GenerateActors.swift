@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import DistributedActors
 import Foundation
 import Logging
 import SwiftSyntax
@@ -21,9 +20,11 @@ import SwiftSyntax
 final class GenerateActors {
     var log: Logger
     var printGenerated: Bool
+    let basePath: Directory
 
-    public init(logLevel: Logger.Level = .info, printGenerated: Bool = false) {
-        self.log = Logger(label: "\(GenerateActors.self)")
+    public init(basePath: Directory, logLevel: Logger.Level = .info, printGenerated: Bool = false) {
+        self.basePath = basePath
+        self.log = Logger(label: "DistributedActorsGenerator")
         self.log.logLevel = logLevel
         self.printGenerated = printGenerated
     }
@@ -35,22 +36,22 @@ final class GenerateActors {
         }
 
         let filteredSourceDirectories = try targets.map { try sourceDirectory.subdirectory(at: $0) }
-        let foldersToScan = !filteredSourceDirectories.isEmpty ? filteredSourceDirectories : [sourceDirectory]
+        let directoriesToScan = !filteredSourceDirectories.isEmpty ? filteredSourceDirectories : [sourceDirectory]
 
         self.cleanAll(from: targetDirectory)
 
-        let unresolvedActorables = try parseAll(filesToScan: [], directoriesToScan: foldersToScan)
+        let unresolvedActorables = try parseAll(filesToScan: [], directoriesToScan: directoriesToScan)
 
         // resolves protocol adoption across files; e.g. a protocol defined in another file can be implemented in another
         // TODO: does not work cross module yet (it would break)
-        let resolvedActorables = ResolveActorables.resolve(unresolvedActorables)
+        let resolvedActors = ResolveDistributedActors.resolve(unresolvedActorables)
 
         // prepare buckets
         try (0 ..< buckets).forEach {
             try targetDirectory.createFileIfNeeded(withName: "\(Self.generatedFilePrefix)\($0).swift")
         }
 
-        try generateAll(resolvedActorables, in: targetDirectory, buckets: buckets)
+        try generateAll(resolvedActors, in: targetDirectory, buckets: buckets)
     }
 }
 
@@ -59,7 +60,7 @@ final class GenerateActors {
 
 extension GenerateActors {
     private func cleanAll(from directory: Directory) {
-        self.log.info("Cleaning up \(directory.path)")
+        self.log.debug("Cleaning up: \(directory.path)")
         directory.files.forEach { file in
             do {
                 try file.delete()
@@ -69,8 +70,8 @@ extension GenerateActors {
         }
     }
 
-    private func parseAll(filesToScan: [File], directoriesToScan: [Directory]) throws -> [ActorableTypeDecl] {
-        var unresolvedActorables: [ActorableTypeDecl] = []
+    private func parseAll(filesToScan: [File], directoriesToScan: [Directory]) throws -> [DistributedActorDecl] {
+        var unresolvedActorables: [DistributedActorDecl] = []
 
         try filesToScan.forEach { file in
             let actorablesInFile = try self.parse(fileToParse: file)
@@ -78,7 +79,7 @@ extension GenerateActors {
         }
 
         try directoriesToScan.forEach { directory in
-            self.log.debug("Scanning [\(directory.path)] for actorables...")
+            self.log.debug("Scanning [\(directory.path)] for distributed actors...")
             let actorFilesToScan = directory.files.recursive.filter { f in
                 f.extension.lowercased() == "swift"
             }.filter {
@@ -93,19 +94,19 @@ extension GenerateActors {
         return unresolvedActorables
     }
 
-    func parse(fileToParse: File) throws -> [ActorableTypeDecl] {
-        self.log.debug("Parsing: \(fileToParse.path)")
+    func parse(fileToParse: File) throws -> [DistributedActorDecl] {
+        self.log.trace("Parsing: \(fileToParse.path)")
 
         let sourceFile = try SyntaxParser.parse(fileToParse.url)
 
-        let gather = GatherActorables(fileToParse, self.log.logLevel)
+        let gather = GatherDistributedActors(basePath: self.basePath, path: fileToParse, log: self.log)
         gather.walk(sourceFile)
 
         // perform a resolve within the file
-        let rawActorables = gather.actorables
-        let actorables = ResolveActorables.resolve(rawActorables)
+        let rawActors = gather.actorDecls
+        let actors = ResolveDistributedActors.resolve(rawActors)
 
-        return actorables
+        return actors
     }
 }
 
@@ -113,14 +114,14 @@ extension GenerateActors {
 // MARK: Generating sources
 
 extension GenerateActors {
-    private func generateAll(_ actorables: [ActorableTypeDecl], in targetDirectory: Directory, buckets: Int) throws {
+    private func generateAll(_ actorables: [DistributedActorDecl], in targetDirectory: Directory, buckets: Int) throws {
         try actorables.forEach { actorable in
             _ = try generateGenActorFile(for: actorable, in: targetDirectory, buckets: buckets)
             _ = try generateGenCodableFile(for: actorable, in: targetDirectory, buckets: buckets)
         }
     }
 
-    private func generateGenActorFile(for actorable: ActorableTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
+    private func generateGenActorFile(for actorable: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
         let targetFile = try self.computeTargetFile(for: actorable, in: targetDirectory, buckets: buckets)
 
         try targetFile.append(Rendering.generatedFileHeader)
@@ -143,7 +144,7 @@ extension GenerateActors {
     }
 
     /// Generate Codable conformances for the `Message` type -- until we don't have auto synthesis of it for enums with associated values.
-    private func generateGenCodableFile(for actorable: ActorableTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File? {
+    private func generateGenCodableFile(for actorable: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File? {
         guard actorable.generateCodableConformance else {
             return nil // skip generating
         }
@@ -169,7 +170,7 @@ extension GenerateActors {
     }
 
     // simple bucketing based on the first letter
-    private func computeTargetFile(for actorable: ActorableTypeDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
+    private func computeTargetFile(for actorable: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
         guard buckets > 0 else {
             preconditionFailure("invalid buckets. \(buckets) must be > 0")
         }

@@ -7,27 +7,27 @@ import PackageDescription
 // Workaround: Since we cannot include the flat just as command line options since then it applies to all targets,
 // and ONE of our dependencies currently produces one warning, we have to use this workaround to enable it in _our_
 // targets when the flag is set. We should remove the dependencies and then enable the flag globally though just by passing it.
-// TODO: Follow up to https://github.com/apple/swift-distributed-actors/issues/23 by removing Files and Stencil, then we can remove this workaround
 var globalSwiftSettings: [SwiftSetting]
 
 var globalConcurrencyFlags: [String] = [
     "-Xfrontend", "-enable-experimental-distributed",
 ]
 
-if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
-    print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
-    var allUnsafeFlags = globalConcurrencyFlags
-    allUnsafeFlags.append(contentsOf: [
-        "-warnings-as-errors",
-    ])
-    globalSwiftSettings = [
-        SwiftSetting.unsafeFlags(allUnsafeFlags),
-    ]
-} else {
+// TODO: currently disabled warnings as errors because of Sendable check noise and work in progress on different toolchains
+//if ProcessInfo.processInfo.environment["SACT_WARNINGS_AS_ERRORS"] != nil {
+//    print("SACT_WARNINGS_AS_ERRORS enabled, passing `-warnings-as-errors`")
+//    var allUnsafeFlags = globalConcurrencyFlags
+//    allUnsafeFlags.append(contentsOf: [
+//        "-warnings-as-errors",
+//    ])
+//    globalSwiftSettings = [
+//        SwiftSetting.unsafeFlags(allUnsafeFlags),
+//    ]
+//} else {
     globalSwiftSettings = [
         SwiftSetting.unsafeFlags(globalConcurrencyFlags),
     ]
-}
+//}
 
 var targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -36,8 +36,9 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "DistributedActors",
         dependencies: [
-            "DistributedActorsConcurrencyHelpers",
+            "DistributedActorsConcurrencyHelpers", // TODO: remove in favor of swift-atomics
             "CDistributedActorsMailbox",
+            .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "SWIM", package: "swift-cluster-membership"),
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOFoundationCompat", package: "swift-nio"),
@@ -48,16 +49,18 @@ var targets: [PackageDescription.Target] = [
             .product(name: "Metrics", package: "swift-metrics"),
             .product(name: "ServiceDiscovery", package: "swift-service-discovery"),
             .product(name: "Backtrace", package: "swift-backtrace"),
+        ],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
         ]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Distributed Actors Generator
+    // MARK: SwiftPM Plugin: Distributed Actors Generator
 
     .executableTarget(
         name: "DistributedActorsGenerator",
         dependencies: [
-            "DistributedActors",
             .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -67,8 +70,7 @@ var targets: [PackageDescription.Target] = [
     .plugin(
         name: "DistributedActorsGeneratorPlugin",
         capability: .buildTool(),
-        dependencies: ["DistributedActorsGenerator"],
-        path: "Sources/DistributedActorsGeneratorPlugin"
+        dependencies: ["DistributedActorsGenerator"]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -97,6 +99,9 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
             "ActorSingletonPlugin",
             "DistributedActorsTestKit",
+        ],
+        exclude: [
+          "DocumentationProtos/",
         ]
     ),
 
@@ -105,12 +110,18 @@ var targets: [PackageDescription.Target] = [
 
     .testTarget(
         name: "DistributedActorsTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+        dependencies: ["DistributedActors", "DistributedActorsTestKit"],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
+        ]
     ),
 
     .testTarget(
         name: "DistributedActorsTestKitTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+        dependencies: ["DistributedActors", "DistributedActorsTestKit"],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
+        ]
     ),
 
     .testTarget(
@@ -185,12 +196,17 @@ var targets: [PackageDescription.Target] = [
             "DistributedActors",
             "SwiftBenchmarkTools",
         ],
-        exclude: ["README.md"]
+        exclude: [
+          "README.md",
+          "BenchmarkProtos/bench.proto",
+        ]
     ),
     .target(
         name: "SwiftBenchmarkTools",
         dependencies: ["DistributedActors"],
-        exclude: ["README_SWIFT.md"]
+        exclude: [
+          "README_SWIFT.md"
+        ]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -208,17 +224,23 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "CDistributedActorsAtomics",
         dependencies: [],
-        exclude: ["README.md"]
+        exclude: [
+          "README.md"
+        ]
     ),
 
     .target(
         name: "DistributedActorsConcurrencyHelpers",
         dependencies: ["CDistributedActorsAtomics"],
-        exclude: ["README.md"]
+        exclude: [
+          "README.md"
+        ]
     ),
 ]
 
 var dependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/apple/swift-atomics", from: "1.0.2"),
+
     .package(url: "https://github.com/apple/swift-cluster-membership.git", from: "0.3.0"),
 
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.12.0"),
@@ -227,7 +249,7 @@ var dependencies: [Package.Dependency] = [
 
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
-    // ~~~ workaround for backtraces ~~~
+    // ~~~ backtraces ~~~
     .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
 
     // ~~~ SSWG APIs ~~~
@@ -246,13 +268,8 @@ dependencies += [
 // swift-syntax is Swift version dependent, and added as such below
 #if swift(>=5.6)
 dependencies.append(
-//    .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a"))
-    .package(url: "https://github.com/apple/swift-syntax.git", .revision("swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a"))
+    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a")
 //    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main")
-)
-#elseif swift(>=5.5)
-dependencies.append(
-    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-5.5-DEVELOPMENT-SNAPSHOT-2021-06-14-a")
 )
 #else
 fatalError("Only Swift 5.6+ is supported, because the dependency on the 'distributed actor' language feature")
@@ -292,7 +309,7 @@ let products: [PackageDescription.Product] = [
 var package = Package(
     name: "swift-distributed-actors",
     platforms: [
-        .macOS(.v10_12),
+        .macOS(.v10_15), // because of the 'distributed actor' feature
         .iOS(.v8),
         // ...
     ],

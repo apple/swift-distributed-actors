@@ -69,7 +69,8 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
                 self.configureLogCapture(settings: &captureSettings)
                 let capture = LogCapture(settings: captureSettings)
 
-                settings.logging.logger = capture.logger(label: name)
+                settings.logging.baseLogger = capture.logger(label: name)
+                settings.cluster.swim.logger = settings.logging.baseLogger
 
                 self._logCaptures.append(capture)
             }

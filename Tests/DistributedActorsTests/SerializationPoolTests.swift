@@ -95,7 +95,7 @@ final class SerializationPoolTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem("SerializationTests") { settings in
-            settings.logging.logger = NoopLogger.make()
+            settings.logging.baseLogger = NoopLogger.make()
             settings.serialization.register(Test1.self)
             settings.serialization.register(Test2.self)
         }

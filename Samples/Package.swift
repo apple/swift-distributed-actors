@@ -3,6 +3,16 @@
 
 import PackageDescription
 
+var globalSwiftSettings: [SwiftSetting]
+
+var globalConcurrencyFlags: [String] = [
+  "-Xfrontend", "-enable-experimental-distributed",
+]
+
+globalSwiftSettings = [
+  SwiftSetting.unsafeFlags(globalConcurrencyFlags),
+]
+
 var targets: [PackageDescription.Target] = [
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Samples
@@ -12,38 +22,34 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleDiningPhilosophers"
-    ),
-    .executableTarget(
-        name: "SampleGenActorsDiningPhilosophers",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
+        path: "Sources/SampleDiningPhilosophers",
+        exclude: [
+          "dining-philosopher-fsm.graffle",
+          "dining-philosopher-fsm.svg",
         ],
-        path: "Sources/SampleGenActorsDiningPhilosophers",
         plugins: [
-            .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
         ]
-    ),
-    .executableTarget(
-        name: "SampleLetItCrash",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
-        ],
-        path: "Sources/SampleLetItCrash"
     ),
     .executableTarget(
         name: "SampleCluster",
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleCluster"
+        path: "Sources/SampleCluster",
+        plugins: [
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
     .executableTarget(
         name: "SampleReceptionist",
         dependencies: [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
         ],
-        path: "Sources/SampleReceptionist"
+        path: "Sources/SampleReceptionist",
+        plugins: [
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
     .executableTarget(
         name: "SampleMetrics",
@@ -51,7 +57,10 @@ var targets: [PackageDescription.Target] = [
             .product(name: "DistributedActors", package: "swift-distributed-actors"),
             .product(name: "SwiftPrometheus", package: "SwiftPrometheus"),
         ],
-        path: "Sources/SampleMetrics"
+        path: "Sources/SampleMetrics",
+        plugins: [
+          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
+        ]
     ),
     .executableTarget(
         name: "SampleGenActors",
@@ -89,7 +98,7 @@ var dependencies: [Package.Dependency] = [
 let package = Package(
     name: "swift-distributed-actors-samples",
     platforms: [
-        .macOS(.v10_11), // TODO: workaround for rdar://76035286
+        .macOS(.v10_15),
         .iOS(.v8),
         // ...
     ],
@@ -99,14 +108,6 @@ let package = Package(
         .executable(
             name: "SampleDiningPhilosophers",
             targets: ["SampleDiningPhilosophers"]
-        ),
-        .executable(
-            name: "SampleGenActorsDiningPhilosophers",
-            targets: ["SampleGenActorsDiningPhilosophers"]
-        ),
-        .executable(
-            name: "SampleLetItCrash",
-            targets: ["SampleLetItCrash"]
         ),
         .executable(
             name: "SampleCluster",
@@ -124,7 +125,16 @@ let package = Package(
 
     dependencies: dependencies,
 
-    targets: targets,
+    targets: targets.map { target in
+      var swiftSettings = target.swiftSettings ?? []
+      if target.type != .plugin {
+        swiftSettings.append(contentsOf: globalSwiftSettings)
+      }
+      if !swiftSettings.isEmpty {
+        target.swiftSettings = swiftSettings
+      }
+      return target
+    },
 
     cxxLanguageStandard: .cxx11
 )

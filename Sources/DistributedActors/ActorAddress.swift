@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -11,6 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+
+import _Distributed
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorAddress
@@ -46,7 +48,8 @@
 ///
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
-public struct ActorAddress {
+@available(macOS 10.15, *)
+public struct ActorAddress: ActorIdentity {
     /// Knowledge about a node being `local` is purely an optimization, and should not be relied on by actual code anywhere.
     /// It is on purpose not exposed to end-user code as well, and must remain so to not break the location transparency promises made by the runtime.
     ///
@@ -131,6 +134,18 @@ extension ActorAddress: CustomStringConvertible {
             return "\(res)#\(self.incarnation.value)"
         }
     }
+
+    public var fullDescription: String {
+        var res = ""
+        res += "\(reflecting: self.uniqueNode)"
+        res += "\(self.path)"
+
+        if self.incarnation == ActorIncarnation.wellKnown {
+            return res
+        } else {
+            return "\(res)#\(self.incarnation.value)"
+        }
+    }
 }
 
 extension ActorAddress {
@@ -160,6 +175,30 @@ extension ActorAddress {
     @inlinable
     public var _isRemote: Bool {
         !self._isLocal
+    }
+
+    /// :nodoc:
+    @inlinable
+    public var _asRemote: Self {
+        let remote = Self(remote: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        print("""
+              AS REMOTE: 
+                was local: \(self.detailedDescription)
+                remote   : \(remote.detailedDescription)
+              """)
+        return remote
+    }
+
+    /// :nodoc:
+    @inlinable
+    public var _asLocal: Self {
+        let local = Self(local: self.uniqueNode, path: self.path, incarnation: self.incarnation)
+        print("""
+              AS LOCAL: 
+                was remote: \(self.detailedDescription)
+                local     : \(local.detailedDescription)
+              """)
+        return local
     }
 }
 
@@ -216,7 +255,7 @@ extension Optional: Comparable where Wrapped == UniqueNode {
 // MARK: ActorLocation
 
 @usableFromInline
-internal enum ActorLocation: Hashable {
+internal enum ActorLocation: Hashable, Sendable {
     case local(UniqueNode)
     case remote(UniqueNode)
 }
@@ -231,7 +270,7 @@ internal enum ActorLocation: Hashable {
 /// - contain only ASCII characters and select special characters (listed in `ValidPathSymbols.extraSymbols`)
 ///
 /// - Example: `/user/lightbulbMaster/lightbulb-2012`
-public struct ActorPath: PathRelationships, Hashable {
+public struct ActorPath: PathRelationships, Hashable, Sendable {
     // TODO: instead back with a String and keep a pos to index quickly into the name for Substring?
     public var segments: [ActorPathSegment]
 
@@ -385,7 +424,7 @@ extension PathRelationships {
 // MARK: Path segments
 
 /// Represents a single segment (actor name) of an ActorPath.
-public struct ActorPathSegment: Hashable {
+public struct ActorPathSegment: Hashable, Sendable {
     public let value: String
 
     public init(_ name: String) throws {
@@ -485,7 +524,7 @@ struct ActorName {
 /// under this address, they would by that name realize that the postcard was intended for the previous tenant of the apartment,
 /// rather than being confused because they don't know you. In this scenario the "house address" is an `ActorPath` (like street name),
 /// and the `ActorAddress` is the "full intended recipient address" including not only street name, but also your friends unique name.
-public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral {
+public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral, Sendable {
     let value: UInt32
 
     public init(_ value: Int) {
@@ -547,7 +586,7 @@ extension ActorIncarnation: Comparable {
 /// actor system logs, to other external systems. TODO: Note also node roles, which we do not have yet... those are dynamic key/value pairs paired to a unique node.
 ///
 /// - SeeAlso: For more details on unique node ids, refer to: `UniqueNode`.
-public struct Node: Hashable {
+public struct Node: Hashable, Sendable {
     // TODO: collapse into one String and index into it?
     public var `protocol`: String
     public var systemName: String // TODO: some other name, to signify "this is just for humans"?
@@ -610,7 +649,7 @@ extension Node: Comparable {
 /// The unique address of a remote node can only be obtained by performing the handshake with it.
 /// Once the remote node accepts our handshake, it offers the other node its unique address.
 /// Only once this address has been obtained can a node communicate with actors located on the remote node.
-public struct UniqueNode: Hashable {
+public struct UniqueNode: Hashable, Sendable {
     public typealias ID = UniqueNodeID
 
     public var node: Node
@@ -677,7 +716,7 @@ extension UniqueNode: Comparable {
     }
 }
 
-public struct UniqueNodeID: Hashable {
+public struct UniqueNodeID: Hashable, Sendable {
     let value: UInt64
 
     public init(_ value: UInt64) {

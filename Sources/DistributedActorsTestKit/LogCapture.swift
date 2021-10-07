@@ -84,8 +84,7 @@ extension LogCapture {
         public var grep: Set<String> = []
 
         public var ignoredMetadata: Set<String> = [
-            "actor/node",
-            "actor/nodeName",
+            "cluster/node",
         ]
 
         public init() {}

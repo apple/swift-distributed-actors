@@ -95,7 +95,7 @@ extension ActorSingletonPlugin: Plugin {
         .success(())
     }
 
-    // TODO: Future
+    // TODO: Future; TODO2: no need for this at all now since we have async await
     public func stop(_ system: ActorSystem) -> Result<Void, Error> {
         self.singletonsLock.withLock {
             for (_, singleton) in self.singletons {
@@ -104,6 +104,7 @@ extension ActorSingletonPlugin: Plugin {
         }
         return .success(())
     }
+
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

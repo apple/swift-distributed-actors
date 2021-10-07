@@ -272,7 +272,7 @@ internal struct ServantProcess {
     }
 
     var command: String {
-        self.args.first! // TODO: or safer somehow?
+        self.args.first! // !-safe, a program invocation always has at least the program name argument
     }
 
     /// Record a failure of the servant process, and decide if we should restart (spawn a replacement) it or not.

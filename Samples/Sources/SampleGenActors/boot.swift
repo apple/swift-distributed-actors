@@ -14,11 +14,19 @@
 
 import DistributedActors
 
-struct Greeter: Actorable {
-    let context: Actor<Self>.Context
+@main
+struct Main {
+  static func main() async {
+    let system = ActorSystem()
 
-    // @actor
-    func greet(name: String) {
-        print("Hello \(name)")
-    }
+    let greeter: Greeter = Greeter(transport: system)
+
+    try! await greeter.greet(name: "Caplin")
+    try! await greeter.greet(name: "Caplin")
+    try! await greeter.greet(name: "Caplin")
+    try! await greeter.greet(name: "Caplin")
+    try! await greeter.greet(name: "Caplin")
+
+    Thread.sleep(.seconds(1))
+  }
 }

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import DistributedActorsConcurrencyHelpers
 import Foundation
 import Logging
@@ -73,12 +74,31 @@ internal final class LoggingContext {
 ///
 /// The preferred way of obtaining a logger for an actor or system is `context.log` or `system.log`, rather than creating new ones.
 extension Logger {
+
+    /// Create a logger specific to this actor.
+    // TODO(distributed): reconsider if this is the best pattern?
+    public init<Act: DistributedActor>(actor: Act) {
+        var log: Logger
+        if let transport = actor.actorTransport as? ActorSystem,
+            let address = actor.id._unwrapActorAddress {
+            log = Logger.make(transport.log, path: address.path)
+        } else {
+            log = Logger(label: "\(actor.id.underlying)")
+        }
+
+        if let address = actor.id.underlying as? ActorAddress {
+            log[metadataKey: "actor/path"] = "\(address.path)"
+        }
+
+        self = log
+    }
+
     public static func make<T>(context: ActorContext<T>) -> Logger {
         Logger.make(context.log, path: context.path)
     }
 
     internal static func make(_ base: Logger, path: ActorPath) -> Logger {
-        var log = base
+        var log = base // yes
         log[metadataKey: "actor/path"] = Logger.MetadataValue.stringConvertible(path)
         return log
     }
@@ -170,14 +190,10 @@ public struct ActorOriginLogHandler: LogHandler {
         }
 
         let actorSystemIdentity: String
-        if let d = l.effectiveMetadata?.removeValue(forKey: "actor/node") {
+        if let d = l.effectiveMetadata?.removeValue(forKey: "cluster/node") {
             actorSystemIdentity = "[\(d)]"
         } else {
-            if let name = l.effectiveMetadata?.removeValue(forKey: "actor/nodeName") {
-                actorSystemIdentity = "[\(name)]"
-            } else {
-                actorSystemIdentity = ""
-            }
+            actorSystemIdentity = ""
         }
 
         var msg = ""

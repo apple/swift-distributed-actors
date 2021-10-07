@@ -39,6 +39,12 @@ public struct ClusterSettings {
     /// If `true` the ActorSystem start the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
+    public mutating func enable() {
+        self.enabled = true
+    }
+    public mutating func disable() {
+        self.enabled = false
+    }
 
     /// If configured, the system will periodically
     public var discovery: ServiceDiscoverySettings?
@@ -131,6 +137,15 @@ public struct ClusterSettings {
     // MARK: Leader Election
 
     public var autoLeaderElection: LeadershipSelectionSettings = .lowestReachable(minNumberOfMembers: 2)
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Distributed Actor Calls
+
+    /// If no other timeout is specified, this timeout is applied to every distributed call.
+    /// A "distributed call" is any function call of a distributed function on a 'remote' distributed actor.
+    ///
+    /// Set to `.effectivelyInfinite` to avoid setting a timeout, although this is not recommended.
+    public var callTimeout: TimeAmount = .seconds(5)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TLS & Security settings

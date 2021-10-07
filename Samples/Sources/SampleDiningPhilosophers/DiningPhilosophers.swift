@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,24 +14,31 @@
 
 import DistributedActors
 
-struct DiningPhilosophers {
+final class DiningPhilosophers {
+
+    private var forks: [Fork] = []
+    private var philosophers: [Philosopher] = []
+
     func run(for time: TimeAmount) throws {
         let system = ActorSystem("Philosophers")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
-        let fork1: Fork.Ref = try system.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork2: Fork.Ref = try system.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork3: Fork.Ref = try system.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork4: Fork.Ref = try system.spawn(.prefixed(with: "fork"), Fork.behavior)
-        let fork5: Fork.Ref = try system.spawn(.prefixed(with: "fork"), Fork.behavior)
+        let fork1 = Fork(name: "fork-1", transport: system)
+        let fork2 = Fork(name: "fork-2", transport: system)
+        let fork3 = Fork(name: "fork-3", transport: system)
+        let fork4 = Fork(name: "fork-4", transport: system)
+        let fork5 = Fork(name: "fork-5", transport: system)
+        self.forks = [fork1, fork2, fork3, fork4, fork5]
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        let _: Philosopher.Ref = try system.spawn("Konrad", Philosopher(left: fork5, right: fork1).behavior)
-        let _: Philosopher.Ref = try system.spawn("Dario", Philosopher(left: fork1, right: fork2).behavior)
-        let _: Philosopher.Ref = try system.spawn("Johannes", Philosopher(left: fork2, right: fork3).behavior)
-        let _: Philosopher.Ref = try system.spawn("Cory", Philosopher(left: fork3, right: fork4).behavior)
-        let _: Philosopher.Ref = try system.spawn("Norman", Philosopher(left: fork4, right: fork5).behavior)
+        self.philosophers = [
+            Philosopher(name: "Konrad", leftFork: fork5, rightFork: fork1, transport: system),
+            Philosopher(name: "Dario", leftFork: fork1, rightFork: fork2, transport: system),
+            Philosopher(name: "Johannes", leftFork: fork2, rightFork: fork3, transport: system),
+            Philosopher(name: "Cory", leftFork: fork3, rightFork: fork4, transport: system),
+            Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: system),
+        ]
 
-        try system.park(atMost: time)
+        Thread.sleep(time)
     }
 }

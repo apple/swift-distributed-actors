@@ -15,11 +15,11 @@
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorTransport
+// MARK: _InternalActorTransport
 
 /// :nodoc: INTERNAL API
 /// Internal protocol allowing for introduction of additional transports.
-open class ActorTransport {
+open class _InternalActorTransport {
     public init() {
         // nothing
     }

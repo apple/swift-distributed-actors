@@ -30,7 +30,7 @@ public struct ActorSystemSettings {
 
     public var receptionist: ReceptionistSettings = .default
 
-    public var transports: [ActorTransport] = []
+    public var transports: [_InternalActorTransport] = []
     public var serialization: Serialization.Settings = .default
     public var cluster: ClusterSettings = .default {
         didSet {
@@ -41,7 +41,7 @@ public struct ActorSystemSettings {
 
     public var logging: LoggingSettings = .default {
         didSet {
-            self.cluster.swim.logger = self.logging.logger
+            self.cluster.swim.logger = self.logging.baseLogger
         }
     }
 
@@ -55,8 +55,8 @@ public struct ActorSystemSettings {
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }
 
-extension Array where Element == ActorTransport {
-    public static func += <T: ActorTransport>(transports: inout Self, transport: T) {
+extension Array where Element == _InternalActorTransport {
+    public static func += <T: _InternalActorTransport>(transports: inout Self, transport: T) {
         transports.append(transport)
     }
 }
@@ -79,16 +79,22 @@ public struct LoggingSettings {
     /// or need to pass metadata through all loggers in the actor system.
     public var logLevel: Logger.Level {
         get {
-            self.logger.logLevel
+            self._logger.logLevel
         }
         set {
-            self.logger.logLevel = newValue
+            self._logger.logLevel = newValue
         }
     }
 
-    /// "Base" logger that will be used as template for all loggers created by the system (e.g. for `context.log` offered to actors).
-    /// This may be used to configure specific systems to log to specific files, or to carry system-wide metadata throughout all loggers the actor system will use.
-    public var logger: Logger {
+    /// "Base" logger that will be used as template for all loggers created by the system.
+    ///
+    /// Do not use this logger directly, but rather use `system.log` or  `Logger(actor:)`,
+    /// as they have more useful metadata configured on them which is obtained during cluster
+    /// initialization.
+    ///
+    /// This may be used to configure specific systems to log to specific files,
+    /// or to carry system-wide metadata throughout all loggers the actor system will use.
+    public var baseLogger: Logger {
         get {
             self._logger
         }
@@ -99,9 +105,9 @@ public struct LoggingSettings {
     }
 
     internal var customizedLogger: Bool = false
-    private var _logger: Logger = LoggingSettings.makeDefaultLogger()
+    internal var _logger: Logger = LoggingSettings.makeDefaultLogger()
     static func makeDefaultLogger() -> Logger {
-        Logger(label: "ActorSystem") // replaced by specific system name during startup
+        Logger(label: "ActorSystem-initializing") // replaced by specific system name during startup
     }
 
     // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
@@ -181,9 +187,9 @@ extension ActorSystemSettings {
             NoopActorInstrumentation(id: id, address: address)
         }
 
-        /// - SeeAlso: `ActorTransportInstrumentation`
-        public var makeActorTransportInstrumentation: () -> ActorTransportInstrumentation = { () in
-            NoopActorTransportInstrumentation()
+        /// - SeeAlso: `_InternalActorTransportInstrumentation`
+        public var makeInternalActorTransportInstrumentation: () -> _InternalActorTransportInstrumentation = { () in
+            Noop_InternalActorTransportInstrumentation()
         }
 
         /// - SeeAlso: `ReceptionistInstrumentation`
@@ -197,7 +203,7 @@ extension ActorSystemSettings {
             }
 
             if let instrumentFactory = provider.actorTransportInstrumentation {
-                self.makeActorTransportInstrumentation = instrumentFactory
+                self.makeInternalActorTransportInstrumentation = instrumentFactory
             }
 
             if let instrumentFactory = provider.receptionistInstrumentation {
@@ -209,6 +215,6 @@ extension ActorSystemSettings {
 
 public protocol ActorSystemInstrumentationProvider {
     var actorInstrumentation: ((AnyObject, ActorAddress) -> ActorInstrumentation)? { get }
-    var actorTransportInstrumentation: (() -> ActorTransportInstrumentation)? { get }
+    var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? { get }
     var receptionistInstrumentation: (() -> ReceptionistInstrumentation)? { get }
 }

@@ -47,7 +47,7 @@ final class Association: CustomStringConvertible {
 
     enum State {
         case associating(queue: MPSCLinkedQueue<TransportEnvelope>)
-        case associated(channel: Channel) // TODO: ActorTransport.Node/Peer/Target ???
+        case associated(channel: Channel) // TODO: _InternalActorTransport.Node/Peer/Target ???
         case tombstone(ActorRef<DeadLetter>)
     }
 

@@ -26,9 +26,9 @@ public struct OSSignpostInstrumentationProvider: ActorSystemInstrumentationProvi
         }
     }
 
-    public var actorTransportInstrumentation: (() -> ActorTransportInstrumentation)? {
+    public var actorTransportInstrumentation: (() -> _InternalActorTransportInstrumentation)? {
         if #available(OSX 10.14, iOS 12.0, *) {
-            return OSSignpostActorTransportInstrumentation.init
+            return OSSignpost_InternalActorTransportInstrumentation.init
         } else {
             return nil
         }

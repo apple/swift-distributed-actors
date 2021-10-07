@@ -108,6 +108,7 @@ internal final class Mailbox<Message: ActorMessage> {
 
     @inlinable
     func sendMessage(envelope: Payload, file: String, line: UInt) {
+
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
@@ -309,7 +310,12 @@ internal final class Mailbox<Message: ActorMessage> {
         let oldStatus = self.setHasSystemMessages()
 
         guard oldStatus.isTerminating else {
-            fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
+            fatalError("""
+                       !!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor.
+                       Address: \(self.address)
+                       Actor: \(self.shell)
+                       System: \(self.shell?._system?.description ?? "<no system>")
+                       """)
         }
 
         self.systemMessages.enqueue(.tombstone)
@@ -381,11 +387,21 @@ internal final class Mailbox<Message: ActorMessage> {
             runResult = .shouldSuspend
         }
 
+
+//        if (shell.address.path == ActorPath._clusterShell) {
+//            print(">>>>> mailbox run = \(shell.address.fullDescription)")
+//        }
+
         // system messages run -----------------------------------------------------------------------------------------
 
         if status.hasSystemMessages {
-            while runResult != .shouldStop, runResult != .closed, let message = self.systemMessages.dequeue() {
+            while runResult != .shouldStop,
+                  runResult != .closed,
+                  let message = self.systemMessages.dequeue() {
                 do {
+//                    if (shell.address.path.segments.last!.description == "cluster") {
+//                        pprint(">>>>> mailbox run system = \(shell.address) <<<<< \(message)")
+//                    }
                     try runResult = shell.interpretSystemMessage(message: message)
                 } catch {
                     shell.fail(error)
