@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,15 +18,16 @@
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.
-public struct EventStream<Event: ActorMessage> {
+public struct EventStream<Event: ActorMessage>: AsyncSequence {
+    public typealias Element = Event
+
     internal let ref: ActorRef<EventStreamShell.Message<Event>>
+
+    private var events: AsyncStream<Event>!
+    private var eventContinuation: AsyncStream<Event>.Continuation!
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
         try self.init(system, name: name, of: type, systemStream: false)
-    }
-
-    internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {
-        self.ref = ref
     }
 
     internal init(
@@ -38,9 +39,16 @@ public struct EventStream<Event: ActorMessage> {
     ) throws {
         let behavior: Behavior<EventStreamShell.Message<Event>> = customBehavior ?? EventStreamShell.behavior(type)
         if systemStream {
-            self.ref = try system._spawnSystemActor(.unique(name), behavior)
+            self.init(ref: try system._spawnSystemActor(.unique(name), behavior))
         } else {
-            self.ref = try system.spawn(.unique(name), behavior)
+            self.init(ref: try system.spawn(.unique(name), behavior))
+        }
+    }
+
+    internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {
+        self.ref = ref
+        self.events = AsyncStream<Event> { continuation in
+            self.eventContinuation = continuation
         }
     }
 
@@ -54,6 +62,19 @@ public struct EventStream<Event: ActorMessage> {
 
     public func publish(_ event: Event, file: String = #file, line: UInt = #line) {
         self.ref.tell(.publish(event), file: file, line: line)
+        self.eventContinuation.yield(event)
+    }
+
+    public func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(underlying: self.events.makeAsyncIterator())
+    }
+
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        var underlying: AsyncStream<Event>.Iterator
+
+        public mutating func next() async -> Event? {
+            await self.underlying.next()
+        }
     }
 }
 
