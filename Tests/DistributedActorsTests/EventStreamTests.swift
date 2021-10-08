@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
+import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
 import NIO
 import XCTest
@@ -90,5 +91,34 @@ final class EventStreamTests: ActorSystemXCTestCase {
         try p3.expectMessage("test2")
         try p1.expectNoMessage(for: .milliseconds(100))
         try p2.expectNoMessage(for: .milliseconds(100))
+    }
+
+    func test_eventStream_asyncSequence() throws {
+        let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
+
+        let counter: Atomic<Int> = Atomic(value: 0)
+        let isConsumerReady: Atomic<Bool> = Atomic(value: false)
+        let finished = expectation(description: "finished")
+
+        let consumerTask = Task.detached {
+            _ = isConsumerReady.compareAndExchange(expected: false, desired: true)
+            for try await _ in eventStream {
+                _ = counter.add(1)
+            }
+        }
+
+        Task.detached {
+            while !isConsumerReady.load() {
+                try await Task.sleep(nanoseconds: 10_000_000)
+            }
+
+            eventStream.publish("test")
+
+            consumerTask.cancel()
+            finished.fulfill()
+        }
+
+        wait(for: [finished], timeout: 0.2)
+        XCTAssertEqual(1, counter.load())
     }
 }
