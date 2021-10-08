@@ -24,7 +24,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
     internal let ref: ActorRef<EventStreamShell.Message<Event>>
 
     private var events: AsyncStream<Event>!
-    private var eventContinuation: AsyncStream<Event>.Continuation!
+    private var asyncContinuation: AsyncStream<Event>.Continuation!
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
         try self.init(system, name: name, of: type, systemStream: false)
@@ -48,7 +48,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
     internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {
         self.ref = ref
         self.events = AsyncStream<Event> { continuation in
-            self.eventContinuation = continuation
+            self.asyncContinuation = continuation
         }
     }
 
@@ -62,18 +62,41 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 
     public func publish(_ event: Event, file: String = #file, line: UInt = #line) {
         self.ref.tell(.publish(event), file: file, line: line)
-        self.eventContinuation.yield(event)
+        self.asyncContinuation.yield(event)
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator(underlying: self.events.makeAsyncIterator())
+        return AsyncIterator(
+            underlying: self.events.makeAsyncIterator(),
+            onSubscribe: { callback in self.ref.tell(.asyncSubscribe(callback)) }
+        )
     }
 
     public struct AsyncIterator: AsyncIteratorProtocol {
         var underlying: AsyncStream<Event>.Iterator
 
+        let onSubscribeEventProvider: (@escaping (Event?) -> Void) -> Void
+        private var fetchOnSubscribeEvent = true
+
+        init(underlying: AsyncStream<Event>.Iterator, onSubscribe onSubscribeEventProvider: @escaping (@escaping (Event?) -> Void) -> Void) {
+            self.underlying = underlying
+            self.onSubscribeEventProvider = onSubscribeEventProvider
+        }
+
         public mutating func next() async -> Event? {
-            await self.underlying.next()
+            if self.fetchOnSubscribeEvent {
+                let onSubscribeEvent: Event? = await withCheckedContinuation { continuation in
+                    self.onSubscribeEventProvider { event in
+                        continuation.resume(returning: event)
+                    }
+                }
+                self.fetchOnSubscribeEvent = false
+
+                if let onSubscribeEvent = onSubscribeEvent {
+                    return onSubscribeEvent
+                }
+            }
+            return await self.underlying.next()
         }
     }
 }
@@ -86,6 +109,9 @@ internal enum EventStreamShell {
         case unsubscribe(ActorRef<Event>)
         /// Publish an event to all subscribers
         case publish(Event)
+
+        /// Subscribe to async events
+        case asyncSubscribe((Event?) -> Void)
     }
 
     static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
@@ -112,6 +138,8 @@ internal enum EventStreamShell {
                         subscriber.tell(event)
                     }
                     context.log.trace("Published event \(event) to \(subscribers.count) subscribers")
+                case .asyncSubscribe(let callback):
+                    callback(nil)
                 }
 
                 return .same
