@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import Dispatch
 import NIO
 
@@ -116,7 +117,7 @@ public protocol DeathWatchProtocol {
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline
-internal struct DeathWatch<Message: ActorMessage> {
+internal struct DeathWatchImpl<Message: ActorMessage> {
     private var watching: [AddressableActorRef: OnTerminationMessage] = [:]
     private var watchedBy: Set<AddressableActorRef> = []
 
@@ -310,4 +311,5 @@ internal struct DeathWatch<Message: ActorMessage> {
 
 public enum DeathPactError: Error {
     case unhandledDeathPact(ActorAddress, myself: AddressableActorRef, message: String)
+    case unhandledDeathPactError(AnyActorIdentity, myself: AnyActorIdentity, message: String)
 }

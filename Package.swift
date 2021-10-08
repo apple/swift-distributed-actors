@@ -62,6 +62,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsGenerator",
         dependencies: [
             .product(name: "SwiftSyntax", package: "swift-syntax"),
+            .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
             .product(name: "Logging", package: "swift-log"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]
@@ -78,7 +79,12 @@ var targets: [PackageDescription.Target] = [
 
     .target(
         name: "ActorSingletonPlugin",
-        dependencies: ["DistributedActors"]
+        dependencies: [
+            "DistributedActors"
+        ],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
+        ]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -87,7 +93,12 @@ var targets: [PackageDescription.Target] = [
     /// This target is intended only for use in tests, though we have no way to mark this
     .target(
         name: "DistributedActorsTestKit",
-        dependencies: ["DistributedActors", "DistributedActorsConcurrencyHelpers"]
+        dependencies: [
+            "DistributedActors", "DistributedActorsConcurrencyHelpers"
+        ],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
+        ]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -102,6 +113,9 @@ var targets: [PackageDescription.Target] = [
         ],
         exclude: [
           "DocumentationProtos/",
+        ],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
         ]
     ),
 
@@ -110,7 +124,10 @@ var targets: [PackageDescription.Target] = [
 
     .testTarget(
         name: "DistributedActorsTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"],
+        dependencies: [
+            "DistributedActors",
+            "DistributedActorsTestKit"
+        ],
         plugins: [
             "DistributedActorsGeneratorPlugin"
         ]
@@ -118,7 +135,10 @@ var targets: [PackageDescription.Target] = [
 
     .testTarget(
         name: "DistributedActorsTestKitTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"],
+        dependencies: [
+            "DistributedActors",
+            "DistributedActorsTestKit"
+        ],
         plugins: [
             "DistributedActorsGeneratorPlugin"
         ]
@@ -126,7 +146,10 @@ var targets: [PackageDescription.Target] = [
 
     .testTarget(
         name: "CDistributedActorsMailboxTests",
-        dependencies: ["CDistributedActorsMailbox", "DistributedActorsTestKit"]
+        dependencies: [
+            "CDistributedActorsMailbox",
+            "DistributedActorsTestKit"
+        ]
     ),
 
     .testTarget(
@@ -139,13 +162,18 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActorsGenerator",
             "DistributedActorsTestKit",
-        ],
-        plugins: ["DistributedActorsGeneratorPlugin"]
+        ]
     ),
 
     .testTarget(
         name: "ActorSingletonPluginTests",
-        dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
+        dependencies: [
+            "ActorSingletonPlugin",
+            "DistributedActorsTestKit"
+        ],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
+        ]
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -199,6 +227,9 @@ var targets: [PackageDescription.Target] = [
         exclude: [
           "README.md",
           "BenchmarkProtos/bench.proto",
+        ],
+        plugins: [
+            "DistributedActorsGeneratorPlugin"
         ]
     ),
     .target(
@@ -222,7 +253,7 @@ var targets: [PackageDescription.Target] = [
     ),
 
     .target(
-        name: "CDistributedActorsAtomics",
+        name: "CDistributedActorsAtomics", // TODO: remove since swift-atomics is ready now
         dependencies: [],
         exclude: [
           "README.md"
@@ -268,7 +299,10 @@ dependencies += [
 // swift-syntax is Swift version dependent, and added as such below
 #if swift(>=5.6)
 dependencies.append(
-    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a")
+//      // Works with: swift-PR-39560-1149.xctoolchain
+//    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-DEVELOPMENT-SNAPSHOT-2021-10-05-a")
+      // Works with: swift-PR-39654-1170.xctoolchain
+    .package(url: "https://github.com/apple/swift-syntax.git", revision: "b8e4a69237f9dfa362268dddaef8793bc694dc6f")
 //    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main")
 )
 #else

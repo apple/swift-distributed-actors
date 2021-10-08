@@ -29,7 +29,8 @@ internal extension Behavior {
                 return try 1 + nestingDepth0(onStart(context))
             case .intercept(let inner, _):
                 return try 1 + nestingDepth0(inner)
-            case .signalHandling(let onMessage, _):
+            case .signalHandling(let onMessage, _),
+                 .signalHandlingAsync(let onMessage, _):
                 return try 1 + nestingDepth0(onMessage)
             case .orElse(let first, let other):
                 return 1 + max(try nestingDepth0(first), try nestingDepth0(other))
@@ -70,6 +71,10 @@ internal extension Behavior {
                     "\(pad))\n"
             case .signalHandling(let handleMessage, let handleSignal):
                 return "\(pad)signalHandling(handleSignal:\(String(describing: handleSignal))\n" +
+                    (try prettyFormat0(handleMessage, depth: depth + 1)) +
+                    "\(pad))\n"
+            case .signalHandlingAsync(let handleMessage, let handleSignalAsync):
+                return "\(pad)signalHandlingAsync(handleSignal:\(String(describing: handleSignalAsync))\n" +
                     (try prettyFormat0(handleMessage, depth: depth + 1)) +
                     "\(pad))\n"
             case .orElse(let first, let second):

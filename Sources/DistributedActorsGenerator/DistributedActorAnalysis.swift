@@ -15,6 +15,7 @@
 import Foundation
 import Logging
 import SwiftSyntax
+import SwiftSyntaxParser
 
 let BLUE = "\u{001B}[0;34m"
 let RST = "\u{001B}[0;0m"
@@ -121,7 +122,7 @@ final class GatherDistributedActors: SyntaxVisitor {
         }
         self.wipDecl.imports = self.imports
         self.wipDecl.declaredWithin = self.nestingStack
-        self.log.info("Found 'distributed actor \(BLUE)\(self.wipDecl.fullName)\(RST)' (\(self.path.path(relativeTo: self.basePath)) in module \(self.moduleName)")
+        self.log.info("Found 'distributed actor \(BLUE)\(self.wipDecl.fullName)\(RST)' in module \(self.moduleName), path: \(self.path.path(relativeTo: self.basePath))")
 
         return .visitChildren
     }

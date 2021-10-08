@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
+
 /// Signals are additional messages which are passed using the system channel and may be handled by actors.
 /// They inform the actors about various lifecycle events which the actor may want to react to.
 ///
@@ -72,11 +74,18 @@ public enum Signals {
     open class Terminated: Signal, CustomStringConvertible {
         /// Address of the terminated actor.
         public let address: ActorAddress
+
+        /// Identity of the terminated distributed actor.
+        public var identity: AnyActorIdentity {
+            self.address.asAnyActorIdentity
+        }
+
         /// The existence of this actor has been confirmed prior to its termination.
         ///
         /// This is a "weak" information, i.e. even an existing actors' termination could still result in `existenceConfirmed` marked `false`,
         /// however this information will never wrongly be marked `true`.
         public let existenceConfirmed: Bool
+
         /// True if the actor was located on a remote node, and this entire node has terminated (marked as `MemberStatus.down`),
         /// meaning that no communication with any actor on this node will be possible anymore, resulting in this `Terminated` signal.
         public let nodeTerminated: Bool // TODO: Making this a `Reason` could be nicer.

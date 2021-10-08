@@ -67,6 +67,10 @@ public struct ActorAddress: ActorIdentity {
         }
     }
 
+    public var asAnyActorIdentity: AnyActorIdentity {
+        .init(self)
+    }
+
     // TODO: public var identity: ActorIdentity = Path + Name
 
     /// Underlying path representation, not attached to a specific Actor instance.

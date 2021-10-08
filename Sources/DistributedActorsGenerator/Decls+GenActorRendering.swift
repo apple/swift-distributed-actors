@@ -98,33 +98,38 @@ extension Rendering {
                 }
 
                 public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
-                    return .setup { _context in
+                    return .setup { [weak instance] context in
                         // FIXME: if the actor has lifecycle hooks, call them
-                        // let context = Actor<{{baseName}}>.Context(underlying: _context)
                         // try await instance.preStart(context: context)
 
-                        return Behavior<Message>._receiveMessageAsync { message in
+                        return Behavior<Message>._receiveMessageAsync { [weak instance] message in
+                            guard let instance = instance else {
+                                // This isn't wrong per se, it just is a race with the instance going away while we were
+                                // still delivering it some remote message; the same as any other termination race.
+                                let deadLetters = context.system.personalDeadLetters(type: Message.self, recipient: context.address)
+                                deadLetters.tell(message)
+                                return .stop
+                            }
                             switch message { 
                             {{funcSwitchCases}}
                             {{funcBoxSwitchCases}}
                             }
                             return .same
-                        }.receiveSignal { _context, signal in 
-                            // let context = Actor<{{baseName}}>.Context(underlying: _context)
-
+                        }._receiveSignalAsync { [weak instance] context, signal in 
                             switch signal {
                             case is Signals.PostStop:
                                 // FIXME: if we'd expose lifecycle hooks, call them
                                 // try await instance.postStop(context: context)
                                 return .stop
-                            case is Signals.Terminated:
-                            // case let terminated as Signals.Terminated:
-                                // FIXME: we need whenLocal implemented to do these things
-                                //if let handler = instance as? DistributedActors.DeathWatchHandling {
-                                //    handler.receiveTerminated(terminated: terminated)
-                                //    return .same
-                                // }
-                                return .unhandled
+                            case let terminated as Signals.Terminated:
+                                if let watcher = instance as? (DistributedActor & DistributedActors.LifecycleWatchSupport) { // TODO: cleanup once LifecycleWatchSupport implies DistributedActor
+                                     try await watcher.whenLocal { __secretlyKnownToBeLocal in 
+                                         try await __secretlyKnownToBeLocal._receiveActorTerminated(identity: terminated.identity)
+                                     }
+                                     return .same
+                                } else { 
+                                    return .unhandled 
+                                } 
                                 // FIXME: if we have a terminated signal handler, invoke it
                                 // let next = {{tryIfReceiveTerminatedIsThrowing}}instance.receiveTerminated(context: context, terminated: terminated)
                                 // switch next {
@@ -376,16 +381,6 @@ extension DistributedMessageDecl {
         return ret
     }
 
-//    // TODO(distributed): remove this
-//    func renderFunc(printer: inout CodePrinter, actor: ActorTypeDecl, printBody: (inout CodePrinter) -> Void) {
-//        self.renderTellFuncDecl(printer: &printer, actor: actor)
-//        printer.print(" {")
-//        printer.indent()
-//        printBody(&printer)
-//        printer.outdent()
-//        printer.print("}")
-//    }
-
     func renderFunc(printer: inout CodePrinter, actor: DistributedActorDecl, printBody: (inout CodePrinter) -> Void) {
         self.renderRemoteFuncDecl(printer: &printer, actor: actor)
         printer.print(" {")
@@ -470,7 +465,7 @@ extension DistributedMessageDecl {
     }
 
     func renderFuncParams(forFuncIdentifier: Bool = false) -> String {
-        self.params.map { first, second, tpe in
+        var result = self.params.map { first, second, tpe in
             // FIXME: super naive... replace with something more proper
             let type = tpe
                 .replacingOccurrences(of: "<Self>", with: "<\(self.actorName)>")
@@ -479,19 +474,20 @@ extension DistributedMessageDecl {
                 .replacingOccurrences(of: ", Self>", with: ", \(self.actorName)>")
 
             if let name = first {
-                if name == second {
+                if name == second || forFuncIdentifier {
                     // no need to write `name name: String`
-                    var ret = "\(name):"
+                    var ret = "\(name)"
+                    if (!forFuncIdentifier) {
+                        ret += ": \(type)"
+                    }
+                    return ret
+                } else {
+                    var ret = "\(name) \(second):"
                     if (!forFuncIdentifier) {
                         ret += " \(type)"
                     }
                     return ret
                 }
-                var ret = "\(name) \(second):"
-                if (!forFuncIdentifier) {
-                    ret += " \(type)"
-                }
-                return ret
             } else {
                 if (forFuncIdentifier) {
                     return "_"
@@ -500,6 +496,11 @@ extension DistributedMessageDecl {
                 }
             }
         }.joined(separator: forFuncIdentifier ? ":" : ", ")
+
+        if forFuncIdentifier {
+            result += ":"
+        }
+        return result
     }
 
     /// Renders:
@@ -513,11 +514,6 @@ extension DistributedMessageDecl {
                 self.effectiveParams.map { _, secondName, _ in
                     // TODO: Finally change the triple tuple into a specific type with more helpers
                     let name: String
-//                    if firstName == "_" {
-//                        name = secondName
-//                    } else {
-//                        name = firstName ?? secondName
-//                    }
                     name = secondName
                     return "let \(name)"
                 }.joined(separator: ", ") +
@@ -582,7 +578,7 @@ extension DistributedMessageDecl {
         printer.print("}")
 
         printer.print("")
-        printer.print("// FIXME: this is terrible, we must not have to keep resolving on every message send...")
+        printer.print("// FIXME: this is not great; once the ID 'is' the reference, we'll be able to simplify this")
         printer.print("let ref: ActorRef<Message> = system._resolve(context: ResolveContext(address: address, system: system))")
         printer.print("")
         printer.outdent()
@@ -804,7 +800,7 @@ extension DistributedFuncDecl {
             printer.outdent()
             printer.print("} catch {")
             printer.indent()
-            printer.print("_context.log.warning(\"Error thrown while handling [\\(message)], error: \\(error)\")")
+            printer.print("context.log.warning(\"Error thrown while handling [\\(message)], error: \\(error)\")")
             // FIXME: ENABLE THIS, BECAUSE ALL FUNCS MAY THROW HERE
             // printer.print("_replyTo.tell(.failure(ErrorEnvelope(error)))")
             printer.outdent()

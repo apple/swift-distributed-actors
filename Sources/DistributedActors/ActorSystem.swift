@@ -42,6 +42,9 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         }
     }
 
+    internal let lifecycleWatchLock = Lock()
+    internal var _lifecycleWatches: [AnyActorIdentity: LifecycleWatch] = [:]
+
     private let dispatcher: InternalMessageDispatcher
 
     // Access MUST be protected with `namingLock`.
@@ -94,6 +97,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     }
 
     // TODO: become the system's uptime
+    @available(*, deprecated, message: "will be removed, as we're getting real Time types and should use those instead.")
     public func uptimeNanoseconds() -> Int64 {
         Deadline.now().uptimeNanoseconds
     }
@@ -541,8 +545,6 @@ extension ActorSystem: ActorRefFactory {
             where Message: ActorMessage {
         try behavior.validateAsInitial()
 
-        let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
-
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
         case .default:
@@ -568,8 +570,8 @@ extension ActorSystem: ActorRefFactory {
     // Reserve an actor address.
     internal func _reserveName<Act>(
             using provider: _ActorRefProvider,
-            type: Act.Type, props: Props = Props(),
-            startImmediately: Bool = true
+            type: Act.Type,
+            props: Props = Props()
     ) throws -> ActorAddress where Act: DistributedActor {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
 
@@ -593,12 +595,14 @@ extension ActorSystem: ActorRefFactory {
 
     // FIXME(distributed): this exists because generated _spawnAny, we need to get rid of that _spawnAny
     public func _spawnDistributedActor<Message>(
-            _ behavior: Behavior<Message>, identifiedBy id : AnyActorIdentity) -> ActorRef<Message> where Message: ActorMessage {
+            _ behavior: Behavior<Message>, identifiedBy id: AnyActorIdentity) -> ActorRef<Message> where Message: ActorMessage {
         guard let address = id.underlying as? ActorAddress else {
             fatalError("Cannot spawn distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(id)")
         }
 
-        let props = Props() // TODO: pick up props from task-local?
+        // TODO(distributed): pick up props from task-local OR change proposal to allow passing properties
+        var props = Props()
+        props._distributedActor = true
         return try! self._spawn(using: self.userProvider, behavior, address: address, props: props) // try!-safe, since the naming must have been correct
     }
 }
@@ -791,26 +795,41 @@ extension ActorSystem {
                             "Add `plugins: [\"DistributedActorsGeneratorPlugin\"]` to your target.")
         }
 
+        if let watcher = actor as? (LifecycleWatchSupport & DistributedActor) {
+            func doMakeLifecycleWatch<Watcher: LifecycleWatchSupport & DistributedActor>(watcher: Watcher) {
+                _ = self._makeLifecycleWatch(watcher: watcher)
+            }
+            _openExistential(watcher, do: doMakeLifecycleWatch)
+        }
+
         func doSpawn<SpawnAct: AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
-            log.info("Spawn any for \(SpawnAct.self)")
+            log.trace("Spawn any for \(SpawnAct.self)")
             // FIXME(distributed): hopefully remove this and perform the spawn in the cluster library?
             return try! SpawnAct._spawnAny(instance: actor as! SpawnAct, on: self)
         }
-
         let anyRef: AddressableActorRef = _openExistential(SpawnAct, do: doSpawn)
 
         self.namingLock.withLockVoid {
-            log.info("Store \(anyRef.address.detailedDescription)")
+            log.info("Store managed distributed actor \(anyRef.address.detailedDescription)")
+            self._reservedNames.remove(address)
+            self._managedRefs[address] = anyRef
         }
     }
 
     /// Called during actor deinit/destroy.
     public func resignIdentity(_ id: AnyActorIdentity) {
+        log.trace("Resign identity", metadata: ["actor/id": "\(id.underlying)"])
         let address = id._forceUnwrapActorAddress
 
         self.namingLock.withLockVoid {
+            self._reservedNames.remove(address)
             if let ref = self._managedRefs.removeValue(forKey: address) {
                 ref._sendSystemMessage(.stop, file: #file, line: #line)
+            }
+        }
+        self.lifecycleWatchLock.withLockVoid {
+            if let watch = self._lifecycleWatches.removeValue(forKey: id) {
+                watch.notifyWatchersWeDied()
             }
         }
     }
