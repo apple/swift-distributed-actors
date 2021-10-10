@@ -128,16 +128,22 @@ private struct EventStreamConsumer<Event: ActorMessage> {
     }
 
     func consume(_ n: Int) async throws {
+        let iterator = self.events.makeAsyncIterator()
+
+        while !iterator.ready {
+            try? await Task.sleep(nanoseconds: 3_000_000)
+        }
         guard self.running.compareAndExchange(expected: false, desired: true) else { return }
 
-        for try await event in self.events {
+        while let event = await iterator.next() {
             _ = self.counter.add(1)
             try self.eventHandler(event)
 
             if self.counter.load() >= n {
-                _ = self.running.compareAndExchange(expected: true, desired: false)
                 break
             }
         }
+
+        _ = self.running.compareAndExchange(expected: true, desired: false)
     }
 }

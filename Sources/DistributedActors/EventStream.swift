@@ -14,6 +14,8 @@
 
 import struct Foundation.UUID
 
+import DistributedActorsConcurrencyHelpers
+
 /// `EventStream` manages a set of subscribers and forwards any events sent to it via the `.publish`
 /// message to all subscribers. An actor can subscribe to the events by sending a `.subscribe` message
 /// and unsubscribe by sending `.unsubscribe`. Subscribers will be watched and un-subscribes in case
@@ -64,23 +66,31 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
         return AsyncIterator(ref: self.ref)
     }
 
-    public struct AsyncIterator: AsyncIteratorProtocol {
-        var underlying: AsyncStream<Event>.Iterator
+    public class AsyncIterator: AsyncIteratorProtocol {
+        var underlying: AsyncStream<Event>.Iterator!
+
+        private let subscribed: Atomic<Bool> = Atomic(value: false)
+
+        var ready: Bool {
+            self.subscribed.load()
+        }
 
         init(ref: ActorRef<EventStreamShell.Message<Event>>) {
             let uuid = UUID()
             self.underlying = AsyncStream<Event> { continuation in
-                ref.tell(.asyncSubscribe(uuid) {
-                    event in continuation.yield(event)
+                ref.tell(.asyncSubscribe(uuid, { event in continuation.yield(event) }) {
+                    _ = self.subscribed.compareAndExchange(expected: false, desired: true)
                 })
 
                 continuation.onTermination = { @Sendable (_) -> Void in
-                    ref.tell(.asyncUnsubscribe(uuid))
+                    ref.tell(.asyncUnsubscribe(uuid) {
+                        _ = self.subscribed.compareAndExchange(expected: true, desired: false)
+                    })
                 }
             }.makeAsyncIterator()
         }
 
-        public mutating func next() async -> Event? {
+        public func next() async -> Event? {
             await self.underlying.next()
         }
     }
@@ -96,9 +106,9 @@ internal enum EventStreamShell {
         case publish(Event)
 
         /// Add async subscriber identified by the UUID to the event stream
-        case asyncSubscribe(UUID, (Event) -> Void)
-        /// Remove async subscriber identiified by the UUID
-        case asyncUnsubscribe(UUID)
+        case asyncSubscribe(UUID, (Event) -> Void, () -> Void)
+        /// Remove async subscriber identified by the UUID
+        case asyncUnsubscribe(UUID, () -> Void)
     }
 
     static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
@@ -130,16 +140,18 @@ internal enum EventStreamShell {
                     }
                     context.log.trace("Published event \(event) to \(subscribers.count) subscribers and \(asyncSubscribers.count) async subscribers")
 
-                case .asyncSubscribe(let uuid, let eventHandler):
+                case .asyncSubscribe(let uuid, let eventHandler, let callback):
                     asyncSubscribers[uuid] = eventHandler
                     context.log.trace("Successfully added async subscriber [\(uuid)]")
+                    callback()
 
-                case .asyncUnsubscribe(let uuid):
+                case .asyncUnsubscribe(let uuid, let callback):
                     if asyncSubscribers.removeValue(forKey: uuid) != nil {
                         context.log.trace("Successfully removed async subscriber [\(uuid)]")
                     } else {
                         context.log.warning("Received `.asyncUnsubscribe` for non-subscriber [\(uuid)]")
                     }
+                    callback()
                 }
 
                 return .same

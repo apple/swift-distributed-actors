@@ -77,17 +77,19 @@ internal enum ClusterEventStream {
                             ]
                         )
 
-                    case .asyncSubscribe(let uuid, let eventHandler):
+                    case .asyncSubscribe(let uuid, let eventHandler, let callback):
                         asyncSubscribers[uuid] = eventHandler
                         context.log.trace("Successfully added async subscriber [\(uuid)]")
+                        callback()
                         eventHandler(Cluster.Event.snapshot(snapshot))
 
-                    case .asyncUnsubscribe(let uuid):
+                    case .asyncUnsubscribe(let uuid, let callback):
                         if asyncSubscribers.removeValue(forKey: uuid) != nil {
                             context.log.trace("Successfully removed async subscriber [\(uuid)]")
                         } else {
                             context.log.warning("Received `.asyncUnsubscribe` for non-subscriber [\(uuid)]")
                         }
+                        callback()
                     }
 
                     return .same
