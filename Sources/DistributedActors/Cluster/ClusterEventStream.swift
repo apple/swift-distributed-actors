@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import struct Foundation.UUID
+
 import Logging
 
 /// Specialized event stream behavior which takes into account emitting a snapshot event on first subscription,
@@ -34,6 +36,7 @@ internal enum ClusterEventStream {
                 // and not miss any information as long as they apply all events they receive.
                 var snapshot = Cluster.Membership.empty
                 var subscribers: [ActorAddress: ActorRef<Cluster.Event>] = [:]
+                var asyncSubscribers: [UUID: (Cluster.Event) -> Void] = [:]
 
                 let behavior: Behavior<EventStreamShell.Message<Cluster.Event>> = .receiveMessage { message in
                     switch message {
@@ -57,18 +60,34 @@ internal enum ClusterEventStream {
                         for subscriber in subscribers.values {
                             subscriber.tell(event)
                         }
+                        for subscriber in asyncSubscribers.values {
+                            subscriber(event)
+                        }
 
                         context.log.trace(
-                            "Published event \(event) to \(subscribers.count) subscribers",
+                            "Published event \(event) to \(subscribers.count) subscribers and \(asyncSubscribers.count) async subscribers",
                             metadata: [
                                 "eventStream/event": "\(reflecting: event)",
                                 "eventStream/subscribers": Logger.MetadataValue.array(subscribers.map {
                                     Logger.MetadataValue.stringConvertible($0.key)
                                 }),
+                                "eventStream/asyncSubscribers": Logger.MetadataValue.array(asyncSubscribers.map {
+                                    Logger.MetadataValue.stringConvertible($0.key)
+                                }),
                             ]
                         )
-                    case .asyncSubscribe(let callback):
-                        callback(Cluster.Event.snapshot(snapshot))
+
+                    case .asyncSubscribe(let uuid, let eventHandler):
+                        asyncSubscribers[uuid] = eventHandler
+                        context.log.trace("Successfully added async subscriber [\(uuid)]")
+                        eventHandler(Cluster.Event.snapshot(snapshot))
+
+                    case .asyncUnsubscribe(let uuid):
+                        if asyncSubscribers.removeValue(forKey: uuid) != nil {
+                            context.log.trace("Successfully removed async subscriber [\(uuid)]")
+                        } else {
+                            context.log.warning("Received `.asyncUnsubscribe` for non-subscriber [\(uuid)]")
+                        }
                     }
 
                     return .same
