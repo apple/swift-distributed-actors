@@ -96,29 +96,54 @@ final class EventStreamTests: ActorSystemXCTestCase {
     func test_eventStream_asyncSequence() throws {
         let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
-        let counter: Atomic<Int> = Atomic(value: 0)
-        let isConsumerReady: Atomic<Bool> = Atomic(value: false)
-        let finished = expectation(description: "finished")
+        try runAsyncAndBlock {
+            let consumer = EventStreamConsumer(eventStream)
+            let consumeTask = Task {
+                try await consumer.consume(1)
+            }
 
-        let consumerTask = Task.detached {
-            _ = isConsumerReady.compareAndExchange(expected: false, desired: true)
-            for try await _ in eventStream {
-                _ = counter.add(1)
+            Task {
+                while !consumer.running.load() {
+                    try await Task.sleep(nanoseconds: 3_000_000)
+                }
+
+                eventStream.publish("test")
+            }
+
+            try await consumeTask.value
+        }
+    }
+}
+
+private struct EventStreamConsumer<Event: ActorMessage> {
+    let running: Atomic<Bool> = Atomic(value: false)
+    let counter: Atomic<Int> = Atomic(value: 0)
+
+    private let events: EventStream<Event>
+    private let eventHandler: (Event) throws -> Void
+
+    init(_ events: EventStream<Event>, _ eventHandler: @escaping (Event) throws -> Void = { _ in }) {
+        self.events = events
+        self.eventHandler = eventHandler
+    }
+
+    func consume(_ n: Int) async throws {
+        let iterator = self.events.makeAsyncIterator()
+
+        while !iterator.ready {
+            try? await Task.sleep(nanoseconds: 3_000_000)
+        }
+        guard self.running.compareAndExchange(expected: false, desired: true) else { return }
+
+        while let event = await iterator.next() {
+            _ = self.counter.add(1)
+            try self.eventHandler(event)
+
+            if self.counter.load() >= n {
+                break
             }
         }
 
-        Task.detached {
-            while !isConsumerReady.load() {
-                try await Task.sleep(nanoseconds: 10_000_000)
-            }
-
-            eventStream.publish("test")
-
-            consumerTask.cancel()
-            finished.fulfill()
-        }
-
-        wait(for: [finished], timeout: 0.2)
-        XCTAssertEqual(1, counter.load())
+        _ = self.running.compareAndExchange(expected: true, desired: false)
     }
 }

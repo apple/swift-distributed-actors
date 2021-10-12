@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -34,6 +34,7 @@ internal enum ClusterEventStream {
                 // and not miss any information as long as they apply all events they receive.
                 var snapshot = Cluster.Membership.empty
                 var subscribers: [ActorAddress: ActorRef<Cluster.Event>] = [:]
+                var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
 
                 let behavior: Behavior<EventStreamShell.Message<Cluster.Event>> = .receiveMessage { message in
                     switch message {
@@ -57,15 +58,36 @@ internal enum ClusterEventStream {
                         for subscriber in subscribers.values {
                             subscriber.tell(event)
                         }
+                        for subscriber in asyncSubscribers.values {
+                            subscriber(event)
+                        }
+
                         context.log.trace(
-                            "Published event \(event) to \(subscribers.count) subscribers",
+                            "Published event \(event) to \(subscribers.count) subscribers and \(asyncSubscribers.count) async subscribers",
                             metadata: [
                                 "eventStream/event": "\(reflecting: event)",
                                 "eventStream/subscribers": Logger.MetadataValue.array(subscribers.map {
                                     Logger.MetadataValue.stringConvertible($0.key)
                                 }),
+                                "eventStream/asyncSubscribers": Logger.MetadataValue.array(asyncSubscribers.map {
+                                    Logger.MetadataValue.stringConvertible("\($0.key)")
+                                }),
                             ]
                         )
+
+                    case .asyncSubscribe(let id, let eventHandler, let `continue`):
+                        asyncSubscribers[id] = eventHandler
+                        context.log.trace("Successfully added async subscriber [\(id)]")
+                        `continue`()
+                        eventHandler(Cluster.Event.snapshot(snapshot))
+
+                    case .asyncUnsubscribe(let id, let `continue`):
+                        if asyncSubscribers.removeValue(forKey: id) != nil {
+                            context.log.trace("Successfully removed async subscriber [\(id)]")
+                        } else {
+                            context.log.warning("Received `.asyncUnsubscribe` for non-subscriber [\(id)]")
+                        }
+                        `continue`()
                     }
 
                     return .same
