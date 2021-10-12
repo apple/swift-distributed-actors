@@ -53,27 +53,18 @@ DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift ru
 You can use the provided docker images to debug and execute tests inside docker:
 
 ```
-docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1604.51.yaml run shell
+docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2104.main.yaml run shell
 ```
 
 ```
 # run all tests
-docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1604.51.yaml run test
+docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.main.yaml run test
 
 # run only unit tests (no integration tests)
 docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1604.51.yaml run unit-tests
 ```
 
 ## Documentation
-
-### Reference documentation
-
-A more "guided" documentation rather than plain API docs is generated using asciidoctor.
-
-```
-./scripts/docs/generate_reference.sh
-open .build/docs/reference/...-dev/index.html
-```
 
 ### API Documentation
 
@@ -88,11 +79,4 @@ open .build/docs/api/...-dev/index.html
 
 Swift: 
 
-- Swift 5.2+
-- Swift 5.3 development builds
-
-Operating Systems:
-
-- Linux systems (Ubuntu and friends)
-- macOS
-- should work but not verified: iOS, iPadOS (get in touch if you need it)
+- Nightly snapshots of Swift 5.6+
