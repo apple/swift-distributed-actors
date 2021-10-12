@@ -91,6 +91,43 @@ extension Behavior {
         }
     }
 
+    func receiveSignalAsync0(
+        _ handleSignal: @Sendable @escaping (ActorContext<Message>, Signal) async throws -> Behavior<Message>,
+        context: ActorContext<Message>,
+        signal: Signal
+    ) -> Behavior<Message> {
+        .setup { context in
+            let loop = context.system._eventLoopGroup.next()
+            let promise = loop.makePromise(of: Behavior<Message>.self)
+
+            // TODO: pretty sub-optimal, but we'll flatten this all out eventually
+            Task {
+                do {
+                    let next = try await handleSignal(context, signal)
+                    promise.succeed(next)
+                } catch {
+                    promise.fail(error)
+                }
+            }
+
+            return context.awaitResultThrowing(of: promise.futureResult, timeout: .effectivelyInfinite) { next in
+                // become the "next" behavior, realistically with 'distributed actor' this is always '.same'
+                next
+            }
+        }
+    }
+
+    @usableFromInline
+    func receiveSignalAsync(
+        context: ActorContext<Message>,
+        signal: Signal,
+        handleSignal: @escaping @Sendable (ActorContext<Message>, Signal
+    ) async throws -> Behavior<Message>) -> Behavior<Message> {
+        .setup { context in
+            receiveSignalAsync0(handleSignal, context: context, signal: signal)
+        }
+    }
+
     /// Defines a behavior that will be executed with an incoming message by its hosting actor.
     /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
     ///
@@ -258,6 +295,17 @@ extension Behavior {
         )
     }
 
+    public func _receiveSignalAsync(
+        _ handle: @escaping @Sendable (ActorContext<Message>, Signal) async throws -> Behavior<Message>
+    ) -> Behavior<Message> {
+        Behavior(
+            underlying: .signalHandlingAsync(
+                handleMessage: self,
+                handleSignal: handle
+            )
+        )
+    }
+
     /// Allows reacting to `Signal`s, such as lifecycle events.
     ///
     /// Note that this behavior _adds_ the ability to handle signals in addition to an existing message handling behavior
@@ -356,6 +404,14 @@ internal extension Behavior {
     static func signalHandling(handleMessage: Behavior<Message>, handleSignal: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
         Behavior(underlying: .signalHandling(handleMessage: handleMessage, handleSignal: handleSignal))
     }
+    /// Allows handling signals such as termination or lifecycle events.
+    @usableFromInline
+    static func signalHandlingAsync(
+        handleMessage: Behavior<Message>,
+        handleSignal: @escaping @Sendable (ActorContext<Message>, Signal) async throws -> Behavior<Message>
+    ) -> Behavior<Message> {
+        Behavior(underlying: .signalHandlingAsync(handleMessage: handleMessage, handleSignal: handleSignal))
+    }
 
     /// Causes an actor to go into suspended state.
     ///
@@ -409,6 +465,10 @@ internal enum _Behavior<Message: ActorMessage> {
     indirect case signalHandling(
         handleMessage: Behavior<Message>,
         handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>
+    )
+    indirect case signalHandlingAsync(
+        handleMessage: Behavior<Message>,
+        handleSignal: @Sendable (ActorContext<Message>, Signal) async throws -> Behavior<Message>
     )
     case same
     case ignore
@@ -537,9 +597,13 @@ public extension Behavior {
         switch self.underlying {
         case .receiveMessage(let recv): return try recv(message)
         case .receiveMessageAsync(let recv): return self.receiveMessageAsync(recv, message)
+
         case .receive(let recv): return try recv(context, message)
         case .receiveAsync(let recv): return self.receiveAsync(recv, message)
+
         case .signalHandling(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
+        case .signalHandlingAsync(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
+
         case .intercept(let inner, let interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case .orElse(let first, let second): return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
 
@@ -548,7 +612,7 @@ public extension Behavior {
         case .ignore: fatalError("Illegal attempt to interpret message with .ignore behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
         case .unhandled: fatalError("Illegal attempt to interpret message with .unhandled behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
 
-        case .setup(let setup):
+        case .setup:
             return fatalErrorBacktrace("""
                                        Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket. 
                                          System: \(context.system)
@@ -592,6 +656,9 @@ public extension Behavior {
 
         case .signalHandling(_, let handleSignal):
             return try handleSignal(context, signal)
+        case .signalHandlingAsync(_, let receiveSignalAsync):
+            return self.receiveSignalAsync(context: context, signal: signal, handleSignal: receiveSignalAsync)
+
         case .orElse(let first, let second):
             let maybeHandled = try first.interpretSignal(context: context, signal: signal)
             if maybeHandled.isUnhandled {
@@ -805,6 +872,11 @@ internal extension Behavior {
                     return .signalHandling(
                         handleMessage: try canonicalize0(context, base: canonical, next: onMessage, depth: deeper),
                         handleSignal: onSignal
+                    )
+                case .signalHandlingAsync(let onMessage, let onSignalAsync):
+                    return .signalHandlingAsync(
+                        handleMessage: try canonicalize0(context, base: canonical, next: onMessage, depth: deeper),
+                        handleSignal: onSignalAsync
                     )
 
                 case .suspend(let handler):

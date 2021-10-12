@@ -22,7 +22,7 @@ public enum _Done: String, ActorMessage {
 }
 
 public protocol AnyDistributedClusterActor {
-    // TODO(distributed): hopefully remove this, actually system.spawn the underlying reference for the reserved address
+    // TODO(distributed): remove this, actually system.spawn the underlying reference for the reserved address
     static func _spawnAny(instance: Self, on system: ActorSystem) throws -> AddressableActorRef
 }
 

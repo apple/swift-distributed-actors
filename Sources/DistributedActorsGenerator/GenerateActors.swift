@@ -16,6 +16,7 @@ import ArgumentParser
 import Foundation
 import Logging
 import SwiftSyntax
+import SwiftSyntaxParser
 
 final class GenerateActors {
     var log: Logger

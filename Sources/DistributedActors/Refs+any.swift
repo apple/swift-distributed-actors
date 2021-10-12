@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import struct NIO.ByteBuffer
 import protocol NIO.EventLoop
 
@@ -62,6 +63,10 @@ public struct AddressableActorRef: DeathWatchable, Hashable {
 
     public var address: ActorAddress {
         self.ref.address
+    }
+
+    public var asAnyActorIdentity: AnyActorIdentity {
+        self.address.asAnyActorIdentity
     }
 
     public var asAddressable: AddressableActorRef {

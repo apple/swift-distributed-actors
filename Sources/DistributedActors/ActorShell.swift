@@ -125,8 +125,8 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     // MARK: Death Watch infrastructure
 
     // Implementation of DeathWatch
-    @usableFromInline internal var _deathWatch: DeathWatch<Message>?
-    @usableFromInline internal var deathWatch: DeathWatch<Message> {
+    @usableFromInline internal var _deathWatch: DeathWatchImpl<Message>?
+    @usableFromInline internal var deathWatch: DeathWatchImpl<Message> {
         get {
             self._deathWatch!
         }
@@ -158,7 +158,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
         self._log = Logger.make(system.log, path: address.path)
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
-        self._deathWatch = DeathWatch(nodeDeathWatcher: system._nodeDeathWatcher ?? system.deadLetters.adapted())
+        self._deathWatch = DeathWatchImpl(nodeDeathWatcher: system._nodeDeathWatcher ?? system.deadLetters.adapted())
 
         self.namingContext = ActorNamingContext()
 
@@ -811,20 +811,25 @@ extension ActorShell {
         let terminatedDirective = self.deathWatch.receiveTerminated(terminated)
 
         let next: Behavior<Message>
-        switch terminatedDirective {
-        case .wasNotWatched:
-            // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            self.log.trace("""
-            Actor not known to [\(self.path)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
-            and already have removed the actor from our death watch. 
-            """)
-            return
-
-        case .signal:
+        if self.props._distributedActor {
             next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
+        } else {
+            switch terminatedDirective {
+            case .wasNotWatched:
+                // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
+                self.log.trace("""
+                Actor not known to [\(self.path)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
+                and already have removed the actor from our death watch.
+                """)
+                return
 
-        case .customMessage(let customTerminatedMessage):
-            next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: customTerminatedMessage)
+            case .signal:
+                next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
+
+            case .customMessage(let customTerminatedMessage):
+                next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: customTerminatedMessage)
+            }
+
         }
 
         switch next.underlying {
