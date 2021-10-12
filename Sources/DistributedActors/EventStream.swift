@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.UUID
-
 import DistributedActorsConcurrencyHelpers
 
 /// `EventStream` manages a set of subscribers and forwards any events sent to it via the `.publish`
@@ -71,19 +69,21 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 
         private let subscribed: Atomic<Bool> = Atomic(value: false)
 
+        // TODO: clean this up since it's used by tests only (e.g., EventStreamConsumer)
         var ready: Bool {
             self.subscribed.load()
         }
 
         init(ref: ActorRef<EventStreamShell.Message<Event>>) {
-            let uuid = UUID()
             self.underlying = AsyncStream<Event> { continuation in
-                ref.tell(.asyncSubscribe(uuid, { event in continuation.yield(event) }) {
+                let id = ObjectIdentifier(self)
+
+                ref.tell(.asyncSubscribe(id, { event in continuation.yield(event) }) {
                     _ = self.subscribed.compareAndExchange(expected: false, desired: true)
                 })
 
                 continuation.onTermination = { @Sendable (_) -> Void in
-                    ref.tell(.asyncUnsubscribe(uuid) {
+                    ref.tell(.asyncUnsubscribe(id) {
                         _ = self.subscribed.compareAndExchange(expected: true, desired: false)
                     })
                 }
@@ -105,16 +105,16 @@ internal enum EventStreamShell {
         /// Publish an event to all subscribers
         case publish(Event)
 
-        /// Add async subscriber identified by the UUID to the event stream
-        case asyncSubscribe(UUID, (Event) -> Void, () -> Void)
-        /// Remove async subscriber identified by the UUID
-        case asyncUnsubscribe(UUID, () -> Void)
+        /// Add async subscriber to the event stream
+        case asyncSubscribe(ObjectIdentifier, (Event) -> Void, continue: () -> Void)
+        /// Remove async subscriber
+        case asyncUnsubscribe(ObjectIdentifier, continue: () -> Void)
     }
 
     static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
         .setup { context in
             var subscribers: [ActorAddress: ActorRef<Event>] = [:]
-            var asyncSubscribers: [UUID: (Event) -> Void] = [:]
+            var asyncSubscribers: [ObjectIdentifier: (Event) -> Void] = [:]
 
             let behavior: Behavior<Message<Event>> = .receiveMessage { message in
                 switch message {
@@ -140,18 +140,18 @@ internal enum EventStreamShell {
                     }
                     context.log.trace("Published event \(event) to \(subscribers.count) subscribers and \(asyncSubscribers.count) async subscribers")
 
-                case .asyncSubscribe(let uuid, let eventHandler, let callback):
-                    asyncSubscribers[uuid] = eventHandler
-                    context.log.trace("Successfully added async subscriber [\(uuid)]")
-                    callback()
+                case .asyncSubscribe(let id, let eventHandler, let `continue`):
+                    asyncSubscribers[id] = eventHandler
+                    context.log.trace("Successfully added async subscriber [\(id)]")
+                    `continue`()
 
-                case .asyncUnsubscribe(let uuid, let callback):
-                    if asyncSubscribers.removeValue(forKey: uuid) != nil {
-                        context.log.trace("Successfully removed async subscriber [\(uuid)]")
+                case .asyncUnsubscribe(let id, let `continue`):
+                    if asyncSubscribers.removeValue(forKey: id) != nil {
+                        context.log.trace("Successfully removed async subscriber [\(id)]")
                     } else {
-                        context.log.warning("Received `.asyncUnsubscribe` for non-subscriber [\(uuid)]")
+                        context.log.warning("Received `.asyncUnsubscribe` for non-subscriber [\(id)]")
                     }
-                    callback()
+                    `continue`()
                 }
 
                 return .same
