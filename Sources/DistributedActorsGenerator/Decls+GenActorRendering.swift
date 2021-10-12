@@ -33,7 +33,7 @@ enum Rendering {
 
 extension Rendering {
     struct ActorShellTemplate: Renderable {
-        let actorable: DistributedActorDecl
+        let nominal: DistributedActorDecl
 
         static let messageForNonProtocolTemplate = Template(
             templateString:
@@ -72,7 +72,7 @@ extension Rendering {
             templateString:
             """
             // ==== ----------------------------------------------------------------------------------------------------------------
-            // MARK: DO NOT EDIT: Boxing {{baseName}} for any inheriting actorable `A` 
+            // MARK: DO NOT EDIT: Boxing {{baseName}} for any inheriting nominal `A` 
 
             extension Actor where Act: {{actorableProtocol}} {
             {{funcBoxTells}}
@@ -130,16 +130,6 @@ extension Rendering {
                                 } else { 
                                     return .unhandled 
                                 } 
-                                // FIXME: if we have a terminated signal handler, invoke it
-                                // let next = {{tryIfReceiveTerminatedIsThrowing}}instance.receiveTerminated(context: context, terminated: terminated)
-                                // switch next {
-                                // case .unhandled: 
-                                //   return .unhandled
-                                // case .stop: 
-                                //   return .stop
-                                // case .ignore: 
-                                //   return .same
-                                // }
                             default:
                                 // FIXME: if we had signal handlers, invoke it
                                 // {{tryIfReceiveSignalIsThrowing}}instance.receiveSignal(context: context, signal: signal)
@@ -167,21 +157,21 @@ extension Rendering {
         )
 
         func render() throws -> String {
-            let actorableProtocols = self.actorable.actorableProtocols.sorted()
+            let actorableProtocols = self.nominal.actorableProtocols.sorted()
 
             let context: [String: String] = [
-                "baseName": self.actorable.fullName,
-                "actorableProtocol": self.actorable.type == .protocol ? self.actorable.name : "",
+                "baseName": self.nominal.fullName,
+                "actorableProtocol": self.nominal.type == .protocol ? self.nominal.name : "",
 
-                "varLetInstance": self.actorable.renderStoreInstanceAs,
+                "varLetInstance": self.nominal.renderStoreInstanceAs,
 
                 "messageAccess": "public", // TODO: allow non public actor messages
 
-                "funcCases": self.actorable.renderCaseDecls,
+                "funcCases": self.nominal.renderCaseDecls,
 
-                "extensionWhereClause": self.actorable.isGeneric ?
+                "extensionWhereClause": self.nominal.isGeneric ?
                     "" :
-                    " where Act.Message == \(self.actorable.fullName).Message",
+                    " where Act.Message == \(self.nominal.fullName).Message",
 
                 "funcSwitchCases": try self.renderFuncSwitchCases(),
                 "funcBoxSwitchCases": try self.renderFuncBoxSwitchCases(actorableProtocols: actorableProtocols),
@@ -191,12 +181,12 @@ extension Rendering {
                 "remoteImplFuncs": try self.renderRemoteFuncImpls(),
                 "funcBoxTells": try self.renderFuncBoxTells(),
 
-                "tryIfReceiveTerminatedIsThrowing": self.actorable.receiveTerminatedIsThrowing ? "try " : " ",
-                "tryIfReceiveSignalIsThrowing": self.actorable.receiveSignalIsThrowing ? "try " : " ",
+                "tryIfReceiveTerminatedIsThrowing": self.nominal.receiveTerminatedIsThrowing ? "try " : " ",
+                "tryIfReceiveSignalIsThrowing": self.nominal.receiveSignalIsThrowing ? "try " : " ",
             ]
 
             var rendered: String = "\n"
-            switch self.actorable.type {
+            switch self.nominal.type {
             case .protocol:
                 rendered.append(Self.messageForProtocolTemplate.render(context))
             default:
@@ -204,7 +194,7 @@ extension Rendering {
                 rendered.append("\n")
             }
 
-            switch self.actorable.type {
+            switch self.nominal.type {
             case .distributedActor:
                 rendered.append(Self.behaviorTemplate.render(context))
                 rendered.append(Self.actorTellTemplate.render(context))
@@ -217,7 +207,7 @@ extension Rendering {
 
         private func renderFuncSwitchCases() throws -> String {
             var first = true
-            let switchCases = try self.actorable.funcs.map { funcDecl in
+            let switchCases = try self.nominal.funcs.map { funcDecl in
                 try CodePrinter.content { printer in
                     if first {
                         printer.dontIndentNext()
@@ -255,7 +245,7 @@ extension Rendering {
 
         private func renderBoxFuncs(actorableProtocols: [DistributedActorDecl]) throws -> String {
             let boxFuncs = try actorableProtocols.map { inheritedProtocol in
-                try inheritedProtocol.renderBoxingFunc(in: self.actorable)
+                try inheritedProtocol.renderBoxingFunc(in: self.nominal)
             }
 
             var printer = CodePrinter(startingIndentation: 1)
@@ -265,21 +255,21 @@ extension Rendering {
 
         private func renderRemoteFuncImpls() throws -> String {
             var printer = CodePrinter(startingIndentation: 1)
-            for funcDecl in self.actorable.funcs {
-                try funcDecl.renderRemoteImplFunc(self.actorable, printer: &printer)
+            for funcDecl in self.nominal.funcs {
+                try funcDecl.renderRemoteImplFunc(self.nominal, printer: &printer)
             }
 
             return printer.content
         }
 
         private func renderFuncBoxTells() throws -> String {
-            guard self.actorable.type == .protocol else {
+            guard self.nominal.type == .protocol else {
                 return ""
             }
 
             var printer = CodePrinter(startingIndentation: 1)
-            try self.actorable.funcs.forEach { actorableFunc in
-                try actorableFunc.renderBoxFuncTell(self.actorable, printer: &printer)
+            try self.nominal.funcs.forEach { actorableFunc in
+                try actorableFunc.renderBoxFuncTell(self.nominal, printer: &printer)
             }
             return printer.content
         }
@@ -410,7 +400,7 @@ extension DistributedMessageDecl {
             // See also: https://forums.swift.org/t/parameterized-extensions/25563
             printer.print("where Self.Message == \(actor.fullName)<\(actor.renderGenericNames)>.Message", skipNewline: true)
 
-            // if the actorable had any additional where clauses we need to carry them here as well
+            // if the nominal had any additional where clauses we need to carry them here as well
             if !actor.genericWhereClauses.isEmpty {
                 actor.genericWhereClauses.forEach {
                     printer.print(",")
@@ -452,7 +442,7 @@ extension DistributedMessageDecl {
             // See also: https://forums.swift.org/t/parameterized-extensions/25563
             printer.print("where Self.Message == \(actor.fullName)<\(actor.renderGenericNames)>.Message", skipNewline: true)
 
-            // if the actorable had any additional where clauses we need to carry them here as well
+            // if the nominal had any additional where clauses we need to carry them here as well
             if !actor.genericWhereClauses.isEmpty {
                 actor.genericWhereClauses.forEach {
                     printer.print(",")

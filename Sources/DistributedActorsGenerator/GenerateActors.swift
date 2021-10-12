@@ -75,8 +75,8 @@ extension GenerateActors {
         var unresolvedActorables: [DistributedActorDecl] = []
 
         try filesToScan.forEach { file in
-            let actorablesInFile = try self.parse(fileToParse: file)
-            unresolvedActorables.append(contentsOf: actorablesInFile)
+            let distributedActorsInFile = try self.parse(fileToParse: file)
+            unresolvedActorables.append(contentsOf: distributedActorsInFile)
         }
 
         try directoriesToScan.forEach { directory in
@@ -88,8 +88,8 @@ extension GenerateActors {
             }
 
             try actorFilesToScan.forEach { file in
-                let actorablesInFile = try self.parse(fileToParse: file)
-                unresolvedActorables.append(contentsOf: actorablesInFile)
+                let distributedActorsInFile = try self.parse(fileToParse: file)
+                unresolvedActorables.append(contentsOf: distributedActorsInFile)
             }
         }
         return unresolvedActorables
@@ -115,25 +115,25 @@ extension GenerateActors {
 // MARK: Generating sources
 
 extension GenerateActors {
-    private func generateAll(_ actorables: [DistributedActorDecl], in targetDirectory: Directory, buckets: Int) throws {
-        try actorables.forEach { actorable in
-            _ = try generateGenActorFile(for: actorable, in: targetDirectory, buckets: buckets)
-            _ = try generateGenCodableFile(for: actorable, in: targetDirectory, buckets: buckets)
+    private func generateAll(_ actors: [DistributedActorDecl], in targetDirectory: Directory, buckets: Int) throws {
+        try actors.forEach { actor in
+            _ = try generateGenActorFile(for: actor, in: targetDirectory, buckets: buckets)
+            _ = try generateGenCodableFile(for: actor, in: targetDirectory, buckets: buckets)
         }
     }
 
-    private func generateGenActorFile(for actorable: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
-        let targetFile = try self.computeTargetFile(for: actorable, in: targetDirectory, buckets: buckets)
+    private func generateGenActorFile(for actor: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
+        let targetFile = try self.computeTargetFile(for: actor, in: targetDirectory, buckets: buckets)
 
         try targetFile.append(Rendering.generatedFileHeader)
         try targetFile.append("\n")
 
-        try actorable.imports.forEach { importBlock in
+        try actor.imports.forEach { importBlock in
             try targetFile.append("\(importBlock)")
         }
 
         try targetFile.append("\n")
-        let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render()
+        let renderedShell = try Rendering.ActorShellTemplate(nominal: actor).render()
         if self.printGenerated {
             print(renderedShell)
         }
@@ -145,22 +145,22 @@ extension GenerateActors {
     }
 
     /// Generate Codable conformances for the `Message` type -- until we don't have auto synthesis of it for enums with associated values.
-    private func generateGenCodableFile(for actorable: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File? {
-        guard actorable.generateCodableConformance else {
+    private func generateGenCodableFile(for actor: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File? {
+        guard actor.generateCodableConformance else {
             return nil // skip generating
         }
 
-        let targetFile = try self.computeTargetFile(for: actorable, in: targetDirectory, buckets: buckets)
+        let targetFile = try self.computeTargetFile(for: actor, in: targetDirectory, buckets: buckets)
 
         try targetFile.append(Rendering.generatedFileHeader)
         try targetFile.append("\n")
 
-        try actorable.imports.forEach { importBlock in
+        try actor.imports.forEach { importBlock in
             try targetFile.append("\(importBlock)")
         }
 
         try targetFile.append("\n")
-        let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render()
+        let codableConformance = try Rendering.MessageCodableTemplate(nominal: actor).render()
         if self.printGenerated {
             print(codableConformance)
         }
@@ -171,20 +171,20 @@ extension GenerateActors {
     }
 
     // simple bucketing based on the first letter
-    private func computeTargetFile(for actorable: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
+    private func computeTargetFile(for actor: DistributedActorDecl, in targetDirectory: Directory, buckets: Int) throws -> File {
         guard buckets > 0 else {
             preconditionFailure("invalid buckets. \(buckets) must be > 0")
         }
 
-        guard let firstLetter = actorable.name.lowercased().first else {
-            preconditionFailure("invalid actorable name: \(actorable.name)")
+        guard let firstLetter = actor.name.lowercased().first else {
+            preconditionFailure("invalid actor name: \(actor.name)")
         }
 
         let letterIndex = Self.letters.firstIndex(of: firstLetter)
             .flatMap { Self.letters.distance(from: Self.letters.startIndex, to: $0) } ?? 0
 
         let bucket = Int(floor(Double(letterIndex) / ceil(Double(Self.letters.count) / Double(buckets))))
-        self.log.debug("Assigning \(actorable.name) into bucket #\(bucket)")
+        self.log.debug("Assigning \(actor.name) into bucket #\(bucket)")
 
         return try targetDirectory.file(named: "\(Self.generatedFilePrefix)\(bucket).swift")
     }

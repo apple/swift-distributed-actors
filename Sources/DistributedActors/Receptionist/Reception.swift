@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Reception
 
@@ -190,13 +192,15 @@ extension Reception {
 }
 
 extension Reception.Registered where Guest: ReceivesMessages {
-    public var ref: ActorRef<Guest.Message> {
+    internal var ref: ActorRef<Guest.Message> {
         self._guest._ref
     }
 }
 
-extension Reception.Registered where Guest: ActorProtocol {
-    public var actor: Actor<Guest.Act> {
-        .init(ref: self._guest._ref)
+extension Reception.Registered where Guest: DistributedActor {
+    public var actor: Guest {
+        let system = self._guest.actorTransport._forceUnwrapActorSystem
+
+        return try! Guest.resolve(self._guest._ref.asAddressable.asAnyActorIdentity, using: system) // FIXME: cleanup these APIs, should never need throws, resolve earlier
     }
 }

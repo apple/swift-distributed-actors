@@ -68,35 +68,6 @@ public protocol ChildActorRefFactory: ActorRefFactory {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor.Context + ActorFactory
-
-extension Actor.Context: ChildActorRefFactory {
-    public var children: Children {
-        get {
-            self._underlying.children
-        }
-        set {
-            self._underlying.children = newValue
-        }
-    }
-
-    public func stop<Message>(child ref: ActorRef<Message>) throws where Message: Codable {
-        try self._underlying.stop(child: ref)
-    }
-
-    @discardableResult
-    public func spawn<Message>(
-        _ naming: ActorNaming,
-        of type: Message.Type,
-        props: Props = Props(),
-        file: String = #file, line: UInt = #line,
-        _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message> where Message: Codable {
-        try self._underlying.spawn(naming, of: type, props: props, file: file, line: line, behavior)
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorContext + ActorFactory
 
 extension ActorContext: ChildActorRefFactory {
