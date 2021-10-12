@@ -1,13 +1,11 @@
 
-== Examples ✗
-
-> Talk is cheap, show me the code. -- Linus Torvalds
+## Examples
 
 This section contains links and explanations of simple and more advanced examples.
 
 TIP: Contributions are very welcome, please reach out if you'd like to show off an example app you have built.
 
-=== Dining Philosophers
+### Dining Philosophers
 
 The classic concurrency example.
 The 5 philosophers are competing for 5 shared forks so they can have their meal and continue thinking.
@@ -18,15 +16,14 @@ See example code here: https://github.com/apple/swift-distributed-actors/tree/ma
 
 Run it by:
 
-[source]
-----
-git clone https://github.com/apple/swift-distributed-actors sact
-cd sact/Samples
+```
+git clone https://github.com/apple/swift-distributed-actors
+cd swift-distributed-actors/Samples
 swift run SampleDiningPhilosophers
-----
+```
 
 
-=== Distributed Dining Philosophers
+### Distributed Dining Philosophers
 
 Same as the normal dining philosophers example, however differing in the set-up step: this time the philosophers and forks are distributed across a number of nodes, thus some philosophers have an advantage in reaching for forks since they only have to message the forks locally!
 Will any of the philosophers starve?
@@ -36,21 +33,12 @@ See example code here: https://github.com/apple/swift-distributed-actors/tree/ma
 
 Run it by:
 
-[source]
-----
-git clone https://github.com/apple/swift-distributed-actors sact
-cd sact/Samples
+```
+git clone https://github.com/apple/swift-distributed-actors
+cd swift-distributed-actors/Samples
 swift run SampleDiningPhilosophers dist
-----
+```
 
-=== Full-blown Examples ✗
+### More examples
 
-#TODO#
-
-==== Multiplayer Game ??? ✗
-
-#TODO#
-
-==== IoT ingestion ??? ✗
-
-#TODO#
+We'd love to see more examples in this repository, if you'd like to contribute a few please reach out.
