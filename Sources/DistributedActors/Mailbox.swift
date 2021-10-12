@@ -313,7 +313,6 @@ internal final class Mailbox<Message: ActorMessage> {
             fatalError("""
                        !!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor.
                        Address: \(self.address)
-                       Actor: \(self.shell)
                        System: \(self.shell?._system?.description ?? "<no system>")
                        """)
         }
@@ -387,11 +386,6 @@ internal final class Mailbox<Message: ActorMessage> {
             runResult = .shouldSuspend
         }
 
-
-//        if (shell.address.path == ActorPath._clusterShell) {
-//            print(">>>>> mailbox run = \(shell.address.fullDescription)")
-//        }
-
         // system messages run -----------------------------------------------------------------------------------------
 
         if status.hasSystemMessages {
@@ -399,9 +393,6 @@ internal final class Mailbox<Message: ActorMessage> {
                   runResult != .closed,
                   let message = self.systemMessages.dequeue() {
                 do {
-//                    if (shell.address.path.segments.last!.description == "cluster") {
-//                        pprint(">>>>> mailbox run system = \(shell.address) <<<<< \(message)")
-//                    }
                     try runResult = shell.interpretSystemMessage(message: message)
                 } catch {
                     shell.fail(error)

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 import Logging
 import NIO
 
@@ -36,17 +37,33 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
     private var membership: Cluster.Membership
 
     /// Members which have been `removed`
-    // TODO: clear after a few days
+    // TODO: clear after a few days, or some max count of nodes, use sorted set for this
     private var nodeTombstones: Set<UniqueNode> = []
+
+    struct WatcherAndCallback: Hashable {
+        /// Address of the local watcher which had issued this watch
+        let watcherIdentity: AnyActorIdentity
+        let callback: @Sendable (UniqueNode) async -> ()
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(watcherIdentity)
+        }
+
+        static func ==(lhs: WatcherAndCallback, rhs: WatcherAndCallback) -> Bool {
+            lhs.watcherIdentity == rhs.watcherIdentity
+        }
+    }
 
     /// Mapping between remote node, and actors which have watched some actors on given remote node.
     private var remoteWatchers: [UniqueNode: Set<AddressableActorRef>] = [:]
+    private var remoteWatchCallbacks: [UniqueNode: Set<WatcherAndCallback>] = [:]
 
     init(selfNode: UniqueNode) {
         self.selfNode = selfNode
         self.membership = .empty
     }
 
+    @available(*, deprecated, message: "will be replaced by distributed actor / closure version (we'll reuse the name though)")
     func onActorWatched(by watcher: AddressableActorRef, remoteNode: UniqueNode) {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
@@ -55,7 +72,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
             return
         }
 
-        if watcher.address._isRemote { // isKnownRemote(localAddress: context.address) {
+        guard watcher.address._isLocal else {
             // a failure detector must never register non-local actors, it would not make much sense,
             // as they should have their own local failure detectors on their own systems.
             // If we reach this it is most likely a bug in the library itself.
@@ -67,6 +84,36 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         existingWatchers.insert(watcher) // FIXME: we have to remove it once it terminates...
 
         self.remoteWatchers[remoteNode] = existingWatchers
+    }
+
+    func onActorWatched(
+            on remoteNode: UniqueNode,
+            by watcher: AnyActorIdentity,
+            whenTerminated nodeTerminatedFn: @escaping @Sendable (UniqueNode) async -> ()
+    ) {
+        guard !self.nodeTombstones.contains(remoteNode) else {
+            // the system the watcher is attempting to watch has terminated before the watch has been processed,
+            // thus we have to immediately reply with a termination system message, as otherwise it would never receive one
+            Task {
+                await nodeTerminatedFn(remoteNode)
+            }
+            return
+        }
+
+        let record = WatcherAndCallback(watcherIdentity: watcher, callback: nodeTerminatedFn)
+        self.remoteWatchCallbacks[remoteNode, default: []].insert(record)
+    }
+
+    func onRemoveWatcher(
+        watcherIdentity: AnyActorIdentity
+    ) {
+        // TODO: this can be optimized a bit more I suppose, with a reverse lookup table
+        let removeMe = WatcherAndCallback(watcherIdentity: watcherIdentity, callback: { _ in () })
+        for (node, var watcherAndCallbacks) in self.remoteWatchCallbacks {
+            if watcherAndCallbacks.remove(removeMe) != nil {
+                self.remoteWatchCallbacks[node] = watcherAndCallbacks
+            }
+        }
     }
 
     func onMembershipChanged(_ change: Cluster.MembershipChange) {
@@ -110,6 +157,8 @@ internal protocol NodeDeathWatcher {
     /// left the cluster.
     // TODO: this will change to subscribing to cluster events once those land
     func onMembershipChanged(_ change: Cluster.MembershipChange)
+
+    func onRemoveWatcher(watcherIdentity: AnyActorIdentity)
 }
 
 enum NodeDeathWatcherShell {
@@ -124,6 +173,8 @@ enum NodeDeathWatcherShell {
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message: NonTransportableActorMessage {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
+        case remoteDistributedActorWatched(remoteNode: UniqueNode, watcherIdentity: AnyActorIdentity, nodeTerminated: @Sendable (UniqueNode) async -> ())
+        case removeWatcher(watcherIdentity: AnyActorIdentity)
         case membershipSnapshot(Cluster.Membership)
         case membershipChange(Cluster.MembershipChange)
     }
@@ -147,16 +198,20 @@ enum NodeDeathWatcherShell {
     }
 
     static func behavior(_ instance: NodeDeathWatcherInstance) -> Behavior<Message> {
-        .receiveMessage { message in
-
-            let lastMembership: Cluster.Membership = .empty // TODO: To be mutated based on membership changes
-
+        .receive { context, message in
+            context.log.debug("Received: \(message)")
             switch message {
             case .remoteActorWatched(let watcher, let remoteNode):
                 instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
 
+            case .remoteDistributedActorWatched(let remoteNode, let watcherIdentity, let nodeTerminatedFn):
+                instance.onActorWatched(on: remoteNode, by: watcherIdentity, whenTerminated: nodeTerminatedFn)
+
+            case .removeWatcher(let watcherIdentity):
+                instance.onRemoveWatcher(watcherIdentity: watcherIdentity)
+
             case .membershipSnapshot(let membership):
-                let diff = Cluster.Membership._diff(from: lastMembership, to: membership)
+                let diff = Cluster.Membership._diff(from: .empty, to: membership)
 
                 for change in diff.changes {
                     instance.onMembershipChanged(change) // TODO: return and interpret directives

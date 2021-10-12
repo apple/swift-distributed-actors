@@ -37,8 +37,14 @@ public struct Props {
 
     public var metrics: MetricsProps
 
-    /// INTERNAL API: Allows spawning a "well known" actor. Use with great care, only if a single incarnation of actor will ever exist under the given path.
+    /// INTERNAL API: Allows spawning a "well known" actor. Use with great care,
+    /// only if a single incarnation of actor will ever exist under the given path.
     internal var _wellKnown: Bool = false
+
+    /// INTERNAL API: Marks that this ref is spawned in service of a 'distributed actor'.
+    /// This is a temporary solution until we move all the infrastructure onto distributed actors.
+    @usableFromInline
+    internal var _distributedActor: Bool = false
 
     public init(mailbox: MailboxProps = .default(), dispatcher: DispatcherProps = .default, supervision: SupervisionProps = .default, metrics: MetricsProps = .disabled) {
         self.mailbox = mailbox

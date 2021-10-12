@@ -21,7 +21,7 @@ extension XCTestCase {
     // FIXME(distributed): remove once XCTest supports async functions on Linux
     func runAsyncAndBlock(
             @_inheritActorContext @_implicitSelfCapture operation: __owned @Sendable @escaping () async throws -> Void,
-            _ timeout: TimeAmount = .seconds(3)) rethrows {
+            _ timeout: TimeAmount = .seconds(10)) rethrows {
         let finished = expectation(description: "finished")
         Task {
             try await operation()

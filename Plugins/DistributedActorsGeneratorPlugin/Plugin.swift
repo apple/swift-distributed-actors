@@ -26,7 +26,7 @@ import PackagePlugin
         } : []
 
         let command = Command.buildCommand(
-            displayName: "Generating distributed actors for \(context.targetName)",
+            displayName: "Generating distributed actors for target '\(context.targetName)'",
             executable: generatorPath,
             arguments: [
                 "--source-directory", context.targetDirectory.string,
