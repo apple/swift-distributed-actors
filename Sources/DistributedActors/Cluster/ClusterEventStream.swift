@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.UUID
-
 import Logging
 
 /// Specialized event stream behavior which takes into account emitting a snapshot event on first subscription,
