@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DistributedActorsConcurrencyHelpers
+
 /// `EventStream` manages a set of subscribers and forwards any events sent to it via the `.publish`
 /// message to all subscribers. An actor can subscribe to the events by sending a `.subscribe` message
 /// and unsubscribe by sending `.unsubscribe`. Subscribers will be watched and un-subscribes in case
@@ -22,9 +24,6 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
     public typealias Element = Event
 
     internal let ref: ActorRef<EventStreamShell.Message<Event>>
-
-    private var events: AsyncStream<Event>!
-    private var eventContinuation: AsyncStream<Event>.Continuation!
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
         try self.init(system, name: name, of: type, systemStream: false)
@@ -47,9 +46,6 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 
     internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {
         self.ref = ref
-        self.events = AsyncStream<Event> { continuation in
-            self.eventContinuation = continuation
-        }
     }
 
     public func subscribe(_ ref: ActorRef<Event>, file: String = #file, line: UInt = #line) {
@@ -62,17 +58,39 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 
     public func publish(_ event: Event, file: String = #file, line: UInt = #line) {
         self.ref.tell(.publish(event), file: file, line: line)
-        self.eventContinuation.yield(event)
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator(underlying: self.events.makeAsyncIterator())
+        return AsyncIterator(ref: self.ref)
     }
 
-    public struct AsyncIterator: AsyncIteratorProtocol {
-        var underlying: AsyncStream<Event>.Iterator
+    public class AsyncIterator: AsyncIteratorProtocol {
+        var underlying: AsyncStream<Event>.Iterator!
 
-        public mutating func next() async -> Event? {
+        private let subscribed: Atomic<Bool> = Atomic(value: false)
+
+        // TODO: clean this up since it's used by tests only (e.g., EventStreamConsumer)
+        var ready: Bool {
+            self.subscribed.load()
+        }
+
+        init(ref: ActorRef<EventStreamShell.Message<Event>>) {
+            self.underlying = AsyncStream<Event> { continuation in
+                let id = ObjectIdentifier(self)
+
+                ref.tell(.asyncSubscribe(id, { event in continuation.yield(event) }) {
+                    _ = self.subscribed.compareAndExchange(expected: false, desired: true)
+                })
+
+                continuation.onTermination = { @Sendable (_) -> Void in
+                    ref.tell(.asyncUnsubscribe(id) {
+                        _ = self.subscribed.compareAndExchange(expected: true, desired: false)
+                    })
+                }
+            }.makeAsyncIterator()
+        }
+
+        public func next() async -> Event? {
             await self.underlying.next()
         }
     }
@@ -86,11 +104,17 @@ internal enum EventStreamShell {
         case unsubscribe(ActorRef<Event>)
         /// Publish an event to all subscribers
         case publish(Event)
+
+        /// Add async subscriber to the event stream
+        case asyncSubscribe(ObjectIdentifier, (Event) -> Void, continue: () -> Void)
+        /// Remove async subscriber
+        case asyncUnsubscribe(ObjectIdentifier, continue: () -> Void)
     }
 
     static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
         .setup { context in
             var subscribers: [ActorAddress: ActorRef<Event>] = [:]
+            var asyncSubscribers: [ObjectIdentifier: (Event) -> Void] = [:]
 
             let behavior: Behavior<Message<Event>> = .receiveMessage { message in
                 switch message {
@@ -111,7 +135,23 @@ internal enum EventStreamShell {
                     for subscriber in subscribers.values {
                         subscriber.tell(event)
                     }
-                    context.log.trace("Published event \(event) to \(subscribers.count) subscribers")
+                    for subscriber in asyncSubscribers.values {
+                        subscriber(event)
+                    }
+                    context.log.trace("Published event \(event) to \(subscribers.count) subscribers and \(asyncSubscribers.count) async subscribers")
+
+                case .asyncSubscribe(let id, let eventHandler, let `continue`):
+                    asyncSubscribers[id] = eventHandler
+                    context.log.trace("Successfully added async subscriber [\(id)]")
+                    `continue`()
+
+                case .asyncUnsubscribe(let id, let `continue`):
+                    if asyncSubscribers.removeValue(forKey: id) != nil {
+                        context.log.trace("Successfully removed async subscriber [\(id)]")
+                    } else {
+                        context.log.warning("Received `.asyncUnsubscribe` for non-subscriber [\(id)]")
+                    }
+                    `continue`()
                 }
 
                 return .same

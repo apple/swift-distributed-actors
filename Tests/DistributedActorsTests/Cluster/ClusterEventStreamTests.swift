@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2021 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -115,5 +115,35 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
         }
 
         try p1.expectNoMessage(for: .milliseconds(100))
+    }
+
+    func test_clusterEventStream_collapseManyEventsIntoSnapshot_async() throws {
+        let eventStream = try EventStream(
+            system,
+            name: "ClusterEventStream",
+            of: Cluster.Event.self,
+            systemStream: false,
+            customBehavior: ClusterEventStream.Shell.behavior
+        )
+
+        // Publish events to change membership
+        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .joining)))
+        eventStream.publish(.membershipChange(.init(member: self.memberA, toStatus: .up)))
+        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
+        eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
+
+        runAsyncAndBlock {
+            // .snapshot is sent on subscribe
+            for await event in eventStream {
+                switch event {
+                case .snapshot(let snapshot):
+                    let members = snapshot.members(atLeast: .joining)
+                    Set(members).shouldEqual(Set([self.memberA, self.memberB]))
+                    return
+                default:
+                    return XCTFail("Expected a snapshot with all the data to be the first received event")
+                }
+            }
+        }
     }
 }
