@@ -53,9 +53,9 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         }
 
         // Bring up `ActorSingletonProxy` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
-        let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
-        let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
-        let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
+        let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-1").behavior)
+        let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-2").behavior)
+        let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-3").behavior)
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         third.cluster.join(node: first.cluster.uniqueNode.node)
@@ -96,16 +96,16 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
 
         // No leader so singleton is not available, messages sent should be stashed
         let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
-        let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
-        ref1.tell(.greet(name: "Alice-1", _replyTo: replyProbe1.ref))
+        let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-1").behavior)
+        ref1.tell(.greet(name: "Alice-1", replyTo: replyProbe1.ref))
 
         let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-        let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
-        ref2.tell(.greet(name: "Bob-2", _replyTo: replyProbe2.ref))
+        let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-2").behavior)
+        ref2.tell(.greet(name: "Bob-2", replyTo: replyProbe2.ref))
 
         let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
-        let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
-        ref3.tell(.greet(name: "Charlie-3", _replyTo: replyProbe3.ref))
+        let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-3").behavior)
+        ref3.tell(.greet(name: "Charlie-3", replyTo: replyProbe3.ref))
 
         try replyProbe1.expectNoMessage(for: .milliseconds(200))
         try replyProbe2.expectNoMessage(for: .milliseconds(200))
@@ -156,10 +156,10 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         }
 
         // Bring up `ActorSingletonProxy` before setting up cluster (https://github.com/apple/swift-distributed-actors/issues/463)
-        let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-1")))
-        let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-2")))
-        let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-3")))
-        _ = try fourth.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton.makeBehavior(instance: GreeterSingleton("Hello-4")))
+        let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-1").behavior)
+        let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-2").behavior)
+        let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-3").behavior)
+        _ = try fourth.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-4").behavior)
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
         third.cluster.join(node: second.cluster.uniqueNode.node)
@@ -205,11 +205,11 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
                 // No leader so singleton is not available, messages sent should be stashed
                 let m2 = "Bob-2 (\(attempt))"
                 pnote("  Sending: \(m2) -> \(ref2) (it may be terminated/not-re-pointed yet)")
-                ref2.tell(.greet(name: m2, _replyTo: replyProbe2.ref))
+                ref2.tell(.greet(name: m2, replyTo: replyProbe2.ref))
 
                 let m3 = "Charlie-3 (\(attempt))"
                 pnote("  Sending: \(m3) -> \(ref3) (it may be terminated/not-re-pointed yet)")
-                ref3.tell(.greet(name: m3, _replyTo: replyProbe3.ref))
+                ref3.tell(.greet(name: m3, replyTo: replyProbe3.ref))
                 return .same
             }
         })
@@ -258,7 +258,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         var attempts = 0
         try testKit.eventually(within: .seconds(10)) {
             attempts += 1
-            singletonRef.tell(.greet(name: message, _replyTo: replyProbe.ref))
+            singletonRef.tell(.greet(name: message, replyTo: replyProbe.ref))
 
             if let message = try replyProbe.maybeExpectMessage() {
                 message.shouldEqual(expect)
@@ -276,7 +276,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Test utilities
 
-struct GreeterSingleton: Actorable {
+struct GreeterSingleton {
     static let name = "greeter"
 
     private let greeting: String
@@ -285,8 +285,17 @@ struct GreeterSingleton: Actorable {
         self.greeting = greeting
     }
 
-    // @actor
-    func greet(name: String) -> String {
-        "\(self.greeting) \(name)!"
+    enum Message: Codable, Sendable {
+        case greet(name: String, replyTo: ActorRef<String>)
+    }
+
+    var behavior: Behavior<Message> {
+        .receive { context, message in
+            switch message {
+            case .greet(let name, let replyTo):
+                replyTo.tell("\(self.greeting) \(name)!")
+            }
+            return .same
+        }
     }
 }

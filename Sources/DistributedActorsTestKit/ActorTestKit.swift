@@ -96,38 +96,6 @@ extension ActorTestKit {
         )
     }
 
-    /// Spawn `ActorableTestProbe` which offers various assertions for actor messaging interactions.
-    public func spawnActorableTestProbe<Act: Actorable>(
-        _ naming: ActorNaming? = nil,
-        of actorable: Act.Type = Act.self,
-        file: StaticString = #file, line: UInt = #line
-    ) -> ActorableTestProbe<Act> {
-        self.spawnProbesLock.lock()
-        defer { self.spawnProbesLock.unlock() }
-        // we want to use our own sequence number for the naming here, so we make it here rather than let the
-        // system use its own sequence number -- which should only be in use for the user actors.
-        let name: String
-        if let naming = naming {
-            name = naming.makeName(&self.namingContext)
-        } else {
-            name = ActorTestProbe<Act.Message>.naming.makeName(&self.namingContext)
-        }
-
-        return ActorableTestProbe(
-            spawn: { probeBehavior in
-
-                // TODO: allow configuring dispatcher for the probe or always use the calling thread one
-                var testProbeProps = Props()
-                #if SACT_PROBE_CALLING_THREAD
-                testProbeProps.dispatcher = .callingThread
-                #endif
-
-                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
-            },
-            settings: self.settings
-        )
-    }
-
     /// Spawns an `ActorTestProbe` and immediately subscribes it to the passed in event stream.
     ///
     /// - Hint: Use `fishForMessages` and `fishFor` to filter expectations for specific events.
@@ -139,17 +107,6 @@ extension ActorTestKit {
         let p = self.spawnTestProbe(naming ?? ActorNaming.prefixed(with: "\(eventStream.ref.path.name)-subscriberProbe"), expecting: Event.self)
         eventStream.subscribe(p.ref)
         return p
-    }
-}
-
-/// A test probe pretends to be the `Actorable` and allows expecting messages be sent to it.
-///
-/// - SeeAlso: `ActorTestProbe` which is the equivalent API for `ActorRef`s.
-public final class ActorableTestProbe<Act: Actorable>: ActorTestProbe<Act.Message> {
-    /// `Actor` reference to the underlying test probe actor.
-    /// All message sends invoked on this Actor will result in messages in the probe available to be `expect`-ed.
-    public var actor: Actor<Act> {
-        Actor(ref: self.ref)
     }
 }
 
@@ -524,6 +481,7 @@ internal extension ActorTestKit {
 extension ActorTestKit {
     /// Ensures that a given number of refs are registered with the Receptionist under `key`.
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
+    @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
     public func ensureRegistered<Message>(
         key: Reception.Key<ActorRef<Message>>,
         expectedCount: Int = 1,
@@ -547,27 +505,4 @@ extension ActorTestKit {
         }
     }
 
-    /// `Actorable` version of `ensureRegistered()`.
-    public func ensureRegistered<Actorable>(
-        key: Reception.Key<Actor<Actorable>>,
-        expectedCount: Int = 1,
-        expectedActors: Set<Actor<Actorable>>? = nil,
-        within: TimeAmount = .seconds(3)
-    ) throws {
-        let lookupProbe = self.spawnTestProbe(expecting: Reception.Listing<Actor<Actorable>>.self)
-
-        try self.eventually(within: within) {
-            self.system.receptionist.lookup(key, replyTo: lookupProbe.ref)
-
-            let listing = try lookupProbe.expectMessage()
-            guard listing.actors.count == expectedCount else {
-                throw self.error("Expected Reception.Listing for key [\(key)] to have count [\(expectedCount)], but got [\(listing.actors.count)]")
-            }
-            if let expectedActors = expectedActors {
-                guard Set(listing.actors) == expectedActors else {
-                    throw self.error("Expected Reception.Listing for key [\(key)] to have actors \(expectedActors), but got \(listing.actors)")
-                }
-            }
-        }
-    }
 }

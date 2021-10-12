@@ -58,26 +58,13 @@ public final class ActorSingletonPlugin {
         }
     }
 
-    func actor<Act: Actorable>(of type: Act.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ makeInstance: ((Actor<Act>.Context) -> Act)? = nil) throws -> Actor<Act> {
-        let behavior = makeInstance.map { maker in
-            Behavior<Act.Message>.setup { context in
-                Act.makeBehavior(instance: maker(.init(underlying: context)))
-            }
-        }
-        let ref = try self.ref(of: Act.Message.self, settings: settings, system: system, behavior)
-        return Actor<Act>(ref: ref)
-    }
 }
 
 extension ActorSingletonPlugin {
+    @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
     func ref<Message>(of type: Message.Type, name: String, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
         let settings = ActorSingletonSettings(name: name)
         return try self.ref(of: type, settings: settings, system: system, props: props, behavior)
-    }
-
-    func actor<Act: Actorable>(of type: Act.Type, name: String, system: ActorSystem, props: Props? = nil, _ makeInstance: ((Actor<Act>.Context) -> Act)? = nil) throws -> Actor<Act> {
-        let settings = ActorSingletonSettings(name: name)
-        return try self.actor(of: type, settings: settings, system: system, props: props, makeInstance)
     }
 }
 
@@ -142,23 +129,9 @@ public struct ActorSingletonControl {
         try self.singletonPlugin.ref(of: type, settings: settings, system: self.system, props: props, behavior)
     }
 
-    /// Defines a singleton `Actorable` and indicates that it can be hosted on this node.
-    public func host<Act: Actorable>(_ type: Act.Type, name: String, props: Props = Props(), _ makeInstance: @escaping (Actor<Act>.Context) -> Act) throws -> Actor<Act> {
-        try self.singletonPlugin.actor(of: type, name: name, system: self.system, props: props, makeInstance)
-    }
-
-    /// Defines a singleton `Actorable` and indicates that it can be hosted on this node.
-    public func host<Act: Actorable>(_ type: Act.Type, settings: ActorSingletonSettings, props: Props = Props(), _ makeInstance: @escaping (Actor<Act>.Context) -> Act) throws -> Actor<Act> {
-        try self.singletonPlugin.actor(of: type, settings: settings, system: self.system, props: props, makeInstance)
-    }
-
     /// Obtains a ref to the specified actor singleton.
     public func ref<Message>(of type: Message.Type, name: String) throws -> ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, name: name, system: self.system)
     }
 
-    /// Obtains the specified singleton actor.
-    public func actor<Act: Actorable>(of type: Act.Type, name: String) throws -> Actor<Act> {
-        try self.singletonPlugin.actor(of: type, name: name, system: self.system)
-    }
 }
