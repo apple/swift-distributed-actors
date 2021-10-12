@@ -12,9 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor<Act>.Context Receptionist
-
 extension ActorContext {
     /// Receptionist wrapper, offering convenience functions for registering _this_ actor with the receptionist.
     ///

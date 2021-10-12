@@ -16,7 +16,7 @@ import SwiftSyntax
 
 extension Rendering {
     struct MessageCodableTemplate: Renderable {
-        let actorable: DistributedActorDecl
+        let nominal: DistributedActorDecl
 
         static let messageCodableConformanceTemplate = Template(
             templateString:
@@ -56,19 +56,19 @@ extension Rendering {
         func render() throws -> String {
             let printer = CodePrinter()
 
-            let baseName = "\(self.actorable.messageFullyQualifiedName)"
+            let baseName = "\(self.nominal.messageFullyQualifiedName)"
 
-            let actorableProtocols = self.actorable.actorableProtocols.sorted()
+            let actorableProtocols = self.nominal.actorableProtocols.sorted()
 
             // ==== ----------------------------------------------------------------------------------------------------
             // MARK: discriminatorCases
             var discriminatorCases = printer.makeIndented(by: 2)
             discriminatorCases.dontIndentNext()
-            self.actorable.funcs.forEach { decl in
-                discriminatorCases.print("case \(decl.message.name)")
+            self.nominal.funcs.forEach { nominal in
+                discriminatorCases.print("case \(nominal.message.name)")
             }
 
-            // actorable protocols
+            // nominal protocols
             actorableProtocols.forEach { proto in
                 discriminatorCases.print("case \(proto.boxFuncName)")
             }
@@ -78,19 +78,19 @@ extension Rendering {
             var codingKeys = printer.makeIndented(by: 2)
             codingKeys.dontIndentNext()
             codingKeys.print("case _case") // the "special" case used to find the DiscriminatorKeys
-            self.actorable.funcs.forEach { decl in
-                decl.message.effectiveParams.forEach { firstName, secondName, _ in
+            self.nominal.funcs.forEach { nominal in
+                nominal.message.effectiveParams.forEach { firstName, secondName, _ in
                     let name: String
                     if firstName == "_" {
                         name = secondName
                     } else {
                         name = firstName ?? secondName
                     }
-                    codingKeys.print("case \(decl.message.name)_\(name)")
+                    codingKeys.print("case \(nominal.message.name)_\(name)")
                 }
             }
 
-            // actorable protocols
+            // nominal protocols
             actorableProtocols.forEach { proto in
                 codingKeys.print("case \(proto.boxFuncName)")
             }
@@ -99,12 +99,12 @@ extension Rendering {
             // MARK: decodeCases
             var decodeCases = printer.makeIndented(by: 2)
             decodeCases.dontIndentNext()
-            self.actorable.funcs.forEach { decl in
-                decodeCases.print("case .\(decl.message.name):")
+            self.nominal.funcs.forEach { nominal in
+                decodeCases.print("case .\(nominal.message.name):")
                 decodeCases.indent()
 
                 // render decode params
-                decl.message.effectiveParams.forEach { firstName, secondName, type in
+                nominal.message.effectiveParams.forEach { firstName, secondName, type in
                     let name: String
                     if firstName == "_" {
                         name = secondName
@@ -112,22 +112,22 @@ extension Rendering {
                         name = firstName ?? secondName
                     }
                     if type == "ActorRef<Self>" {
-                        decodeCases.print("let \(secondName) = try container.decode(ActorRef<\(self.actorable.name).Message>.self, forKey: CodingKeys.\(decl.message.name)_\(name))")
+                        decodeCases.print("let \(secondName) = try container.decode(ActorRef<\(self.nominal.name).Message>.self, forKey: CodingKeys.\(nominal.message.name)_\(name))")
                     } else if type == "Actor<Self>" {
-                        decodeCases.print("let \(secondName) = try container.decode(Actor<\(self.actorable.name)>.self, forKey: CodingKeys.\(decl.message.name)_\(name))")
+                        decodeCases.print("let \(secondName) = try container.decode(Actor<\(self.nominal.name)>.self, forKey: CodingKeys.\(nominal.message.name)_\(name))")
                     } else {
-                        decodeCases.print("let \(secondName) = try container.decode(\(type).self, forKey: CodingKeys.\(decl.message.name)_\(name))")
+                        decodeCases.print("let \(secondName) = try container.decode(\(type).self, forKey: CodingKeys.\(nominal.message.name)_\(name))")
                     }
                 }
-                decodeCases.print("self = .\(decl.message.name)\(CodePrinter.content { printer in decl.message.passEffectiveParamsWithBraces(printer: &printer) })")
+                decodeCases.print("self = .\(nominal.message.name)\(CodePrinter.content { printer in nominal.message.passEffectiveParamsWithBraces(printer: &printer) })")
                 decodeCases.outdent()
             }
 
-            // also encode any actorable protocols we conform to
+            // also encode any nominal protocols we conform to
             actorableProtocols.forEach { proto in
                 decodeCases.print("case .\(proto.boxFuncName):") // case _boxParking:
                 decodeCases.indent()
-                // note that the explicit `: Type` is necessary to avoid warnings/errors in case the actorable has zero messages
+                // note that the explicit `: Type` is necessary to avoid warnings/errors in case the nominal has zero messages
                 // which would result in: `constant 'boxed' inferred to have type '...', which is an enum with no cases`
                 decodeCases.print("let boxed: \(proto.messageFullyQualifiedName) = try container.decode(\(proto.messageFullyQualifiedName).self, forKey: CodingKeys.\(proto.boxFuncName))")
                 decodeCases.print("self = .\(proto.nameFirstLowercased)(boxed)")
@@ -139,12 +139,12 @@ extension Rendering {
 
             var encodeCases = printer.makeIndented(by: 2)
             encodeCases.dontIndentNext()
-            self.actorable.funcs.forEach { decl in
-                encodeCases.print("case .\(decl.message.name)\(decl.message.renderCaseLetParams):")
+            self.nominal.funcs.forEach { nominal in
+                encodeCases.print("case .\(nominal.message.name)\(nominal.message.renderCaseLetParams):")
                 encodeCases.indent()
-                encodeCases.print("try container.encode(DiscriminatorKeys.\(decl.message.name).rawValue, forKey: CodingKeys._case)")
+                encodeCases.print("try container.encode(DiscriminatorKeys.\(nominal.message.name).rawValue, forKey: CodingKeys._case)")
                 // render encode params
-                decl.message.effectiveParams.forEach { firstName, secondName, _ in
+                nominal.message.effectiveParams.forEach { firstName, secondName, _ in
                     // TODO: finally make the 3-tuple a specific type with helpers
                     let name: String
                     if firstName == "_" {
@@ -153,12 +153,12 @@ extension Rendering {
                         name = firstName ?? secondName
                     }
 
-                    encodeCases.print("try container.encode(\(secondName), forKey: CodingKeys.\(decl.message.name)_\(name))")
+                    encodeCases.print("try container.encode(\(secondName), forKey: CodingKeys.\(nominal.message.name)_\(name))")
                 }
                 encodeCases.outdent()
             }
 
-            // also encode any actorable protocols we conform to
+            // also encode any nominal protocols we conform to
             actorableProtocols.forEach { proto in
                 encodeCases.print(proto.renderCaseLet) // case parking(let boxed):
                 encodeCases.indent()

@@ -43,19 +43,4 @@ class ActorSingletonDocExamples {
         // end::proxy-ref[]
     }
 
-    func example_actorable() throws {
-        let system = ActorSystem("Sample") { settings in
-            settings += ActorSingletonPlugin()
-        }
-
-        // tag::host-actorable[]
-        let singletonActor = try system.singleton.host(Greeter.self, name: "SampleSingleton") { _ in Greeter() } // <1>
-        _ = singletonActor.greet(name: "Jane Doe") // <2>
-        // end::host-actorable[]
-
-        // tag::proxy-actorable[]
-        let singletonActorProxy = try system.singleton.actor(of: Greeter.self, name: "SampleSingleton")
-        _ = singletonActorProxy.greet(name: "Jane Doe") // <1>
-        // end::proxy-actorable[]
-    }
 }

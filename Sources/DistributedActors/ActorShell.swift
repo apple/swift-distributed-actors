@@ -111,7 +111,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     // TODO: we can likely optimize not having to call "through" supervisor if we are .stop anyway
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Actorable support functions
+    // MARK: Hacky internal trickery to stop an actor from the outside (but same execution context)
 
     internal override func _forceStop() {
         do {

@@ -15,10 +15,10 @@
 import Dispatch
 import NIO
 
-// TODO: Consider renaming to "ActorScheduler" perhaps?
-
 /// An `Executor` is a low building block that is able to take blocks and schedule them for running
-public protocol MessageDispatcher {
+// FIXME: MessageDispatcher is going to be replaced by custom Executor types in Swift itself
+@usableFromInline
+internal protocol MessageDispatcher {
     // TODO: we should make it dedicated to dispatch() rather than raw executing perhaps? This way it can take care of fairness things
 
     var name: String { get }

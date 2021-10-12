@@ -366,8 +366,8 @@ struct ResolveDistributedActors {
     }
 
     /// **Faults** when an `protocol` inheriting `Actorable` does not provide a boxing
-    static func validateActorableProtocols(_ actorables: [DistributedActorDecl]) {
-        let protocols = actorables.filter {
+    static func validateActorableProtocols(_ actor: [DistributedActorDecl]) {
+        let protocols = actor.filter {
             $0.type == .protocol
         }
 
