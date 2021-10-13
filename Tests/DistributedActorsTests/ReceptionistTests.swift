@@ -18,13 +18,6 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-distributed actor Example {
-    init(transport: ActorTransport) {
-        defer { transport.actorReady(self) }
-    }
-}
-
-
 final class ReceptionistTests: ActorSystemXCTestCase {
     let receptionistBehavior = OperationLogClusterReceptionist(settings: .default).behavior
 
