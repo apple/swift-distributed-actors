@@ -160,11 +160,6 @@ extension GenerateActors {
         }
 
         try targetFile.append("\n")
-        let codableConformance = try Rendering.MessageCodableTemplate(nominal: actor).render()
-        if self.printGenerated {
-            print(codableConformance)
-        }
-        try targetFile.append(codableConformance)
 
         self.log.debug("Generated: \(targetFile.path)")
         return targetFile

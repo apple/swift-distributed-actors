@@ -12,10 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
 @testable import DistributedActors
 import DistributedActorsTestKit
 import Foundation
 import XCTest
+
+distributed actor Example {
+    init(transport: ActorTransport) {
+        defer { transport.actorReady(self) }
+    }
+}
+
 
 final class ReceptionistTests: ActorSystemXCTestCase {
     let receptionistBehavior = OperationLogClusterReceptionist(settings: .default).behavior
@@ -56,6 +64,7 @@ final class ReceptionistTests: ActorSystemXCTestCase {
 
         try probe.expectMessagesInAnyOrder(["forwardedA:test", "forwardedB:test"])
     }
+
 
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))

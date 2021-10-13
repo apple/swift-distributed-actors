@@ -487,7 +487,7 @@ extension DistributedMessageDecl {
             }
         }.joined(separator: forFuncIdentifier ? ":" : ", ")
 
-        if forFuncIdentifier {
+        if forFuncIdentifier && !self.params.isEmpty {
             result += ":"
         }
         return result

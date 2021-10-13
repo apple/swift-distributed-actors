@@ -62,16 +62,6 @@ var targets: [PackageDescription.Target] = [
           .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
         ]
     ),
-    .executableTarget(
-        name: "SampleGenActors",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
-        ],
-        path: "Sources/SampleGenActors",
-        plugins: [
-            .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
-        ]
-    ),
 
     /* --- tests --- */
 
@@ -116,10 +106,6 @@ let package = Package(
         .executable(
             name: "SampleMetrics",
             targets: ["SampleMetrics"]
-        ),
-        .executable(
-            name: "SampleGenActors",
-            targets: ["SampleGenActors"]
         ),
     ],
 

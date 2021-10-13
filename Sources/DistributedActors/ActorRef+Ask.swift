@@ -171,7 +171,7 @@ extension AskResponse {
                 return try result.get()
             case .nioFuture(let nioFuture):
                 return try await nioFuture.get()
-        }
+            }
         }
     }
 }
