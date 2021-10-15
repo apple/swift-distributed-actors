@@ -26,7 +26,7 @@ import _Distributed
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
 /// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
-public protocol Signal: NonTransportableActorMessage {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
+public protocol Signal: NonTransportableActorMessage, @unchecked Sendable {} // FIXME: we could allow them as Codable, we never send them over the wire, but people might manually if they wanted to I suppose
 
 /// Namespace for all pre-defined `Signal` types.
 ///
@@ -54,7 +54,7 @@ public enum Signals {
     /// This signal can be handled just like any other signal, using `Behavior.receiveSignal((ActorContext<Message>, Signal) throws -> Behavior<Message>)`,
     /// however the `Behavior` returned by the closure will always be ignored and the actor will proceed to its `Terminated` state.
     /// In other words, it is not possible to stop the actor from terminating once it has received the PostStop signal.
-    public struct PostStop: Signal {
+    public struct PostStop: Sendable, Signal {
         @usableFromInline
         init() {}
     }
@@ -71,7 +71,7 @@ public enum Signals {
     /// explaining the reason for an actor having terminated.
     ///
     /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
-    open class Terminated: Signal, CustomStringConvertible {
+    open class Terminated: @unchecked Sendable, Signal, CustomStringConvertible {
         /// Address of the terminated actor.
         public let address: ActorAddress
 

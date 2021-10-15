@@ -29,6 +29,7 @@ public struct ActorRef<Message: ActorMessage>: ReceivesMessages, DeathWatchable,
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
     public enum Personality {
+        // TODO(distributed): introduce new 'distributed actor' personality that replaces all other ones
         case cell(ActorCell<Message>)
         case remote(RemoteClusterActorPersonality<Message>)
         case adapter(AbstractAdapter)

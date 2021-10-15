@@ -95,7 +95,7 @@ internal extension WorkerPool {
                     context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
                     return .listing(listing)
                 }
-                context.system.receptionist.subscribe(adapter, to: key)
+                context.system._receptionist.subscribe(adapter, to: key)
                 return self.awaitingWorkers()
 
             case .static(let workers):

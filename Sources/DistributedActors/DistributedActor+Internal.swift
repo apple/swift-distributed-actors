@@ -48,3 +48,49 @@ extension ActorTransport {
         return system
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Type erasers
+
+@usableFromInline
+struct AnyDistributedActor: Sendable, Hashable {
+    @usableFromInline
+    let underlying: DistributedActor
+
+    @usableFromInline
+    init<Act: DistributedActor>(_ actor: Act) {
+        self.underlying = actor
+    }
+
+    @usableFromInline
+    var id: AnyActorIdentity {
+        underlying.id
+    }
+
+    @usableFromInline
+    var actorTransport: ActorTransport {
+        underlying.actorTransport
+    }
+
+    @usableFromInline
+    func hash(into hasher: inout Hasher) {
+        underlying.id.hash(into: &hasher)
+    }
+
+    @usableFromInline
+    static func ==(lhs: AnyDistributedActor, rhs: AnyDistributedActor) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+extension DistributedActor {
+    nonisolated var asAnyDistributedActor: AnyDistributedActor {
+        AnyDistributedActor(self)
+    }
+}
+
+distributed actor StubDistributedActor {
+    // TODO: this is just to prevent a DI crash
+    distributed func noop() {}
+}
+

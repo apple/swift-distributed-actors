@@ -15,7 +15,7 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ReceptionistInstrumentation
 
-public protocol ReceptionistInstrumentation {
+public protocol ReceptionistInstrumentation: Sendable {
     init()
 
     func actorSubscribed(key: AnyReceptionKey, address: ActorAddress)

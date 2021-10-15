@@ -21,13 +21,13 @@ public enum _Done: String, ActorMessage {
     case done
 }
 
-public protocol AnyDistributedClusterActor {
-    // TODO(distributed): remove this, actually system.spawn the underlying reference for the reserved address
+// TODO(distributed): remove this, actually system.spawn the underlying reference for the reserved address
+public protocol __AnyDistributedClusterActor {
     static func _spawnAny(instance: Self, on system: ActorSystem) throws -> AddressableActorRef
 }
 
 /// Necessary to get `Message` out of the `DistributedActor`
-public protocol DistributedClusterActor: AnyDistributedClusterActor {
+public protocol __DistributedClusterActor: __AnyDistributedClusterActor {
     associatedtype Message: Codable // TODO: & Sendable
 
     static func makeBehavior(instance: Self) -> Behavior<Message>
@@ -35,11 +35,33 @@ public protocol DistributedClusterActor: AnyDistributedClusterActor {
     static func _spawn(instance: Self, on system: ActorSystem) -> ActorRef<Message>
 }
 
-extension DistributedClusterActor {
+extension __DistributedClusterActor {
 
     // FIXME(distributed): this is not enough since we can't get the Message associated type protocol by casting...
     public static func _spawn(instance: Self, on system: ActorSystem) -> ActorRef<Message> {
         let behavior = makeBehavior(instance: instance)
         return try! system.spawn(.prefixed(with: "\(Self.self)"), behavior)
+    }
+}
+
+extension AnyActorIdentity: ProtobufRepresentable {
+    public typealias ProtobufRepresentation = ProtoActorIdentity
+
+    public func toProto(context: Serialization.Context) throws -> ProtoActorIdentity {
+        var proto = ProtoActorIdentity()
+
+        let serialized = try context.serialization.serialize(self)
+        proto.manifest = try serialized.manifest.toProto(context: context)
+        proto.payload = try serialized.buffer.readData()
+
+        return proto
+    }
+
+    public init(fromProto proto: ProtoActorIdentity, context: Serialization.Context) throws {
+        let manifest = try Serialization.Manifest(fromProto: proto.manifest)
+        let ManifestedType = try context.summonType(from: manifest)
+
+        precondition(ManifestedType == AnyActorIdentity.self)
+        self = try context.serialization.deserialize(as: AnyActorIdentity.self, from: .data(proto.payload), using: manifest)
     }
 }

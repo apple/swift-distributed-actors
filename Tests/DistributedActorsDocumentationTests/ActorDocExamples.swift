@@ -175,7 +175,7 @@ class ActorDocExamples: XCTestCase {
         let key = Reception.Key(ActorRef<String>.self, id: "my-actor")
         let system = ActorSystem("LookupExample")
         // tag::receptionist_lookup[]
-        let response = system.receptionist.lookup(key, timeout: .seconds(1)) // <1>
+        let response = system._receptionist.lookup(key, timeout: .seconds(1)) // <1>
 
         response._onComplete { result in
             if case .success(let listing) = result {
@@ -192,7 +192,7 @@ class ActorDocExamples: XCTestCase {
         let key = Reception.Key(ActorRef<String>.self, id: "my-actor")
         // tag::receptionist_subscribe[]
         let behavior: Behavior<Reception.Listing<ActorRef<String>>> = .setup { context in
-            context.system.receptionist.subscribe(context.myself, to: key) // <1>
+            context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
                 for ref in $0.refs {
@@ -210,7 +210,7 @@ class ActorDocExamples: XCTestCase {
         let key = Reception.Key(ActorRef<String>.self, id: "my-actor")
         // tag::context_receptionist_subscribe[]
         let behavior: Behavior<Reception.Listing<ActorRef<String>>> = .setup { context in
-            context.system.receptionist.subscribe(context.myself, to: key) // <1>
+            context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
                 for ref in $0.refs {

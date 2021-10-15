@@ -42,7 +42,7 @@ extension Rendering {
             // MARK: DO NOT EDIT: Generated {{baseName}} messages 
 
             /// DO NOT EDIT: Generated {{baseName}} messages
-            extension {{baseName}}: DistributedActors.DistributedClusterActor {
+            extension {{baseName}}: DistributedActors.__DistributedClusterActor {
 
                 {{messageAccess}} enum Message: ActorMessage {
                     {{funcCases}}

@@ -175,8 +175,8 @@ public struct Receptionist {
 
         private func removeSingleRegistrationNodeRelation(key: AnyReceptionKey, node: UniqueNode?) {
             // FIXME: Implement me (!), we need to make the storage a counter
-            // and decrement here by one; once the counter reaches zero we know there is no more relationship
-            // and we can prune this key/node relationship
+            //        and decrement here by one; once the counter reaches zero we know there is no more relationship
+            //        and we can prune this key/node relationship
         }
 
         // ==== --------------------------------------------------------------------------------------------------------
@@ -400,7 +400,7 @@ protocol ReceptionKeyProtocol {
 }
 
 // :nodoc:
-public struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, CustomStringConvertible {
+public struct AnyReceptionKey: ReceptionKeyProtocol, Sendable, Codable, Hashable, CustomStringConvertible {
     enum CodingKeys: CodingKey {
         case id
         case guestTypeManifest

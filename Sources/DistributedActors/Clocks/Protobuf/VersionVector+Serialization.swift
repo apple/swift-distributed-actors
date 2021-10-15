@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import _Distributed
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ReplicaID
 
@@ -23,6 +25,8 @@ extension ReplicaID: ProtobufRepresentable {
         switch self.storage {
         case .actorAddress(let actorAddress):
             proto.actorAddress = try actorAddress.toProto(context: context)
+        case .actorIdentity(let actorIdentity):
+            proto.actorIdentity = try actorIdentity.toProto(context: context)
         case .uniqueNode(let node):
             proto.uniqueNode = try node.toProto(context: context)
         case .uniqueNodeID(let nid):
@@ -40,6 +44,9 @@ extension ReplicaID: ProtobufRepresentable {
         case .actorAddress(let protoActorAddress):
             let actorAddress = try ActorAddress(fromProto: protoActorAddress, context: context)
             self = .actorAddress(actorAddress)
+        case .actorIdentity(let protoIdentity):
+            let id = try AnyActorIdentity(fromProto: protoIdentity, context: context)
+            self = .actorIdentity(id)
         case .uniqueNode(let protoNode):
             let node = try UniqueNode(fromProto: protoNode, context: context)
             self = .uniqueNode(node)
@@ -83,6 +90,8 @@ extension VersionVector: ProtobufRepresentable {
                 replicaVersion.replicaID.uniqueNodeID = nid.value
             case .actorAddress:
                 throw SerializationError.unableToSerialize(hint: "Can't serialize using actor address as replica id! Was: \(replicaID)")
+            case .actorIdentity:
+                throw SerializationError.unableToSerialize(hint: "Can't serialize using actor identity as replica id! Was: \(replicaID)")
             }
             replicaVersion.version = UInt64(version)
             return replicaVersion

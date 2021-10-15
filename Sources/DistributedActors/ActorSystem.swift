@@ -18,6 +18,7 @@ import CDistributedActorsMailbox
 import Dispatch
 import DistributedActorsConcurrencyHelpers
 import Logging
+import Atomics
 import NIO
 
 /// An `ActorSystem` is a confined space which runs and manages Actors.
@@ -83,8 +84,17 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     // MARK: Receptionist
     // TODO: Use "set once" atomic structure
     private var _receptionistRef: ActorRef<Receptionist.Message>!
-    public var receptionist: SystemReceptionist {
+    public var _receptionist: SystemReceptionist {
         SystemReceptionist(ref: self._receptionistRef)
+    }
+
+    private let _receptionistStore: ManagedAtomicLazyReference<OpLogDistributedReceptionist>
+    public var receptionist: DistributedReceptionist {
+        guard let value = _receptionistStore.load() else {
+            fatalError("Somehow attempted to load system.receptionist before it was initialized!")
+        }
+
+        return value
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -96,9 +106,8 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         self._metrics
     }
 
-    // TODO: become the system's uptime
     @available(*, deprecated, message: "will be removed, as we're getting real Time types and should use those instead.")
-    public func uptimeNanoseconds() -> Int64 {
+    internal func uptimeNanoseconds() -> Int64 {
         Deadline.now().uptimeNanoseconds
     }
 
@@ -106,6 +115,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     // MARK: Cluster
 
     // initialized during startup
+    // TODO: Use "set once" atomic structure
     internal var _cluster: ClusterShell?
     internal var _clusterControl: ClusterControl?
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
@@ -201,6 +211,8 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         self.settings = settings
         self.log = settings.logging.baseLogger
 
+        self._receptionistStore = ManagedAtomicLazyReference()
+
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
         // serialization
@@ -214,7 +226,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
         let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", localNode: settings.cluster.uniqueBindNode, system: self))
-        // TODO: want to reconciliate those into one, and allow /dead as well
+        // TODO: want to reconcile those into one, and allow /dead as well
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
 
@@ -272,10 +284,16 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
             self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
         }
 
-        // receptionist
+        // OLD receptionist // TODO(distributed): remove when possible
         let receptionistBehavior = self.settings.cluster.receptionist.implementation.behavior(settings: self.settings)
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
+
+        let receptionist = OpLogDistributedReceptionist(
+                settings: self.settings.cluster.receptionist,
+                transport: self
+       )
+        _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
@@ -697,6 +715,24 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
+    public func _resolveUntyped(identity: AnyActorIdentity) -> AddressableActorRef {
+        guard let address = identity._unwrapActorAddress else {
+            self.log.warning("Unable to resolve not 'ActorAddress' identity: \(identity.underlying), resolved as deadLetters")
+            return self._deadLetters.asAddressable
+        }
+
+        return self._resolveUntyped(context: .init(address: address, system: self))
+    }
+
+    func _resolveStub(identity: AnyActorIdentity) throws -> StubDistributedActor {
+        guard let address = identity._unwrapActorAddress else {
+            self.log.warning("Unable to resolve not 'ActorAddress' identity: \(identity.underlying), resolved as deadLetters")
+            throw ResolveError.illegalIdentity(identity)
+        }
+
+        return try StubDistributedActor.resolve(identity, using: self)
+    }
+
     public func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters.asAddressable
@@ -788,21 +824,21 @@ extension ActorSystem {
         ])
 
         // TODO: can we skip the Any... and use the underlying existential somehow?
-        guard let SpawnAct = Act.self as? AnyDistributedClusterActor.Type else {
+        guard let SpawnAct = Act.self as? __AnyDistributedClusterActor.Type else {
             fatalError(
-                    "\(Act.self) was not AnyDistributedClusterActor! Actor identity was: \(actor.id). " +
+                    "\(Act.self) was not __AnyDistributedClusterActor! Actor identity was: \(actor.id). " +
                             "Was the source generation plugin configured for this target? " +
                             "Add `plugins: [\"DistributedActorsGeneratorPlugin\"]` to your target.")
         }
 
-        if let watcher = actor as? (LifecycleWatchSupport & DistributedActor) {
+        if let watcher = actor as? LifecycleWatchSupport & DistributedActor {
             func doMakeLifecycleWatch<Watcher: LifecycleWatchSupport & DistributedActor>(watcher: Watcher) {
                 _ = self._makeLifecycleWatch(watcher: watcher)
             }
             _openExistential(watcher, do: doMakeLifecycleWatch)
         }
 
-        func doSpawn<SpawnAct: AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
+        func doSpawn<SpawnAct: __AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
             log.trace("Spawn any for \(SpawnAct.self)")
             // FIXME(distributed): hopefully remove this and perform the spawn in the cluster library?
             return try! SpawnAct._spawnAny(instance: actor as! SpawnAct, on: self)
@@ -835,8 +871,12 @@ extension ActorSystem {
     }
 }
 
-public enum ActorSystemError: Error {
+public enum ActorSystemError: ActorTransportError {
     case shuttingDown(String)
+}
+
+public enum ResolveError: ActorTransportError {
+    case illegalIdentity(AnyActorIdentity)
 }
 
 /// Represents an actor that has been initialized, but not yet scheduled to run. Calling `wakeUp` will

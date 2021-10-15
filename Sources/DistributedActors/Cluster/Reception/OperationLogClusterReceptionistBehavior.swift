@@ -148,7 +148,7 @@ public enum ClusterReceptionist {}
 ///   (Note that we simply always `ack(latest)` and if in the meantime the pusher got more updates, it'll push those to us as well.
 ///
 /// - SeeAlso: [Wikipedia: Atomic broadcast](https://en.wikipedia.org/wiki/Atomic_broadcast)
-public class OperationLogClusterReceptionist {
+public final class OperationLogClusterReceptionist {
     typealias Message = Receptionist.Message
     typealias ReceptionistRef = ActorRef<Message>
 
