@@ -34,7 +34,7 @@ final class GatherDistributedActors: SyntaxVisitor {
 
     var imports: [String] = []
 
-    var actorDecls: [DistributedActorDecl] = []
+    var actorDecls: Set<DistributedActorDecl> = []
     var wipDecl: DistributedActorDecl!
 
     // Stack of types a declaration is nested in. E.g. an actorable struct declared in an enum for namespacing.
@@ -58,12 +58,12 @@ final class GatherDistributedActors: SyntaxVisitor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: types
 
-    func visitPostDecl(_ nodeName: String, completeWipActorable: Bool) {
+    func visitPostDecl(_ nodeName: String, flushWIP: Bool) {
         self.log.trace("\(#function): \(nodeName)")
         self.nestingStack = Array(self.nestingStack.reversed().drop(while: { $0 == nodeName })).reversed()
 
-        if completeWipActorable, self.wipDecl != nil {
-            self.actorDecls.append(self.wipDecl)
+        if flushWIP, let decl = self.wipDecl {
+            self.actorDecls.insert(decl)
             self.wipDecl = nil
         }
     }
@@ -100,7 +100,7 @@ final class GatherDistributedActors: SyntaxVisitor {
     }
 
     override func visitPost(_ node: ProtocolDeclSyntax) {
-        self.visitPostDecl(node.identifier.text, completeWipActorable: node.isDistributedActorConstrained)
+        self.visitPostDecl(node.identifier.text, flushWIP: node.isDistributedActorConstrained)
     }
 
     override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -128,7 +128,7 @@ final class GatherDistributedActors: SyntaxVisitor {
     }
 
     override func visitPost(_ node: ClassDeclSyntax) {
-        self.visitPostDecl(node.identifier.text, completeWipActorable: node.isDistributedActor)
+        self.visitPostDecl(node.identifier.text, flushWIP: node.isDistributedActor)
     }
 
     override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -139,21 +139,21 @@ final class GatherDistributedActors: SyntaxVisitor {
         let name = "\(node.extendedType.description)".trim(character: " ")
         self.log.trace("Visiting extension \(name)")
 
-        guard self.wipDecl != nil else {
+        guard let actorDecl = self.actorDecls.first(where: { $0.name == name }) else {
             return .skipChildren
         }
 
-        guard self.wipDecl?.name == name else {
-            return .skipChildren
-        }
+        self.wipDecl = self.actorDecls.remove(actorDecl)
+        assert(self.wipDecl != nil)
+        self.log.trace("Visiting 'distributed actor \(name)' extension")
 
         return .visitChildren
     }
 
     override func visitPost(_ node: ExtensionDeclSyntax) {
         let name = node.extendedType.description.trim(character: " ")
-        let isDistributed = false // FIXME: can we detect here if this extension was on a distributed actor??
-        self.visitPostDecl(name, completeWipActorable: isDistributed)
+        let isDistributed = self.wipDecl != nil
+        self.visitPostDecl(name, flushWIP: isDistributed)
     }
 
     override func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -317,7 +317,7 @@ extension FunctionSignatureSyntax {
 // MARK: Resolve types, e.g. inherited Actorable protocols
 
 struct ResolveDistributedActors {
-    static func resolve(_ decls: [DistributedActorDecl]) -> [DistributedActorDecl] {
+    static func resolve(_ decls: Set<DistributedActorDecl>) -> [DistributedActorDecl] {
         Self.validateActorableProtocols(decls)
 
         var protocolLookup: [String: DistributedActorDecl] = [:]
@@ -366,7 +366,7 @@ struct ResolveDistributedActors {
     }
 
     /// **Faults** when an `protocol` inheriting `Actorable` does not provide a boxing
-    static func validateActorableProtocols(_ actor: [DistributedActorDecl]) {
+    static func validateActorableProtocols(_ actor: Set<DistributedActorDecl>) {
         let protocols = actor.filter {
             $0.type == .protocol
         }

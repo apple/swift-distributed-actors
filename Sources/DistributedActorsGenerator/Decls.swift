@@ -14,7 +14,7 @@
 
 import SwiftSyntax
 
-struct DistributedActorDecl {
+struct DistributedActorDecl: Hashable {
     enum DeclType {
         case `protocol`
         case `distributedActor`
@@ -153,15 +153,16 @@ struct DistributedActorDecl {
             self.genericWhereClauses = genericWhereClauses
         }
     }
-}
 
-// TODO: Identity should include module name
-extension DistributedActorDecl: Hashable {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(self.name)
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(declaredWithin)
+        hasher.combine(name)
     }
 
-    public static func == (lhs: DistributedActorDecl, rhs: DistributedActorDecl) -> Bool {
+    static func ==(lhs: DistributedActorDecl, rhs: DistributedActorDecl) -> Bool {
+        if lhs.declaredWithin != rhs.declaredWithin {
+            return false
+        }
         if lhs.name != rhs.name {
             return false
         }
