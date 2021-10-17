@@ -28,6 +28,7 @@ public protocol LifecycleWatchSupport {
 
 extension LifecycleWatchSupport {
 
+    @discardableResult
     public func watchTermination<Watchee>(
         of watchee: Watchee,
         @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (AnyActorIdentity) -> (),
@@ -38,20 +39,11 @@ extension LifecycleWatchSupport {
             fatalError("TODO: handle more gracefully") // TODO: handle more gracefully, i.e. say that we can't watch that actor
         }
 
-        // TODO(distributed): these casts will go away once we can force LifecycleWatchSupport: DistributedActor
-//        guard let watcher = self as? (LifecycleWatchSupport & DistributedActor) else {
-//            fatalError("It should be guaranteed that we're in such type") // TODO: once we can express LWS: DA we don't need this cast
-//        }
+        guard let watch = system._getLifecycleWatch(watcher: self) else {
+            return watchee
+        }
 
-//        func doWatchTermination<Act: LifecycleWatchSupport & DistributedActor>(watcher: Act) {
-            guard let watch = system._getLifecycleWatch(watcher: self) else {
-                return watchee
-            }
-
-            watch.termination(of: watchee, whenTerminated: whenTerminated, file: file, line: line)
-//        }
-//        _openExistential(watcher, do: doWatchTermination)
-
+        watch.termination(of: watchee, whenTerminated: whenTerminated, file: file, line: line)
         return watchee
     }
 

@@ -247,6 +247,31 @@ public struct ReplicaID: Hashable {
         case actorIdentity(AnyActorIdentity)
         case uniqueNode(UniqueNode)
         case uniqueNodeID(UniqueNode.ID)
+
+        var isActorAddress: Bool {
+            switch self {
+            case .actorAddress: return true
+            default: return false
+            }
+        }
+        var isActorIdentity: Bool {
+            switch self {
+            case .actorIdentity: return true
+            default: return false
+            }
+        }
+        var isUniqueNode: Bool {
+            switch self {
+            case .uniqueNode: return true
+            default: return false
+            }
+        }
+        var isUniqueNodeID: Bool {
+            switch self {
+            case .uniqueNodeID: return true
+            default: return false
+            }
+        }
     }
 
     internal let storage: Storage

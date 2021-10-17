@@ -36,7 +36,6 @@ extension DistributedReception.Key {
     static var forwarders: DistributedReception.Key<Forwarder> {
         "forwarder/*"
     }
-
 }
 
 final class DistributedReceptionistTests: ActorSystemXCTestCase {
@@ -52,14 +51,17 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
 
             await receptionist.register(forwarderA, with: .forwarders)
             await receptionist.register(forwarderB, with: .forwarders)
-            let listing = await receptionist.lookup(.forwarders)
 
+            let listing = await receptionist.lookup(.forwarders)
             listing.count.shouldEqual(2)
             for forwarder in listing {
                 try await forwarder.forward(message: "test")
             }
 
-            try probe.expectMessagesInAnyOrder(["forwardedA:test", "forwardedB:test"])
+            try probe.expectMessagesInAnyOrder([
+                "\(forwarderA.id.underlying) A forwarded: test",
+                "\(forwarderB.id.underlying) B forwarded: test",
+            ])
         }
     }
 

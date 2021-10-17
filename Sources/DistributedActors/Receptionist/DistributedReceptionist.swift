@@ -61,22 +61,22 @@ public protocol DistributedReceptionist
 }
 
 internal final class DistributedReceptionistStorage {
-    internal var _registrations: [AnyReceptionKey: Set<AnyDistributedActor>] = [:]
-    internal var _subscriptions: [AnyReceptionKey: Set<AnyDistributedSubscribe>] = [:]
+    internal var _registrations: [AnyDistributedReceptionKey: Set<AnyDistributedActor>] = [:]
+    internal var _subscriptions: [AnyDistributedReceptionKey: Set<AnyDistributedSubscribe>] = [:]
 
     /// Per (receptionist) node mapping of which keys are presently known to this receptionist on the given node.
     /// This is used to perform quicker cleanups upon a node/receptionist crashing, and thus all existing references
     /// on that node should be removed from our storage.
-    private var _registeredKeysByNode: [UniqueNode: Set<AnyReceptionKey>] = [:]
+    private var _registeredKeysByNode: [UniqueNode: Set<AnyDistributedReceptionKey>] = [:]
 
     /// Allows for reverse lookups, when an actor terminates, we know from which registrations and subscriptions to remove it from.
-    internal var _identityToKeys: [AnyActorIdentity: Set<AnyReceptionKey>] = [:]
+    internal var _identityToKeys: [AnyActorIdentity: Set<AnyDistributedReceptionKey>] = [:]
 
     // ==== --------------------------------------------------------------------------------------------------------
     // MARK: Registrations
 
     /// - returns: `true` if the value was a newly inserted value, `false` otherwise
-    func addRegistration<Guest>(key: AnyReceptionKey, guest: Guest) -> Bool
+    func addRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> Bool
             where Guest: DistributedActor & __DistributedClusterActor {
         guard let address = guest.id._unwrapActorAddress else {
             return false
@@ -86,7 +86,7 @@ internal final class DistributedReceptionistStorage {
         return self.addTo(dict: &self._registrations, key: key, value: guest.asAnyDistributedActor)
     }
 
-    func removeRegistration<Guest>(key: AnyReceptionKey, guest: Guest) -> Set<AnyDistributedActor>?
+    func removeRegistration<Guest>(key: AnyDistributedReceptionKey, guest: Guest) -> Set<AnyDistributedActor>?
             where Guest: DistributedActor & __DistributedClusterActor {
         let address = guest.id._forceUnwrapActorAddress
 
@@ -95,17 +95,17 @@ internal final class DistributedReceptionistStorage {
         return self.removeFrom(dict: &self._registrations, key: key, value: guest.asAnyDistributedActor)
     }
 
-    func registrations(forKey key: AnyReceptionKey) -> Set<AnyDistributedActor>? {
+    func registrations(forKey key: AnyDistributedReceptionKey) -> Set<AnyDistributedActor>? {
         self._registrations[key]
     }
 
-    private func storeRegistrationNodeRelation(key: AnyReceptionKey, node: UniqueNode?) {
+    private func storeRegistrationNodeRelation(key: AnyDistributedReceptionKey, node: UniqueNode?) {
         if let node = node {
             self._registeredKeysByNode[node, default: []].insert(key)
         }
     }
 
-    private func removeSingleRegistrationNodeRelation(key: AnyReceptionKey, node: UniqueNode?) {
+    private func removeSingleRegistrationNodeRelation(key: AnyDistributedReceptionKey, node: UniqueNode?) {
         // FIXME: Implement me (!), we need to make the storage a counter
         //        and decrement here by one; once the counter reaches zero we know there is no more relationship
         //        and we can prune this key/node relationship
@@ -114,18 +114,18 @@ internal final class DistributedReceptionistStorage {
     // ==== --------------------------------------------------------------------------------------------------------
     // MARK: Subscriptions
 
-    func addSubscription(key: AnyReceptionKey, subscription: AnyDistributedSubscribe) -> Bool {
+    func addSubscription(key: AnyDistributedReceptionKey, subscription: AnyDistributedSubscribe) -> Bool {
         self.addGuestKeyMapping(identity: subscription.subscriber.id, key: key)
         return self.addTo(dict: &self._subscriptions, key: key, value: subscription)
     }
 
     @discardableResult
-    func removeSubscription(key: AnyReceptionKey, subscription: AnyDistributedSubscribe) -> Set<AnyDistributedSubscribe>? {
+    func removeSubscription(key: AnyDistributedReceptionKey, subscription: AnyDistributedSubscribe) -> Set<AnyDistributedSubscribe>? {
         _ = self.removeFromKeyMappings(identity: subscription.subscriber.id)
         return self.removeFrom(dict: &self._subscriptions, key: key, value: subscription)
     }
 
-    func subscriptions(forKey key: AnyReceptionKey) -> Set<AnyDistributedSubscribe>? {
+    func subscriptions(forKey key: AnyDistributedReceptionKey) -> Set<AnyDistributedSubscribe>? {
         self._subscriptions[key]
     }
 
@@ -145,7 +145,7 @@ internal final class DistributedReceptionistStorage {
             return RefMappingRemovalResult(registeredUnderKeys: [])
         }
 
-        var registeredKeys: Set<AnyReceptionKey> = [] // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
+        var registeredKeys: Set<AnyDistributedReceptionKey> = [] // TODO: OR we store it directly as registeredUnderKeys/subscribedToKeys in the dict
         for key in associatedKeys {
             if self._registrations[key]?.remove(ref) != nil {
                 _ = registeredKeys.insert(key)
@@ -158,7 +158,7 @@ internal final class DistributedReceptionistStorage {
 
     struct RefMappingRemovalResult {
         /// The (now removed) ref was registered under the following keys
-        let registeredUnderKeys: Set<AnyReceptionKey>
+        let registeredUnderKeys: Set<AnyDistributedReceptionKey>
         /// The following actors have been subscribed to this key
     }
 
@@ -208,19 +208,19 @@ internal final class DistributedReceptionistStorage {
     }
 
     struct PrunedNodeDirective {
-        fileprivate var changed: [AnyReceptionKey: Set<AnyDistributedSubscribe>] = [:]
+        fileprivate var changed: [AnyDistributedReceptionKey: Set<AnyDistributedSubscribe>] = [:]
 
-        var keys: Dictionary<AnyReceptionKey, Set<AnyDistributedSubscribe>>.Keys {
+        var keys: Dictionary<AnyDistributedReceptionKey, Set<AnyDistributedSubscribe>>.Keys {
             self.changed.keys
         }
 
-        func peersToNotify(_ key: AnyReceptionKey) -> Set<AnyDistributedSubscribe> {
+        func peersToNotify(_ key: AnyDistributedReceptionKey) -> Set<AnyDistributedSubscribe> {
             self.changed[key] ?? []
         }
     }
 
     /// - returns: `true` if the value was a newly inserted value, `false` otherwise
-    private func addTo<Value: Hashable>(dict: inout [AnyReceptionKey: Set<Value>], key: AnyReceptionKey, value: Value) -> Bool {
+    private func addTo<Value: Hashable>(dict: inout [AnyDistributedReceptionKey: Set<Value>], key: AnyDistributedReceptionKey, value: Value) -> Bool {
         guard !(dict[key]?.contains(value) ?? false) else {
             return false
         }
@@ -229,7 +229,7 @@ internal final class DistributedReceptionistStorage {
         return true
     }
 
-    private func removeFrom<Value: Hashable>(dict: inout [AnyReceptionKey: Set<Value>], key: AnyReceptionKey, value: Value) -> Set<Value>? {
+    private func removeFrom<Value: Hashable>(dict: inout [AnyDistributedReceptionKey: Set<Value>], key: AnyDistributedReceptionKey, value: Value) -> Set<Value>? {
         if dict[key]?.remove(value) != nil, dict[key]?.isEmpty ?? false {
             dict.removeValue(forKey: key)
         }
@@ -237,7 +237,7 @@ internal final class DistributedReceptionistStorage {
         return dict[key]
     }
 
-    private func addGuestKeyMapping(identity: AnyActorIdentity, key: AnyReceptionKey) {
+    private func addGuestKeyMapping(identity: AnyActorIdentity, key: AnyDistributedReceptionKey) {
         self._identityToKeys[identity, default: []].insert(key)
     }
 
@@ -248,7 +248,7 @@ internal final class DistributedReceptionistStorage {
 
 internal struct AnyDistributedSubscribe: Hashable, Sendable {
     let subscriber: AnyDistributedActor
-    let send: (Set<AnyDistributedActor>) async throws -> Void
+    let send: @Sendable (Set<AnyDistributedActor>) async throws -> Void
 
     init<Guest>(subscriber: Guest,
                 send: @escaping @Sendable (Set<AnyDistributedActor>) async throws -> Void)

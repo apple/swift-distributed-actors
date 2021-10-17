@@ -29,10 +29,10 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
     let storage = DistributedReceptionistStorage()
 
     internal enum ReceptionistOp: OpLogStreamOp, Codable {
-        case register(key: AnyReceptionKey, identity: AnyActorIdentity)
-        case remove(key: AnyReceptionKey, identity: AnyActorIdentity)
+        case register(key: AnyDistributedReceptionKey, identity: AnyActorIdentity)
+        case remove(key: AnyDistributedReceptionKey, identity: AnyActorIdentity)
 
-        var key: AnyReceptionKey {
+        var key: AnyDistributedReceptionKey {
             switch self {
             case .register(let key, _): return key
             case .remove(let key, _): return key
@@ -121,99 +121,6 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
         log.debug("Initialized receptionist")
     }
 
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Handling Ops
-
-    /// Received a push of ops; apply them to the local view of the key space (storage).
-    ///
-    /// The incoming ops will be until some max SeqNr, once we have applied them all,
-    /// we send back an `ack(maxSeqNr)` to both confirm the receipt, as well as potentially trigger
-    /// more ops being delivered
-    distributed func pushOps(_ push: PushOps) {
-        let peer = push.peer
-
-        // 1.1) apply the pushed ops to our state
-        let peerReplicaId: ReplicaID = .actorIdentity(push.peer.id)
-        let lastAppliedSeqNrAtPeer = self.appliedSequenceNrs[peerReplicaId]
-
-        // De-duplicate
-        // In case we got re-sends (the other node sent us some data twice, yet we already have it, we do not replay the already known data),
-        // we do not want to apply the same ops twice, so we skip the already known ones
-        let opsToApply = push.sequencedOps.drop(while: { op in
-            op.sequenceRange.max <= lastAppliedSeqNrAtPeer
-        })
-
-        log.trace(
-            "Received \(push.sequencedOps.count) ops",
-            metadata: [
-                "receptionist/peer": "\(push.peer.id.underlying)",
-                "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
-                "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
-            ]
-        )
-
-        /// Collect which keys have been updated during this push, so we can publish updated listings for them.
-        var keysToPublish: Set<AnyReceptionKey> = []
-        for op in opsToApply {
-            keysToPublish.insert(self.applyIncomingOp(from: peer, op))
-        }
-
-        log.trace("Keys to publish: \(keysToPublish)")
-
-        // 1.2) update our observed version of `pushed.peer` to the incoming
-        self.observedSequenceNrs.merge(other: push.observedSeqNrs)
-        self.appliedSequenceNrs.merge(other: .init(push.findMaxSequenceNr(), at: peerReplicaId))
-
-        // 2) check for all peers if we are "behind", and should pull information from them
-        //    if this message indicated "end" of the push, then we assume we are up to date with it
-        //    and will only pull again from it on the SlowACK
-        let myselfReplicaID: ReplicaID = .actorIdentity(self.id)
-        // Note that we purposefully also skip replying to the peer (sender) to the sender of this push yet,
-        // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
-        for replica in push.observedSeqNrs.replicaIDs
-            where replica != peerReplicaId && replica != myselfReplicaID &&
-            self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
-            switch replica.storage {
-            case .actorIdentity(let identity):
-                self.sendAckOps(receptionistIdentity: identity)
-            default:
-                fatalError("Only .actorAddress supported as replica ID, was: \(replica.storage)")
-            }
-        }
-
-        // 3) Push listings for any keys that we have updated during this batch
-        keysToPublish.forEach { key in
-            self.publishListings(forKey: key)
-        }
-
-        // 4) ACK that we processed the ops, if there's any more to be replayed
-        //    the peer will then send us another chunk of data.
-        //    IMPORTANT: We want to confirm until the _latest_ number we know about
-        self.sendAckOps(receptionistIdentity: peer.id, maybeReceptionistRef: peer)
-
-        // 5) Since we just received ops from `peer` AND also sent it an `AckOps`,
-        //    there is no need to send it another _periodic_ AckOps potentially right after.
-        //    We DO want to send the Ack directly here as potentially the peer still has some more
-        //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
-        //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
-        let nextPeriodicAckAllowedIn: TimeAmount = system.settings.cluster.receptionist.ackPullReplicationIntervalSlow * 2
-        self.nextPeriodicAckPermittedDeadline[peer.id] = Deadline.fromNow(nextPeriodicAckAllowedIn) // TODO: system.timeSource
-    }
-
-    /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
-    distributed func ackOps(until: UInt64, by peer: ReceptionistRef) {
-        guard var replayer = self.peerReceptionistReplayers[peer] else {
-            log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring")
-            return
-        }
-
-        replayer.confirm(until: until)
-        self.peerReceptionistReplayers[peer] = replayer
-
-        self.replicateOpsBatch(to: peer)
-    }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -231,6 +138,7 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
             _ guest: Guest,
             with key: DistributedReception.Key<Guest>
     ) async where Guest: DistributedActor & __DistributedClusterActor {
+        log.warning("distributed receptionist: register(\(guest), with: \(key)")
         let key = key.asAnyKey
         guard let address = guest.id._unwrapActorAddress else {
             log.error("Cannot register actor with unknown identity type \(guest.id.underlying) with receptionist")
@@ -248,7 +156,7 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
         }
 
         if self.storage.addRegistration(key: key, guest: guest) {
-            self.instrumentation.actorRegistered(key: key, address: address)
+            // self.instrumentation.actorRegistered(key: key, address: address) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
 
             watchTermination(of: guest) { onActorTerminated(identity: $0) }
 
@@ -296,11 +204,19 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
     ///   - key: selects which actors we are interested in.
     func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
             where Guest: DistributedActor & __DistributedClusterActor {
-        fatalError(#function)
-////        let registrations = self.storage.registrations(forKey: message._key) ?? []
-////
-////        self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count)
-////        message.replyWith(registrations)
+        let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
+
+        // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
+        let guests = Set(registrations.compactMap { any in
+            any.underlying as? Guest
+        })
+
+        assert(guests.count == registrations.count, """
+                                                    Was unable to map some registrations to \(Guest.self). 
+                                                      Registrations: \(registrations)
+                                                      Guests:        \(guests)
+                                                    """)
+        return guests
     }
 }
 
@@ -308,7 +224,7 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
 // MARK: Delayed (Listing Notification) Flush
 
 extension OpLogDistributedReceptionist {
-    func ensureDelayedListingFlush(of key: AnyReceptionKey) {
+    func ensureDelayedListingFlush(of key: AnyDistributedReceptionKey) {
         let timerKey = self.flushTimerKey(key)
 
         if self.storage.registrations(forKey: key)?.isEmpty ?? true {
@@ -328,21 +244,21 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    func onDelayedListingFlushTick(key: AnyReceptionKey) {
+    func onDelayedListingFlushTick(key: AnyDistributedReceptionKey) {
         log.trace("Delayed listing flush: \(key)")
 
         self.notifySubscribers(of: key)
     }
 
-    private func notifySubscribers(of key: AnyReceptionKey) {
+    private func notifySubscribers(of key: AnyDistributedReceptionKey) {
         let registrations = self.storage.registrations(forKey: key) ?? []
 
         guard let subscriptions = self.storage.subscriptions(forKey: key) else {
-            self.instrumentation.listingPublished(key: key, subscribers: 0, registrations: registrations.count)
+            // self.instrumentation.listingPublished(key: key, subscribers: 0, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             return // ok, no-one to notify
         }
 
-        self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count)
+        // self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         for subscription in subscriptions {
             Task {
                 try await subscription.send(registrations)
@@ -350,7 +266,7 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    private func flushTimerKey(_ key: AnyReceptionKey) -> TimerKey {
+    private func flushTimerKey(_ key: AnyDistributedReceptionKey) -> TimerKey {
         "flush-\(key.hashValue)"
     }
 }
@@ -360,11 +276,91 @@ extension OpLogDistributedReceptionist {
 
 extension OpLogDistributedReceptionist {
 
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Handling Ops
+
+    /// Received a push of ops; apply them to the local view of the key space (storage).
+    ///
+    /// The incoming ops will be until some max SeqNr, once we have applied them all,
+    /// we send back an `ack(maxSeqNr)` to both confirm the receipt, as well as potentially trigger
+    /// more ops being delivered
+    distributed func pushOps(_ push: PushOps) {
+        let peer = push.peer
+
+        // 1.1) apply the pushed ops to our state
+        let peerReplicaId: ReplicaID = .actorIdentity(push.peer.id)
+        let lastAppliedSeqNrAtPeer = self.appliedSequenceNrs[peerReplicaId]
+
+        // De-duplicate
+        // In case we got re-sends (the other node sent us some data twice, yet we already have it, we do not replay the already known data),
+        // we do not want to apply the same ops twice, so we skip the already known ones
+        let opsToApply = push.sequencedOps.drop(while: { op in
+            op.sequenceRange.max <= lastAppliedSeqNrAtPeer
+        })
+
+        log.trace(
+                "Received \(push.sequencedOps.count) ops",
+                metadata: [
+                    "receptionist/peer": "\(push.peer.id.underlying)",
+                    "receptionist/lastKnownSeqNrAtPeer": "\(lastAppliedSeqNrAtPeer)",
+                    "receptionist/opsToApply": Logger.Metadata.Value.array(opsToApply.map { Logger.Metadata.Value.string("\($0)") }),
+                ]
+        )
+
+        /// Collect which keys have been updated during this push, so we can publish updated listings for them.
+        var keysToPublish: Set<AnyDistributedReceptionKey> = []
+        for op in opsToApply {
+            keysToPublish.insert(self.applyIncomingOp(from: peer, op))
+        }
+
+        log.trace("Keys to publish: \(keysToPublish)")
+
+        // 1.2) update our observed version of `pushed.peer` to the incoming
+        self.observedSequenceNrs.merge(other: push.observedSeqNrs)
+        self.appliedSequenceNrs.merge(other: .init(push.findMaxSequenceNr(), at: peerReplicaId))
+
+        // 2) check for all peers if we are "behind", and should pull information from them
+        //    if this message indicated "end" of the push, then we assume we are up to date with it
+        //    and will only pull again from it on the SlowACK
+        let myselfReplicaID: ReplicaID = .actorIdentity(self.id)
+        // Note that we purposefully also skip replying to the peer (sender) to the sender of this push yet,
+        // we will do so below in any case, regardless if we are behind or not; See (4) for ACKing the peer
+        for replica in push.observedSeqNrs.replicaIDs
+            where replica != peerReplicaId && replica != myselfReplicaID &&
+                    self.observedSequenceNrs[replica] < push.observedSeqNrs[replica] {
+            switch replica.storage {
+            case .actorIdentity(let identity):
+                self.sendAckOps(receptionistIdentity: identity)
+            default:
+                fatalError("Only .actorIdentity supported as replica ID, was: \(replica.storage)")
+            }
+        }
+
+        // 3) Push listings for any keys that we have updated during this batch
+        keysToPublish.forEach { key in
+            self.publishListings(forKey: key)
+        }
+
+        // 4) ACK that we processed the ops, if there's any more to be replayed
+        //    the peer will then send us another chunk of data.
+        //    IMPORTANT: We want to confirm until the _latest_ number we know about
+        self.sendAckOps(receptionistIdentity: peer.id, maybeReceptionistRef: peer)
+
+        // 5) Since we just received ops from `peer` AND also sent it an `AckOps`,
+        //    there is no need to send it another _periodic_ AckOps potentially right after.
+        //    We DO want to send the Ack directly here as potentially the peer still has some more
+        //    ops it might want to send, so we want to allow it to get those over to us as quickly as possible,
+        //    without waiting for our Ack ticks to trigger (which could be configured pretty slow).
+        let nextPeriodicAckAllowedIn: TimeAmount = system.settings.cluster.receptionist.ackPullReplicationIntervalSlow * 2
+        self.nextPeriodicAckPermittedDeadline[peer.id] = Deadline.fromNow(nextPeriodicAckAllowedIn) // TODO: system.timeSource
+    }
+
     /// Apply incoming operation from `peer` and update the associated applied sequenceNumber tracking
     ///
     /// - Returns: Set of keys which have been updated during this
     func applyIncomingOp(from peer: OpLogDistributedReceptionist,
-                         _ sequenced: OpLog<ReceptionistOp>.SequencedOp) -> AnyReceptionKey {
+                         _ sequenced: OpLog<ReceptionistOp>.SequencedOp) -> AnyDistributedReceptionKey {
         let op = sequenced.op
 
         // apply operation to storage
@@ -378,7 +374,7 @@ extension OpLogDistributedReceptionist {
                 onActorTerminated(identity: $0)
             }
             if self.storage.addRegistration(key: key, guest: resolved) {
-                self.instrumentation.actorRegistered(key: key, address: address)
+                // self.instrumentation.actorRegistered(key: key, address: address) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             }
 
         case .remove(let key, let identity):
@@ -388,7 +384,7 @@ extension OpLogDistributedReceptionist {
 
             unwatch(resolved)
             if self.storage.removeRegistration(key: key, guest: resolved) != nil {
-                self.instrumentation.actorRemoved(key: key, address: address)
+                // self.instrumentation.actorRemoved(key: key, address: address) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             }
         }
 
@@ -451,7 +447,7 @@ extension OpLogDistributedReceptionist {
     }
 
     /// Listings have changed for this key, thus we need to publish them to all subscribers
-    private func publishListings(forKey key: AnyReceptionKey) {
+    private func publishListings(forKey key: AnyDistributedReceptionKey) {
         guard let subscribers = self.storage.subscriptions(forKey: key) else {
             return // no subscribers for this key
         }
@@ -459,7 +455,7 @@ extension OpLogDistributedReceptionist {
         self.publishListings(forKey: key, to: subscribers)
     }
 
-    private func publishListings(forKey key: AnyReceptionKey, to subscribers: Set<AnyDistributedSubscribe>) {
+    private func publishListings(forKey key: AnyDistributedReceptionKey, to subscribers: Set<AnyDistributedSubscribe>) {
         let registrations = self.storage.registrations(forKey: key) ?? []
 
         log.trace(
@@ -500,6 +496,20 @@ extension OpLogDistributedReceptionist {
 
             self.sendAckOps(receptionistIdentity: peer.id, maybeReceptionistRef: peer)
         }
+    }
+
+
+    /// Receive an Ack and potentially continue streaming ops to peer if still pending operations available.
+    distributed func ackOps(until: UInt64, by peer: ReceptionistRef) {
+        guard var replayer = self.peerReceptionistReplayers[peer] else {
+            log.trace("Received a confirmation until \(until) from \(peer) but no replayer available for it, ignoring")
+            return
+        }
+
+        replayer.confirm(until: until)
+        self.peerReceptionistReplayers[peer] = replayer
+
+        self.replicateOpsBatch(to: peer)
     }
 
     private func replicateOpsBatch(to peer: ReceptionistRef) {
@@ -655,7 +665,7 @@ extension OpLogDistributedReceptionist {
 //        log.debug("New member, contacting its receptionist: \(change.node)")
 //
 //        // resolve receptionist on the other node, so we can stream our registrations to it
-//        let remoteReceptionistAddress = ActorAddress._receptionist(on: change.node)
+//        let remoteReceptionistAddress = actorIdentity._receptionist(on: change.node)
 //        let remoteReceptionist: ActorRef<Message> = system._resolve(context: .init(address: remoteReceptionistAddress, system: system))
 //
 //        // ==== "push" replication -----------------------------
@@ -670,7 +680,7 @@ extension OpLogDistributedReceptionist {
 
     func pruneClusterMember(removedNode: UniqueNode) { fatalError("\(#function) not implemented yet") }
 //        log.trace("Pruning cluster member: \(removedNode)")
-//        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode)
+//        let terminatedReceptionistAddress = actorIdentity._receptionist(on: removedNode)
 //        let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(log, address: terminatedReceptionistAddress, system: nil)))
 //
 //        guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {
@@ -708,7 +718,7 @@ extension OpLogDistributedReceptionist {
         /// Overview of all receptionist's latest SeqNr the `peer` receptionist was aware of at time of pushing.
         /// Recipient shall compare these versions and pull from appropriate nodes.
         ///
-        /// Guaranteed to be keyed with `.actorAddress`. // FIXME ensure this
+        /// Guaranteed to be keyed with `.actorIdentity`.
         // Yes, we're somewhat abusing the VV for our "container of sequence numbers",
         // but its merge() facility is quite handy here.
         let observedSeqNrs: VersionVector
@@ -718,6 +728,8 @@ extension OpLogDistributedReceptionist {
         init(peer: OpLogDistributedReceptionist,
              observedSeqNrs: VersionVector,
              sequencedOps: [OpLog<ReceptionistOp>.SequencedOp]) {
+            precondition(observedSeqNrs.replicaIDs.allSatisfy { $0.storage.isActorIdentity },
+                    "All observed IDs must be keyed with actor identity replica IDs (of the receptionists), was: \(observedSeqNrs)")
             self.peer = peer
             self.observedSeqNrs = observedSeqNrs
             self.sequencedOps = sequencedOps

@@ -23,7 +23,7 @@ import struct NIO.ByteBuffer
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message: ActorMessage>: ReceivesMessages, DeathWatchable, _ReceivesSystemMessages {
+public struct ActorRef<Message: ActorMessage>: @unchecked Sendable, ReceivesMessages, DeathWatchable, _ReceivesSystemMessages {
     /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -146,7 +146,7 @@ extension ActorRef.Personality {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
-public protocol ReceivesMessages: Codable {
+public protocol ReceivesMessages: Sendable, Codable {
     associatedtype Message: ActorMessage
     /// Send message to actor referred to by this `ActorRef`.
     ///

@@ -33,8 +33,8 @@ extension DistributedReception {
     public struct Key<Guest: DistributedActor & __DistributedClusterActor>: Codable,
             ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
             CustomStringConvertible {
-        let id: String
-        var guestType: Any.Type {
+        public let id: String
+        public var guestType: Any.Type {
             Guest.self
         }
 
@@ -64,16 +64,91 @@ extension DistributedReception {
             return ref.asAddressable
         }
 
-        internal var asAnyKey: AnyReceptionKey {
-            fatalError(#function)
-            // AnyReceptionKey(self)
+        internal var asAnyKey: AnyDistributedReceptionKey {
+             AnyDistributedReceptionKey(self)
         }
 
         public var description: String {
-            "DistributedReception.Key<\(Guest.self)>(id: \(self.id))"
+            "DistributedReception.Key<\(String(reflecting: Guest.self))>(id: \(self.id))"
         }
     }
 }
+
+struct AnyDistributedReceptionKey:
+//        ReceptionKeyProtocol,
+        Sendable, Codable,
+        Hashable, CustomStringConvertible {
+    enum CodingKeys: CodingKey {
+        case id
+        case guestTypeManifest
+    }
+
+    let id: String
+    let guestType: Any.Type
+
+    init<Guest>(_ key: DistributedReception.Key<Guest>) {
+        self.id = key.id
+        self.guestType = Guest.self
+    }
+
+    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+        // Since we don't have the type information here, we can't properly resolve
+        // and the only safe thing to do is to return `deadLetters`.
+        system.personalDeadLetters(type: Never.self, recipient: address).asAddressable
+    }
+
+    var asAnyKey: AnyDistributedReceptionKey {
+        self
+    }
+
+    public var description: String {
+        "\(Self.self)<\(reflecting: self.guestType)>(\(self.id))"
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.id)
+        hasher.combine(ObjectIdentifier(self.guestType))
+    }
+
+    public static func == (lhs: AnyDistributedReceptionKey, rhs: AnyDistributedReceptionKey) -> Bool {
+        if type(of: lhs) != type(of: rhs) {
+            return false
+        }
+        if lhs.id != rhs.id {
+            return false
+        }
+        if ObjectIdentifier(lhs.guestType) != ObjectIdentifier(rhs.guestType) {
+            return false
+        }
+        return true
+    }
+
+    public init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(decoder, Self.self)
+        }
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        self.id = try container.decode(String.self, forKey: .id)
+
+        let guestTypeManifest = try container.decode(Serialization.Manifest.self, forKey: .guestTypeManifest)
+        self.guestType = try context.summonType(from: guestTypeManifest)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw SerializationError.missingSerializationContext(encoder, Self.self)
+        }
+
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(self.id, forKey: .id)
+        let guestTypeManifest = try context.serialization.outboundManifest(self.guestType)
+        try container.encode(guestTypeManifest, forKey: .guestTypeManifest)
+    }
+}
+
 
 //// ==== ----------------------------------------------------------------------------------------------------------------
 //// MARK: DistributedReception Listing

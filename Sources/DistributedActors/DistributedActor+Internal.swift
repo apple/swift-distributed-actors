@@ -90,7 +90,7 @@ extension DistributedActor {
 }
 
 distributed actor StubDistributedActor {
-    // TODO: this is just to prevent a DI crash
-    distributed func noop() {}
+    // TODO: this is just to prevent a DI crash because of enums without cases and Codable
+    distributed func _noop() {}
 }
 
