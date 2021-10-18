@@ -1,0 +1,57 @@
+# this setup is designed to build / test using custom toolchain
+# usage:
+# docker-compose -f docker/docker-compose.custom.yaml build --build-arg TOOLCHAIN_URL=https://ci.swift.org/job/swift-PR-toolchain-Linux/702//artifact/branch-main/swift-PR-39682-702-ubuntu16.04.tar.gz
+# docker-compose -f docker/docker-compose.custom.yaml run test
+
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-distributed-actors:custom
+    build:
+      context: .
+      dockerfile: Dockerfile.custom
+      args:
+        # to be overrided
+        - TOOLCHAIN_URL=https://ci.swift.org/job/swift-PR-toolchain-Linux/702//artifact/branch-main/swift-PR-39682-702-ubuntu16.04.tar.gz
+
+  common: &common
+    image: swift-distributed-actors:custom
+    depends_on: [runtime-setup]
+    volumes:
+      - ~/.ssh:/root/.ssh
+      - ..:/code:z
+    working_dir: /code
+    cap_drop:
+      - CAP_NET_RAW
+      - CAP_NET_BIND_SERVICE
+    environment:
+      - MAX_ALLOCS_ALLOWED_001_actor_address=5
+      - MAX_ALLOCS_ALLOWED_002_actor_spawn=56
+
+  unit-tests:
+    <<: *common
+    command: /bin/bash -cl "swift test"
+
+  unit-tests-until-failure:
+    <<: *common
+    command: /bin/bash -cl "while swift test; do :; done"
+
+  integration-tests:
+    <<: *common
+    command: /bin/bash -cl "./scripts/integration_tests.sh"
+
+  test:
+    <<: *common
+    command: /bin/bash -cl "swift -version; SACT_WARNINGS_AS_ERRORS=yes swift test -Xswiftc -DSACT_TESTS_LEAKS && ./scripts/integration_tests.sh"
+
+  bench:
+    <<: *common
+    command: /bin/bash -cl "swift run DistributedActorsBenchmarks"
+
+  # util
+
+  shell:
+    <<: *common
+    entrypoint: /bin/bash -l
