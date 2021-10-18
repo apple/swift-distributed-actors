@@ -82,6 +82,13 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
     /// gives a good idea how far "behind" we are with regards to changed performed at that peer.
     var appliedSequenceNrs: VersionVector
 
+    static var props: Props {
+        var ps = Props()
+        ps._knownActorName = ActorPath.distributedActorReceptionist.name
+        ps._wellKnown = true
+        return ps
+    }
+
     // FIXME(swift 6): initializer must become async
     init(settings: ClusterReceptionist.Settings,
          transport: ActorTransport
@@ -582,7 +589,7 @@ extension OpLogDistributedReceptionist {
             return
         }
 
-        if address == ActorAddress._receptionist(on: address.uniqueNode) {
+        if address == ActorAddress._receptionist(on: address.uniqueNode, for: .distributedActors) {
             log.debug("Watched receptionist terminated: \(identity)")
             receptionistTerminated(identity: identity)
         } else {
@@ -617,91 +624,90 @@ extension OpLogDistributedReceptionist {
 
 extension OpLogDistributedReceptionist {
     private func onClusterEvent(event: Cluster.Event) {
-        self.log.error("event: \(event)")
-    } // FIXME: implement this
-//        switch event {
-//        case .snapshot(let snapshot):
-//            let diff = Cluster.Membership._diff(from: .empty, to: snapshot)
-//            guard !diff.changes.isEmpty else {
-//                return // empty changes, nothing to act on
-//            }
-//            log.debug(
-//                "Changes from initial snapshot, applying one by one",
-//                metadata: [
-//                    "membership/changes": "\(diff.changes)",
-//                ]
-//            )
-//            diff.changes.forEach { change in
-//                self.onClusterEvent(event: .membershipChange(change))
-//            }
-//
-//        case .membershipChange(let change):
-//            guard let effectiveChange = self.membership.applyMembershipChange(change) else {
-//                return
-//            }
-//
-//            if effectiveChange.previousStatus == nil {
-//                // a new member joined, let's store and contact its receptionist
-//                self.onNewClusterMember(change: effectiveChange)
-//            } else if effectiveChange.status.isAtLeast(.down) {
-//                // a member was removed, we should prune it from our observations
-//                self.pruneClusterMember(removedNode: effectiveChange.node)
-//            }
-//
-//        case .leadershipChange, .reachabilityChange:
-//            return // we ignore those
-//        }
-//    }
-//
-    private func onNewClusterMember(change: Cluster.MembershipChange) { fatalError("\(#function) not implemented yet") }
-//        guard change.previousStatus == nil else {
-//            return // not a new member
-//        }
-//
-//        guard change.node != system.cluster.uniqueNode else {
-//            return // no need to contact our own node, this would be "us"
-//        }
-//
-//        log.debug("New member, contacting its receptionist: \(change.node)")
-//
-//        // resolve receptionist on the other node, so we can stream our registrations to it
-//        let remoteReceptionistAddress = actorIdentity._receptionist(on: change.node)
-//        let remoteReceptionist: ActorRef<Message> = system._resolve(context: .init(address: remoteReceptionistAddress, system: system))
-//
-//        // ==== "push" replication -----------------------------
-//        // we noticed a new member, and want to offer it our information right away
-//
-//        // store the remote receptionist and replayer, it shall always use the same replayer
-//        let replayer = self.ops.replay(from: .beginning)
-//        self.peerReceptionistReplayers[remoteReceptionist] = replayer
-//
-//        self.replicateOpsBatch(to: remoteReceptionist)
-//    }
+        switch event {
+        case .snapshot(let snapshot):
+            let diff = Cluster.Membership._diff(from: .empty, to: snapshot)
+            guard !diff.changes.isEmpty else {
+                return // empty changes, nothing to act on
+            }
+            log.debug(
+                "Changes from initial snapshot, applying one by one",
+                metadata: [
+                    "membership/changes": "\(diff.changes)",
+                ]
+            )
+            diff.changes.forEach { change in
+                self.onClusterEvent(event: .membershipChange(change))
+            }
 
-    func pruneClusterMember(removedNode: UniqueNode) { fatalError("\(#function) not implemented yet") }
-//        log.trace("Pruning cluster member: \(removedNode)")
-//        let terminatedReceptionistAddress = actorIdentity._receptionist(on: removedNode)
-//        let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(log, address: terminatedReceptionistAddress, system: nil)))
-//
-//        guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {
-//            // we already removed it, so no need to keep scanning for it.
-//            // this could be because we received a receptionist termination before a node down or vice versa.
-//            //
-//            // although this should not happen and may indicate we got a Terminated for an address twice?
-//            return
-//        }
-//
-//        // clear observations; we only get them directly from the origin node, so since it has been downed
-//        // we will never receive more observations from it.
-//        _ = self.observedSequenceNrs.pruneReplica(.actorIdentity(terminatedReceptionistAddress))
-//        _ = self.appliedSequenceNrs.pruneReplica(.actorIdentity(terminatedReceptionistAddress))
-//
-//        // clear state any registrations still lingering about the now-known-to-be-down node
-//        let pruned = self.storage.pruneNode(removedNode)
-//        for key in pruned.keys {
-//            self.publishListings(forKey: key, to: pruned.peersToNotify(key))
-//        }
-//    }
+        case .membershipChange(let change):
+            guard let effectiveChange = self.membership.applyMembershipChange(change) else {
+                return
+            }
+
+            if effectiveChange.previousStatus == nil {
+                // a new member joined, let's store and contact its receptionist
+                self.onNewClusterMember(change: effectiveChange)
+            } else if effectiveChange.status.isAtLeast(.down) {
+                // a member was removed, we should prune it from our observations
+                self.pruneClusterMember(removedNode: effectiveChange.node)
+            }
+
+        case .leadershipChange, .reachabilityChange:
+            return // we ignore those
+        }
+    }
+
+    private func onNewClusterMember(change: Cluster.MembershipChange) {
+        guard change.previousStatus == nil else {
+            return // not a new member
+        }
+
+        guard change.node != system.cluster.uniqueNode else {
+            return // no need to contact our own node, this would be "us"
+        }
+
+        log.debug("New member, contacting its receptionist: \(change.node)")
+
+        // resolve receptionist on the other node, so we can stream our registrations to it
+        let remoteReceptionistAddress = ActorAddress._receptionist(on: change.node, for: .distributedActors)
+        let remoteReceptionist = try! Self.resolve(remoteReceptionistAddress.asAnyActorIdentity, using: system) // try!-safe: we know this resolve won't throw, the identity is known to be correct
+
+        // ==== "push" replication -----------------------------
+        // we noticed a new member, and want to offer it our information right away
+
+        // store the remote receptionist and replayer, it shall always use the same replayer
+        let replayer = self.ops.replay(from: .beginning)
+        self.peerReceptionistReplayers[remoteReceptionist] = replayer
+
+        self.replicateOpsBatch(to: remoteReceptionist)
+    }
+
+    func pruneClusterMember(removedNode: UniqueNode) {
+        log.trace("Pruning cluster member: \(removedNode)")
+        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode, for: .distributedActors)
+        let terminatedReceptionistIdentity = terminatedReceptionistAddress.asAnyActorIdentity
+        let equalityHackPeer = try! Self.resolve(terminatedReceptionistIdentity, using: system) // try!-safe because we know the address is correct and remote
+
+        guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeer) != nil else {
+            // we already removed it, so no need to keep scanning for it.
+            // this could be because we received a receptionist termination before a node down or vice versa.
+            //
+            // although this should not happen and may indicate we got a Terminated for an address twice?
+            return
+        }
+
+        // clear observations; we only get them directly from the origin node, so since it has been downed
+        // we will never receive more observations from it.
+        _ = self.observedSequenceNrs.pruneReplica(.actorIdentity(terminatedReceptionistIdentity))
+        _ = self.appliedSequenceNrs.pruneReplica(.actorIdentity(terminatedReceptionistIdentity))
+
+        // clear state any registrations still lingering about the now-known-to-be-down node
+        let pruned = self.storage.pruneNode(removedNode)
+        for key in pruned.keys {
+            self.publishListings(forKey: key, to: pruned.peersToNotify(key))
+        }
+    }
 }
 
 // ==== ------------------------------------------------------------------------------------------------------------

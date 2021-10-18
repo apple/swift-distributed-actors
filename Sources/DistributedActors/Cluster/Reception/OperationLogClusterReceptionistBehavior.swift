@@ -675,7 +675,7 @@ extension OperationLogClusterReceptionist {
 
 extension OperationLogClusterReceptionist {
     private func onTerminated(context: ActorContext<ReceptionistMessage>, terminated: Signals.Terminated) {
-        if terminated.address == ActorAddress._receptionist(on: terminated.address.uniqueNode) {
+        if terminated.address == ActorAddress._receptionist(on: terminated.address.uniqueNode, for: .actorRefs) {
             context.log.debug("Watched receptionist terminated: \(terminated)")
             self.onReceptionistTerminated(context, terminated: terminated)
         } else {
@@ -756,7 +756,7 @@ extension OperationLogClusterReceptionist {
         context.log.debug("New member, contacting its receptionist: \(change.node)")
 
         // resolve receptionist on the other node, so we can stream our registrations to it
-        let remoteReceptionistAddress = ActorAddress._receptionist(on: change.node)
+        let remoteReceptionistAddress = ActorAddress._receptionist(on: change.node, for: .actorRefs)
         let remoteReceptionist: ActorRef<Message> = context.system._resolve(context: .init(address: remoteReceptionistAddress, system: context.system))
 
         // ==== "push" replication -----------------------------
@@ -771,7 +771,7 @@ extension OperationLogClusterReceptionist {
 
     private func pruneClusterMember(_ context: ActorContext<OperationLogClusterReceptionist.Message>, removedNode: UniqueNode) {
         context.log.trace("Pruning cluster member: \(removedNode)")
-        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode)
+        let terminatedReceptionistAddress = ActorAddress._receptionist(on: removedNode, for: .actorRefs)
         let equalityHackPeerRef = ActorRef<Message>(.deadLetters(.init(context.log, address: terminatedReceptionistAddress, system: nil)))
 
         guard self.peerReceptionistReplayers.removeValue(forKey: equalityHackPeerRef) != nil else {

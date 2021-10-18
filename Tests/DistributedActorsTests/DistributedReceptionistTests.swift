@@ -41,6 +41,14 @@ extension DistributedReception.Key {
 final class DistributedReceptionistTests: ActorSystemXCTestCase {
     let receptionistBehavior = OperationLogClusterReceptionist(settings: .default).behavior
 
+    func test_receptionist_mustHaveWellKnownAddress() throws {
+        let opLogReceptionist = system.receptionist as! OpLogDistributedReceptionist
+        let receptionistAddress = opLogReceptionist.id._forceUnwrapActorAddress
+
+        receptionistAddress.detailedDescription.shouldEqual("/user/receptionist")
+        receptionistAddress.incarnation.shouldEqual(.wellKnown)
+    }
+
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
         try runAsyncAndBlock {
             let receptionist = system.receptionist

@@ -29,7 +29,7 @@ import NIO
 /// For example, a skull would be a classic example of a "prop" used while performing the William Shakespeare's
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
-public struct Props {
+public struct Props: @unchecked Sendable {
     public var mailbox: MailboxProps
     public var dispatcher: DispatcherProps
 
@@ -41,17 +41,30 @@ public struct Props {
     /// only if a single incarnation of actor will ever exist under the given path.
     internal var _wellKnown: Bool = false
 
+    /// INTERNAL API: Allows to request the actor system to spawn this actor under a specific name
+    /// Used only with 'distributed actor' as a way to pass path to the `assignIdentity` call.
+    /// // TODO(distributed): We should instead allow for an explicit way to pass params to the transport.
+    internal var _knownActorName: String?
+
     /// INTERNAL API: Marks that this ref is spawned in service of a 'distributed actor'.
     /// This is a temporary solution until we move all the infrastructure onto distributed actors.
     @usableFromInline
     internal var _distributedActor: Bool = false
 
-    public init(mailbox: MailboxProps = .default(), dispatcher: DispatcherProps = .default, supervision: SupervisionProps = .default, metrics: MetricsProps = .disabled) {
+    public init(mailbox: MailboxProps = .default(),
+                dispatcher: DispatcherProps = .default,
+                supervision: SupervisionProps = .default,
+                metrics: MetricsProps = .disabled) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
         self.supervision = supervision
         self.metrics = metrics
     }
+
+    /// TODO(distributed): workaround for passing settings to specific actor instance when creating them.
+    ///                    We may want to formalize a way to do this with initializer params instead.
+    @TaskLocal
+    internal static var forSpawn: Props = Props()
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -144,7 +157,7 @@ extension Props {
     }
 }
 
-public enum MailboxProps {
+public enum MailboxProps: Sendable {
     /// Default mailbox.
     case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
 
@@ -160,7 +173,7 @@ public enum MailboxProps {
 }
 
 // TODO: those only apply when bounded mailboxes
-public enum MailboxOverflowStrategy {
+public enum MailboxOverflowStrategy: Sendable {
     case crash
     case dropIncoming
     case dropMailbox

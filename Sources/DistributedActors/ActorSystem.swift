@@ -82,7 +82,9 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Receptionist
-    // TODO: Use "set once" atomic structure
+
+    // TODO(distributed): once all actors which use the receptionist are moved to 'distributed actor'
+    //                    we can remove the actor-ref receptionist.
     private var _receptionistRef: ActorRef<Receptionist.Message>!
     public var _receptionist: SystemReceptionist {
         SystemReceptionist(ref: self._receptionistRef)
@@ -100,7 +102,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
 
-    // TODO: Use "set once" atomic structure
+    // TODO: Use ManagedAtomicLazyReference to store this
     private lazy var _metrics: ActorSystemMetrics = ActorSystemMetrics(self.settings.metrics)
     internal var metrics: ActorSystemMetrics {
         self._metrics
@@ -115,7 +117,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     // MARK: Cluster
 
     // initialized during startup
-    // TODO: Use "set once" atomic structure
+    // TODO: Use ManagedAtomicLazyReference to store this
     internal var _cluster: ClusterShell?
     internal var _clusterControl: ClusterControl?
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
@@ -289,11 +291,13 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, props: ._wellKnown)
         self._receptionistRef = lazyReceptionist.ref
 
-        let receptionist = OpLogDistributedReceptionist(
-                settings: self.settings.cluster.receptionist,
-                transport: self
-       )
-        _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
+        Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
+            let receptionist = OpLogDistributedReceptionist(
+                    settings: self.settings.cluster.receptionist,
+                    transport: self
+            )
+            _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
+        }
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
@@ -589,15 +593,20 @@ extension ActorSystem: ActorRefFactory {
     internal func _reserveName<Act>(
             using provider: _ActorRefProvider,
             type: Act.Type,
-            props: Props = Props()
+            props: Props
     ) throws -> ActorAddress where Act: DistributedActor {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
 
         // TODO: lock inside provider, not here
         // FIXME: protect the naming context access and name reservation; add a test
         return try self.withNamingContext { namingContext in
-            let naming = ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
-            let name = naming.makeName(&namingContext)
+            let name: String
+            if let knownName = props._knownActorName {
+                name = knownName
+            } else {
+                let naming = ActorNaming.prefixed(with: "\(Act.self)") // FIXME(distributed): strip generics from the name
+                name = naming.makeName(&namingContext)
+            }
 
             let address = try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
             guard self._reservedNames.insert(address).inserted else {
@@ -801,7 +810,7 @@ extension ActorSystem {
     public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity
             where Act: DistributedActor {
 
-        let props = Props() // TODO: pick up from task-local?
+        let props = Props.forSpawn // TODO(distributed): this is pretty ufly, rather we'd want to be passed a param through here
         let address = try! self._reserveName(using: self.userProvider, type: Act.self, props: props)
 
         log.trace("Assign identity", metadata: [
