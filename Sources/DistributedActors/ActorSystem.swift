@@ -293,9 +293,10 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
         Props.$forSpawn.withValue(OpLogDistributedReceptionist.props) {
             let receptionist = OpLogDistributedReceptionist(
-                    settings: self.settings.cluster.receptionist,
-                    transport: self
+                settings: self.settings.cluster.receptionist,
+                transport: self
             )
+            Task { try await receptionist.start() }
             _ = self._receptionistStore.storeIfNilThenLoad(receptionist)
         }
 
@@ -627,10 +628,17 @@ extension ActorSystem: ActorRefFactory {
             fatalError("Cannot spawn distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(id)")
         }
 
-        // TODO(distributed): pick up props from task-local OR change proposal to allow passing properties
-        var props = Props()
+        var props = Props.forSpawn
         props._distributedActor = true
-        return try! self._spawn(using: self.userProvider, behavior, address: address, props: props) // try!-safe, since the naming must have been correct
+
+        let provider: _ActorRefProvider
+        if props._systemActor {
+            provider = self.systemProvider
+        } else {
+            provider = self.userProvider
+        }
+
+        return try! self._spawn(using: provider, behavior, address: address, props: props) // try!-safe, since the naming must have been correct
     }
 }
 
@@ -656,7 +664,7 @@ extension ActorSystem: _ActorTreeTraversable {
     /// the print completes already have terminated, or may not print actors which started just after a visit at certain parent.
     internal func _printTree() {
         self._traverseAllVoid { context, ref in
-            print("\(String(repeating: "  ", count: context.depth))- /\(ref.address.name) - \(ref)")
+            print("\(String(repeating: "  ", count: context.depth))- /\(ref.address.name) - \(ref) @ incarnation:\(ref.address.incarnation)")
             return .continue
         }
     }
@@ -788,11 +796,19 @@ extension ActorSystem {
             return nil
         }
 
+        guard self.cluster.uniqueNode == address.uniqueNode else {
+//            log.trace("Resolved as remote reference", metadata: [
+//                "actor/address": "\(address.detailedDescription)",
+//            ])
+            return nil
+        }
+
         return self.namingLock.withLock {
             guard let managed = self._managedDistributedActors[address] else {
-                log.info("Resolved as remote reference", metadata: [
+                log.info("Unknown reference on our UniqueNode", metadata: [
                     "actor/address": "\(address.detailedDescription)",
                 ])
+                // TODO(distributed): throw here, this should be a dead letter
                 return nil
             }
 

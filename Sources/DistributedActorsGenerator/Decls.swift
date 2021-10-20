@@ -204,11 +204,14 @@ struct DistributedMessageDecl {
         var res = self.params
 
         switch self.returnType {
-        case .void, .behavior:
+        case .behavior:
             () // no "reply"
 
+        case .void:
+            res.append((nil, "_replyTo", "ActorRef<Result<_Done, ErrorEnvelope>>"))
+
         case .type(let valueType) where !self.throwing:
-            res.append((nil, "_replyTo", "ActorRef<\(valueType)>"))
+            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>")) // TODO: make the same with the error envelope
 
         case .type(let valueType) /* self.throwing */:
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
@@ -225,6 +228,11 @@ struct DistributedMessageDecl {
     }
 
     let throwing: Bool
+
+    // For simplicity of moving the source gen to distributed actors, we just assume we'll always throw
+    var effectivelyThrowing: Bool {
+        true
+    }
 
     let returnType: ReturnType
 

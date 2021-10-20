@@ -61,7 +61,7 @@ docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2104.main.
 docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.main.yaml run test
 
 # run only unit tests (no integration tests)
-docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1604.51.yaml run unit-tests
+docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.51.yaml run unit-tests
 ```
 
 ## Documentation

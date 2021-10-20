@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import SwiftSyntax
 
 protocol Renderable {
@@ -568,40 +567,52 @@ extension DistributedMessageDecl {
         printer.print("}")
 
         printer.print("")
-        printer.print("// FIXME: this is not great; once the ID 'is' the reference, we'll be able to simplify this")
+        printer.print("// FIXME(distributed): This will go away the moment we change the refs to BE the actor identity, no more resolves during sends.")
         printer.print("let ref: ActorRef<Message> = system._resolve(context: ResolveContext(address: address, system: system))")
         printer.print("")
+        printer.outdent()
         printer.outdent()
 
         switch self.returnType {
         case .nioEventLoopFuture(let futureValueType):
-            printer.print("return try await ref.ask(for: Result<\(futureValueType), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
+            printer.print("let response = try await ref.ask(for: Result<\(futureValueType), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
-        case .actorReply(let replyValueType), .askResponse(let replyValueType):
-            printer.print("return try await ref.ask(for: Result<\(replyValueType), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
+        case .actorReply(let replyValueType),
+             .askResponse(let replyValueType):
+            printer.print("let response = try await ref.ask(for: Result<\(replyValueType), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
         case .type(let t):
-            if self.throwing {
-                printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
+            if self.effectivelyThrowing {
+                printer.print("let response = try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
                 printer.indent()
             } else {
-                printer.print("return try await ref.ask(for: \(t).self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
+                printer.print("let response = try await ref.ask(for: \(t).self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
                 printer.indent()
             }
         case .result(let t, _):
-            printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
+            printer.print("let response = try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
         case .void:
-            printer.print("try await ref.ask(for: Result<_Done, ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
+            printer.print("let response = try await ref.ask(for: Result<_Done, ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
         case .behavior(let t):
-            printer.print("return try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
+            printer.print("let response = try await ref.ask(for: Result<\(t), ErrorEnvelope>.self, timeout: system.settings.cluster.callTimeout) { _replyTo in")
             printer.indent()
         }
 
+        printer.indent()
         self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
         printer.outdent()
         printer.print("}._unsafeAsyncValue")
+
+        printer.print("")
+        printer.print("switch response {")
+        switch self.returnType {
+        case .void: printer.print("case .success(let value): return")
+        default: printer.print("case .success(let value): return value")
+        }
+        printer.print("case .failure(let remoteError): throw remoteError")
+        printer.print("}")
     }
 
     func renderPassMessage(boxWith boxProtocol: DistributedActorDecl?, skipNewline: Bool, printer: inout CodePrinter) {
@@ -653,6 +664,14 @@ extension DistributedMessageDecl.ReturnType {
         }
     }
 
+    var isVoid: Bool {
+        if case .void = self {
+            return true
+        } else {
+            return false
+        }
+    }
+
     var isTypeReturn: Bool {
         if case .type = self {
             return true
@@ -679,10 +698,10 @@ extension DistributedMessageDecl.ReturnType {
 
     var rendersReturn: Bool {
         switch self {
-        case .void, .behavior:
-            return false
-        case .type, .result, .nioEventLoopFuture, .actorReply, .askResponse:
+        case .void, .type, .result, .nioEventLoopFuture, .actorReply, .askResponse:
             return true
+        case .behavior:
+            return false
         }
     }
 }
@@ -728,21 +747,20 @@ extension DistributedFuncDecl {
         }
 
         // render invocation
-        if self.message.returnType.isTypeReturn || self.message.returnType.isResultReturn {
+        if self.message.returnType.isVoid {
+            printer.print("let result = _Done.done")
+        } else {
             printer.print("let result = ", skipNewline: true)
         }
         printer.print(self.message.returnIfBecome, skipNewline: true)
         printer.dontIndentNext()
         printer.print("try await ", skipNewline: true)
         printer.print("instance.\(self.message.name)(\(CodePrinter.content(self.message.passParams)))")
-        if self.message.returnType.isTypeReturn {
-            if self.message.throwing {
-                // FIXME: ENABLE THIS, BECAUSE ALL FUNCS MAY THROW HERE
-//                printer.print("_replyTo.tell(.success(result))")
-                printer.print("_replyTo.tell(result)")
-            } else {
-                printer.print("_replyTo.tell(result)")
-            }
+
+        if self.message.effectivelyThrowing {
+            printer.print("_replyTo.tell(.success(result))")
+        } else {
+            printer.print("_replyTo.tell(result)")
         }
 
         switch self.message.returnType {
@@ -791,8 +809,7 @@ extension DistributedFuncDecl {
             printer.print("} catch {")
             printer.indent()
             printer.print("context.log.warning(\"Error thrown while handling [\\(message)], error: \\(error)\")")
-            // FIXME: ENABLE THIS, BECAUSE ALL FUNCS MAY THROW HERE
-            // printer.print("_replyTo.tell(.failure(ErrorEnvelope(error)))")
+            printer.print("_replyTo.tell(.failure(ErrorEnvelope(error)))")
             printer.outdent()
             printer.print("}")
         }

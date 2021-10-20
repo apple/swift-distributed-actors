@@ -18,7 +18,7 @@ import Logging
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Cluster (OpLog) Receptionist
 
-distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
+distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomStringConvertible {
     // TODO: remove this
     typealias ReceptionistRef = OpLogDistributedReceptionist
     typealias Key<Guest: DistributedActor & __DistributedClusterActor> = DistributedReception.Key<Guest>
@@ -63,6 +63,11 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 
+    static let slowACKReplicationTick: TimerKey = "slow-ack-replication-tick"
+    static let fastACKReplicationTick: TimerKey = "fast-ack-replication-tick"
+
+    static let localPublishLocalListingsTick: TimerKey = "publish-local-listings-tick"
+
     private lazy var timers = ActorTimers<OpLogDistributedReceptionist>(self)
 
     /// Important: This safeguards us from the following write amplification scenario:
@@ -85,6 +90,7 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
     static var props: Props {
         var ps = Props()
         ps._knownActorName = ActorPath.distributedActorReceptionist.name
+        ps._systemActor =  true
         ps._wellKnown = true
         return ps
     }
@@ -110,22 +116,34 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
 
         // === listen to cluster events ------------------
         self.eventsListeningTask = Task {
-            for try await event in system.cluster.events {
-                await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+            try await self.whenLocal { __secretlyKnownToBeLocal in // TODO(distributed): this is annoying, we must track "known to be local" in typesystem instead
+                for try await event in system.cluster.events {
                     __secretlyKnownToBeLocal.onClusterEvent(event: event)
                 }
             }
         }
-//
-//        // === timers ------------------
-//        // periodically gossip to other receptionists with the last seqNr we've seen,
-//        // and if it happens to be outdated by then this will cause a push from that node.
-//        timers.startPeriodic(
-//                key: Self.slowACKReplicationTick, message: Self.PeriodicAckTick(),
-//                interval: context.system.settings.cluster.receptionist.ackPullReplicationIntervalSlow
-//        )
-//
+
+        // TODO(distributed): move the start timers here, once the init is async
+
         log.debug("Initialized receptionist")
+    }
+
+    // FIXME(distributed): once the init is async move this back to init, we need the function to be isolated to the receptionist
+    //                     so the closure may perform the self.periodicAckTick() schedule
+    distributed func start() {
+        // === timers ------------------
+        // periodically gossip to other receptionists with the last seqNr we've seen,
+        // and if it happens to be outdated by then this will cause a push from that node.
+        timers.startPeriodic(
+            key: Self.slowACKReplicationTick,
+            interval: system.settings.cluster.receptionist.ackPullReplicationIntervalSlow
+        ) {
+            await self.periodicAckTick()
+        }
+    }
+
+    nonisolated var description: String {
+        "\(Self.self)(\(id.underlying))"
     }
 
 }
@@ -135,16 +153,11 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist {
 
 extension OpLogDistributedReceptionist: LifecycleWatchSupport {
 
-    /// Registers passed in distributed actor in the systems receptionist with given id.
-    ///
-    /// - Parameters:
-    ///   - guest: the actor to register with the receptionist.
-    ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group,
-    ///         the recommended id is "all/sensors".
     func register<Guest>(
-            _ guest: Guest,
-            with key: DistributedReception.Key<Guest>
+        _ guest: Guest,
+        with key: DistributedReception.Key<Guest>
     ) async where Guest: DistributedActor & __DistributedClusterActor {
+        pprint("distributed receptionist: register(\(guest), with: \(key)")
         log.warning("distributed receptionist: register(\(guest), with: \(key)")
         let key = key.asAnyKey
         guard let address = guest.id._unwrapActorAddress else {
@@ -173,8 +186,9 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
                 "Registered [\(address)] for key [\(key)]",
                 metadata: [
                     "receptionist/key": "\(key)",
-                    "receptionist/registered": "\(id.underlying)",
+                    "receptionist/guest": "\(address)",
                     "receptionist/opLog/maxSeqNr": "\(self.ops.maxSeqNr)",
+                    "receptionist/opLog": "\(self.ops.ops)",
                 ]
             )
 
@@ -182,35 +196,47 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
         }
 
         // Replication of is done in periodic tics, thus we do not perform a push here.
+
+        // reply "registered"
     }
 
-    /// Subscribe to changes in checked-in actors under given `key`.
-    ///
-    /// The `subscriber` actor will be notified with `Reception.Listing<M>` messages when new actors register,
-    /// leave or die, under the passed in key.
     func subscribe<Guest>(
-            _ myself: DistributedActor,
-            to key: DistributedReception.Key<Guest>
-    ) async -> Set<Guest>
+        to key: DistributedReception.Key<Guest>
+    ) async -> DistributedReception.GuestListing<Guest>
             where Guest: DistributedActor & __DistributedClusterActor {
-        fatalError(#function)
-////        let boxedMessage = message._boxed
-////        let anyKey = message._key
-////        if self.storage.addSubscription(key: anyKey, subscription: boxedMessage) {
-////            self.instrumentation.actorSubscribed(key: anyKey, address: message._addressableActorRef.address)
-////
-////            watchTermination(of: message._addressableActorRef) { onActorTerminated(identity: $0) }
-////            log.trace("Subscribed \(message._addressableActorRef.address) to \(anyKey)")
-////            boxedMessage.replyWith(self.storage.registrations(forKey: anyKey) ?? [])
-////        }
+        DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
     }
 
-    /// Perform a *single* lookup for a distributed actor identified by the passed in `key`.
-    ///
-    /// - Parameters:
-    ///   - key: selects which actors we are interested in.
+    func _subscribe<Guest>(
+        continuation: AsyncStream<Guest>.Continuation,
+        subscriptionID: ObjectIdentifier,
+        to key: DistributedReception.Key<Guest>
+    ) where Guest: DistributedActor & __DistributedClusterActor {
+        let anyKey = key.asAnyKey
+        let anySubscribe = AnyDistributedSubscribe(subscriptionID: subscriptionID, send: { listing in
+            for guest in listing { // FIXME: no loop here
+                continuation.yield(guest.force(as: Guest.self))
+            }
+        })
+
+        if self.storage.addSubscription(key: anyKey, subscription: anySubscribe) {
+            // self.instrumentation.actorSubscribed(key: anyKey, address: self.id._unwrapActorAddress) // FIXME: remove the address parameter, it does not make sense anymore
+            log.trace("Subscribed async sequence to \(anyKey) actors")
+        }
+    }
+
+    func _cancelSubscription<Guest>(
+        subscriptionID: ObjectIdentifier,
+        to key: DistributedReception.Key<Guest>
+    ) where Guest: DistributedActor & __DistributedClusterActor {
+
+        pinfo("Cancel sub: \(subscriptionID), to key \(key)")
+
+    }
+
+
     func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
-            where Guest: DistributedActor & __DistributedClusterActor {
+        where Guest: DistributedActor & __DistributedClusterActor {
         let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
 
         // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
@@ -227,6 +253,14 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
     }
 }
 
+distributed actor ReceptionListingSubscriber<Guest: DistributedActor> {
+    lazy var log: Logger = Logger(actor: self)
+
+    distributed func onCheckIn(guest: Guest) {
+        log.debug("RECEIVED: \(guest)")
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Delayed (Listing Notification) Flush
 
@@ -235,39 +269,44 @@ extension OpLogDistributedReceptionist {
         let timerKey = self.flushTimerKey(key)
 
         if self.storage.registrations(forKey: key)?.isEmpty ?? true {
+            log.debug("notify now, no need to schedule delayed flush")
             self.notifySubscribers(of: key)
             return // no need to schedule, there are no registered actors at all, we eagerly emit this info
         }
 
         guard !timers.exists(key: timerKey) else {
+            log.debug("timer exists")
             return // timer exists nothing to do
         }
 
         // TODO: also flush when a key has seen e.g. 100 changes?
         let flushDelay = system.settings.receptionist.listingFlushDelay
         // timers.startSingle(key: timerKey, message: _ReceptionistDelayedListingFlushTick(key: key), delay: flushDelay)
+        log.debug("schedule delayed flush")
         timers.startSingle(key: timerKey, delay: flushDelay) {
             self.onDelayedListingFlushTick(key: key)
         }
     }
 
     func onDelayedListingFlushTick(key: AnyDistributedReceptionKey) {
-        log.trace("Delayed listing flush: \(key)")
+        log.trace("Run delayed listing flush: \(key), subscribers of key: \(key)")
 
         self.notifySubscribers(of: key)
     }
 
     private func notifySubscribers(of key: AnyDistributedReceptionKey) {
-        let registrations = self.storage.registrations(forKey: key) ?? []
-
         guard let subscriptions = self.storage.subscriptions(forKey: key) else {
             // self.instrumentation.listingPublished(key: key, subscribers: 0, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
+            log.debug("No one is listening for key \(key)")
             return // ok, no-one to notify
         }
+
+        let registrations = self.storage.registrations(forKey: key) ?? []
 
         // self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         for subscription in subscriptions {
             Task {
+                log.debug("Notify \(subscription) about \(key)")
                 try await subscription.send(registrations)
             }
         }
@@ -409,6 +448,7 @@ extension OpLogDistributedReceptionist {
         receptionistIdentity: AnyActorIdentity,
         maybeReceptionistRef: ReceptionistRef? = nil
     ) {
+        log.info("Send ack OPS...")
         let receptionistAddress = receptionistIdentity._forceUnwrapActorAddress
         assert(maybeReceptionistRef == nil || maybeReceptionistRef?.id._forceUnwrapActorAddress == receptionistAddress,
                 "Provided receptionistRef does NOT match passed Address, this is a bug in receptionist.")
@@ -449,7 +489,11 @@ extension OpLogDistributedReceptionist {
 //        // tracelog(.push(to: peerReceptionistRef), message: ack)
 //        peerReceptionistRef.tell(ack)
         Task {
-            try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
+            do {
+                try await peerReceptionistRef.ackOps(until: latestAppliedSeqNrFromPeer, by: self)
+            } catch {
+                log.error("Error: \(error)")
+            }
         }
     }
 
@@ -484,6 +528,8 @@ extension OpLogDistributedReceptionist {
     /// Send `AckOps` to to peers (unless prevented to by silence period because we're already conversing/streaming with one)
     // TODO: This should pick a few at random rather than ping everyone
     func periodicAckTick() {
+        log.info("Periodic ack tick")
+
         for peer in self.peerReceptionistReplayers.keys {
             /// In order to avoid sending spurious acks which would cause the peer to start delivering from the acknowledged `until`,
             /// e.g. while it is still in the middle of sending us more ops, we avoid sending more acks earlier than a regular "tick"
@@ -520,24 +566,31 @@ extension OpLogDistributedReceptionist {
     }
 
     private func replicateOpsBatch(to peer: ReceptionistRef) {
+        log.trace("Replicate ops to: \(peer.id.underlying)")
         guard peer.id != self.id else {
+            log.trace("No need to replicate to myself: \(peer.id.underlying)")
             return // no reason to stream updates to myself
         }
 
         guard let replayer = self.peerReceptionistReplayers[peer] else {
-            log.trace("Attempting to continue replay for \(peer) but no replayer available for it, ignoring")
+            log.trace("Attempting to continue replay but no replayer available for it, ignoring", metadata: [
+                "receptionist/peer": "\(peer.id.underlying)"
+            ])
             return
         }
 
         let sequencedOps = replayer.nextOpsChunk()
         guard !sequencedOps.isEmpty else {
+            log.trace("No ops to replay", metadata: [
+                "receptionist/peer": "\(peer.id.underlying)"
+            ])
             return // nothing to stream, done
         }
 
         log.debug(
             "Streaming \(sequencedOps.count) ops: from [\(replayer.atSeqNr)]",
             metadata: [
-                "receptionist/peer": "\(peer.id)",
+                "receptionist/peer": "\(peer.id.underlying)",
                 "receptionist/ops/replay/atSeqNr": "\(replayer.atSeqNr)",
                 "receptionist/ops/maxSeqNr": "\(self.ops.maxSeqNr)",
             ]
@@ -558,7 +611,18 @@ extension OpLogDistributedReceptionist {
 //        default:
 //            fatalError("Remote receptionists MUST be of .remote personality, was: \(peer.id)")
 //        }
-        Task { try await peer.pushOps(pushOps) }
+        Task {
+            do {
+                log.error("Push operations: \(pushOps)", metadata: [
+                    "receptionist/peer": "\(peer.id)",
+                ])
+                try await peer.pushOps(pushOps)
+            } catch {
+                log.error("Failed to pushOps: \(pushOps)", metadata: [
+                    "receptionist/peer": "\(peer.id)",
+                ])
+            }
+        }
     }
 
     private func addOperation(_ op: ReceptionistOp) {
@@ -819,20 +883,6 @@ extension OpLogDistributedReceptionist {
 
         var description: String {
             "Receptionist.AckOps(until: \(self.until), otherObservedSeqNrs: \(self.otherObservedSeqNrs), peer: \(self.peer))"
-        }
-    }
-
-    final class PeriodicAckTick: Receptionist.Message, NonTransportableActorMessage, CustomStringConvertible {
-        override init() {
-            super.init()
-        }
-
-        public required init(from decoder: Decoder) throws {
-            throw SerializationError.nonTransportableMessage(type: "\(Self.self)")
-        }
-
-        var description: String {
-            "Receptionist.PeriodicAckTick()"
         }
     }
 

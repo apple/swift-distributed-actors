@@ -146,6 +146,7 @@ extension Serialization.Settings {
 
         if alsoRegisterActorRef {
             _ = self.register(ActorRef<Message>.self, alsoRegisterActorRef: false)
+            _ = self.register(ActorRef<Result<Message, ErrorEnvelope>>.self, alsoRegisterActorRef: false)
         }
 
         return manifest

@@ -30,7 +30,7 @@ extension DistributedReception {
     /// The id defaults to "*" which can be used "all actors of that type" (if and only if they registered using this key,
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
     // FIXME(distributed): __DistributedClusterActor must go away, we don't need to be aware of `Message`
-    public struct Key<Guest: DistributedActor & __DistributedClusterActor>: Codable,
+    public struct Key<Guest: DistributedActor & __DistributedClusterActor>: Codable, Sendable,
             ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
             CustomStringConvertible {
         public let id: String

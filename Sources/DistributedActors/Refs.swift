@@ -276,12 +276,12 @@ extension ActorRef {
                 case .success(.message(let message)):
                     switch self.personality {
                     case .adapter(let adapter):
-                        adapter.trySendUserMessage(message, file: #file, line: #line)
+                        adapter.trySendUserMessage(message, file: file, line: line)
                     default:
-                        self._tellOrDeadLetter(message)
+                        self._tellOrDeadLetter(message, file: file, line: line)
                     }
                 case .success(.deadLetter(let message)):
-                    self._dropAsDeadLetter(message)
+                    self._dropAsDeadLetter(message, file: file, line: line)
 
                 case .failure(let error):
                     let metadata: Logger.Metadata = [

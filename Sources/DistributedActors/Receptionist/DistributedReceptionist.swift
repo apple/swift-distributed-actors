@@ -41,14 +41,18 @@ public protocol DistributedReceptionist
             // TODO(distributed): should gain a "retain (or not)" version, the receptionist can keep alive actors, but sometimes we don't want that, it depends
     ) async where Guest: DistributedActor & __DistributedClusterActor
 
+//    /// Subscribe to changes in checked-in actors under given `key`.
+//    ///
+//    /// The `subscriber` actor will be notified with `Reception.Listing<M>` messages when new actors register,
+//    /// leave or die, under the passed in key.
+//    func subscribe<Guest>(
+//            _ myself: DistributedActor,
+//            to key: DistributedReception.Key<Guest>
+//    ) async -> Set<Guest>
+//            where Guest: DistributedActor & __DistributedClusterActor
+
     /// Subscribe to changes in checked-in actors under given `key`.
-    ///
-    /// The `subscriber` actor will be notified with `Reception.Listing<M>` messages when new actors register,
-    /// leave or die, under the passed in key.
-    func subscribe<Guest>(
-            _ myself: DistributedActor,
-            to key: DistributedReception.Key<Guest>
-    ) async -> Set<Guest>
+    func subscribe<Guest>(to key: DistributedReception.Key<Guest>) async -> DistributedReception.GuestListing<Guest>
             where Guest: DistributedActor & __DistributedClusterActor
 
     /// Perform a *single* lookup for a distributed actor identified by the passed in `key`.
@@ -58,6 +62,51 @@ public protocol DistributedReceptionist
     func lookup<Guest>(_ key: DistributedReception.Key<Guest>) async -> Set<Guest>
             where Guest: DistributedActor & __DistributedClusterActor
 
+}
+
+extension DistributedReception {
+    public struct GuestListing<Guest: DistributedActor & __DistributedClusterActor>: AsyncSequence, Sendable {
+//        public typealias Element = Set<Guest>
+        public typealias Element = Guest
+
+        let receptionist: OpLogDistributedReceptionist
+        let key: DistributedReception.Key<Guest>
+
+        init(receptionist: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>) {
+            self.receptionist = receptionist
+            self.key = key
+        }
+
+        public func makeAsyncIterator() -> AsyncIterator {
+            AsyncIterator(receptionist: receptionist, key: key)
+        }
+
+        public class AsyncIterator: AsyncIteratorProtocol {
+            var underlying: AsyncStream<Element>.Iterator!
+
+            init(receptionist __secretlyKnownToBeLocal: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>) {
+                let id = ObjectIdentifier(self)
+                // self.underlying = // receptionist.whenLocal { __secretlyKnownToBeLocal in // FIXME: can't do this since async?
+                self.underlying = AsyncStream<Element> { continuation in
+                    Task { // FIXME(distributed): get rid of this task
+                        pprint("SUB continuation to key: \(key)")
+                        await __secretlyKnownToBeLocal._subscribe(continuation: continuation, subscriptionID: id, to: key)
+                        pprint("SUB DONE continuation to key: \(key)")
+                    }
+                    continuation.onTermination = { @Sendable(_) -> Void in
+                        pprint("TERMINATED sub to key: \(key)")
+                        Task {
+                            await __secretlyKnownToBeLocal._cancelSubscription(subscriptionID: id, to: key)
+                        }
+                    }
+                }.makeAsyncIterator()
+            }
+
+            public func next() async -> Element? {
+                await underlying.next()
+            }
+        }
+    }
 }
 
 internal final class DistributedReceptionistStorage {
@@ -115,13 +164,19 @@ internal final class DistributedReceptionistStorage {
     // MARK: Subscriptions
 
     func addSubscription(key: AnyDistributedReceptionKey, subscription: AnyDistributedSubscribe) -> Bool {
-        self.addGuestKeyMapping(identity: subscription.subscriber.id, key: key)
+        pprint("Add key: \(key), sub: \(subscription)")
+        if let id = subscription.subscriber?.id {
+            self.addGuestKeyMapping(identity: id, key: key)
+        }
         return self.addTo(dict: &self._subscriptions, key: key, value: subscription)
     }
 
     @discardableResult
     func removeSubscription(key: AnyDistributedReceptionKey, subscription: AnyDistributedSubscribe) -> Set<AnyDistributedSubscribe>? {
-        _ = self.removeFromKeyMappings(identity: subscription.subscriber.id)
+        pprint("Remove key: \(key), sub: \(subscription)")
+        if let id = subscription.subscriber?.id {
+            _ = self.removeFromKeyMappings(identity: id)
+        }
         return self.removeFrom(dict: &self._subscriptions, key: key, value: subscription)
     }
 
@@ -150,7 +205,8 @@ internal final class DistributedReceptionistStorage {
             if self._registrations[key]?.remove(ref) != nil {
                 _ = registeredKeys.insert(key)
             }
-            self._subscriptions[key]?.remove(AnyDistributedSubscribe(forRemovalOf: ref))
+            pinfo("WOULD WANT TO REMOVE: self._subscriptions[key]?.remove(AnyDistributedSubscribe(forRemovalOf: ref))")
+            // self._subscriptions[key]?.remove(AnyDistributedSubscribe(forRemovalOf: ref)) // TODO: what about this?
         }
 
         return RefMappingRemovalResult(registeredUnderKeys: registeredKeys)
@@ -191,7 +247,7 @@ internal final class DistributedReceptionistStorage {
             // 2) and remove any of our subscriptions
             let subs: Set<AnyDistributedSubscribe> = self._subscriptions.removeValue(forKey: key) ?? []
             let prunedSubs = subs.filter { sub in
-                sub.subscriber.id._forceUnwrapActorAddress.uniqueNode != node
+                sub.subscriber?.id._forceUnwrapActorAddress.uniqueNode != node // FIXME: does this make sense anymore, if we don't require myself on subscribe?
             }
             if remainingRegistrations.count != registrations.count {
                 // only if the set of registered actors for this key was actually affected by this prune
@@ -246,37 +302,51 @@ internal final class DistributedReceptionistStorage {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Messages
 
+// FIXME: we have TWO subscribe kinds -- local and remote!
 internal struct AnyDistributedSubscribe: Hashable, Sendable {
-    let subscriber: AnyDistributedActor
+    let subscriptionID: ObjectIdentifier
+    let subscriber: AnyDistributedActor? // FIXME(distributed) remove this, this is now a stream and not messaging an actor
     let send: @Sendable (Set<AnyDistributedActor>) async throws -> Void
 
-    init<Guest>(subscriber: Guest,
-                send: @escaping @Sendable (Set<AnyDistributedActor>) async throws -> Void)
-            where Guest: DistributedActor & __DistributedClusterActor {
-//        self.address = subscribe.subscriber.address
+    @available(*, deprecated, message: "Remove this, we use IDs now!")
+    init<Subscriber>(subscriber: Subscriber,
+                     subscriptionID: ObjectIdentifier,
+                     send: @escaping @Sendable (Set<AnyDistributedActor>) async throws -> Void)
+            where Subscriber: DistributedActor {
+        self.subscriptionID = subscriptionID
         self.subscriber = subscriber.asAnyDistributedActor
         self.send = send
     }
 
-    // This init we only use when we want to remove the value from sets etc.
-    init(forRemovalOf subscriber: AnyDistributedActor) {
-        self.subscriber = subscriber
-        self.send = { _ in () }
+    init(subscriptionID: ObjectIdentifier,
+         send: @escaping @Sendable (Set<AnyDistributedActor>) async throws -> Void) {
+        self.subscriptionID = subscriptionID
+        self.subscriber = nil
+        self.send = send
     }
 
-//    init(identity: AnyActorIdentity) {
-//        self.subscriber =
-//    }
-
-//    func replyWith(_ refs: Set<AnyDistributedActor>) {
-//        self._replyWith(refs)
+    // This init we only use when we want to remove the value from sets etc.
+//    @available(*, deprecated, message: "Remove this, we use IDs now!")
+//    init(forRemovalOf subscriber: AnyDistributedActor) {
+//        self.subscriber = subscriber
+//        self.send = { _ in () }
 //    }
 
     static func == (lhs: AnyDistributedSubscribe, rhs: AnyDistributedSubscribe) -> Bool {
-        lhs.subscriber == rhs.subscriber
+        if lhs.subscriptionID == rhs.subscriptionID {
+            return true
+        }
+
+        if lhs.subscriber != nil && rhs.subscriber != nil &&
+               lhs.subscriber == rhs.subscriber {
+            return true
+        }
+
+        return false
     }
 
     func hash(into hasher: inout Hasher) {
+        hasher.combine(self.subscriptionID)
         hasher.combine(self.subscriber)
     }
 }

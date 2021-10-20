@@ -152,6 +152,8 @@ extension Serialization {
             return type
         }
 
+        self.debugPrintSerializerTable(header: "WANTED: \(manifest)")
+
         throw SerializationError.unableToSummonTypeFromManifest(manifest)
     }
 }

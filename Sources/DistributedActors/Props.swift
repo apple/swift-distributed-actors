@@ -41,6 +41,10 @@ public struct Props: @unchecked Sendable {
     /// only if a single incarnation of actor will ever exist under the given path.
     internal var _wellKnown: Bool = false
 
+    /// INTERNAL API: Internal system actor, spawned under the /system namespace.
+    /// This is likely to go away as we remove the actor tree, and move completely to 'distributed actor'.
+    internal var _systemActor: Bool = false
+
     /// INTERNAL API: Allows to request the actor system to spawn this actor under a specific name
     /// Used only with 'distributed actor' as a way to pass path to the `assignIdentity` call.
     /// // TODO(distributed): We should instead allow for an explicit way to pass params to the transport.

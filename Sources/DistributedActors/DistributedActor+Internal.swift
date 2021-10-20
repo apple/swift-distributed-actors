@@ -71,6 +71,10 @@ struct AnyDistributedActor: Sendable, Hashable {
     var actorTransport: ActorTransport {
         underlying.actorTransport
     }
+    @usableFromInline
+    func `force`<T: DistributedActor>(as _: T.Type) -> T {
+        underlying as! T
+    }
 
     @usableFromInline
     func hash(into hasher: inout Hasher) {
