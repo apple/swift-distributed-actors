@@ -67,12 +67,10 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     // initialized during startup
     private let lazyInitializationLock: ReadWriteLock
 
-    // TODO: Use "set once" atomic structure
-    internal var _serialization: Serialization?
-
+    internal var _serialization: ManagedAtomicLazyReference<Serialization>
     public var serialization: Serialization {
         self.lazyInitializationLock.withReaderLock {
-            if let s = self._serialization {
+            if let s = self._serialization.load() {
                 return s
             } else {
                 return fatalErrorBacktrace("Serialization is not initialized! This is likely a bug, as it is initialized synchronously during system startup.")
@@ -214,13 +212,13 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         self.log = settings.logging.baseLogger
 
         self._receptionistStore = ManagedAtomicLazyReference()
+        self._serialization = ManagedAtomicLazyReference()
 
         // vvv~~~~~~~~~~~~~~~~~~~ all properties initialized, self can be shared ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~vvv //
 
         // serialization
-        initializationLock.withWriterLockVoid {
-            self._serialization = Serialization(settings: settings, system: self)
-        }
+        let serialization = Serialization(settings: settings, system: self)
+        _ = self._serialization.storeIfNilThenLoad(serialization)
 
         // dead letters init
         self._deadLetters = ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
@@ -430,7 +428,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
             /// Only once we've shutdown all dispatchers and loops, we clear cycles between the serialization and system,
             /// as they should never be invoked anymore.
             self.lazyInitializationLock.withWriterLockVoid {
-                self._serialization = nil
+                // self._serialization = nil // FIXME: need to release serialization
                 self._cluster = nil
             }
 
@@ -591,15 +589,12 @@ extension ActorSystem: ActorRefFactory {
     }
 
     // Reserve an actor address.
-    internal func _reserveName<Act>(
-            using provider: _ActorRefProvider,
-            type: Act.Type,
-            props: Props
-    ) throws -> ActorAddress where Act: DistributedActor {
+    internal func _reserveName<Act>(type: Act.Type, props: Props) throws -> ActorAddress where Act: DistributedActor {
         let incarnation: ActorIncarnation = props._wellKnown ? .wellKnown : .random()
+        guard let provider = (props._systemActor ? self.systemProvider : self.userProvider) else {
+            fatalError("Unable to obtain system/user actor provider") // TODO(distributed): just throw here instead
+        }
 
-        // TODO: lock inside provider, not here
-        // FIXME: protect the naming context access and name reservation; add a test
         return try self.withNamingContext { namingContext in
             let name: String
             if let knownName = props._knownActorName {
@@ -826,8 +821,8 @@ extension ActorSystem {
     public func assignIdentity<Act>(_ actorType: Act.Type) -> AnyActorIdentity
             where Act: DistributedActor {
 
-        let props = Props.forSpawn // TODO(distributed): this is pretty ufly, rather we'd want to be passed a param through here
-        let address = try! self._reserveName(using: self.userProvider, type: Act.self, props: props)
+        let props = Props.forSpawn // TODO(distributed): rather we'd want to be passed a param through here
+        let address = try! self._reserveName(type: Act.self, props: props)
 
         log.trace("Assign identity", metadata: [
             "actor/type": "\(actorType)",

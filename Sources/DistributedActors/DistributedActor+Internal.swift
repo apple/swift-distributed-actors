@@ -71,9 +71,19 @@ struct AnyDistributedActor: Sendable, Hashable {
     var actorTransport: ActorTransport {
         underlying.actorTransport
     }
+
     @usableFromInline
     func `force`<T: DistributedActor>(as _: T.Type) -> T {
-        underlying as! T
+//        if let cast = underlying as? T {
+//            return cast
+//        }
+
+        // FIXME: terrible hack, instead just store the id then?
+        if let resolved = try? T.resolve(underlying.id, using: underlying.actorTransport) {
+            return resolved
+        }
+
+        return fatalErrorBacktrace("Failed to cast [\(underlying)]\(reflecting: type(of: underlying)) or resolve \(underlying.id) as \(reflecting: T.self)")
     }
 
     @usableFromInline

@@ -85,18 +85,30 @@ extension DistributedReception {
             var underlying: AsyncStream<Element>.Iterator!
 
             init(receptionist __secretlyKnownToBeLocal: OpLogDistributedReceptionist, key: DistributedReception.Key<Guest>) {
-                let id = ObjectIdentifier(self)
-                // self.underlying = // receptionist.whenLocal { __secretlyKnownToBeLocal in // FIXME: can't do this since async?
+                let subscriptionID = ObjectIdentifier(self)
                 self.underlying = AsyncStream<Element> { continuation in
+                    let anySubscribe = AnyDistributedSubscribe(subscriptionID: subscriptionID, offer: { listing in
+                        for guest in listing { // FIXME: no loop here!!!!
+                            pnote("YIELD NEW: resolved \(guest.id.underlying) as \(guest.force(as: Guest.self))")
+                            switch continuation.yield(guest.force(as: Guest.self)) {
+                            case .dropped:
+                                pnote("YIELD NEW - DROPPED: resolved \(guest.id.underlying) as \(guest.force(as: Guest.self))")
+                            case .terminated:
+                                pnote("YIELD NEW - TERMINATED: resolved \(guest.id.underlying) as \(guest.force(as: Guest.self))")
+                            case .enqueued:
+                                pnote("YIELD NEW - ENQUEUED: resolved \(guest.id.underlying) as \(guest.force(as: Guest.self))")
+                            }
+                        }
+                    })
+
                     Task { // FIXME(distributed): get rid of this task
-                        pprint("SUB continuation to key: \(key)")
-                        await __secretlyKnownToBeLocal._subscribe(continuation: continuation, subscriptionID: id, to: key)
-                        pprint("SUB DONE continuation to key: \(key)")
+                        await __secretlyKnownToBeLocal._subscribe(sub: anySubscribe, to: key)
                     }
-                    continuation.onTermination = { @Sendable(_) -> Void in
-                        pprint("TERMINATED sub to key: \(key)")
+
+                    continuation.onTermination = { @Sendable termination -> Void in
+                        pnote("TERMINATED (\(termination)) sub to key: \(key)")
                         Task {
-                            await __secretlyKnownToBeLocal._cancelSubscription(subscriptionID: id, to: key)
+                            await __secretlyKnownToBeLocal._cancelSubscription(subscriptionID: subscriptionID, to: key)
                         }
                     }
                 }.makeAsyncIterator()
@@ -302,27 +314,26 @@ internal final class DistributedReceptionistStorage {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Messages
 
-// FIXME: we have TWO subscribe kinds -- local and remote!
 internal struct AnyDistributedSubscribe: Hashable, Sendable {
     let subscriptionID: ObjectIdentifier
     let subscriber: AnyDistributedActor? // FIXME(distributed) remove this, this is now a stream and not messaging an actor
-    let send: @Sendable (Set<AnyDistributedActor>) async throws -> Void
+    let offer: @Sendable (Set<AnyDistributedActor>) -> Void
 
-    @available(*, deprecated, message: "Remove this, we use IDs now!")
-    init<Subscriber>(subscriber: Subscriber,
-                     subscriptionID: ObjectIdentifier,
-                     send: @escaping @Sendable (Set<AnyDistributedActor>) async throws -> Void)
-            where Subscriber: DistributedActor {
-        self.subscriptionID = subscriptionID
-        self.subscriber = subscriber.asAnyDistributedActor
-        self.send = send
-    }
+//    @available(*, deprecated, message: "Remove this, we use IDs now!")
+//    init<Subscriber>(subscriber: Subscriber,
+//                     subscriptionID: ObjectIdentifier,
+//                     offer: @escaping @Sendable (Set<AnyDistributedActor>) -> Void)
+//            where Subscriber: DistributedActor {
+//        self.subscriptionID = subscriptionID
+//        self.subscriber = subscriber.asAnyDistributedActor
+//        self.offer = offer
+//    }
 
     init(subscriptionID: ObjectIdentifier,
-         send: @escaping @Sendable (Set<AnyDistributedActor>) async throws -> Void) {
+         offer: @escaping @Sendable (Set<AnyDistributedActor>) -> Void) {
         self.subscriptionID = subscriptionID
         self.subscriber = nil
-        self.send = send
+        self.offer = offer
     }
 
     // This init we only use when we want to remove the value from sets etc.

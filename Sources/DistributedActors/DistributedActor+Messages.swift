@@ -48,20 +48,22 @@ extension AnyActorIdentity: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoActorIdentity
 
     public func toProto(context: Serialization.Context) throws -> ProtoActorIdentity {
-        var proto = ProtoActorIdentity()
+        let address = self._forceUnwrapActorAddress
+        let serialized = try context.serialization.serialize(address)
 
-        let serialized = try context.serialization.serialize(self)
+        var proto = ProtoActorIdentity()
         proto.manifest = try serialized.manifest.toProto(context: context)
-        proto.payload = try serialized.buffer.readData()
+        proto.payload = serialized.buffer.readData()
 
         return proto
     }
 
     public init(fromProto proto: ProtoActorIdentity, context: Serialization.Context) throws {
-        let manifest = try Serialization.Manifest(fromProto: proto.manifest)
+        let manifest = Serialization.Manifest(fromProto: proto.manifest)
         let ManifestedType = try context.summonType(from: manifest)
 
-        precondition(ManifestedType == AnyActorIdentity.self)
-        self = try context.serialization.deserialize(as: AnyActorIdentity.self, from: .data(proto.payload), using: manifest)
+        precondition(ManifestedType == ActorAddress.self)
+        let address = try context.serialization.deserialize(as: ActorAddress.self, from: .data(proto.payload), using: manifest)
+        self = address.asAnyActorIdentity
     }
 }

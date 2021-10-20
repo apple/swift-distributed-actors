@@ -51,7 +51,7 @@ final class DistributedReceptionistTests: ActorSystemXCTestCase {
         let opLogReceptionist = system.receptionist as! OpLogDistributedReceptionist
         let receptionistAddress = opLogReceptionist.id._forceUnwrapActorAddress
 
-        receptionistAddress.detailedDescription.shouldEqual("/user/receptionist")
+        receptionistAddress.detailedDescription.shouldEqual("/system/receptionist")
         receptionistAddress.incarnation.shouldEqual(.wellKnown)
     }
 

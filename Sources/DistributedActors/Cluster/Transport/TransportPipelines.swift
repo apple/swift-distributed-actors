@@ -317,6 +317,13 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
     private func serializeThenWrite(_ context: ChannelHandlerContext, envelope transportEnvelope: TransportEnvelope, promise: EventLoopPromise<Void>?) {
         let serializationPromise: EventLoopPromise<Serialization.Serialized> = context.eventLoop.makePromise()
 
+//        pinfo("""
+//              SERIALIZE:::
+//                  message: \(transportEnvelope.underlyingMessage)
+//                  type: \(reflecting: type(of: transportEnvelope.underlyingMessage))
+//                  recipient: \(transportEnvelope.recipient.path)
+//              """)
+
         self.serializationPool.serialize(
             message: transportEnvelope.underlyingMessage,
             recipientPath: transportEnvelope.recipient.path,

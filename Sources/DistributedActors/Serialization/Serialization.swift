@@ -101,6 +101,7 @@ public class Serialization {
         }
 
         settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
+        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
         settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
             StringSerializer(allocator)
         }
@@ -134,6 +135,7 @@ public class Serialization {
 
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
         settings.register(OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(DistributedActors.OpLogDistributedReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.registerInbound(
             OperationLogClusterReceptionist.PushOps.self,
             hint: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
@@ -152,7 +154,8 @@ public class Serialization {
 
         // TODO: Allow plugins to register types...?
 
-        settings.register(ActorAddress.self, serializerID: .protobufRepresentable)
+        settings.register(ActorAddress.self, serializerID: .foundationJSON) // TODO: this was protobuf
+        settings.register(AnyActorIdentity.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
         settings.register(VersionDot.self, serializerID: .protobufRepresentable)
         settings.register(VersionVector.self, serializerID: .protobufRepresentable)

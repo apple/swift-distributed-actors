@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 import XCTest
 
 import _Distributed
@@ -20,12 +20,35 @@ import _Distributed
 extension XCTestCase {
     // FIXME(distributed): remove once XCTest supports async functions on Linux
     func runAsyncAndBlock(
-            @_inheritActorContext @_implicitSelfCapture operation: __owned @Sendable @escaping () async throws -> Void,
-            _ timeout: TimeAmount = .seconds(10)) rethrows {
+        timeout: TimeAmount = .seconds(10),
+        @_inheritActorContext @_implicitSelfCapture operation: __owned @Sendable @escaping () async throws -> Void
+    ) throws {
+        let finished = expectation(description: "finished")
+        let receptacle = BlockingReceptacle<Error?>()
+
+        Task {
+            do {
+                try await operation()
+                receptacle.offerOnce(nil)
+                finished.fulfill()
+            } catch {
+                receptacle.offerOnce(error)
+                finished.fulfill()
+            }
+        }
+        wait(for: [finished], timeout: TimeInterval(timeout.seconds))
+        if let error = receptacle.wait() {
+            throw error
+        }
+    }
+
+    func runAsyncAndBlock(
+        timeout: TimeAmount = .seconds(10),
+        @_inheritActorContext @_implicitSelfCapture operation: __owned @Sendable @escaping () async -> Void
+    ) throws {
         let finished = expectation(description: "finished")
         Task {
-            try await operation()
-            finished.fulfill()
+            await operation()
         }
         wait(for: [finished], timeout: TimeInterval(timeout.seconds))
     }

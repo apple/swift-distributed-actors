@@ -325,8 +325,8 @@ extension ReplicaID: CustomStringConvertible {
         switch self.storage {
         case .actorAddress(let address):
             return "actor:\(address)"
-        case .actorIdentity(let address):
-            return "actor:\(address)"
+        case .actorIdentity(let identity):
+            return "actor:\(identity)"
         case .uniqueNode(let node):
             return "uniqueNode:\(node)"
         case .uniqueNodeID(let nid):
@@ -395,7 +395,8 @@ extension ReplicaID: Codable {
         case .actorAddress:
             self = try .actorAddress(container.decode(ActorAddress.self, forKey: .value))
         case .actorIdentity:
-            self = try .actorIdentity(container.decode(AnyActorIdentity.self, forKey: .value))
+            let address = try container.decode(ActorAddress.self, forKey: .value)
+            self = .actorIdentity(address.asAnyActorIdentity)
         case .uniqueNode:
             self = try .uniqueNode(container.decode(UniqueNode.self, forKey: .value))
         case .uniqueNodeID:
@@ -411,7 +412,7 @@ extension ReplicaID: Codable {
             try container.encode(address, forKey: .value)
         case .actorIdentity(let id):
             try container.encode(DiscriminatorKeys.actorIdentity, forKey: ._case)
-            try container.encode(id, forKey: .value)
+            try container.encode(id._forceUnwrapActorAddress, forKey: .value)
         case .uniqueNode(let node):
             try container.encode(DiscriminatorKeys.uniqueNode, forKey: ._case)
             try container.encode(node, forKey: .value)

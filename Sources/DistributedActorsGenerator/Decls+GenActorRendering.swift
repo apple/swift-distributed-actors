@@ -608,8 +608,10 @@ extension DistributedMessageDecl {
         printer.print("")
         printer.print("switch response {")
         switch self.returnType {
-        case .void: printer.print("case .success(let value): return")
-        default: printer.print("case .success(let value): return value")
+        case .void:
+            printer.print("case .success: return")
+        default:
+            printer.print("case .success(let value): return value")
         }
         printer.print("case .failure(let remoteError): throw remoteError")
         printer.print("}")

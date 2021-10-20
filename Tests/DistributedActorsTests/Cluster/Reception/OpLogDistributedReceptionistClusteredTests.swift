@@ -27,7 +27,7 @@ distributed actor UnregisterOnMessage {
     }
 }
 
-distributed actor StringForwarder {
+distributed actor StringForwarder: CustomStringConvertible {
     let probe: ActorTestProbe<String>
 
     init(probe: ActorTestProbe<String>, transport: ActorTransport) {
@@ -35,9 +35,14 @@ distributed actor StringForwarder {
         self.probe = probe
     }
 
-    distributed func forward(message: String) -> String {
+    distributed func forward(message: String) {
+//    distributed func forward(message: String) -> String {
         probe.tell("forwarded:\(message)")
-        return "echo:\(message)"
+//        return "echo:\(message)"
+    }
+
+    nonisolated var description: String {
+        "\(Self.self)(\(id.underlying))"
     }
 }
 
@@ -74,6 +79,8 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
     override func configureActorSystem(settings: inout ActorSystemSettings) {
         settings.cluster.receptionist.implementation = .opLogSync
         settings.cluster.receptionist.ackPullReplicationIntervalSlow = .milliseconds(300)
+
+        settings.serialization.register(StringForwarder.Message.self)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -94,25 +101,36 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
             let subscriberProbe = testKit.spawnTestProbe("subscriber", expecting: StringForwarder.self)
             let subscriptionTask = Task.detached {
                 pprint("START SUBscription")
-                for try await forwarder in await remote.receptionist.subscribe(to: .stringForwarders) { // FIXME: make it one each
-                    subscriberProbe.tell(forwarder)
+                try await Task.withCancellationHandler(handler: { pnote("CANCELLED") }) {
+                    for try await forwarder in await remote.receptionist.subscribe(to: .stringForwarders) {
+                        subscriberProbe.tell(forwarder)
+                        pprint("SENT: \(forwarder) >> \(subscriberProbe)")
+                    }
+                    pprint("ENDED SUBscription")
                 }
-                pprint("ENDED SUBscription")
             }
-            defer { subscriptionTask.cancel() }
+            defer {
+                subscriptionTask.cancel()
+            }
 
             // register on `local`
+            pprint(" >>> REGISTER")
             await local.receptionist.register(forwarder, with: .stringForwarders)
+            pprint(" >>> REGISTER OK")
 
-            let registeredRef = try subscriberProbe.expectMessage()
+                pprint(" >>> EXPECT REGISTERED REF")
+                let registeredRef = try subscriberProbe.expectMessage()
+                pprint(" >>> EXPECT REGISTERED REF - OK")
 
-            // we expect only one actor
-            try subscriberProbe.expectNoMessage(for: .milliseconds(200))
+                // we expect only one actor
+                pprint(" >>> EXPECT NO")
+                try subscriberProbe.expectNoMessage(for: .milliseconds(200))
 
-            // check if we can interact with it
-            let echo = try await registeredRef.forward(message: "test")
-            echo.shouldEqual("echo:test")
-            try probe.expectMessage("forwarded:test")
+                // check if we can interact with it
+                let echo = try await registeredRef.forward(message: "test")
+//                echo.shouldEqual("echo:test")
+                try probe.expectMessage("forwarded:test")
+
         }
     }
 

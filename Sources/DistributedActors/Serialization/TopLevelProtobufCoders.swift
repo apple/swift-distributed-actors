@@ -71,12 +71,11 @@ final class TopLevelProtobufBlobEncoder: _TopLevelBlobEncoder {
     }
 
     func container<Key>(keyedBy type: Key.Type) -> KeyedEncodingContainer<Key> where Key: CodingKey {
-        fatalError("Cannot use KeyedEncodingContainer with \(Self.self)")
+        fatalErrorBacktrace("Cannot use KeyedEncodingContainer with \(Self.self), key type: \(reflecting: Key.self)")
     }
 
     func unkeyedContainer() -> UnkeyedEncodingContainer {
         fatalErrorBacktrace("Attempted \(#function) in \(self)")
-        // TopLevelProtobufBlobUnkeyedEncodingContainer(superEncoder: self)
     }
 
     func singleValueContainer() -> SingleValueEncodingContainer {
