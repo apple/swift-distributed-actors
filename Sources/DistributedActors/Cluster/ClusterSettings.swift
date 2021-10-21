@@ -39,8 +39,10 @@ public struct ClusterSettings {
     /// If `true` the ActorSystem start the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
-    public mutating func enable() {
+    public mutating func enable(host: String, port: Int) {
         self.enabled = true
+        self.bindHost = host
+        self.bindPort = port
     }
     public mutating func disable() {
         self.enabled = false

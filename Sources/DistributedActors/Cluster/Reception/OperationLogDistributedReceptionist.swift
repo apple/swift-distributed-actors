@@ -285,7 +285,6 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
         _ guest: Guest,
         with key: DistributedReception.Key<Guest>
     ) async where Guest: DistributedActor & __DistributedClusterActor {
-        pprint("distributed receptionist: register(\(guest), with: \(key)")
         log.warning("distributed receptionist: register(\(guest), with: \(key)")
         let key = key.asAnyKey
         guard let address = guest.id._unwrapActorAddress else {
@@ -308,7 +307,7 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
 
             watchTermination(of: guest) { onActorTerminated(identity: $0) }
 
-            self.addOperation(.register(key: key, identity: guest.id))
+            let sequenced = self.addOperation(.register(key: key, identity: guest.id))
 
             log.debug(
                 "Registered [\(address)] for key [\(key)]",
@@ -321,11 +320,16 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
             )
 
             self.ensureDelayedListingFlush(of: key)
+        } else {
+            log.warning("Unable to register \(guest) with receptionist, unknown identity type?", metadata: [
+                "guest/id": "\(guest.id)",
+                "reception/key": "\(key)",
+            ])
         }
 
         // Replication of is done in periodic tics, thus we do not perform a push here.
 
-        // reply "registered"
+        // TODO: reply "registered"?
     }
 
     func subscribe<Guest>(
@@ -335,42 +339,24 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
         DistributedReception.GuestListing<Guest>(receptionist: self, key: key)
     }
 
-    func _subscribe<Guest>(
-        continuation: AsyncStream<Guest>.Continuation,
-        subscriptionID: ObjectIdentifier,
-        to key: DistributedReception.Key<Guest>
-    ) where Guest: DistributedActor & __DistributedClusterActor {
-        let anyKey = key.asAnyKey
-        let anySubscribe = AnyDistributedSubscribe(subscriptionID: subscriptionID, offer: { listing in
-            for guest in listing { // FIXME: no loop here
-                pnote("YIELD: resolved \(guest.id.underlying) as \(guest.force(as: Guest.self))")
-                continuation.yield(guest.force(as: Guest.self))
-            }
-        })
-
-        if self.storage.addSubscription(key: anyKey, subscription: anySubscribe) {
+    func _subscribe(
+        subscription: AnyDistributedReceptionListingSubscription
+    ) {
+        if self.storage.addSubscription(key: subscription.key, subscription: subscription) {
             // self.instrumentation.actorSubscribed(key: anyKey, address: self.id._unwrapActorAddress) // FIXME: remove the address parameter, it does not make sense anymore
-            log.trace("Subscribed async sequence to \(anyKey) actors")
+            log.trace("Subscribed async sequence to \(subscription.key) actors", metadata: [
+                "subscription/key": "\(subscription.key)"
+            ])
         }
     }
 
-    func _subscribe<Guest>(
-        sub anySubscribe: AnyDistributedSubscribe,
-        to key: DistributedReception.Key<Guest>
-    ) where Guest: DistributedActor & __DistributedClusterActor {
-        let anyKey = key.asAnyKey
-
-        if self.storage.addSubscription(key: anyKey, subscription: anySubscribe) {
-            // self.instrumentation.actorSubscribed(key: anyKey, address: self.id._unwrapActorAddress) // FIXME: remove the address parameter, it does not make sense anymore
-            log.trace("Subscribed async sequence to \(anyKey) actors")
-        }
-    }
-
-    func _cancelSubscription<Guest>(
-        subscriptionID: ObjectIdentifier,
-        to key: DistributedReception.Key<Guest>
-    ) where Guest: DistributedActor & __DistributedClusterActor {
-        pinfo("Cancel sub: \(subscriptionID), to key \(key)")
+    func _cancelSubscription(
+        subscription: AnyDistributedReceptionListingSubscription
+    ) {
+        log.trace("Cancel subscription [\(subscription.subscriptionID)]", metadata: [
+            "subscription/key": "\(subscription.key)",
+        ])
+        self.storage.removeSubscription(key: subscription.key, subscription: subscription)
     }
 
 
@@ -436,7 +422,7 @@ extension OpLogDistributedReceptionist {
 
         // self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         for subscription in subscriptions {
-            subscription.offer(registrations)
+            subscription.onNext(registrations)
         }
     }
 
@@ -541,7 +527,8 @@ extension OpLogDistributedReceptionist {
         switch op {
         case .register(let key, let identity):
             let address = identity._forceUnwrapActorAddress
-//            let resolved = system._resolveUntyped(context: .init(address: address, system: system))
+
+            // We resolve a stub that we cannot really ever send messages to, but we can "watch" it
             let resolved = try! system._resolveStub(identity: identity) // TODO(distributed): remove the throwing here?
 
             watchTermination(of: resolved) {
@@ -634,7 +621,8 @@ extension OpLogDistributedReceptionist {
         self.publishListings(forKey: key, to: subscribers)
     }
 
-    private func publishListings(forKey key: AnyDistributedReceptionKey, to subscribers: Set<AnyDistributedSubscribe>) {
+    private func publishListings(forKey key: AnyDistributedReceptionKey,
+                                 to subscriptions: Set<AnyDistributedReceptionListingSubscription>) {
         let registrations = self.storage.registrations(forKey: key) ?? []
 
         log.trace(
@@ -642,12 +630,13 @@ extension OpLogDistributedReceptionist {
             metadata: [
                 "receptionist/key": "\(key.id)",
                 "receptionist/registrations": "\(registrations.count)",
-                "receptionist/subscribers": "\(subscribers)",
+                "receptionist/subscribers": "\(subscriptions.count)",
             ]
         )
 
-        for subscriber in subscribers {
-            subscriber.offer(registrations)
+        // TODO: only emit if this sub has NOT SEEN this registration yet
+        for sub in subscriptions {
+            sub.onNext(registrations)
         }
     }
 
@@ -734,17 +723,9 @@ extension OpLogDistributedReceptionist {
         )
         // tracelog(.push(to: peer), message: pushOps)
 
-//        // FIXME(distributed): remove this, we can't do this anymore  think
-//        /// hack in order to override the Message.self being used to find the serializer
-//        switch peer.personality {
-//        case .remote(let remote):
-//            remote.sendUserMessage(pushOps)
-//        default:
-//            fatalError("Remote receptionists MUST be of .remote personality, was: \(peer.id)")
-//        }
         Task {
             do {
-                log.error("Push operations: \(pushOps)", metadata: [
+                log.debug("Push operations: \(pushOps)", metadata: [
                     "receptionist/peer": "\(peer.id)",
                 ])
                 try await peer.pushOps(pushOps)
@@ -756,8 +737,8 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    private func addOperation(_ op: ReceptionistOp) {
-        self.ops.add(op)
+    private func addOperation(_ op: ReceptionistOp) -> OpLog.SequencedOp {
+        let sequenced = self.ops.add(op)
         switch op {
         case .register:
             system.metrics._receptionist_registrations.increment()
@@ -770,6 +751,7 @@ extension OpLogDistributedReceptionist {
         self.appliedSequenceNrs.merge(other: latestSelfSeqNr)
 
         system.metrics._receptionist_oplog_size.record(self.ops.count)
+        return sequenced
     }
 }
 

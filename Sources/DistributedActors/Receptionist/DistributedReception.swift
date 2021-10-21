@@ -46,19 +46,6 @@ extension DistributedReception {
             self.id = value
         }
 
-//        internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Guest.Message> {
-//            if addressable.isRemote() {
-//                let remotePersonality: RemoteClusterActorPersonality<Guest.Message> = addressable.ref._unsafeGetRemotePersonality(Guest.Message.self)
-//                return ActorRef(.remote(remotePersonality))
-//            } else {
-//                guard let ref = addressable.ref as? ActorRef<Guest.Message> else {
-//                    fatalError("Type mismatch, expected: [\(String(reflecting: Guest.self))] got [\(addressable)]")
-//                }
-//
-//                return ref
-//            }
-//        }
-
         internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
             let ref: ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable
@@ -74,10 +61,7 @@ extension DistributedReception {
     }
 }
 
-struct AnyDistributedReceptionKey:
-//        ReceptionKeyProtocol,
-        Sendable, Codable,
-        Hashable, CustomStringConvertible {
+struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConvertible {
     enum CodingKeys: CodingKey {
         case id
         case guestTypeManifest

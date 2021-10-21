@@ -99,7 +99,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
 
             // subscribe on `remote`
             let subscriberProbe = testKit.spawnTestProbe("subscriber", expecting: StringForwarder.self)
-            let subscriptionTask = Task.detached {
+            let subscriptionTask = Task {
                 pprint("START SUBscription")
                 try await Task.withCancellationHandler(handler: { pnote("CANCELLED") }) {
                     for try await forwarder in await remote.receptionist.subscribe(to: .stringForwarders) {
@@ -118,6 +118,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
             await local.receptionist.register(forwarder, with: .stringForwarders)
             pprint(" >>> REGISTER OK")
 
+            try await Task.detached {
                 pprint(" >>> EXPECT REGISTERED REF")
                 let registeredRef = try subscriberProbe.expectMessage()
                 pprint(" >>> EXPECT REGISTERED REF - OK")
@@ -130,7 +131,7 @@ final class OpLogDistributedReceptionistClusteredTests: ClusteredActorSystemsXCT
                 let echo = try await registeredRef.forward(message: "test")
 //                echo.shouldEqual("echo:test")
                 try probe.expectMessage("forwarded:test")
-
+            }.value
         }
     }
 
