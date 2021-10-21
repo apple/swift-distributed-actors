@@ -792,9 +792,6 @@ extension ActorSystem {
         }
 
         guard self.cluster.uniqueNode == address.uniqueNode else {
-//            log.trace("Resolved as remote reference", metadata: [
-//                "actor/address": "\(address.detailedDescription)",
-//            ])
             return nil
         }
 

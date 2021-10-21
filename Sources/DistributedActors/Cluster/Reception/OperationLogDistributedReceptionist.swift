@@ -666,7 +666,7 @@ extension OpLogDistributedReceptionist {
     /// Send `AckOps` to to peers (unless prevented to by silence period because we're already conversing/streaming with one)
     // TODO: This should pick a few at random rather than ping everyone
     func periodicAckTick() {
-        log.info("Periodic ack tick")
+        log.trace("Periodic ack tick")
 
         for peer in self.peerReceptionistReplayers.keys {
             /// In order to avoid sending spurious acks which would cause the peer to start delivering from the acknowledged `until`,

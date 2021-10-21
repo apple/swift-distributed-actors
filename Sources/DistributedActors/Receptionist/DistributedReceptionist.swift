@@ -93,7 +93,6 @@ extension DistributedReception {
                     }
 
                     continuation.onTermination = { @Sendable termination -> Void in
-                        pnote("TERMINATED (\(termination)) sub to key: \(key)")
                         Task {
                             await __secretlyKnownToBeLocal._cancelSubscription(subscription: anySubscribe)
                         }

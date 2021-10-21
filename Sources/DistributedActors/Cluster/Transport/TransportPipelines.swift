@@ -262,11 +262,6 @@ private final class WireEnvelopeHandler: ChannelDuplexHandler {
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let envelope: Wire.Envelope = self.unwrapOutboundIn(data)
         do {
-//            if (envelope.recipient.uniqueNode.node.systemName == "second" &&
-//               envelope.recipient.name == "receptionist") {
-//                pprint("SENDING: \(envelope.payload.asByteBuffer(allocator: self.serialization.allocator).formatHexDump(maxBytes: 20000))")
-//            }
-
             let serialized = try serialization.serialize(envelope)
             let buffer = serialized.buffer.asByteBuffer(allocator: self.serialization.allocator) // FIXME: yes we double allocate, no good ways around it today
             context.writeAndFlush(NIOAny(buffer), promise: promise)
@@ -316,13 +311,6 @@ final class OutboundSerializationHandler: ChannelOutboundHandler {
 
     private func serializeThenWrite(_ context: ChannelHandlerContext, envelope transportEnvelope: TransportEnvelope, promise: EventLoopPromise<Void>?) {
         let serializationPromise: EventLoopPromise<Serialization.Serialized> = context.eventLoop.makePromise()
-
-//        pinfo("""
-//              SERIALIZE:::
-//                  message: \(transportEnvelope.underlyingMessage)
-//                  type: \(reflecting: type(of: transportEnvelope.underlyingMessage))
-//                  recipient: \(transportEnvelope.recipient.path)
-//              """)
 
         self.serializationPool.serialize(
             message: transportEnvelope.underlyingMessage,

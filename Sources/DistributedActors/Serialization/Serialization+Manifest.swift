@@ -154,9 +154,6 @@ extension Serialization {
 
         print("\(settings.manifest2TypeRegistry)")
 
-        self.debugPrintSerializerTable(header: "WANTED: \(manifest)")
-        return fatalErrorBacktrace("FAILED TO GET: \(manifest)")
-
         throw SerializationError.unableToSummonTypeFromManifest(manifest)
     }
 }
