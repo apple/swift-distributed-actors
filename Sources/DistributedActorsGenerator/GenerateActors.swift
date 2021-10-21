@@ -71,12 +71,12 @@ extension GenerateActors {
         }
     }
 
-    private func parseAll(filesToScan: [File], directoriesToScan: [Directory]) throws -> [DistributedActorDecl] {
-        var unresolvedActorables: [DistributedActorDecl] = []
+    private func parseAll(filesToScan: [File], directoriesToScan: [Directory]) throws -> Set<DistributedActorDecl> {
+        var unresolvedActorables: Set<DistributedActorDecl> = []
 
         try filesToScan.forEach { file in
             let distributedActorsInFile = try self.parse(fileToParse: file)
-            unresolvedActorables.append(contentsOf: distributedActorsInFile)
+            distributedActorsInFile.forEach { unresolvedActorables.insert($0) }
         }
 
         try directoriesToScan.forEach { directory in
@@ -89,7 +89,7 @@ extension GenerateActors {
 
             try actorFilesToScan.forEach { file in
                 let distributedActorsInFile = try self.parse(fileToParse: file)
-                unresolvedActorables.append(contentsOf: distributedActorsInFile)
+                distributedActorsInFile.forEach { unresolvedActorables.insert($0) }
             }
         }
         return unresolvedActorables

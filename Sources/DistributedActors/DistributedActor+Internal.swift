@@ -48,3 +48,63 @@ extension ActorTransport {
         return system
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Type erasers
+
+@usableFromInline
+struct AnyDistributedActor: Sendable, Hashable {
+    @usableFromInline
+    let underlying: DistributedActor
+
+    @usableFromInline
+    init<Act: DistributedActor>(_ actor: Act) {
+        self.underlying = actor
+    }
+
+    @usableFromInline
+    var id: AnyActorIdentity {
+        underlying.id
+    }
+
+    @usableFromInline
+    var actorTransport: ActorTransport {
+        underlying.actorTransport
+    }
+
+    @usableFromInline
+    func `force`<T: DistributedActor>(as _: T.Type) -> T {
+//        if let cast = underlying as? T {
+//            return cast
+//        }
+
+        // FIXME: terrible hack, instead just store the id then?
+        if let resolved = try? T.resolve(underlying.id, using: underlying.actorTransport) {
+            return resolved
+        }
+
+        return fatalErrorBacktrace("Failed to cast [\(underlying)]\(reflecting: type(of: underlying)) or resolve \(underlying.id) as \(reflecting: T.self)")
+    }
+
+    @usableFromInline
+    func hash(into hasher: inout Hasher) {
+        underlying.id.hash(into: &hasher)
+    }
+
+    @usableFromInline
+    static func ==(lhs: AnyDistributedActor, rhs: AnyDistributedActor) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+extension DistributedActor {
+    nonisolated var asAnyDistributedActor: AnyDistributedActor {
+        AnyDistributedActor(self)
+    }
+}
+
+distributed actor StubDistributedActor {
+    // TODO: this is just to prevent a DI crash because of enums without cases and Codable
+    distributed func _noop() {}
+}
+

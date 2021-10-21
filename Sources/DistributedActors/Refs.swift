@@ -23,12 +23,13 @@ import struct NIO.ByteBuffer
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message: ActorMessage>: ReceivesMessages, DeathWatchable, _ReceivesSystemMessages {
+public struct ActorRef<Message: ActorMessage>: @unchecked Sendable, ReceivesMessages, DeathWatchable, _ReceivesSystemMessages {
     /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
     public enum Personality {
+        // TODO(distributed): introduce new 'distributed actor' personality that replaces all other ones
         case cell(ActorCell<Message>)
         case remote(RemoteClusterActorPersonality<Message>)
         case adapter(AbstractAdapter)
@@ -145,7 +146,7 @@ extension ActorRef.Personality {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
-public protocol ReceivesMessages: Codable {
+public protocol ReceivesMessages: Sendable, Codable {
     associatedtype Message: ActorMessage
     /// Send message to actor referred to by this `ActorRef`.
     ///
@@ -275,12 +276,12 @@ extension ActorRef {
                 case .success(.message(let message)):
                     switch self.personality {
                     case .adapter(let adapter):
-                        adapter.trySendUserMessage(message, file: #file, line: #line)
+                        adapter.trySendUserMessage(message, file: file, line: line)
                     default:
-                        self._tellOrDeadLetter(message)
+                        self._tellOrDeadLetter(message, file: file, line: line)
                     }
                 case .success(.deadLetter(let message)):
-                    self._dropAsDeadLetter(message)
+                    self._dropAsDeadLetter(message, file: file, line: line)
 
                 case .failure(let error):
                     let metadata: Logger.Metadata = [

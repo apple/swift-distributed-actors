@@ -58,7 +58,7 @@ extension ActorContext {
             subReceive: @escaping (Reception.Listing<Guest>) -> Void
         ) where Guest: ReceptionistGuest {
             let ref = self._underlyingContext.subReceive(Reception.Listing<Guest>.self, subReceive)
-            self._system.receptionist.subscribe(ref, to: key)
+            self._system._receptionist.subscribe(ref, to: key)
         }
     }
 }

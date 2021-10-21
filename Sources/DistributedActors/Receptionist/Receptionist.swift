@@ -35,7 +35,7 @@ public struct Receptionist {
     // it is more efficient to register on the local one, so what we could do, is when sending to a remote receptionist,
     // is to detect that and rather send to the local one.
 
-    internal static let naming: ActorNaming = .unique("receptionist")
+    internal static let naming: ActorNaming = .unique("receptionist-ref")
 
     /// :nodoc: INTERNAL API
     /// When sent to receptionist will register the specified `ActorRef` under the given `Reception.Key`
@@ -175,8 +175,8 @@ public struct Receptionist {
 
         private func removeSingleRegistrationNodeRelation(key: AnyReceptionKey, node: UniqueNode?) {
             // FIXME: Implement me (!), we need to make the storage a counter
-            // and decrement here by one; once the counter reaches zero we know there is no more relationship
-            // and we can prune this key/node relationship
+            //        and decrement here by one; once the counter reaches zero we know there is no more relationship
+            //        and we can prune this key/node relationship
         }
 
         // ==== --------------------------------------------------------------------------------------------------------
@@ -307,12 +307,27 @@ public struct Receptionist {
 }
 
 extension ActorPath {
-    internal static let receptionist: ActorPath = try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
+    /// The ActorRef<> receptionist, to be eventually removed.
+    internal static let actorRefReceptionist: ActorPath =
+            try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist-ref")])
+
+    /// The 'distributed actor' receptionist's well-known path.
+    internal static let distributedActorReceptionist: ActorPath =
+            try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")])
 }
 
 extension ActorAddress {
-    internal static func _receptionist(on node: UniqueNode) -> ActorAddress {
-        ActorPath.receptionist.makeRemoteAddress(on: node, incarnation: .wellKnown)
+    enum ReceptionistType {
+        case actorRefs
+        case distributedActors
+    }
+    internal static func _receptionist(on node: UniqueNode, for type: ReceptionistType) -> ActorAddress {
+        switch type {
+        case .actorRefs:
+            return ActorPath.actorRefReceptionist.makeRemoteAddress(on: node, incarnation: .wellKnown)
+        case .distributedActors:
+            return ActorPath.distributedActorReceptionist.makeRemoteAddress(on: node, incarnation: .wellKnown)
+        }
     }
 }
 
@@ -400,7 +415,7 @@ protocol ReceptionKeyProtocol {
 }
 
 // :nodoc:
-public struct AnyReceptionKey: ReceptionKeyProtocol, Codable, Hashable, CustomStringConvertible {
+public struct AnyReceptionKey: ReceptionKeyProtocol, Sendable, Codable, Hashable, CustomStringConvertible {
     enum CodingKeys: CodingKey {
         case id
         case guestTypeManifest

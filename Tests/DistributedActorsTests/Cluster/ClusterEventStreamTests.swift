@@ -132,7 +132,7 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
         eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .joining)))
         eventStream.publish(.membershipChange(.init(member: self.memberB, toStatus: .up)))
 
-        runAsyncAndBlock {
+        try runAsyncAndBlock {
             // .snapshot is sent on subscribe
             for await event in eventStream {
                 switch event {

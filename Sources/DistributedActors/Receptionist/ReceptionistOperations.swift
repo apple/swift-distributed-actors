@@ -94,7 +94,7 @@ extension ReceptionistOperations {
         with key: Reception.Key<Guest>,
         replyTo: ActorRef<Reception.Registered<Guest>>? = nil
     ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
-        self._system.receptionist.register(guest, with: key, replyTo: replyTo)
+        self._system._receptionist.register(guest, with: key, replyTo: replyTo)
     }
 
     @inlinable
@@ -102,7 +102,7 @@ extension ReceptionistOperations {
         _ subscriber: ActorRef<Reception.Listing<Guest>>,
         to key: Reception.Key<Guest>
     ) where Guest: ReceptionistGuest {
-        self._system.receptionist.subscribe(subscriber, to: key)
+        self._system._receptionist.subscribe(subscriber, to: key)
     }
 
     @inlinable
@@ -110,7 +110,7 @@ extension ReceptionistOperations {
         _ key: Reception.Key<Guest>,
         timeout: TimeAmount = .effectivelyInfinite
     ) -> AskResponse<Reception.Listing<Guest>> where Guest: ReceptionistGuest {
-        self._system.receptionist.lookup(key, timeout: timeout)
+        self._system._receptionist.lookup(key, timeout: timeout)
     }
 
     @inlinable
@@ -119,7 +119,7 @@ extension ReceptionistOperations {
         replyTo: ActorRef<Reception.Listing<Guest>>,
         timeout: TimeAmount = .effectivelyInfinite
     ) where Guest: ReceptionistGuest {
-        self._system.receptionist.lookup(key, replyTo: replyTo, timeout: timeout)
+        self._system._receptionist.lookup(key, replyTo: replyTo, timeout: timeout)
     }
 }
 

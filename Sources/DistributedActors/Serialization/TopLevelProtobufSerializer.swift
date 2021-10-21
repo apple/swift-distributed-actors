@@ -32,6 +32,7 @@ public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
         }
 
         let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
+        encoder.userInfo[.actorTransportKey] = self.context.system
         encoder.userInfo[.actorSerializationContext] = self.context
         try repr.encode(to: encoder)
 
@@ -49,6 +50,7 @@ public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
         }
 
         let decoder = TopLevelProtobufBlobDecoder()
+        decoder.userInfo[.actorTransportKey] = self.context.system
         decoder.userInfo[.actorSerializationContext] = self.context
 
         return try ProtoType.init(from: decoder) as! Message // explicit .init() is required here (!)
