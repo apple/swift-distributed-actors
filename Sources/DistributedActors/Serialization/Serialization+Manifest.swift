@@ -152,6 +152,8 @@ extension Serialization {
             return type
         }
 
+        print("\(settings.manifest2TypeRegistry)")
+
         throw SerializationError.unableToSummonTypeFromManifest(manifest)
     }
 }

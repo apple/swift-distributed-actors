@@ -34,9 +34,11 @@ internal class OpLog<Op: OpLogStreamOp> {
         self.maxSeqNr = 0
     }
 
-    func add(_ op: Op) {
+    func add(_ op: Op) -> SequencedOp {
         self.maxSeqNr += 1
-        self.ops.append(SequencedOp(sequenceRange: .single(self.maxSeqNr), op: op))
+        let sequencedOp = SequencedOp(sequenceRange: .single(self.maxSeqNr), op: op)
+        self.ops.append(sequencedOp)
+        return sequencedOp
     }
 
     // TODO: how to better express this; so it can be maintained by the OpLog itself

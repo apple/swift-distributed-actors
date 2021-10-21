@@ -46,7 +46,10 @@ internal class JSONCodableSerializer<Message: Codable>: Serializer<Message> {
 
     public override func setSerializationContext(_ context: Serialization.Context) {
         // same context shared for encoding/decoding is safe
+        self.decoder.userInfo[.actorTransportKey] = context.system
         self.decoder.userInfo[.actorSerializationContext] = context
+
+        self.encoder.userInfo[.actorTransportKey] = context.system
         self.encoder.userInfo[.actorSerializationContext] = context
     }
 
@@ -96,7 +99,10 @@ internal class PropertyListCodableSerializer<Message: Codable>: Serializer<Messa
 
     public override func setSerializationContext(_ context: Serialization.Context) {
         // same context shared for encoding/decoding is safe
+        self.decoder.userInfo[.actorTransportKey] = context.system
         self.decoder.userInfo[.actorSerializationContext] = context
+
+        self.encoder.userInfo[.actorTransportKey] = context.system
         self.encoder.userInfo[.actorSerializationContext] = context
     }
 

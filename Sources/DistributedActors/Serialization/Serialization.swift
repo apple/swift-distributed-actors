@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
+import _Distributed
 import Logging
 import NIO
 import NIOFoundationCompat
@@ -100,6 +101,7 @@ public class Serialization {
         }
 
         settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
+        settings.register(String.self, hint: "S", serializerID: .specializedWithTypeHint)
         settings.registerSpecializedSerializer(String.self, hint: "S", serializerID: .specializedWithTypeHint) { allocator in
             StringSerializer(allocator)
         }
@@ -114,6 +116,9 @@ public class Serialization {
         settings.register(SystemMessageEnvelope.self)
 
         // cluster
+        settings.register(_Done.self)
+        settings.register(Result<_Done, ErrorEnvelope>.self)
+
         settings.register(Wire.Envelope.self, hint: Wire.Envelope.typeHint, serializerID: .protobufRepresentable, alsoRegisterActorRef: false)
         settings.register(ClusterShell.Message.self)
         settings.register(Cluster.Event.self)
@@ -125,10 +130,12 @@ public class Serialization {
         // TODO: document how to deal with `protocol` message accepting actors, those should be very rare.
         // TODO: do we HAVE to do this in the Receptionist?
         settings.register(Receptionist.Message.self, serializerID: .doNotSerialize)
+        settings.register(DistributedActors.OpLogDistributedReceptionist.Message.self, serializerID: .foundationJSON)
         settings.register(OperationLogClusterReceptionist.AckOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
 
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
         settings.register(OperationLogClusterReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
+        settings.register(DistributedActors.OpLogDistributedReceptionist.PushOps.self) // TODO: can be removed once https://github.com/apple/swift/pull/30318 lands
         settings.registerInbound(
             OperationLogClusterReceptionist.PushOps.self,
             hint: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
@@ -147,7 +154,8 @@ public class Serialization {
 
         // TODO: Allow plugins to register types...?
 
-        settings.register(ActorAddress.self, serializerID: .protobufRepresentable)
+        settings.register(ActorAddress.self, serializerID: .foundationJSON) // TODO: this was protobuf
+        settings.register(AnyActorIdentity.self, serializerID: .foundationJSON)
         settings.register(ReplicaID.self, serializerID: .foundationJSON)
         settings.register(VersionDot.self, serializerID: .protobufRepresentable)
         settings.register(VersionVector.self, serializerID: .protobufRepresentable)
@@ -433,23 +441,27 @@ extension Serialization {
 
                 case .protobufRepresentable:
                     let encoder = TopLevelProtobufBlobEncoder(allocator: self.allocator)
+                    encoder.userInfo[.actorTransportKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = try encodableMessage._encode(using: encoder)
 
                 case .foundationJSON:
                     let encoder = JSONEncoder()
+                    encoder.userInfo[.actorTransportKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
                 case .foundationPropertyListBinary:
                     let encoder = PropertyListEncoder()
                     encoder.outputFormat = .binary
+                    encoder.userInfo[.actorTransportKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
                 case .foundationPropertyListXML:
                     let encoder = PropertyListEncoder()
                     encoder.outputFormat = .xml
+                    encoder.userInfo[.actorTransportKey] = self.context.system
                     encoder.userInfo[.actorSerializationContext] = self.context
                     result = .data(try encodableMessage._encode(using: encoder))
 
@@ -553,20 +565,24 @@ extension Serialization {
 
                 case .protobufRepresentable:
                     let decoder = TopLevelProtobufBlobDecoder()
+                    decoder.userInfo[.actorTransportKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder)
 
                 case .foundationJSON:
                     let decoder = JSONDecoder()
+                    decoder.userInfo[.actorTransportKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder)
 
                 case .foundationPropertyListBinary:
                     let decoder = PropertyListDecoder()
+                    decoder.userInfo[.actorTransportKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder, format: .binary)
                 case .foundationPropertyListXML:
                     let decoder = PropertyListDecoder()
+                    decoder.userInfo[.actorTransportKey] = self.context.system
                     decoder.userInfo[.actorSerializationContext] = self.context
                     result = try decodableMessageType._decode(from: buffer, using: decoder, format: .xml)
 

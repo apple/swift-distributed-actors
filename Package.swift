@@ -81,9 +81,6 @@ var targets: [PackageDescription.Target] = [
         name: "ActorSingletonPlugin",
         dependencies: [
             "DistributedActors"
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin"
         ]
     ),
 
@@ -95,9 +92,6 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsTestKit",
         dependencies: [
             "DistributedActors", "DistributedActorsConcurrencyHelpers"
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin"
         ]
     ),
 
@@ -138,9 +132,6 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActors",
             "DistributedActorsTestKit"
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin"
         ]
     ),
 
@@ -227,9 +218,6 @@ var targets: [PackageDescription.Target] = [
         exclude: [
           "README.md",
           "BenchmarkProtos/bench.proto",
-        ],
-        plugins: [
-            "DistributedActorsGeneratorPlugin"
         ]
     ),
     .target(

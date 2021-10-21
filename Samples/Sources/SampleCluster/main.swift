@@ -105,7 +105,7 @@ let chatter: ActorRef<String> = try system.spawn(
         return .same
     }
 )
-system.receptionist.register(chatter, with: "chat-room") // <1>
+system._receptionist.register(chatter, with: "chat-room") // <1>
 
 if system.cluster.uniqueNode.port == 7337 { // <2>
     try system.spawn(

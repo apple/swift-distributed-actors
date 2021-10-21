@@ -75,9 +75,8 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
         }
 
         init(ref: ActorRef<EventStreamShell.Message<Event>>) {
+            let id = ObjectIdentifier(self)
             self.underlying = AsyncStream<Event> { continuation in
-                let id = ObjectIdentifier(self)
-
                 ref.tell(.asyncSubscribe(id, { event in continuation.yield(event) }) {
                     _ = self.subscribed.compareAndExchange(expected: false, desired: true)
                 })

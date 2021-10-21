@@ -491,7 +491,7 @@ extension ActorTestKit {
         let lookupProbe = self.spawnTestProbe(expecting: Reception.Listing<ActorRef<Message>>.self)
 
         try self.eventually(within: within) {
-            self.system.receptionist.lookup(key, replyTo: lookupProbe.ref)
+            self.system._receptionist.lookup(key, replyTo: lookupProbe.ref)
 
             let listing = try lookupProbe.expectMessage()
             guard listing.refs.count == expectedCount else {
