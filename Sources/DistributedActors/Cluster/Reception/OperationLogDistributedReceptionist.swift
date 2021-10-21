@@ -160,6 +160,24 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
         case register(key: AnyDistributedReceptionKey, identity: AnyActorIdentity)
         case remove(key: AnyDistributedReceptionKey, identity: AnyActorIdentity)
 
+        var isRegister: Bool {
+            switch self {
+            case .register:
+                return true
+            default:
+                return false
+            }
+        }
+
+        var isRemove: Bool {
+            switch self {
+            case .remove:
+                return true
+            default:
+                return false
+            }
+        }
+
         var key: AnyDistributedReceptionKey {
             switch self {
             case .register(let key, _): return key
@@ -302,12 +320,14 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
             return // TODO: This restriction could be lifted; perhaps we can direct the register to the right node?
         }
 
-        if self.storage.addRegistration(key: key, guest: guest) {
+        let sequenced: OpLog<ReceptionistOp>.SequencedOp =
+            self.addOperation(.register(key: key, identity: guest.id))
+
+        if self.storage.addRegistration(sequenced: sequenced, key: key, guest: guest) {
             // self.instrumentation.actorRegistered(key: key, address: address) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
 
             watchTermination(of: guest) { onActorTerminated(identity: $0) }
 
-            let sequenced = self.addOperation(.register(key: key, identity: guest.id))
 
             log.debug(
                 "Registered [\(address)] for key [\(key)]",
@@ -365,8 +385,8 @@ extension OpLogDistributedReceptionist: LifecycleWatchSupport {
         let registrations = self.storage.registrations(forKey: key.asAnyKey) ?? []
 
         // self.instrumentation.listingPublished(key: message._key, subscribers: 1, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
-        let guests = Set(registrations.compactMap { any in
-            any.underlying as? Guest
+        let guests = Set(registrations.compactMap { versioned in
+            versioned.actor.underlying as? Guest
         })
 
         assert(guests.count == registrations.count, """
@@ -422,7 +442,9 @@ extension OpLogDistributedReceptionist {
 
         // self.instrumentation.listingPublished(key: key, subscribers: subscriptions.count, registrations: registrations.count) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
         for subscription in subscriptions {
-            subscription.onNext(registrations)
+            for registration in registrations {
+                subscription.tryOffer(registration: registration)
+            }
         }
     }
 
@@ -534,7 +556,7 @@ extension OpLogDistributedReceptionist {
             watchTermination(of: resolved) {
                 onActorTerminated(identity: $0)
             }
-            if self.storage.addRegistration(key: key, guest: resolved) {
+            if self.storage.addRegistration(sequenced: sequenced, key: key, guest: resolved) {
                 // self.instrumentation.actorRegistered(key: key, address: address) // TODO(distributed): make the instrumentation calls compatible with distributed actor based types
             }
 
@@ -634,9 +656,10 @@ extension OpLogDistributedReceptionist {
             ]
         )
 
-        // TODO: only emit if this sub has NOT SEEN this registration yet
-        for sub in subscriptions {
-            sub.onNext(registrations)
+        for subscription in subscriptions {
+            for registration in registrations {
+                subscription.tryOffer(registration: registration)
+            }
         }
     }
 
@@ -737,7 +760,7 @@ extension OpLogDistributedReceptionist {
         }
     }
 
-    private func addOperation(_ op: ReceptionistOp) -> OpLog.SequencedOp {
+    private func addOperation(_ op: ReceptionistOp) -> OpLog<ReceptionistOp>.SequencedOp {
         let sequenced = self.ops.add(op)
         switch op {
         case .register:
