@@ -106,11 +106,6 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         self._metrics
     }
 
-    @available(*, deprecated, message: "will be removed, as we're getting real Time types and should use those instead.")
-    internal func uptimeNanoseconds() -> Int64 {
-        Deadline.now().uptimeNanoseconds
-    }
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
 

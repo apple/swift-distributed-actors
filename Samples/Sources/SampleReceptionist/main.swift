@@ -55,18 +55,18 @@ enum GuestListener {
 
         context.receptionist.subscribeMyself(to: .guests)
 
-        let startAll = context.system.uptimeNanoseconds()
-        var startLast = context.system.uptimeNanoseconds()
+        let startAll = Deadline.now().uptimeNanoseconds
+        var startLast = Deadline.now().uptimeNanoseconds
 
         return .receiveMessage { listing in
-            let stop = context.system.uptimeNanoseconds()
+            let stop = Deadline.now().uptimeNanoseconds
             if listing.count % 100 == 0 {
-                context.log.info("Listing @ \(listing.count), time since last update: \(TimeAmount.nanoseconds(stop - startLast).prettyDescription)")
+                context.log.info("Listing @ \(listing.count), time since last update: \(TimeAmount.nanoseconds(Int64(stop - startLast)).prettyDescription)")
             }
             startLast = stop
 
             if listing.count == actors {
-                context.log.notice("Listing updated [\(listing.count)] within: \(TimeAmount.nanoseconds(stop - startAll).prettyDescription)")
+                context.log.notice("Listing updated [\(listing.count)] within: \(TimeAmount.nanoseconds(Int64(stop - startAll)).prettyDescription)")
                 for ref in listing.refs.prefix(20) {
                     context.log.info("ref: \(ref)")
                 }
