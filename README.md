@@ -137,7 +137,7 @@ For example, using a newer toolchain may require updating this dependency to mat
 
 This is a current limitation that will be lifted as we remove our dependency on source-generation very soon.
 
-#### XCode
+#### Xcode
 
 Xcode currently will not properly highlight the new keywords (e.g. `distributed actor`), so editing may be slightly annoying for the time being.
 
@@ -152,10 +152,16 @@ We will be removing much of these internals as we move them to use the Swift act
 
 ### Running samples
 
+To run samples, it currently is necessary to provide the `DYLD_LIBRARY_PATH` environment variable so Swift is able to locate the new `_Distributed` module.
+This is a temporary solution, and eventually will not be necessary.
+
+For example, the following will run the `SampleDiningPhilosophers` example app in _distributed_ mode:
+
 ```
 echo "TOOLCHAIN=$TOOLCHAIN"
 
-DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift run \
+DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" \
+  $TOOLCHAIN/usr/bin/swift run \
   --package-path Samples \
   SampleDiningPhilosophers dist 
 ```
@@ -168,9 +174,14 @@ You can instead build the tests and run them:
 ```
 echo "TOOLCHAIN=$TOOLCHAIN"
  
-DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift run \
-  --package-path Samples SampleGenActorsDiningPhilosophers
+$TOOLCHAIN/usr/bin/swift build --build-tests && 
+  DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" \
+  xctest -XCTest "DistributedActorsTests.DistributedReceptionistTests" \
+  .build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest
  ```
+
+This allows filtering for some specific test class. Again, limitation is something that we should be able to lift in the future,
+and originates from the need of using nightly toolchains to get the latest `_Distributed` module loaded by the `xctest` process.
 
 ## Linux / Docker
 
