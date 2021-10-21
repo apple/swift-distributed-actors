@@ -1,13 +1,95 @@
 
 # Swift Distributed Actors
 
-Peer-to-peer cluster implementation for Swift Distributed Actors.
+Peer-to-peer clustered actor system implementation for Swift Distributed Actors.
+
+## Introduction
+
+### What are Distributed Actors?
+
+Distributed actors are an early and _experimental language feature_ with which we aim to simplify and push the state-of-the-art of distributed systems programming in Swift, in the same way we did with concurrent programming with local actors and Swift's structured concurrency approach embedded in the language.
+
+Currently we are iterating on the design of distributed actors, and are looking to gather your feedback, use-cases, and general ideas in the proposal’s [pitch thread](https://forums.swift.org/t/pitch-distributed-actors/51669/111), as well as the [Distributed Actors category](https://forums.swift.org/c/server/distributed-actors/79) on the Swift forums. The library and language features described in the proposal, and this blog post are available in [nightly toolchains](https://swift.org/downloads), so please feel free to download them and get a feel for the feature. We are going to be posting updated proposals and other discussion threads on the forums, so if you are interested, please follow the respective category and threads on the Swift forums.
+
+We are most interested in general feedback, thoughts about use-cases, and potential transport implementations you would be interested in taking on. As we mature and design the language feature, the library (introduced below), will be following along serve as the _reference implementation_ of one such advanced and powerful actor transport. If you are interested in distributed systems, [contributions to the library](https://github.com/apple/swift-distributed-actors/) itself are also very welcome, and there is [much to be done](https://github.com/apple/swift-distributed-actors/issues) there as well!
+
+In the near future, we will also provide a more complete “reference guide”, examples and and article-style guides written using in the [recently open sourced DocC](https://swift.org/blog/swift-docc/) documentation compiler, which in addition to the API documentation available today will teach about the specific patterns and use-cases this library enables.
+
+These proposed language features–as all language features–will go through a proper [Swift Evolution process](https://github.com/apple/swift-evolution/blob/main/process.md) before lifting their experimental status. We invite the community to participate and help us shape the language and APIs through review, contributions and sharing experiences. Thank you very much in advance!
+
+
+> This project is released as "early preview" and all of its APIs are subject to change, or even removal without any prior warning.
+
+The library depends on un-released, work-in-progress, and Swift Evolution review pending language features, and as such we cannot recommend using it in production just yet — the library may depend on specific nightly builds of toolchains etc.
+
+The primary purpose of open sourcing this library early is proving the ability to implement a feature complete, compelling clustering solution using the `distributed actor` language feature, and co-evolving the two in tandem.
+
+### Introduction: Distributed Actors
+
+Distributed actors are the next step in the evolution of Swift's concurrency model.
+
+With actors built-into the language, Swift offers developers a safe and intuitive concurrency model that is a great fit for many kinds of applications. Thanks to advanced semantic checks, the compiler is able to guide and help developers write programs which are free from low-level data races. This isn't where the usefulness of the actor model ends though: unlike other concurrency models, the actor model is also tremendously useful in modeling distributed systems, where thanks to the notion of _location transparent_ distributed actors, we can program distributed systems using the familiar notion of actors, and then easily move it to a distributed, e.g. clustered, environment.
+
+With distributed actors we aim to simplify and push the state of the art of distributed systems programming, the same way we did with concurrent programming with local actors and Swift's structured concurrency models embedded in the language.
+
+This abstraction is not intended to completely hide away the fact that distributed calls are crossing the network though. In a way, we are doing the opposite, and programming with the assumption that calls *may* be remote. This small, yet crucial, observation allows us to build systems primarily intended for distribution, but that are also testable in local test clusters which may even efficiently simulate various error scenarios.
+
+Distributed actors are similar to (local) actors in the sense that they encapsulate their state, and may only be communicated with through asynchronous calls. The distributed aspect adds to that equation some additional isolation, type system and runtime considerations, however the surface of the feature feels very similar to local actors. Here is a small example of a distributed actor declaration:
+
+
+~~~swift
+// **** APIS AND SYNTAX ARE WORK IN PROGRESS / PENDING SWIFT EVOLUTION ****
+// 1) Actors may be declared with the new 'distributed' modifier
+distributed actor Worker {
+
+  // 2) An actor's isolated state is only stored on the node where the actor lives.
+  //    Actor Isolation rules ensure that programs only access isolated state in
+  //    correct ways, i.e. in a thread-safe manner, and only when the state is
+  //    known to exist.
+  var data: SomeData
+
+  // 3) Only functions (and computed properties) declared as 'distributed' may be accessed cross actor.
+  //    Distributed function parameters and return types must be Codable,
+  //    because they will be crossing network boundaries during remote calls.
+  distributed func work(item: String) -> WorkItem.Result {
+    // ...
+  }
+}
+~~~
+
+Distributed actors take away a lot of the boilerplate that we'd normally have to build and re-invent every time we build some distributed RPC system. After all, nowhere in this snippet did we have to care about exact serialization and networking details, we just declare what we need to get done - send work requests across the network! This is quite powerful, and we hope you'll enjoy using actors in this capacity, in addition to their concurrency aspect.
+
+To actually have a distributed actor participate in some distributed system, we must provide it with an `ActorTransport`, which is a user-implementable library component, responsible for performing all the networking necessary to make remote function calls. Developers provide their transport of choice during the instantiation of a distributed actor, like this:
+
+
+~~~swift
+// **** APIS AND SYNTAX ARE WORK IN PROGRESS / PENDING SWIFT EVOLUTION ****
+
+// 4) Distributed actors must have a transport associated with them at initialization
+let someTransport: ActorTransport = ...
+let worker = Worker(transport: someTransport)
+
+// 5) Distributed function invocations are asynchronous and throwing, when performed cross-actor,
+//    because of the potential network interactions of such call.
+//
+//    These effects are applied to such functions implicitly, only in contexts where necessary,
+//    for example: when it is known that the target actor is local, the implicit-throwing effect
+//    is not applied to such call.
+_ = try await worker.work(item: "work-item-32")
+
+// 6) Remote systems may obtain references to the actor by using the 'resolve' function.
+//    It returns a special "proxy" object, that transforms all distributed function calls into messages.
+let result = try await Worker.resolve(worker.id, using: otherTransport)
+~~~
+
+This summarizes the distributed actor feature at a very high level. We encourage those interested to read the full proposal available in [Swift Evolution](https://github.com/apple/swift-evolution/pulls?q=is%3Apr+is%3Aopen+distributed), and provide feedback or ask questions in the [Distributed Actors category on the Swift Forums](https://forums.swift.org/c/server/distributed-actors/79).
+
+You can follow along and provide input on the `distributed actor` language proposal on the Swift forums and [Swift Evolution](https://github.com/apple/swift-evolution/pulls?q=is%3Apr+is%3Aopen+distributed). The [full current draft](https://github.com/apple/swift-evolution/pull/1433) of the language proposal is also available for review, though we expect to make significant changes to it in the near future.
+
+We would love to hear your feedback and see you participate in the Swift Evolution reviews of this exciting new feature!
+
 
 ## Development
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for a detailed guide on contributing.
-
-See also, [STYLE_GUIDE.md](STYLE_GUIDE.md) for some additional style hints.
 
 ### Developing with nightly toolchains
 
@@ -16,17 +98,69 @@ As such, it is necessary to download and use nightly built toolchains to develop
 
 **Obtaining a nightly toolchain**
 
-You can download the latest nightly swift 5.6-dev toolchains on: 
+Distributed actors require "latest" nightly toolchains to build correctly.
+
+At this point in time, the **2021-10-20** toolchain is sufficient to build the project.
+You can download it from [https://swift.org/download/](https://swift.org/download/), 
+specifically the following toolchain [swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a-osx.pkg](https://swift.org/builds/development/xcode/swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a/swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a-osx.pkg) 
+is sufficient to build the current `main` branch.
 
 ```
 # Export the toolchain (nightly snapshot or pull-request generated toolchain), e.g.:
 
-export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-09-18-a.xctoolchain
-# or
-# export TOOLCHAIN=/Library/Developer/Toolchains/swift-PR-39560-1149.xctoolchain
+export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a.xctoolchain
+
+# Just build the project
+$TOOLCHAIN/usr/bin/swift build --build-tests
+
+# Build and run all tests
+$TOOLCHAIN/usr/bin/swift test
 ```
 
-**Running filtered tests**
+> **KNOWN LIMITATION:** This toolchain still requires an explicit:
+> 
+> ```swift
+> init(transport: ActorTransport) { 
+>   defer { transport.actorReady(self) }
+> }
+> ```
+> 
+> This limitation will be lifted as soon as [Inject invocations of transport.actorReady in init #39762](https://github.com/apple/swift/pull/39762) 
+> is merged and a new toolchain is available with it, as we began to synthesize this call in initializers.
+
+#### Swift Syntax dependency versions
+
+⚠️ Please note that the build needs the _exact_ matching Swift Syntax version that is compatible with the toolchain.
+In case you encounter any such version compatibility issue reported by Swift Syntax, please check your toolchain used to build,
+as well as the [swift syntax dependency](https://github.com/apple/swift-distributed-actors/blob/main/Package.swift#L287-L298) in `Package.swift`.
+For example, using a newer toolchain may require updating this dependency to match.
+
+This is a current limitation that will be lifted as we remove our dependency on source-generation very soon.
+
+#### XCode
+
+Xcode currently will not properly highlight the new keywords (e.g. `distributed actor`), so editing may be slightly annoying for the time being.
+
+Xcode should be able to build the project if the appropriate **compatible toolchain** is selected though.
+
+#### Warnings
+
+The project currently is emitting many warnings about `Sendable`, this is expected and we are slowly working towards removing them.
+
+Much of the project's internals use advanced synchronization patterns not recognized by sendable checks, so many of the warnings are incorrect but the compiler has no way of knowing this.
+We will be removing much of these internals as we move them to use the Swift actor runtime instead.
+
+### Running samples
+
+```
+echo "TOOLCHAIN=$TOOLCHAIN"
+
+DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift run \
+  --package-path Samples \
+  SampleDiningPhilosophers dist 
+```
+
+### Running filtered tests
 
 Due to some limitations in SwiftPM right now running tests with `swift test --filter` does not work with a customized toolchain as we need to do here.
 You can instead build the tests and run them:
@@ -38,17 +172,7 @@ DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift ru
   --package-path Samples SampleGenActorsDiningPhilosophers
  ```
 
-**Running samples**
-
-```
-echo "TOOLCHAIN=$TOOLCHAIN"
-
-DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift run \
-  --package-path Samples \
-  SampleDiningPhilosophers # select which Sample you'd like to run (see Samples/)
-```
-
-### Linux
+## Linux / Docker
 
 You can use the provided docker images to debug and execute tests inside docker:
 
@@ -61,19 +185,12 @@ docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2104.main.
 docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.main.yaml run test
 
 # run only unit tests (no integration tests)
-docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.51.yaml run unit-tests
+docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.main.yaml run unit-tests
 ```
 
 ## Documentation
 
-### API Documentation
-
-API documentation is generated using Jazzy:
-
-```
-./scripts/docs/generate_api.sh
-open .build/docs/api/...-dev/index.html
-```
+We are in the process of updating documentation to use `swift-docc`.
 
 ## Supported Versions
 
