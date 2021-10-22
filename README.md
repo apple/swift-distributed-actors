@@ -167,7 +167,7 @@ The project currently is emitting many warnings about `Sendable`, this is expect
 Much of the project's internals use advanced synchronization patterns not recognized by sendable checks, so many of the warnings are incorrect but the compiler has no way of knowing this.
 We will be removing much of these internals as we move them to use the Swift actor runtime instead.
 
-#### Source generation
+#### Source generation (to be removed)
 
 The current approach uses source generation, using a SwiftPM plugin, in order to implement the bridging between
 function calls and messages. We are actively working on removing this part of the library and replace it with language 
