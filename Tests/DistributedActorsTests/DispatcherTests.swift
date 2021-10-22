@@ -28,7 +28,7 @@ final class DispatcherTests: ActorSystemXCTestCase {
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
-            p.tell("Dispatcher: \((context as! ActorShell<String>)._dispatcher.name)")
+            p.tell("Dispatcher: \((context as! _ActorShell<String>)._dispatcher.name)")
             return .same
         }
 
@@ -47,7 +47,7 @@ final class DispatcherTests: ActorSystemXCTestCase {
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
-            p.tell("Dispatcher: \((context as! ActorShell<String>)._dispatcher.name)")
+            p.tell("Dispatcher: \((context as! _ActorShell<String>)._dispatcher.name)")
             return .same
         }
 
@@ -69,7 +69,7 @@ final class DispatcherTests: ActorSystemXCTestCase {
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("\(message)")
-            p.tell("\((context as! ActorShell<String>)._dispatcher.name)")
+            p.tell("\((context as! _ActorShell<String>)._dispatcher.name)")
             return .same
         }
 

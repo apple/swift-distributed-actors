@@ -14,15 +14,17 @@
 
 import NIO
 
-/// :nodoc: Not intended for general use. TODO: Make internal if possible.
-public final class LinkedBlockingQueue<A> {
+/// :nodoc: Not intended for general use.
+@usableFromInline
+final class LinkedBlockingQueue<A>: @unchecked Sendable {
     @usableFromInline
-    internal class Node<A> {
+    final class Node<A>: @unchecked Sendable {
         var item: A?
         @usableFromInline
         var next: Node<A>?
 
-        public init(_ item: A?) {
+        @usableFromInline
+        init(_ item: A?) {
             self.item = item
         }
     }
@@ -34,11 +36,12 @@ public final class LinkedBlockingQueue<A> {
     @usableFromInline
     internal let lock: _Mutex = _Mutex()
     @usableFromInline
-    internal let notEmpty: Condition = Condition()
+    internal let notEmpty: _Condition = _Condition()
     @usableFromInline
     internal var count: Int = 0
 
-    public init() {
+    @usableFromInline
+    init() {
         self.producer = Node(nil)
         self.consumer = self.producer
     }
@@ -49,7 +52,8 @@ public final class LinkedBlockingQueue<A> {
     ///
     /// - Parameter item: The item to be added to the queue.
     @inlinable
-    public func enqueue(_ item: A) {
+    @usableFromInline
+    func enqueue(_ item: A) {
         self.lock.synchronized {
             let next = Node(item)
             self.producer.next = next
@@ -68,7 +72,8 @@ public final class LinkedBlockingQueue<A> {
     ///
     /// - Returns: The item at the head of the queue
     @inlinable
-    public func dequeue() -> A {
+    @usableFromInline
+    func dequeue() -> A {
         self.lock.synchronized { () -> A in
             while true {
                 if let elem = self.take() {
@@ -82,7 +87,8 @@ public final class LinkedBlockingQueue<A> {
     /// Removes all items from the queue, resets the count and signals all
     /// waiting threads.
     @inlinable
-    public func clear() {
+    @usableFromInline
+    func clear() {
         self.lock.synchronized {
             while let _ = self.take() {}
             self.count = 0
@@ -98,7 +104,8 @@ public final class LinkedBlockingQueue<A> {
     ///                      in case the queue is empty.
     /// - Returns: The head of the queue or nil, when the timeout is exceeded.
     @inlinable
-    public func poll(_ timeout: TimeAmount) -> A? {
+    @usableFromInline
+    func poll(_ timeout: TimeAmount) -> A? {
         self.lock.synchronized { () -> A? in
             if let item = self.take() {
                 return item
@@ -133,7 +140,8 @@ public final class LinkedBlockingQueue<A> {
         }
     }
 
-    public func size() -> Int {
+    @usableFromInline
+    func size() -> Int {
         self.lock.synchronized {
             self.count
         }

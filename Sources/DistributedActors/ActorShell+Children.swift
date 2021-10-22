@@ -70,7 +70,7 @@ public class Children {
         }
     }
 
-    internal func insert<T, R: ActorShell<T>>(_ childCell: R) {
+    internal func insert<T, R: _ActorShell<T>>(_ childCell: R) {
         self.rwLock.withWriterLockVoid {
             self.container[childCell.address.name] = .cell(childCell)
         }
@@ -306,7 +306,7 @@ extension Children {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal shell operations
 
-extension ActorShell {
+extension _ActorShell {
     internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
@@ -324,7 +324,7 @@ extension ActorShell {
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 
-        let actor: ActorShell<M> = ActorShell<M>(
+        let actor: _ActorShell<M> = _ActorShell<M>(
             system: self.system,
             parent: self.myself.asAddressable,
             behavior: behavior,
@@ -332,13 +332,13 @@ extension ActorShell {
             props: props,
             dispatcher: dispatcher
         )
-        let mailbox = Mailbox(shell: actor, capacity: props.mailbox.capacity)
+        let mailbox = _Mailbox(shell: actor, capacity: props.mailbox.capacity)
 
         if self.system.settings.logging.verboseSpawning {
             log.trace("Spawning [\(behavior)], on path: [\(address.path)]")
         }
 
-        let cell = ActorCell(
+        let cell = _ActorCell(
             address: address,
             actor: actor,
             mailbox: mailbox

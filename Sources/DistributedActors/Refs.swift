@@ -30,11 +30,11 @@ public struct ActorRef<Message: ActorMessage>: @unchecked Sendable, ReceivesMess
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
     public enum Personality {
         // TODO(distributed): introduce new 'distributed actor' personality that replaces all other ones
-        case cell(ActorCell<Message>)
+        case cell(_ActorCell<Message>)
         case remote(RemoteClusterActorPersonality<Message>)
         case adapter(AbstractAdapter)
-        case guardian(Guardian)
-        case delegate(CellDelegate<Message>)
+        case guardian(_Guardian)
+        case delegate(_CellDelegate<Message>)
         case deadLetters(DeadLetterOffice)
     }
 
@@ -341,13 +341,13 @@ extension ActorRef {
 /// and are such that a stopped actor can be released as soon as possible (shell), yet the cell remains
 /// active while anyone still holds references to it. The mailbox class on the other hand, is kept alive by
 /// by the cell, as it may result in message sends to dead letters which the mailbox handles
-public final class ActorCell<Message: ActorMessage> {
-    let mailbox: Mailbox<Message>
+public final class _ActorCell<Message: ActorMessage> {
+    let mailbox: _Mailbox<Message>
 
-    weak var actor: ActorShell<Message>?
+    weak var actor: _ActorShell<Message>?
     weak var _system: ActorSystem?
 
-    init(address: ActorAddress, actor: ActorShell<Message>, mailbox: Mailbox<Message>) {
+    init(address: ActorAddress, actor: _ActorShell<Message>, mailbox: _Mailbox<Message>) {
         self._system = actor.system
         self.actor = actor
         self.mailbox = mailbox
@@ -399,7 +399,7 @@ public final class ActorCell<Message: ActorMessage> {
     }
 }
 
-extension ActorCell: CustomDebugStringConvertible {
+extension _ActorCell: CustomDebugStringConvertible {
     public var debugDescription: String {
         "ActorCell(\(self.address), mailbox: \(self.mailbox), actor: \(String(describing: self.actor)))"
     }
@@ -430,7 +430,7 @@ public extension ActorRef where Message == DeadLetter {
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
 // TODO: we could use this to make TestProbes more "real" rather than wrappers
-open class CellDelegate<Message: ActorMessage> {
+open class _CellDelegate<Message: ActorMessage> {
     public init() {
         // nothing
     }
@@ -535,7 +535,7 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
 ///
 /// Represents the an "top level" actor which is the parent of all actors spawned on by the system itself
 /// (unlike actors spawned from within other actors, by using `context.spawn`).
-public class Guardian {
+public class _Guardian {
     @usableFromInline
     let _address: ActorAddress
     var address: ActorAddress {
@@ -557,7 +557,7 @@ public class Guardian {
         }
     }
 
-    private let allChildrenRemoved: Condition = Condition()
+    private let allChildrenRemoved: _Condition = _Condition()
     private var stopping: Bool = false
     weak var system: ActorSystem?
 
@@ -653,7 +653,7 @@ public class Guardian {
         AnyHashable(self.address)
     }
 
-    func makeChild<Message>(path: ActorPath, spawn: () throws -> ActorShell<Message>) throws -> ActorRef<Message> {
+    func makeChild<Message>(path: ActorPath, spawn: () throws -> _ActorShell<Message>) throws -> ActorRef<Message> {
         try self._childrenLock.synchronized {
             if self.stopping {
                 throw ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
@@ -713,7 +713,7 @@ public class Guardian {
     }
 }
 
-extension Guardian: _ActorTreeTraversable {
+extension _Guardian: _ActorTreeTraversable {
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let children: Children = self.children
 
@@ -757,7 +757,7 @@ extension Guardian: _ActorTreeTraversable {
     }
 }
 
-extension Guardian: CustomStringConvertible {
+extension _Guardian: CustomStringConvertible {
     public var description: String {
         "Guardian(\(self.address.path))"
     }

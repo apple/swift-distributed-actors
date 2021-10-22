@@ -19,7 +19,7 @@ import XCTest
 
 final class MailboxTests: ActorSystemXCTestCase {
     func test_sendMessage_shouldDropMessagesWhenFull() {
-        let mailbox: Mailbox<Int> = Mailbox(system: self.system, capacity: 2)
+        let mailbox: _Mailbox<Int> = _Mailbox(system: self.system, capacity: 2)
 
         (mailbox.enqueueUserMessage(Payload(payload: .message(1))) == .needsScheduling).shouldBeTrue()
         (mailbox.enqueueUserMessage(Payload(payload: .message(2))) == .alreadyScheduled).shouldBeTrue()

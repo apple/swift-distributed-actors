@@ -39,7 +39,7 @@ public struct Receptionist {
 
     /// :nodoc: INTERNAL API
     /// When sent to receptionist will register the specified `ActorRef` under the given `Reception.Key`
-    public class Register<Guest: ReceptionistGuest>: AnyRegister {
+    public class Register<Guest: ReceptionistGuest>: _AnyRegister {
         public let guest: Guest
         public let key: Reception.Key<Guest>
         public let replyTo: ActorRef<Reception.Registered<Guest>>?
@@ -366,9 +366,8 @@ public class ReceptionistMessage: Codable, @unchecked Sendable {}
 
 internal typealias FullyQualifiedTypeName = String
 
-// TODO: Receptionist._Register
 /// :nodoc: INTERNAL API
-public class AnyRegister: ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
+public class _AnyRegister: ReceptionistMessage, NonTransportableActorMessage, CustomStringConvertible {
     var _addressableActorRef: AddressableActorRef { undefined() }
     var _key: AnyReceptionKey { undefined() }
 

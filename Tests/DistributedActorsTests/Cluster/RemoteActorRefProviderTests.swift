@@ -34,7 +34,7 @@ final class RemoteActorRefProviderTests: ActorSystemXCTestCase {
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
         let theOne = TheOneWhoHasNoParent(local: system.cluster.uniqueNode)
-        let guardian = Guardian(parent: theOne, name: "user", localNode: system.cluster.uniqueNode, system: system)
+        let guardian = _Guardian(parent: theOne, name: "user", localNode: system.cluster.uniqueNode, system: system)
         let localProvider = LocalActorRefProvider(root: guardian)
 
         let clusterShell = ClusterShell(selfNode: self.localNode)

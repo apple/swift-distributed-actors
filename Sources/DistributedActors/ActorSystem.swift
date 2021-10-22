@@ -219,8 +219,8 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         self._deadLetters = ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
 
         // actor providers
-        let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
-        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", localNode: settings.cluster.uniqueBindNode, system: self))
+        let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
+        let localSystemProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "system", localNode: settings.cluster.uniqueBindNode, system: self))
         // TODO: want to reconcile those into one, and allow /dead as well
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider

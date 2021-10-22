@@ -147,7 +147,7 @@ internal extension ActorRef {
     /// This may only be used when certain that a given ref points to a local actor, and thus contains a cell.
     /// May be used by internals when things are to be attached to "myself's cell".
     @usableFromInline
-    var _unsafeUnwrapCell: ActorCell<Message> {
+    var _unsafeUnwrapCell: _ActorCell<Message> {
         switch self.personality {
         case .cell(let cell): return cell
         default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")

@@ -1020,7 +1020,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
                     try failureMode.fail()
                 }
 
-                (context as! ActorShell<String>)._dispatcher.execute {
+                (context as! _ActorShell<String>)._dispatcher.execute {
                     cb.invoke(msg)
                 }
 

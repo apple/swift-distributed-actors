@@ -112,7 +112,7 @@ public protocol DeathWatchProtocol {
 /// It allows actors to watch other actors for termination, and also takes into account clustering lifecycle information,
 /// e.g. if a node is declared `.down` all actors on given node are assumed to have terminated, causing the appropriate `Terminated` signals.
 ///
-/// An `ActorShell` owns a death watch instance and is responsible of managing all calls to it.
+/// An `_ActorShell` owns a death watch instance and is responsible of managing all calls to it.
 //
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
@@ -147,7 +147,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     mutating func watch<Watchee>(
         watchee: Watchee,
         with terminationMessage: Message?,
-        myself watcher: ActorShell<Message>,
+        myself watcher: _ActorShell<Message>,
         file: String, line: UInt
     ) where Watchee: DeathWatchable {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
@@ -220,7 +220,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
             //
             // no need to become watched by parent, we always notify our parent with `childTerminated` anyway already
             // so if we added it also to `watchedBy` we would potentially send terminated twice: terminated and childTerminated,
-            // which is NOT good -- we only should notify it once, specifically with the childTerminated signal handled by the ActorShell itself.
+            // which is NOT good -- we only should notify it once, specifically with the childTerminated signal handled by the _ActorShell itself.
             return
         }
 
@@ -260,7 +260,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         }
     }
 
-    /// instructs the ActorShell to either deliver a Terminated signal or the customized message (from watch(:with:))
+    /// instructs the _ActorShell to either deliver a Terminated signal or the customized message (from watch(:with:))
     enum TerminatedMessageDirective {
         case wasNotWatched
         case signal

@@ -43,7 +43,7 @@ final class ActorSystemMetrics {
     /// actors.lifecycle { root=/system, event=stop }
     let _actors_lifecycle_system: MetricsPNCounter
 
-    func recordActorStart<Anything>(_ shell: ActorShell<Anything>) {
+    func recordActorStart<Anything>(_ shell: _ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         guard let root = shell.path.segments.first else {
@@ -59,7 +59,7 @@ final class ActorSystemMetrics {
         }
     }
 
-    func recordActorStop<Anything>(_ shell: ActorShell<Anything>) {
+    func recordActorStop<Anything>(_ shell: _ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         guard let root = shell.path.segments.first else {

@@ -20,12 +20,13 @@ import Glibc
 
 import NIO
 
-/// :nodoc: Not intended for general use. TODO: Make internal if possible.
-public final class Condition {
+/// :nodoc: Not intended for general use.
+@usableFromInline
+final class _Condition {
     @usableFromInline
     var condition: pthread_cond_t = pthread_cond_t()
 
-    public init() {
+    init() {
         let error = pthread_cond_init(&self.condition, nil)
 
         switch error {
@@ -41,7 +42,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: _Mutex) {
+    func wait(_ mutex: _Mutex) {
         let error = pthread_cond_wait(&self.condition, &mutex.mutex)
 
         switch error {
@@ -57,10 +58,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: _Mutex, atMost amount: TimeAmount) -> Bool {
-//    clock_gettime(CLOCK_REALTIME, &now)
-//    let reltime = sleep_til_this_absolute_time - now;
-
+    func wait(_ mutex: _Mutex, atMost amount: TimeAmount) -> Bool {
         #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
         let time = TimeSpec.from(timeAmount: amount)
         #else
@@ -91,7 +89,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func signal() {
+    func signal() {
         let error = pthread_cond_signal(&self.condition)
 
         switch error {
@@ -105,7 +103,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func signalAll() {
+    func signalAll() {
         let error = pthread_cond_broadcast(&self.condition)
 
         switch error {

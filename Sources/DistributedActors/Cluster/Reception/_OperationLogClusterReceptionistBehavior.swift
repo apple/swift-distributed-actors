@@ -255,7 +255,7 @@ public final class OperationLogClusterReceptionist {
                 case _ as PeriodicAckTick:
                     self.onPeriodicAckTick(context)
 
-                case let message as AnyRegister:
+                case let message as _AnyRegister:
                     do {
                         try self.onRegister(context: context, message: message)
                     } catch {
@@ -314,7 +314,7 @@ extension OperationLogClusterReceptionist {
         message.replyWith(registrations)
     }
 
-    private func onRegister(context: ActorContext<Message>, message: AnyRegister) throws {
+    private func onRegister(context: ActorContext<Message>, message: _AnyRegister) throws {
         let key = message._key.asAnyKey
         let ref = message._addressableActorRef
 

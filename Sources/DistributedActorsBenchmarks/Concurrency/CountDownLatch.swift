@@ -17,12 +17,12 @@ import DistributedActorsConcurrencyHelpers
 
 internal class CountDownLatch {
     private var counter: Int
-    private let condition: Condition
+    private let condition: _Condition
     private let lock: _Mutex
 
     init(from: Int) {
         self.counter = from
-        self.condition = Condition()
+        self.condition = _Condition()
         self.lock = _Mutex()
     }
 
