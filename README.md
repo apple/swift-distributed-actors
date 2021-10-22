@@ -135,18 +135,30 @@ with the path to where the `TOOLCHAIN` stores the _Distributed library.
 
 #### Swift Syntax dependency versions
 
-⚠️ Please note that the build needs the _exact_ matching Swift Syntax version that is compatible with the toolchain.
-In case you encounter any such version compatibility issue reported by Swift Syntax, please check your toolchain used to build,
-as well as the [swift syntax dependency](https://github.com/apple/swift-distributed-actors/blob/main/Package.swift#L287-L298) in `Package.swift`.
-For example, using a newer toolchain may require updating this dependency to match.
+⚠️ Please note that the build needs the _exact_ matching Swift Syntax version that is compatible with the toolchain. This manifests as the following error:
 
-This is a current limitation that will be lifted as we remove our dependency on source-generation very soon.
+> The loaded '_InternalSwiftSyntaxParser' library is from a toolchain that is not compatible with this version of SwiftSyntax
+
+In case you encounter this compatibility issue, please check your toolchain used to build, as well as the
+[swift syntax dependency](https://github.com/apple/swift-distributed-actors/blob/main/Package.swift#L287-L298) in `Package.swift`.
+SwiftSyntax uses the toolchain's internal types to perform its parsing, and those are sadly not API stable. As we are developing this 
+feature on nightly builds of the toolchain, and depend on SwiftSyntax as a library, we need to make sure the two match in a compatible way.
+
+The SwiftSyntax version declared in this project's `Package.swift` will always be in-sync with the recommended toolchain version we recommend above.
+If you see this issue after pulling the latest changes from this repository, please check if you don't have to also update the toolchain you use to build it.
+
+This is a current limitation that will be lifted as we remove our dependency on source-generation.
 
 #### Xcode
 
 Xcode currently will not properly highlight the new keywords (e.g. `distributed actor`), so editing may be slightly annoying for the time being.
 
 Xcode should be able to build the project if the appropriate **compatible toolchain** is selected though.
+
+**Other IDEs**
+It should be possible to open and edit this project in other IDEs. Please note though that since we are using an unreleased Swift 5.6-dev version,
+some syntax in the Package.swift may not be recognized by those IDE's yet. For example, you may need to comment out all the `.plugin` sections
+declarations, in order to import the project into CLion. Once the project is imported though, you can continue using it as usual.
 
 #### Warnings
 
