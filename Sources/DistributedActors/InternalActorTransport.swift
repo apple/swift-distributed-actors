@@ -50,7 +50,7 @@ open class _InternalActorTransport {
         fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
     }
 
-    open func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
+    open func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> _CellDelegate<Message> {
         fatalError("Not implemented: \(#function) in \(self) transport!")
     }
 }

@@ -51,8 +51,8 @@ internal enum MailboxBitMasks {
     //                           = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001_1101
 }
 
-internal final class Mailbox<Message: ActorMessage> {
-    weak var shell: ActorShell<Message>?
+internal final class _Mailbox<Message: ActorMessage> {
+    weak var shell: _ActorShell<Message>?
     let _status: Atomic<UInt64> = Atomic(value: 0)
     let userMessages: MPSCLinkedQueue<Payload>
     let systemMessages: MPSCLinkedQueue<_SystemMessage>
@@ -64,7 +64,7 @@ internal final class Mailbox<Message: ActorMessage> {
 
     let measureMessages = true
 
-    init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
+    init(shell: _ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
         #if SACT_TESTS_LEAKS
         if shell.address.segments.first?.value == "user" {
             _ = shell._system?.userMailboxInitCounter.add(1)
@@ -131,7 +131,7 @@ internal final class Mailbox<Message: ActorMessage> {
         case .needsScheduling:
             traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), scheduling for execution")
             guard let shell = self.shell else {
-                traceLog_Mailbox(self.address.path, "ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
+                traceLog_Mailbox(self.address.path, "_ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
                 self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
                 break
             }
@@ -363,7 +363,7 @@ internal final class Mailbox<Message: ActorMessage> {
         }
     }
 
-    private func mailboxRun(_ shell: ActorShell<Message>) -> MailboxRunResult {
+    private func mailboxRun(_ shell: _ActorShell<Message>) -> MailboxRunResult {
         let status = self.setProcessingSystemMessages()
         shell.metrics[gauge: .mailboxCount]?.record(status.messageCount)
 

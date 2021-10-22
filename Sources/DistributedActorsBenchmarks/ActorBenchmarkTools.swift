@@ -17,7 +17,7 @@ import DistributedActorsConcurrencyHelpers
 import SwiftBenchmarkTools
 
 @usableFromInline
-internal class BenchmarkLatchPersonality<Message: Codable>: CellDelegate<Message> {
+internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Message> {
     let startTime = Atomic<UInt64>(value: 0)
     let receptacle = BlockingReceptacle<Message>()
 
@@ -31,7 +31,7 @@ internal class BenchmarkLatchPersonality<Message: Codable>: CellDelegate<Message
     }
 
     var ref: ActorRef<Message> {
-        .init(.delegate(self as CellDelegate))
+        .init(.delegate(self as _CellDelegate))
     }
 
     func blockUntilMessageReceived() -> Message {

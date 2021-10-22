@@ -56,7 +56,6 @@ public protocol DistributedReceptionist
 
 extension DistributedReception {
     public struct GuestListing<Guest: DistributedActor & __DistributedClusterActor>: AsyncSequence, Sendable {
-//        public typealias Element = Set<Guest>
         public typealias Element = Guest
 
         let receptionist: OpLogDistributedReceptionist

@@ -129,13 +129,13 @@ extension RemoteActorRefProvider {
 // MARK: LocalActorRefProvider
 
 internal struct LocalActorRefProvider: _ActorRefProvider {
-    private let root: Guardian
+    private let root: _Guardian
 
     var rootAddress: ActorAddress {
         self.root.address
     }
 
-    init(root: Guardian) {
+    init(root: _Guardian) {
         self.root = root
     }
 
@@ -148,7 +148,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         where Message: ActorMessage {
         return try self.root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
-            let actor: ActorShell<Message> = ActorShell(
+            let actor: _ActorShell<Message> = _ActorShell(
                 system: system,
                 parent: AddressableActorRef(root.ref),
                 behavior: behavior,

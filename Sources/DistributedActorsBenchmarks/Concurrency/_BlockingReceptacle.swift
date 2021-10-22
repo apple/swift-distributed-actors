@@ -20,7 +20,7 @@ internal final class BlockingReceptacle<Value> {
     @usableFromInline
     let lock = _Mutex()
     @usableFromInline
-    let notEmpty = Condition()
+    let notEmpty = _Condition()
 
     private var _value: Value?
 

@@ -27,7 +27,8 @@ import NIO
 /// all actor interactions with messages, user code, and the mailbox itself happen.
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
-public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractShellProtocol {
+// TODO: remove this and replace by the infrastructure which is now Swift's `actor`
+public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractShellProtocol {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -77,11 +78,11 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     /// Guaranteed to be set during ActorRef creation
     /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling `myself`.
     @usableFromInline
-    lazy var _myCell: ActorCell<Message> =
-        ActorCell<Message>(
+    lazy var _myCell: _ActorCell<Message> =
+        _ActorCell<Message>(
             address: self.address,
             actor: self,
-            mailbox: Mailbox(shell: self, capacity: self._props.mailbox.capacity)
+            mailbox: _Mailbox(shell: self, capacity: self._props.mailbox.capacity)
         )
 
     @usableFromInline
@@ -141,7 +142,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: ActorShell implementation
+    // MARK: _ActorShell implementation
 
     internal init(
         system: ActorSystem, parent: AddressableActorRef,
@@ -196,7 +197,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 
     /// :nodoc: INTERNAL API: MUST be called immediately after constructing the cell and ref,
     /// as the actor needs to access its ref from its context during setup or other behavior reductions
-    internal func set(ref: ActorCell<Message>) {
+    internal func set(ref: _ActorCell<Message>) {
         self._myCell = ref // TODO: atomic?
     }
 
@@ -783,7 +784,7 @@ public final class ActorShell<Message: ActorMessage>: ActorContext<Message>, Abs
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal system message / signal handling functions
 
-extension ActorShell {
+extension _ActorShell {
     @inlinable internal func interpretSystemWatch(watcher: AddressableActorRef) {
         if self.behavior.isStillAlive {
             self.instrumentation.actorWatchReceived(watchee: self.address, watcher: watcher.address)
@@ -942,7 +943,7 @@ extension ActorShell {
     }
 }
 
-extension ActorShell: CustomStringConvertible {
+extension _ActorShell: CustomStringConvertible {
     public var description: String {
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
         return "ActorContext<\(prettyTypeName)>(\(self.path))"
@@ -1027,9 +1028,9 @@ extension AbstractShellProtocol {
 internal extension ActorContext {
     /// :nodoc: INTERNAL API: UNSAFE, DO NOT TOUCH.
     @usableFromInline
-    var _downcastUnsafe: ActorShell<Message> {
+    var _downcastUnsafe: _ActorShell<Message> {
         switch self {
-        case let shell as ActorShell<Message>: return shell
+        case let shell as _ActorShell<Message>: return shell
         default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorCell. This is a bug, please report this on the issue tracker.")
         }
     }

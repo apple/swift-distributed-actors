@@ -86,7 +86,6 @@ for module in "${modules[@]}"; do
 
   echo "Done building module [$module], moving symbols..."
   mkdir -p $root_path/.build/swift-docc-symbol-graphs
-  ls $root_path/.build/symbol-graphs/
   mv $root_path/.build/symbol-graphs/$module* $root_path/.build/swift-docc-symbol-graphs
 done
 

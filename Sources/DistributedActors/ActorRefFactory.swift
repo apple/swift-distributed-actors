@@ -71,5 +71,5 @@ public protocol ChildActorRefFactory: ActorRefFactory {
 // MARK: ActorContext + ActorFactory
 
 extension ActorContext: ChildActorRefFactory {
-    // implementation is in ActorShell, since it has to be because the shell is a subclass of the context
+    // implementation is in _ActorShell, since it has to be because the shell is a subclass of the context
 }
