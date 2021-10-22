@@ -161,6 +161,12 @@ To run samples, it currently is necessary to provide the `DYLD_LIBRARY_PATH` env
 This is a temporary solution, and eventually will not be necessary.
 
 For example, the following will run the `SampleDiningPhilosophers` example app in _distributed_ mode:
+=======
+
+Much of the project's internals use advanced synchronization patterns not recognized by sendable checks, so many of the warnings are incorrect but the compiler has no way of knowing this.
+We will be removing much of these internals as we move them to use the Swift actor runtime instead.
+
+### Running samples
 
 ```
 echo "TOOLCHAIN=$TOOLCHAIN"
