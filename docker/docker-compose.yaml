@@ -58,10 +58,10 @@ services:
 
   # samples
 
-  sample-crash:
+  sample-philosophers:
     <<: *common
-    command: /bin/bash -cl "swift run SampleLetItCrash div-by-0"
+    command: /bin/bash -cl "swift run --package-path Samples SampleDiningPhilosophers"
 
-  sample-crash-actor:
+  sample-philosophers-dist:
     <<: *common
-    command: /bin/bash -cl "swift run -Xswiftc='-DSACT_BACKTRACE_DEMANGLE' SampleLetItCrash div-by-0 actor"
+    command: /bin/bash -cl "swift run --package-path Samples SampleDiningPhilosophers"
