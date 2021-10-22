@@ -128,6 +128,11 @@ $TOOLCHAIN/usr/bin/swift test
 > This limitation will be lifted as soon as [Inject invocations of transport.actorReady in init #39762](https://github.com/apple/swift/pull/39762) 
 > is merged and a new toolchain is available with it, as we began to synthesize this call in initializers.
 
+#### Note on `DYLD_LIBRARY_PATH`
+
+Currently it is a known limitation of the toolchains that one has to export the `DYLD_LIBRARY_PATH` environment variable 
+with the path to where the `TOOLCHAIN` stores the _Distributed library.
+
 #### Swift Syntax dependency versions
 
 ⚠️ Please note that the build needs the _exact_ matching Swift Syntax version that is compatible with the toolchain.
@@ -137,7 +142,7 @@ For example, using a newer toolchain may require updating this dependency to mat
 
 This is a current limitation that will be lifted as we remove our dependency on source-generation very soon.
 
-#### XCode
+#### Xcode
 
 Xcode currently will not properly highlight the new keywords (e.g. `distributed actor`), so editing may be slightly annoying for the time being.
 
@@ -150,12 +155,32 @@ The project currently is emitting many warnings about `Sendable`, this is expect
 Much of the project's internals use advanced synchronization patterns not recognized by sendable checks, so many of the warnings are incorrect but the compiler has no way of knowing this.
 We will be removing much of these internals as we move them to use the Swift actor runtime instead.
 
+#### Source generation
+
+The current approach uses source generation, using a SwiftPM plugin, in order to implement the bridging between
+function calls and messages. We are actively working on removing this part of the library and replace it with language 
+features powerful enough to express these semantics. 
+
+You can view our proposal to replace the source generator with a language proposal in this [Swift Evolution post](https://forums.swift.org/t/pitch-distributed-actors/51669/104). 
+
+### Running samples
+
+To run samples, it currently is necessary to provide the `DYLD_LIBRARY_PATH` environment variable so Swift is able to locate the new `_Distributed` module.
+This is a temporary solution, and eventually will not be necessary.
+
+For example, the following will run the `SampleDiningPhilosophers` example app in _distributed_ mode:
+=======
+
+Much of the project's internals use advanced synchronization patterns not recognized by sendable checks, so many of the warnings are incorrect but the compiler has no way of knowing this.
+We will be removing much of these internals as we move them to use the Swift actor runtime instead.
+
 ### Running samples
 
 ```
 echo "TOOLCHAIN=$TOOLCHAIN"
 
-DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift run \
+DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" \
+  $TOOLCHAIN/usr/bin/swift run \
   --package-path Samples \
   SampleDiningPhilosophers dist 
 ```
@@ -168,9 +193,14 @@ You can instead build the tests and run them:
 ```
 echo "TOOLCHAIN=$TOOLCHAIN"
  
-DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" $TOOLCHAIN/usr/bin/swift run \
-  --package-path Samples SampleGenActorsDiningPhilosophers
+$TOOLCHAIN/usr/bin/swift build --build-tests && 
+  DYLD_LIBRARY_PATH="$TOOLCHAIN/usr/lib/swift/macosx/" \
+  xctest -XCTest "DistributedActorsTests.DistributedReceptionistTests" \
+  .build/x86_64-apple-macosx/debug/swift-distributed-actorsPackageTests.xctest
  ```
+
+This allows filtering for some specific test class. Again, limitation is something that we should be able to lift in the future,
+and originates from the need of using nightly toolchains to get the latest `_Distributed` module loaded by the `xctest` process.
 
 ## Linux / Docker
 
