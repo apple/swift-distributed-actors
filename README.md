@@ -128,6 +128,11 @@ $TOOLCHAIN/usr/bin/swift test
 > This limitation will be lifted as soon as [Inject invocations of transport.actorReady in init #39762](https://github.com/apple/swift/pull/39762) 
 > is merged and a new toolchain is available with it, as we began to synthesize this call in initializers.
 
+#### Note on `DYLD_LIBRARY_PATH`
+
+Currently it is a known limitation of the toolchains that one has to export the `DYLD_LIBRARY_PATH` environment variable 
+with the path to where the `TOOLCHAIN` stores the _Distributed library.
+
 #### Swift Syntax dependency versions
 
 ⚠️ Please note that the build needs the _exact_ matching Swift Syntax version that is compatible with the toolchain.

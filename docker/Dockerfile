@@ -23,9 +23,6 @@ RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev build-esse
 # jazzy no longer works on xenial as ruby is too old.
 RUN if [ "${ubuntu_version}" = "focal" ] ; then echo "gem: --no-document" > ~/.gemrc; fi
 RUN if [ "${ubuntu_version}" = "focal" ] ; then gem install jazzy; fi
-RUN if [ "${ubuntu_version}" = "focal" ] ; then gem install asciidoctor -v 1.5.8; fi
-RUN if [ "${ubuntu_version}" = "focal" ] ; then gem install asciidoctor-pdf --pre; fi
-RUN if [ "${ubuntu_version}" = "focal" ] ; then gem install asciidoctor-diagram -v 1.5.8; fi
 
 # tools
 RUN mkdir -p $HOME/.tools
