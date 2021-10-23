@@ -64,7 +64,7 @@ extension Serialization.Manifest: CustomStringConvertible {
 }
 
 extension Serialization.Manifest: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoManifest
+    public typealias ProtobufRepresentation = _ProtoManifest
 
     // ProtobufRepresentable conformance
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {

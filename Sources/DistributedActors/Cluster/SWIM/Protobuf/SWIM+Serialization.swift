@@ -20,7 +20,7 @@ import SWIM
 // MARK: Serialization
 
 extension SWIM.Message: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoSWIMRemoteMessage
+    public typealias ProtobufRepresentation = _ProtoSWIMRemoteMessage
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         guard case SWIM.Message.remote(let message) = self else {
@@ -36,19 +36,19 @@ extension SWIM.Message: ProtobufRepresentable {
 }
 
 extension SWIM.RemoteMessage: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoSWIMRemoteMessage
+    public typealias ProtobufRepresentation = _ProtoSWIMRemoteMessage
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
         switch self {
         case .ping(let origin, let payload, let sequenceNumber):
-            var ping = ProtoSWIMPing()
+            var ping = _ProtoSWIMPing()
             ping.origin = try origin.toProto(context: context)
             ping.payload = try payload.toProto(context: context)
             ping.sequenceNumber = sequenceNumber
             proto.ping = ping
         case .pingRequest(let target, let origin, let payload, let sequenceNumber):
-            var pingRequest = ProtoSWIMPingRequest()
+            var pingRequest = _ProtoSWIMPingRequest()
             pingRequest.target = try target.toProto(context: context)
             pingRequest.origin = try origin.toProto(context: context)
             pingRequest.payload = try payload.toProto(context: context)
@@ -92,10 +92,10 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
 }
 
 extension SWIM.Status: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoSWIMStatus
+    public typealias ProtobufRepresentation = _ProtoSWIMStatus
 
-    public func toProto(context: Serialization.Context) throws -> ProtoSWIMStatus {
-        var proto = ProtoSWIMStatus()
+    public func toProto(context: Serialization.Context) throws -> _ProtoSWIMStatus {
+        var proto = _ProtoSWIMStatus()
         switch self {
         case .alive(let incarnation):
             proto.type = .alive
@@ -115,7 +115,7 @@ extension SWIM.Status: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoSWIMStatus, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoSWIMStatus, context: Serialization.Context) throws {
         switch proto.type {
         case .alive:
             self = .alive(incarnation: proto.incarnation)
@@ -135,10 +135,10 @@ extension SWIM.Status: ProtobufRepresentable {
 }
 
 extension SWIM.GossipPayload: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoSWIMGossipPayload
+    public typealias ProtobufRepresentation = _ProtoSWIMGossipPayload
 
-    public func toProto(context: Serialization.Context) throws -> ProtoSWIMGossipPayload {
-        var payload = ProtoSWIMGossipPayload()
+    public func toProto(context: Serialization.Context) throws -> _ProtoSWIMGossipPayload {
+        var payload = _ProtoSWIMGossipPayload()
         if case .membership(let members) = self {
             payload.member = try members.map {
                 try $0.toProto(context: context)
@@ -148,7 +148,7 @@ extension SWIM.GossipPayload: ProtobufRepresentable {
         return payload
     }
 
-    public init(fromProto proto: ProtoSWIMGossipPayload, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoSWIMGossipPayload, context: Serialization.Context) throws {
         if proto.member.isEmpty {
             self = .none
         } else {
@@ -161,10 +161,10 @@ extension SWIM.GossipPayload: ProtobufRepresentable {
 }
 
 extension SWIM.Member: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoSWIMMember
+    public typealias ProtobufRepresentation = _ProtoSWIMMember
 
-    public func toProto(context: Serialization.Context) throws -> ProtoSWIMMember {
-        var proto = ProtoSWIMMember()
+    public func toProto(context: Serialization.Context) throws -> _ProtoSWIMMember {
+        var proto = _ProtoSWIMMember()
         guard let actorPeer = self.peer as? SWIM.Ref else {
             throw SerializationError.unableToSerialize(hint: "Expected peer to be \(SWIM.Ref.self) but was \(self.peer)!")
         }
@@ -174,7 +174,7 @@ extension SWIM.Member: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoSWIMMember, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoSWIMMember, context: Serialization.Context) throws {
         let address = try ActorAddress(fromProto: proto.address, context: context)
         let peer = context.resolveActorRef(SWIM.Message.self, identifiedBy: address)
         let status = try SWIM.Status(fromProto: proto.status, context: context)
@@ -184,13 +184,13 @@ extension SWIM.Member: ProtobufRepresentable {
 }
 
 extension SWIM.PingResponse: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoSWIMPingResponse
+    public typealias ProtobufRepresentation = _ProtoSWIMPingResponse
 
-    public func toProto(context: Serialization.Context) throws -> ProtoSWIMPingResponse {
-        var proto = ProtoSWIMPingResponse()
+    public func toProto(context: Serialization.Context) throws -> _ProtoSWIMPingResponse {
+        var proto = _ProtoSWIMPingResponse()
         switch self {
         case .ack(let target, let incarnation, let payload, let sequenceNumber):
-            var ack = ProtoSWIMPingResponse.Ack()
+            var ack = _ProtoSWIMPingResponse.Ack()
             guard let targetRef = target as? SWIM.Ref else {
                 throw SerializationError.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)")
             }
@@ -200,7 +200,7 @@ extension SWIM.PingResponse: ProtobufRepresentable {
             ack.sequenceNumber = sequenceNumber
             proto.ack = ack
         case .nack(let target, let sequenceNumber):
-            var nack = ProtoSWIMPingResponse.Nack()
+            var nack = _ProtoSWIMPingResponse.Nack()
             guard let targetRef = target as? SWIM.Ref else {
                 throw SerializationError.unableToSerialize(hint: "Can't serialize SWIM target as \(SWIM.Ref.self), was: \(target)")
             }
@@ -213,7 +213,7 @@ extension SWIM.PingResponse: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoSWIMPingResponse, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoSWIMPingResponse, context: Serialization.Context) throws {
         guard let pingResponse = proto.pingResponse else {
             throw SerializationError.missingField("pingResponse", type: String(describing: SWIM.PingResponse.self))
         }
@@ -235,11 +235,11 @@ extension SWIM.PingResponse: ProtobufRepresentable {
 }
 
 extension ClusterMembership.Node: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoUniqueNode
+    public typealias ProtobufRepresentation = _ProtoUniqueNode
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
-        var protoNode = ProtoNode()
+        var protoNode = _ProtoNode()
         protoNode.protocol = self.protocol
         if let name = self.name {
             protoNode.system = name
@@ -257,7 +257,7 @@ extension ClusterMembership.Node: ProtobufRepresentable {
         guard proto.hasNode else {
             throw SerializationError.missingField("node", type: String(describing: Node.self))
         }
-        let protoNode: ProtoNode = proto.node
+        let protoNode: _ProtoNode = proto.node
         let `protocol` = protoNode.protocol
         let name: String?
         if protoNode.protocol != "" {

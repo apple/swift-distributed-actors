@@ -462,7 +462,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
     /// Similar to `fail` however assumes that the current mailbox run will never complete, which can happen when we crashed,
     /// and invoke this function from a signal handler.
-    public func reportCrashFail(cause: MessageProcessingFailure) {
+    public func reportCrashFail(cause: _MessageProcessingFailure) {
         // if supervision or configurations or failure domain dictates something else will happen, explain it to the user here
         let crashHandlingExplanation = "Terminating actor, process and thread remain alive."
 

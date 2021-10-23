@@ -50,7 +50,7 @@ internal enum Wire {
         case accept(HandshakeAccept)
         case reject(HandshakeReject)
 
-        init(_ proto: ProtoHandshakeResponse) throws {
+        init(_ proto: _ProtoHandshakeResponse) throws {
             switch proto.status {
             case .none: fatalError("Invalid handshake response. Contained neither accept, nor reject.")
             case .some(.accept(let accept)): self = .accept(try HandshakeAccept(accept))

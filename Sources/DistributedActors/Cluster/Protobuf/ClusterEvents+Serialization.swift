@@ -18,10 +18,10 @@ import Foundation
 // MARK: Serialization
 
 extension Cluster.Event: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoClusterEvent
+    public typealias ProtobufRepresentation = _ProtoClusterEvent
 
-    public func toProto(context: Serialization.Context) throws -> ProtoClusterEvent {
-        var proto = ProtoClusterEvent()
+    public func toProto(context: Serialization.Context) throws -> _ProtoClusterEvent {
+        var proto = _ProtoClusterEvent()
 
         switch self {
         case .snapshot(let membership):
@@ -38,7 +38,7 @@ extension Cluster.Event: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoClusterEvent, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoClusterEvent, context: Serialization.Context) throws {
         switch proto.event {
         case .some(.membershipChange(let protoChange)):
             self = try .membershipChange(.init(fromProto: protoChange, context: context))
@@ -53,10 +53,10 @@ extension Cluster.Event: ProtobufRepresentable {
 }
 
 extension Cluster.MembershipChange: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoClusterMembershipChange
+    public typealias ProtobufRepresentation = _ProtoClusterMembershipChange
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
-        var proto = ProtoClusterMembershipChange()
+        var proto = _ProtoClusterMembershipChange()
 
         proto.node = try self.node.toProto(context: context)
         if let fromStatus = self.previousStatus {
@@ -81,7 +81,7 @@ extension Cluster.MembershipChange: ProtobufRepresentable {
 }
 
 extension Cluster.LeadershipChange: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoClusterLeadershipChange
+    public typealias ProtobufRepresentation = _ProtoClusterLeadershipChange
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()

@@ -13,13 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoActorAddress
+// MARK: _ProtoActorAddress
 
 extension ActorAddress: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoActorAddress
+    public typealias ProtobufRepresentation = _ProtoActorAddress
 
-    public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {
-        var address = ProtoActorAddress()
+    public func toProto(context: Serialization.Context) throws -> _ProtoActorAddress {
+        var address = _ProtoActorAddress()
         let node = self.uniqueNode
         address.node = try node.toProto(context: context)
 
@@ -29,7 +29,7 @@ extension ActorAddress: ProtobufRepresentable {
         return address
     }
 
-    public init(fromProto proto: ProtoActorAddress, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoActorAddress, context: Serialization.Context) throws {
         let uniqueNode: UniqueNode = try .init(fromProto: proto.node, context: context)
 
         // TODO: make Error
@@ -40,10 +40,10 @@ extension ActorAddress: ProtobufRepresentable {
 }
 
 extension UniqueNode: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoUniqueNode
+    public typealias ProtobufRepresentation = _ProtoUniqueNode
 
-    public func toProto(context: Serialization.Context) throws -> ProtoUniqueNode {
-        var proto = ProtoUniqueNode()
+    public func toProto(context: Serialization.Context) throws -> _ProtoUniqueNode {
+        var proto = _ProtoUniqueNode()
         proto.nid = self.nid.value
         proto.node.protocol = self.node.protocol
         proto.node.system = self.node.systemName
@@ -53,7 +53,7 @@ extension UniqueNode: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoUniqueNode, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoUniqueNode, context: Serialization.Context) throws {
         let node = Node(
             protocol: proto.node.protocol,
             systemName: proto.node.system,
@@ -66,22 +66,22 @@ extension UniqueNode: ProtobufRepresentable {
 }
 
 extension _ActorRef: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoActorAddress
+    public typealias ProtobufRepresentation = _ProtoActorAddress
 
-    public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {
+    public func toProto(context: Serialization.Context) throws -> _ProtoActorAddress {
         try self.address.toProto(context: context)
     }
 
-    public init(fromProto proto: ProtoActorAddress, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoActorAddress, context: Serialization.Context) throws {
         self = context.resolveActorRef(Message.self, identifiedBy: try ActorAddress(fromProto: proto, context: context))
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoActorPath
+// MARK: _ProtoActorPath
 
 extension ActorPath {
-    init(_ proto: ProtoActorPath) throws {
+    init(_ proto: _ProtoActorPath) throws {
         guard !proto.segments.isEmpty else {
             throw SerializationError.emptyRepeatedField("path.segments")
         }
@@ -90,17 +90,17 @@ extension ActorPath {
     }
 }
 
-extension ProtoActorPath {
+extension _ProtoActorPath {
     init(_ value: ActorPath) {
         self.segments = value.segments.map { $0.value } // TODO: avoiding the mapping could be nice... store segments as strings?
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoUniqueNode
+// MARK: _ProtoUniqueNode
 
 extension UniqueNode {
-    init(_ proto: ProtoUniqueNode) throws {
+    init(_ proto: _ProtoUniqueNode) throws {
         guard proto.hasNode else {
             throw SerializationError.missingField("address", type: String(describing: UniqueNode.self))
         }
@@ -113,18 +113,18 @@ extension UniqueNode {
     }
 }
 
-extension ProtoUniqueNode {
+extension _ProtoUniqueNode {
     init(_ node: UniqueNode) {
-        self.node = ProtoNode(node.node)
+        self.node = _ProtoNode(node.node)
         self.nid = node.nid.value
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoNode
+// MARK: _ProtoNode
 
 extension Node {
-    init(_ proto: ProtoNode) {
+    init(_ proto: _ProtoNode) {
         self.protocol = proto.protocol
         self.systemName = proto.system
         self.host = proto.hostname
@@ -132,7 +132,7 @@ extension Node {
     }
 }
 
-extension ProtoNode {
+extension _ProtoNode {
     init(_ node: Node) {
         self.protocol = node.protocol
         self.system = node.systemName

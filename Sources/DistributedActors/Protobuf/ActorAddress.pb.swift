@@ -33,14 +33,14 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-public struct ProtoActorAddress {
+public struct _ProtoActorAddress {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// TODO oneof { senderNode | recipientNode | node }
-  public var node: ProtoUniqueNode {
-    get {return _storage._node ?? ProtoUniqueNode()}
+  public var node: _ProtoUniqueNode {
+    get {return _storage._node ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._node = newValue}
   }
   /// Returns true if `node` has been explicitly set.
@@ -48,8 +48,8 @@ public struct ProtoActorAddress {
   /// Clears the value of `node`. Subsequent reads from it will return its default value.
   public mutating func clearNode() {_uniqueStorage()._node = nil}
 
-  public var path: ProtoActorPath {
-    get {return _storage._path ?? ProtoActorPath()}
+  public var path: _ProtoActorPath {
+    get {return _storage._path ?? _ProtoActorPath()}
     set {_uniqueStorage()._path = newValue}
   }
   /// Returns true if `path` has been explicitly set.
@@ -69,7 +69,7 @@ public struct ProtoActorAddress {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoActorPath {
+public struct _ProtoActorPath {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -81,13 +81,13 @@ public struct ProtoActorPath {
   public init() {}
 }
 
-public struct ProtoUniqueNode {
+public struct _ProtoUniqueNode {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var node: ProtoNode {
-    get {return _storage._node ?? ProtoNode()}
+  public var node: _ProtoNode {
+    get {return _storage._node ?? _ProtoNode()}
     set {_uniqueStorage()._node = newValue}
   }
   /// Returns true if `node` has been explicitly set.
@@ -107,7 +107,7 @@ public struct ProtoUniqueNode {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoNode {
+public struct _ProtoNode {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -127,7 +127,7 @@ public struct ProtoNode {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoActorAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoActorAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "ActorAddress"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "node"),
@@ -136,8 +136,8 @@ extension ProtoActorAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   ]
 
   fileprivate class _StorageClass {
-    var _node: ProtoUniqueNode? = nil
-    var _path: ProtoActorPath? = nil
+    var _node: _ProtoUniqueNode? = nil
+    var _path: _ProtoActorPath? = nil
     var _incarnation: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
@@ -187,7 +187,7 @@ extension ProtoActorAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoActorAddress, rhs: ProtoActorAddress) -> Bool {
+  public static func ==(lhs: _ProtoActorAddress, rhs: _ProtoActorAddress) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -204,7 +204,7 @@ extension ProtoActorAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   }
 }
 
-extension ProtoActorPath: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoActorPath: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "ActorPath"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "segments"),
@@ -226,14 +226,14 @@ extension ProtoActorPath: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoActorPath, rhs: ProtoActorPath) -> Bool {
+  public static func ==(lhs: _ProtoActorPath, rhs: _ProtoActorPath) -> Bool {
     if lhs.segments != rhs.segments {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "UniqueNode"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "node"),
@@ -241,7 +241,7 @@ extension ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   ]
 
   fileprivate class _StorageClass {
-    var _node: ProtoNode? = nil
+    var _node: _ProtoNode? = nil
     var _nid: UInt64 = 0
 
     static let defaultInstance = _StorageClass()
@@ -286,7 +286,7 @@ extension ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoUniqueNode, rhs: ProtoUniqueNode) -> Bool {
+  public static func ==(lhs: _ProtoUniqueNode, rhs: _ProtoUniqueNode) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -302,7 +302,7 @@ extension ProtoUniqueNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   }
 }
 
-extension ProtoNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "Node"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "protocol"),
@@ -339,7 +339,7 @@ extension ProtoNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoNode, rhs: ProtoNode) -> Bool {
+  public static func ==(lhs: _ProtoNode, rhs: _ProtoNode) -> Bool {
     if lhs.`protocol` != rhs.`protocol` {return false}
     if lhs.system != rhs.system {return false}
     if lhs.hostname != rhs.hostname {return false}

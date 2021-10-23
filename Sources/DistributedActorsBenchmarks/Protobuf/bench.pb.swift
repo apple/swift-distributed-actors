@@ -33,7 +33,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-struct ProtoSmallMessage {
+struct _ProtoSmallMessage {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -47,7 +47,7 @@ struct ProtoSmallMessage {
   init() {}
 }
 
-struct ProtoMediumMessage {
+struct _ProtoMediumMessage {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -67,8 +67,8 @@ struct ProtoMediumMessage {
     set {_uniqueStorage()._field03 = newValue}
   }
 
-  var field04: ProtoMediumMessage.NestedMessage {
-    get {return _storage._field04 ?? ProtoMediumMessage.NestedMessage()}
+  var field04: _ProtoMediumMessage.NestedMessage {
+    get {return _storage._field04 ?? _ProtoMediumMessage.NestedMessage()}
     set {_uniqueStorage()._field04 = newValue}
   }
   /// Returns true if `field04` has been explicitly set.
@@ -166,7 +166,7 @@ struct ProtoMediumMessage {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoSmallMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSmallMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "SmallMessage"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "number"),
@@ -193,7 +193,7 @@ extension ProtoSmallMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSmallMessage, rhs: ProtoSmallMessage) -> Bool {
+  static func ==(lhs: _ProtoSmallMessage, rhs: _ProtoSmallMessage) -> Bool {
     if lhs.number != rhs.number {return false}
     if lhs.name != rhs.name {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -201,7 +201,7 @@ extension ProtoSmallMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
   }
 }
 
-extension ProtoMediumMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoMediumMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "MediumMessage"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "field01"),
@@ -227,7 +227,7 @@ extension ProtoMediumMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     var _field01: String = String()
     var _field02: String = String()
     var _field03: Int32 = 0
-    var _field04: ProtoMediumMessage.NestedMessage? = nil
+    var _field04: _ProtoMediumMessage.NestedMessage? = nil
     var _field05: Bool = false
     var _field06: Int32 = 0
     var _field07: Int64 = 0
@@ -359,7 +359,7 @@ extension ProtoMediumMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoMediumMessage, rhs: ProtoMediumMessage) -> Bool {
+  static func ==(lhs: _ProtoMediumMessage, rhs: _ProtoMediumMessage) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -390,8 +390,8 @@ extension ProtoMediumMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
   }
 }
 
-extension ProtoMediumMessage.NestedMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = ProtoMediumMessage.protoMessageName + ".NestedMessage"
+extension _ProtoMediumMessage.NestedMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _ProtoMediumMessage.protoMessageName + ".NestedMessage"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "field1"),
     2: .same(proto: "field2"),
@@ -422,7 +422,7 @@ extension ProtoMediumMessage.NestedMessage: SwiftProtobuf.Message, SwiftProtobuf
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoMediumMessage.NestedMessage, rhs: ProtoMediumMessage.NestedMessage) -> Bool {
+  static func ==(lhs: _ProtoMediumMessage.NestedMessage, rhs: _ProtoMediumMessage.NestedMessage) -> Bool {
     if lhs.field1 != rhs.field1 {return false}
     if lhs.field2 != rhs.field2 {return false}
     if lhs.field3 != rhs.field3 {return false}

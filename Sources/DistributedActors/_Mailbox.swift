@@ -797,12 +797,12 @@ internal enum ActorRunResult {
 }
 
 /// :nodoc: INTERNAL API
-public struct MessageProcessingFailure: Error {
+public struct _MessageProcessingFailure: Error {
     let messageDescription: String
     let backtrace: [String] // TODO: Could be worth it to carry it as struct rather than the raw string?
 }
 
-extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringConvertible {
+extension _MessageProcessingFailure: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         "Actor faulted while processing message '\(self.messageDescription)', with backtrace"
     }

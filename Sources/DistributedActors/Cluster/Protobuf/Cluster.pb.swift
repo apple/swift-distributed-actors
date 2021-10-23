@@ -33,7 +33,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-public struct ProtoClusterShellMessage {
+public struct _ProtoClusterShellMessage {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -44,18 +44,18 @@ public struct ProtoClusterShellMessage {
   }
 
   /// Not all messages are serializable, on purpose, as they are not intended to cross over the network
-  public var clusterEvent: ProtoClusterEvent {
+  public var clusterEvent: _ProtoClusterEvent {
     get {
       if case .clusterEvent(let v)? = _storage._message {return v}
-      return ProtoClusterEvent()
+      return _ProtoClusterEvent()
     }
     set {_uniqueStorage()._message = .clusterEvent(newValue)}
   }
 
-  public var inbound: ProtoClusterInbound {
+  public var inbound: _ProtoClusterInbound {
     get {
       if case .inbound(let v)? = _storage._message {return v}
-      return ProtoClusterInbound()
+      return _ProtoClusterInbound()
     }
     set {_uniqueStorage()._message = .inbound(newValue)}
   }
@@ -64,11 +64,11 @@ public struct ProtoClusterShellMessage {
 
   public enum OneOf_Message: Equatable {
     /// Not all messages are serializable, on purpose, as they are not intended to cross over the network
-    case clusterEvent(ProtoClusterEvent)
-    case inbound(ProtoClusterInbound)
+    case clusterEvent(_ProtoClusterEvent)
+    case inbound(_ProtoClusterInbound)
 
   #if !swift(>=4.1)
-    public static func ==(lhs: ProtoClusterShellMessage.OneOf_Message, rhs: ProtoClusterShellMessage.OneOf_Message) -> Bool {
+    public static func ==(lhs: _ProtoClusterShellMessage.OneOf_Message, rhs: _ProtoClusterShellMessage.OneOf_Message) -> Bool {
       switch (lhs, rhs) {
       case (.clusterEvent(let l), .clusterEvent(let r)): return l == r
       case (.inbound(let l), .inbound(let r)): return l == r
@@ -83,7 +83,7 @@ public struct ProtoClusterShellMessage {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoClusterInbound {
+public struct _ProtoClusterInbound {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -94,10 +94,10 @@ public struct ProtoClusterInbound {
     set {_uniqueStorage()._message = newValue}
   }
 
-  public var restInPeace: ProtoClusterRestInPeace {
+  public var restInPeace: _ProtoClusterRestInPeace {
     get {
       if case .restInPeace(let v)? = _storage._message {return v}
-      return ProtoClusterRestInPeace()
+      return _ProtoClusterRestInPeace()
     }
     set {_uniqueStorage()._message = .restInPeace(newValue)}
   }
@@ -106,10 +106,10 @@ public struct ProtoClusterInbound {
 
   /// Not all messages are serializable, on purpose, as they are not intended to cross over the network
   public enum OneOf_Message: Equatable {
-    case restInPeace(ProtoClusterRestInPeace)
+    case restInPeace(_ProtoClusterRestInPeace)
 
   #if !swift(>=4.1)
-    public static func ==(lhs: ProtoClusterInbound.OneOf_Message, rhs: ProtoClusterInbound.OneOf_Message) -> Bool {
+    public static func ==(lhs: _ProtoClusterInbound.OneOf_Message, rhs: _ProtoClusterInbound.OneOf_Message) -> Bool {
       switch (lhs, rhs) {
       case (.restInPeace(let l), .restInPeace(let r)): return l == r
       }
@@ -122,13 +122,13 @@ public struct ProtoClusterInbound {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoClusterRestInPeace {
+public struct _ProtoClusterRestInPeace {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var targetNode: ProtoUniqueNode {
-    get {return _storage._targetNode ?? ProtoUniqueNode()}
+  public var targetNode: _ProtoUniqueNode {
+    get {return _storage._targetNode ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._targetNode = newValue}
   }
   /// Returns true if `targetNode` has been explicitly set.
@@ -136,8 +136,8 @@ public struct ProtoClusterRestInPeace {
   /// Clears the value of `targetNode`. Subsequent reads from it will return its default value.
   public mutating func clearTargetNode() {_uniqueStorage()._targetNode = nil}
 
-  public var fromNode: ProtoUniqueNode {
-    get {return _storage._fromNode ?? ProtoUniqueNode()}
+  public var fromNode: _ProtoUniqueNode {
+    get {return _storage._fromNode ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._fromNode = newValue}
   }
   /// Returns true if `fromNode` has been explicitly set.
@@ -154,7 +154,7 @@ public struct ProtoClusterRestInPeace {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "ClusterShellMessage"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "clusterEvent"),
@@ -162,7 +162,7 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
   ]
 
   fileprivate class _StorageClass {
-    var _message: ProtoClusterShellMessage.OneOf_Message?
+    var _message: _ProtoClusterShellMessage.OneOf_Message?
 
     static let defaultInstance = _StorageClass()
 
@@ -186,7 +186,7 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1:
-          var v: ProtoClusterEvent?
+          var v: _ProtoClusterEvent?
           if let current = _storage._message {
             try decoder.handleConflictingOneOf()
             if case .clusterEvent(let m) = current {v = m}
@@ -194,7 +194,7 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {_storage._message = .clusterEvent(v)}
         case 2:
-          var v: ProtoClusterInbound?
+          var v: _ProtoClusterInbound?
           if let current = _storage._message {
             try decoder.handleConflictingOneOf()
             if case .inbound(let m) = current {v = m}
@@ -220,7 +220,7 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoClusterShellMessage, rhs: ProtoClusterShellMessage) -> Bool {
+  public static func ==(lhs: _ProtoClusterShellMessage, rhs: _ProtoClusterShellMessage) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -235,14 +235,14 @@ extension ProtoClusterShellMessage: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-extension ProtoClusterInbound: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoClusterInbound: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "ClusterInbound"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "restInPeace"),
   ]
 
   fileprivate class _StorageClass {
-    var _message: ProtoClusterInbound.OneOf_Message?
+    var _message: _ProtoClusterInbound.OneOf_Message?
 
     static let defaultInstance = _StorageClass()
 
@@ -266,7 +266,7 @@ extension ProtoClusterInbound: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1:
-          var v: ProtoClusterRestInPeace?
+          var v: _ProtoClusterRestInPeace?
           if let current = _storage._message {
             try decoder.handleConflictingOneOf()
             if case .restInPeace(let m) = current {v = m}
@@ -288,7 +288,7 @@ extension ProtoClusterInbound: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoClusterInbound, rhs: ProtoClusterInbound) -> Bool {
+  public static func ==(lhs: _ProtoClusterInbound, rhs: _ProtoClusterInbound) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -303,7 +303,7 @@ extension ProtoClusterInbound: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension ProtoClusterRestInPeace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoClusterRestInPeace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "ClusterRestInPeace"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "targetNode"),
@@ -311,8 +311,8 @@ extension ProtoClusterRestInPeace: SwiftProtobuf.Message, SwiftProtobuf._Message
   ]
 
   fileprivate class _StorageClass {
-    var _targetNode: ProtoUniqueNode? = nil
-    var _fromNode: ProtoUniqueNode? = nil
+    var _targetNode: _ProtoUniqueNode? = nil
+    var _fromNode: _ProtoUniqueNode? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -356,7 +356,7 @@ extension ProtoClusterRestInPeace: SwiftProtobuf.Message, SwiftProtobuf._Message
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoClusterRestInPeace, rhs: ProtoClusterRestInPeace) -> Bool {
+  public static func ==(lhs: _ProtoClusterRestInPeace, rhs: _ProtoClusterRestInPeace) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0

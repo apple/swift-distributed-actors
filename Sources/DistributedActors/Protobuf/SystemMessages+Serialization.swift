@@ -20,29 +20,29 @@ import SwiftProtobuf
 // MARK: ACK / NACK
 
 extension _SystemMessage.ACK: InternalProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoSystemMessageACK
+    typealias ProtobufRepresentation = _ProtoSystemMessageACK
 
-    func toProto(context: Serialization.Context) -> ProtoSystemMessageACK {
-        var proto = ProtoSystemMessageACK()
+    func toProto(context: Serialization.Context) -> _ProtoSystemMessageACK {
+        var proto = _ProtoSystemMessageACK()
         proto.sequenceNr = self.sequenceNr
         return proto
     }
 
-    init(fromProto proto: ProtoSystemMessageACK, context: Serialization.Context) throws {
+    init(fromProto proto: _ProtoSystemMessageACK, context: Serialization.Context) throws {
         self.sequenceNr = proto.sequenceNr
     }
 }
 
 extension _SystemMessage.NACK: InternalProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoSystemMessageNACK
+    typealias ProtobufRepresentation = _ProtoSystemMessageNACK
 
-    func toProto(context: Serialization.Context) -> ProtoSystemMessageNACK {
-        var proto = ProtoSystemMessageNACK()
+    func toProto(context: Serialization.Context) -> _ProtoSystemMessageNACK {
+        var proto = _ProtoSystemMessageNACK()
         proto.sequenceNr = self.sequenceNr
         return proto
     }
 
-    init(fromProto proto: ProtoSystemMessageNACK, context: Serialization.Context) throws {
+    init(fromProto proto: _ProtoSystemMessageNACK, context: Serialization.Context) throws {
         self.sequenceNr = proto.sequenceNr
     }
 }
@@ -51,16 +51,16 @@ extension _SystemMessage.NACK: InternalProtobufRepresentable {
 // MARK: SystemMessageEnvelope
 
 extension SystemMessageEnvelope: InternalProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoSystemMessageEnvelope
+    typealias ProtobufRepresentation = _ProtoSystemMessageEnvelope
 
-    func toProto(context: Serialization.Context) throws -> ProtoSystemMessageEnvelope {
-        var proto = ProtoSystemMessageEnvelope()
+    func toProto(context: Serialization.Context) throws -> _ProtoSystemMessageEnvelope {
+        var proto = _ProtoSystemMessageEnvelope()
         proto.sequenceNr = self.sequenceNr
         proto.message = try self.message.toProto(context: context)
         return proto
     }
 
-    init(fromProto proto: ProtoSystemMessageEnvelope, context: Serialization.Context) throws {
+    init(fromProto proto: _ProtoSystemMessageEnvelope, context: Serialization.Context) throws {
         self.sequenceNr = proto.sequenceNr
         self.message = try .init(fromProto: proto.message, context: context)
     }
@@ -70,25 +70,25 @@ extension SystemMessageEnvelope: InternalProtobufRepresentable {
 // MARK: SystemMessage
 
 extension _SystemMessage: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoSystemMessage
+    public typealias ProtobufRepresentation = _ProtoSystemMessage
 
-    public func toProto(context: Serialization.Context) throws -> ProtoSystemMessage {
-        var proto = ProtoSystemMessage()
+    public func toProto(context: Serialization.Context) throws -> _ProtoSystemMessage {
+        var proto = _ProtoSystemMessage()
         switch self {
         case .watch(let watchee, let watcher):
-            var watch = ProtoSystemMessage_Watch()
+            var watch = _ProtoSystemMessage_Watch()
             watch.watchee = try watchee.address.toProto(context: context)
             watch.watcher = try watcher.address.toProto(context: context)
             proto.payload = .watch(watch)
 
         case .unwatch(let watchee, let watcher):
-            var unwatch = ProtoSystemMessage_Unwatch()
+            var unwatch = _ProtoSystemMessage_Unwatch()
             unwatch.watchee = try watchee.address.toProto(context: context)
             unwatch.watcher = try watcher.address.toProto(context: context)
             proto.payload = .unwatch(unwatch)
 
         case .terminated(let ref, let existenceConfirmed, let addressTerminated):
-            var terminated = ProtoSystemMessage_Terminated()
+            var terminated = _ProtoSystemMessage_Terminated()
             terminated.ref = try ref.address.toProto(context: context)
             terminated.existenceConfirmed = existenceConfirmed
             terminated.addressTerminated = addressTerminated
@@ -112,7 +112,7 @@ extension _SystemMessage: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoSystemMessage, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoSystemMessage, context: Serialization.Context) throws {
         guard let payload = proto.payload else {
             throw SerializationError.missingField("payload", type: String(describing: _SystemMessage.self))
         }

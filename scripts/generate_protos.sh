@@ -34,7 +34,6 @@ public_protos=(
     -or -name 'ClusterEvents.proto'
 
     -or -name 'VersionVector.proto'
-    -or -name 'CRDT.proto'
 )
 
 # There are two visibility options: Public, Internal (default)

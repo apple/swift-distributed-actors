@@ -17,7 +17,7 @@ import NIO
 import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoEnvelope
+// MARK: _ProtoEnvelope
 
 enum WireEnvelopeError: Error {
     case missingManifest
@@ -25,7 +25,7 @@ enum WireEnvelopeError: Error {
 }
 
 extension Wire.Envelope: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoEnvelope
+    public typealias ProtobufRepresentation = _ProtoEnvelope
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
@@ -55,11 +55,11 @@ extension Wire.Envelope: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoProtocolVersion
+// MARK: _ProtoProtocolVersion
 
 // TODO: conversions are naive here, we'd want to express this more nicely...
 extension Wire.Version {
-    init(_ proto: ProtoProtocolVersion) {
+    init(_ proto: _ProtoProtocolVersion) {
         self.reserved = UInt8(proto.reserved)
         self.major = UInt8(proto.major)
         self.minor = UInt8(proto.minor)
@@ -67,9 +67,9 @@ extension Wire.Version {
     }
 }
 
-extension ProtoProtocolVersion {
+extension _ProtoProtocolVersion {
     init(_ value: Wire.Version) {
-        var proto = ProtoProtocolVersion()
+        var proto = _ProtoProtocolVersion()
         proto.reserved = UInt32(value.reserved)
         proto.major = UInt32(value.major)
         proto.minor = UInt32(value.minor)
@@ -79,10 +79,10 @@ extension ProtoProtocolVersion {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoHandshakeAccept
+// MARK: _ProtoHandshakeAccept
 
 extension Wire.HandshakeAccept {
-    init(_ proto: ProtoHandshakeAccept) throws {
+    init(_ proto: _ProtoHandshakeAccept) throws {
         guard proto.hasVersion else {
             throw SerializationError.missingField("version", type: String(describing: Wire.HandshakeAccept.self))
         }
@@ -99,7 +99,7 @@ extension Wire.HandshakeAccept {
     }
 }
 
-extension ProtoHandshakeAccept {
+extension _ProtoHandshakeAccept {
     init(_ accept: Wire.HandshakeAccept) {
         self.version = .init(accept.version)
         self.targetNode = .init(accept.targetNode)
@@ -108,10 +108,10 @@ extension ProtoHandshakeAccept {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ProtoHandshakeReject
+// MARK: _ProtoHandshakeReject
 
 extension Wire.HandshakeReject {
-    init(_ proto: ProtoHandshakeReject) throws {
+    init(_ proto: _ProtoHandshakeReject) throws {
         guard proto.hasVersion else {
             throw SerializationError.missingField("version", type: String(describing: Wire.HandshakeReject.self))
         }
@@ -130,7 +130,7 @@ extension Wire.HandshakeReject {
     }
 }
 
-extension ProtoHandshakeReject {
+extension _ProtoHandshakeReject {
     init(_ reject: Wire.HandshakeReject) {
         self.version = .init(reject.version)
         self.targetNode = .init(reject.targetNode)
@@ -144,9 +144,9 @@ extension ProtoHandshakeReject {
 
 // TODO: worth making it Proto representable or not?
 extension Wire.HandshakeOffer {
-    typealias ProtobufRepresentation = ProtoHandshakeOffer
+    typealias ProtobufRepresentation = _ProtoHandshakeOffer
 
-    init(fromProto proto: ProtoHandshakeOffer) throws {
+    init(fromProto proto: _ProtoHandshakeOffer) throws {
         guard proto.hasOriginNode else {
             throw SerializationError.missingField("originNode", type: String(reflecting: Wire.HandshakeOffer.self))
         }
@@ -163,15 +163,15 @@ extension Wire.HandshakeOffer {
     }
 }
 
-extension ProtoHandshakeOffer {
+extension _ProtoHandshakeOffer {
     init(_ offer: Wire.HandshakeOffer) {
-        self.version = ProtoProtocolVersion(offer.version)
-        self.originNode = ProtoUniqueNode(offer.originNode)
-        self.targetNode = ProtoNode(offer.targetNode)
+        self.version = _ProtoProtocolVersion(offer.version)
+        self.originNode = _ProtoUniqueNode(offer.originNode)
+        self.targetNode = _ProtoNode(offer.targetNode)
     }
 
     init(serializedData data: Data) throws {
-        var proto = ProtoHandshakeOffer()
+        var proto = _ProtoHandshakeOffer()
         try proto.merge(serializedData: data)
 
         guard proto.hasVersion else {
