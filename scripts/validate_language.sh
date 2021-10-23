@@ -19,7 +19,8 @@ printf "=> Checking for unacceptable language... "
 unacceptable_terms=(
     -e blacklis[t]
     -e whitelis[t]
-    -e slav[e]
+    -e maste[r]
+    -e sanit[y]
     -e sanit[y]
 )
 if git grep --color=never -i "${unacceptable_terms[@]}" > /dev/null; then
