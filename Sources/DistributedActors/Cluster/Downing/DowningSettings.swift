@@ -51,7 +51,7 @@ public enum OnDownActionStrategySettings {
 
         case .gracefulShutdown(let shutdownDelay):
             return { system in
-                try system.spawn(
+                try system._spawn(
                     "leaver",
                     of: String.self,
                     .setup { context in

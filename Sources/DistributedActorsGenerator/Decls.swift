@@ -208,20 +208,20 @@ struct DistributedMessageDecl {
             () // no "reply"
 
         case .void:
-            res.append((nil, "_replyTo", "ActorRef<Result<_Done, ErrorEnvelope>>"))
+            res.append((nil, "_replyTo", "_ActorRef<Result<_Done, ErrorEnvelope>>"))
 
         case .type(let valueType) where !self.throwing:
-            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>")) // TODO: make the same with the error envelope
+            res.append((nil, "_replyTo", "_ActorRef<Result<\(valueType), ErrorEnvelope>>")) // TODO: make the same with the error envelope
 
         case .type(let valueType) /* self.throwing */:
-            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
+            res.append((nil, "_replyTo", "_ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         case .result(let valueType, _):
-            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
+            res.append((nil, "_replyTo", "_ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         case .nioEventLoopFuture(let valueType),
              .actorReply(let valueType),
              .askResponse(let valueType):
             // FIXME: carry the return type raw in the reply enum
-            res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), ErrorEnvelope>>"))
+            res.append((nil, "_replyTo", "_ActorRef<Result<\(valueType), ErrorEnvelope>>"))
         }
 
         return res

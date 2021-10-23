@@ -17,12 +17,12 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: _ActorRefProvider
 
-/// `ActorRefProvider`s are those which both create and resolve actor references.
+/// `_ActorRefProvider`s are those which both create and resolve actor references.
 internal protocol _ActorRefProvider: _ActorTreeTraversable {
     /// Path of the root guardian actor for this part of the actor tree.
     var rootAddress: ActorAddress { get }
 
-    /// Spawn an actor with the passed in [Behavior] and return its [ActorRef].
+    /// Spawn an actor with the passed in [Behavior] and return its [_ActorRef].
     ///
     /// The returned actor ref is immediately valid and may have messages sent to.
     ///
@@ -30,15 +30,15 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     /// Note that it is not possible to `.spawnWatch` top level actors, since any stop would mean the system shutdown
     /// if you really want this then implement your own top actor to spawn children. It is possible however to use
     /// `.supervision(strategy: .escalate))` as failures bubbling up through the system may indeed be a reason to terminate.
-    func spawn<Message>(
+    func _spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
-    ) throws -> ActorRef<Message>
+    ) throws -> _ActorRef<Message>
         where Message: ActorMessage
 
-    /// Stops all actors created by this `ActorRefProvider` and blocks until they have all stopped.
+    /// Stops all actors created by this `_ActorRefProvider` and blocks until they have all stopped.
     func stopAll()
 }
 
@@ -75,15 +75,15 @@ extension RemoteActorRefProvider {
         self.localProvider.rootAddress
     }
 
-    func spawn<Message>(
+    func _spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
-    ) throws -> ActorRef<Message>
+    ) throws -> _ActorRef<Message>
         where Message: ActorMessage {
         // spawn is always local, thus we delegate to the underlying provider
-        return try self.localProvider.spawn(system: system, behavior: behavior, address: address, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
+        return try self.localProvider._spawn(system: system, behavior: behavior, address: address, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
     }
 
     func stopAll() {
@@ -99,7 +99,7 @@ extension RemoteActorRefProvider {
 // MARK: RemoteActorRefProvider implements resolve differently, by being aware of remote addresses
 
 extension RemoteActorRefProvider {
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         switch context.address._location {
         case .local:
             return self.localProvider._resolve(context: context)
@@ -120,8 +120,8 @@ extension RemoteActorRefProvider {
         }
     }
 
-    internal func _resolveAsRemoteRef<Message>(_ context: ResolveContext<Message>, remoteAddress address: ActorAddress) -> ActorRef<Message> {
-        ActorRef(.remote(.init(shell: self.cluster, address: address, system: context.system)))
+    internal func _resolveAsRemoteRef<Message>(_ context: ResolveContext<Message>, remoteAddress address: ActorAddress) -> _ActorRef<Message> {
+        _ActorRef(.remote(.init(shell: self.cluster, address: address, system: context.system)))
     }
 }
 
@@ -139,12 +139,12 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         self.root = root
     }
 
-    func spawn<Message>(
+    func _spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
-    ) throws -> ActorRef<Message>
+    ) throws -> _ActorRef<Message>
         where Message: ActorMessage {
         return try self.root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
@@ -183,7 +183,7 @@ extension LocalActorRefProvider {
         self.root._traverse(context: context.deeper, visit)
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         self.root._resolve(context: context)
     }
 
@@ -200,14 +200,14 @@ public protocol _ActorTreeTraversable {
     ///
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
-    /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> where Message: ActorMessage
+    /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `_ActorRef` otherwise.
+    func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> where Message: ActorMessage
 
     /// Resolves the given actor path against the underlying actor tree.
     ///
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
-    /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
+    /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `_ActorRef` otherwise.
     func _resolveUntyped(context: ResolveContext<Never>) -> AddressableActorRef
 }
 
@@ -248,7 +248,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
     }
 
     @usableFromInline
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters // i.e. we resolved a "dead reference" as it points to nothing
         }
@@ -353,7 +353,7 @@ public struct ResolveContext<Message: ActorMessage> {
     }
 
     /// A dead letters reference that is personalized for the context's address, and well  well typed for `Message`.
-    public var personalDeadLetters: ActorRef<Message> {
+    public var personalDeadLetters: _ActorRef<Message> {
         self.system.personalDeadLetters(recipient: self.address)
     }
 }

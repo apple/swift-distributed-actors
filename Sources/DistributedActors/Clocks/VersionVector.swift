@@ -280,7 +280,7 @@ public struct ReplicaID: Hashable {
         self.storage = representation
     }
 
-    public static func actor<M: Codable>(_ context: ActorContext<M>) -> ReplicaID {
+    public static func actor<M: Codable>(_ context: _ActorContext<M>) -> ReplicaID {
         .init(.actorAddress(context.address))
     }
 

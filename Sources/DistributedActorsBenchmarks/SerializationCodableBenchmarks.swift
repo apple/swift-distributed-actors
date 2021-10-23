@@ -70,13 +70,13 @@ func bench_codable_roundTrip_message_small(n: Int) {
 struct MessageWithRef: ActorMessage {
     let number: Int
     let name: String
-    let reference: ActorRef<String>
+    let reference: _ActorRef<String>
 }
 
 var message_withRef: MessageWithRef!
 
 private func setUpActorRef() {
-    let ref: ActorRef<String> = try! system.spawn("someActor", .ignore)
+    let ref: _ActorRef<String> = try! system._spawn("someActor", .ignore)
     message_withRef = MessageWithRef(number: 1337, name: "kappa", reference: ref)
 }
 

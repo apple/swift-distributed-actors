@@ -109,9 +109,9 @@ public struct GossipLogicContext<Envelope: Codable, Acknowledgement: Codable> {
     /// however some may need to manage gossip rounds for specific identifiers independently.
     public let gossipIdentifier: GossipIdentifier
 
-    private let gossiperContext: ActorContext<GossipShell<Envelope, Acknowledgement>.Message>
+    private let gossiperContext: _ActorContext<GossipShell<Envelope, Acknowledgement>.Message>
 
-    internal init(ownerContext: ActorContext<GossipShell<Envelope, Acknowledgement>.Message>, gossipIdentifier: GossipIdentifier) {
+    internal init(ownerContext: _ActorContext<GossipShell<Envelope, Acknowledgement>.Message>, gossipIdentifier: GossipIdentifier) {
         self.gossiperContext = ownerContext
         self.gossipIdentifier = gossipIdentifier
     }
@@ -119,7 +119,7 @@ public struct GossipLogicContext<Envelope: Codable, Acknowledgement: Codable> {
     /// May be used as equivalent of "myself" for purposes of logging.
     ///
     /// Should not be used to arbitrarily allow sending messages to the gossiper from gossip logics,
-    /// which is why it is only an address and not full ActorRef to the gossiper.
+    /// which is why it is only an address and not full _ActorRef to the gossiper.
     public var gossiperAddress: ActorAddress {
         self.gossiperContext.myself.address
     }

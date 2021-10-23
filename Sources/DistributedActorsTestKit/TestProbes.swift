@@ -44,12 +44,12 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
     }
 
     typealias ProbeCommands = ActorTestProbeCommand<Message>
-    internal let internalRef: ActorRef<ProbeCommands>
-    internal let exposedRef: ActorRef<Message>
+    internal let internalRef: _ActorRef<ProbeCommands>
+    internal let exposedRef: _ActorRef<Message>
 
     /// The reference to the underlying "mock" actor.
     /// Sending messages to this reference allows the probe to inspect them using the `expect...` family of functions.
-    public var ref: ActorRef<Message> {
+    public var ref: _ActorRef<Message> {
         self.exposedRef
     }
 
@@ -70,7 +70,7 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
 
     /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
     internal init(
-        spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
+        spawn: (Behavior<ProbeCommands>) throws -> _ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
         file: StaticString = #file, line: UInt = #line
     ) {
         self.settings = settings
@@ -507,7 +507,7 @@ public final class ProbeInterceptor<Message: ActorMessage>: Interceptor<Message>
         self.probe = probe
     }
 
-    public final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    public final override func interceptMessage(target: Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         self.probe.tell(message)
         return try target.interpretMessage(context: context, message: message)
     }
@@ -656,7 +656,7 @@ extension ActorTestProbe {
     /// - Returns: reference to the passed in `watchee` actor.
     /// - SeeAlso: `DeathWatch`
     @discardableResult
-    public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+    public func watch<M>(_ watchee: _ActorRef<M>, file: String = #file, line: UInt = #line) -> _ActorRef<M> {
         self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.asAddressable, file: file, line: line))
         return watchee
     }
@@ -668,7 +668,7 @@ extension ActorTestProbe {
     /// Without this it may happen that we asked the probe to watch an actor, and send a message to the actor directly,
     /// and our direct message arrives first, before the watch at the destination, causing potentially confusing behavior
     /// in some very ordering delicate testing scenarios.
-    public func forward<Message>(_ message: Message, to target: ActorRef<Message>, file: String = #file, line: UInt = #line) where Message: Codable {
+    public func forward<Message>(_ message: Message, to target: _ActorRef<Message>, file: String = #file, line: UInt = #line) where Message: Codable {
         self.internalRef.tell(ProbeCommands.forwardCommand(send: { () in target.tell(message, file: file, line: line) }))
     }
 
@@ -682,7 +682,7 @@ extension ActorTestProbe {
     /// - Returns: reference to the passed in watchee actor.
     /// - SeeAlso: `DeathWatch`
     @discardableResult
-    public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
+    public func unwatch<M>(_ watchee: _ActorRef<M>) -> _ActorRef<M> {
         self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.asAddressable))
         return watchee
     }
@@ -695,7 +695,7 @@ extension ActorTestProbe {
     /// - SeeAlso: `DeathWatch`
     @discardableResult
     // TODO: expectTermination(of: ...) maybe nicer wording?
-    public func expectTerminated<T>(_ ref: ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
+    public func expectTerminated<T>(_ ref: _ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
 

@@ -24,7 +24,7 @@ final class ShoutingInterceptor: Interceptor<String> {
         self.probe = probe
     }
 
-    override func interceptMessage(target: Behavior<String>, context: ActorContext<String>, message: String) throws -> Behavior<String> {
+    override func interceptMessage(target: Behavior<String>, context: _ActorContext<String>, message: String) throws -> Behavior<String> {
         self.probe?.tell("from-interceptor:\(message)")
         return try target.interpretMessage(context: context, message: message + "!")
     }
@@ -41,7 +41,7 @@ final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
         self.probe = probe
     }
 
-    override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    override func interceptSignal(target: Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         switch signal {
         case let terminated as Signals.Terminated:
             self.probe.tell(terminated) // we forward all termination signals to someone
@@ -66,7 +66,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             "theWallsHaveEars",
             .intercept(behavior: forwardToProbe, with: interceptor)
         )
@@ -103,7 +103,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
         }
 
         let depth = 50
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             "theWallsHaveEars",
             interceptionInceptionBehavior(currentDepth: 0, stopAt: depth)
         )
@@ -123,7 +123,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
         let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
         let spawnSomeStoppers = Behavior<String>.setup { context in
-            let one: ActorRef<String> = try context.spawnWatch(
+            let one: _ActorRef<String> = try context._spawnWatch(
                 "stopperOne",
                 .receiveMessage { _ in
                     .stop
@@ -131,7 +131,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
             )
             one.tell("stop")
 
-            let two: ActorRef<String> = try context.spawnWatch(
+            let two: _ActorRef<String> = try context._spawnWatch(
                 "stopperTwo",
                 .receiveMessage { _ in
                     .stop
@@ -142,7 +142,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let _: ActorRef<String> = try system.spawn(
+        let _: _ActorRef<String> = try system._spawn(
             "theWallsHaveEarsForTermination",
             .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals)
         )
@@ -162,7 +162,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
             self.probe = probe
         }
 
-        override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        override func interceptSignal(target: Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
             self.probe.tell("intercepted:\(signal)")
             return try target.interpretSignal(context: context, signal: signal)
         }
@@ -179,7 +179,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
 
         let interceptedBehavior: Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
 
-        let ref = try system.spawn(.anonymous, interceptedBehavior)
+        let ref = try system._spawn(.anonymous, interceptedBehavior)
         p.watch(ref)
         ref.tell("test")
 

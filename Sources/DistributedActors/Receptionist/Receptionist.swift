@@ -38,13 +38,13 @@ public struct Receptionist {
     internal static let naming: ActorNaming = .unique("receptionist-ref")
 
     /// :nodoc: INTERNAL API
-    /// When sent to receptionist will register the specified `ActorRef` under the given `Reception.Key`
-    public class Register<Guest: ReceptionistGuest>: _AnyRegister {
+    /// When sent to receptionist will register the specified `_ActorRef` under the given `Reception.Key`
+    public class Register<Guest: _ReceptionistGuest>: _AnyRegister {
         public let guest: Guest
         public let key: Reception.Key<Guest>
-        public let replyTo: ActorRef<Reception.Registered<Guest>>?
+        public let replyTo: _ActorRef<Reception.Registered<Guest>>?
 
-        public init(_ ref: Guest, key: Reception.Key<Guest>, replyTo: ActorRef<Reception.Registered<Guest>>? = nil) {
+        public init(_ ref: Guest, key: Reception.Key<Guest>, replyTo: _ActorRef<Reception.Registered<Guest>>? = nil) {
             self.guest = ref
             self.key = key
             self.replyTo = replyTo
@@ -73,12 +73,12 @@ public struct Receptionist {
     }
 
     /// :nodoc: INTERNAL API
-    /// Used to lookup `ActorRef`s for the given `Reception.Key`
-    public class Lookup<Guest: ReceptionistGuest>: _Lookup, ListingRequest, CustomStringConvertible {
+    /// Used to lookup `_ActorRef`s for the given `Reception.Key`
+    public class Lookup<Guest: _ReceptionistGuest>: _Lookup, ListingRequest, CustomStringConvertible {
         public let key: Reception.Key<Guest>
-        public let subscriber: ActorRef<Reception.Listing<Guest>>
+        public let subscriber: _ActorRef<Reception.Listing<Guest>>
 
-        public init(key: Reception.Key<Guest>, replyTo: ActorRef<Reception.Listing<Guest>>) {
+        public init(key: Reception.Key<Guest>, replyTo: _ActorRef<Reception.Listing<Guest>>) {
             self.key = key
             self.subscriber = replyTo
             super.init(_key: key.asAnyKey)
@@ -99,11 +99,11 @@ public struct Receptionist {
 
     /// :nodoc: INTERNAL API
     /// Subscribe to periodic updates of the specified key
-    public class Subscribe<Guest: ReceptionistGuest>: _Subscribe, ListingRequest, CustomStringConvertible {
+    public class Subscribe<Guest: _ReceptionistGuest>: _Subscribe, ListingRequest, CustomStringConvertible {
         public let key: Reception.Key<Guest>
-        public let subscriber: ActorRef<Reception.Listing<Guest>>
+        public let subscriber: _ActorRef<Reception.Listing<Guest>>
 
-        public init(key: Reception.Key<Guest>, subscriber: ActorRef<Reception.Listing<Guest>>) {
+        public init(key: Reception.Key<Guest>, subscriber: _ActorRef<Reception.Listing<Guest>>) {
             self.key = key
             self.subscriber = subscriber
             super.init()
@@ -200,7 +200,7 @@ public struct Receptionist {
         // FIXME: improve this to always pass around AddressableActorRef rather than just address (in receptionist Subscribe message), remove this trick then
         /// - Returns: set of keys that this actor was REGISTERED under, and thus listings associated with it should be updated
         func removeFromKeyMappings(address: ActorAddress) -> RefMappingRemovalResult {
-            let equalityHackRef = ActorRef<Never>(.deadLetters(.init(Logger(label: ""), address: address, system: nil)))
+            let equalityHackRef = _ActorRef<Never>(.deadLetters(.init(Logger(label: ""), address: address, system: nil)))
             return self.removeFromKeyMappings(equalityHackRef.asAddressable)
         }
 
@@ -307,7 +307,7 @@ public struct Receptionist {
 }
 
 extension ActorPath {
-    /// The ActorRef<> receptionist, to be eventually removed.
+    /// The _ActorRef<> receptionist, to be eventually removed.
     internal static let actorRefReceptionist: ActorPath =
             try! ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist-ref")])
 
@@ -333,20 +333,20 @@ extension ActorAddress {
 
 /// Represents an entity that is able to register with the `Receptionist`.
 ///
-/// It is either an `ActorRef<Message>` or an `Actor<Act>`.
-public protocol ReceptionistGuest {
+/// It is either an `_ActorRef<Message>` or an `Actor<Act>`.
+public protocol _ReceptionistGuest {
     associatedtype Message: Codable
 
     // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
-    var _ref: ActorRef<Message> { get }
+    var _ref: _ActorRef<Message> { get }
 }
 
-extension ActorRef: ReceptionistGuest {
-    public var _ref: ActorRef<Message> { self }
+extension _ActorRef: _ReceptionistGuest {
+    public var _ref: _ActorRef<Message> { self }
 }
 
-// extension ActorProtocol: ReceptionistGuest {
-//    public var _ref: ActorRef<Message> { self.ref }
+// extension ActorProtocol: _ReceptionistGuest {
+//    public var _ref: _ActorRef<Message> { self.ref }
 // }
 
 /// Marker protocol for all receptionist messages
@@ -512,7 +512,7 @@ internal struct AnySubscribe: Hashable {
     let address: ActorAddress
     let _replyWith: (Set<AddressableActorRef>) -> Void
 
-    init<Guest>(subscribe: Receptionist.Subscribe<Guest>) where Guest: ReceptionistGuest {
+    init<Guest>(subscribe: Receptionist.Subscribe<Guest>) where Guest: _ReceptionistGuest {
         self.address = subscribe.subscriber.address
         self._replyWith = subscribe.replyWith
     }
@@ -536,12 +536,12 @@ internal struct AnySubscribe: Hashable {
 }
 
 internal protocol ListingRequest {
-    associatedtype Guest: ReceptionistGuest
+    associatedtype Guest: _ReceptionistGuest
 
     var key: Reception.Key<Guest> { get }
     var _key: AnyReceptionKey { get }
 
-    var subscriber: ActorRef<Reception.Listing<Guest>> { get }
+    var subscriber: _ActorRef<Reception.Listing<Guest>> { get }
 
     func replyWith(_ refs: Set<AddressableActorRef>)
 }

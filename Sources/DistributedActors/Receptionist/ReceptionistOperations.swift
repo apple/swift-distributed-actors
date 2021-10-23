@@ -16,7 +16,7 @@ import Foundation // String.replacingOccurrences ...
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: General ReceptionistOperations
+// MARK: General _ReceptionistOperations
 
 /// Specifically to be implemented ONLY by `system.receptionist` i.e. the `SystemReceptionist`.
 public protocol BaseReceptionistOperations {
@@ -29,8 +29,8 @@ public protocol BaseReceptionistOperations {
     func register<Guest>(
         _ guest: Guest,
         as id: String,
-        replyTo: ActorRef<Reception.Registered<Guest>>?
-    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest
+        replyTo: _ActorRef<Reception.Registered<Guest>>?
+    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest
 
     /// Registers passed in `actor` in the systems receptionist with given id.
     ///
@@ -40,16 +40,16 @@ public protocol BaseReceptionistOperations {
     func register<Guest>(
         _ guest: Guest,
         with key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Registered<Guest>>?
-    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest
+        replyTo: _ActorRef<Reception.Registered<Guest>>?
+    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest
 
     /// Subscribe to changes in checked-in actors under given `key`.
     ///
     /// The `subscriber` actor will be notified with `Reception.Listing<M>` messages when new actors register, leave or die, under the passed in key.
     func subscribe<Guest>(
-        _ subscriber: ActorRef<Reception.Listing<Guest>>,
+        _ subscriber: _ActorRef<Reception.Listing<Guest>>,
         to key: Reception.Key<Guest>
-    ) where Guest: ReceptionistGuest
+    ) where Guest: _ReceptionistGuest
 
     /// Perform a *single* lookup for an `Actor<Act>` identified by the passed in `key`.
     ///
@@ -59,7 +59,7 @@ public protocol BaseReceptionistOperations {
         _ key: Reception.Key<Guest>,
         timeout: TimeAmount
     ) -> AskResponse<Reception.Listing<Guest>>
-        where Guest: ReceptionistGuest
+        where Guest: _ReceptionistGuest
 
     /// Perform a *single* lookup for an `Actor<Act>` identified by the passed in `key`.
     ///
@@ -67,23 +67,23 @@ public protocol BaseReceptionistOperations {
     ///   - key: selects which actors we are interested in.
     func lookup<Guest>(
         _ key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Listing<Guest>>,
+        replyTo: _ActorRef<Reception.Listing<Guest>>,
         timeout: TimeAmount
-    ) where Guest: ReceptionistGuest
+    ) where Guest: _ReceptionistGuest
 }
 
-public protocol ReceptionistOperations: BaseReceptionistOperations {
+public protocol _ReceptionistOperations: BaseReceptionistOperations {
     var _system: ActorSystem { get }
 }
 
-extension ReceptionistOperations {
+extension _ReceptionistOperations {
     @inlinable
     @discardableResult
     public func register<Guest>(
         _ guest: Guest,
         as id: String,
-        replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
+        replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
+    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest {
         self.register(guest, with: .init(Guest.self, id: id), replyTo: replyTo)
     }
 
@@ -92,16 +92,16 @@ extension ReceptionistOperations {
     public func register<Guest>(
         _ guest: Guest,
         with key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
+        replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
+    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest {
         self._system._receptionist.register(guest, with: key, replyTo: replyTo)
     }
 
     @inlinable
     public func subscribe<Guest>(
-        _ subscriber: ActorRef<Reception.Listing<Guest>>,
+        _ subscriber: _ActorRef<Reception.Listing<Guest>>,
         to key: Reception.Key<Guest>
-    ) where Guest: ReceptionistGuest {
+    ) where Guest: _ReceptionistGuest {
         self._system._receptionist.subscribe(subscriber, to: key)
     }
 
@@ -109,16 +109,16 @@ extension ReceptionistOperations {
     public func lookup<Guest>(
         _ key: Reception.Key<Guest>,
         timeout: TimeAmount = .effectivelyInfinite
-    ) -> AskResponse<Reception.Listing<Guest>> where Guest: ReceptionistGuest {
+    ) -> AskResponse<Reception.Listing<Guest>> where Guest: _ReceptionistGuest {
         self._system._receptionist.lookup(key, timeout: timeout)
     }
 
     @inlinable
     public func lookup<Guest>(
         _ key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Listing<Guest>>,
+        replyTo: _ActorRef<Reception.Listing<Guest>>,
         timeout: TimeAmount = .effectivelyInfinite
-    ) where Guest: ReceptionistGuest {
+    ) where Guest: _ReceptionistGuest {
         self._system._receptionist.lookup(key, replyTo: replyTo, timeout: timeout)
     }
 }
@@ -126,20 +126,20 @@ extension ReceptionistOperations {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: MyselfSpecificReceptionistOperations
 
-public protocol MyselfReceptionistOperations: ReceptionistOperations {
+public protocol _MyselfReceptionistOperations: _ReceptionistOperations {
     associatedtype Message: Codable
-    associatedtype Myself: ReceptionistGuest
+    associatedtype Myself: _ReceptionistGuest
 
     // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
     var _myself: Myself { get }
     // TODO: can we hide this? Relates to: https://bugs.swift.org/browse/SR-5880
-    var _underlyingContext: ActorContext<Message> { get }
+    var _underlyingContext: _ActorContext<Message> { get }
 
     /// Registers `myself` in the systems receptionist with given key.
     @discardableResult
     func registerMyself(
         with key: Reception.Key<Myself>,
-        replyTo: ActorRef<Reception.Registered<Myself>>?
+        replyTo: _ActorRef<Reception.Registered<Myself>>?
     ) -> Reception.Key<Myself>
 
     /// Subscribe to actors registering under given `key`.
@@ -157,7 +157,7 @@ public protocol MyselfReceptionistOperations: ReceptionistOperations {
     func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>,
         subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
-    ) where Guest: ReceptionistGuest
+    ) where Guest: _ReceptionistGuest
 
     /// Subscribe this actor to actors registering under given `key`.
     ///
@@ -166,15 +166,15 @@ public protocol MyselfReceptionistOperations: ReceptionistOperations {
     /// - SeeAlso: `subscribeMyself(to:subReceive:)`
     func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>
-    ) where Guest: ReceptionistGuest, Myself.Message == Reception.Listing<Guest>
+    ) where Guest: _ReceptionistGuest, Myself.Message == Reception.Listing<Guest>
 }
 
-extension MyselfReceptionistOperations {
+extension _MyselfReceptionistOperations {
     @inlinable
     @discardableResult
     public func registerMyself(
         with key: Reception.Key<Myself>,
-        replyTo: ActorRef<Reception.Registered<Myself>>? = nil
+        replyTo: _ActorRef<Reception.Registered<Myself>>? = nil
     ) -> Reception.Key<Myself> {
         self.register(self._myself, with: key, replyTo: replyTo)
         return key
@@ -184,7 +184,7 @@ extension MyselfReceptionistOperations {
     public func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>,
         subReceive callback: @escaping (Reception.Listing<Guest>) -> Void
-    ) where Guest: ReceptionistGuest {
+    ) where Guest: _ReceptionistGuest {
         let subReceiveStringID = "subscribe-\(Guest.self)"
         let id = SubReceiveId<Reception.Listing<Guest>>(id: subReceiveStringID)
         let subRef = self._underlyingContext
@@ -198,7 +198,7 @@ extension MyselfReceptionistOperations {
     @inlinable
     public func subscribeMyself<Guest>(
         to key: Reception.Key<Guest>
-    ) where Guest: ReceptionistGuest, Myself.Message == Reception.Listing<Guest> {
+    ) where Guest: _ReceptionistGuest, Myself.Message == Reception.Listing<Guest> {
         self.subscribe(self._myself._ref, to: key)
     }
 }

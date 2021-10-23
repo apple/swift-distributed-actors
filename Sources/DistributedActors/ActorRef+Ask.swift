@@ -25,13 +25,13 @@ import struct NIO.Scheduled
 public protocol ReceivesQuestions: Codable {
     associatedtype Question
 
-    /// Useful counterpart of ActorRef.tell but dedicated to request-response interactions.
+    /// Useful counterpart of _ActorRef.tell but dedicated to request-response interactions.
     /// Allows for asking an actor for a reply without having to be an actor.
     ///
-    /// In order to facilitate this behavior, an ephemeral ActorRef created by this call has to be included in the
+    /// In order to facilitate this behavior, an ephemeral _ActorRef created by this call has to be included in the
     /// "question" message; Replying to this ref will complete the AskResponse returned by this method.
     ///
-    /// The ephemeral ActorRef can only receive a single response
+    /// The ephemeral _ActorRef can only receive a single response
     /// and will be invalid afterwards. The AskResponse will be failed with a
     /// TimeoutError if no response is received within the specified timeout.
     ///
@@ -53,21 +53,21 @@ public protocol ReceivesQuestions: Codable {
         for type: Answer.Type,
         timeout: TimeAmount,
         file: String, function: String, line: UInt,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+        _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer>
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorRef + ask
+// MARK: _ActorRef + ask
 
-extension ActorRef: ReceivesQuestions {
+extension _ActorRef: ReceivesQuestions {
     public typealias Question = Message
 
     public func ask<Answer>(
         for answerType: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+        _ makeQuestion: @escaping (_ActorRef<Answer>) -> Question
     ) -> AskResponse<Answer> {
         guard let system = self._system else {
             return .completed(.failure(AskError.systemAlreadyShutDown))
@@ -90,7 +90,7 @@ extension ActorRef: ReceivesQuestions {
 
         do {
             // TODO: implement special actor ref instead of using real actor
-            let askRef = try system.spawn(
+            let askRef = try system._spawn(
                 .ask,
                 AskActor.behavior(
                     promise,
@@ -177,7 +177,7 @@ extension AskResponse {
     }
 }
 
-extension AskResponse: AsyncResult {
+extension AskResponse: _AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         switch self {
         case .completed(let result):
@@ -251,11 +251,11 @@ extension AskResponse {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Ask Actor
 
-/// :nodoc: Used to receive a single response to a message when using `ActorRef.ask`.extension EventLoopFuture: AsyncResult {
+/// :nodoc: Used to receive a single response to a message when using `_ActorRef.ask`.extension EventLoopFuture: _AsyncResult {
 /// Will either complete the `AskResponse` with the first message received, or fail
 /// it with a `TimeoutError` is no response is received within the specified timeout.
 ///
-// TODO: replace with a special minimal `ActorRef` that does not require spawning or scheduling.
+// TODO: replace with a special minimal `_ActorRef` that does not require spawning or scheduling.
 internal enum AskActor {
     enum Event: NonTransportableActorMessage {
         case timeout
@@ -263,7 +263,7 @@ internal enum AskActor {
 
     static func behavior<Message, ResponseType>(
         _ completable: EventLoopPromise<ResponseType>,
-        ref: ActorRef<Message>,
+        ref: _ActorRef<Message>,
         timeout: TimeAmount,
         file: String,
         function: String,

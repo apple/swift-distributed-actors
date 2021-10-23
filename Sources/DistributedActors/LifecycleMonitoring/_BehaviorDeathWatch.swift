@@ -21,15 +21,15 @@ import NIO
 
 /// Marks an entity to be "watchable", meaning it may participate in Death Watch and form Death Pacts.
 ///
-/// Watchable entities are `ActorRef<>`, `Actor<>` but also actors of unknown type such as `AddressableActorRef`.
+/// Watchable entities are `_ActorRef<>`, `Actor<>` but also actors of unknown type such as `AddressableActorRef`.
 ///
-/// - SeeAlso: `ActorContext.watch`
+/// - SeeAlso: `_ActorContext.watch`
 /// - SeeAlso: `DeathWatch`
-public protocol DeathWatchable: AddressableActor {}
+public protocol _DeathWatchable: AddressableActor {}
 
-extension ActorContext: DeathWatchProtocol {}
+extension _ActorContext: _DeathWatchProtocol {}
 
-public protocol DeathWatchProtocol {
+public protocol _DeathWatchProtocol {
     associatedtype Message: ActorMessage
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
@@ -66,11 +66,11 @@ public protocol DeathWatchProtocol {
     ///
     /// # Examples:
     ///
-    ///     // watch some known ActorRef<M>
+    ///     // watch some known _ActorRef<M>
     ///     context.watch(someRef)
     ///
     ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
-    ///     let child = try context.watch(context.spawn("child", (behavior)))
+    ///     let child = try context.watch(context._spawn("child", (behavior)))
     ///
     ///     // watch(:with:)
     ///     context.watch(ref, with: .customMessageOnTermination(ref, otherInformation))
@@ -82,7 +82,7 @@ public protocol DeathWatchProtocol {
         _ watchee: Watchee,
         with terminationMessage: Message?,
         file: String, line: UInt
-    ) -> Watchee where Watchee: DeathWatchable
+    ) -> Watchee where Watchee: _DeathWatchable
 
     /// Reverts the watching of an previously watched actor.
     ///
@@ -102,7 +102,7 @@ public protocol DeathWatchProtocol {
     func unwatch<Watchee>(
         _ watchee: Watchee,
         file: String, line: UInt
-    ) -> Watchee where Watchee: DeathWatchable
+    ) -> Watchee where Watchee: _DeathWatchable
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         with terminationMessage: Message?,
         myself watcher: _ActorShell<Message>,
         file: String, line: UInt
-    ) where Watchee: DeathWatchable {
+    ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
         let addressableWatchee: AddressableActorRef = watchee.asAddressable
 
@@ -187,9 +187,9 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
     public mutating func unwatch<Watchee>(
         watchee: Watchee,
-        myself watcher: ActorRef<Message>,
+        myself watcher: _ActorRef<Message>,
         file: String = #file, line: UInt = #line
-    ) where Watchee: DeathWatchable {
+    ) where Watchee: _DeathWatchable {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         let addressableWatchee = watchee.asAddressable
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
@@ -201,14 +201,14 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
     internal func isWatching(_ address: ActorAddress) -> Bool {
-        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: address, system: nil))).asAddressable
+        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: address, system: nil))).asAddressable
         return self.watching[mockRefForEquality] != nil
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: react to watch or unwatch signals
 
-    public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: ActorRef<Message>, parent: AddressableActorRef) {
+    public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: _ActorRef<Message>, parent: AddressableActorRef) {
         guard watcher.address != myself.address else {
             traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
                 "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
@@ -228,7 +228,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
         self.watchedBy.insert(watcher)
     }
 
-    public mutating func removeWatchedBy(watcher: AddressableActorRef, myself: ActorRef<Message>) {
+    public mutating func removeWatchedBy(watcher: AddressableActorRef, myself: _ActorRef<Message>) {
         traceLog_DeathWatch("Remove watched by: \(watcher.address)     inside: \(myself)")
         self.watchedBy.remove(watcher)
     }
@@ -238,7 +238,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
     public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> TerminatedMessageDirective {
         // refs are compared ONLY by address, thus we can make such mock reference, and it will be properly remove the right "real" refs from the collections below
-        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
+        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
 
         // we remove the actor from both sets;
         // 1) we don't need to watch it anymore, since it has just terminated,
@@ -286,7 +286,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
 
     // MARK: Myself termination
 
-    func notifyWatchersWeDied(myself: ActorRef<Message>) {
+    func notifyWatchersWeDied(myself: _ActorRef<Message>) {
         traceLog_DeathWatch("[\(myself)] notifyWatchers that we are terminating. Watchers: \(self.watchedBy)...")
 
         for watcher in self.watchedBy {
@@ -298,7 +298,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Node termination
 
-    private func subscribeNodeTerminatedEvents(myself: ActorRef<Message>, watchedAddress: ActorAddress, file: String = #file, line: UInt = #line) {
+    private func subscribeNodeTerminatedEvents(myself: _ActorRef<Message>, watchedAddress: ActorAddress, file: String = #file, line: UInt = #line) {
         guard watchedAddress._isRemote else {
             return
         }

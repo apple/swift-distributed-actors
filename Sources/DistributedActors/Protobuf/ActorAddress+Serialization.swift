@@ -65,7 +65,7 @@ extension UniqueNode: ProtobufRepresentable {
     }
 }
 
-extension ActorRef: ProtobufRepresentable {
+extension _ActorRef: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoActorAddress
 
     public func toProto(context: Serialization.Context) throws -> ProtoActorAddress {

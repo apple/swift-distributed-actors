@@ -37,7 +37,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             .stop
         }
 
-        var ref: ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
+        var ref: _ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -76,7 +76,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             }
         }
 
-        var ref: ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
+        var ref: _ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -112,7 +112,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             .stop
         }
 
-        var ref: ActorRef<String>? = try system.spawn("stopsOnAnyMessage", stopsOnAnyMessage)
+        var ref: _ActorRef<String>? = try system.spawn("stopsOnAnyMessage", stopsOnAnyMessage)
 
         let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userMailboxInitCounter.load()
@@ -157,7 +157,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
             }
         }
 
-        var ref: ActorRef<Int>? = try system.spawn("printer", spawnsNChildren)
+        var ref: _ActorRef<Int>? = try system.spawn("printer", spawnsNChildren)
 
         let expectedParentCount = 1
         let expectedChildrenCount = 3

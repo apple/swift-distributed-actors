@@ -33,8 +33,6 @@ func parseHostPort(_ s: String) -> (String, Int) {
     return (host, port)
 }
 
-// tag::cluster-sample[]
-
 let args = CommandLine.arguments
 guard let port = (args.dropFirst().first.flatMap { n in Int(n) }) else {
     fatalError("no port provided; Example: swift run SampleCluster 8228 [[127.0.0.1:]7337]")
@@ -61,12 +59,7 @@ if let joinAddress = joinAddress {
     system.cluster.join(host: host, port: port) // <2>
 }
 
-// system.spawn <3>
-
-// end::cluster-sample[]
-
-// tag::cluster-sample-event-listener[]
-let eventsListener = try system.spawn(
+let eventsListener = try system._spawn
     "eventsListener",
     of: Cluster.Event.self,
     .setup { context in
@@ -98,7 +91,7 @@ system.cluster.events.subscribe(eventsListener) // <2>
 // end::cluster-sample-event-listener[]
 
 // tag::cluster-sample-actors-discover-and-chat[]
-let chatter: ActorRef<String> = try system.spawn(
+let chatter: _ActorRef<String> = try system._spawn
     "chatter",
     .receive { context, text in
         context.log.info("Received: \(text)")
@@ -108,9 +101,9 @@ let chatter: ActorRef<String> = try system.spawn(
 system._receptionist.register(chatter, with: "chat-room") // <1>
 
 if system.cluster.uniqueNode.port == 7337 { // <2>
-    try system.spawn(
+    try system._spawn
         "greeter",
-        of: Reception.Listing<ActorRef<String>>.self,
+        of: Reception.Listing<_ActorRef<String>>.self,
         .setup { context in // <3>
             context.receptionist.subscribeMyself(to: "chat-room")
 

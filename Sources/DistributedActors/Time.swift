@@ -308,9 +308,7 @@ public extension TimeAmount {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Deadline
 
-// TODO: Deadline based on https://github.com/apple/swift-nio/pull/770/files (removed our own), we need to decide what to do with these types. -- ktoso
-
-/// Represents a point in time.
+/// Represents a point in time. *To be replaced by types in Swift standard library, currently under debate in [[Pitch] Clock, Instant, Date, and Duration](https://forums.swift.org/t/pitch-clock-instant-date-and-duration/52451/256)*
 ///
 /// Stores the time in nanoseconds as returned by `DispatchTime.now().uptimeNanoseconds`
 ///
@@ -327,6 +325,7 @@ public extension TimeAmount {
 /// ```
 ///
 /// - note: `Deadline` should not be used to represent a time interval
+@available(*, deprecated, message: "To be replaced by types that upcoming Swift versions might gain, as discussed in [Pitch] Clock, Instant, Date, and Duration https://forums.swift.org/t/pitch-clock-instant-date-and-duration/52451")
 public struct Deadline: Equatable, Hashable {
     public typealias Value = Int64
 

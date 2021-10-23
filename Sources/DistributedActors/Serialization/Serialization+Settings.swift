@@ -145,8 +145,8 @@ extension Serialization.Settings {
         self.manifest2TypeRegistry[manifest] = type
 
         if alsoRegisterActorRef {
-            _ = self.register(ActorRef<Message>.self, alsoRegisterActorRef: false)
-            _ = self.register(ActorRef<Result<Message, ErrorEnvelope>>.self, alsoRegisterActorRef: false)
+            _ = self.register(_ActorRef<Message>.self, alsoRegisterActorRef: false)
+            _ = self.register(_ActorRef<Result<Message, ErrorEnvelope>>.self, alsoRegisterActorRef: false)
         }
 
         return manifest

@@ -30,7 +30,7 @@ internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Messag
         ActorAddress(local: .init(protocol: "test", systemName: "test", host: "127.0.0.1", port: 7337, nid: .random()), path: ._system, incarnation: .wellKnown)
     }
 
-    var ref: ActorRef<Message> {
+    var ref: _ActorRef<Message> {
         .init(.delegate(self as _CellDelegate))
     }
 

@@ -55,7 +55,7 @@ This is not fleshed out, we should chat about it.
 
 ## Code style hints
 
-- Whenever working with behaviors and an `ActorContext` is also passed, prefer passing the context as the first parameter
+- Whenever working with behaviors and an `_ActorContext` is also passed, prefer passing the context as the first parameter
   - then (if present) followed by a `Behavior`
   - then (if present) followed by a message
   - examples: `interpret(context, behavior, message)`, `handle { context, message ...`

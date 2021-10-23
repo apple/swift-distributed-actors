@@ -22,7 +22,7 @@ internal enum Child {
 
 /// Represents all the (current) children this actor has spawned.
 ///
-/// Convenience methods for locating children are provided, although it is recommended to keep the `ActorRef`
+/// Convenience methods for locating children are provided, although it is recommended to keep the `_ActorRef`
 /// of spawned actors in the context of where they are used, rather than looking them up continuously.
 public class Children {
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
@@ -57,13 +57,13 @@ public class Children {
         self.hasChild(identifiedBy: address.path)
     }
 
-    public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
+    public func find<T>(named name: String, withType type: T.Type) -> _ActorRef<T>? {
         self.rwLock.withReaderLock {
             switch self.container[name] {
             case .some(.cell(let child)):
-                return child.receivesSystemMessages as? ActorRef<T>
+                return child.receivesSystemMessages as? _ActorRef<T>
             case .some(.adapter(let adapter)):
-                return ActorRef<T>(.adapter(adapter))
+                return _ActorRef<T>(.adapter(adapter))
             case .none:
                 return nil
             }
@@ -221,7 +221,7 @@ extension Children: _ActorTreeTraversable {
         return c.result
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -307,7 +307,7 @@ extension Children {
 // MARK: Internal shell operations
 
 extension _ActorShell {
-    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
+    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>) throws -> _ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
@@ -352,12 +352,12 @@ extension _ActorShell {
         return .init(.cell(cell))
     }
 
-    internal func _stop<T>(child ref: ActorRef<T>) throws {
+    internal func _stop<T>(child ref: _ActorRef<T>) throws {
         guard ref.address.path.isChildPathOf(self.address.path) else {
             if ref.address == self.myself.address {
-                throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable)
+                throw _ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable)
             } else {
-                throw ActorContextError.attemptedStoppingNonChildActor(ref: ref.asAddressable)
+                throw _ActorContextError.attemptedStoppingNonChildActor(ref: ref.asAddressable)
             }
         }
 
@@ -373,13 +373,13 @@ extension _ActorShell {
     private func validateUniqueName(_ name: String) throws {
         if children.contains(name: name) {
             let childPath: ActorPath = try self.address.path.makeChildPath(name: name)
-            throw ActorContextError.duplicateActorPath(path: childPath)
+            throw _ActorContextError.duplicateActorPath(path: childPath)
         }
     }
 }
 
 /// Errors which can occur while executing actions on the [ActorContext].
-public enum ActorContextError: Error {
+public enum _ActorContextError: Error {
     /// It is illegal to `context.stop(context.myself)` as it would result in potentially unexpected behavior,
     /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
     /// it should return `Behavior.stop` from its receive block, which will cause it to immediately stop processing

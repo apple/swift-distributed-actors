@@ -28,7 +28,7 @@ import NIO
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
 // TODO: remove this and replace by the infrastructure which is now Swift's `actor`
-public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, AbstractShellProtocol {
+public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, AbstractShellProtocol {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -75,8 +75,8 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
         }
     }
 
-    /// Guaranteed to be set during ActorRef creation
-    /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling `myself`.
+    /// Guaranteed to be set during _ActorRef creation
+    /// Must never be exposed to users, rather expose the `_ActorRef<Message>` by calling `myself`.
     @usableFromInline
     lazy var _myCell: _ActorCell<Message> =
         _ActorCell<Message>(
@@ -227,7 +227,7 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
     /// threads, actors, and even nodes (if clustering is used).
     ///
     /// Warning: Do not use after actor has terminated (!)
-    public override var myself: ActorRef<Message> {
+    public override var myself: _ActorRef<Message> {
         .init(.cell(self._myCell))
     }
 
@@ -630,31 +630,31 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
     // MARK: Spawn implementations
 
     @discardableResult
-    public override func spawn<M>(
+    public override func _spawn<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
-    ) throws -> ActorRef<M>
+    ) throws -> _ActorRef<M>
         where M: ActorMessage {
         try self.system.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(naming, props: props, behavior)
     }
 
     @discardableResult
-    public override func spawnWatch<Message>(
+    public override func _spawnWatch<Message>(
         _ naming: ActorNaming,
         of type: Message.Type = Message.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message>
+    ) throws -> _ActorRef<Message>
         where Message: ActorMessage {
-        self.watch(try self.spawn(naming, props: props, behavior))
+        self.watch(try self._spawn(naming, props: props, behavior))
     }
 
-    public override func stop<Message: ActorMessage>(child ref: ActorRef<Message>) throws {
+    public override func stop<Message: ActorMessage>(child ref: _ActorRef<Message>) throws {
         try self._stop(child: ref)
     }
 
@@ -666,7 +666,7 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
         file: String = #file, line: UInt = #line
-    ) -> Watchee where Watchee: DeathWatchable {
+    ) -> Watchee where Watchee: _DeathWatchable {
         self.deathWatch.watch(watchee: watchee, with: terminationMessage, myself: self, file: file, line: line)
         return watchee
     }
@@ -675,7 +675,7 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
     public override func unwatch<Watchee>(
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
-    ) -> Watchee where Watchee: DeathWatchable {
+    ) -> Watchee where Watchee: _DeathWatchable {
         self.deathWatch.unwatch(watchee: watchee, myself: self.myself, file: file, line: line)
         return watchee
     }
@@ -690,7 +690,7 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
         self.subReceives[identifier]?.0
     }
 
-    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
+    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
@@ -732,7 +732,7 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapter
 
-    private var messageAdapter: ActorRefAdapter<Message>?
+    private var messageAdapter: _ActorRefAdapter<Message>?
     private var messageAdapters: [MessageAdapterClosure] = []
     struct MessageAdapterClosure {
         /// The metatype of the expected incoming parameter; it will be cast and handled by the erased closure.
@@ -742,7 +742,7 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
         let closure: (Any) -> Message?
     }
 
-    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
+    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
         where From: ActorMessage {
         do {
             let metaType = MetaType(fromType)
@@ -760,11 +760,11 @@ public final class _ActorShell<Message: ActorMessage>: ActorContext<Message>, Ab
             })
             self.messageAdapters.insert(MessageAdapterClosure(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
 
-            if let adapter: ActorRefAdapter<Message> = self.messageAdapter {
+            if let adapter: _ActorRefAdapter<Message> = self.messageAdapter {
                 return .init(.adapter(adapter))
             } else {
                 let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .wellKnown)
-                let adapter = ActorRefAdapter(fromType: fromType, to: self.myself, address: adaptedAddress)
+                let adapter = _ActorRefAdapter(fromType: fromType, to: self.myself, address: adaptedAddress)
 
                 self.messageAdapter = adapter
                 self._children.insert(adapter) // TODO: separate adapters collection?
@@ -981,7 +981,7 @@ extension AbstractShellProtocol {
         }
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
+    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message>
         where Message: ActorMessage {
         let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
@@ -996,7 +996,7 @@ extension AbstractShellProtocol {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if myself.address.incarnation == context.address.incarnation {
                 switch myself {
-                case let myself as ActorRef<Message>:
+                case let myself as _ActorRef<Message>:
                     return myself
                 default:
                     return context.personalDeadLetters
@@ -1025,7 +1025,7 @@ extension AbstractShellProtocol {
     }
 }
 
-internal extension ActorContext {
+internal extension _ActorContext {
     /// :nodoc: INTERNAL API: UNSAFE, DO NOT TOUCH.
     @usableFromInline
     var _downcastUnsafe: _ActorShell<Message> {

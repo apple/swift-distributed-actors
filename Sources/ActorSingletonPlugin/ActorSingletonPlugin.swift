@@ -24,7 +24,7 @@ import DistributedActorsConcurrencyHelpers
 /// An actor singleton may run on any node in the cluster. Use `ActorSingletonSettings.allocationStrategy` to control
 /// its allocation. On candidate nodes where the singleton might run, use `ActorSystem.singleton.ref(type:name:props:behavior)`
 /// to define actor behavior. Otherwise, call `ActorSystem.singleton.ref(type:name:)` to obtain a ref. The returned
-/// `ActorRef` is in reality a proxy which handle situations where the singleton is shifted to different nodes.
+/// `_ActorRef` is in reality a proxy which handle situations where the singleton is shifted to different nodes.
 ///
 /// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
 ///            the singleton allocation.
@@ -37,7 +37,7 @@ public final class ActorSingletonPlugin {
     public init() {}
 
     // FIXME: document that may crash, it may right?
-    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
+    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> _ActorRef<Message> {
         try self.singletonsLock.withLock {
             if let existing = self.singletons[settings.name] {
                 guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {
@@ -47,7 +47,7 @@ public final class ActorSingletonPlugin {
             }
 
             let singleton = ActorSingleton<Message>(settings: settings, props: props, behavior)
-            try singleton.spawnAll(system)
+            try singleton.startAll(system)
             self.singletons[settings.name] = BoxedActorSingleton(singleton)
 
             guard let proxy = singleton.proxy else {
@@ -62,7 +62,7 @@ public final class ActorSingletonPlugin {
 
 extension ActorSingletonPlugin {
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
-    func ref<Message>(of type: Message.Type, name: String, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> ActorRef<Message> {
+    func ref<Message>(of type: Message.Type, name: String, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> _ActorRef<Message> {
         let settings = ActorSingletonSettings(name: name)
         return try self.ref(of: type, settings: settings, system: system, props: props, behavior)
     }
@@ -120,17 +120,17 @@ public struct ActorSingletonControl {
     }
 
     /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(_ type: Message.Type, name: String, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+    public func host<Message>(_ type: Message.Type, name: String, props: Props = Props(), _ behavior: Behavior<Message>) throws -> _ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, name: name, system: self.system, props: props, behavior)
     }
 
     /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(_ type: Message.Type, settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+    public func host<Message>(_ type: Message.Type, settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) throws -> _ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, settings: settings, system: self.system, props: props, behavior)
     }
 
     /// Obtains a ref to the specified actor singleton.
-    public func ref<Message>(of type: Message.Type, name: String) throws -> ActorRef<Message> {
+    public func ref<Message>(of type: Message.Type, name: String) throws -> _ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, name: name, system: self.system)
     }
 

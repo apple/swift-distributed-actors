@@ -21,7 +21,7 @@ public enum _Done: String, ActorMessage {
     case done
 }
 
-// TODO(distributed): remove this, actually system.spawn the underlying reference for the reserved address
+// TODO(distributed): remove this, actually system._spawn the underlying reference for the reserved address
 public protocol __AnyDistributedClusterActor {
     static func _spawnAny(instance: Self, on system: ActorSystem) throws -> AddressableActorRef
 }
@@ -32,15 +32,15 @@ public protocol __DistributedClusterActor: __AnyDistributedClusterActor {
 
     static func makeBehavior(instance: Self) -> Behavior<Message>
 
-    static func _spawn(instance: Self, on system: ActorSystem) -> ActorRef<Message>
+    static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message>
 }
 
 extension __DistributedClusterActor {
 
     // FIXME(distributed): this is not enough since we can't get the Message associated type protocol by casting...
-    public static func _spawn(instance: Self, on system: ActorSystem) -> ActorRef<Message> {
+    public static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message> {
         let behavior = makeBehavior(instance: instance)
-        return try! system.spawn(.prefixed(with: "\(Self.self)"), behavior)
+        return try! system._spawn(.prefixed(with: "\(Self.self)"), behavior)
     }
 }
 

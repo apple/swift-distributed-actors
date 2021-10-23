@@ -42,7 +42,7 @@ private final class Worker {
 /// A FixedThreadPool eagerly starts the configured number of threads and keeps
 /// all of them running until `shutdown` is called. Submitted tasks will be
 /// executed concurrently on all threads.
-public final class FixedThreadPool {
+public final class _FixedThreadPool {
     @usableFromInline
     internal let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
     private var workers: [Worker] = []

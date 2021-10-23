@@ -16,18 +16,18 @@ import Dispatch
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorRefFactory
+// MARK: _ActorRefFactory
 
 /// Public but not intended for user-extension.
 ///
-/// An `ActorRefFactory` is able to create ("spawn") new actors and return `ActorRef` instances for them.
-/// Only the `ActorSystem`, `ActorContext` and potentially testing facilities can ever expose this ability.
-public protocol ActorRefFactory {
+/// An `_ActorRefFactory` is able to create ("spawn") new actors and return `_ActorRef` instances for them.
+/// Only the `ActorSystem`, `_ActorContext` and potentially testing facilities can ever expose this ability.
+public protocol _ActorRefFactory {
     /// Spawn an actor with the given `name`, optional `props` and `behavior`.
     ///
     /// ### Naming
     /// `ActorNaming` is used to determine the actors real name upon spawning;
-    /// A name can be sequentially (or otherwise) assigned based on the owning naming context (i.e. `ActorContext` or `ActorSystem`).
+    /// A name can be sequentially (or otherwise) assigned based on the owning naming context (i.e. `_ActorContext` or `ActorSystem`).
     ///
     /// ### Actor Reference
     /// Discarding the returned reference means that there MAY be no longer a way to communicate with the spawned actor.
@@ -44,32 +44,32 @@ public protocol ActorRefFactory {
     ///     See also `ActorNaming` on details on other naming strategies (such as `.anonymous`).
     ///   - props: props held by this actor. Allow configuring details about failure handling and execution semantics of this actor.
     ///   - behavior: the `Behavior` of the actor to be spawned.
-    /// - Returns: `ActorRef` for the spawned actor.
+    /// - Returns: `_ActorRef` for the spawned actor.
     /// - Throws: When `ActorNaming.unique` (or a string literal is passed in) is used and the given name is already used in this namespace.
     ///     This can happen when a parent actor attempts to spawn two actors of the same name, or the same situation happens on top-level actors.
     @discardableResult
-    func spawn<Message>(
+    func _spawn<Message>(
         _ naming: ActorNaming,
         of type: Message.Type,
         props: Props,
         file: String, line: UInt,
         _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message> where Message: ActorMessage
+    ) throws -> _ActorRef<Message> where Message: ActorMessage
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ChildActorRefFactory
+// MARK: _ChildActorRefFactory
 
-public protocol ChildActorRefFactory: ActorRefFactory {
+public protocol _ChildActorRefFactory: _ActorRefFactory {
     var children: Children { get set } // lock-protected
 
-    func stop<Message>(child ref: ActorRef<Message>) throws
+    func stop<Message>(child ref: _ActorRef<Message>) throws
         where Message: ActorMessage
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorContext + ActorFactory
+// MARK: _ActorContext + ActorFactory
 
-extension ActorContext: ChildActorRefFactory {
+extension _ActorContext: _ChildActorRefFactory {
     // implementation is in _ActorShell, since it has to be because the shell is a subclass of the context
 }

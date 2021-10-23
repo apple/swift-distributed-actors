@@ -45,7 +45,7 @@ private func tearDown() {
 // -------
 
 func setUp_visitSingleRef() {
-    let _: ActorRef<Never> = try! system.spawn("top", .ignore)
+    let _: _ActorRef<Never> = try! system._spawn("top", .ignore)
 }
 
 func bench_visitSingleRef(n: Int) {
@@ -67,7 +67,7 @@ func setUp_visit_depth_10_total_10() {
             }
         }
     }
-    _ = try! system.spawn("top", spawnDeeper(stillMore: 10))
+    _ = try! system._spawn("top", spawnDeeper(stillMore: 10))
 }
 
 func bench_visit(n: Int) {
@@ -87,5 +87,5 @@ func setUp_visit_depth_1000_total_1000() {
             }
         }
     }
-    _ = try! system.spawn("top", spawnDeeper(stillMore: 1000))
+    _ = try! system._spawn("top", spawnDeeper(stillMore: 1000))
 }

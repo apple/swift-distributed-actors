@@ -118,7 +118,7 @@ public struct ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterp
         case letters
 
         // other ideas:
-        // https://github.com/google/open-location-code/blob/master/docs/olc_definition.adoc#open-location-code
+        // https://github.com/google/open-location-code/blob/boss/docs/olc_definition.adoc#open-location-code
         // This was to avoid, as far as possible, Open Location Codes being generated that included recognisable words. The selected 20 character set is made up of "23456789CFGHJMPQRVWX".
     }
 

@@ -568,7 +568,7 @@ extension DistributedMessageDecl {
 
         printer.print("")
         printer.print("// FIXME(distributed): This will go away the moment we change the refs to BE the actor identity, no more resolves during sends.")
-        printer.print("let ref: ActorRef<Message> = system._resolve(context: ResolveContext(address: address, system: system))")
+        printer.print("let ref: _ActorRef<Message> = system._resolve(context: ResolveContext(address: address, system: system))")
         printer.print("")
         printer.outdent()
         printer.outdent()

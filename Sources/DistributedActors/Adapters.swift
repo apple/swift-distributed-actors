@@ -19,7 +19,7 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
     var fromType: Any.Type { get }
 
     var address: ActorAddress { get }
-    var deadLetters: ActorRef<DeadLetter> { get }
+    var deadLetters: _ActorRef<DeadLetter> { get }
 
     /// Try to `tell` given message, if the type matches the adapted (or direct) message type, it will be delivered.
     func trySendUserMessage(_ message: Any, file: String, line: UInt)
@@ -33,23 +33,23 @@ public protocol AbstractAdapter: _ActorTreeTraversable {
 
 /// :nodoc: Not intended to be used by end users.
 ///
-/// An `ActorRefAdapter` is a special `ActorRef` that is used to expose a different
+/// An `_ActorRefAdapter` is a special `_ActorRef` that is used to expose a different
 /// interface than the adapted actor actually has, by applying a converter function
 /// to all received messages, before passing them on to the actual actor.
 ///
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
+internal final class _ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     public let fromType: Any.Type
-    private let target: ActorRef<To>
+    private let target: _ActorRef<To>
     let address: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = _Mutex()
 
-    let deadLetters: ActorRef<DeadLetter>
+    let deadLetters: _ActorRef<DeadLetter>
 
-    init<From>(fromType: From.Type, to ref: ActorRef<To>, address: ActorAddress) {
+    init<From>(fromType: From.Type, to ref: _ActorRef<To>, address: ActorAddress) {
         self.fromType = fromType
         self.target = ref
         self.address = address
@@ -61,7 +61,7 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     }
 
     private var myselfAddressable: AddressableActorRef {
-        ActorRef<Never>(.adapter(self)).asAddressable
+        _ActorRef<Never>(.adapter(self)).asAddressable
     }
 
     var system: ActorSystem? {
@@ -146,7 +146,7 @@ internal final class ActorRefAdapter<To: ActorMessage>: AbstractAdapter {
     }
 }
 
-extension ActorRefAdapter {
+extension _ActorRefAdapter {
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         switch visit(context, self.myselfAddressable) {
@@ -163,7 +163,7 @@ extension ActorRefAdapter {
         return c.result
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
             self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters
@@ -190,10 +190,10 @@ extension ActorRefAdapter {
 internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
     public let fromType: Any.Type = Never.self
 
-    let deadLetters: ActorRef<DeadLetter>
+    let deadLetters: _ActorRef<DeadLetter>
     let deadRecipient: ActorAddress
 
-    init(_ ref: ActorRef<DeadLetter>, deadRecipient: ActorAddress) {
+    init(_ ref: _ActorRef<DeadLetter>, deadRecipient: ActorAddress) {
         self.deadLetters = ref
         self.deadRecipient = deadRecipient
     }
@@ -222,7 +222,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
         .completed
     }
 
-    public func _resolve<Message2>(context: ResolveContext<Message2>) -> ActorRef<Message2> {
+    public func _resolve<Message2>(context: ResolveContext<Message2>) -> _ActorRef<Message2> {
         self.deadLetters.adapted()
     }
 
@@ -237,7 +237,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: ActorMessage>: AbstractAdapter {
     internal let fromType: Any.Type
 
-    private let target: ActorRef<OwnerMessage>
+    private let target: _ActorRef<OwnerMessage>
     private let identifier: AnySubReceiveId
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
@@ -247,9 +247,9 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
         self.adapterAddress
     }
 
-    let deadLetters: ActorRef<DeadLetter>
+    let deadLetters: _ActorRef<DeadLetter>
 
-    init(_ type: Message.Type, owner ref: ActorRef<OwnerMessage>, address: ActorAddress, identifier: AnySubReceiveId) {
+    init(_ type: Message.Type, owner ref: _ActorRef<OwnerMessage>, address: ActorAddress, identifier: AnySubReceiveId) {
         self.fromType = Message.self
         self.target = ref
         self.adapterAddress = address
@@ -261,8 +261,8 @@ internal final class SubReceiveAdapter<Message: ActorMessage, OwnerMessage: Acto
         self.deadLetters = self.target._deadLetters
     }
 
-    private var myself: ActorRef<Message> {
-        ActorRef(.adapter(self))
+    private var myself: _ActorRef<Message> {
+        _ActorRef(.adapter(self))
     }
 
     var system: ActorSystem? {
@@ -379,14 +379,14 @@ extension SubReceiveAdapter {
         return c.result
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard context.selectorSegments.first == nil,
             self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters
         }
 
         switch self.myself {
-        case let myself as ActorRef<Message>:
+        case let myself as _ActorRef<Message>:
             return myself
         default:
             return context.personalDeadLetters

@@ -32,7 +32,7 @@ final class DispatcherTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let w = try system.spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup.next())), behavior)
+        let w = try system._spawn.anonymous, props: .dispatcher(.nio(self.eventLoopGroup.next())), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -51,7 +51,7 @@ final class DispatcherTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let w = try system.spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup)), behavior)
+        let w = try system._spawn.anonymous, props: .dispatcher(.nio(self.eventLoopGroup)), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -74,7 +74,7 @@ final class DispatcherTests: ActorSystemXCTestCase {
         }
 
         let global: DispatchQueue = .global()
-        let w = try system.spawn(.anonymous, props: .dispatcher(.dispatchQueue(global)), behavior)
+        let w = try system._spawn.anonymous, props: .dispatcher(.dispatchQueue(global)), behavior)
         w.tell("Hello")
         w.tell("World")
 

@@ -43,7 +43,7 @@ try isolated.run(on: .servant) {
     // TODO: assert command line arguments are the expected ones
 
     // swiftformat:disable indent unusedArguments wrapArguments
-    _ = try isolated.system.spawn(
+    _ = try isolated.system._spawn(
         "failed",
         of: String.self,
         props: Props().supervision(strategy: .escalate),

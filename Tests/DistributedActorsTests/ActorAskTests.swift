@@ -20,7 +20,7 @@ import XCTest
 
 final class ActorAskTests: ActorSystemXCTestCase {
     struct TestMessage: ActorMessage {
-        let replyTo: ActorRef<String>
+        let replyTo: _ActorRef<String>
     }
 
     func test_ask_forSimpleType() throws {
@@ -29,7 +29,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             return .stop
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -44,7 +44,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             return .stop
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -58,7 +58,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             .stop
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -78,7 +78,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             return .stop
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .milliseconds(1)) { TestMessage(replyTo: $0) }
 
@@ -88,13 +88,13 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     struct AnswerMePlease: ActorMessage {
-        let replyTo: ActorRef<String>
+        let replyTo: _ActorRef<String>
     }
 
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let greeter: ActorRef<AnswerMePlease> = try system.spawn(
+        let greeter: _ActorRef<AnswerMePlease> = try system._spawn(
             "greeterAskReply",
             .receiveMessage { message in
                 message.replyTo.tell("Hello there")
@@ -102,7 +102,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             }
         )
 
-        let _: ActorRef<Never> = try system.spawn(
+        let _: _ActorRef<Never> = try system._spawn(
             "awaitOnAskResult",
             .setup { context in
                 let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
@@ -120,7 +120,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: TimeAmount) throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let greeter: ActorRef<AnswerMePlease> = try system.spawn(
+        let greeter: _ActorRef<AnswerMePlease> = try system._spawn(
             "greeterAskReply",
             .receiveMessage { message in
                 message.replyTo.tell("Hello there")
@@ -128,7 +128,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
             }
         )
 
-        let _: ActorRef<Int> = try system.spawn(
+        let _: _ActorRef<Int> = try system._spawn(
             "askingAndOnResultAsyncThrowing",
             .setup { context in
                 let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in
@@ -160,9 +160,9 @@ final class ActorAskTests: ActorSystemXCTestCase {
     func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let void: ActorRef<AnswerMePlease> = try system.spawn("theVoid", (.receiveMessage { _ in .same }))
+        let void: _ActorRef<AnswerMePlease> = try system.spawn("theVoid", (.receiveMessage { _ in .same }))
 
-        let _: ActorRef<Never> = try system.spawn(
+        let _: _ActorRef<Never> = try system.spawn(
             "onResultAsync",
             .setup { context in
                 let askResult = void

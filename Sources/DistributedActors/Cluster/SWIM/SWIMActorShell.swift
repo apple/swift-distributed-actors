@@ -22,7 +22,7 @@ import SWIM
 ///
 /// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
 internal struct SWIMActorShell {
-    typealias MyselfContext = ActorContext<SWIM.Message>
+    typealias MyselfContext = _ActorContext<SWIM.Message>
 
     let swim: SWIM.Instance
     let clusterRef: ClusterShell.Ref
@@ -58,7 +58,7 @@ internal struct SWIMActorShell {
     }
 
     /// Applies some default changes to the SWIM settings.
-    private static func customizeSWIMSettings(settings: SWIM.Settings, context: ActorContext<SWIM.Message>) -> SWIM.Settings {
+    private static func customizeSWIMSettings(settings: SWIM.Settings, context: _ActorContext<SWIM.Message>) -> SWIM.Settings {
         // A bit weird dance, but this way we make the instance use the actor's logger;
         // This is always what we want inside an actor system anyway;
         // And at the same time we do use the configured log level for the entire actor: instance and shell
@@ -569,9 +569,9 @@ extension ActorPath {
 // MARK: Internal "trace-logging" for debugging purposes
 
 internal enum TraceLogType: CustomStringConvertible {
-    case reply(to: ActorRef<SWIM.PingResponse>)
-    case receive(pinged: ActorRef<SWIM.Message>?)
-    case ask(ActorRef<SWIM.Message>)
+    case reply(to: _ActorRef<SWIM.PingResponse>)
+    case receive(pinged: _ActorRef<SWIM.Message>?)
+    case ask(_ActorRef<SWIM.Message>)
 
     static var receive: TraceLogType {
         .receive(pinged: nil)

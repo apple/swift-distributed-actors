@@ -20,7 +20,7 @@ import Logging
 
 /// Proxy for a singleton actor.
 ///
-/// The underlying `ActorRef<Message>` for the singleton might change due to re-allocation, but all of that happens
+/// The underlying `_ActorRef<Message>` for the singleton might change due to re-allocation, but all of that happens
 /// automatically and is transparent to the ref holder.
 ///
 /// The proxy has a buffer to hold messages temporarily in case the singleton is not available. The buffer capacity
@@ -49,10 +49,10 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     private var targetNode: UniqueNode?
 
     /// The singleton ref
-    private var ref: ActorRef<Message>?
+    private var ref: _ActorRef<Message>?
 
     /// The manager ref; non-nil if `targetNode` is this node
-    private var managerRef: ActorRef<ActorSingletonManager<Message>.Directive>?
+    private var managerRef: _ActorRef<ActorSingletonManager<Message>.Directive>?
 
     /// Message buffer in case singleton `ref` is `nil`
     private let buffer: StashBuffer<Message>
@@ -91,14 +91,14 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
         }
     }
 
-    private func receiveClusterEvent(_ context: ActorContext<Message>, _ event: Cluster.Event) throws {
+    private func receiveClusterEvent(_ context: _ActorContext<Message>, _ event: Cluster.Event) throws {
         // Feed the event to `AllocationStrategy` then forward the result to `updateTargetNode`,
         // which will determine if `targetNode` has changed and react accordingly.
         let node = self.allocationStrategy.onClusterEvent(event)
         try self.updateTargetNode(context, node: node)
     }
 
-    private func updateTargetNode(_ context: ActorContext<Message>, node: UniqueNode?) throws {
+    private func updateTargetNode(_ context: _ActorContext<Message>, node: UniqueNode?) throws {
         guard self.targetNode != node else {
             context.log.debug("Skip updating target node; New node is already the same as current targetNode", metadata: self.metadata(context))
             return
@@ -124,7 +124,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
         }
     }
 
-    private func takeOver(_ context: ActorContext<Message>, from: UniqueNode?) throws {
+    private func takeOver(_ context: _ActorContext<Message>, from: UniqueNode?) throws {
         guard let singletonBehavior = self.singletonBehavior else {
             preconditionFailure("The actor singleton \(self.settings.name) cannot run on this node. Please review AllocationStrategySettings and/or actor singleton usage.")
         }
@@ -136,19 +136,19 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             props: ._wellKnown
         )
         // Need the manager to tell us the ref because we can't resolve it due to random incarnation
-        let refSubReceive = context.subReceive(SubReceiveId(id: "ref-\(context.name)"), ActorRef<Message>?.self) {
+        let refSubReceive = context.subReceive(SubReceiveId(id: "ref-\(context.name)"), _ActorRef<Message>?.self) {
             self.updateRef(context, $0)
         }
         self.managerRef?.tell(.takeOver(from: from, replyTo: refSubReceive))
     }
 
-    private func handOver(_ context: ActorContext<Message>, to: UniqueNode?) throws {
+    private func handOver(_ context: _ActorContext<Message>, to: UniqueNode?) throws {
         // The manager stops after handing over the singleton
         self.managerRef?.tell(.handOver(to: to))
         self.managerRef = nil
     }
 
-    private func updateRef(_ context: ActorContext<Message>, node: UniqueNode?) {
+    private func updateRef(_ context: _ActorContext<Message>, node: UniqueNode?) {
         switch node {
         case .some(let node) where node == context.system.cluster.uniqueNode:
             self.ref = context.myself
@@ -170,7 +170,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
         }
     }
 
-    private func updateRef(_ context: ActorContext<Message>, _ newRef: ActorRef<Message>?) {
+    private func updateRef(_ context: _ActorContext<Message>, _ newRef: _ActorRef<Message>?) {
         context.log.debug("Updating ref from [\(optional: self.ref)] to [\(optional: newRef)], flushing \(self.buffer.count) messages")
         self.ref = newRef
 
@@ -185,7 +185,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
         }
     }
 
-    private func forwardOrStash(_ context: ActorContext<Message>, message: Message) throws {
+    private func forwardOrStash(_ context: _ActorContext<Message>, message: Message) throws {
         // Forward the message if `singleton` is not `nil`, else stash it.
         if let singleton = self.ref {
             context.log.trace("Forwarding message \(message), to: \(singleton.address)", metadata: self.metadata(context))
@@ -215,7 +215,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
 // MARK: ActorSingletonManager + logging
 
 extension ActorSingletonProxy {
-    func metadata<Message>(_: ActorContext<Message>) -> Logger.Metadata {
+    func metadata<Message>(_: _ActorContext<Message>) -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "tag": "singleton",
             "singleton/name": "\(self.settings.name)",

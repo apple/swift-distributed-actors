@@ -41,7 +41,7 @@ open class _InternalActorTransport {
     }
 
     /// May return `nil` if this transport is NOT able to resolve this ref.
-    open func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>? {
+    open func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message>? {
         fatalError("Not implemented: \(#function) in \(self) transport! Attempted to resolve: \(context)")
     }
 

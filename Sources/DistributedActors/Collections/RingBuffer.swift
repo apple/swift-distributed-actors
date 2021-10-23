@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// FIXME(nio): remove and use NIO's CircularBuffer
 @usableFromInline
 final class RingBuffer<A> {
     @usableFromInline

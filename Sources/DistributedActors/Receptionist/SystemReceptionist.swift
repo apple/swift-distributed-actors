@@ -18,12 +18,12 @@ import Logging
 ///
 /// Receptionists are designed to work seamlessly offer the same capability local and distributed.
 ///
-/// - SeeAlso: `ActorContext<Message>.Receptionist`, accessible in the `Behavior` style API via `context.receptionist`.
+/// - SeeAlso: `_ActorContext<Message>.Receptionist`, accessible in the `Behavior` style API via `context.receptionist`.
 /// - SeeAlso: `Actor<Act>.Context.Receptionist`, accessible in the `Actorable` style API via `context.receptionist`.
 public struct SystemReceptionist: BaseReceptionistOperations {
-    let ref: ActorRef<Receptionist.Message>
+    let ref: _ActorRef<Receptionist.Message>
 
-    init(ref receptionistRef: ActorRef<Receptionist.Message>) {
+    init(ref receptionistRef: _ActorRef<Receptionist.Message>) {
         self.ref = receptionistRef
     }
 
@@ -31,8 +31,8 @@ public struct SystemReceptionist: BaseReceptionistOperations {
     public func register<Guest>(
         _ guest: Guest,
         as id: String,
-        replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
+        replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
+    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest {
         let key: Reception.Key<Guest> = Reception.Key(Guest.self, id: id)
         self.register(guest, with: key, replyTo: replyTo)
         return key
@@ -42,8 +42,8 @@ public struct SystemReceptionist: BaseReceptionistOperations {
     public func register<Guest>(
         _ guest: Guest,
         with key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Registered<Guest>>? = nil
-    ) -> Reception.Key<Guest> where Guest: ReceptionistGuest {
+        replyTo: _ActorRef<Reception.Registered<Guest>>? = nil
+    ) -> Reception.Key<Guest> where Guest: _ReceptionistGuest {
         self.ref.tell(Receptionist.Register<Guest>(guest, key: key, replyTo: replyTo))
         return key
     }
@@ -51,7 +51,7 @@ public struct SystemReceptionist: BaseReceptionistOperations {
     public func lookup<Guest>(
         _ key: Reception.Key<Guest>,
         timeout: TimeAmount = .effectivelyInfinite
-    ) -> AskResponse<Reception.Listing<Guest>> where Guest: ReceptionistGuest {
+    ) -> AskResponse<Reception.Listing<Guest>> where Guest: _ReceptionistGuest {
         self.ref.ask(for: Reception.Listing<Guest>.self, timeout: timeout) {
             Receptionist.Lookup<Guest>(key: key, replyTo: $0)
         }
@@ -59,16 +59,16 @@ public struct SystemReceptionist: BaseReceptionistOperations {
 
     public func lookup<Guest>(
         _ key: Reception.Key<Guest>,
-        replyTo: ActorRef<Reception.Listing<Guest>>,
+        replyTo: _ActorRef<Reception.Listing<Guest>>,
         timeout: TimeAmount = .effectivelyInfinite
-    ) where Guest: ReceptionistGuest {
+    ) where Guest: _ReceptionistGuest {
         self.ref.tell(Receptionist.Lookup<Guest>(key: key, replyTo: replyTo))
     }
 
     public func subscribe<Guest>(
-        _ subscriber: ActorRef<Reception.Listing<Guest>>,
+        _ subscriber: _ActorRef<Reception.Listing<Guest>>,
         to key: Reception.Key<Guest>
-    ) where Guest: ReceptionistGuest {
+    ) where Guest: _ReceptionistGuest {
         self.ref.tell(Receptionist.Subscribe<Guest>(key: key, subscriber: subscriber))
     }
 }

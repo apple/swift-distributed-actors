@@ -28,7 +28,7 @@ public final class RemoteClusterActorPersonality<Message: Codable> {
     let clusterShell: ClusterShell
     let system: ActorSystem // TODO: maybe don't need to store it and access via clusterShell?
 
-    var deadLetters: ActorRef<Message> {
+    var deadLetters: _ActorRef<Message> {
         self.system.personalDeadLetters(recipient: self.address)
     }
 

@@ -29,15 +29,15 @@ import Logging
 /// - SeeAlso: [Cassandra Internals — Understanding Gossip](https://www.youtube.com/watch?v=FuP1Fvrv6ZQ) which a nice generally useful talk
 public enum Gossiper {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
-    static func spawn<Logic, Envelope, Acknowledgement>(
-        _ context: ActorRefFactory,
+    static func _spawn<Logic, Envelope, Acknowledgement>(
+        _ context: _ActorRefFactory,
         name naming: ActorNaming,
         settings: Settings,
         props: Props = .init(),
         makeLogic: @escaping (Logic.Context) -> Logic
     ) throws -> GossiperControl<Envelope, Acknowledgement>
         where Logic: GossipLogic, Logic.Gossip == Envelope, Logic.Acknowledgement == Acknowledgement {
-        let ref = try context.spawn(
+        let ref = try context._spawn(
             naming,
             of: GossipShell<Envelope, Acknowledgement>.Message.self,
             props: props,

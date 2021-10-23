@@ -17,7 +17,7 @@ import _Distributed
 /// Signals are additional messages which are passed using the system channel and may be handled by actors.
 /// They inform the actors about various lifecycle events which the actor may want to react to.
 ///
-/// They are separate from the message protocol of an Actor (the `M` in `ActorRef<M>`)
+/// They are separate from the message protocol of an Actor (the `M` in `_ActorRef<M>`)
 /// since these signals are independently useful regardless of protocol that an actor speaks externally.
 ///
 /// Signals will never be "dropped" by the transport layer, thus you may assume their delivery will always
@@ -51,7 +51,7 @@ public enum Signals {
 
     /// Signal sent to an actor right after is has semantically been stopped (i.e. will receive no more messages nor signals, except this one).
     ///
-    /// This signal can be handled just like any other signal, using `Behavior.receiveSignal((ActorContext<Message>, Signal) throws -> Behavior<Message>)`,
+    /// This signal can be handled just like any other signal, using `Behavior.receiveSignal((_ActorContext<Message>, Signal) throws -> Behavior<Message>)`,
     /// however the `Behavior` returned by the closure will always be ignored and the actor will proceed to its `Terminated` state.
     /// In other words, it is not possible to stop the actor from terminating once it has received the PostStop signal.
     public struct PostStop: Sendable, Signal {

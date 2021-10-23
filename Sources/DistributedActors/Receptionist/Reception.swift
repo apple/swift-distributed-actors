@@ -29,7 +29,7 @@ extension Reception {
     ///
     /// The id defaults to "*" which can be used "all actors of that type" (if and only if they registered using this key,
     /// actors which do not opt-into discovery by registering themselves WILL NOT be discovered using this, or any other, key).
-    public struct Key<Guest: ReceptionistGuest>: ReceptionKeyProtocol, Codable,
+    public struct Key<Guest: _ReceptionistGuest>: ReceptionKeyProtocol, Codable,
         ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
         CustomStringConvertible {
         let id: String
@@ -45,12 +45,12 @@ extension Reception {
             self.id = value
         }
 
-        internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Guest.Message> {
+        internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> _ActorRef<Guest.Message> {
             if addressable.isRemote() {
                 let remotePersonality: RemoteClusterActorPersonality<Guest.Message> = addressable.ref._unsafeGetRemotePersonality(Guest.Message.self)
-                return ActorRef(.remote(remotePersonality))
+                return _ActorRef(.remote(remotePersonality))
             } else {
-                guard let ref = addressable.ref as? ActorRef<Guest.Message> else {
+                guard let ref = addressable.ref as? _ActorRef<Guest.Message> else {
                     fatalError("Type mismatch, expected: [\(String(reflecting: Guest.self))] got [\(addressable)]")
                 }
 
@@ -59,7 +59,7 @@ extension Reception {
         }
 
         internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
-            let ref: ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
+            let ref: _ActorRef<Guest.Message> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable
         }
 
@@ -79,7 +79,7 @@ extension Reception {
 extension Reception {
     /// Response to `Lookup` and `Subscribe` requests.
     /// A listing MAY be empty.
-    public struct Listing<Guest: ReceptionistGuest>: Equatable, CustomStringConvertible {
+    public struct Listing<Guest: _ReceptionistGuest>: Equatable, CustomStringConvertible {
         let underlying: Set<AddressableActorRef>
         let key: Reception.Key<Guest>
 
@@ -113,19 +113,19 @@ extension Reception.Listing where Guest: ReceivesMessages {
     /// Retrieve all listed actor references, mapping them to their appropriate type.
     /// Note that this operation is lazy and has to iterate over all the actors when performing the
     /// iteration.
-    public var refs: LazyMapSequence<Set<AddressableActorRef>, ActorRef<Guest.Message>> {
+    public var refs: LazyMapSequence<Set<AddressableActorRef>, _ActorRef<Guest.Message>> {
         self.underlying.lazy.map { self.key._unsafeAsActorRef($0) }
     }
 
-    public var first: ActorRef<Guest.Message>? {
+    public var first: _ActorRef<Guest.Message>? {
         self.underlying.first.map {
             self.key._unsafeAsActorRef($0)
         }
     }
 
-    public func first(where matches: (ActorAddress) -> Bool) -> ActorRef<Guest.Message>? {
+    public func first(where matches: (ActorAddress) -> Bool) -> _ActorRef<Guest.Message>? {
         self.underlying.first {
-            let ref: ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
+            let ref: _ActorRef<Guest.Message> = self.key._unsafeAsActorRef($0)
             return matches(ref.address)
         }.map {
             self.key._unsafeAsActorRef($0)
@@ -135,7 +135,7 @@ extension Reception.Listing where Guest: ReceivesMessages {
     /// Returns the first actor from the listing whose name matches the passed in `name` parameter.
     ///
     /// Special handling is applied to message adapters (e.g. `/uses/example/two/$messageAdapter` in which case the last segment is ignored).
-    public func first(named name: String) -> ActorRef<Guest.Message>? {
+    public func first(named name: String) -> _ActorRef<Guest.Message>? {
         self.underlying.first {
             $0.path.name == name ||
                 ($0.path.segments.last?.value == "$messageAdapter" && $0.path.segments.dropLast(1).last?.value == name)
@@ -162,7 +162,7 @@ extension AnyReceptionistListing {
 protocol ReceptionistListing: AnyReceptionistListing, Equatable {
     associatedtype Message: ActorMessage
 
-    var refs: Set<ActorRef<Message>> { get }
+    var refs: Set<_ActorRef<Message>> { get }
 }
 
 extension ReceptionistListing {
@@ -176,7 +176,7 @@ extension ReceptionistListing {
 
 extension Reception {
     /// Response to a `Register` message
-    public final class Registered<Guest: ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
+    public final class Registered<Guest: _ReceptionistGuest>: NonTransportableActorMessage, CustomStringConvertible {
         internal let _guest: Guest
         public let key: Reception.Key<Guest>
 
@@ -192,7 +192,7 @@ extension Reception {
 }
 
 extension Reception.Registered where Guest: ReceivesMessages {
-    internal var ref: ActorRef<Guest.Message> {
+    internal var ref: _ActorRef<Guest.Message> {
         self._guest._ref
     }
 }

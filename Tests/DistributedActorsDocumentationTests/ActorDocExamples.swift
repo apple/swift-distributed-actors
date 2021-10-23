@@ -59,11 +59,11 @@ class ActorDocExamples: XCTestCase {
             return .same
         }
 
-        let greeterRef: ActorRef<String> = try system.spawn("greeter", greeterBehavior) // <3>
+        let greeterRef: _ActorRef<String> = try system._spawn("greeter", greeterBehavior) // <3>
         // end::spawn[]
 
         // tag::tell_1[]
-        // greeterRef: ActorRef<String>
+        // greeterRef: _ActorRef<String>
         greeterRef.tell("Caplin") // <1>
 
         // prints: "Hello Caplin!"
@@ -145,7 +145,7 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::props_inline[]
-        let worker = try system.spawn(
+        let worker = try system._spawn
             "worker",
             props: .dispatcher(.default),
             behavior
@@ -156,7 +156,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receptionist_register() {
         // tag::receptionist_register[]
-        let key = Reception.Key(ActorRef<String>.self, id: "my-actor") // <1>
+        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor") // <1>
 
         let behavior: Behavior<String> = .setup { context in
             context.receptionist.registerMyself(with: key) // <2>
@@ -172,7 +172,7 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_receptionist_lookup() {
-        let key = Reception.Key(ActorRef<String>.self, id: "my-actor")
+        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
         let system = ActorSystem("LookupExample")
         // tag::receptionist_lookup[]
         let response = system._receptionist.lookup(key, timeout: .seconds(1)) // <1>
@@ -189,9 +189,9 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_receptionist_subscribe() {
-        let key = Reception.Key(ActorRef<String>.self, id: "my-actor")
+        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::receptionist_subscribe[]
-        let behavior: Behavior<Reception.Listing<ActorRef<String>>> = .setup { context in
+        let behavior: Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
             context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
@@ -207,9 +207,9 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_context_receptionist_subscribe() {
-        let key = Reception.Key(ActorRef<String>.self, id: "my-actor")
+        let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::context_receptionist_subscribe[]
-        let behavior: Behavior<Reception.Listing<ActorRef<String>>> = .setup { context in
+        let behavior: Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
             context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
@@ -230,7 +230,7 @@ class ActorDocExamples: XCTestCase {
         // tag::ask_outside[]
         struct Hello: Codable {
             let name: String
-            let replyTo: ActorRef<String>
+            let replyTo: _ActorRef<String>
         }
 
         let greeterBehavior: Behavior<Hello> = .receiveMessage { message in
@@ -238,7 +238,7 @@ class ActorDocExamples: XCTestCase {
             return .same
         }
 
-        let greeter = try system.spawn("greeter", greeterBehavior)
+        let greeter = try system._spawn("greeter", greeterBehavior)
 
         let response = greeter.ask(for: String.self, timeout: .seconds(1)) { replyTo in // <1>
             Hello(name: "Anne", replyTo: replyTo) // <2>
@@ -254,14 +254,14 @@ class ActorDocExamples: XCTestCase {
         // tag::ask_inside[]
         struct Hello: Codable {
             let name: String
-            let replyTo: ActorRef<String>
+            let replyTo: _ActorRef<String>
         }
 
         let greeterBehavior: Behavior<Hello> = .receiveMessage { message in
             message.replyTo.tell("Hello \(message.name)!")
             return .same
         }
-        let greeter = try system.spawn("greeter", greeterBehavior)
+        let greeter = try system._spawn("greeter", greeterBehavior)
 
         let caplinBehavior: Behavior<Never> = .setup { context in
             let timeout: TimeAmount = .seconds(1)
@@ -281,14 +281,14 @@ class ActorDocExamples: XCTestCase {
             }
         }
 
-        try system.spawn("caplin", caplinBehavior)
+        try system._spawn("caplin", caplinBehavior)
         // end::ask_inside[]
     }
 
     func example_eventStream() throws {
         let system = ActorSystem("System")
 
-        let ref: ActorRef<Event>! = nil
+        let ref: _ActorRef<Event>! = nil
 
         // tag::eventStream[]
         enum Event: String, Codable {
@@ -328,7 +328,7 @@ enum WorkerMessages: String, Codable {
 
 func run(system: ActorSystem) throws {
     let (b, props) = ExampleWorker.suggested // TODO: replace with class/Shell pattern?
-    try system.spawn("heavy-worker", props: props, b)
+    try system._spawn("heavy-worker", props: props, b)
 }
 
 // end::suggested_props_pattern[]

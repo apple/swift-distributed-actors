@@ -19,11 +19,11 @@ import enum Dispatch.DispatchTimeInterval
 import SWIM
 
 extension SWIM {
-    public typealias PeerRef = ActorRef<SWIM.Message>
+    public typealias PeerRef = _ActorRef<SWIM.Message>
 
-    public typealias Ref = ActorRef<SWIM.Message>
-    public typealias PingOriginRef = ActorRef<SWIM.Message> // same type, but actually an `ask` actor
-    public typealias PingRequestOriginRef = ActorRef<SWIM.Message> // same type, but actually an `ask` actor
+    public typealias Ref = _ActorRef<SWIM.Message>
+    public typealias PingOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
+    public typealias PingRequestOriginRef = _ActorRef<SWIM.Message> // same type, but actually an `ask` actor
 
     typealias Shell = SWIMActorShell
 }
@@ -35,7 +35,7 @@ extension SWIM.Message: AnySWIMMessage {}
 extension SWIM.PingResponse: AnySWIMMessage {}
 
 /// :nodoc:
-extension ActorRef: SWIMAddressablePeer where Message: AnySWIMMessage {
+extension _ActorRef: SWIMAddressablePeer where Message: AnySWIMMessage {
     public var node: ClusterMembership.Node {
         .init(protocol: self.address.uniqueNode.node.protocol, host: self.address.uniqueNode.host, port: self.address.uniqueNode.port, uid: self.address.uniqueNode.nid.value)
     }
@@ -46,7 +46,7 @@ extension SWIMPeer {
         payload: SWIM.GossipPayload,
         timeout: DispatchTimeInterval,
         sequenceNumber: SWIM.SequenceNumber,
-        context: ActorContext<SWIM.Message>,
+        context: _ActorContext<SWIM.Message>,
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
         guard let ref = self as? SWIM.Ref else {
@@ -87,7 +87,7 @@ extension SWIMPeer {
         payload: SWIM.GossipPayload,
         timeout: DispatchTimeInterval,
         sequenceNumber: SWIM.SequenceNumber,
-        context: ActorContext<SWIM.Message>,
+        context: _ActorContext<SWIM.Message>,
         onResponse: @escaping (Result<SWIM.PingResponse, Error>) -> Void
     ) {
         guard let ref = self as? SWIM.Ref else {
@@ -123,7 +123,7 @@ extension SWIMPeer {
 }
 
 /// :nodoc:
-extension ActorRef: SWIMPeer where Message == SWIM.Message {
+extension _ActorRef: SWIMPeer where Message == SWIM.Message {
     // Implementation note: origin is ignored on purpose, and that's okay since we perform the question via an `ask`
     public func ping(
         payload: SWIM.GossipPayload,
@@ -149,7 +149,7 @@ extension ActorRef: SWIMPeer where Message == SWIM.Message {
 }
 
 /// :nodoc:
-extension ActorRef: SWIMPingOriginPeer where Message == SWIM.Message {
+extension _ActorRef: SWIMPingOriginPeer where Message == SWIM.Message {
     public func ack(
         acknowledging sequenceNumber: SWIM.SequenceNumber,
         target: SWIMPeer,
@@ -161,7 +161,7 @@ extension ActorRef: SWIMPingOriginPeer where Message == SWIM.Message {
 }
 
 /// :nodoc:
-extension ActorRef: SWIMPingRequestOriginPeer where Message == SWIM.Message {
+extension _ActorRef: SWIMPingRequestOriginPeer where Message == SWIM.Message {
     public func nack(
         acknowledging sequenceNumber: SWIM.SequenceNumber,
         target: SWIMPeer

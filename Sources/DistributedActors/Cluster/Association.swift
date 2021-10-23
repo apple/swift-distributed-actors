@@ -48,7 +48,7 @@ final class Association: CustomStringConvertible {
     enum State {
         case associating(queue: MPSCLinkedQueue<TransportEnvelope>)
         case associated(channel: Channel) // TODO: _InternalActorTransport.Node/Peer/Target ???
-        case tombstone(ActorRef<DeadLetter>)
+        case tombstone(_ActorRef<DeadLetter>)
     }
 
     /// The address of this node, that was offered to the remote side for this association

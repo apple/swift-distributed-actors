@@ -23,14 +23,14 @@ class SupervisionDocExamples {
 
     func supervise_props() throws {
         let greeterBehavior: Behavior<String> = undefined()
-        let context: ActorContext<String> = undefined()
+        let context: _ActorContext<String> = undefined()
 
         // tag::supervise_props[]
         let props = Props() // <1>
             .supervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
         // potentially more props configuration here ...
 
-        let greeterRef = try context.spawn(
+        let greeterRef = try context._spawn
             "greeter",
             props: props, // <3>
             greeterBehavior
@@ -41,10 +41,10 @@ class SupervisionDocExamples {
 
     func supervise_inline() throws {
         let greeterBehavior: Behavior<String> = undefined()
-        let context: ActorContext<String> = undefined()
+        let context: _ActorContext<String> = undefined()
 
         // tag::supervise_inline[]
-        let greeterRef = try context.spawn(
+        let greeterRef = try context._spawn
             "greeter",
             props: .supervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
             greeterBehavior
@@ -75,7 +75,7 @@ class SupervisionDocExamples {
         // tag::supervise_full_usage[]
         let friends = ["Alice", "Bob", "Caplin"]
 
-        let greeterRef: ActorRef<String> = try system.spawn(
+        let greeterRef: _ActorRef<String> = try system._spawn
             "greeter",
             props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
             greeterBehavior(friends: friends)
@@ -113,7 +113,7 @@ class SupervisionDocExamples {
             "Caplin": "Cucumbers",
         ]
 
-        let greeterRef = try system.spawn(
+        let greeterRef = try system._spawn
             "favFruit",
             props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
             favouriteFruitBehavior(whoLikesWhat)
@@ -145,7 +145,7 @@ class SupervisionDocExamples {
 //            }
 //        }
 //
-//        let thrower = try system.spawn(
+//        let thrower = try system._spawn
 //            "thrower",
 //            props: Props()
 //                .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self), // <2>

@@ -116,7 +116,7 @@ class SerializationTests: ActorSystemXCTestCase {
     func test_serialize_actorRef_inMessage() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             "hello",
             .receiveMessage { message in
                 p.tell("got:\(message)")
@@ -151,7 +151,7 @@ class SerializationTests: ActorSystemXCTestCase {
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let ref: ActorRef<String> = try remoteCapableSystem.spawn(
+        let ref: _ActorRef<String> = try remoteCapableSystem.spawn(
             "hello",
             .receiveMessage { message in
                 p.tell("got:\(message)")
@@ -187,7 +187,7 @@ class SerializationTests: ActorSystemXCTestCase {
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
         let p = self.testKit.spawnTestProbe(expecting: Never.self)
-        let stoppedRef: ActorRef<String> = try system.spawn("dead-on-arrival", .stop)
+        let stoppedRef: _ActorRef<String> = try system.spawn("dead-on-arrival", .stop)
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
@@ -209,7 +209,7 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
-        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", .stop) // stopped
+        let stoppedRef: _ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let serialized = try shouldNotThrow {
@@ -237,9 +237,9 @@ class SerializationTests: ActorSystemXCTestCase {
     func test_serialize_receivesSystemMessages_inMessage() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let watchMe: ActorRef<String> = try system.spawn("watchMe", .ignore)
+        let watchMe: _ActorRef<String> = try system.spawn("watchMe", .ignore)
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             "shouldGetSystemMessage",
             .setup { context in
                 context.watch(watchMe)
@@ -284,7 +284,7 @@ class SerializationTests: ActorSystemXCTestCase {
 
         do {
             let p = self.testKit.spawnTestProbe("p1", expecting: String.self)
-            let echo: ActorRef<String> = try s2.spawn(
+            let echo: _ActorRef<String> = try s2.spawn(
                 "echo",
                 .receiveMessage { msg in
                     p.ref.tell("echo:\(msg)")
@@ -439,17 +439,17 @@ private class Mid: Top, Hashable {
 }
 
 private struct HasStringRef: ActorMessage, Equatable {
-    let containedRef: ActorRef<String>
+    let containedRef: _ActorRef<String>
 }
 
 private struct HasIntRef: ActorMessage, Equatable {
-    let containedRef: ActorRef<Int>
+    let containedRef: _ActorRef<Int>
 }
 
 private struct InterestingMessage: ActorMessage, Equatable {}
 
 private struct HasInterestingMessageRef: ActorMessage, Equatable {
-    let containedInterestingRef: ActorRef<InterestingMessage>
+    let containedInterestingRef: _ActorRef<InterestingMessage>
 }
 
 /// This is quite an UNUSUAL case, as `ReceivesSystemMessages` is internal, and thus, no user code shall ever send it
@@ -479,7 +479,7 @@ private struct NotCodableHasInt: Equatable {
 }
 
 private struct NotCodableHasIntRef: Equatable {
-    let containedRef: ActorRef<Int>
+    let containedRef: _ActorRef<Int>
 }
 
 private struct NotSerializable {

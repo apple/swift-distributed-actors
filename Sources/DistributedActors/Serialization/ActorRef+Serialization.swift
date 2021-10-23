@@ -18,7 +18,7 @@ import NIOFoundationCompat
 import Foundation // for Codable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Codable ActorRef
+// MARK: Codable _ActorRef
 
 public enum ActorCoding {
     public enum CodingKeys: CodingKey {
@@ -28,7 +28,7 @@ public enum ActorCoding {
     }
 }
 
-extension ActorRef {
+extension _ActorRef {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(self.address)
@@ -39,7 +39,7 @@ extension ActorRef {
         let address = try container.decode(ActorAddress.self)
 
         guard let context = decoder.actorSerializationContext else {
-            throw SerializationError.missingSerializationContext(decoder, ActorRef<Message>.self)
+            throw SerializationError.missingSerializationContext(decoder, _ActorRef<Message>.self)
         }
 
         // Important: We need to carry the `userInfo` as it may contain information set by a Transport that it needs in
@@ -55,10 +55,10 @@ extension ReceivesMessages {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
-        case let ref as ActorRef<Message>:
+        case let ref as _ActorRef<Message>:
             try container.encode(ref.address)
         default:
-            fatalError("Can not serialize non-ActorRef ReceivesMessages! Was: \(self)")
+            fatalError("Can not serialize non-_ActorRef ReceivesMessages! Was: \(self)")
         }
     }
 
@@ -70,8 +70,8 @@ extension ReceivesMessages {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        let resolved: ActorRef<Self.Message> = context.resolveActorRef(identifiedBy: address)
-        self = resolved as! Self // this is safe, we know Self IS-A ActorRef
+        let resolved: _ActorRef<Self.Message> = context.resolveActorRef(identifiedBy: address)
+        self = resolved as! Self // this is safe, we know Self IS-A _ActorRef
     }
 }
 

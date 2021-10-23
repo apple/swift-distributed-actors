@@ -20,7 +20,7 @@ import XCTest
 final class ActorSubReceiveTests: ActorSystemXCTestCase {
     func test_subReceive_shouldBeAbleToReceiveMessages() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<String>.self)
 
         let behavior: Behavior<Int> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { message in
@@ -42,7 +42,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
     struct TestSubReceiveType<Value>: Codable {}
     func test_subReceive_notCrashWhenTypeIncludesSpecialChar() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<TestSubReceiveType<Void>>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<TestSubReceiveType<Void>>.self)
 
         let behavior: Behavior<Int> = .setup { context in
             let subRef = context.subReceive("test-sub", TestSubReceiveType<Void>.self) { message in
@@ -66,7 +66,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
 
     func test_subReceiveId_fromGenericType_shouldNotBlowUp() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<Set<String>>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<Set<String>>.self)
 
         let behavior: Behavior<Int> = .setup { context in
             let subRef = context.subReceive(Set<String>.self) { message in
@@ -87,14 +87,14 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
 
     func test_subReceive_shouldBeAbleToModifyActorState() throws {
         let p = self.testKit.spawnTestProbe(expecting: Int.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<IncrementAndGet>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<IncrementAndGet>.self)
 
         struct GetState: ActorMessage {
-            let replyTo: ActorRef<Int>
+            let replyTo: _ActorRef<Int>
         }
 
         struct IncrementAndGet: ActorMessage {
-            let replyTo: ActorRef<Int>
+            let replyTo: _ActorRef<Int>
         }
 
         let behavior: Behavior<GetState> = .setup { context in
@@ -131,7 +131,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
 
     func test_subReceive_shouldBeWatchable() throws {
         let p = self.testKit.spawnTestProbe(expecting: Never.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<String>.self)
 
         let behavior: Behavior<Never> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { _ in
@@ -154,7 +154,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
 
     func test_subReceive_shouldShareLifetimeWithParent() throws {
         let p = self.testKit.spawnTestProbe(expecting: Never.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<String>.self)
 
         let behavior: Behavior<String> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { _ in
@@ -180,7 +180,7 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
     }
 
     func shared_subReceive_shouldTriggerSupervisionOnFailure(failureMode: SupervisionTests.FailureMode) throws {
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<String>.self)
 
         let behavior: Behavior<String> = .setup { context in
             let subRef = context.subReceive("test-sub", String.self) { _ in
@@ -206,12 +206,12 @@ final class ActorSubReceiveTests: ActorSystemXCTestCase {
 
     func test_subReceive_shouldBeReplacedIfRegisteredAgainUnderSameKey() throws {
         struct TestMessage: ActorMessage {
-            let replyTo: ActorRef<String>
+            let replyTo: _ActorRef<String>
             let message: String
         }
 
         let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<TestMessage>.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: _ActorRef<TestMessage>.self)
 
         let behavior: Behavior<String> = .setup { context in
             var subReceiveCounter = 0

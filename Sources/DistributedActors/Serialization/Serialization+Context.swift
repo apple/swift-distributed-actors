@@ -21,7 +21,7 @@ import struct NIO.ByteBufferAllocator
 // MARK: Serialization.Context
 
 extension Serialization {
-    /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as ActorRef).
+    /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as _ActorRef).
     ///
     /// Context MAY be accessed concurrently be encoders/decoders.
     public struct Context {
@@ -55,11 +55,11 @@ extension Serialization {
         /// Carrying `userInfo` from serialization (Coder) infrastructure may be useful to carry Transport specific information,
         /// such that a transport may _resolve_ using its own metadata.
         ///
-        /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
+        /// - Returns: the `_ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
         public func resolveActorRef<Message>(
             _ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress,
             userInfo: [CodingUserInfoKey: Any] = [:]
-        ) -> ActorRef<Message> where Message: ActorMessage {
+        ) -> _ActorRef<Message> where Message: ActorMessage {
             let context = ResolveContext<Message>(address: address, system: self.system, userInfo: userInfo)
             return self.system._resolve(context: context)
         }

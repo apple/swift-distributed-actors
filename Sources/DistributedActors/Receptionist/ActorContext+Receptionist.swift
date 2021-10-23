@@ -12,26 +12,26 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension ActorContext {
+extension _ActorContext {
     /// Receptionist wrapper, offering convenience functions for registering _this_ actor with the receptionist.
     ///
     /// - SeeAlso: `DistributedActors.Receptionist`, for the system wide receptionist API
     /// - SeeAlso: `Actor<M>.Receptionist`, for the receptionist wrapper specific to actorable actors
-    public var receptionist: ActorContext<Message>.Receptionist {
+    public var receptionist: _ActorContext<Message>.Receptionist {
         Self.Receptionist(context: self)
     }
 }
 
-extension ActorContext {
+extension _ActorContext {
     /// The receptionist enables type-safe and dynamic (subscription based) actor discovery.
     ///
     /// Actors may register themselves when they start with an `Reception.Key<A>`
     ///
-    /// - SeeAlso: `DistributedActors.Receptionist` for the `ActorRef<Message>` version of this API.
-    public struct Receptionist: MyselfReceptionistOperations {
-        public typealias Myself = ActorRef<Message>
+    /// - SeeAlso: `DistributedActors.Receptionist` for the `_ActorRef<Message>` version of this API.
+    public struct Receptionist: _MyselfReceptionistOperations {
+        public typealias Myself = _ActorRef<Message>
 
-        public let _underlyingContext: ActorContext<Message>
+        public let _underlyingContext: _ActorContext<Message>
 
         public var _myself: Myself {
             self._underlyingContext.myself
@@ -41,12 +41,12 @@ extension ActorContext {
             self._underlyingContext.system
         }
 
-        public init(context: ActorContext<Message>) {
+        public init(context: _ActorContext<Message>) {
             self._underlyingContext = context
         }
 
         // ==== --------------------------------------------------------------------------------------------------------
-        // MARK: ActorContext<Message> specific convenience functions
+        // MARK: _ActorContext<Message> specific convenience functions
 
         /// Subscribe to changes in checked-in actors under given `key` by with a subReceive.
         ///
@@ -56,7 +56,7 @@ extension ActorContext {
         public func subscribeMyself<Guest>(
             to key: Reception.Key<Guest>,
             subReceive: @escaping (Reception.Listing<Guest>) -> Void
-        ) where Guest: ReceptionistGuest {
+        ) where Guest: _ReceptionistGuest {
             let ref = self._underlyingContext.subReceive(Reception.Listing<Guest>.self, subReceive)
             self._system._receptionist.subscribe(ref, to: key)
         }

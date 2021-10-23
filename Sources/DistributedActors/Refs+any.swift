@@ -17,17 +17,17 @@ import struct NIO.ByteBuffer
 import protocol NIO.EventLoop
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Addressable (but not tell-able) ActorRef
+// MARK: Addressable (but not tell-able) _ActorRef
 
 /// Represents an actor which we know existed at some point in time and this represents its type-erased reference.
 ///
-/// An `AddressableActorRef` can be used as type-eraser for specific actor references (be it `Actor` or `ActorRef` based),
+/// An `AddressableActorRef` can be used as type-eraser for specific actor references (be it `Actor` or `_ActorRef` based),
 /// as they may still be compared with the `AddressableActorRef` by comparing their respective addressable.
 ///
 /// This enables an `AddressableActorRef` to be useful for watching, storing and comparing actor references of various types with another.
 /// Note that unlike a plain `ActorAddress` an `AddressableActorRef` still DOES hold an actual reference to the pointed to actor,
 /// even though it is not able to send messages to it (due to the lack of type-safety when doing so).
-public struct AddressableActorRef: DeathWatchable, Hashable {
+public struct AddressableActorRef: _DeathWatchable, Hashable {
     @usableFromInline
     enum RefType {
         case remote
@@ -50,7 +50,7 @@ public struct AddressableActorRef: DeathWatchable, Hashable {
     @usableFromInline
     let refType: RefType
 
-    public init<M>(_ ref: ActorRef<M>) {
+    public init<M>(_ ref: _ActorRef<M>) {
         self.ref = ref
         self.messageTypeId = ObjectIdentifier(M.self)
         switch ref.personality {
@@ -142,7 +142,7 @@ internal extension RemoteClusterActorPersonality {
     }
 }
 
-internal extension ActorRef {
+internal extension _ActorRef {
     /// UNSAFE API, DO NOT TOUCH.
     /// This may only be used when certain that a given ref points to a local actor, and thus contains a cell.
     /// May be used by internals when things are to be attached to "myself's cell".
@@ -150,7 +150,7 @@ internal extension ActorRef {
     var _unsafeUnwrapCell: _ActorCell<Message> {
         switch self.personality {
         case .cell(let cell): return cell
-        default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+        default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
         }
     }
 
@@ -168,7 +168,7 @@ internal extension ActorRef {
     var _unsafeUnwrapRemote: RemoteClusterActorPersonality<Message> {
         switch self.personality {
         case .remote(let remote): return remote
-        default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+        default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to _ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
         }
     }
 }

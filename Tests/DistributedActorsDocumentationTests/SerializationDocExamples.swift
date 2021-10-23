@@ -153,7 +153,7 @@ class SerializationDocExamples {
     func sending_serialized_codable_messages() throws {
         let spotAvailable = false
         // tag::sending_serialized_codable_messages[]
-        func replyParkingSpotAvailability(driver: ActorRef<ParkingSpotStatus>) {
+        func replyParkingSpotAvailability(driver: _ActorRef<ParkingSpotStatus>) {
             if spotAvailable {
                 driver.tell(.available)
             } else {
@@ -178,7 +178,7 @@ class SerializationDocExamples {
     func sending_serialized_protobuf_messages() throws {
         let garageAvailable = false
         // tag::sending_serialized_protobuf_messages[]
-        func replyParkingGarageAvailability(driver: ActorRef<ParkingGarageStatus>) {
+        func replyParkingGarageAvailability(driver: _ActorRef<ParkingGarageStatus>) {
             if garageAvailable {
                 driver.tell(.available)
             } else {
@@ -275,7 +275,7 @@ class SerializationDocExamples {
 
     // tag::custom_actorRef_serializer[]
     struct ContainsActorRef {
-        let ref: ActorRef<String>
+        let ref: _ActorRef<String>
     }
 
     final class CustomContainingActorRefSerializer: Serializer<ContainsActorRef> {
@@ -299,7 +299,7 @@ class SerializationDocExamples {
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
             }
-            let resolved: ActorRef<String> = context.resolveActorRef(identifiedBy: address) // <2>
+            let resolved: _ActorRef<String> = context.resolveActorRef(identifiedBy: address) // <2>
             return ContainsActorRef(ref: resolved)
         }
 

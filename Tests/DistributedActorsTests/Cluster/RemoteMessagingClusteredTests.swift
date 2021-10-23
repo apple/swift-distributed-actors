@@ -31,7 +31,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+        let nonCodableRefOnRemoteSystem: _ActorRef<SerializationTestMessage> = try remote._spawn
             "remoteAcquaintance1",
             .receiveMessage { message in
                 probeOnRemote.tell("forwarded:\(message)")
@@ -39,7 +39,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        let codableRefOnRemoteSystem: ActorRef<String> = try remote.spawn(
+        let codableRefOnRemoteSystem: _ActorRef<String> = try remote._spawn
             "remoteAcquaintance2",
             .receiveMessage { message in
                 probeOnRemote.tell("forwarded:\(message)")
@@ -70,7 +70,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
 
             let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-            let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+            let refOnRemoteSystem: _ActorRef<SerializationTestMessage> = try remote._spawn
                 .anonymous,
                 .receiveMessage { message in
                     probeOnRemote.tell("forwarded:\(message)")
@@ -99,7 +99,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         }
 
         let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
-        let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(
+        let nonCodableRefOnRemoteSystem: _ActorRef<SerializationTestMessage> = try remote.spawn(
             .anonymous,
             .receiveMessage { message in
                 probeOnRemote.tell("forwarded:\(message)")
@@ -128,7 +128,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let testKit = ActorTestKit(local)
         let probe = testKit.spawnTestProbe(expecting: String.self)
-        let localRef: ActorRef<String> = try local.spawn(
+        let localRef: _ActorRef<String> = try local.spawn(
             "local",
             .receiveMessage { message in
                 probe.tell("received:\(message)")
@@ -152,7 +152,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let localRef: ActorRef<String> = try local.spawn(
+        let localRef: _ActorRef<String> = try local.spawn(
             "localRef",
             .receiveMessage { message in
                 probe.tell("response:\(message)")
@@ -160,7 +160,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
             }
         )
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+        let refOnRemoteSystem: _ActorRef<EchoTestMessage> = try remote.spawn(
             "remoteAcquaintance",
             .receiveMessage { message in
                 message.respondTo.tell("echo:\(message.string)")
@@ -187,7 +187,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+        let refOnRemoteSystem: _ActorRef<EchoTestMessage> = try remote.spawn(
             "remoteAcquaintance",
             .receiveMessage { message in
                 message.respondTo.tell("echo:\(message.string)")
@@ -201,10 +201,10 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
-        let _: ActorRef<Int> = try local.spawn(
+        let _: _ActorRef<Int> = try local.spawn(
             "localRef",
             .setup { context in
-                let child: ActorRef<String> = try context.spawn(
+                let child: _ActorRef<String> = try context.spawn(
                     .anonymous,
                     .receiveMessage { message in
                         probe.tell("response:\(message)")
@@ -230,7 +230,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
-        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(
+        let refOnRemoteSystem: _ActorRef<EchoTestMessage> = try remote.spawn(
             "remoteAcquaintance",
             .receiveMessage { message in
                 message.respondTo.tell("echo:\(message.string)")
@@ -244,7 +244,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
-        let _: ActorRef<WrappedString> = try local.spawn(
+        let _: _ActorRef<WrappedString> = try local.spawn(
             "localRef",
             .setup { context in
                 let adaptedRef = context.messageAdapter(from: String.self) { WrappedString(string: $0) }
@@ -280,7 +280,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(thirdSystem, withExactly: [local.cluster.uniqueNode, remote.cluster.uniqueNode])
         let thirdTestKit = ActorTestKit(thirdSystem)
 
-        let localRef: ActorRef<EchoTestMessage> = try local.spawn(
+        let localRef: _ActorRef<EchoTestMessage> = try local.spawn(
             "Local",
             .receiveMessage { message in
                 message.respondTo.tell("local:\(message.string)")
@@ -290,7 +290,7 @@ final class RemoteMessagingClusteredTests: ClusteredActorSystemsXCTestCase {
 
         let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
 
-        let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn(
+        let remoteRef: _ActorRef<EchoTestMessage> = try remote.spawn(
             "Remote",
             .receiveMessage { message in
                 localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
@@ -347,7 +347,7 @@ extension SerializationTestMessage {
 
 private struct EchoTestMessage: ActorMessage {
     let string: String
-    let respondTo: ActorRef<String>
+    let respondTo: _ActorRef<String>
 }
 
 struct Boom: Error {
