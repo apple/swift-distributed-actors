@@ -322,7 +322,7 @@ extension Serialization {
 
         case Serialization.SerializerID.protobufRepresentable:
             // TODO: determine what custom one to use, proto or what else
-            return TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
+            return _TopLevelBytesBlobSerializer<Message>(allocator: self.allocator, context: self.context)
 
         default:
             throw SerializationError.unableToMakeSerializer(hint: "Not recognized serializerID: \(manifest.serializerID), in manifest: [\(manifest)] for type [\(type)]")
@@ -776,7 +776,7 @@ public enum SerializationError: Error {
 
     /// Thrown when an operation needs to obtain an `Serialization.Context` however none was present in coder.
     ///
-    /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
+    /// This could be because an attempt was made to decode/encode an `_ActorRef` outside of a system's `Serialization`,
     /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
     case missingSerializationContext(Any.Type, details: String, file: String, line: UInt)
 

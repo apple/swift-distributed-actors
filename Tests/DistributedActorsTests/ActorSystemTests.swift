@@ -21,13 +21,13 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
-        let _: ActorRef<String> = try system.spawn("test", .ignore)
+        let _: _ActorRef<String> = try system._spawn("test", .ignore)
 
         let error = try shouldThrow {
-            let _: ActorRef<String> = try system.spawn("test", .ignore)
+            let _: _ActorRef<String> = try system._spawn("test", .ignore)
         }
 
-        guard case ActorContextError.duplicateActorPath(let path) = error else {
+        guard case _ActorContextError.duplicateActorPath(let path) = error else {
             XCTFail()
             return
         }
@@ -39,7 +39,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     func test_system_spawn_shouldNotThrowOnNameReUse() throws {
         let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
         // re-using a name of an actor that has been stopped is fine
-        let ref: ActorRef<String> = try system.spawn("test", .stop)
+        let ref: _ActorRef<String> = try system._spawn("test", .stop)
 
         p.watch(ref)
         try p.expectTerminated(ref)
@@ -47,7 +47,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
         // since spawning on top level is racy for the names replacements;
         // we try a few times, and if it eventually succeeds things are correct -- it should succeed only once though
         try self.testKit.eventually(within: .milliseconds(500)) {
-            let _: ActorRef<String> = try system.spawn("test", .ignore)
+            let _: _ActorRef<String> = try system._spawn("test", .ignore)
         }
     }
 

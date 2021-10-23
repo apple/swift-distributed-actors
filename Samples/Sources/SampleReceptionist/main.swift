@@ -27,7 +27,7 @@ extension Reception.Key {
 let actors = 10000
 
 enum HotelGuest {
-    typealias Ref = ActorRef<String>
+    typealias Ref = _ActorRef<String>
 
     static var behavior: Behavior<String> = .setup { context in
         context.receptionist.registerMyself(with: .guests)
@@ -41,7 +41,7 @@ enum HotelGuest {
 enum HotelOwner {
     static var behavior: Behavior<Int> = .receiveMessage { message in
         let guests = try (1 ... message).map { id in
-            try system.spawn("guest-\(id)", HotelGuest.behavior)
+            try system._spawn("guest-\(id)", HotelGuest.behavior)
         }
 
         return .receive { _, _ in
@@ -51,7 +51,7 @@ enum HotelOwner {
 }
 
 enum GuestListener {
-    static var behavior: Behavior<Reception.Listing<ActorRef<String>>> = .setup { context in
+    static var behavior: Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
 
         context.receptionist.subscribeMyself(to: .guests)
 
@@ -76,9 +76,9 @@ enum GuestListener {
     }
 }
 
-try system.spawn("listener", GuestListener.behavior)
+try system._spawn("listener", GuestListener.behavior)
 
-let owner = try system.spawn("owner", HotelOwner.behavior)
+let owner = try system._spawn("owner", HotelOwner.behavior)
 owner.tell(actors)
 
 Thread.sleep(.seconds(100))

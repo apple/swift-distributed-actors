@@ -66,7 +66,7 @@ final class DiscoveryShell {
         }
     }
 
-    private func onUpdatedListing(discoveredNodes: Set<Node>, context: ActorContext<Message>) {
+    private func onUpdatedListing(discoveredNodes: Set<Node>, context: _ActorContext<Message>) {
         context.log.trace("Service discovery updated listing", metadata: [
             "listing": Logger.MetadataValue.array(Array(discoveredNodes.map {
                 "\($0)"
@@ -82,7 +82,7 @@ final class DiscoveryShell {
         self.previouslyDiscoveredNodes = discoveredNodes
     }
 
-    func stop(reason: CompletionReason?, context: ActorContext<Message>) -> Behavior<Message> {
+    func stop(reason: CompletionReason?, context: _ActorContext<Message>) -> Behavior<Message> {
         context.log.info("Stopping cluster node discovery, reason: \(optional: reason)")
         self.subscription?.cancel()
         return .stop

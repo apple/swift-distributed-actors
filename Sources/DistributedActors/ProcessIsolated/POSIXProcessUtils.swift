@@ -27,7 +27,7 @@ import Glibc
 internal enum POSIXProcessUtils {
     /// - SeeAlso: http://man7.org/linux/man-pages/man3/posix_spawn.3.html
     /// - SeeAlso: https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/posix_spawn.2.html
-    /// - SeeAlso: https://github.com/apple/swift-corelibs-foundation/blob/master/Foundation/Process.swift
+    /// - SeeAlso: https://github.com/apple/swift-corelibs-foundation/blob/main/Foundation/Process.swift
     public static func spawn(command: String, args argv: [String]) throws -> Int {
         // pid
         var pid = pid_t()

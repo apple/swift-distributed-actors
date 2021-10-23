@@ -20,16 +20,16 @@ private let gossipTickKey: TimerKey = "gossip-tick"
 ///
 /// Not intended to be spawned directly, use `Gossiper.spawn` instead!
 internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
-    typealias Ref = ActorRef<Message>
+    typealias Ref = _ActorRef<Message>
 
     let settings: Gossiper.Settings
 
-    private let makeLogic: (ActorContext<Message>, GossipIdentifier) -> AnyGossipLogic<Gossip, Acknowledgement>
+    private let makeLogic: (_ActorContext<Message>, GossipIdentifier) -> AnyGossipLogic<Gossip, Acknowledgement>
 
     /// Payloads to be gossiped on gossip rounds
     private var gossipLogics: [AnyGossipIdentifier: AnyGossipLogic<Gossip, Acknowledgement>]
 
-    typealias PeerRef = ActorRef<Message>
+    typealias PeerRef = _ActorRef<Message>
     private var peers: Set<PeerRef>
 
     internal init<Logic>(
@@ -89,11 +89,11 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     }
 
     private func receiveGossip(
-        _ context: ActorContext<Message>,
+        _ context: _ActorContext<Message>,
         identifier: GossipIdentifier,
-        origin: ActorRef<Message>,
+        origin: _ActorRef<Message>,
         payload: Gossip,
-        ackRef: ActorRef<Acknowledgement>?
+        ackRef: _ActorRef<Acknowledgement>?
     ) {
         context.log.trace("Received gossip [\(identifier.gossipIdentifier)]", metadata: [
             "gossip/identity": "\(identifier.gossipIdentifier)",
@@ -140,7 +140,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     }
 
     private func onLocalPayloadUpdate(
-        _ context: ActorContext<Message>,
+        _ context: _ActorContext<Message>,
         identifier: GossipIdentifier,
         payload: Gossip
     ) {
@@ -153,7 +153,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         logic.receiveLocalGossipUpdate(payload)
     }
 
-    private func getEnsureLogic(_ context: ActorContext<Message>, identifier: GossipIdentifier) -> AnyGossipLogic<Gossip, Acknowledgement> {
+    private func getEnsureLogic(_ context: _ActorContext<Message>, identifier: GossipIdentifier) -> AnyGossipLogic<Gossip, Acknowledgement> {
         let logic: AnyGossipLogic<Gossip, Acknowledgement>
         if let existing = self.gossipLogics[identifier.asAnyGossipIdentifier] {
             logic = existing
@@ -165,7 +165,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     }
 
     // TODO: keep and remove logics
-    private func onLocalPayloadRemove(_ context: ActorContext<Message>, identifier: GossipIdentifier) {
+    private func onLocalPayloadRemove(_ context: _ActorContext<Message>, identifier: GossipIdentifier) {
         let identifierKey = identifier.asAnyGossipIdentifier
 
         _ = self.gossipLogics.removeValue(forKey: identifierKey)
@@ -176,7 +176,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         // TODO: callback into client or not?
     }
 
-    private func runGossipRound(_ context: ActorContext<Message>) {
+    private func runGossipRound(_ context: _ActorContext<Message>) {
         defer {
             self.ensureNextGossipRound(context)
         }
@@ -226,7 +226,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
     }
 
     private func sendGossip(
-        _ context: ActorContext<Message>,
+        _ context: _ActorContext<Message>,
         identifier: AnyGossipIdentifier,
         _ payload: Gossip,
         to target: PeerRef,
@@ -265,7 +265,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         }
     }
 
-    private func ensureNextGossipRound(_ context: ActorContext<Message>) {
+    private func ensureNextGossipRound(_ context: _ActorContext<Message>) {
         guard !self.peers.isEmpty else {
             return // no need to schedule gossip ticks if we have no peers
         }
@@ -280,17 +280,17 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension GossipShell {
-    public static func receptionKey(id: String) -> Reception.Key<ActorRef<Message>> {
+    public static func receptionKey(id: String) -> Reception.Key<_ActorRef<Message>> {
         Reception.Key(id: id)
     }
 
-    private func initPeerDiscovery(_ context: ActorContext<Message>) {
+    private func initPeerDiscovery(_ context: _ActorContext<Message>) {
         switch self.settings.peerDiscovery {
         case .manuallyIntroduced:
             return // nothing to do, peers will be introduced manually
 
         case .onClusterMember(let atLeastStatus, let resolvePeerOn):
-            func resolveInsertPeer(_ context: ActorContext<Message>, member: Cluster.Member) {
+            func resolveInsertPeer(_ context: _ActorContext<Message>, member: Cluster.Member) {
                 guard member.uniqueNode != context.system.cluster.uniqueNode else {
                     return // ignore self node
                 }
@@ -333,7 +333,7 @@ extension GossipShell {
             context.system.cluster.events.subscribe(onClusterEventRef)
 
         case .fromReceptionistListing(let id):
-            let key = Reception.Key(ActorRef<Message>.self, id: id)
+            let key = Reception.Key(_ActorRef<Message>.self, id: id)
             context.receptionist.registerMyself(with: key)
             context.log.debug("Registered with receptionist key: \(key)")
 
@@ -350,7 +350,7 @@ extension GossipShell {
         }
     }
 
-    private func onIntroducePeer(_ context: ActorContext<Message>, peer: PeerRef) {
+    private func onIntroducePeer(_ context: _ActorContext<Message>, peer: PeerRef) {
         guard peer != context.myself else {
             return // there is never a need to gossip to myself
         }
@@ -377,7 +377,7 @@ extension GossipShell {
         case unhandled
     }
 
-    private func onSideChannelMessage(_ context: ActorContext<Message>, identifier: GossipIdentifier, _ message: Any) -> SideChannelDirective {
+    private func onSideChannelMessage(_ context: _ActorContext<Message>, identifier: GossipIdentifier, _ message: Any) -> SideChannelDirective {
         guard let logic = self.gossipLogics[identifier.asAnyGossipIdentifier] else {
             return .unhandled
         }
@@ -396,7 +396,7 @@ extension GossipShell {
 extension GossipShell {
     enum Message {
         // gossip
-        case gossip(identity: GossipIdentifier, origin: ActorRef<Message>, Gossip, ackRef: ActorRef<Acknowledgement>?)
+        case gossip(identity: GossipIdentifier, origin: _ActorRef<Message>, Gossip, ackRef: _ActorRef<Acknowledgement>?)
 
         // local messages
         case updatePayload(identifier: GossipIdentifier, Gossip)

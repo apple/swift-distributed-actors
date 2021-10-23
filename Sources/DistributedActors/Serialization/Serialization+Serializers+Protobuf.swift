@@ -22,7 +22,7 @@ import SwiftProtobuf
 // MARK: Protobuf serializers
 
 /// Base protobuf serializer containing common logic, customizable by subclass.
-open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Message>: Serializer<Message> {
+open class _Base_ProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Message>: Serializer<Message> {
     var _serializationContext: Serialization.Context?
     var serializationContext: Serialization.Context {
         guard let context = self._serializationContext else {
@@ -58,7 +58,7 @@ open class BaseProtobufSerializer<Message, ProtobufMessage: SwiftProtobuf.Messag
 }
 
 /// Protobuf serializer for user-defined protobuf messages.
-public final class ProtobufSerializer<T: ProtobufRepresentable>: BaseProtobufSerializer<T, T.ProtobufRepresentation> {
+public final class _ProtobufSerializer<T: ProtobufRepresentable>: _Base_ProtobufSerializer<T, T.ProtobufRepresentation> {
     public override func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
         try message.toProto(context: self.serializationContext)
     }
@@ -69,7 +69,7 @@ public final class ProtobufSerializer<T: ProtobufRepresentable>: BaseProtobufSer
 }
 
 /// Protobuf serializer for internal protobuf messages only.
-internal final class InternalProtobufSerializer<T: InternalProtobufRepresentable>: BaseProtobufSerializer<T, T.ProtobufRepresentation> {
+internal final class Internal_ProtobufSerializer<T: InternalProtobufRepresentable>: _Base_ProtobufSerializer<T, T.ProtobufRepresentation> {
     public override func toProto(_ message: T, context: Serialization.Context) throws -> T.ProtobufRepresentation {
         try message.toProto(context: self.serializationContext)
     }

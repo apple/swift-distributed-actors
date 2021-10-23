@@ -14,13 +14,13 @@
 
 import Logging
 
-/// The `ActorContext` exposes an actors details and capabilities, such as names and timers.
+/// The `_ActorContext` exposes an actors details and capabilities, such as names and timers.
 ///
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*/ {
-    public typealias Myself = ActorRef<Message>
+public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*/ {
+    public typealias Myself = _ActorRef<Message>
 
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
@@ -43,7 +43,7 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     ///
     /// Special characters like `$` are reserved for internal use of the `ActorSystem`.
     // Implementation note:
-    // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
+    // We can safely make it a `lazy var` without synchronization as `_ActorContext` is required to only be accessed in "its own"
     // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
     public var name: String {
         undefined()
@@ -57,7 +57,7 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     // We use `myself` as the Akka style `self` is taken; We could also do `context.ref` however this sounds inhuman,
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
     // to get developers into the right mindset.
-    public var myself: ActorRef<Message> {
+    public var myself: _ActorRef<Message> {
         undefined()
     }
 
@@ -103,7 +103,7 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
         file: String = #file, line: UInt = #line
-    ) -> Watchee where Watchee: DeathWatchable {
+    ) -> Watchee where Watchee: _DeathWatchable {
         undefined()
     }
 
@@ -111,7 +111,7 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     public func unwatch<Watchee>(
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
-    ) -> Watchee where Watchee: DeathWatchable {
+    ) -> Watchee where Watchee: _DeathWatchable {
         undefined()
     }
 
@@ -119,13 +119,13 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     // MARK: Child actor management
 
     @discardableResult
-    public func spawn<M>(
+    public func _spawn<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
-    ) throws -> ActorRef<M>
+    ) throws -> _ActorRef<M>
         where M: ActorMessage {
         undefined()
     }
@@ -137,13 +137,13 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     /// - SeeAlso: `spawn`
     /// - SeeAlso: `watch`
     @discardableResult
-    public func spawnWatch<M>(
+    public func _spawnWatch<M>(
         _ naming: ActorNaming,
         of type: M.Type = M.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
-    ) throws -> ActorRef<M>
+    ) throws -> _ActorRef<M>
         where M: ActorMessage {
         undefined()
     }
@@ -169,10 +169,10 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     ///    parent math of some actor, and we attempted to stop a non existing child, which also is a no-op however indicates an issue
     ///    in the logic of our actor.
     ///
-    /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
+    /// - Throws: an `_ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
     ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
-    public func stop<M>(child ref: ActorRef<M>) throws where M: ActorMessage {
+    public func stop<M>(child ref: _ActorRef<M>) throws where M: ActorMessage {
         return undefined()
     }
 
@@ -227,13 +227,13 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     /// behavior is legal, and causes another suspension.
     ///
     /// - Parameters:
-    ///   - asyncResult: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the asyncResult will be failed if it does not complete
-    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///   - _AsyncResult: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) -> Behavior<Message> {
-        asyncResult.withTimeout(after: timeout)._onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
+    /// - Returns: a behavior that causes the actor to suspend until the `_AsyncResult` completes
+    public func awaitResult<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) -> Behavior<Message> {
+        _AsyncResult.withTimeout(after: timeout)._onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
             selfRef?.sendSystemMessage(.resume(result.map { $0 }))
         }
         return .suspend(handler: continuation)
@@ -248,17 +248,17 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     ///
     /// - SeeAlso: `awaitResult`
     /// - Parameters:
-    ///   - asyncResult: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the asyncResult will be failed if it does not complete
-    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///   - _AsyncResult: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResultThrowing<AR: AsyncResult>(
-        of asyncResult: AR,
+    /// - Returns: a behavior that causes the actor to suspend until the `_AsyncResult` completes
+    public func awaitResultThrowing<AR: _AsyncResult>(
+        of _AsyncResult: AR,
         timeout: TimeAmount,
         _ continuation: @escaping (AR.Value) throws -> Behavior<Message>
     ) -> Behavior<Message> {
-        self.awaitResult(of: asyncResult, timeout: timeout) { result in
+        self.awaitResult(of: _AsyncResult, timeout: timeout) { result in
             switch result {
             case .success(let res): return try continuation(res)
             case .failure(let error): throw error
@@ -275,17 +275,17 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     ///
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the asyncResult will be failed if it does not complete
-    ///   - continuation: continuation to run after `AsyncResult` completes.
+    ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `_AsyncResult` completes.
     ///     It is safe to access and modify actor state from here.
-    public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
+    public func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self, file: file, line: line) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe
             shell.behavior = try shell.behavior.canonicalize(shell, next: nextBehavior)
         }
 
-        asyncResult.withTimeout(after: timeout)._onComplete { res in
+        _AsyncResult.withTimeout(after: timeout)._onComplete { res in
             asyncCallback.invoke(res)
         }
     }
@@ -302,11 +302,11 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
     ///
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the asyncResult will be failed if it does not complete
-    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    public func onResultAsyncThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) {
-        self.onResultAsync(of: asyncResult, timeout: timeout) { res in
+    public func onResultAsyncThrowing<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) {
+        self.onResultAsync(of: _AsyncResult, timeout: timeout) { res in
             switch res {
             case .success(let value): return try continuation(value)
             case .failure(let error): throw error
@@ -318,64 +318,64 @@ public class ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable*
 
     // MARK: Message Adapters & Sub-Receive
 
-    /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
+    /// Adapts this `_ActorRef` to accept messages of another type by applying the conversion
     /// function. There can only be one adapter defined per type. Creating a new adapter will
     /// replace an existing adapter.
     ///
-    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
-    /// that when the owning actor terminates, this `ActorRef` terminates as well.
+    /// The returned `_ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `_ActorRef` terminates as well.
     ///
     /// ### Dropping messages
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
-    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From>
+    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> _ActorRef<From>
         where From: ActorMessage {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
-    /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
+    /// Adapts this `_ActorRef` to accept messages of another type by applying the conversion
     /// function. There can only be one adapter defined per type. Creating a new adapter will
     /// replace an existing adapter.
     ///
-    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
-    /// that when the owning actor terminates, this `ActorRef` terminates as well.
+    /// The returned `_ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `_ActorRef` terminates as well.
     ///
     /// ### Dropping messages
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
     /// `Message`, or if not all `From` messages are of interest for this particular actor.
-    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From>
+    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> _ActorRef<From>
         where From: ActorMessage {
         return undefined()
     }
 
-    /// Creates an `ActorRef` that can receive messages of the specified type, but executed in the same
+    /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
     /// context as the actor owning it, meaning that it is safe to close over mutable state internal to the
     /// surrounding actor and modify it.
     ///
-    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
-    /// that when the owning actor terminates, this `ActorRef` terminates as well.
+    /// The returned `_ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `_ActorRef` terminates as well.
     ///
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage>
+    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         return undefined()
     }
 
-    /// Creates an `ActorRef` that can receive messages of the specified type, but executed in the same
+    /// Creates an `_ActorRef` that can receive messages of the specified type, but executed in the same
     /// context as the actor owning it, meaning that it is safe to close over mutable state internal to the
     /// surrounding actor and modify it.
     ///
-    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
-    /// that when the owning actor terminates, this `ActorRef` terminates as well.
+    /// The returned `_ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `_ActorRef` terminates as well.
     ///
     /// There can only be one `subReceive` per type. When installing a new `subReceive`
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage> {
         self.subReceive(SubReceiveId(type), type, closure)
     }
 

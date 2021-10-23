@@ -13,10 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorMailboxInstrumentation
+// MARK: _ActorMailboxInstrumentation
 
 // TODO: all these to accept trace context or something similar
-public protocol ActorMailboxInstrumentation {
+public protocol _ActorMailboxInstrumentation {
     init(id: AnyObject, address: ActorAddress)
 
     func actorMailboxRunStarted(mailboxCount: Int)
@@ -24,9 +24,9 @@ public protocol ActorMailboxInstrumentation {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Noop ActorMailboxInstrumentation
+// MARK: Noop _ActorMailboxInstrumentation
 
-struct NoopActorMailboxInstrumentation: ActorMailboxInstrumentation {
+struct NoopActorMailboxInstrumentation: _ActorMailboxInstrumentation {
     public init(id: AnyObject, address: ActorAddress) {}
 
     public func actorMailboxRunStarted(mailboxCount: Int) {}

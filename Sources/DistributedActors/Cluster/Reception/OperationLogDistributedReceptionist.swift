@@ -130,7 +130,7 @@ import Logging
 /// to be the dominant usage pattern, and thus are less worried about the large fan-out/in-cast of these ops streams. This may change
 /// as we face larger clusters and we'd love to explore a full CRDT based implementation that DOES NOT need to full-state-sync periodically
 /// (which is the reason we avoided an CRDT implementation in the first place today, as we would have to perform a full-state sync of a potentially
-/// _very large_ Dictionary<Key: Set<ActorRef<T>>).
+/// _very large_ Dictionary<Key: Set<_ActorRef<T>>).
 ///
 /// 1) Members form a cluster, each has exactly one well known receptionist
 /// 2) Upon joining, the new receptionist introduces itself and pulls, by sending ack(until: 0)
@@ -1058,8 +1058,8 @@ extension OpLogDistributedReceptionist {
 //    }
 //
 //    internal enum TraceLogType: CustomStringConvertible {
-//        case receive(from: ActorRef<Message>?)
-//        case push(to: ActorRef<Message>)
+//        case receive(from: _ActorRef<Message>?)
+//        case push(to: _ActorRef<Message>)
 //
 //        static var receive: TraceLogType {
 //            .receive(from: nil)

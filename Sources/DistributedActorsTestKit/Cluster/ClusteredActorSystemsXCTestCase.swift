@@ -453,7 +453,7 @@ extension ClusteredActorSystemsXCTestCase {
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
 extension ClusteredActorSystemsXCTestCase {
-    public func resolveRef<M>(_ system: ActorSystem, type: M.Type, address: ActorAddress, on targetSystem: ActorSystem) -> ActorRef<M> {
+    public func resolveRef<M>(_ system: ActorSystem, type: M.Type, address: ActorAddress, on targetSystem: ActorSystem) -> _ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
         let remoteNode = targetSystem.settings.cluster.uniqueBindNode

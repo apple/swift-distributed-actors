@@ -73,7 +73,7 @@ extension SWIM.RemoteMessage: ProtobufRepresentable {
 
         case .pingRequest(let pingRequest):
             let targetAddress = try ActorAddress(fromProto: pingRequest.target, context: context)
-            let target: ActorRef<SWIM.Message> = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
+            let target: _ActorRef<SWIM.Message> = context.resolveActorRef(SWIM.Message.self, identifiedBy: targetAddress)
 
             let pingRequestOriginAddress = try ActorAddress(fromProto: pingRequest.origin, context: context)
             let pingRequestOrigin: SWIM.PingRequestOriginRef = context.resolveActorRef(identifiedBy: pingRequestOriginAddress)

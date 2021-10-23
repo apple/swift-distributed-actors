@@ -18,7 +18,7 @@ import _Distributed
 // MARK: ActorAddress
 
 /// Uniquely identifies an Actor within a (potentially clustered) Actor System.
-/// Most of the time, using an `ActorRef` is the right thing for identifying actors however, as it also allows sending messages.
+/// Most of the time, using an `_ActorRef` is the right thing for identifying actors however, as it also allows sending messages.
 ///
 /// ## Identity
 /// The address is the source of truth with regards to referring to a _specific_ actor in the system.
@@ -28,7 +28,7 @@ import _Distributed
 /// ## Lifecycle
 /// Note, that an ActorAddress is a pure value, and as such does not "participate" in an actors lifecycle;
 /// Thus, it may represent an address of an actor that has already terminated, so attempts to locate (resolve)
-/// an `ActorRef` for this address may result with a reference to dead letters (meaning, that the actor this address
+/// an `_ActorRef` for this address may result with a reference to dead letters (meaning, that the actor this address
 /// had pointed to does not exist, and most likely is dead / terminated).
 ///
 /// ## Serialization
@@ -206,7 +206,7 @@ extension ActorAddress {
     }
 }
 
-extension ActorAddress: PathRelationships {
+extension ActorAddress: _PathRelationships {
     public var segments: [ActorPathSegment] {
         self.path.segments
     }
@@ -274,7 +274,7 @@ internal enum ActorLocation: Hashable, Sendable {
 /// - contain only ASCII characters and select special characters (listed in `ValidPathSymbols.extraSymbols`)
 ///
 /// - Example: `/user/lightbulbMaster/lightbulb-2012`
-public struct ActorPath: PathRelationships, Hashable, Sendable {
+public struct ActorPath: _PathRelationships, Hashable, Sendable {
     // TODO: instead back with a String and keep a pos to index quickly into the name for Substring?
     public var segments: [ActorPathSegment]
 
@@ -377,13 +377,13 @@ extension ActorPath: Comparable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Path relationships
 
-public protocol PathRelationships {
+public protocol _PathRelationships {
     /// Individual segments of the `ActorPath`.
     var segments: [ActorPathSegment] { get }
     func appending(segment: ActorPathSegment) -> Self
 }
 
-extension PathRelationships {
+extension _PathRelationships {
     /// Combines the base path with a child segment returning the concatenated path.
     static func / (base: Self, child: ActorPathSegment) -> Self {
         base.appending(segment: child)
@@ -398,11 +398,11 @@ extension PathRelationships {
     ///
     /// Note: Path relationships only take into account the path segments, and can not be used
     ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
-    ///       Such relationships must be confirmed by using the `ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
+    ///       Such relationships must be confirmed by using the `_ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
     ///
     /// - Parameter path: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
-    public func isChildPathOf(_ maybeParentPath: PathRelationships) -> Bool {
+    public func isChildPathOf(_ maybeParentPath: _PathRelationships) -> Bool {
         Array(self.segments.dropLast()) == maybeParentPath.segments // TODO: more efficient impl, without the copying
     }
 
@@ -410,11 +410,11 @@ extension PathRelationships {
     ///
     /// Note: Path relationships only take into account the path segments, and can not be used
     ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
-    ///       Such relationships must be confirmed by using the `ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
+    ///       Such relationships must be confirmed by using the `_ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
     ///
     /// - Parameter path: The path that is suspected to be a child of `self`
     /// - Returns: `true` if this [ActorPath] is a direct ancestor of `maybeChildPath`, `false` otherwise
-    public func isParentOf(_ maybeChildPath: PathRelationships) -> Bool {
+    public func isParentOf(_ maybeChildPath: _PathRelationships) -> Bool {
         maybeChildPath.isChildPathOf(self)
     }
 
@@ -504,7 +504,7 @@ struct ActorName {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Incarnation number
 
-/// Used to uniquely identify a specific "incarnation" of an Actor and therefore provide unique identity to `ActorAddress` and `ActorRef`s.
+/// Used to uniquely identify a specific "incarnation" of an Actor and therefore provide unique identity to `ActorAddress` and `_ActorRef`s.
 ///
 /// ## Example
 /// The incarnation number is a crucial part of actor identity and is used to disambiguate actors which may have resided on the same `ActorPath` at some point.

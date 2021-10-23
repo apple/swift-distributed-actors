@@ -28,7 +28,7 @@ import DistributedActorsConcurrencyHelpers
 /// Child processes (referred to as "servants") are spawned and join the parent process initiated cluster immediately,
 /// and may be configured with supervision in a similar way as actor supervision (e.g. to be restarted automatically).
 ///
-/// Communication with (and between) master and servant processes is handled using the normal Swift-NIO TCP stack,
+/// Communication with (and between) boss and servant processes is handled using the normal Swift-NIO TCP stack,
 /// as would any remote communication. In addition to the usual distributed failure detector which may remain enabled,
 /// for such systems (e.g. to detect unresponsive servants)
 ///
@@ -36,7 +36,7 @@ import DistributedActorsConcurrencyHelpers
 /// as process boundary isolation then allows the specific nodes to crash completely and be restarted anew.
 ///
 /// ### Servant process supervision
-/// Servant processes may be subject to master supervision, in similar ways as child actors can be supervised.
+/// Servant processes may be subject to boss supervision, in similar ways as child actors can be supervised.
 /// The same strategies are available, and can be selected declaratively when invoking `requestSpawnServant`.
 public class ProcessIsolated {
     public let system: ActorSystem
@@ -55,16 +55,16 @@ public class ProcessIsolated {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Master supervisor thread interactions
+    // MARK: Boss supervisor thread interactions
 
     private let processSupervisorMailbox: LinkedBlockingQueue<_ProcessSupervisorMessage> = LinkedBlockingQueue()
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Process Master and functions exposed to it
+    // MARK: Process Boss and functions exposed to it
 
-    internal var processCommander: ActorRef<ProcessCommander.Command>!
+    internal var processCommander: _ActorRef<ProcessCommander.Command>!
 
-    internal var parentProcessFailureDetector: ActorRef<PollingParentMonitoringFailureDetector.Message>!
+    internal var parentProcessFailureDetector: _ActorRef<PollingParentMonitoringFailureDetector.Message>!
 
     // ==== ------------------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ public class ProcessIsolated {
 
     public init(arguments: [String], boot: @escaping (BootSettings) -> ActorSystem) {
         let roleNames = KnownServantParameters.role.collect(arguments)
-        let role: Role = roleNames.contains("servant") ? .servant : .master
+        let role: Role = roleNames.contains("servant") ? .servant : .boss
 
         let pid = Int(getpid())
 
@@ -104,7 +104,7 @@ public class ProcessIsolated {
 
         self._lastAssignedServantPort = system.settings.cluster.node.port
 
-        if role.is(.master) {
+        if role.is(.boss) {
             let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: ServantProcessSupervisionStrategy, args: [String]) in
                 self.spawnServantProcess(supervision: supervision, args: args)
             }
@@ -162,9 +162,9 @@ public class ProcessIsolated {
         }
     }
 
-    /// IMPORTANT: This MUST be called in master process's main thread and will block it indefinitely,
+    /// IMPORTANT: This MUST be called in boss process's main thread and will block it indefinitely,
     public func blockAndSuperviseServants(file: String = #file, line: UInt = #line) {
-        if self.control.hasRole(.master) {
+        if self.control.hasRole(.boss) {
             self.system.log.info("Entering supervision loop. Main thread will be dedicated to this and NOT past this line", file: file, line: line)
             self.processMasterLoop()
         } else {
@@ -175,30 +175,30 @@ public class ProcessIsolated {
     }
 
     /// Requests the spawning of a new servant process.
-    /// In order for this to work, the master process MUST be running `blockAndSuperviseServants`.
+    /// In order for this to work, the boss process MUST be running `blockAndSuperviseServants`.
     ///
     /// ### Thread safety
     /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
     public func spawnServantProcess(supervision: ServantProcessSupervisionStrategy, args: [String] = []) {
-        if self.control.hasRole(.master) {
+        if self.control.hasRole(.boss) {
             self.processSupervisorMailbox.enqueue(.spawnServant(supervision, args: args))
         } else {
-            // we either send like this, or we allow only the master to do this (can enforce getting a ref to spawnServant)
+            // we either send like this, or we allow only the boss to do this (can enforce getting a ref to spawnServant)
             self.processCommander.tell(.requestSpawnServant(supervision, args: args))
         }
     }
 
     internal func respawnServantProcess(_ servant: ServantProcess, delay: TimeAmount? = nil) {
-        if self.control.hasRole(.master) {
+        if self.control.hasRole(.boss) {
             self.processSupervisorMailbox.enqueue(.respawnServant(servant))
         } else {
-            // we either send like this, or we allow only the master to do this (can enforce getting a ref to spawnServant)
+            // we either send like this, or we allow only the boss to do this (can enforce getting a ref to spawnServant)
             self.processCommander.tell(.requestRespawnServant(servant, delay: delay))
         }
     }
 
     /// Requests the spawning of a new servant process.
-    /// In order for this to work, the master process MUST be running `blockAndSuperviseServants`.
+    /// In order for this to work, the boss process MUST be running `blockAndSuperviseServants`.
     ///
     /// ### Thread safety
     /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
@@ -248,7 +248,7 @@ extension ProcessIsolated {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ServantProcess
 
-/// Servant process representation owned by the supervising Master Process.
+/// Servant process representation owned by the supervising Boss Process.
 /// May be mutated when applying supervision decisions.
 internal struct ServantProcess {
     var node: UniqueNode
@@ -310,7 +310,7 @@ extension ProcessIsolated {
     }
 
     private func receive(_ message: _ProcessSupervisorMessage) -> Bool {
-        guard self.control.hasRole(.master) else {
+        guard self.control.hasRole(.boss) else {
             return false
         }
 
@@ -385,7 +385,7 @@ enum KnownServantParameters {
         switch self {
         case .role: return "_sact-role:"
         case .port: return "_sact-port:"
-        case .masterNode: return "_sact-master-node:"
+        case .masterNode: return "_sact-boss-node:"
         }
     }
 
@@ -456,7 +456,7 @@ public final class IsolatedControl {
 
     /// Request spawning a new servant process.
     func requestSpawnServant(supervision: ServantProcessSupervisionStrategy, args: [String] = []) {
-        precondition(self.hasRole(.master), "Only 'master' process can spawn servants. Was: \(self)")
+        precondition(self.hasRole(.boss), "Only 'boss' process can spawn servants. Was: \(self)")
 
         let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
         self.system._resolve(context: context).tell(.requestSpawnServant(supervision, args: args))
@@ -467,7 +467,7 @@ public final class IsolatedControl {
     /// Such restart does NOT preserve existing mailboxes of actors that lived in the given servant process,
     /// they are lost forever.
     func requestServantRestart(_ servant: ServantProcess, delay: TimeAmount?) {
-        precondition(self.hasRole(.master), "Only 'master' process can spawn servants. Was: \(self)")
+        precondition(self.hasRole(.boss), "Only 'boss' process can spawn servants. Was: \(self)")
 
         let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
         self.system._resolve(context: context).tell(.requestRespawnServant(servant, delay: delay))
@@ -479,8 +479,8 @@ public final class IsolatedControl {
 }
 
 extension ProcessIsolated.Role {
-    public static var master: ProcessIsolated.Role {
-        .init("master")
+    public static var boss: ProcessIsolated.Role {
+        .init("boss")
     }
 
     public static var servant: ProcessIsolated.Role {

@@ -124,7 +124,7 @@ final class BehaviorCanonicalizeTests: ActorSystemXCTestCase {
     func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             "orElseCanonicalizeNestedSetups",
             .receiveMessage { msg in
                 let onlyA = Behavior<String>.setup { _ in

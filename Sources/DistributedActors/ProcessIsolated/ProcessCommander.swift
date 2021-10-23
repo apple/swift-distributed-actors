@@ -16,7 +16,7 @@
 // not supported on these operating systems
 #else
 /// EXPERIMENTAL.
-// Master (Process) and Commander (Actor): The Far Side of the World
+// Boss (Process) and Commander (Actor): The Far Side of the World
 internal struct ProcessCommander {
     public static let name: String = "processCommander"
     public static let naming: ActorNaming = .unique(name)

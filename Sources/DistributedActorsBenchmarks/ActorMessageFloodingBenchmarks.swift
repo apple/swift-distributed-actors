@@ -59,7 +59,7 @@ func bench_messageFlooding(_ messageCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
     let latch = CountDownLatch(from: 1)
 
-    let ref = try system.spawn(.anonymous, flooding_behavior(latch: latch, messageCount: messageCount))
+    let ref = try system._spawn(.anonymous, flooding_behavior(latch: latch, messageCount: messageCount))
 
     let start = timer.getTime()
 
@@ -83,7 +83,7 @@ func bench_messageFlooding_send(_ messageCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
     let latch = CountDownLatch(from: 1)
 
-    let ref = try system.spawn(.anonymous, flooding_behavior(latch: latch, messageCount: messageCount))
+    let ref = try system._spawn(.anonymous, flooding_behavior(latch: latch, messageCount: messageCount))
 
     let startSending = timer.getTime()
 

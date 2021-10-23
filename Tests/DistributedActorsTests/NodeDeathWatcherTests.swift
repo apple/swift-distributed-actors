@@ -28,10 +28,10 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
 
         try self.joinNodes(node: first, with: second)
 
-        let refOnRemote1: ActorRef<String> = try second.spawn("remote-1", .ignore)
+        let refOnRemote1: _ActorRef<String> = try second.spawn("remote-1", .ignore)
         let refOnFirstToRemote1 = first._resolve(ref: refOnRemote1, onSystem: second)
 
-        let refOnRemote2: ActorRef<String> = try second.spawn("remote-2", .ignore)
+        let refOnRemote2: _ActorRef<String> = try second.spawn("remote-2", .ignore)
         let refOnFirstToRemote2 = first._resolve(ref: refOnRemote2, onSystem: second)
 
         let testKit = ActorTestKit(first)

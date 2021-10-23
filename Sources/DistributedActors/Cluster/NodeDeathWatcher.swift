@@ -162,7 +162,7 @@ internal protocol NodeDeathWatcher {
 }
 
 enum NodeDeathWatcherShell {
-    typealias Ref = ActorRef<Message>
+    typealias Ref = _ActorRef<Message>
 
     static var naming: ActorNaming {
         "nodeDeathWatcher"

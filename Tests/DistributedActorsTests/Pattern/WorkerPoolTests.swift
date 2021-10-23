@@ -20,7 +20,7 @@ import XCTest
 // TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: ActorSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() throws {
-        let workerKey = Reception.Key(ActorRef<String>.self, id: "request-workers")
+        let workerKey = Reception.Key(_ActorRef<String>.self, id: "request-workers")
 
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
@@ -37,9 +37,9 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
             }
         }
 
-        _ = try self.system.spawn("worker-a", worker(p: pA))
-        _ = try self.system.spawn("worker-b", worker(p: pB))
-        _ = try self.system.spawn("worker-c", worker(p: pC))
+        _ = try self.system._spawn("worker-a", worker(p: pA))
+        _ = try self.system._spawn("worker-b", worker(p: pB))
+        _ = try self.system._spawn("worker-c", worker(p: pC))
 
         let workers = try WorkerPool.spawn(self.system, "workers", select: .dynamic(workerKey))
 
@@ -65,7 +65,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
     }
 
     func test_workerPool_dynamic_removeDeadActors() throws {
-        let workerKey = Reception.Key(ActorRef<String>.self, id: "request-workers")
+        let workerKey = Reception.Key(_ActorRef<String>.self, id: "request-workers")
 
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
@@ -85,11 +85,11 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
             }
         }
 
-        let workerA = try system.spawn("worker-a", worker(p: pA))
+        let workerA = try system._spawn("worker-a", worker(p: pA))
         pA.watch(workerA)
-        let workerB = try system.spawn("worker-b", worker(p: pB))
+        let workerB = try system._spawn("worker-b", worker(p: pB))
         pB.watch(workerB)
-        let workerC = try system.spawn("worker-c", worker(p: pC))
+        let workerC = try system._spawn("worker-c", worker(p: pC))
         pC.watch(workerC)
 
         let workers = try WorkerPool.spawn(self.system, "workersMayDie", select: .dynamic(workerKey))
@@ -150,8 +150,8 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
             }
         }
 
-        let workerA = try system.spawn("worker-a", worker(p: pA))
-        let workerB = try system.spawn("worker-b", worker(p: pB))
+        let workerA = try system._spawn("worker-a", worker(p: pA))
+        let workerB = try system._spawn("worker-b", worker(p: pB))
 
         let workers = try WorkerPool.spawn(self.system, "questioningTheWorkers", select: .static([workerA, workerB]))
 
@@ -176,7 +176,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
 
     struct WorkerPoolQuestion: ActorMessage {
         let id: String
-        let replyTo: ActorRef<String>
+        let replyTo: _ActorRef<String>
     }
 
     func test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers() throws {
@@ -195,11 +195,11 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
             }
         }
 
-        let workerA = try system.spawn("worker-a", worker(p: pA))
+        let workerA = try system._spawn("worker-a", worker(p: pA))
         pA.watch(workerA)
-        let workerB = try system.spawn("worker-b", worker(p: pB))
+        let workerB = try system._spawn("worker-b", worker(p: pB))
         pB.watch(workerB)
-        let workerC = try system.spawn("worker-c", worker(p: pC))
+        let workerC = try system._spawn("worker-c", worker(p: pC))
         pC.watch(workerC)
 
         let workers = try WorkerPool.spawn(self.system, "staticWorkersMayDie", select: .static([workerA, workerB, workerC]))

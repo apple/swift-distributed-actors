@@ -18,15 +18,15 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ActorRefReceptionistTests: ActorSystemXCTestCase {
+final class _ActorRefReceptionistTests: ActorSystemXCTestCase {
     let receptionistBehavior = OperationLogClusterReceptionist(settings: .default).behavior
 
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
         let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let lookupProbe: ActorTestProbe<Reception.Listing<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let refA: ActorRef<String> = try system.spawn(
+        let refA: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { message in
                 probe.tell("forwardedA:\(message)")
@@ -34,7 +34,7 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
             }
         )
 
-        let refB: ActorRef<String> = try system.spawn(
+        let refB: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { message in
                 probe.tell("forwardedB:\(message)")
@@ -42,7 +42,7 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
             }
         )
 
-        let key = Reception.Key(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.register(refA, with: key)
         receptionist.register(refB, with: key)
@@ -61,20 +61,20 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
 
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<Reception.Listing<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
             }
         )
 
-        let key = Reception.Key(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.register(ref, with: key)
 
-        let unknownKey = Reception.Key(ActorRef<String>.self, id: "unknown")
+        let unknownKey = Reception.Key(_ActorRef<String>.self, id: "unknown")
         receptionist.lookup(unknownKey, replyTo: lookupProbe.ref)
 
         let listing = try lookupProbe.expectMessage()
@@ -84,11 +84,11 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
 
     func test_receptionist_shouldNotRegisterTheSameRefTwice() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<Reception.Listing<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(.anonymous, .receiveMessage { _ in .same })
+        let ref: _ActorRef<String> = try system.spawn(.anonymous, .receiveMessage { _ in .same })
 
-        let key = Reception.Key(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.register(ref, with: key)
         receptionist.register(ref, with: key)
@@ -102,23 +102,23 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
 
     func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<Reception.Listing<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let old: ActorRef<String> = try system.spawn(
+        let old: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receive { context, _ in
                 context.log.info("Stopping...")
                 return .stop
             }
         )
-        let new: ActorRef<String> = try system.spawn(
+        let new: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
             }
         )
 
-        let key = Reception.Key(ActorRef<String>.self, id: "shouldBeOne")
+        let key = Reception.Key(_ActorRef<String>.self, id: "shouldBeOne")
 
         receptionist.register(old, with: key)
         old.tell("stop")
@@ -136,16 +136,16 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
 
     func test_receptionist_shouldReplyWithRegistered() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
-        let probe: ActorTestProbe<Reception.Registered<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Reception.Registered<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
             }
         )
 
-        let key = Reception.Key(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.register(ref, with: key, replyTo: probe.ref)
 
@@ -157,16 +157,16 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
 
     func test_receptionist_shouldUnregisterTerminatedRefs() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<Reception.Listing<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { _ in
                 .stop
             }
         )
 
-        let key = Reception.Key(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.register(ref, with: key)
 
@@ -185,23 +185,23 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
 
     func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<Reception.Listing<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let refA: ActorRef<String> = try system.spawn(
+        let refA: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { _ in
                 .same
             }
         )
 
-        let refB: ActorRef<String> = try system.spawn(
+        let refB: _ActorRef<String> = try system.spawn(
             .anonymous,
             .receiveMessage { _ in
                 .stop
             }
         )
 
-        let key = Reception.Key(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.subscribe(lookupProbe.ref, to: key)
         try lookupProbe.expectMessage(Reception.Listing(refs: [], key: key))
@@ -221,9 +221,9 @@ final class ActorRefReceptionistTests: ActorSystemXCTestCase {
 
     func test_delayedFlush_shouldEmitEvenWhenAllPeersRemoved() throws {
         let receptionist = SystemReceptionist(ref: try system.spawn("receptionist", self.receptionistBehavior))
-        let lookupProbe: ActorTestProbe<Reception.Listing<ActorRef<String>>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Reception.Listing<_ActorRef<String>>> = self.testKit.spawnTestProbe()
 
-        let key = Reception.Key(ActorRef<String>.self, id: "test")
+        let key = Reception.Key(_ActorRef<String>.self, id: "test")
 
         receptionist.subscribe(lookupProbe.ref, to: key)
         _ = try lookupProbe.expectMessage()

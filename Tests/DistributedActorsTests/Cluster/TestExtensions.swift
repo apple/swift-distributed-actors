@@ -38,8 +38,8 @@ extension ClusterShellState {
         return ClusterShellState(
             settings: settings,
             channel: EmbeddedChannel(),
-            events: EventStream(ref: ActorRef(.deadLetters(.init(log, address: ._deadLetters(on: node), system: nil)))),
-            gossiperControl: GossiperControl(ActorRef(.deadLetters(.init(log, address: ._deadLetters(on: node), system: nil)))),
+            events: EventStream(ref: _ActorRef(.deadLetters(.init(log, address: ._deadLetters(on: node), system: nil)))),
+            gossiperControl: GossiperControl(_ActorRef(.deadLetters(.init(log, address: ._deadLetters(on: node), system: nil)))),
             log: log
         )
     }

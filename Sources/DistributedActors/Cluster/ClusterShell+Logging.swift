@@ -69,7 +69,7 @@ extension ClusterShellState {
 extension ClusterShell {
     /// Optional "dump all messages" logging.
     func tracelog(
-        _ context: ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
+        _ context: _ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
         file: String = #file, function: String = #function, line: UInt = #line
     ) {
         if let level = context.system.settings.cluster.traceLogLevel {

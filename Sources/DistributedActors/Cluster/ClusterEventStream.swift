@@ -33,7 +33,7 @@ internal enum ClusterEventStream {
                 // event stream actor, all subscribers are guaranteed to see events in the right order,
                 // and not miss any information as long as they apply all events they receive.
                 var snapshot = Cluster.Membership.empty
-                var subscribers: [ActorAddress: ActorRef<Cluster.Event>] = [:]
+                var subscribers: [ActorAddress: _ActorRef<Cluster.Event>] = [:]
                 var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
 
                 let behavior: Behavior<EventStreamShell.Message<Cluster.Event>> = .receiveMessage { message in

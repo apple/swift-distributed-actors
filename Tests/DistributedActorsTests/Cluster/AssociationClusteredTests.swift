@@ -129,7 +129,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let (first, second) = self.setUpPair()
 
         let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: String.self)
-        let refOnSecondSystem: ActorRef<String> = try second.spawn(
+        let refOnSecondSystem: _ActorRef<String> = try second.spawn(
             "secondAcquaintance",
             .receiveMessage { message in
                 probeOnSecond.tell("forwarded:\(message)")
@@ -327,7 +327,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
 
         // actor on `second` node
         let p2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-        let secondOne: ActorRef<String> = try second.spawn("second-1", .receive { _, message in
+        let secondOne: _ActorRef<String> = try second.spawn("second-1", .receive { _, message in
             p2.tell("Got:\(message)")
             return .same
         })

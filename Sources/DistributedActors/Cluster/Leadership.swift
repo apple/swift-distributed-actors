@@ -53,7 +53,7 @@ public struct LeaderElectionContext {
     public var log: Logger
     public let loop: EventLoop
 
-    internal init<M>(_ ownerContext: ActorContext<M>) {
+    internal init<M>(_ ownerContext: _ActorContext<M>) {
         self.log = ownerContext.log
         self.loop = ownerContext.system._eventLoopGroup.next()
     }
@@ -72,7 +72,7 @@ public struct LeaderElectionContext {
 /// actor coordination, the result of such election is going to be provided asynchronously.
 ///
 /// A change in leadership will result in a `Cluster.LeadershipChange` event being emitted in the system's cluster event stream.
-public struct LeaderElectionResult: AsyncResult {
+public struct LeaderElectionResult: _AsyncResult {
     public typealias Value = Cluster.LeadershipChange?
     let future: EventLoopFuture<Cluster.LeadershipChange?>
 
@@ -145,7 +145,7 @@ extension Leadership {
             }
         }
 
-        func runElection(_ context: ActorContext<Cluster.Event>) -> Behavior<Cluster.Event> {
+        func runElection(_ context: _ActorContext<Cluster.Event>) -> Behavior<Cluster.Event> {
             var electionContext = LeaderElectionContext(context)
             electionContext.log[metadataKey: "leadership/election"] = "\(String(reflecting: type(of: self.election)))"
             let electionResult = self.election.runElection(context: electionContext, membership: self.membership)

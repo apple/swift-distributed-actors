@@ -287,8 +287,6 @@ dependencies += [
 // swift-syntax is Swift version dependent, and added as such below
 #if swift(>=5.6)
 dependencies.append(
-//      // Works with: swift-PR-39560-1149.xctoolchain
-//    .package(url: "https://github.com/apple/swift-syntax.git", revision: "swift-DEVELOPMENT-SNAPSHOT-2021-10-05-a")
       // Works with: swift-PR-39654-1170.xctoolchain
     .package(url: "https://github.com/apple/swift-syntax.git", revision: "b8e4a69237f9dfa362268dddaef8793bc694dc6f")
 //    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main")

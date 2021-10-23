@@ -29,7 +29,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     internal lazy var localNode: UniqueNode = self.context.system.cluster.uniqueNode
 
     internal var latestGossip: Cluster.MembershipGossip
-    private let notifyOnGossipRef: ActorRef<Cluster.MembershipGossip>
+    private let notifyOnGossipRef: _ActorRef<Cluster.MembershipGossip>
 
     /// We store and use a shuffled yet stable order for gossiping peers.
     /// See `updateActivePeers` for details.
@@ -44,7 +44,7 @@ final class MembershipGossipLogic: GossipLogic, CustomStringConvertible {
     // TODO: This can be optimized and it's enough if we keep a digest of the gossips; this way ACKs can just send the digest as well saving space.
     private var lastGossipFrom: [AddressableActorRef: Cluster.MembershipGossip] = [:]
 
-    init(_ context: Context, notifyOnGossipRef: ActorRef<Cluster.MembershipGossip>) {
+    init(_ context: Context, notifyOnGossipRef: _ActorRef<Cluster.MembershipGossip>) {
         self.context = context
         self.notifyOnGossipRef = notifyOnGossipRef
         self.latestGossip = .init(ownerNode: context.system.cluster.uniqueNode)

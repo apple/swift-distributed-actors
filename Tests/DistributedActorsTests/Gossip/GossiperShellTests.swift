@@ -31,7 +31,7 @@ final class GossiperShellTests: ActorSystemXCTestCase {
     func test_down_beGossipedToOtherNodes() throws {
         let p = self.testKit.spawnTestProbe(expecting: [AddressableActorRef].self)
 
-        let control = try Gossiper.spawn(
+        let control = try Gossiper._spawn
             self.system,
             name: "gossiper",
             settings: .init(
@@ -40,10 +40,10 @@ final class GossiperShellTests: ActorSystemXCTestCase {
             )
         ) { _ in InspectOfferedPeersTestGossipLogic(offeredPeersProbe: p.ref) }
 
-        let first: ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
-            try self.system.spawn("first", self.peerBehavior())
-        let second: ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
-            try self.system.spawn("second", self.peerBehavior())
+        let first: _ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
+            try self.system._spawn("first", self.peerBehavior())
+        let second: _ActorRef<GossipShell<InspectOfferedPeersTestGossipLogic.Gossip, String>.Message> =
+            try self.system._spawn("second", self.peerBehavior())
 
         control.introduce(peer: first)
         control.introduce(peer: second)
@@ -71,8 +71,8 @@ final class GossiperShellTests: ActorSystemXCTestCase {
 
         typealias Acknowledgement = String
 
-        let offeredPeersProbe: ActorRef<[AddressableActorRef]>
-        init(offeredPeersProbe: ActorRef<[AddressableActorRef]>) {
+        let offeredPeersProbe: _ActorRef<[AddressableActorRef]>
+        init(offeredPeersProbe: _ActorRef<[AddressableActorRef]>) {
             self.offeredPeersProbe = offeredPeersProbe
         }
 
@@ -100,7 +100,7 @@ final class GossiperShellTests: ActorSystemXCTestCase {
     func test_unidirectional_yetReceivesAckRef_shouldWarn() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let control = try Gossiper.spawn(
+        let control = try Gossiper._spawn
             self.system,
             name: "noAcks",
             settings: .init(
@@ -110,8 +110,8 @@ final class GossiperShellTests: ActorSystemXCTestCase {
             makeLogic: { _ in NoAcksTestGossipLogic(probe: p.ref) }
         )
 
-        let first: ActorRef<GossipShell<NoAcksTestGossipLogic.Gossip, NoAcksTestGossipLogic.Acknowledgement>.Message> =
-            try self.system.spawn("first", self.peerBehavior())
+        let first: _ActorRef<GossipShell<NoAcksTestGossipLogic.Gossip, NoAcksTestGossipLogic.Acknowledgement>.Message> =
+            try self.system._spawn("first", self.peerBehavior())
 
         control.introduce(peer: first)
         control.update(StringGossipIdentifier("hi"), payload: .init("hello"))
@@ -140,7 +140,7 @@ final class GossiperShellTests: ActorSystemXCTestCase {
             }
         }
 
-        let probe: ActorRef<String>
+        let probe: _ActorRef<String>
 
         typealias Acknowledgement = String
 

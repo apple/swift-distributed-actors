@@ -28,7 +28,7 @@ public final class StashBuffer<Message: ActorMessage> {
         self.buffer = RingBuffer(capacity: capacity)
     }
 
-    public init(owner: ActorContext<Message>, capacity: Int) {
+    public init(owner: _ActorContext<Message>, capacity: Int) {
         // TODO: owner can be used to create metrics for the stash of specific owner
         self.buffer = RingBuffer(capacity: capacity)
     }
@@ -73,7 +73,7 @@ public final class StashBuffer<Message: ActorMessage> {
     /// - Throws: When any of the behavior reductions throws
     /// - Returns: The last behavior returned from processing the unstashed messages
     @inlinable
-    public func unstashAll(context: ActorContext<Message>, behavior: Behavior<Message>) throws -> Behavior<Message> {
+    public func unstashAll(context: _ActorContext<Message>, behavior: Behavior<Message>) throws -> Behavior<Message> {
         // TODO: can we make this honor the run length like `Mailbox` does?
         var iterator = self.buffer.iterator
         let canonical = try context._downcastUnsafe.behavior.canonicalize(context, next: behavior)

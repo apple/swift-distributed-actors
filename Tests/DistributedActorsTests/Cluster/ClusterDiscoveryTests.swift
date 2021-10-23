@@ -28,7 +28,7 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
         let discovery = TestTriggeredServiceDiscovery<String, Node>()
         let settings = ServiceDiscoverySettings(discovery, service: "example")
         let clusterProbe = testKit.spawnTestProbe(expecting: ClusterShell.Message.self)
-        _ = try system.spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
+        _ = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
 
         discovery.subscribed.wait()
 
@@ -79,7 +79,7 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
             mapInstanceToNode: { instance in instance.node }
         )
         let clusterProbe = testKit.spawnTestProbe(expecting: ClusterShell.Message.self)
-        _ = try system.spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
+        _ = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
 
         discovery.subscribed.wait()
 
@@ -103,7 +103,7 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
         let discovery = TestTriggeredServiceDiscovery<String, Node>()
         let settings = ServiceDiscoverySettings(discovery, service: "example")
         let clusterProbe = testKit.spawnTestProbe(expecting: ClusterShell.Message.self)
-        let ref = try system.spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
+        let ref = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
 
         discovery.subscribed.wait()
 

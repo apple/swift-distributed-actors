@@ -34,7 +34,7 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe("p", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
@@ -62,7 +62,7 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
@@ -91,7 +91,7 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
         let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system.spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~

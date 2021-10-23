@@ -17,37 +17,37 @@ import NIO
 /// Abstraction over various types of asynchronous results, e.g. Futures or values completed by asynchronous callbacks,
 /// or messages.
 ///
-/// `AsyncResult` allows the actor to suspend itself until the result completes using `ActorContext.awaitResult`,
-/// or _safely_ executing a callback on the actor's context by using `ActorContext.onResultAsync`.
+/// `_AsyncResult` allows the actor to suspend itself until the result completes using `_ActorContext.awaitResult`,
+/// or _safely_ executing a callback on the actor's context by using `_ActorContext.onResultAsync`.
 ///
-/// - SeeAlso: `ActorContext.awaitResult`
-/// - SeeAlso: `ActorContext.onResultAsync`
-public protocol AsyncResult {
+/// - SeeAlso: `_ActorContext.awaitResult`
+/// - SeeAlso: `_ActorContext.onResultAsync`
+public protocol _AsyncResult {
     associatedtype Value
 
     /// **WARNING:** NOT end-user API.
     ///
     /// Unsafe to close over state as no assumptions can be made about the execution context of the closure! Most definitely do not invoke from an actor.
-    /// Rather, use `context.onResultAsync` or `context.awaitResult` to handle this `AsyncResult`.
+    /// Rather, use `context.onResultAsync` or `context.awaitResult` to handle this `_AsyncResult`.
     ///
-    /// Registers a callback that is executed when the `AsyncResult` is available.
+    /// Registers a callback that is executed when the `_AsyncResult` is available.
     ///
     /// **CAUTION**: For testing purposes only. Not safe to use for actually running actors.
     func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void)
 
-    /// Returns a new `AsyncResult` that is completed with the value of this
-    /// `AsyncResult`, or a `TimeoutError` when it is not completed within
+    /// Returns a new `_AsyncResult` that is completed with the value of this
+    /// `_AsyncResult`, or a `TimeoutError` when it is not completed within
     /// the specified timeout.
     ///
     /// If `self` already has a timeout attached, it will not
     /// be removed, so the lesser of the two timeouts will be the effective timeout
-    /// value for the returned `AsyncResult`.
+    /// value for the returned `_AsyncResult`.
     ///
     /// - parameter after: defines a timeout after which the result should be considered failed.
     func withTimeout(after timeout: TimeAmount) -> Self
 }
 
-extension EventLoopFuture: AsyncResult {
+extension EventLoopFuture: _AsyncResult {
     public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         self.whenComplete(callback)
     }

@@ -29,12 +29,12 @@ internal protocol Scheduler: Sendable {
     func scheduleOnce(delay: TimeAmount, _ f: @escaping () -> Void) -> Cancelable
     func scheduleOnceAsync(delay: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable
 
-    func scheduleOnce<Message>(delay: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable
+    func scheduleOnce<Message>(delay: TimeAmount, receiver: _ActorRef<Message>, message: Message) -> Cancelable
 
     func schedule(initialDelay: TimeAmount, interval: TimeAmount, _ f: @escaping () -> Void) -> Cancelable
     func scheduleAsync(initialDelay: TimeAmount, interval: TimeAmount, _ f: @Sendable @escaping () async -> Void) -> Cancelable
 
-    func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable
+    func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: _ActorRef<Message>, message: Message) -> Cancelable
 }
 
 final class FlagCancelable: Cancelable, @unchecked Sendable {
@@ -75,7 +75,7 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
         return workItem
     }
 
-    func scheduleOnce<Message>(delay: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
+    func scheduleOnce<Message>(delay: TimeAmount, receiver: _ActorRef<Message>, message: Message) -> Cancelable {
         self.scheduleOnce(delay: delay) {
             receiver.tell(message)
         }
@@ -115,7 +115,7 @@ extension DispatchQueue: Scheduler, @unchecked Sendable {
         return cancellable
     }
 
-    func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
+    func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: _ActorRef<Message>, message: Message) -> Cancelable {
         self.schedule(initialDelay: initialDelay, interval: interval) {
             receiver.tell(message)
         }

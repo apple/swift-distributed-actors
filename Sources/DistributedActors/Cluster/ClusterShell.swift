@@ -31,7 +31,7 @@ public enum Cluster {}
 /// It keeps the `Membership` instance that can be seen the source of truth for any membership based decisions.
 internal class ClusterShell {
     internal static let naming = ActorNaming.unique("cluster")
-    public typealias Ref = ActorRef<ClusterShell.Message>
+    public typealias Ref = _ActorRef<ClusterShell.Message>
 
     static let gossipID: StringGossipIdentifier = "membership"
 
@@ -277,7 +277,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func start(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> ActorRef<Message> {
+    internal func start(system: ActorSystem, clusterEvents: EventStream<Cluster.Event>) throws -> _ActorRef<Message> {
         let instrumentation = system.settings.instrumentation.makeInternalActorTransportInstrumentation()
         self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization, instrumentation: instrumentation)
         self.clusterEvents = clusterEvents
@@ -329,8 +329,8 @@ internal class ClusterShell {
     }
 
     enum QueryMessage: NonTransportableActorMessage {
-        case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO: better type here
-        case currentMembership(ActorRef<Cluster.Membership>)
+        case associatedNodes(_ActorRef<Set<UniqueNode>>) // TODO: better type here
+        case currentMembership(_ActorRef<Cluster.Membership>)
     }
 
     internal enum InboundMessage {
@@ -376,24 +376,24 @@ extension ClusterShell {
 
             // 1) failure detector:
             let swimBehavior = SWIMActorShell.behavior(settings: clusterSettings.swim, clusterRef: context.myself)
-            self._swimRef = try context.spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
+            self._swimRef = try context._spawn(SWIMActorShell.naming, props: SWIMActorShell.props, swimBehavior)
 
             // 2) discovering of new members:
             if let discoverySettings = clusterSettings.discovery {
-                _ = try context.spawn(DiscoveryShell.naming, DiscoveryShell(settings: discoverySettings, cluster: context.myself).behavior)
+                _ = try context._spawn(DiscoveryShell.naming, DiscoveryShell(settings: discoverySettings, cluster: context.myself).behavior)
             }
 
             // 3) leader election, so it may move members: .joining -> .up (and other `LeaderAction`s)
             if let leaderElection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderElection)
-                let leadership = try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
+                let leadership = try context._spawn(Leadership.Shell.naming, leadershipShell.behavior)
                 context.watch(leadership) // if leadership fails for some reason, we are in trouble and need to know about it
             }
 
             // 4) downing strategy (automatic downing)
             if let downing = clusterSettings.downingStrategy.make(context.system.cluster.settings) {
                 let shell = DowningStrategyShell(downing)
-                try context.spawn(shell.naming, shell.behavior)
+                try context._spawn(shell.naming, shell.behavior)
             }
 
             context.log.info("Binding to: [\(uniqueBindAddress)]")
@@ -409,7 +409,7 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper.spawn(
+                let gossiperControl: GossiperControl<Cluster.MembershipGossip, Cluster.MembershipGossip> = try Gossiper._spawn(
                     context,
                     name: "\(ActorPath._clusterGossip.name)",
                     settings: .init(
@@ -458,7 +458,7 @@ extension ClusterShell {
     ///
     /// Serves as main "driver" for handshake and association state machines.
     private func ready(state: ClusterShellState) -> Behavior<Message> {
-        func receiveShellCommand(_ context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
+        func receiveShellCommand(_ context: _ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             state.tracelog(.inbound, message: command)
 
             switch command {
@@ -494,7 +494,7 @@ extension ClusterShell {
             }
         }
 
-        func receiveQuery(_ context: ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
+        func receiveQuery(_ context: _ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
             state.tracelog(.inbound, message: query)
 
             switch query {
@@ -507,7 +507,7 @@ extension ClusterShell {
             }
         }
 
-        func receiveInbound(_ context: ActorContext<Message>, message: InboundMessage) throws -> Behavior<Message> {
+        func receiveInbound(_ context: _ActorContext<Message>, message: InboundMessage) throws -> Behavior<Message> {
             switch message {
             case .handshakeOffer(let offer, let channel, let promise):
                 self.tracelog(context, .receiveUnique(from: offer.originNode), message: offer)
@@ -532,7 +532,7 @@ extension ClusterShell {
         }
 
         /// Allows processing in one spot, all membership changes which we may have emitted in other places, due to joining, downing etc.
-        func receiveChangeMembershipRequest(_ context: ActorContext<Message>, event: Cluster.Event) -> Behavior<Message> {
+        func receiveChangeMembershipRequest(_ context: _ActorContext<Message>, event: Cluster.Event) -> Behavior<Message> {
             self.tracelog(context, .receive(from: state.selfNode.node), message: event)
             var state = state
 
@@ -569,7 +569,7 @@ extension ClusterShell {
         }
 
         func receiveMembershipGossip(
-            _ context: ActorContext<Message>,
+            _ context: _ActorContext<Message>,
             _ state: ClusterShellState,
             gossip: Cluster.MembershipGossip
         ) -> Behavior<Message> {
@@ -630,13 +630,13 @@ extension ClusterShell {
             }
     }
 
-    func tryConfirmDeadToSWIM(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
+    func tryConfirmDeadToSWIM(_ context: _ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         if change.status.isAtLeast(.down) {
             self._swimRef?.tell(.local(SWIM.LocalMessage.confirmDead(change.member.uniqueNode)))
         }
     }
 
-    func tryIntroduceGossipPeer(_ context: ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
+    func tryIntroduceGossipPeer(_ context: _ActorContext<Message>, _ state: ClusterShellState, change: Cluster.MembershipChange) {
         guard change.status < .down else {
             return
         }
@@ -663,7 +663,7 @@ extension ClusterShell {
     /// Upon successful handshake, the `replyTo` actor shall be notified with its result, as well as the handshaked-with node shall be marked as `.joining`.
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> Behavior<Message> {
+    internal func beginHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> Behavior<Message> {
         var state = state
 
         guard remoteNode != state.selfNode.node else {
@@ -706,7 +706,7 @@ extension ClusterShell {
         }
     }
 
-    internal func retryHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
+    internal func retryHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         state.log.debug("Retry handshake with: \(initiated.remoteNode)")
 //
 //        // FIXME: this needs more work...
@@ -715,7 +715,7 @@ extension ClusterShell {
         return self.connectSendHandshakeOffer(context, state, initiated: initiated)
     }
 
-    func connectSendHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
+    func connectSendHandshakeOffer(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         var state = state
         state.log.debug("Extending handshake offer", metadata: [
             "handshake/remoteNode": "\(initiated.remoteNode)",
@@ -751,7 +751,7 @@ extension ClusterShell {
 
 extension ClusterShell {
     func rejectIfNodeAlreadyLeaving(
-        _ context: ActorContext<Message>,
+        _ context: _ActorContext<Message>,
         _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer
     ) -> Wire.HandshakeReject? {
@@ -777,7 +777,7 @@ extension ClusterShell {
     /// - parameter inboundChannel: the inbound connection channel that the other node has opened and is offering its handshake on,
     ///   (as opposed to the channel which we may have opened when we first extended a handshake to that node which would be stored in `state`)
     internal func onHandshakeOffer(
-        _ context: ActorContext<Message>, _ state: ClusterShellState,
+        _ context: _ActorContext<Message>, _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer, inboundChannel: Channel,
         replyInto handshakePromise: EventLoopPromise<Wire.HandshakeResponse>
     ) -> Behavior<Message> {
@@ -886,7 +886,7 @@ extension ClusterShell {
 // MARK: Failures to obtain connections
 
 extension ClusterShell {
-    func onOutboundConnectionError(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, error: Error) -> Behavior<Message> {
+    func onOutboundConnectionError(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, error: Error) -> Behavior<Message> {
         var state = state
         state.log.debug("Failed to establish outbound channel to \(remoteNode), error: \(error)", metadata: [
             "handshake/remoteNode": "\(remoteNode)",
@@ -952,7 +952,7 @@ extension ClusterShell {
 // MARK: Incoming Handshake Replies
 
 extension ClusterShell {
-    private func onHandshakeAccepted(_ context: ActorContext<Message>, _ state: ClusterShellState, _ inboundAccept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
+    private func onHandshakeAccepted(_ context: _ActorContext<Message>, _ state: ClusterShellState, _ inboundAccept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
         var state = state // local copy for mutation
 
         state.log.debug("Accept association with \(reflecting: inboundAccept.targetNode)!", metadata: [
@@ -981,7 +981,7 @@ extension ClusterShell {
         //   This MAY emit a .down event if there is a node being replaced; this is ok but MUST happen before we issue the new .joining change for the replacement
         self.handlePotentialAssociatedMemberReplacement(directive: directive, accept: inboundAccept, context: context, state: &state)
 
-        // 2) Store the (now completed) association first, as it may be immediately used by remote ActorRefs attempting to send to the remoteNode
+        // 2) Store the (now completed) association first, as it may be immediately used by remote _ActorRefs attempting to send to the remoteNode
         do {
             try self.completeAssociation(directive)
             state.log.trace("Associated with: \(reflecting: handshakeCompleted.remoteNode)", metadata: [
@@ -1021,7 +1021,7 @@ extension ClusterShell {
     private func handlePotentialAssociatedMemberReplacement(
         directive: ClusterShellState.AssociatedDirective,
         accept: Wire.HandshakeAccept,
-        context: ActorContext<Message>,
+        context: _ActorContext<Message>,
         state: inout ClusterShellState
     ) {
         if let replacedMember = directive.membershipChange?.replaced {
@@ -1046,7 +1046,7 @@ extension ClusterShell {
         }
     }
 
-    private func onHandshakeRejected(_ context: ActorContext<Message>, _ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
+    private func onHandshakeRejected(_ context: _ActorContext<Message>, _ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
         var state = state
 
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
@@ -1081,7 +1081,7 @@ extension ClusterShell {
         return .same
     }
 
-    private func onHandshakeFailed(_ context: ActorContext<Message>, _ state: ClusterShellState, with node: Node, error: Error) -> Behavior<Message> {
+    private func onHandshakeFailed(_ context: _ActorContext<Message>, _ state: ClusterShellState, with node: Node, error: Error) -> Behavior<Message> {
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
         // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
@@ -1108,7 +1108,7 @@ extension ClusterShell {
         return .same
     }
 
-    private func onRestInPeace(_ context: ActorContext<Message>, _ state: ClusterShellState, intendedNode: UniqueNode, fromNode: UniqueNode) -> Behavior<Message> {
+    private func onRestInPeace(_ context: _ActorContext<Message>, _ state: ClusterShellState, intendedNode: UniqueNode, fromNode: UniqueNode) -> Behavior<Message> {
         let myselfNode = state.selfNode
 
         guard myselfNode == myselfNode else {
@@ -1165,7 +1165,7 @@ extension ClusterShell {
 // MARK: Shutdown
 
 extension ClusterShell {
-    fileprivate func onShutdownCommand(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
+    fileprivate func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
         // we exit the death-pact with any children we spawned, even if they fail now, we don't mind because we're shutting down
         context.children.forEach { ref in
             context.unwatch(ref)
@@ -1195,7 +1195,7 @@ extension ClusterShell {
 
 extension ClusterShell {
     func onReachabilityChange(
-        _ context: ActorContext<Message>,
+        _ context: _ActorContext<Message>,
         state: ClusterShellState,
         change: Cluster.ReachabilityChange
     ) -> Behavior<Message> {
@@ -1216,7 +1216,7 @@ extension ClusterShell {
 
     /// Convenience function for directly handling down command in shell.
     /// Attempts to locate which member to down and delegates further.
-    func onDownCommand(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Cluster.Member) -> ClusterShellState {
+    func onDownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, member memberToDown: Cluster.Member) -> ClusterShellState {
         var state = state
 
         guard let change = state.membership.applyMembershipChange(.init(member: memberToDown, toStatus: .down)) else {

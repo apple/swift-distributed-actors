@@ -251,7 +251,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
     }
 
     /// Since during re-balancing it may happen that a message gets lost, we send messages a few times and only if none "got through" it would be a serious error.
-    private func assertSingletonRequestReply(_ system: ActorSystem, singletonRef: ActorRef<GreeterSingleton.Message>, message: String, expect: String) throws {
+    private func assertSingletonRequestReply(_ system: ActorSystem, singletonRef: _ActorRef<GreeterSingleton.Message>, message: String, expect: String) throws {
         let testKit: ActorTestKit = self.testKit(system)
         let replyProbe = testKit.spawnTestProbe(expecting: String.self)
 
@@ -286,7 +286,7 @@ struct GreeterSingleton {
     }
 
     enum Message: Codable, Sendable {
-        case greet(name: String, replyTo: ActorRef<String>)
+        case greet(name: String, replyTo: _ActorRef<String>)
     }
 
     var behavior: Behavior<Message> {

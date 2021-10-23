@@ -165,7 +165,7 @@ final class DeserializationCallback {
     /// if this happens, we do not *statically* have the right `Message`  to cast to and the only remaining thing for such
     /// message is to be delivered as a dead letter thus we can avoid the cast entirely.
     ///
-    /// Note: resolving a dead actor yields `ActorRef<Never>` thus we would _never_ be able to deliver the message to it,
+    /// Note: resolving a dead actor yields `_ActorRef<Never>` thus we would _never_ be able to deliver the message to it,
     /// and have to special case the dead letter delivery.
     @usableFromInline
     enum DeserializedMessage {

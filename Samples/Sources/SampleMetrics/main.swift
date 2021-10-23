@@ -41,10 +41,10 @@ let system = ActorSystem("Metrics") { settings in
 struct Talker {
     struct Hello: Codable {
         let number: Int
-        let replyTo: ActorRef<Talker.Hello>?
+        let replyTo: _ActorRef<Talker.Hello>?
     }
 
-    static func talkTo(another talker: ActorRef<Hello>?) -> Behavior<Hello> {
+    static func talkTo(another talker: _ActorRef<Hello>?) -> Behavior<Hello> {
         .setup { context in
             context.log.info("Started \(context.myself.path)")
             context.timers.startPeriodic(key: "next-chat", message: Hello(number: 1, replyTo: talker), interval: .milliseconds(200))
@@ -90,15 +90,15 @@ struct MetricPrinter {
 
 let props = Props().metrics(group: "talkers", measure: [.deserialization])
 
-let t1 = try system.spawn("talker-1", props: props, Talker.talkTo(another: nil))
-let t2 = try system.spawn("talker-2", props: props, Talker.talkTo(another: t1))
-let t3 = try system.spawn("talker-3", props: props, Talker.talkTo(another: t2))
-let t4 = try system.spawn("talker-4", props: props, Talker.talkTo(another: t3))
+let t1 = try system._spawn("talker-1", props: props, Talker.talkTo(another: nil))
+let t2 = try system._spawn("talker-2", props: props, Talker.talkTo(another: t1))
+let t3 = try system._spawn("talker-3", props: props, Talker.talkTo(another: t2))
+let t4 = try system._spawn("talker-4", props: props, Talker.talkTo(another: t3))
 
-let m = try system.spawn("metricsPrinter", MetricPrinter.behavior)
+let m = try system._spawn("metricsPrinter", MetricPrinter.behavior)
 
 for i in 1 ... 10 {
-    try system.spawn("life-\(i)", DieAfterSomeTime.behavior)
+    try system._spawn("life-\(i)", DieAfterSomeTime.behavior)
     Thread.sleep(.seconds(1))
 }
 

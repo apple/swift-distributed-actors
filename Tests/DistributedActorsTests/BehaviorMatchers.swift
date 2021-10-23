@@ -22,7 +22,7 @@ internal extension Behavior {
     ///
     // TODO: Implemented recursively and may stack overflow on insanely deep structures.
     // TODO: not all cases are covered, only enough to implement specific tests currently is.
-    func nestingDepth(context: ActorContext<Message>) throws -> Int {
+    func nestingDepth(context: _ActorContext<Message>) throws -> Int {
         func nestingDepth0(_ b: Behavior<Message>) throws -> Int {
             switch b.underlying {
             case .setup(let onStart):
@@ -55,7 +55,7 @@ internal extension Behavior {
     //       )
     // TODO: Implemented recursively and may stack overflow on insanely deep structures.
     // TODO: not all cases are covered, only enough to implement specific tests currently is.
-    func prettyFormat(context: ActorContext<Message>, padWith padding: String = "  ") throws -> String {
+    func prettyFormat(context: _ActorContext<Message>, padWith padding: String = "  ") throws -> String {
         func prettyFormat0(_ b: Behavior<Message>, depth: Int) throws -> String {
             let pad = String(repeating: padding, count: depth)
 

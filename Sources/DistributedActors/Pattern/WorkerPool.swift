@@ -32,7 +32,7 @@ public class WorkerPool<Message: ActorMessage> {
     public enum Selector {
         /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
         /// any actors which register/leave with the receptionist using this key.
-        case dynamic(Reception.Key<ActorRef<Message>>)
+        case dynamic(Reception.Key<_ActorRef<Message>>)
         // TODO: let awaitAtLeast: Int // before starting to direct traffic
 
         /// Instructs the `WorkerPool` to use only the specified actors for routing.
@@ -44,7 +44,7 @@ public class WorkerPool<Message: ActorMessage> {
         /// The worker pool will terminate itself if all of its static workers have terminated.
         /// You may death-watch the worker pool in order to react to this situation, e.g. by spawning a replacement pool,
         /// or gracefully shutting down your application.
-        case `static`([ActorRef<Message>])
+        case `static`([_ActorRef<Message>])
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ public class WorkerPool<Message: ActorMessage> {
     // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?
     // TODO: round robin or what strategy?
     public static func spawn(
-        _ factory: ActorRefFactory,
+        _ factory: _ActorRefFactory,
         _ naming: ActorNaming,
         props: Props = Props(),
         select selector: WorkerPool<Message>.Selector,
@@ -75,7 +75,7 @@ public class WorkerPool<Message: ActorMessage> {
         let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
 
         let pool: WorkerPool<Message> = WorkerPool(settings: settings)
-        let ref = try factory.spawn(naming, of: WorkerPoolMessage<Message>.self, props: props, file: file, line: line, pool.initial())
+        let ref = try factory._spawn(naming, of: WorkerPoolMessage<Message>.self, props: props, file: file, line: line, pool.initial())
         return .init(ref: ref)
     }
 }
@@ -91,7 +91,7 @@ internal extension WorkerPool {
         .setup { context in
             switch self.selector {
             case .dynamic(let key):
-                let adapter = context.messageAdapter(from: Reception.Listing<ActorRef<Message>>.self) { listing in
+                let adapter = context.messageAdapter(from: Reception.Listing<_ActorRef<Message>>.self) { listing in
                     context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
                     return .listing(listing)
                 }
@@ -134,12 +134,12 @@ internal extension WorkerPool {
     }
 
     // TODO: abstract how we keep them, for round robin / random etc
-    func forwarding(to workers: [ActorRef<Message>]) -> PoolBehavior {
+    func forwarding(to workers: [_ActorRef<Message>]) -> PoolBehavior {
         .setup { context in
             // TODO: would be some actual logic, that we can plug and play
             var _roundRobinPos = 0
 
-            func selectWorker() -> ActorRef<Message> {
+            func selectWorker() -> _ActorRef<Message> {
                 let worker = workers[_roundRobinPos]
                 _roundRobinPos = (_roundRobinPos + 1) % workers.count
                 return worker
@@ -211,9 +211,9 @@ internal extension WorkerPool {
 
 public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
     @usableFromInline
-    internal let _ref: ActorRef<WorkerPoolMessage<Message>>
+    internal let _ref: _ActorRef<WorkerPoolMessage<Message>>
 
-    internal init(ref: ActorRef<WorkerPoolMessage<Message>>) {
+    internal init(ref: _ActorRef<WorkerPoolMessage<Message>>) {
         self._ref = ref
     }
 
@@ -226,7 +226,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
         for type: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Message
+        _ makeQuestion: @escaping (_ActorRef<Answer>) -> Message
     ) -> AskResponse<Answer> {
         self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
             .forward(makeQuestion(replyTo))
@@ -245,7 +245,7 @@ public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
 @usableFromInline
 internal enum WorkerPoolMessage<Message: ActorMessage>: NonTransportableActorMessage {
     case forward(Message)
-    case listing(Reception.Listing<ActorRef<Message>>)
+    case listing(Reception.Listing<_ActorRef<Message>>)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

@@ -30,7 +30,7 @@ internal class ActorSingletonManager<Message: ActorMessage> {
     private let singletonBehavior: Behavior<Message>
 
     /// The singleton ref
-    private var singleton: ActorRef<Message>?
+    private var singleton: _ActorRef<Message>?
 
     init(settings: ActorSingletonSettings, props: Props, _ behavior: Behavior<Message>) {
         self.settings = settings
@@ -58,12 +58,12 @@ internal class ActorSingletonManager<Message: ActorMessage> {
         }
     }
 
-    private func takeOver(_ context: ActorContext<Directive>, from: UniqueNode?) throws {
+    private func takeOver(_ context: _ActorContext<Directive>, from: UniqueNode?) throws {
         // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
-        self.singleton = try context.spawn(.unique(self.settings.name), props: self.singletonProps, self.singletonBehavior)
+        self.singleton = try context._spawn.unique(self.settings.name), props: self.singletonProps, self.singletonBehavior)
     }
 
-    private func handOver(_ context: ActorContext<Directive>, to: UniqueNode?) throws {
+    private func handOver(_ context: _ActorContext<Directive>, to: UniqueNode?) throws {
         // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off (https://github.com/apple/swift-distributed-actors/issues/329)
         guard let singleton = self.singleton else {
             return
@@ -72,7 +72,7 @@ internal class ActorSingletonManager<Message: ActorMessage> {
     }
 
     internal enum Directive: NonTransportableActorMessage {
-        case takeOver(from: UniqueNode?, replyTo: ActorRef<ActorRef<Message>?>)
+        case takeOver(from: UniqueNode?, replyTo: _ActorRef<_ActorRef<Message>?>)
         case handOver(to: UniqueNode?)
         case stop
     }
@@ -82,7 +82,7 @@ internal class ActorSingletonManager<Message: ActorMessage> {
 // MARK: ActorSingletonManager + logging
 
 extension ActorSingletonManager {
-    func metadata<Directive>(_: ActorContext<Directive>) -> Logger.Metadata {
+    func metadata<Directive>(_: _ActorContext<Directive>) -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "name": "\(self.settings.name)",
         ]

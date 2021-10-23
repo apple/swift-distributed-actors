@@ -40,7 +40,7 @@ internal protocol InternalMessageDispatcher: MessageDispatcher {
     func shutdown()
 }
 
-extension FixedThreadPool: InternalMessageDispatcher {
+extension _FixedThreadPool: InternalMessageDispatcher {
     public var name: String {
         _hackyPThreadThreadId()
     }

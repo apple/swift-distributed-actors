@@ -22,7 +22,7 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
     let memberB = Cluster.Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
     func test_clusterEventStream_shouldNotCauseDeadLettersOnLocalOnlySystem() throws {
-        _ = try self.system.spawn("anything", of: String.self, .setup { context in
+        _ = try self.system._spawn("anything", of: String.self, .setup { context in
             context.log.info("Hello there!")
             return .stop
         })

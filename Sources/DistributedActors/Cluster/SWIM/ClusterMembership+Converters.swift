@@ -28,7 +28,7 @@ extension ClusterMembership.Node {
         )
     }
 
-    func swimRef(_ context: ActorContext<SWIM.Ref.Message>) -> SWIM.PeerRef {
+    func swimRef(_ context: _ActorContext<SWIM.Ref.Message>) -> SWIM.PeerRef {
         context.system._resolve(context: .init(address: ._swim(on: self.asUniqueNode!), system: context.system)) // TODO: the ! is not so nice
     }
 

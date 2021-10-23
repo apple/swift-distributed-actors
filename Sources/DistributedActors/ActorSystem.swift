@@ -31,7 +31,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     public let name: String
 
     // initialized during startup
-    internal var _deadLetters: ActorRef<DeadLetter>!
+    internal var _deadLetters: _ActorRef<DeadLetter>!
 
 //    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     // TODO: avoid the lock...
@@ -83,7 +83,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
 
     // TODO(distributed): once all actors which use the receptionist are moved to 'distributed actor'
     //                    we can remove the actor-ref receptionist.
-    private var _receptionistRef: ActorRef<Receptionist.Message>!
+    private var _receptionistRef: _ActorRef<Receptionist.Message>!
     public var _receptionist: SystemReceptionist {
         SystemReceptionist(ref: self._receptionistRef)
     }
@@ -184,7 +184,8 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         // TODO: should we share this, or have a separate ELG for IO?
         self._eventLoopGroup = eventLoopGroup
 
-        self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
+        // TODO(swift): Remove all of our own dispatchers and move to Swift Concurrency
+        self.dispatcher = try! _FixedThreadPool(settings.threadPoolSize)
 
         // initialize top level guardians
         self._root = TheOneWhoHasNoParent(local: settings.cluster.uniqueBindNode)
@@ -216,7 +217,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
         _ = self._serialization.storeIfNilThenLoad(serialization)
 
         // dead letters init
-        self._deadLetters = ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
+        self._deadLetters = _ActorRef(.deadLetters(.init(self.log, address: ActorAddress._deadLetters(on: settings.cluster.uniqueBindNode), system: self)))
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: _Guardian(parent: theOne, name: "user", localNode: settings.cluster.uniqueBindNode, system: self))
@@ -464,13 +465,13 @@ extension ActorSystem: CustomStringConvertible {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
-extension ActorSystem: ActorRefFactory {
+extension ActorSystem: _ActorRefFactory {
     @discardableResult
-    public func spawn<Message>(
+    public func _spawn<Message>(
             _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
             file: String = #file, line: UInt = #line,
             _ behavior: Behavior<Message>
-    ) throws -> ActorRef<Message> where Message: ActorMessage {
+    ) throws -> _ActorRef<Message> where Message: ActorMessage {
         try self.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
@@ -484,7 +485,7 @@ extension ActorSystem: ActorRefFactory {
     /// Appropriate supervision strategies should be configured for these types of actors.
     public func _spawnSystemActor<Message>(
             _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
-    ) throws -> ActorRef<Message>
+    ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
         try self.serialization._ensureSerializer(Message.self)
         return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props)
@@ -514,7 +515,7 @@ extension ActorSystem: ActorRefFactory {
             using provider: _ActorRefProvider,
             _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
             startImmediately: Bool = true
-    ) throws -> ActorRef<Message>
+    ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
         try behavior.validateAsInitial()
 
@@ -544,7 +545,7 @@ extension ActorSystem: ActorRefFactory {
             fatalError("selected dispatcher [\(props.dispatcher)] not implemented yet; ") // FIXME: remove any not implemented ones simply from API
         }
 
-        return try provider.spawn(
+        return try provider._spawn(
                 system: self,
                 behavior: behavior, address: address,
                 dispatcher: dispatcher, props: props,
@@ -557,7 +558,7 @@ extension ActorSystem: ActorRefFactory {
             using provider: _ActorRefProvider,
             _ behavior: Behavior<Message>, address: ActorAddress, props: Props = Props(),
             startImmediately: Bool = true
-    ) throws -> ActorRef<Message>
+    ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
         try behavior.validateAsInitial()
 
@@ -575,7 +576,7 @@ extension ActorSystem: ActorRefFactory {
             fatalError("selected dispatcher [\(props.dispatcher)] not implemented yet; ") // FIXME: remove any not implemented ones simply from API
         }
 
-        return try provider.spawn(
+        return try provider._spawn(
                 system: self,
                 behavior: behavior, address: address,
                 dispatcher: dispatcher, props: props,
@@ -613,7 +614,7 @@ extension ActorSystem: ActorRefFactory {
 
     // FIXME(distributed): this exists because generated _spawnAny, we need to get rid of that _spawnAny
     public func _spawnDistributedActor<Message>(
-            _ behavior: Behavior<Message>, identifiedBy id: AnyActorIdentity) -> ActorRef<Message> where Message: ActorMessage {
+            _ behavior: Behavior<Message>, identifiedBy id: AnyActorIdentity) -> _ActorRef<Message> where Message: ActorMessage {
         guard let address = id.underlying as? ActorAddress else {
             fatalError("Cannot spawn distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(id)")
         }
@@ -691,7 +692,7 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
     /// :nodoc: INTERNAL API: Not intended to be used by end users.
-    public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message: ActorMessage>(context: ResolveContext<Message>) -> _ActorRef<Message> {
 //        if let serialization = context.system._serialization {
         do {
             try context.system.serialization._ensureSerializer(Message.self)
@@ -703,7 +704,7 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.personalDeadLetters
         }
 
-        var resolved: ActorRef<Message>?
+        var resolved: _ActorRef<Message>?
         // TODO: The looping through transports could be ineffective... but realistically we dont have many
         // TODO: realistically we ARE becoming a transport and thus should be able to remove 'transports' entirely
         for transport in context.system.settings.transports {
@@ -898,9 +899,9 @@ public enum ResolveError: ActorTransportError {
 /// and can cause leaks. Also `wakeUp` MUST NOT be called more than once,
 /// as that would violate the single-threaded execution guaranteed of actors.
 internal struct LazyStart<Message: ActorMessage> {
-    let ref: ActorRef<Message>
+    let ref: _ActorRef<Message>
 
-    init(ref: ActorRef<Message>) {
+    init(ref: _ActorRef<Message>) {
         self.ref = ref
     }
 

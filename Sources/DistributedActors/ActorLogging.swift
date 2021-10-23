@@ -93,7 +93,7 @@ extension Logger {
         self = log
     }
 
-    public static func make<T>(context: ActorContext<T>) -> Logger {
+    public static func make<T>(context: _ActorContext<T>) -> Logger {
         Logger.make(context.log, path: context.path)
     }
 
@@ -125,7 +125,7 @@ public struct ActorOriginLogHandler: LogHandler {
         self.targetLogger.logLevel = self.logLevel
     }
 
-    internal init<T>(_ context: ActorContext<T>) {
+    internal init<T>(_ context: _ActorContext<T>) {
         let dispatcherName = context.props.dispatcher.name
         self.init(
             LoggingContext(

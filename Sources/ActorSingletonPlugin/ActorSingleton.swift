@@ -29,10 +29,10 @@ internal final class ActorSingleton<Message: ActorMessage> {
     let behavior: Behavior<Message>?
 
     /// The `ActorSingletonProxy` ref
-    private var _proxy: ActorRef<Message>?
+    private var _proxy: _ActorRef<Message>?
     private let proxyLock = Lock()
 
-    internal var proxy: ActorRef<Message>? {
+    internal var proxy: _ActorRef<Message>? {
         self.proxyLock.withLock {
             self._proxy
         }
@@ -45,7 +45,7 @@ internal final class ActorSingleton<Message: ActorMessage> {
     }
 
     /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingletonManager`).
-    func spawnAll(_ system: ActorSystem) throws {
+    func startAll(_ system: ActorSystem) throws {
         let allocationStrategy = self.settings.allocationStrategy.make(system.settings.cluster, self.settings)
         try self.proxyLock.withLock {
             self._proxy = try system._spawnSystemActor(

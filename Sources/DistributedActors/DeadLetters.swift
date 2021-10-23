@@ -55,7 +55,7 @@ public struct DeadLetter: NonTransportableActorMessage { // TODO: make it also r
 
 extension ActorSystem {
     /// Dead letters reference dedicated to a specific address.
-    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
+    public func personalDeadLetters<Message: ActorMessage>(type: Message.Type = Message.self, recipient: ActorAddress) -> _ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.uniqueNode == self.settings.cluster.uniqueBindNode else {
@@ -65,7 +65,7 @@ extension ActorSystem {
             ///
             /// We don't apply the special /dead path, as to not complicate diagnosing who actually terminated or if we were accidentally sent
             /// a remote actor ref that was dead(!)
-            return ActorRef(.deadLetters(.init(self.log, address: recipient, system: self))).adapt(from: Message.self)
+            return _ActorRef(.deadLetters(.init(self.log, address: recipient, system: self))).adapt(from: Message.self)
         }
 
         let localRecipient: ActorAddress
@@ -76,11 +76,11 @@ extension ActorSystem {
             // drop the node from the address; and prepend it as known-to-be-dead
             localRecipient = ActorAddress(local: self.settings.cluster.uniqueBindNode, path: ActorPath._dead.appending(segments: recipient.segments), incarnation: recipient.incarnation)
         }
-        return ActorRef(.deadLetters(.init(self.log, address: localRecipient, system: self))).adapt(from: Message.self)
+        return _ActorRef(.deadLetters(.init(self.log, address: localRecipient, system: self))).adapt(from: Message.self)
     }
 
     /// Anonymous `/dead/letters` reference, which may be used for messages which have no logical recipient.
-    public var deadLetters: ActorRef<DeadLetter> {
+    public var deadLetters: _ActorRef<DeadLetter> {
         self._deadLetters
     }
 }
@@ -128,8 +128,8 @@ extension ActorSystem {
 ///   to protect the system from performing unsafe casts, the a dead ref will be yielded instead of the wrongly-typed ref of the alive actor.
 ///   - this can happen when somehow message types are mixed up and signify an actor has another type than it has in the real running system
 ///
-/// Dead references are NOT used to signify that an actor that an `ActorRef` points to has terminated and any _further_ messages sent to it will
-/// result in dead letters. The difference here is that in this case the actor _existed_ and the `ActorRef` _was valid_ at some point in time.
+/// Dead references are NOT used to signify that an actor that an `_ActorRef` points to has terminated and any _further_ messages sent to it will
+/// result in dead letters. The difference here is that in this case the actor _existed_ and the `_ActorRef` _was valid_ at some point in time.
 /// Dead references on the other hand have never, and will never be valid, meaning it is useful to distinguish them for debugging and logging purposes,
 /// but not for anything more -- users shall assume that their communication is correct and only debug why a dead reference appeared if it indeed does happen.
 public final class DeadLetterOffice {
@@ -158,7 +158,7 @@ public final class DeadLetterOffice {
     }
 
     @usableFromInline
-    var ref: ActorRef<DeadLetter> {
+    var ref: _ActorRef<DeadLetter> {
         .init(.deadLetters(self))
     }
 

@@ -23,7 +23,7 @@ import DistributedActorsConcurrencyHelpers
 public struct EventStream<Event: ActorMessage>: AsyncSequence {
     public typealias Element = Event
 
-    internal let ref: ActorRef<EventStreamShell.Message<Event>>
+    internal let ref: _ActorRef<EventStreamShell.Message<Event>>
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
         try self.init(system, name: name, of: type, systemStream: false)
@@ -40,19 +40,19 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
         if systemStream {
             self.init(ref: try system._spawnSystemActor(.unique(name), behavior))
         } else {
-            self.init(ref: try system.spawn(.unique(name), behavior))
+            self.init(ref: try system._spawn(.unique(name), behavior))
         }
     }
 
-    internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {
+    internal init(ref: _ActorRef<EventStreamShell.Message<Event>>) {
         self.ref = ref
     }
 
-    public func subscribe(_ ref: ActorRef<Event>, file: String = #file, line: UInt = #line) {
+    public func subscribe(_ ref: _ActorRef<Event>, file: String = #file, line: UInt = #line) {
         self.ref.tell(.subscribe(ref), file: file, line: line)
     }
 
-    public func unsubscribe(_ ref: ActorRef<Event>, file: String = #file, line: UInt = #line) {
+    public func unsubscribe(_ ref: _ActorRef<Event>, file: String = #file, line: UInt = #line) {
         self.ref.tell(.unsubscribe(ref), file: file, line: line)
     }
 
@@ -74,7 +74,7 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
             self.subscribed.load()
         }
 
-        init(ref: ActorRef<EventStreamShell.Message<Event>>) {
+        init(ref: _ActorRef<EventStreamShell.Message<Event>>) {
             let id = ObjectIdentifier(self)
             self.underlying = AsyncStream<Event> { continuation in
                 ref.tell(.asyncSubscribe(id, { event in continuation.yield(event) }) {
@@ -98,9 +98,9 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
 internal enum EventStreamShell {
     enum Message<Event: ActorMessage>: NonTransportableActorMessage { // TODO: make it codable, transportability depends on the Event really
         /// Subscribe to receive events
-        case subscribe(ActorRef<Event>)
+        case subscribe(_ActorRef<Event>)
         /// Unsubscribe from receiving events
-        case unsubscribe(ActorRef<Event>)
+        case unsubscribe(_ActorRef<Event>)
         /// Publish an event to all subscribers
         case publish(Event)
 
@@ -112,7 +112,7 @@ internal enum EventStreamShell {
 
     static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
         .setup { context in
-            var subscribers: [ActorAddress: ActorRef<Event>] = [:]
+            var subscribers: [ActorAddress: _ActorRef<Event>] = [:]
             var asyncSubscribers: [ObjectIdentifier: (Event) -> Void] = [:]
 
             let behavior: Behavior<Message<Event>> = .receiveMessage { message in

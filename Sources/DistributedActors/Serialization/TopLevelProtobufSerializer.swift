@@ -17,7 +17,7 @@ import NIOFoundationCompat
 
 import Foundation // for Codable
 
-public class TopLevelProtobufSerializer<Message>: Serializer<Message> {
+public class _TopLevel_ProtobufSerializer<Message>: Serializer<Message> {
     let allocator: ByteBufferAllocator
     private let context: Serialization.Context
 

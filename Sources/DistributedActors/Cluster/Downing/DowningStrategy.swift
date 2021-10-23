@@ -78,12 +78,12 @@ internal struct DowningStrategyShell {
         }
     }
 
-    func receiveClusterEvent(_ context: ActorContext<Message>, event: Cluster.Event) throws {
+    func receiveClusterEvent(_ context: _ActorContext<Message>, event: Cluster.Event) throws {
         let directive: DowningStrategyDirective = try self.strategy.onClusterEvent(event: event)
         self.interpret(context, directive)
     }
 
-    func interpret(_ context: ActorContext<Message>, _ directive: DowningStrategyDirective) {
+    func interpret(_ context: _ActorContext<Message>, _ directive: DowningStrategyDirective) {
         switch directive {
         case .markAsDown(let members):
             self.markAsDown(context, members: members)
@@ -100,7 +100,7 @@ internal struct DowningStrategyShell {
         }
     }
 
-    func markAsDown(_ context: ActorContext<Message>, members: Set<Cluster.Member>) {
+    func markAsDown(_ context: _ActorContext<Message>, members: Set<Cluster.Member>) {
         for member in members {
             context.log.info(
                 "Decision to [.down] member [\(member)]!", metadata: self.metadata([

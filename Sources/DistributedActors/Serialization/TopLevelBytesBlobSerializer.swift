@@ -19,7 +19,7 @@ import Foundation // for Codable
 
 /// Allows for serialization of a *single* blob at the top level.
 /// Used for messages encoded using external serializers, such as protobuf, flat buffers or similar.
-public class TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message> {
+public class _TopLevelBytesBlobSerializer<Message: Codable>: Serializer<Message> {
     let allocator: ByteBufferAllocator
 
     private let context: Serialization.Context

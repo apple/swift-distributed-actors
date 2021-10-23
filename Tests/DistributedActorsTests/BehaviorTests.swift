@@ -22,14 +22,14 @@ import XCTest
 final class BehaviorTests: ActorSystemXCTestCase {
     public struct TestMessage: ActorMessage {
         let message: String
-        let replyTo: ActorRef<String>
+        let replyTo: _ActorRef<String>
     }
 
     func test_setup_executesImmediatelyOnStartOfActor() throws {
         let p = self.testKit.spawnTestProbe("testActor-1", expecting: String.self)
 
         let message = "EHLO"
-        let _: ActorRef<String> = try system.spawn(
+        let _: _ActorRef<String> = try system._spawn(
             .anonymous,
             .setup { _ in
                 p.tell(message)
@@ -58,8 +58,8 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         var counter = 0
 
-        let echoPayload: ActorRef<TestMessage> =
-            try system.spawn(
+        let echoPayload: _ActorRef<TestMessage> =
+            try system._spawn(
                 .anonymous,
                 .receiveMessage { message in
                     p.tell(message.message)
@@ -96,7 +96,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
         }
 
         let n = 10
-        let ref = try system.spawn("countTill\(n)", countTillNThenDieBehavior(n: n))
+        let ref = try system._spawn("countTill\(n)", countTillNThenDieBehavior(n: n))
 
         // first we send many messages
         for i in 0 ... n {
@@ -111,10 +111,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
         let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe("probe-specificSignal-1")
-        let _: ActorRef<String> = try system.spawn(
+        let _: _ActorRef<String> = try system._spawn(
             .anonymous,
             .setup { context in
-                let _: ActorRef<Never> = try context.spawnWatch(.anonymous, .stop)
+                let _: _ActorRef<Never> = try context._spawnWatch(.anonymous, .stop)
 
                 return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                     p.tell(terminated)
@@ -129,7 +129,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
     func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("probe-specificSignal-2")
-        let ref: ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             .anonymous,
             Behavior<String>.receiveMessage { _ in
                 .stop
@@ -150,7 +150,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
         case other
     }
 
-    func firstBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
+    func firstBehavior(_ probe: _ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
         .receiveMessage { message in
             switch message {
             case .first:
@@ -164,20 +164,20 @@ final class BehaviorTests: ActorSystemXCTestCase {
         }
     }
 
-    func secondBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
+    func secondBehavior(_ probe: _ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
         .receiveMessage { message in
             probe.tell(message)
             return .same
         }
     }
 
-    func combinedBehavior(_ probe: ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
+    func combinedBehavior(_ probe: _ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
         self.firstBehavior(probe).orElse(self.secondBehavior(probe))
     }
 
     func test_orElse_shouldExecuteFirstBehavior() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
-        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
+        let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.first)
         try p.expectMessage(.first)
@@ -185,7 +185,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
     func test_orElse_shouldExecuteSecondBehavior() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
-        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
+        let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.second)
         try p.expectMessage(.second)
@@ -193,7 +193,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
     func test_orElse_shouldNotExecuteSecondBehaviorOnIgnore() throws {
         let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
-        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, self.combinedBehavior(p.ref))
+        let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.other)
         try p.expectNoMessage(for: .milliseconds(100))
@@ -217,7 +217,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }.orElse(behavior)
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell(50)
         try p.expectMessage(-50)
@@ -229,7 +229,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     func test_orElse_shouldProperlyApplyTerminatedToSecondBehaviorBeforeCausingDeathPactError() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let first: Behavior<Never> = .setup { context in
-            let child: ActorRef<String> = try context.spawnWatch(
+            let child: _ActorRef<String> = try context._spawnWatch(
                 "child",
                 .receiveMessage { _ in
                     throw TestError("Boom")
@@ -256,7 +256,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
             return .unhandled
         }
-        let ref: ActorRef<Never> = try system.spawn("orElseTerminated", first.orElse(second))
+        let ref: _ActorRef<Never> = try system._spawn("orElseTerminated", first.orElse(second))
         p.watch(ref)
 
         try p.expectMessage("first:terminated-name:child")
@@ -280,7 +280,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
                 }
             }
         }
-        let ref: ActorRef<OrElseMessage> = try system.spawn(.anonymous, first.orElse(second))
+        let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, first.orElse(second))
 
         ref.tell(.second)
         try p.expectMessage(.second)
@@ -296,7 +296,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             p.tell("postStop")
         }
 
-        try system.spawn(.anonymous, behavior)
+        try system._spawn(.anonymous, behavior)
 
         try p.expectMessage("postStop")
     }
@@ -311,7 +311,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         )
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         p.watch(ref)
 
@@ -336,7 +336,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -366,7 +366,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -377,7 +377,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     enum ContextClosureMessage: NonTransportableActorMessage {
-        case context(() -> ActorRef<String>)
+        case context(() -> _ActorRef<String>)
     }
 
     func test_myself_shouldStayValidAfterActorStopped() throws {
@@ -391,7 +391,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             return .stop
         }
 
-        let ref = try system.spawn("myselfStillValidAfterStopped", behavior)
+        let ref = try system._spawn("myselfStillValidAfterStopped", behavior)
         p.watch(ref)
 
         ref.tell("test") // this does nothing
@@ -419,7 +419,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             with: ProbeInterceptor(probe: p)
         )
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("something") // this message causes the actor the suspend
 
@@ -454,7 +454,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             with: ProbeInterceptor(probe: p)
         )
 
-        let ref = try system.spawn("suspender", behavior)
+        let ref = try system._spawn("suspender", behavior)
 
         ref.tell("something") // this message causes the actor the suspend
 
@@ -503,7 +503,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             with: ProbeInterceptor(probe: p)
         )
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("something") // this message causes the actor the suspend
 
@@ -558,7 +558,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("test")
         try p.expectMessage("test")
@@ -590,7 +590,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("suspend")
         ref.tell("another test")
@@ -619,7 +619,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior: Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("test")
         try p.expectMessage("test")
@@ -646,7 +646,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior: Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -674,7 +674,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("suspend")
 
@@ -709,7 +709,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         try p.expectMessage("initializing")
         ref.tell("while-suspended") // hits the actor while it's still suspended
@@ -745,7 +745,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         try p.expectMessage("initializing")
@@ -782,7 +782,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
         try p.expectMessage("initializing")
 
@@ -807,7 +807,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior: Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -840,7 +840,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
 
         ref.tell("something") // this message causes the actor the suspend
@@ -855,7 +855,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            try context.spawnWatch("child", Behavior<String>.stop)
+            try context._spawnWatch("child", Behavior<String>.stop)
             return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -876,7 +876,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn("parent", behavior)
+        let ref = try system._spawn("parent", behavior)
 
         ref.tell("something") // this message causes the actor to suspend
         try p.expectMessage("suspended")
@@ -896,7 +896,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
 
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            try context.spawnWatch("child", Behavior<String>.stop)
+            try context._spawnWatch("child", Behavior<String>.stop)
             return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -908,7 +908,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             .stop
         }
 
-        let ref = try system.spawn("parent", behavior)
+        let ref = try system._spawn("parent", behavior)
         p.watch(ref)
 
         ref.tell("something") // this message causes the actor the suspend
@@ -937,7 +937,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        try system.spawn(.anonymous, behavior)
+        try system._spawn(.anonymous, behavior)
 
         promise.succeed(1)
         try probe.expectMessage(1)
@@ -964,7 +964,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        try system.spawn(.anonymous, behavior)
+        try system._spawn(.anonymous, behavior)
 
         promise.fail(error)
         _ = try probe.expectMessage()
@@ -995,7 +995,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         promise.succeed(1)
         try resultProbe.expectMessage(1)
@@ -1030,7 +1030,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        try system.spawn(.anonymous, behavior)
+        try system._spawn(.anonymous, behavior)
 
         promise.succeed(1)
         try resultProbe.expectMessage(1)
@@ -1060,7 +1060,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("test")
         try probe.expectMessage("started:test")
@@ -1100,7 +1100,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         ref.tell("test")
         try probe.expectMessage("started:test")
@@ -1132,7 +1132,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        try system.spawn(.anonymous, behavior)
+        try system._spawn(.anonymous, behavior)
 
         promise.succeed(1)
         try probe.expectMessage(1)
@@ -1155,7 +1155,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
         probe.watch(ref)
 
         promise.fail(error)

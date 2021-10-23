@@ -89,9 +89,9 @@ public final class Timers<Message: ActorMessage> {
     @usableFromInline
     internal var installedTimers: [TimerKey: Timer<Message>] = [:]
     @usableFromInline
-    internal unowned var context: ActorContext<Message>
+    internal unowned var context: _ActorContext<Message>
 
-    init(context: ActorContext<Message>) {
+    init(context: _ActorContext<Message>) {
         self.context = context
     }
 

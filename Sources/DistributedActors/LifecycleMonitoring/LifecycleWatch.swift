@@ -34,7 +34,7 @@ extension LifecycleWatchSupport {
         @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (AnyActorIdentity) -> (),
         file: String = #file, line: UInt = #line
     ) -> Watchee where Self: DistributedActor, Watchee: DistributedActor { // TODO(distributed): allow only Watchee where the watched actor is on a transport that supports watching
-        // TODO(distributed): reimplement this as self.id as? ActorContext which will have the watch things.
+        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
         guard let system = self.actorTransport._unwrapActorSystem else {
             fatalError("TODO: handle more gracefully") // TODO: handle more gracefully, i.e. say that we can't watch that actor
         }
@@ -62,7 +62,7 @@ extension LifecycleWatchSupport {
     ///
     /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     public func isWatching<Watchee>(_ watchee: Watchee) -> Bool where Self: DistributedActor, Watchee: DistributedActor {
-        // TODO(distributed): reimplement this as self.id as? ActorContext which will have the watch things.
+        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
         guard let system = self.actorTransport._unwrapActorSystem else {
             fatalError("TODO: handle more gracefully") // TODO: handle more gracefully, i.e. say that we can't watch that actor
         }
@@ -89,7 +89,7 @@ extension LifecycleWatchSupport {
             _ watchee: Watchee,
             file: String = #file, line: UInt = #line
     ) -> Watchee where Self: DistributedActor, Watchee: DistributedActor  {
-        // TODO(distributed): reimplement this as self.id as? ActorContext which will have the watch things.
+        // TODO(distributed): reimplement this as self.id as? _ActorContext which will have the watch things.
         guard let system = self.actorTransport._unwrapActorSystem else {
             fatalError("TODO: handle more gracefully") // TODO: handle more gracefully, i.e. say that we can't watch that actor
         }
@@ -192,7 +192,7 @@ extension LifecycleWatch {
             of watchee: Watchee,
             @_inheritActorContext @_implicitSelfCapture whenTerminated: @escaping @Sendable (AnyActorIdentity) -> (),
             file: String = #file, line: UInt = #line
-    ) where // Watchee: DeathWatchable,
+    ) where // Watchee: _DeathWatchable,
             Watchee: DistributedActor {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(optional: myself))")
 
@@ -300,7 +300,7 @@ extension LifecycleWatch {
     /// Performs cleanup of references to the dead actor.
     public func receiveTerminated(_ terminated: Signals.Terminated){
 //        // refs are compared ONLY by address, thus we can make such mock reference, and it will be properly remove the right "real" refs from the collections below
-//        let mockRefForEquality = ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
+//        let mockRefForEquality = _ActorRef<Never>(.deadLetters(.init(.init(label: "x"), address: terminated.address, system: nil))).asAddressable
         // let terminatedIdentity = terminated.address.asAnyActorIdentity
         self.receiveTerminated(terminated.address.asAnyActorIdentity)
     }
@@ -362,7 +362,7 @@ extension LifecycleWatch {
         for (watcherIdentity, watcherRef) in self.watchedBy {
             traceLog_DeathWatch("[\(optional: myself)] Notify  \(watcherIdentity) (\(watcherRef)) that we died")
             if let address = myself?.id._unwrapActorAddress {
-                let fakeRef = ActorRef<_Done>(.deadLetters(.init(.init(label: "x"), address: address, system: nil)))
+                let fakeRef = _ActorRef<_Done>(.deadLetters(.init(.init(label: "x"), address: address, system: nil)))
                 watcherRef._sendSystemMessage(.terminated(ref: fakeRef.asAddressable, existenceConfirmed: true))
             }
         }

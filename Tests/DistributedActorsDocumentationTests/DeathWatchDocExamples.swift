@@ -24,7 +24,7 @@ struct Player {
 
 struct GameUnit {
     enum Command: Codable {
-        case player(ActorRef<Player.Command>)
+        case player(_ActorRef<Player.Command>)
         case otherCommand
     }
 }
@@ -44,7 +44,7 @@ extension GameUnit.Command {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .player:
-            let value = try container.decode(ActorRef<Player.Command>.self, forKey: .player_value)
+            let value = try container.decode(_ActorRef<Player.Command>.self, forKey: .player_value)
             self = .player(value)
         case .otherCommand:
             self = .otherCommand
@@ -65,7 +65,7 @@ extension GameUnit.Command {
 
 struct GameMatch {
     enum Command: Codable {
-        case playerConnected(ActorRef<Player.Command>)
+        case playerConnected(_ActorRef<Player.Command>)
         case disconnectedPleaseStop
     }
 }
@@ -85,7 +85,7 @@ extension GameMatch.Command {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
         case .playerConnected:
-            let value = try container.decode(ActorRef<Player.Command>.self, forKey: .playerConnected_value)
+            let value = try container.decode(_ActorRef<Player.Command>.self, forKey: .playerConnected_value)
             self = .playerConnected(value)
         case .disconnectedPleaseStop:
             self = .disconnectedPleaseStop
@@ -111,7 +111,7 @@ class DeathWatchDocExamples {
 
     func simple_watch() throws {
         // tag::simple_death_watch[]
-        func gameUnit(player: ActorRef<Player.Command>) -> Behavior<GameUnit.Command> {
+        func gameUnit(player: _ActorRef<Player.Command>) -> Behavior<GameUnit.Command> {
             .setup { context in
                 context.watch(player) // <1>
 

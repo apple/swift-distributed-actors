@@ -23,7 +23,7 @@ import struct NIO.ByteBuffer
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message: ActorMessage>: @unchecked Sendable, ReceivesMessages, DeathWatchable, _ReceivesSystemMessages {
+public struct _ActorRef<Message: ActorMessage>: @unchecked Sendable, ReceivesMessages, _DeathWatchable, _ReceivesSystemMessages {
     /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
@@ -45,7 +45,7 @@ public struct ActorRef<Message: ActorMessage>: @unchecked Sendable, ReceivesMess
         self.personality = personality
     }
 
-    /// Address of the actor referred to by this `ActorRef`.
+    /// Address of the actor referred to by this `_ActorRef`.
     public var address: ActorAddress {
         switch self.personality {
         case .cell(let cell): return cell.address
@@ -90,7 +90,7 @@ public protocol AddressableActor {
     var asAddressable: AddressableActorRef { get }
 }
 
-extension ActorRef {
+extension _ActorRef {
     /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
     ///
     /// An `AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
@@ -102,28 +102,28 @@ extension ActorRef {
     }
 }
 
-extension ActorRef: CustomStringConvertible {
+extension _ActorRef: CustomStringConvertible {
     public var description: String {
         // we do this in order to print `Fork.Messages` rather than `SampleDiningPhilosophers.Fork.Messages`
         // or the `Messages` which a simple "\(Message.self)" would yield.
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorRef<\(prettyTypeName)>(\(self.address))"
+        return "_ActorRef<\(prettyTypeName)>(\(self.address))"
     }
 }
 
 /// Actor ref equality and hashing are directly related to the pointed to unique actor path.
-extension ActorRef: Hashable {
+extension _ActorRef: Hashable {
     public func hash(into hasher: inout Hasher) {
         self.address.hash(into: &hasher)
     }
 
-    public static func == (lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
+    public static func == (lhs: _ActorRef<Message>, rhs: _ActorRef<Message>) -> Bool {
         lhs.address == rhs.address
     }
 }
 
-extension ActorRef.Personality {
-    public static func == (lhs: ActorRef.Personality, rhs: ActorRef.Personality) -> Bool {
+extension _ActorRef.Personality {
+    public static func == (lhs: _ActorRef.Personality, rhs: _ActorRef.Personality) -> Bool {
         switch (lhs, rhs) {
         case (.cell(let l), .cell(let r)):
             return l.address == r.address
@@ -148,7 +148,7 @@ extension ActorRef.Personality {
 
 public protocol ReceivesMessages: Sendable, Codable {
     associatedtype Message: ActorMessage
-    /// Send message to actor referred to by this `ActorRef`.
+    /// Send message to actor referred to by this `_ActorRef`.
     ///
     /// The symbolic version of "tell" is `!` and should also be pronounced as "tell".
     ///
@@ -198,7 +198,7 @@ extension _ReceivesSystemMessages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Ref Internals and Internal Capabilities
 
-extension ActorRef {
+extension _ActorRef {
     public func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
@@ -217,7 +217,7 @@ extension ActorRef {
     }
 
     // TODO: should this always be personalized dead letters instead?
-    internal var _deadLetters: ActorRef<DeadLetter> {
+    internal var _deadLetters: _ActorRef<DeadLetter> {
         switch self.personality {
         case .cell(let cell):
             return cell.mailbox.deadLetters
@@ -226,7 +226,7 @@ extension ActorRef {
         case .adapter(let adapter):
             return adapter.deadLetters
         case .deadLetters:
-            return self as! ActorRef<DeadLetter>
+            return self as! _ActorRef<DeadLetter>
         case .delegate(let delegate):
             return delegate.system.deadLetters
         case .guardian(let guardian):
@@ -357,7 +357,7 @@ public final class _ActorCell<Message: ActorMessage> {
         self._system
     }
 
-    var deadLetters: ActorRef<DeadLetter> {
+    var deadLetters: _ActorRef<DeadLetter> {
         self.mailbox.deadLetters
     }
 
@@ -408,15 +408,15 @@ extension _ActorCell: CustomDebugStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Convenience extensions for dead letters
 
-public extension ActorRef where Message == DeadLetter {
+public extension _ActorRef where Message == DeadLetter {
     /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
-    func adapt<IncomingMessage>(from: IncomingMessage.Type) -> ActorRef<IncomingMessage> {
+    func adapt<IncomingMessage>(from: IncomingMessage.Type) -> _ActorRef<IncomingMessage> {
         let adapter: AbstractAdapter = _DeadLetterAdapterPersonality(self._deadLetters, deadRecipient: self.address)
         return .init(.adapter(adapter))
     }
 
     /// Simplified `adapt` method for dead letters, which can be used in contexts where the adapted type can be inferred from context
-    func adapted<IncomingMessage>() -> ActorRef<IncomingMessage> {
+    func adapted<IncomingMessage>() -> _ActorRef<IncomingMessage> {
         self.adapt(from: IncomingMessage.self)
     }
 }
@@ -425,7 +425,7 @@ public extension ActorRef where Message == DeadLetter {
 // MARK: Cell Delegate
 
 /// :nodoc: INTERNAL API: May change without prior notice.
-/// EXTENSION POINT: Can be used to offer `ActorRef`s to other "special" entities, such as other `_InternalActorTransport`s etc.
+/// EXTENSION POINT: Can be used to offer `_ActorRef`s to other "special" entities, such as other `_InternalActorTransport`s etc.
 ///
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
@@ -574,7 +574,7 @@ public class _Guardian {
         self.name = name
     }
 
-    var ref: ActorRef<Never> {
+    var ref: _ActorRef<Never> {
         .init(.guardian(self))
     }
 
@@ -653,14 +653,14 @@ public class _Guardian {
         AnyHashable(self.address)
     }
 
-    func makeChild<Message>(path: ActorPath, spawn: () throws -> _ActorShell<Message>) throws -> ActorRef<Message> {
+    func makeChild<Message>(path: ActorPath, spawn: () throws -> _ActorShell<Message>) throws -> _ActorRef<Message> {
         try self._childrenLock.synchronized {
             if self.stopping {
-                throw ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
+                throw _ActorContextError.alreadyStopping("system: \(self.system?.name ?? "<nil>")")
             }
 
             if self._children.contains(name: path.name) {
-                throw ActorContextError.duplicateActorPath(path: path)
+                throw _ActorContextError.duplicateActorPath(path: path)
             }
 
             let cell = try spawn()
@@ -673,7 +673,7 @@ public class _Guardian {
     func stopChild(_ childRef: AddressableActorRef) throws {
         try self._childrenLock.synchronized {
             guard self._children.contains(identifiedBy: childRef.address) else {
-                throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
+                throw _ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
             }
 
             if self._children.removeChild(identifiedBy: childRef.address) {
@@ -708,8 +708,8 @@ public class _Guardian {
         }
     }
 
-    var deadLetters: ActorRef<DeadLetter> {
-        ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.address))"), address: self.address, system: self.system)))
+    var deadLetters: _ActorRef<DeadLetter> {
+        _ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.address))"), address: self.address, system: self.system)))
     }
 }
 
@@ -732,7 +732,7 @@ extension _Guardian: _ActorTreeTraversable {
         }
     }
 
-    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> _ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

@@ -38,7 +38,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_sendResult_dispatch[]
-        let ref: ActorRef<Messages> = try system.spawn(.anonymous, behavior) // <1>
+        let ref: _ActorRef<Messages> = try system._spawn.anonymous, behavior) // <1>
 
         DispatchQueue.global().async { // <2>
             let result = someComputation() // <3>
@@ -84,7 +84,7 @@ class InteropDocExamples: XCTestCase {
             return .same
         }
         // end::asyncOp_sendResult_insideActor[]
-        let ref = try system.spawn(.anonymous, behavior)
+        let ref = try system._spawn.anonymous, behavior)
 
         // tag::asyncOp_sendResult_insideActor_external_api[]
         ref.tell(.result("foo"))
@@ -105,7 +105,7 @@ class InteropDocExamples: XCTestCase {
 
         // tag::asyncOp_onResultAsync_enum_Messages[]
         enum Messages: NonTransportableActorMessage {
-            case lookupUser(name: String, recipient: ActorRef<LookupResponse>)
+            case lookupUser(name: String, recipient: _ActorRef<LookupResponse>)
         }
 
         enum LookupResponse: NonTransportableActorMessage {
@@ -162,7 +162,7 @@ class InteropDocExamples: XCTestCase {
     func example_asyncOp_awaitResult() throws {
         // tag::asyncOp_awaitResult_enum_Messages[]
         enum Message: NonTransportableActorMessage {
-            case addPrefix(string: String, recipient: ActorRef<String>)
+            case addPrefix(string: String, recipient: _ActorRef<String>)
         }
         // end::asyncOp_awaitResult_enum_Messages[]
 
@@ -202,7 +202,7 @@ class InteropDocExamples: XCTestCase {
 
     func example_asyncOp_awaitResultThrowing() throws {
         enum Message: NonTransportableActorMessage {
-            case addPrefix(string: String, recipient: ActorRef<String>)
+            case addPrefix(string: String, recipient: _ActorRef<String>)
         }
 
         let system = ActorSystem("System")

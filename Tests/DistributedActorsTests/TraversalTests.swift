@@ -36,22 +36,22 @@ final class TraversalTests: ActorSystemXCTestCase {
             return .receiveMessage { _ in .same }
         }
 
-        let _: ActorRef<String> = try! self.system.spawn(
+        let _: _ActorRef<String> = try! self.system.spawn(
             "hello",
             .setup { context in
                 probe.tell(ActorReady(name: context.name))
-                let _: ActorRef<Int> = try context.spawn("world", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context.spawn("world", tellProbeWhenReady)
                 return .receiveMessage { _ in .same }
             }
         )
 
-        let _: ActorRef<String> = try! self.system.spawn(
+        let _: _ActorRef<String> = try! self.system.spawn(
             "other",
             .setup { context in
                 probe.tell(ActorReady(name: context.name))
-                let _: ActorRef<Int> = try context.spawn("inner-1", tellProbeWhenReady)
-                let _: ActorRef<Int> = try context.spawn("inner-2", tellProbeWhenReady)
-                let _: ActorRef<Int> = try context.spawn("inner-3", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context.spawn("inner-1", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context.spawn("inner-2", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context.spawn("inner-3", tellProbeWhenReady)
                 return .receiveMessage { _ in .same }
             }
         )

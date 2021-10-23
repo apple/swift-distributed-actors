@@ -17,7 +17,7 @@ import XCTest
 
 final class FixedThreadPoolTests: XCTestCase {
     func test_pool_shouldProperlyShutdownAllThreads() throws {
-        let pool = try FixedThreadPool(4)
+        let pool = try _FixedThreadPool(4)
         pool.runningWorkers.load().shouldEqual(4)
         pool.shutdown()
         pool.runningWorkers.load().shouldEqual(0)

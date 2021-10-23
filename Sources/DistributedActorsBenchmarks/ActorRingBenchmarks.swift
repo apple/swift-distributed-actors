@@ -81,7 +81,7 @@ private struct Token: ActorMessage {
 
 private let mutex = _Mutex()
 
-private func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
+private func loopMember(id: Int, next: _ActorRef<Token>, msg: Token) -> Behavior<Token> {
     .receive { _, msg in
         switch msg.payload {
         case 1:
@@ -97,10 +97,10 @@ private func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<
     }
 }
 
-private var loopEntryPoint: ActorRef<Token>!
+private var loopEntryPoint: _ActorRef<Token>!
 
 private func initLoop(m messages: Int, n actors: Int) {
-    loopEntryPoint = try! system.spawn(
+    loopEntryPoint = try! system._spawn(
         "a0",
         .setup { context in
             // TIME spawning

@@ -19,6 +19,7 @@ import NIO
 final class LinkedBlockingQueue<A>: @unchecked Sendable {
     @usableFromInline
     final class Node<A>: @unchecked Sendable {
+        @usableFromInline
         var item: A?
         @usableFromInline
         var next: Node<A>?
@@ -52,7 +53,6 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     ///
     /// - Parameter item: The item to be added to the queue.
     @inlinable
-    @usableFromInline
     func enqueue(_ item: A) {
         self.lock.synchronized {
             let next = Node(item)
@@ -72,7 +72,6 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     ///
     /// - Returns: The item at the head of the queue
     @inlinable
-    @usableFromInline
     func dequeue() -> A {
         self.lock.synchronized { () -> A in
             while true {
@@ -87,7 +86,6 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     /// Removes all items from the queue, resets the count and signals all
     /// waiting threads.
     @inlinable
-    @usableFromInline
     func clear() {
         self.lock.synchronized {
             while let _ = self.take() {}
@@ -104,7 +102,6 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     ///                      in case the queue is empty.
     /// - Returns: The head of the queue or nil, when the timeout is exceeded.
     @inlinable
-    @usableFromInline
     func poll(_ timeout: TimeAmount) -> A? {
         self.lock.synchronized { () -> A? in
             if let item = self.take() {
@@ -122,7 +119,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     // Helper function to actually take an element out of the queue.
     // This function is not synchronized and expects the caller to
     // already hold the lock.
-    @usableFromInline
+    @inlinable
     internal func take() -> A? {
         if self.count > 0 {
             let newNext = self.consumer.next!
@@ -140,7 +137,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
         }
     }
 
-    @usableFromInline
+    @inlinable
     func size() -> Int {
         self.lock.synchronized {
             self.count

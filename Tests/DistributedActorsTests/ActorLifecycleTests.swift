@@ -26,7 +26,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
 
         let ex = try shouldThrow {
             let sameBehavior: Behavior<String> = .same
-            _ = try self.system.spawn("same", sameBehavior)
+            _ = try self.system._spawn("same", sameBehavior)
         }
 
         "\(ex)".shouldEqual("""
@@ -91,7 +91,7 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
         let spawner: Behavior<String> = .receive { context, name in
             let fromName = context.path
-            let _: ActorRef<Int> = try context.system.spawn(
+            let _: _ActorRef<Int> = try context.system.spawn(
                 "\(name)",
                 .setup { context in
                     p.tell("me:\(context.path) spawned from \(fromName)")

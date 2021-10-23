@@ -90,7 +90,7 @@ extension ActorTestKit {
                 testProbeProps.dispatcher = .callingThread
                 #endif
 
-                return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+                return try system._spawn.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
             },
             settings: self.settings
         )
@@ -268,7 +268,7 @@ extension ActorTestKit {
     /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
-    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> ActorRef<Message> {
+    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(5)) throws -> _ActorRef<Message> {
         let context = ResolveContext<Message>(address: address, system: self.system)
 
         return try self.eventually(within: .seconds(3)) {
@@ -287,15 +287,15 @@ extension ActorTestKit {
 // MARK: Fake and mock contexts
 
 public extension ActorTestKit {
-    /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
+    /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M: ActorMessage>(of: M.Type = M.self) -> ActorContext<M> {
-        MockActorContext(self.system)
+    func makeFakeContext<M: ActorMessage>(of: M.Type = M.self) -> _ActorContext<M> {
+        Mock_ActorContext(self.system)
     }
 
-    /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
+    /// Creates a _fake_ `_ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    func makeFakeContext<M: ActorMessage>(for: Behavior<M>) -> ActorContext<M> {
+    func makeFakeContext<M: ActorMessage>(for: Behavior<M>) -> _ActorContext<M> {
         self.makeFakeContext(of: M.self)
     }
 }
@@ -309,7 +309,7 @@ struct MockActorContextError: Error, CustomStringConvertible {
     }
 }
 
-public final class MockActorContext<Message: ActorMessage>: ActorContext<Message> {
+public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Message> {
     private let _system: ActorSystem
 
     public init(_ system: ActorSystem) {
@@ -325,10 +325,10 @@ public final class MockActorContext<Message: ActorMessage>: ActorContext<Message
     }
 
     public override var name: String {
-        "MockActorContext<\(Message.self)>"
+        "Mock_ActorContext<\(Message.self)>"
     }
 
-    public override var myself: ActorRef<Message> {
+    public override var myself: _ActorRef<Message> {
         self.system.deadLetters.adapted()
     }
 
@@ -351,7 +351,7 @@ public final class MockActorContext<Message: ActorMessage>: ActorContext<Message
         _ watchee: Watchee,
         with terminationMessage: Message? = nil,
         file: String = #file, line: UInt = #line
-    ) -> Watchee where Watchee: DeathWatchable {
+    ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
@@ -359,26 +359,26 @@ public final class MockActorContext<Message: ActorMessage>: ActorContext<Message
     public override func unwatch<Watchee>(
         _ watchee: Watchee,
         file: String = #file, line: UInt = #line
-    ) -> Watchee where Watchee: DeathWatchable {
+    ) -> Watchee where Watchee: _DeathWatchable {
         fatalError("Failed: \(MockActorContextError())")
     }
 
     @discardableResult
-    public override func spawn<M>(
+    public override func _spawn<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
-    ) throws -> ActorRef<M>
+    ) throws -> _ActorRef<M>
         where M: ActorMessage {
         fatalError("Failed: \(MockActorContextError())")
     }
 
     @discardableResult
-    public override func spawnWatch<M>(
+    public override func _spawnWatch<M>(
         _ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(),
         file: String = #file, line: UInt = #line,
         _ behavior: Behavior<M>
-    ) throws -> ActorRef<M>
+    ) throws -> _ActorRef<M>
         where M: ActorMessage {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -392,7 +392,7 @@ public final class MockActorContext<Message: ActorMessage>: ActorContext<Message
         }
     }
 
-    public override func stop<M>(child ref: ActorRef<M>) throws {
+    public override func stop<M>(child ref: _ActorRef<M>) throws {
         fatalError("Failed: \(MockActorContextError())")
     }
 }
@@ -483,12 +483,12 @@ extension ActorTestKit {
     /// If `expectedRefs` is specified, also compares it to the listing for `key` and requires an exact match.
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
     public func ensureRegistered<Message>(
-        key: Reception.Key<ActorRef<Message>>,
+        key: Reception.Key<_ActorRef<Message>>,
         expectedCount: Int = 1,
-        expectedRefs: Set<ActorRef<Message>>? = nil,
+        expectedRefs: Set<_ActorRef<Message>>? = nil,
         within: TimeAmount = .seconds(3)
     ) throws {
-        let lookupProbe = self.spawnTestProbe(expecting: Reception.Listing<ActorRef<Message>>.self)
+        let lookupProbe = self.spawnTestProbe(expecting: Reception.Listing<_ActorRef<Message>>.self)
 
         try self.eventually(within: within) {
             self.system._receptionist.lookup(key, replyTo: lookupProbe.ref)

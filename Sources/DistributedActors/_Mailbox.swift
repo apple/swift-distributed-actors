@@ -24,7 +24,7 @@ internal enum MailboxBitMasks {
     // Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
     // In other words, the only legal bit states a mailbox should observe are:
     //  -> 0b000... alive,
-    //  -> 0b001... suspended (actor is waiting for completion of AsyncResult and will only process system messages until then),
+    //  -> 0b001... suspended (actor is waiting for completion of _AsyncResult and will only process system messages until then),
     //  -> 0b010... terminating,
     //  -> 0b110... closed (also known as: "terminated", "dead")
     //
@@ -58,7 +58,7 @@ internal final class _Mailbox<Message: ActorMessage> {
     let systemMessages: MPSCLinkedQueue<_SystemMessage>
     let capacity: UInt32
     let maxRunLength: UInt32
-    let deadLetters: ActorRef<DeadLetter>
+    let deadLetters: _ActorRef<DeadLetter>
     let address: ActorAddress
     let serializeAllMessages: Bool
 

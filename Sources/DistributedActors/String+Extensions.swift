@@ -196,15 +196,15 @@ public extension String.StringInterpolation {
 // MARK: Actor Ref custom interpolations
 
 public extension String.StringInterpolation {
-    mutating func appendInterpolation<Message>(name ref: ActorRef<Message>) {
+    mutating func appendInterpolation<Message>(name ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.address.name)]")
     }
 
-    mutating func appendInterpolation<Message>(uniquePath ref: ActorRef<Message>) {
+    mutating func appendInterpolation<Message>(uniquePath ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.address)]") // TODO: make those address
     }
 
-    mutating func appendInterpolation<Message>(path ref: ActorRef<Message>) {
+    mutating func appendInterpolation<Message>(path ref: _ActorRef<Message>) {
         self.appendLiteral("[\(ref.address.path)]")
     }
 }
