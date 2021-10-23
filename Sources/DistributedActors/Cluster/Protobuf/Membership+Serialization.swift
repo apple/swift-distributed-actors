@@ -18,9 +18,9 @@ import Foundation
 // MARK: Serialization
 
 extension Cluster.Membership: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoClusterMembership
+    public typealias ProtobufRepresentation = _ProtoClusterMembership
 
-    public func toProto(context: Serialization.Context) throws -> ProtoClusterMembership {
+    public func toProto(context: Serialization.Context) throws -> _ProtoClusterMembership {
         var proto = ProtobufRepresentation()
         proto.members = try self._members.values.map {
             try $0.toProto(context: context)
@@ -31,7 +31,7 @@ extension Cluster.Membership: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoClusterMembership, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoClusterMembership, context: Serialization.Context) throws {
         self._members = [:]
         self._members.reserveCapacity(proto.members.count)
         for protoMember in proto.members {
@@ -47,7 +47,7 @@ extension Cluster.Membership: ProtobufRepresentable {
 }
 
 extension Cluster.Member: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoClusterMember
+    public typealias ProtobufRepresentation = _ProtoClusterMember
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
         var proto = ProtobufRepresentation()
@@ -73,7 +73,7 @@ extension Cluster.Member: ProtobufRepresentable {
 
 // not conforming to InternalProtobufRepresentable since it is a raw `enum` not a Message
 extension Cluster.MemberReachability {
-    func toProto(context: Serialization.Context) throws -> ProtoClusterMemberReachability {
+    func toProto(context: Serialization.Context) throws -> _ProtoClusterMemberReachability {
         switch self {
         case .reachable:
             return .reachable
@@ -82,12 +82,12 @@ extension Cluster.MemberReachability {
         }
     }
 
-    init(fromProto proto: ProtoClusterMemberReachability, context: Serialization.Context) throws {
+    init(fromProto proto: _ProtoClusterMemberReachability, context: Serialization.Context) throws {
         switch proto {
         case .unspecified:
-            throw SerializationError.missingField("reachability", type: "\(ProtoClusterMemberReachability.self)")
+            throw SerializationError.missingField("reachability", type: "\(_ProtoClusterMemberReachability.self)")
         case .UNRECOGNIZED(let n):
-            throw SerializationError.missingField("reachability:\(n)", type: "\(ProtoClusterMemberReachability.self)")
+            throw SerializationError.missingField("reachability:\(n)", type: "\(_ProtoClusterMemberReachability.self)")
         case .reachable:
             self = .reachable
         case .unreachable:
@@ -98,8 +98,8 @@ extension Cluster.MemberReachability {
 
 // not conforming to InternalProtobufRepresentable since this is a raw `enum` not a Message
 extension Cluster.MemberStatus {
-    func toProto(context: Serialization.Context) -> ProtoClusterMemberStatus {
-        var proto = ProtoClusterMemberStatus()
+    func toProto(context: Serialization.Context) -> _ProtoClusterMemberStatus {
+        var proto = _ProtoClusterMemberStatus()
         switch self {
         case .joining:
             proto = .joining
@@ -115,12 +115,12 @@ extension Cluster.MemberStatus {
         return proto
     }
 
-    init(fromProto proto: ProtoClusterMemberStatus, context: Serialization.Context) throws {
+    init(fromProto proto: _ProtoClusterMemberStatus, context: Serialization.Context) throws {
         switch proto {
         case .unspecified:
-            throw SerializationError.missingField("status", type: "\(ProtoClusterMemberStatus.self)")
+            throw SerializationError.missingField("status", type: "\(_ProtoClusterMemberStatus.self)")
         case .UNRECOGNIZED(let n):
-            throw SerializationError.missingField("status:\(n)", type: "\(ProtoClusterMemberStatus.self)")
+            throw SerializationError.missingField("status:\(n)", type: "\(_ProtoClusterMemberStatus.self)")
         case .joining:
             self = .joining
         case .up:

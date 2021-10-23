@@ -310,7 +310,7 @@ extension Supervision.Failure: CustomStringConvertible, CustomDebugStringConvert
         switch self {
         case .fault(let f):
             switch f {
-            case let msgProcessingErr as MessageProcessingFailure:
+            case let msgProcessingErr as _MessageProcessingFailure:
                 return "fault(\(msgProcessingErr))"
             default:
                 return "fault(\(f))"
@@ -324,7 +324,7 @@ extension Supervision.Failure: CustomStringConvertible, CustomDebugStringConvert
         switch self {
         case .fault(let f):
             switch f {
-            case let msgProcessingErr as MessageProcessingFailure:
+            case let msgProcessingErr as _MessageProcessingFailure:
                 return "fault(\(String(reflecting: msgProcessingErr))"
             default:
                 return "fault(\(f))"

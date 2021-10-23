@@ -16,7 +16,7 @@
 syntax = "proto3";
 
 option optimize_for = SPEED;
-option swift_prefix = "Proto";
+option swift_prefix = "_Proto";
 
 message ParkingGarageStatus {
     enum Type {

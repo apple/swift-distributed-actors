@@ -33,7 +33,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-public struct ProtoSystemMessage {
+public struct _ProtoSystemMessage {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -43,26 +43,26 @@ public struct ProtoSystemMessage {
     set {_uniqueStorage()._payload = newValue}
   }
 
-  public var watch: ProtoSystemMessage_Watch {
+  public var watch: _ProtoSystemMessage_Watch {
     get {
       if case .watch(let v)? = _storage._payload {return v}
-      return ProtoSystemMessage_Watch()
+      return _ProtoSystemMessage_Watch()
     }
     set {_uniqueStorage()._payload = .watch(newValue)}
   }
 
-  public var unwatch: ProtoSystemMessage_Unwatch {
+  public var unwatch: _ProtoSystemMessage_Unwatch {
     get {
       if case .unwatch(let v)? = _storage._payload {return v}
-      return ProtoSystemMessage_Unwatch()
+      return _ProtoSystemMessage_Unwatch()
     }
     set {_uniqueStorage()._payload = .unwatch(newValue)}
   }
 
-  public var terminated: ProtoSystemMessage_Terminated {
+  public var terminated: _ProtoSystemMessage_Terminated {
     get {
       if case .terminated(let v)? = _storage._payload {return v}
-      return ProtoSystemMessage_Terminated()
+      return _ProtoSystemMessage_Terminated()
     }
     set {_uniqueStorage()._payload = .terminated(newValue)}
   }
@@ -70,12 +70,12 @@ public struct ProtoSystemMessage {
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Payload: Equatable {
-    case watch(ProtoSystemMessage_Watch)
-    case unwatch(ProtoSystemMessage_Unwatch)
-    case terminated(ProtoSystemMessage_Terminated)
+    case watch(_ProtoSystemMessage_Watch)
+    case unwatch(_ProtoSystemMessage_Unwatch)
+    case terminated(_ProtoSystemMessage_Terminated)
 
   #if !swift(>=4.1)
-    public static func ==(lhs: ProtoSystemMessage.OneOf_Payload, rhs: ProtoSystemMessage.OneOf_Payload) -> Bool {
+    public static func ==(lhs: _ProtoSystemMessage.OneOf_Payload, rhs: _ProtoSystemMessage.OneOf_Payload) -> Bool {
       switch (lhs, rhs) {
       case (.watch(let l), .watch(let r)): return l == r
       case (.unwatch(let l), .unwatch(let r)): return l == r
@@ -91,13 +91,13 @@ public struct ProtoSystemMessage {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoSystemMessage_Watch {
+public struct _ProtoSystemMessage_Watch {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var watchee: ProtoActorAddress {
-    get {return _storage._watchee ?? ProtoActorAddress()}
+  public var watchee: _ProtoActorAddress {
+    get {return _storage._watchee ?? _ProtoActorAddress()}
     set {_uniqueStorage()._watchee = newValue}
   }
   /// Returns true if `watchee` has been explicitly set.
@@ -105,8 +105,8 @@ public struct ProtoSystemMessage_Watch {
   /// Clears the value of `watchee`. Subsequent reads from it will return its default value.
   public mutating func clearWatchee() {_uniqueStorage()._watchee = nil}
 
-  public var watcher: ProtoActorAddress {
-    get {return _storage._watcher ?? ProtoActorAddress()}
+  public var watcher: _ProtoActorAddress {
+    get {return _storage._watcher ?? _ProtoActorAddress()}
     set {_uniqueStorage()._watcher = newValue}
   }
   /// Returns true if `watcher` has been explicitly set.
@@ -121,13 +121,13 @@ public struct ProtoSystemMessage_Watch {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoSystemMessage_Unwatch {
+public struct _ProtoSystemMessage_Unwatch {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var watchee: ProtoActorAddress {
-    get {return _storage._watchee ?? ProtoActorAddress()}
+  public var watchee: _ProtoActorAddress {
+    get {return _storage._watchee ?? _ProtoActorAddress()}
     set {_uniqueStorage()._watchee = newValue}
   }
   /// Returns true if `watchee` has been explicitly set.
@@ -135,8 +135,8 @@ public struct ProtoSystemMessage_Unwatch {
   /// Clears the value of `watchee`. Subsequent reads from it will return its default value.
   public mutating func clearWatchee() {_uniqueStorage()._watchee = nil}
 
-  public var watcher: ProtoActorAddress {
-    get {return _storage._watcher ?? ProtoActorAddress()}
+  public var watcher: _ProtoActorAddress {
+    get {return _storage._watcher ?? _ProtoActorAddress()}
     set {_uniqueStorage()._watcher = newValue}
   }
   /// Returns true if `watcher` has been explicitly set.
@@ -151,13 +151,13 @@ public struct ProtoSystemMessage_Unwatch {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoSystemMessage_Terminated {
+public struct _ProtoSystemMessage_Terminated {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var ref: ProtoActorAddress {
-    get {return _storage._ref ?? ProtoActorAddress()}
+  public var ref: _ProtoActorAddress {
+    get {return _storage._ref ?? _ProtoActorAddress()}
     set {_uniqueStorage()._ref = newValue}
   }
   /// Returns true if `ref` has been explicitly set.
@@ -182,7 +182,7 @@ public struct ProtoSystemMessage_Terminated {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoSystemMessageACK {
+public struct _ProtoSystemMessageACK {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -194,7 +194,7 @@ public struct ProtoSystemMessageACK {
   public init() {}
 }
 
-public struct ProtoSystemMessageNACK {
+public struct _ProtoSystemMessageNACK {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -207,7 +207,7 @@ public struct ProtoSystemMessageNACK {
   public init() {}
 }
 
-public struct ProtoSystemMessageEnvelope {
+public struct _ProtoSystemMessageEnvelope {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -217,8 +217,8 @@ public struct ProtoSystemMessageEnvelope {
     set {_uniqueStorage()._sequenceNr = newValue}
   }
 
-  public var message: ProtoSystemMessage {
-    get {return _storage._message ?? ProtoSystemMessage()}
+  public var message: _ProtoSystemMessage {
+    get {return _storage._message ?? _ProtoSystemMessage()}
     set {_uniqueStorage()._message = newValue}
   }
   /// Returns true if `message` has been explicitly set.
@@ -235,7 +235,7 @@ public struct ProtoSystemMessageEnvelope {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SystemMessage"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "watch"),
@@ -244,7 +244,7 @@ extension ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
   ]
 
   fileprivate class _StorageClass {
-    var _payload: ProtoSystemMessage.OneOf_Payload?
+    var _payload: _ProtoSystemMessage.OneOf_Payload?
 
     static let defaultInstance = _StorageClass()
 
@@ -268,7 +268,7 @@ extension ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1:
-          var v: ProtoSystemMessage_Watch?
+          var v: _ProtoSystemMessage_Watch?
           if let current = _storage._payload {
             try decoder.handleConflictingOneOf()
             if case .watch(let m) = current {v = m}
@@ -276,7 +276,7 @@ extension ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {_storage._payload = .watch(v)}
         case 2:
-          var v: ProtoSystemMessage_Unwatch?
+          var v: _ProtoSystemMessage_Unwatch?
           if let current = _storage._payload {
             try decoder.handleConflictingOneOf()
             if case .unwatch(let m) = current {v = m}
@@ -284,7 +284,7 @@ extension ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {_storage._payload = .unwatch(v)}
         case 3:
-          var v: ProtoSystemMessage_Terminated?
+          var v: _ProtoSystemMessage_Terminated?
           if let current = _storage._payload {
             try decoder.handleConflictingOneOf()
             if case .terminated(let m) = current {v = m}
@@ -312,7 +312,7 @@ extension ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoSystemMessage, rhs: ProtoSystemMessage) -> Bool {
+  public static func ==(lhs: _ProtoSystemMessage, rhs: _ProtoSystemMessage) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -327,7 +327,7 @@ extension ProtoSystemMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
   }
 }
 
-extension ProtoSystemMessage_Watch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemMessage_Watch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SystemMessage_Watch"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "watchee"),
@@ -335,8 +335,8 @@ extension ProtoSystemMessage_Watch: SwiftProtobuf.Message, SwiftProtobuf._Messag
   ]
 
   fileprivate class _StorageClass {
-    var _watchee: ProtoActorAddress? = nil
-    var _watcher: ProtoActorAddress? = nil
+    var _watchee: _ProtoActorAddress? = nil
+    var _watcher: _ProtoActorAddress? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -380,7 +380,7 @@ extension ProtoSystemMessage_Watch: SwiftProtobuf.Message, SwiftProtobuf._Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoSystemMessage_Watch, rhs: ProtoSystemMessage_Watch) -> Bool {
+  public static func ==(lhs: _ProtoSystemMessage_Watch, rhs: _ProtoSystemMessage_Watch) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -396,7 +396,7 @@ extension ProtoSystemMessage_Watch: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-extension ProtoSystemMessage_Unwatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemMessage_Unwatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SystemMessage_Unwatch"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "watchee"),
@@ -404,8 +404,8 @@ extension ProtoSystemMessage_Unwatch: SwiftProtobuf.Message, SwiftProtobuf._Mess
   ]
 
   fileprivate class _StorageClass {
-    var _watchee: ProtoActorAddress? = nil
-    var _watcher: ProtoActorAddress? = nil
+    var _watchee: _ProtoActorAddress? = nil
+    var _watcher: _ProtoActorAddress? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -449,7 +449,7 @@ extension ProtoSystemMessage_Unwatch: SwiftProtobuf.Message, SwiftProtobuf._Mess
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoSystemMessage_Unwatch, rhs: ProtoSystemMessage_Unwatch) -> Bool {
+  public static func ==(lhs: _ProtoSystemMessage_Unwatch, rhs: _ProtoSystemMessage_Unwatch) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -465,7 +465,7 @@ extension ProtoSystemMessage_Unwatch: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 }
 
-extension ProtoSystemMessage_Terminated: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemMessage_Terminated: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SystemMessage_Terminated"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "ref"),
@@ -474,7 +474,7 @@ extension ProtoSystemMessage_Terminated: SwiftProtobuf.Message, SwiftProtobuf._M
   ]
 
   fileprivate class _StorageClass {
-    var _ref: ProtoActorAddress? = nil
+    var _ref: _ProtoActorAddress? = nil
     var _existenceConfirmed: Bool = false
     var _addressTerminated: Bool = false
 
@@ -525,7 +525,7 @@ extension ProtoSystemMessage_Terminated: SwiftProtobuf.Message, SwiftProtobuf._M
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoSystemMessage_Terminated, rhs: ProtoSystemMessage_Terminated) -> Bool {
+  public static func ==(lhs: _ProtoSystemMessage_Terminated, rhs: _ProtoSystemMessage_Terminated) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -542,7 +542,7 @@ extension ProtoSystemMessage_Terminated: SwiftProtobuf.Message, SwiftProtobuf._M
   }
 }
 
-extension ProtoSystemMessageACK: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemMessageACK: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SystemMessageACK"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "sequenceNr"),
@@ -564,14 +564,14 @@ extension ProtoSystemMessageACK: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoSystemMessageACK, rhs: ProtoSystemMessageACK) -> Bool {
+  public static func ==(lhs: _ProtoSystemMessageACK, rhs: _ProtoSystemMessageACK) -> Bool {
     if lhs.sequenceNr != rhs.sequenceNr {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension ProtoSystemMessageNACK: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemMessageNACK: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SystemMessageNACK"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "sequenceNr"),
@@ -593,14 +593,14 @@ extension ProtoSystemMessageNACK: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoSystemMessageNACK, rhs: ProtoSystemMessageNACK) -> Bool {
+  public static func ==(lhs: _ProtoSystemMessageNACK, rhs: _ProtoSystemMessageNACK) -> Bool {
     if lhs.sequenceNr != rhs.sequenceNr {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension ProtoSystemMessageEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemMessageEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "SystemMessageEnvelope"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "sequenceNr"),
@@ -609,7 +609,7 @@ extension ProtoSystemMessageEnvelope: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
   fileprivate class _StorageClass {
     var _sequenceNr: UInt64 = 0
-    var _message: ProtoSystemMessage? = nil
+    var _message: _ProtoSystemMessage? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -653,7 +653,7 @@ extension ProtoSystemMessageEnvelope: SwiftProtobuf.Message, SwiftProtobuf._Mess
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoSystemMessageEnvelope, rhs: ProtoSystemMessageEnvelope) -> Bool {
+  public static func ==(lhs: _ProtoSystemMessageEnvelope, rhs: _ProtoSystemMessageEnvelope) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0

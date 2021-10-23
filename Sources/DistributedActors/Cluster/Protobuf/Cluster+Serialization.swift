@@ -18,20 +18,20 @@ import Foundation
 // MARK: Serialization
 
 extension ClusterShell.Message: InternalProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoClusterShellMessage
+    typealias ProtobufRepresentation = _ProtoClusterShellMessage
 
     // FIXME: change this completely
-    func toProto(context: Serialization.Context) throws -> ProtoClusterShellMessage {
-        var proto = ProtoClusterShellMessage()
+    func toProto(context: Serialization.Context) throws -> _ProtoClusterShellMessage {
+        var proto = _ProtoClusterShellMessage()
 
         switch self {
         case .requestMembershipChange(let event):
             proto.clusterEvent = try event.toProto(context: context)
         case .inbound(.restInPeace(let target, let from)):
-            var protoRIP = ProtoClusterRestInPeace()
+            var protoRIP = _ProtoClusterRestInPeace()
             protoRIP.targetNode = try target.toProto(context: context)
             protoRIP.fromNode = try from.toProto(context: context)
-            var protoInbound = ProtoClusterInbound()
+            var protoInbound = _ProtoClusterInbound()
             protoInbound.restInPeace = protoRIP
             proto.inbound = protoInbound
         default:
@@ -40,7 +40,7 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         return proto
     }
 
-    init(fromProto proto: ProtoClusterShellMessage, context: Serialization.Context) throws {
+    init(fromProto proto: _ProtoClusterShellMessage, context: Serialization.Context) throws {
         switch proto.message {
         case .some(.clusterEvent(let protoEvent)):
             self = try .requestMembershipChange(.init(fromProto: protoEvent, context: context))
@@ -54,7 +54,7 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
                     )
                 )
             case .none:
-                throw SerializationError.missingField("inbound.message", type: "\(ProtoClusterInbound.self)")
+                throw SerializationError.missingField("inbound.message", type: "\(_ProtoClusterInbound.self)")
             }
         case .none:
             throw SerializationError.missingField("message", type: "\(ProtobufRepresentation.self)")

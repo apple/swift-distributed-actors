@@ -45,20 +45,20 @@ extension __DistributedClusterActor {
 }
 
 extension AnyActorIdentity: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoActorIdentity
+    public typealias ProtobufRepresentation = _ProtoActorIdentity
 
-    public func toProto(context: Serialization.Context) throws -> ProtoActorIdentity {
+    public func toProto(context: Serialization.Context) throws -> _ProtoActorIdentity {
         let address = self._forceUnwrapActorAddress
         let serialized = try context.serialization.serialize(address)
 
-        var proto = ProtoActorIdentity()
+        var proto = _ProtoActorIdentity()
         proto.manifest = try serialized.manifest.toProto(context: context)
         proto.payload = serialized.buffer.readData()
 
         return proto
     }
 
-    public init(fromProto proto: ProtoActorIdentity, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoActorIdentity, context: Serialization.Context) throws {
         let manifest = Serialization.Manifest(fromProto: proto.manifest)
         let ManifestedType = try context.summonType(from: manifest)
 

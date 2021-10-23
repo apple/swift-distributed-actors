@@ -13,18 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 extension Cluster.MembershipGossip: ProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoClusterMembershipGossip
+    typealias ProtobufRepresentation = _ProtoClusterMembershipGossip
 
     public func toProto(context: Serialization.Context) throws -> ProtobufRepresentation {
-        var proto = ProtoClusterMembershipGossip()
+        var proto = _ProtoClusterMembershipGossip()
         proto.ownerUniqueNodeID = self.owner.nid.value
         proto.membership = try self.membership.toProto(context: context)
 
         // we manually ensure we encode using node identifiers, rather than full unique nodes to save space:
-        var protoSeenTable = ProtoClusterMembershipSeenTable()
+        var protoSeenTable = _ProtoClusterMembershipSeenTable()
         protoSeenTable.rows.reserveCapacity(self.seen.underlying.count)
         for (node, seenVersion) in self.seen.underlying {
-            var row = ProtoClusterMembershipSeenTableRow()
+            var row = _ProtoClusterMembershipSeenTableRow()
             row.uniqueNodeID = node.nid.value
             row.version = try seenVersion.toCompactReplicaNodeIDProto(context: context)
             protoSeenTable.rows.append(row)

@@ -47,7 +47,7 @@ private func setUp(and postSetUp: () -> Void = { () in
     protoMediumMessage.field01 = "something-test"
     protoMediumMessage.field02 = "something-else-test"
     protoMediumMessage.field03 = 42
-    protoMediumMessage.field04 = ProtoMediumMessage.NestedMessage()
+    protoMediumMessage.field04 = _ProtoMediumMessage.NestedMessage()
     protoMediumMessage.field04.field1 = "something-nested-test"
     protoMediumMessage.field04.field2 = 43
     protoMediumMessage.field04.field3 = 44
@@ -75,18 +75,18 @@ private func tearDown() {
 
 // -------
 
-var protoSmallMessage = ProtoSmallMessage()
+var protoSmallMessage = _ProtoSmallMessage()
 
 func bench_protobuf_roundTrip_message_small(n: Int) {
     let serialized = try! system.serialization.serialize(protoSmallMessage)
-    _ = try! system.serialization.deserialize(as: ProtoSmallMessage.self, from: serialized)
+    _ = try! system.serialization.deserialize(as: _ProtoSmallMessage.self, from: serialized)
 }
 
 // -------
 
-var protoMediumMessage = ProtoMediumMessage()
+var protoMediumMessage = _ProtoMediumMessage()
 
 func bench_protobuf_roundTrip_message_medium(n: Int) {
     let serialized = try! system.serialization.serialize(protoMediumMessage)
-    _ = try! system.serialization.deserialize(as: ProtoMediumMessage.self, from: serialized)
+    _ = try! system.serialization.deserialize(as: _ProtoMediumMessage.self, from: serialized)
 }

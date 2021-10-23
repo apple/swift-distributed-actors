@@ -33,7 +33,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-public struct ProtoManifest {
+public struct _ProtoManifest {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -49,7 +49,7 @@ public struct ProtoManifest {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoManifest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoManifest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = "Manifest"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "serializerID"),
@@ -76,7 +76,7 @@ extension ProtoManifest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: ProtoManifest, rhs: ProtoManifest) -> Bool {
+  public static func ==(lhs: _ProtoManifest, rhs: _ProtoManifest) -> Bool {
     if lhs.serializerID != rhs.serializerID {return false}
     if lhs.hint != rhs.hint {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}

@@ -33,13 +33,13 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-struct ProtoHandshakeOffer {
+struct _ProtoHandshakeOffer {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var version: ProtoProtocolVersion {
-    get {return _storage._version ?? ProtoProtocolVersion()}
+  var version: _ProtoProtocolVersion {
+    get {return _storage._version ?? _ProtoProtocolVersion()}
     set {_uniqueStorage()._version = newValue}
   }
   /// Returns true if `version` has been explicitly set.
@@ -47,8 +47,8 @@ struct ProtoHandshakeOffer {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var originNode: ProtoUniqueNode {
-    get {return _storage._originNode ?? ProtoUniqueNode()}
+  var originNode: _ProtoUniqueNode {
+    get {return _storage._originNode ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._originNode = newValue}
   }
   /// Returns true if `originNode` has been explicitly set.
@@ -61,8 +61,8 @@ struct ProtoHandshakeOffer {
   /// faster transport like InfiniBand and the likes, so we can
   /// upgrade the connection in case both nodes support the fast
   /// transport.
-  var targetNode: ProtoNode {
-    get {return _storage._targetNode ?? ProtoNode()}
+  var targetNode: _ProtoNode {
+    get {return _storage._targetNode ?? _ProtoNode()}
     set {_uniqueStorage()._targetNode = newValue}
   }
   /// Returns true if `targetNode` has been explicitly set.
@@ -77,7 +77,7 @@ struct ProtoHandshakeOffer {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoHandshakeResponse {
+struct _ProtoHandshakeResponse {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -87,18 +87,18 @@ struct ProtoHandshakeResponse {
     set {_uniqueStorage()._status = newValue}
   }
 
-  var accept: ProtoHandshakeAccept {
+  var accept: _ProtoHandshakeAccept {
     get {
       if case .accept(let v)? = _storage._status {return v}
-      return ProtoHandshakeAccept()
+      return _ProtoHandshakeAccept()
     }
     set {_uniqueStorage()._status = .accept(newValue)}
   }
 
-  var reject: ProtoHandshakeReject {
+  var reject: _ProtoHandshakeReject {
     get {
       if case .reject(let v)? = _storage._status {return v}
-      return ProtoHandshakeReject()
+      return _ProtoHandshakeReject()
     }
     set {_uniqueStorage()._status = .reject(newValue)}
   }
@@ -106,11 +106,11 @@ struct ProtoHandshakeResponse {
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   enum OneOf_Status: Equatable {
-    case accept(ProtoHandshakeAccept)
-    case reject(ProtoHandshakeReject)
+    case accept(_ProtoHandshakeAccept)
+    case reject(_ProtoHandshakeReject)
 
   #if !swift(>=4.1)
-    static func ==(lhs: ProtoHandshakeResponse.OneOf_Status, rhs: ProtoHandshakeResponse.OneOf_Status) -> Bool {
+    static func ==(lhs: _ProtoHandshakeResponse.OneOf_Status, rhs: _ProtoHandshakeResponse.OneOf_Status) -> Bool {
       switch (lhs, rhs) {
       case (.accept(let l), .accept(let r)): return l == r
       case (.reject(let l), .reject(let r)): return l == r
@@ -125,13 +125,13 @@ struct ProtoHandshakeResponse {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoHandshakeAccept {
+struct _ProtoHandshakeAccept {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var version: ProtoProtocolVersion {
-    get {return _storage._version ?? ProtoProtocolVersion()}
+  var version: _ProtoProtocolVersion {
+    get {return _storage._version ?? _ProtoProtocolVersion()}
     set {_uniqueStorage()._version = newValue}
   }
   /// Returns true if `version` has been explicitly set.
@@ -139,8 +139,8 @@ struct ProtoHandshakeAccept {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var originNode: ProtoUniqueNode {
-    get {return _storage._originNode ?? ProtoUniqueNode()}
+  var originNode: _ProtoUniqueNode {
+    get {return _storage._originNode ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._originNode = newValue}
   }
   /// Returns true if `originNode` has been explicitly set.
@@ -148,8 +148,8 @@ struct ProtoHandshakeAccept {
   /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
   mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
 
-  var targetNode: ProtoUniqueNode {
-    get {return _storage._targetNode ?? ProtoUniqueNode()}
+  var targetNode: _ProtoUniqueNode {
+    get {return _storage._targetNode ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._targetNode = newValue}
   }
   /// Returns true if `targetNode` has been explicitly set.
@@ -164,13 +164,13 @@ struct ProtoHandshakeAccept {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoHandshakeReject {
+struct _ProtoHandshakeReject {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var version: ProtoProtocolVersion {
-    get {return _storage._version ?? ProtoProtocolVersion()}
+  var version: _ProtoProtocolVersion {
+    get {return _storage._version ?? _ProtoProtocolVersion()}
     set {_uniqueStorage()._version = newValue}
   }
   /// Returns true if `version` has been explicitly set.
@@ -178,8 +178,8 @@ struct ProtoHandshakeReject {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var originNode: ProtoUniqueNode {
-    get {return _storage._originNode ?? ProtoUniqueNode()}
+  var originNode: _ProtoUniqueNode {
+    get {return _storage._originNode ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._originNode = newValue}
   }
   /// Returns true if `originNode` has been explicitly set.
@@ -187,8 +187,8 @@ struct ProtoHandshakeReject {
   /// Clears the value of `originNode`. Subsequent reads from it will return its default value.
   mutating func clearOriginNode() {_uniqueStorage()._originNode = nil}
 
-  var targetNode: ProtoUniqueNode {
-    get {return _storage._targetNode ?? ProtoUniqueNode()}
+  var targetNode: _ProtoUniqueNode {
+    get {return _storage._targetNode ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._targetNode = newValue}
   }
   /// Returns true if `targetNode` has been explicitly set.
@@ -208,13 +208,13 @@ struct ProtoHandshakeReject {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoEnvelope {
+struct _ProtoEnvelope {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var recipient: ProtoActorAddress {
-    get {return _storage._recipient ?? ProtoActorAddress()}
+  var recipient: _ProtoActorAddress {
+    get {return _storage._recipient ?? _ProtoActorAddress()}
     set {_uniqueStorage()._recipient = newValue}
   }
   /// Returns true if `recipient` has been explicitly set.
@@ -222,8 +222,8 @@ struct ProtoEnvelope {
   /// Clears the value of `recipient`. Subsequent reads from it will return its default value.
   mutating func clearRecipient() {_uniqueStorage()._recipient = nil}
 
-  var manifest: ProtoManifest {
-    get {return _storage._manifest ?? ProtoManifest()}
+  var manifest: _ProtoManifest {
+    get {return _storage._manifest ?? _ProtoManifest()}
     set {_uniqueStorage()._manifest = newValue}
   }
   /// Returns true if `manifest` has been explicitly set.
@@ -245,7 +245,7 @@ struct ProtoEnvelope {
 
 /// System messages have to be reliable, therefore they need to be acknowledged
 /// by the receiving node.
-struct ProtoSystemEnvelope {
+struct _ProtoSystemEnvelope {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -255,8 +255,8 @@ struct ProtoSystemEnvelope {
     set {_uniqueStorage()._sequenceNr = newValue}
   }
 
-  var from: ProtoUniqueNode {
-    get {return _storage._from ?? ProtoUniqueNode()}
+  var from: _ProtoUniqueNode {
+    get {return _storage._from ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._from = newValue}
   }
   /// Returns true if `from` has been explicitly set.
@@ -264,8 +264,8 @@ struct ProtoSystemEnvelope {
   /// Clears the value of `from`. Subsequent reads from it will return its default value.
   mutating func clearFrom() {_uniqueStorage()._from = nil}
 
-  var manifest: ProtoManifest {
-    get {return _storage._manifest ?? ProtoManifest()}
+  var manifest: _ProtoManifest {
+    get {return _storage._manifest ?? _ProtoManifest()}
     set {_uniqueStorage()._manifest = newValue}
   }
   /// Returns true if `manifest` has been explicitly set.
@@ -285,7 +285,7 @@ struct ProtoSystemEnvelope {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoSystemAck {
+struct _ProtoSystemAck {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -295,8 +295,8 @@ struct ProtoSystemAck {
     set {_uniqueStorage()._sequenceNr = newValue}
   }
 
-  var from: ProtoUniqueNode {
-    get {return _storage._from ?? ProtoUniqueNode()}
+  var from: _ProtoUniqueNode {
+    get {return _storage._from ?? _ProtoUniqueNode()}
     set {_uniqueStorage()._from = newValue}
   }
   /// Returns true if `from` has been explicitly set.
@@ -319,7 +319,7 @@ struct ProtoSystemAck {
 /// Because protobuf does not support values with less than 4 bytes, we
 /// encode all values in a single uint32 and provide an extension to
 /// retrieve the specific values.
-struct ProtoProtocolVersion {
+struct _ProtoProtocolVersion {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -340,7 +340,7 @@ struct ProtoProtocolVersion {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "HandshakeOffer"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
@@ -349,9 +349,9 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   ]
 
   fileprivate class _StorageClass {
-    var _version: ProtoProtocolVersion? = nil
-    var _originNode: ProtoUniqueNode? = nil
-    var _targetNode: ProtoNode? = nil
+    var _version: _ProtoProtocolVersion? = nil
+    var _originNode: _ProtoUniqueNode? = nil
+    var _targetNode: _ProtoNode? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -400,7 +400,7 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoHandshakeOffer, rhs: ProtoHandshakeOffer) -> Bool {
+  static func ==(lhs: _ProtoHandshakeOffer, rhs: _ProtoHandshakeOffer) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -417,7 +417,7 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "HandshakeResponse"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "accept"),
@@ -425,7 +425,7 @@ extension ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   ]
 
   fileprivate class _StorageClass {
-    var _status: ProtoHandshakeResponse.OneOf_Status?
+    var _status: _ProtoHandshakeResponse.OneOf_Status?
 
     static let defaultInstance = _StorageClass()
 
@@ -449,7 +449,7 @@ extension ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1:
-          var v: ProtoHandshakeAccept?
+          var v: _ProtoHandshakeAccept?
           if let current = _storage._status {
             try decoder.handleConflictingOneOf()
             if case .accept(let m) = current {v = m}
@@ -457,7 +457,7 @@ extension ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           try decoder.decodeSingularMessageField(value: &v)
           if let v = v {_storage._status = .accept(v)}
         case 2:
-          var v: ProtoHandshakeReject?
+          var v: _ProtoHandshakeReject?
           if let current = _storage._status {
             try decoder.handleConflictingOneOf()
             if case .reject(let m) = current {v = m}
@@ -483,7 +483,7 @@ extension ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoHandshakeResponse, rhs: ProtoHandshakeResponse) -> Bool {
+  static func ==(lhs: _ProtoHandshakeResponse, rhs: _ProtoHandshakeResponse) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -498,7 +498,7 @@ extension ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   }
 }
 
-extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "HandshakeAccept"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
@@ -507,9 +507,9 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   ]
 
   fileprivate class _StorageClass {
-    var _version: ProtoProtocolVersion? = nil
-    var _originNode: ProtoUniqueNode? = nil
-    var _targetNode: ProtoUniqueNode? = nil
+    var _version: _ProtoProtocolVersion? = nil
+    var _originNode: _ProtoUniqueNode? = nil
+    var _targetNode: _ProtoUniqueNode? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -558,7 +558,7 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoHandshakeAccept, rhs: ProtoHandshakeAccept) -> Bool {
+  static func ==(lhs: _ProtoHandshakeAccept, rhs: _ProtoHandshakeAccept) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -575,7 +575,7 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   }
 }
 
-extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "HandshakeReject"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
@@ -585,9 +585,9 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   ]
 
   fileprivate class _StorageClass {
-    var _version: ProtoProtocolVersion? = nil
-    var _originNode: ProtoUniqueNode? = nil
-    var _targetNode: ProtoUniqueNode? = nil
+    var _version: _ProtoProtocolVersion? = nil
+    var _originNode: _ProtoUniqueNode? = nil
+    var _targetNode: _ProtoUniqueNode? = nil
     var _reason: String = String()
 
     static let defaultInstance = _StorageClass()
@@ -642,7 +642,7 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoHandshakeReject, rhs: ProtoHandshakeReject) -> Bool {
+  static func ==(lhs: _ProtoHandshakeReject, rhs: _ProtoHandshakeReject) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -660,7 +660,7 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   }
 }
 
-extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "Envelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "recipient"),
@@ -669,8 +669,8 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   ]
 
   fileprivate class _StorageClass {
-    var _recipient: ProtoActorAddress? = nil
-    var _manifest: ProtoManifest? = nil
+    var _recipient: _ProtoActorAddress? = nil
+    var _manifest: _ProtoManifest? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
 
     static let defaultInstance = _StorageClass()
@@ -720,7 +720,7 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoEnvelope, rhs: ProtoEnvelope) -> Bool {
+  static func ==(lhs: _ProtoEnvelope, rhs: _ProtoEnvelope) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -737,7 +737,7 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   }
 }
 
-extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "SystemEnvelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "sequenceNr"),
@@ -748,8 +748,8 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
   fileprivate class _StorageClass {
     var _sequenceNr: UInt64 = 0
-    var _from: ProtoUniqueNode? = nil
-    var _manifest: ProtoManifest? = nil
+    var _from: _ProtoUniqueNode? = nil
+    var _manifest: _ProtoManifest? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
 
     static let defaultInstance = _StorageClass()
@@ -804,7 +804,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSystemEnvelope, rhs: ProtoSystemEnvelope) -> Bool {
+  static func ==(lhs: _ProtoSystemEnvelope, rhs: _ProtoSystemEnvelope) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -822,7 +822,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   }
 }
 
-extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "SystemAck"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "sequenceNr"),
@@ -831,7 +831,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
   fileprivate class _StorageClass {
     var _sequenceNr: UInt64 = 0
-    var _from: ProtoUniqueNode? = nil
+    var _from: _ProtoUniqueNode? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -875,7 +875,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoSystemAck, rhs: ProtoSystemAck) -> Bool {
+  static func ==(lhs: _ProtoSystemAck, rhs: _ProtoSystemAck) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -891,7 +891,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   }
 }
 
-extension ProtoProtocolVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoProtocolVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "ProtocolVersion"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "reserved"),
@@ -928,7 +928,7 @@ extension ProtoProtocolVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoProtocolVersion, rhs: ProtoProtocolVersion) -> Bool {
+  static func ==(lhs: _ProtoProtocolVersion, rhs: _ProtoProtocolVersion) -> Bool {
     if lhs.reserved != rhs.reserved {return false}
     if lhs.major != rhs.major {return false}
     if lhs.minor != rhs.minor {return false}

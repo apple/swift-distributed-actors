@@ -54,7 +54,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
     }
 
     private func initiateHandshake(context: ChannelHandlerContext) {
-        let proto = ProtoHandshakeOffer(self.handshakeOffer)
+        let proto = _ProtoHandshakeOffer(self.handshakeOffer)
         self.log.trace("Offering handshake [\(proto)]")
 
         do {
@@ -103,7 +103,7 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
         guard let data = bytes.readData(length: bytes.readableBytes) else {
             throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake accept")
         }
-        let proto = try ProtoHandshakeResponse(serializedData: data)
+        let proto = try _ProtoHandshakeResponse(serializedData: data)
         return try Wire.HandshakeResponse(proto)
     }
 }
@@ -170,13 +170,13 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
         guard let data = bytes.readData(length: bytes.readableBytes) else {
             throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake offer")
         }
-        let proto = try ProtoHandshakeOffer(serializedData: data)
+        let proto = try _ProtoHandshakeOffer(serializedData: data)
         return try Wire.HandshakeOffer(fromProto: proto)
     }
 
     private func writeHandshakeAccept(_ context: ChannelHandlerContext, _ accept: Wire.HandshakeAccept) throws {
-        var proto = ProtoHandshakeResponse()
-        proto.accept = ProtoHandshakeAccept(accept)
+        var proto = _ProtoHandshakeResponse()
+        proto.accept = _ProtoHandshakeAccept(accept)
 
         let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
         context.writeAndFlush(NIOAny(bytes), promise: nil)
@@ -187,8 +187,8 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
     }
 
     private func writeHandshakeReject(_ context: ChannelHandlerContext, _ reject: Wire.HandshakeReject) throws {
-        var proto = ProtoHandshakeResponse()
-        proto.reject = ProtoHandshakeReject(reject)
+        var proto = _ProtoHandshakeResponse()
+        proto.reject = _ProtoHandshakeReject(reject)
 
         let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
         context.writeAndFlush(NIOAny(bytes), promise: nil)

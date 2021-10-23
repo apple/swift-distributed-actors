@@ -18,10 +18,10 @@ import _Distributed
 // MARK: ReplicaID
 
 extension ReplicaID: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoVersionReplicaID
+    public typealias ProtobufRepresentation = _ProtoVersionReplicaID
 
-    public func toProto(context: Serialization.Context) throws -> ProtoVersionReplicaID {
-        var proto = ProtoVersionReplicaID()
+    public func toProto(context: Serialization.Context) throws -> _ProtoVersionReplicaID {
+        var proto = _ProtoVersionReplicaID()
         switch self.storage {
         case .actorAddress(let actorAddress):
             proto.actorAddress = try actorAddress.toProto(context: context)
@@ -35,7 +35,7 @@ extension ReplicaID: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionReplicaID, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoVersionReplicaID, context: Serialization.Context) throws {
         guard let value = proto.value else {
             throw SerializationError.missingField("value", type: String(describing: ReplicaID.self))
         }
@@ -60,13 +60,13 @@ extension ReplicaID: ProtobufRepresentable {
 // MARK: VersionVector
 
 extension VersionVector: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoVersionVector
+    public typealias ProtobufRepresentation = _ProtoVersionVector
 
-    public func toProto(context: Serialization.Context) throws -> ProtoVersionVector {
-        var proto = ProtoVersionVector()
+    public func toProto(context: Serialization.Context) throws -> _ProtoVersionVector {
+        var proto = _ProtoVersionVector()
 
-        let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaID, version in
-            var replicaVersion = ProtoReplicaVersion()
+        let replicaVersions: [_ProtoReplicaVersion] = try self.state.map { replicaID, version in
+            var replicaVersion = _ProtoReplicaVersion()
             replicaVersion.replicaID = try replicaID.toProto(context: context)
             replicaVersion.version = UInt64(version)
             return replicaVersion
@@ -78,11 +78,11 @@ extension VersionVector: ProtobufRepresentable {
 
     /// Serialize using uniqueNodeID specifically (or crash);
     /// Used in situations where an enclosing message already has the unique nodes serialized and we can save space by avoiding to serialize them again.
-    public func toCompactReplicaNodeIDProto(context: Serialization.Context) throws -> ProtoVersionVector {
-        var proto = ProtoVersionVector()
+    public func toCompactReplicaNodeIDProto(context: Serialization.Context) throws -> _ProtoVersionVector {
+        var proto = _ProtoVersionVector()
 
-        let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaID, version in
-            var replicaVersion = ProtoReplicaVersion()
+        let replicaVersions: [_ProtoReplicaVersion] = try self.state.map { replicaID, version in
+            var replicaVersion = _ProtoReplicaVersion()
             switch replicaID.storage {
             case .uniqueNode(let node):
                 replicaVersion.replicaID.uniqueNodeID = node.nid.value
@@ -101,7 +101,7 @@ extension VersionVector: ProtobufRepresentable {
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionVector, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoVersionVector, context: Serialization.Context) throws {
         // `state` defaults to [:]
         self.state.reserveCapacity(proto.state.count)
 
@@ -119,16 +119,16 @@ extension VersionVector: ProtobufRepresentable {
 // MARK: VersionDot
 
 extension VersionDot: ProtobufRepresentable {
-    public typealias ProtobufRepresentation = ProtoVersionDot
+    public typealias ProtobufRepresentation = _ProtoVersionDot
 
-    public func toProto(context: Serialization.Context) throws -> ProtoVersionDot {
-        var proto = ProtoVersionDot()
+    public func toProto(context: Serialization.Context) throws -> _ProtoVersionDot {
+        var proto = _ProtoVersionDot()
         proto.replicaID = try self.replicaID.toProto(context: context)
         proto.version = UInt64(self.version)
         return proto
     }
 
-    public init(fromProto proto: ProtoVersionDot, context: Serialization.Context) throws {
+    public init(fromProto proto: _ProtoVersionDot, context: Serialization.Context) throws {
         guard proto.hasReplicaID else {
             throw SerializationError.missingField("replicaID", type: String(describing: VersionDot.self))
         }

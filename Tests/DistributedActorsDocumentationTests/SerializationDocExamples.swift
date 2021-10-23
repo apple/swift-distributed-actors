@@ -93,10 +93,10 @@ enum ParkingGarageStatus: ProtobufRepresentable {
 
 // tag::serialization_protobuf_representable[]
 extension ParkingGarageStatus {
-    typealias ProtobufRepresentation = ProtoParkingGarageStatus
+    typealias ProtobufRepresentation = _ProtoParkingGarageStatus
 
-    func toProto(context: Serialization.Context) throws -> ProtoParkingGarageStatus {
-        var proto = ProtoParkingGarageStatus()
+    func toProto(context: Serialization.Context) throws -> _ProtoParkingGarageStatus {
+        var proto = _ProtoParkingGarageStatus()
         switch self {
         case .available:
             proto.type = .available
@@ -106,7 +106,7 @@ extension ParkingGarageStatus {
         return proto
     }
 
-    init(fromProto proto: ProtoParkingGarageStatus, context: Serialization.Context) throws {
+    init(fromProto proto: _ProtoParkingGarageStatus, context: Serialization.Context) throws {
         switch proto.type {
         case .available:
             self = .available

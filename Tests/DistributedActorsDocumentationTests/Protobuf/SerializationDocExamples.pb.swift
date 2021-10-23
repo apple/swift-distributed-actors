@@ -35,12 +35,12 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-struct ProtoParkingGarageStatus {
+struct _ProtoParkingGarageStatus {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var type: ProtoParkingGarageStatus.TypeEnum = .available
+  var type: _ProtoParkingGarageStatus.TypeEnum = .available
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -77,9 +77,9 @@ struct ProtoParkingGarageStatus {
 
 #if swift(>=4.2)
 
-extension ProtoParkingGarageStatus.TypeEnum: CaseIterable {
+extension _ProtoParkingGarageStatus.TypeEnum: CaseIterable {
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static var allCases: [ProtoParkingGarageStatus.TypeEnum] = [
+  static var allCases: [_ProtoParkingGarageStatus.TypeEnum] = [
     .available,
     .full,
   ]
@@ -89,7 +89,7 @@ extension ProtoParkingGarageStatus.TypeEnum: CaseIterable {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoParkingGarageStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+extension _ProtoParkingGarageStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "ParkingGarageStatus"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "type"),
@@ -111,14 +111,14 @@ extension ProtoParkingGarageStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoParkingGarageStatus, rhs: ProtoParkingGarageStatus) -> Bool {
+  static func ==(lhs: _ProtoParkingGarageStatus, rhs: _ProtoParkingGarageStatus) -> Bool {
     if lhs.type != rhs.type {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension ProtoParkingGarageStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
+extension _ProtoParkingGarageStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     0: .same(proto: "AVAILABLE"),
     1: .same(proto: "FULL"),

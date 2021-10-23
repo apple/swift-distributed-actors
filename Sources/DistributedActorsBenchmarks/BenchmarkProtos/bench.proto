@@ -15,7 +15,7 @@
 syntax = "proto3";
 
 option optimize_for = SPEED;
-option swift_prefix = "Proto";
+option swift_prefix = "_Proto";
 
 message SmallMessage {
     int64 number = 1;

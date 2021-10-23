@@ -15,7 +15,7 @@
 syntax = "proto3";
 
 option optimize_for = SPEED;
-option swift_prefix = "Proto";
+option swift_prefix = "_Proto";
 
 message ActorAddress {
     UniqueNode node        = 1; // TODO oneof { senderNode | recipientNode | node }
