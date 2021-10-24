@@ -20,11 +20,12 @@ internal enum Child {
     case adapter(AbstractAdapter)
 }
 
-/// Represents all the (current) children this actor has spawned.
+/// Represents all the (current) children this behavior actor has spawned.
 ///
 /// Convenience methods for locating children are provided, although it is recommended to keep the `_ActorRef`
 /// of spawned actors in the context of where they are used, rather than looking them up continuously.
-public class Children {
+// TODO(swift): remove the concept of child actors and the actor tree
+public class _Children {
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
     private typealias Name = String
@@ -184,7 +185,7 @@ public class Children {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Traversal
 
-extension Children: _ActorTreeTraversable {
+extension _Children: _ActorTreeTraversable {
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
 
@@ -264,7 +265,7 @@ extension Children: _ActorTreeTraversable {
 
 // MARK: Convenience methods for stopping children
 
-extension Children {
+extension _Children {
     // TODO: revise surface API what we want to expose; stopping by just name may be okey?
 
     /// Stops given child actor (if it exists) regardless of what type of messages it can handle.

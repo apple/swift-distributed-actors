@@ -37,7 +37,8 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActors",
         dependencies: [
             "DistributedActorsConcurrencyHelpers", // TODO: remove in favor of swift-atomics
-            "CDistributedActorsMailbox",
+            "CDistributedActorsMailbox", // TODO(swift): remove mailbox runtime, use Swift actors directly
+            .product(name: "OrderedCollections", package: "swift-collections"),
             .product(name: "Atomics", package: "swift-atomics"),
             .product(name: "SWIM", package: "swift-cluster-membership"),
             .product(name: "NIO", package: "swift-nio"),
@@ -271,8 +272,10 @@ var dependencies: [Package.Dependency] = [
     // ~~~ backtraces ~~~
     .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
 
-    // ~~~ SSWG APIs ~~~
+    // ~~~ Swift Collections  ~~~
+    .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.1"),
 
+    // ~~~ SSWG APIs ~~~
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     // swift-metrics 1.x and 2.x are almost API compatible, so most clients should use
     .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),

@@ -27,7 +27,8 @@ import Logging
 /// - SeeAlso: [Gossiping in Distributed Systems](https://www.distributed-systems.net/my-data/papers/2007.osr.pdf) (Anne-Marie Kermarrec, Maarten van Steen),
 ///   for a nice overview of the general concepts involved in gossip algorithms.
 /// - SeeAlso: [Cassandra Internals — Understanding Gossip](https://www.youtube.com/watch?v=FuP1Fvrv6ZQ) which a nice generally useful talk
-public enum Gossiper {
+// TODO(distributed): rewrite as DistributedActor and make public
+enum Gossiper {
     /// Spawns a gossip actor, that will periodically gossip with its peers about the provided payload.
     static func _spawn<Logic, Envelope, Acknowledgement>(
         _ context: _ActorRefFactory,
@@ -52,7 +53,7 @@ public enum Gossiper {
 // MARK: GossiperControl
 
 /// Control object used to modify and interact with a spawned `Gossiper<Gossip, Acknowledgement>`.
-public struct GossiperControl<Gossip: Codable, Acknowledgement: Codable> {
+struct GossiperControl<Gossip: Codable, Acknowledgement: Codable> {
     /// Internal FOR TESTING ONLY.
     internal let ref: GossipShell<Gossip, Acknowledgement>.Ref
 
@@ -69,16 +70,16 @@ public struct GossiperControl<Gossip: Codable, Acknowledgement: Codable> {
     }
 
     // FIXME: is there some way to express that actually, Metadata is INSIDE Payload so I only want to pass the "envelope" myself...?
-    public func update(_ identifier: GossipIdentifier, payload: Gossip) {
+    func update(_ identifier: GossipIdentifier, payload: Gossip) {
         self.ref.tell(.updatePayload(identifier: identifier, payload))
     }
 
-    public func remove(_ identifier: GossipIdentifier) {
+    func remove(_ identifier: GossipIdentifier) {
         self.ref.tell(.removePayload(identifier: identifier))
     }
 
     /// Side channel messages which may be piped into specific gossip logics.
-    public func sideChannelTell(_ identifier: GossipIdentifier, message: Any) {
+    func sideChannelTell(_ identifier: GossipIdentifier, message: Any) {
         self.ref.tell(.sideChannelMessage(identifier: identifier, message))
     }
 }
@@ -89,7 +90,7 @@ public struct GossiperControl<Gossip: Codable, Acknowledgement: Codable> {
 /// Used to identify which identity a payload is tied with.
 /// E.g. it could be used to mark the CRDT instance the gossip is carrying, or which "entity" a gossip relates to.
 // TODO: just force GossipIdentifier to be codable, avoid this dance?
-public protocol GossipIdentifier {
+protocol GossipIdentifier {
     var gossipIdentifier: String { get }
 
     init(_ gossipIdentifier: String)
@@ -97,14 +98,14 @@ public protocol GossipIdentifier {
     var asAnyGossipIdentifier: AnyGossipIdentifier { get }
 }
 
-public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
-    public let underlying: GossipIdentifier
+struct AnyGossipIdentifier: Hashable, GossipIdentifier {
+    let underlying: GossipIdentifier
 
-    public init(_ id: String) {
+    init(_ id: String) {
         self.underlying = StringGossipIdentifier(stringLiteral: id)
     }
 
-    public init(_ identifier: GossipIdentifier) {
+    init(_ identifier: GossipIdentifier) {
         if let any = identifier as? AnyGossipIdentifier {
             self = any
         } else {
@@ -112,39 +113,39 @@ public struct AnyGossipIdentifier: Hashable, GossipIdentifier {
         }
     }
 
-    public var gossipIdentifier: String {
+    var gossipIdentifier: String {
         self.underlying.gossipIdentifier
     }
 
-    public var asAnyGossipIdentifier: AnyGossipIdentifier {
+    var asAnyGossipIdentifier: AnyGossipIdentifier {
         self
     }
 
-    public func hash(into hasher: inout Hasher) {
+    func hash(into hasher: inout Hasher) {
         self.underlying.gossipIdentifier.hash(into: &hasher)
     }
 
-    public static func == (lhs: AnyGossipIdentifier, rhs: AnyGossipIdentifier) -> Bool {
+    static func == (lhs: AnyGossipIdentifier, rhs: AnyGossipIdentifier) -> Bool {
         lhs.underlying.gossipIdentifier == rhs.underlying.gossipIdentifier
     }
 }
 
-public struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
-    public let gossipIdentifier: String
+struct StringGossipIdentifier: GossipIdentifier, Hashable, ExpressibleByStringLiteral, CustomStringConvertible {
+    let gossipIdentifier: String
 
-    public init(_ gossipIdentifier: StringLiteralType) {
+    init(_ gossipIdentifier: StringLiteralType) {
         self.gossipIdentifier = gossipIdentifier
     }
 
-    public init(stringLiteral gossipIdentifier: StringLiteralType) {
+    init(stringLiteral gossipIdentifier: StringLiteralType) {
         self.gossipIdentifier = gossipIdentifier
     }
 
-    public var asAnyGossipIdentifier: AnyGossipIdentifier {
+    var asAnyGossipIdentifier: AnyGossipIdentifier {
         AnyGossipIdentifier(self)
     }
 
-    public var description: String {
+    var description: String {
         "StringGossipIdentifier(\(self.gossipIdentifier))"
     }
 }

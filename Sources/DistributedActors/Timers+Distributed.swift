@@ -35,6 +35,9 @@ struct DistributedActorTimerEvent {
 }
 
 /// Creates and manages timers which may only be accessed from the actor that owns it.
+///
+/// Timers are bound to this objects lifecycle, i.e. when the actor owning this object is deallocated,
+/// and the `ActorTimers` are deallocated as well, all timers associated with it are cancelled.
 // TODO(distributed): rename once we're able to hide or remove `Timers`
 public final class ActorTimers<Act: DistributedActor> {
 
@@ -49,6 +52,11 @@ public final class ActorTimers<Act: DistributedActor> {
     @usableFromInline
     internal var log: Logger
 
+    /// Create a timers instance owned by the passed in actor.
+    ///
+    /// Does not retain the distributed actor.
+    ///
+    /// - Parameter myself:
     public init<Act: DistributedActor>(_ myself: Act) {
         self.log = Logger(label: "\(myself)") // FIXME(distributed): pick up the actor logger (!!!)
         log[metadataKey: "actor/id"] = "\(myself.id._unwrapActorAddress?.detailedDescription ?? String(describing: myself.id.underlying))"
@@ -62,6 +70,7 @@ public final class ActorTimers<Act: DistributedActor> {
         self._cancelAll(includeSystemTimers: true)
     }
 
+    /// Cancel all timers currently stored in this ``ActorTimers`` instance.
     public func cancelAll() {
         self._cancelAll(includeSystemTimers: false)
     }
@@ -95,7 +104,9 @@ public final class ActorTimers<Act: DistributedActor> {
         self.installedTimers[key] != nil
     }
 
-    /// Starts a timer that will send the given message to `myself` after the specified delay.
+    /// Starts a timer that will invoke the provided `call` closure on the actor's context after the specified delay.
+    ///
+    /// Timer keys are used for logging purposes and should descriptively explain the purpose of this timer.
     ///
     /// - Parameters:
     ///   - key: the key associated with the timer
@@ -107,7 +118,9 @@ public final class ActorTimers<Act: DistributedActor> {
         self.start(key: key, call: call, interval: delay, repeated: false)
     }
 
-    /// Starts a timer that will periodically send the given message to `myself`.
+    /// Starts a timer that will periodically invoke the passed in `call` closure on the actor's context.
+    ///
+    /// Timer keys are used for logging purposes and should descriptively explain the purpose of this timer.
     ///
     /// - Parameters:
     ///   - key: the key associated with the timer
@@ -143,10 +156,5 @@ public final class ActorTimers<Act: DistributedActor> {
 //        }
         self.installedTimers[key] = DistributedActorTimer(key: key, repeated: repeated, handle: handle)
     }
-
-//    internal func nextTimerGen() -> Int {
-//        defer { self.timerGen += 1 }
-//        return self.timerGen
-//    }
 
 }

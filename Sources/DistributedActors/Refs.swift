@@ -549,9 +549,9 @@ public class _Guardian {
     let name: String
 
     // any access to children has to be protected by `lock`
-    private var _children: Children
+    private var _children: _Children
     private let _childrenLock: _Mutex = _Mutex()
-    private var children: Children {
+    private var children: _Children {
         self._childrenLock.synchronized { () in
             _children
         }
@@ -569,7 +569,7 @@ public class _Guardian {
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }
-        self._children = Children()
+        self._children = _Children()
         self.system = system
         self.name = name
     }
@@ -715,7 +715,7 @@ public class _Guardian {
 
 extension _Guardian: _ActorTreeTraversable {
     public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
-        let children: Children = self.children
+        let children: _Children = self.children
 
         var c = context.deeper
         switch visit(context, self.ref.asAddressable) {

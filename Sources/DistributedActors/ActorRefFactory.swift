@@ -61,7 +61,7 @@ public protocol _ActorRefFactory {
 // MARK: _ChildActorRefFactory
 
 public protocol _ChildActorRefFactory: _ActorRefFactory {
-    var children: Children { get set } // lock-protected
+    var children: _Children { get set } // lock-protected
 
     func stop<Message>(child ref: _ActorRef<Message>) throws
         where Message: ActorMessage

@@ -227,7 +227,7 @@ internal final class DistributedReceptionistStorage {
 
     /// - Returns: keys that this actor was REGISTERED under, and thus listings associated with it should be updated
     func removeFromKeyMappings(identity: AnyActorIdentity) -> RefMappingRemovalResult {
-        guard var registeredUnderKeys = self._identityToRegisteredKeys.removeValue(forKey: identity) else {
+        guard let registeredUnderKeys = self._identityToRegisteredKeys.removeValue(forKey: identity) else {
             // was not registered under any keys before
             return RefMappingRemovalResult(registeredUnderKeys: [])
         }
