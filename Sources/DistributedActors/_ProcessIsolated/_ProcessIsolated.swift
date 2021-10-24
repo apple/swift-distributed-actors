@@ -68,17 +68,17 @@ public class ProcessIsolated {
 
     // ==== ------------------------------------------------------------------------------------------------------------
 
-    public convenience init(boot: @escaping (BootSettings) -> ActorSystem) {
+    public convenience init(boot: @escaping (_BootSettings) -> ActorSystem) {
         self.init(arguments: CommandLine.arguments, boot: boot)
     }
 
-    public init(arguments: [String], boot: @escaping (BootSettings) -> ActorSystem) {
+    public init(arguments: [String], boot: @escaping (_BootSettings) -> ActorSystem) {
         let roleNames = KnownServantParameters.role.collect(arguments)
         let role: Role = roleNames.contains("servant") ? .servant : .boss
 
         let pid = Int(getpid())
 
-        let bootSettings = BootSettings(role, pid: pid)
+        let bootSettings = _BootSettings(role, pid: pid)
 
         if role == .servant {
             guard let portString = KnownServantParameters.port.extractFirst(arguments) else {
@@ -99,13 +99,13 @@ public class ProcessIsolated {
 
         system.log.info("Configured ProcessIsolated(\(role), pid: \(getpid())), parentPID: \(POSIXProcessUtils.getParentPID()), with arguments: \(arguments)")
 
-        self.control = IsolatedControl(system: system, roles: [role], masterNode: system.settings.cluster.uniqueBindNode)
+        self.control = IsolatedControl(system: system, roles: [role], commanderNode: system.settings.cluster.uniqueBindNode)
         self.system = system
 
         self._lastAssignedServantPort = system.settings.cluster.node.port
 
         if role.is(.boss) {
-            let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: ServantProcessSupervisionStrategy, args: [String]) in
+            let funSpawnServantProcess: (_ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: _ServantProcessSupervisionStrategy, args: [String]) in
                 self.spawnServantProcess(supervision: supervision, args: args)
             }
             let funRespawnServantProcess: (ServantProcess) -> Void = { (servant: ServantProcess) in
@@ -130,22 +130,22 @@ public class ProcessIsolated {
             self.processCommander = try! system._spawnSystemActor(ProcessCommander.naming, processCommander.behavior, props: ._wellKnown)
         } else {
             // on servant node
-            guard let joinNodeString = KnownServantParameters.masterNode.extractFirst(arguments) else {
-                fatalError("Missing [\(KnownServantParameters.masterNode.prefix)] in servant process. Arguments were: \(arguments)")
+            guard let joinNodeString = KnownServantParameters.commanderNode.extractFirst(arguments) else {
+                fatalError("Missing [\(KnownServantParameters.commanderNode.prefix)] in servant process. Arguments were: \(arguments)")
             }
-            let uniqueMasterNode = UniqueNode.parse(joinNodeString)
+            let uniqueCommanderNode = UniqueNode.parse(joinNodeString)
 
-            system.cluster.join(node: uniqueMasterNode.node)
+            system.cluster.join(node: uniqueCommanderNode.node)
 
             self.parentProcessFailureDetector = try! system._spawnSystemActor(
                 PollingParentMonitoringFailureDetector.name,
                 PollingParentMonitoringFailureDetector(
-                    parentNode: uniqueMasterNode,
+                    parentNode: uniqueCommanderNode,
                     parentPID: POSIXProcessUtils.getParentPID()
                 ).behavior
             )
 
-            let resolveContext = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: uniqueMasterNode), system: system)
+            let resolveContext = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessCommander(on: uniqueCommanderNode), system: system)
             self.processCommander = system._resolve(context: resolveContext)
         }
     }
@@ -166,7 +166,7 @@ public class ProcessIsolated {
     public func blockAndSuperviseServants(file: String = #file, line: UInt = #line) {
         if self.control.hasRole(.boss) {
             self.system.log.info("Entering supervision loop. Main thread will be dedicated to this and NOT past this line", file: file, line: line)
-            self.processMasterLoop()
+            self.processCommanderLoop()
         } else {
             while true {
                 sleep(60)
@@ -179,7 +179,7 @@ public class ProcessIsolated {
     ///
     /// ### Thread safety
     /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
-    public func spawnServantProcess(supervision: ServantProcessSupervisionStrategy, args: [String] = []) {
+    public func spawnServantProcess(supervision: _ServantProcessSupervisionStrategy, args: [String] = []) {
         if self.control.hasRole(.boss) {
             self.processSupervisorMailbox.enqueue(.spawnServant(supervision, args: args))
         } else {
@@ -253,10 +253,10 @@ extension ProcessIsolated {
 internal struct ServantProcess {
     var node: UniqueNode
     var args: [String]
-    let supervisionStrategy: ServantProcessSupervisionStrategy
+    let supervisionStrategy: _ServantProcessSupervisionStrategy
     var restartLogic: RestartDecisionLogic?
 
-    init(node: UniqueNode, args: [String], supervisionStrategy: ServantProcessSupervisionStrategy) {
+    init(node: UniqueNode, args: [String], supervisionStrategy: _ServantProcessSupervisionStrategy) {
         self.node = node
         self.args = args
         self.supervisionStrategy = supervisionStrategy
@@ -287,13 +287,13 @@ internal struct ServantProcess {
 }
 
 internal enum _ProcessSupervisorMessage {
-    case spawnServant(ServantProcessSupervisionStrategy, args: [String])
+    case spawnServant(_ServantProcessSupervisionStrategy, args: [String])
     case respawnServant(ServantProcess)
 }
 
 extension ProcessIsolated {
     // Effectively, this is a ProcessFailureDetector
-    internal func processMasterLoop() {
+    internal func processCommanderLoop() {
         while true {
             self.monitorServants()
 
@@ -326,7 +326,7 @@ extension ProcessIsolated {
             effectiveArgs.append(command)
             effectiveArgs.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
             effectiveArgs.append(KnownServantParameters.port.render(value: "\(node.port)"))
-            effectiveArgs.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
+            effectiveArgs.append(KnownServantParameters.commanderNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
             effectiveArgs.append(contentsOf: args)
 
             let servant = ServantProcess(
@@ -371,7 +371,7 @@ extension ProcessIsolated {
 enum KnownServantParameters {
     case role
     case port
-    case masterNode
+    case commanderNode
 
     func parse(parameter: String) -> String? {
         guard parameter.starts(with: self.prefix) else {
@@ -385,7 +385,7 @@ enum KnownServantParameters {
         switch self {
         case .role: return "_sact-role:"
         case .port: return "_sact-port:"
-        case .masterNode: return "_sact-boss-node:"
+        case .commanderNode: return "_sact-boss-node:"
         }
     }
 
@@ -402,7 +402,7 @@ enum KnownServantParameters {
     }
 }
 
-public final class BootSettings {
+public final class _BootSettings {
     let roles: [ProcessIsolated.Role]
     let pid: Int
 
@@ -446,19 +446,19 @@ public final class BootSettings {
 public final class IsolatedControl {
     let system: ActorSystem
     let roles: [ProcessIsolated.Role]
-    let masterNode: UniqueNode
+    let commanderNode: UniqueNode
 
-    public init(system: ActorSystem, roles: [ProcessIsolated.Role], masterNode: UniqueNode) {
+    public init(system: ActorSystem, roles: [ProcessIsolated.Role], commanderNode: UniqueNode) {
         self.system = system
         self.roles = roles
-        self.masterNode = masterNode
+        self.commanderNode = commanderNode
     }
 
     /// Request spawning a new servant process.
-    func requestSpawnServant(supervision: ServantProcessSupervisionStrategy, args: [String] = []) {
+    func requestSpawnServant(supervision: _ServantProcessSupervisionStrategy, args: [String] = []) {
         precondition(self.hasRole(.boss), "Only 'boss' process can spawn servants. Was: \(self)")
 
-        let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
+        let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessCommander(on: self.commanderNode), system: self.system)
         self.system._resolve(context: context).tell(.requestSpawnServant(supervision, args: args))
     }
 
@@ -469,7 +469,7 @@ public final class IsolatedControl {
     func requestServantRestart(_ servant: ServantProcess, delay: TimeAmount?) {
         precondition(self.hasRole(.boss), "Only 'boss' process can spawn servants. Was: \(self)")
 
-        let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
+        let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessCommander(on: self.commanderNode), system: self.system)
         self.system._resolve(context: context).tell(.requestRespawnServant(servant, delay: delay))
     }
 

@@ -153,7 +153,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// Allows obtaining references to previously spawned actors by their name.
     /// For less dynamic scenarios it is recommended to keep actors refs in your own collection types or as values in your behavior,
     /// since looking up actors by name has an inherent seek cost associated with it.
-    public var children: Children {
+    public var children: _Children {
         get {
             undefined()
         }

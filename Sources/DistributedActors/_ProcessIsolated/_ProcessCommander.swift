@@ -15,23 +15,22 @@
 #if os(iOS) || os(watchOS) || os(tvOS)
 // not supported on these operating systems
 #else
-/// EXPERIMENTAL.
-// Boss (Process) and Commander (Actor): The Far Side of the World
+/// Proof of Concept of how one might use processes to isolated distributed actors..
 internal struct ProcessCommander {
     public static let name: String = "processCommander"
     public static let naming: ActorNaming = .unique(name)
 
     internal enum Command: NonTransportableActorMessage {
-        case requestSpawnServant(ServantProcessSupervisionStrategy, args: [String])
+        case requestSpawnServant(_ServantProcessSupervisionStrategy, args: [String])
         case requestRespawnServant(ServantProcess, delay: TimeAmount?)
     }
 
     private let funRemoveServantByPID: (Int) -> Void
-    private let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void
+    private let funSpawnServantProcess: (_ServantProcessSupervisionStrategy, [String]) -> Void
     private let funRespawnServantProcess: (ServantProcess) -> Void
 
     init(
-        funSpawnServantProcess: @escaping (ServantProcessSupervisionStrategy, [String]) -> Void,
+        funSpawnServantProcess: @escaping (_ServantProcessSupervisionStrategy, [String]) -> Void,
         funRespawnServantProcess: @escaping (ServantProcess) -> Void,
         funKillServantProcess: @escaping (Int) -> Void
     ) {
@@ -85,7 +84,7 @@ internal struct ProcessCommander {
 // MARK: Address
 
 extension ActorAddress {
-    static func ofProcessMaster(on node: UniqueNode) -> ActorAddress {
+    static func ofProcessCommander(on node: UniqueNode) -> ActorAddress {
         try! .init(remote: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .wellKnown)
     }
 }

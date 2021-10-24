@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import OrderedCollections
+
 /// Peer Selection is a common step in various gossip protocols.
 ///
 /// Selecting a peer may be as trivial as randomly selecting one among known actors or nodes,
@@ -21,9 +23,9 @@
 /// // TODO: implement SWIMs selection in terms of this
 public protocol PeerSelection {
     associatedtype Peer: Hashable
-    typealias Peers = [Peer]
 
     func onMembershipEvent(event: Cluster.Event)
 
-    func select() -> Peers
+    /// Invoked to select a list of peers
+    func select() -> OrderedSet<Peer>
 }

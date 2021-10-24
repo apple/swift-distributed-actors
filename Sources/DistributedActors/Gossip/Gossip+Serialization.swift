@@ -15,11 +15,11 @@
 import struct Foundation.Data
 
 extension GossipShell.Message: Codable {
-    public enum DiscriminatorKeys: String, Codable {
+    enum DiscriminatorKeys: String, Codable {
         case gossip
     }
 
-    public enum CodingKeys: CodingKey {
+    enum CodingKeys: CodingKey {
         case _case
         case gossip_identifier
         case gossip_identifier_manifest
@@ -29,7 +29,7 @@ extension GossipShell.Message: Codable {
         case ackRef
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         guard let context: Serialization.Context = decoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(decoder, Self.self)
         }
@@ -59,7 +59,7 @@ extension GossipShell.Message: Codable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         guard let context: Serialization.Context = encoder.actorSerializationContext else {
             throw SerializationError.missingSerializationContext(encoder, self)
         }

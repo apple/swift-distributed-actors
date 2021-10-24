@@ -206,8 +206,8 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
     private let _childrenLock = ReadWriteLock()
     // All access must be protected with `_childrenLock`, or via `children` helper
-    internal var _children: Children = Children()
-    public override var children: Children {
+    internal var _children: _Children = _Children()
+    public override var children: _Children {
         set {
             self._childrenLock.lockWrite()
             defer { self._childrenLock.unlock() }
@@ -953,7 +953,7 @@ extension _ActorShell: CustomStringConvertible {
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
 internal protocol AbstractShellProtocol: _ActorTreeTraversable {
     var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
-    var children: Children { get set } // lock-protected
+    var children: _Children { get set } // lock-protected
     var asAddressable: AddressableActorRef { get }
     var metrics: ActiveActorMetrics { get }
 }

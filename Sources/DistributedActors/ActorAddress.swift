@@ -273,7 +273,7 @@ internal enum ActorLocation: Hashable, Sendable {
 /// - not start with `$` (those names are reserved for Swift Distributed Actors internal system actors)
 /// - contain only ASCII characters and select special characters (listed in `ValidPathSymbols.extraSymbols`)
 ///
-/// - Example: `/user/lightbulbMaster/lightbulb-2012`
+/// - Example: `/user/lightbulbCommander/lightbulb-2012`
 public struct ActorPath: _PathRelationships, Hashable, Sendable {
     // TODO: instead back with a String and keep a pos to index quickly into the name for Substring?
     public var segments: [ActorPathSegment]

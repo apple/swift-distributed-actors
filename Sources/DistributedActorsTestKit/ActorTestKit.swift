@@ -383,7 +383,7 @@ public final class Mock_ActorContext<Message: ActorMessage>: _ActorContext<Messa
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    public override var children: Children {
+    public override var children: _Children {
         get {
             fatalError("Failed: \(MockActorContextError())")
         }

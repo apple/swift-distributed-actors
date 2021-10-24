@@ -280,7 +280,7 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
 // MARK: ConvergentGossip: Peer Discovery
 
 extension GossipShell {
-    public static func receptionKey(id: String) -> Reception.Key<_ActorRef<Message>> {
+    static func receptionKey(id: String) -> Reception.Key<_ActorRef<Message>> {
         Reception.Key(id: id)
     }
 
