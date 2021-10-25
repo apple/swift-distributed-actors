@@ -30,3 +30,6 @@ IntegrationTests/tests_04_cluster/.build
 Package.resolved
 
 .GenActorInstruments-soundness.instrpkg
+
+# DocC generated files
+.docc-build

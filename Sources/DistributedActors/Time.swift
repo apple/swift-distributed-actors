@@ -418,6 +418,10 @@ public extension Deadline {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Clock
 
+public protocol Clock: Sendable, Codable, Comparable {
+    static var now: Self { get }
+}
+
 /// A `Clock` implementation using `Date`.
 public struct WallTimeClock: Codable, Comparable, CustomStringConvertible {
     internal let timestamp: Date

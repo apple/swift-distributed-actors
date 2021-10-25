@@ -62,7 +62,7 @@ We require that your commit messages match our template. The easiest way to do t
 
 ### Run `./scripts/soundness.sh`
 
-The scripts directory contains a [soundness.sh script](https://github.com/apple/swift-metrics/blob/master/scripts/soundness.sh) 
+The scripts directory contains a [soundness.sh script](https://github.com/apple/swift-metrics/blob/main/scripts/soundness.sh) 
 that enforces additional checks, like license headers and formatting style.
 
 Please make sure to `./scripts/soundness.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail

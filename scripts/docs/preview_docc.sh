@@ -42,7 +42,7 @@ declare -r docc_render_source_path="$root_path/.build/swift-docc-render"
 
 export DOCC_HTML_DIR="$docc_render_source_path/dist"
 
-./.build/swift-docc/.build/release/docc preview .build/swift-docc/Sources/SwiftDocC/SwiftDocC.docc \
+./.build/swift-docc/.build/release/docc preview $root_path/Docs/DistributedActors.docc \
   --fallback-display-name DistributedActors \
   --fallback-bundle-identifier org.swift.preview.DistributedActors \
   --fallback-bundle-version "$version" \
