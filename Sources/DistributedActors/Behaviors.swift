@@ -474,7 +474,7 @@ internal enum __Behavior<Message: ActorMessage> {
     case ignore
     case unhandled
 
-    indirect case intercept(behavior: _Behavior<Message>, with: Interceptor<Message>) // TODO: for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
+    indirect case intercept(behavior: _Behavior<Message>, with: _Interceptor<Message>) // TODO: for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
 
     indirect case orElse(first: _Behavior<Message>, second: _Behavior<Message>)
 
@@ -520,13 +520,13 @@ public enum IllegalBehaviorError<Message: ActorMessage>: Error {
 extension _Behavior {
     /// Intercepts all incoming messages and signals, allowing to transform them before they are delivered to the wrapped behavior.
     // TODO: more docs
-    public static func intercept(behavior: _Behavior<Message>, with interceptor: Interceptor<Message>) -> _Behavior<Message> {
+    public static func intercept(behavior: _Behavior<Message>, with interceptor: _Interceptor<Message>) -> _Behavior<Message> {
         _Behavior(underlying: .intercept(behavior: behavior, with: interceptor))
     }
 }
 
 /// Used in combination with `_Behavior.intercept` to intercept messages and signals delivered to a behavior.
-open class Interceptor<Message: ActorMessage> {
+open class _Interceptor<Message: ActorMessage> {
     public init() {}
 
     @inlinable
@@ -542,21 +542,21 @@ open class Interceptor<Message: ActorMessage> {
     }
 
     @inlinable
-    open func isSame(as other: Interceptor<Message>) -> Bool {
+    open func isSame(as other: _Interceptor<Message>) -> Bool {
         self === other
     }
 }
 
-extension Interceptor {
+extension _Interceptor {
     @inlinable
-    static func handleMessage(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: Interceptor<Message>, message: Message) throws -> _Behavior<Message> {
+    static func handleMessage(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: _Interceptor<Message>, message: Message) throws -> _Behavior<Message> {
         let next = try interceptor.interceptMessage(target: behavior, context: context, message: message)
 
-        return try Interceptor.deduplicate(context: context, behavior: next, interceptor: interceptor)
+        return try _Interceptor.deduplicate(context: context, behavior: next, interceptor: interceptor)
     }
 
     @inlinable
-    static func deduplicate(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: Interceptor<Message>) throws -> _Behavior<Message> {
+    static func deduplicate(context: _ActorContext<Message>, behavior: _Behavior<Message>, interceptor: _Interceptor<Message>) throws -> _Behavior<Message> {
         func deduplicate0(_ behavior: _Behavior<Message>) -> _Behavior<Message> {
             let hasDuplicatedIntercept = behavior.existsInStack { b in
                 switch b.underlying {
@@ -604,7 +604,7 @@ public extension _Behavior {
         case .signalHandling(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case .signalHandlingAsync(let recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
 
-        case .intercept(let inner, let interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
+        case .intercept(let inner, let interceptor): return try _Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case .orElse(let first, let second): return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
 
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):

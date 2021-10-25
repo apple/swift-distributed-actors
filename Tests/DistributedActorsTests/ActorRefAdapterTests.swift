@@ -151,7 +151,7 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
         let receiveRefProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
 
-        let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
+        let strategy = _SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
 
         let behavior: _Behavior<LifecycleTestMessage> = .setup { context in
             .receiveMessage {
@@ -193,7 +193,7 @@ class _ActorRefAdapterTests: ActorSystemXCTestCase {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
         let receiveRefProbe = self.testKit.makeTestProbe(expecting: _ActorRef<String>.self)
 
-        let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
+        let strategy = _SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
 
         let behavior: _Behavior<LifecycleTestMessage> = .setup { context in
             var adapterCounter = 0

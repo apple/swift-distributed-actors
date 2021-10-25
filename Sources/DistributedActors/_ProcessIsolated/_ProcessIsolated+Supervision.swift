@@ -19,11 +19,11 @@ import DistributedActorsConcurrencyHelpers
 
 /// Configures supervision for a specific servant process.
 ///
-/// Similar to `SupervisionStrategy` (which is for actors), however in effect for servant processes.
+/// Similar to `_SupervisionStrategy` (which is for actors), however in effect for servant processes.
 ///
-/// - SeeAlso: `SupervisionStrategy` for detailed documentation on supervision and timing semantics.
-public struct _ServantProcessSupervisionStrategy {
-    internal let underlying: SupervisionStrategy
+/// - SeeAlso: `_SupervisionStrategy` for detailed documentation on supervision and timing semantics.
+public struct _ServantProcess_SupervisionStrategy {
+    internal let underlying: _SupervisionStrategy
 
     /// Stopping supervision strategy, meaning that terminated servant processes will not get automatically spawned replacements.
     ///
@@ -31,14 +31,14 @@ public struct _ServantProcessSupervisionStrategy {
     /// servants, the system may end up in a state with no servants, and only the commander running, so you should plan to take
     /// action in case this happens (e.g. by terminating the commander itself, and relying on a higher level orchestrator to restart
     /// the entire system).
-    public static var stop: _ServantProcessSupervisionStrategy {
+    public static var stop: _ServantProcess_SupervisionStrategy {
         .init(underlying: .stop)
     }
 
     /// Supervision strategy binding the lifecycle of the commander process with the given servant process,
     /// i.e. if a servant process supervised using this strategy terminates (exits, fails, for whatever reason),
     /// the commander parent will also terminate (with an error exit code).
-    public static var escalate: _ServantProcessSupervisionStrategy {
+    public static var escalate: _ServantProcess_SupervisionStrategy {
         .init(underlying: .escalate)
     }
 
@@ -52,14 +52,14 @@ public struct _ServantProcessSupervisionStrategy {
     /// A respawned servant process sadly cannot guarantee this, and all mailboxes and state in the servant process is lost, including all mailboxes,
     /// thus explaining the slightly different naming and semantics implications of this supervision strategy.
     ///
-    /// - SeeAlso: The actor `SupervisionStrategy` documentation, which explains the exact semantics of this supervision mechanism in-depth.
+    /// - SeeAlso: The actor `_SupervisionStrategy` documentation, which explains the exact semantics of this supervision mechanism in-depth.
     ///
     /// - parameter atMost: number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0).
     /// - parameter within: amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
     ///                     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///                     no restart is performed and the failure is escalated (and the actor terminates in the process).
     /// - parameter backoff: strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
-    public static func respawn(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy? = nil) -> _ServantProcessSupervisionStrategy {
+    public static func respawn(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy? = nil) -> _ServantProcess_SupervisionStrategy {
         .init(underlying: .restart(atMost: atMost, within: within, backoff: backoff))
     }
 }
@@ -67,7 +67,7 @@ public struct _ServantProcessSupervisionStrategy {
 #if os(iOS) || os(watchOS) || os(tvOS)
 // not supported on these operating systems
 #else
-extension ProcessIsolated {
+extension _ProcessIsolated {
     func monitorServants() {
         let res = POSIXProcessUtils.nonBlockingWaitPID(pid: 0)
         if res.pid > 0 {

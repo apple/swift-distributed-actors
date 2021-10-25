@@ -39,7 +39,7 @@ public protocol BackoffStrategy {
 /// - SeeAlso: `ConstantBackoffStrategy` for a simple constant backoff strategy.
 /// - SeeAlso: `ExponentialBackoffStrategy` for a most commonly used exponentially-increasing strategy.
 ///
-/// - SeeAlso: Also used to configure `SupervisionStrategy`.
+/// - SeeAlso: Also used to configure `_SupervisionStrategy`.
 public enum Backoff {
     // TODO: implement noLongerThan: .seconds(30), where total time is taken from actor system clock
 
@@ -91,7 +91,7 @@ public enum Backoff {
 ///
 /// - SeeAlso: `ExponentialBackoffStrategy` for a most commonly used exponentially-increasing strategy
 ///
-/// - SeeAlso: Also used to configure `SupervisionStrategy`.
+/// - SeeAlso: Also used to configure `_SupervisionStrategy`.
 public struct ConstantBackoffStrategy: BackoffStrategy {
     /// The constant time amount to back-off by each time.
     internal let timeAmount: TimeAmount
@@ -144,7 +144,7 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
 ///
 /// - SeeAlso: `ConstantBackoffStrategy` for a simple constant backoff strategy.
 ///
-/// - SeeAlso: Also used to configure `SupervisionStrategy`.
+/// - SeeAlso: Also used to configure `_SupervisionStrategy`.
 public struct ExponentialBackoffStrategy: BackoffStrategy {
     // TODO: clock + limit "max total wait time" etc
 

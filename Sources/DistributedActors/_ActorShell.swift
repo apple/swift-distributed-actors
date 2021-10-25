@@ -690,7 +690,8 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self.subReceives[identifier]?.0
     }
 
-    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
+    @usableFromInline
+    override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> _Behavior<Message> = { carry in

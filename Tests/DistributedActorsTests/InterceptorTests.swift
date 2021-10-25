@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class ShoutingInterceptor: Interceptor<String> {
+final class ShoutingInterceptor: _Interceptor<String> {
     let probe: ActorTestProbe<String>?
 
     init(probe: ActorTestProbe<String>? = nil) {
@@ -29,12 +29,12 @@ final class ShoutingInterceptor: Interceptor<String> {
         return try target.interpretMessage(context: context, message: message + "!")
     }
 
-    override func isSame(as other: Interceptor<String>) -> Bool {
+    override func isSame(as other: _Interceptor<String>) -> Bool {
         false
     }
 }
 
-final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
+final class TerminatedInterceptor<Message: ActorMessage>: _Interceptor<Message> {
     let probe: ActorTestProbe<Signals.Terminated>
 
     init(probe: ActorTestProbe<Signals.Terminated>) {
@@ -120,7 +120,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
     func test_interceptor_shouldInterceptSignals() throws {
         let p: ActorTestProbe<Signals.Terminated> = self.testKit.makeTestProbe()
 
-        let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
+        let spyOnTerminationSignals: _Interceptor<String> = TerminatedInterceptor(probe: p)
 
         let spawnSomeStoppers = _Behavior<String>.setup { context in
             let one: _ActorRef<String> = try context._spawnWatch(
@@ -155,7 +155,7 @@ final class InterceptorTests: ActorSystemXCTestCase {
         try p.expectNoMessage(for: .milliseconds(500))
     }
 
-    class SignalToStringInterceptor<Message: ActorMessage>: Interceptor<Message> {
+    class SignalToStringInterceptor<Message: ActorMessage>: _Interceptor<Message> {
         let probe: ActorTestProbe<String>
 
         init(_ probe: ActorTestProbe<String>) {

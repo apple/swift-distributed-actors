@@ -20,7 +20,7 @@ import Glibc
 
 import DistributedActors
 
-let isolated = ProcessIsolated { boot in
+let isolated = _ProcessIsolated { boot in
     boot.settings.logging.logLevel = .info
     boot.runOn(role: .servant) {
         boot.settings.failure.onGuardianFailure = .systemExit(-1)

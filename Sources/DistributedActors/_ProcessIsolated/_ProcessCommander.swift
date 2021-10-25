@@ -21,16 +21,16 @@ internal struct ProcessCommander {
     public static let naming: ActorNaming = .unique(name)
 
     internal enum Command: NonTransportableActorMessage {
-        case requestSpawnServant(_ServantProcessSupervisionStrategy, args: [String])
+        case requestSpawnServant(_ServantProcess_SupervisionStrategy, args: [String])
         case requestRespawnServant(ServantProcess, delay: TimeAmount?)
     }
 
     private let funRemoveServantByPID: (Int) -> Void
-    private let funSpawnServantProcess: (_ServantProcessSupervisionStrategy, [String]) -> Void
+    private let funSpawnServantProcess: (_ServantProcess_SupervisionStrategy, [String]) -> Void
     private let funRespawnServantProcess: (ServantProcess) -> Void
 
     init(
-        funSpawnServantProcess: @escaping (_ServantProcessSupervisionStrategy, [String]) -> Void,
+        funSpawnServantProcess: @escaping (_ServantProcess_SupervisionStrategy, [String]) -> Void,
         funRespawnServantProcess: @escaping (ServantProcess) -> Void,
         funKillServantProcess: @escaping (Int) -> Void
     ) {
@@ -71,7 +71,7 @@ internal struct ProcessCommander {
                     context.timers.startSingle(key: nextSpawnServantTimerKey(), message: .requestRespawnServant(servant, delay: nil), delay: delay)
                 case .requestRespawnServant(let servant, .none):
                     // restart immediately
-                    context.log.info("Spawning replacement servant process; Supervision \(servant.supervisionStrategy), arguments: \(servant.args)")
+                    context.log.info("Spawning replacement servant process; Supervision \(servant._SupervisionStrategy), arguments: \(servant.args)")
                     self.funRespawnServantProcess(servant)
                 }
                 return .same

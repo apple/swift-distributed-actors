@@ -360,7 +360,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
+    @usableFromInline
+    func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         return undefined()
     }
@@ -375,7 +376,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// There can only be one `subReceive` per type. When installing a new `subReceive`
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage> {
+    @usableFromInline
+    func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage> {
         self.subReceive(SubReceiveId(type), type, closure)
     }
 
@@ -385,18 +387,22 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     }
 }
 
-// Used to identify a `subReceive`
-public struct SubReceiveId<SubMessage>: Hashable, Equatable {
-    public let id: String
+/// Used to identify a `subReceive`
+@usableFromInline
+struct SubReceiveId<SubMessage>: Hashable, Equatable {
+    @usableFromInline
+    let id: String
 
-    public init(_: SubMessage.Type) {
+    @usableFromInline
+    init(_: SubMessage.Type) {
         let typeName = String(reflecting: SubMessage.self)
             .replacingOccurrences(of: "()", with: "Void")
             .replacingOccurrences(of: " ", with: "")
         self.id = typeName
     }
 
-    public init(_ type: SubMessage.Type = SubMessage.self, id: String) {
+    @usableFromInline
+    init(_ type: SubMessage.Type = SubMessage.self, id: String) {
         self.id = id
             .replacingOccurrences(of: "()", with: "Void")
             .replacingOccurrences(of: " ", with: "")

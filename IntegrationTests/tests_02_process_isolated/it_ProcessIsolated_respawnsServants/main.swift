@@ -20,7 +20,7 @@ import Glibc
 
 import DistributedActors
 
-let isolated = ProcessIsolated { boot in
+let isolated = _ProcessIsolated { boot in
     // create a new actor system (for each process this will run a new since this is the beginning of the program)
     boot.settings.logging.logLevel = .info
     return ActorSystem(settings: boot.settings)

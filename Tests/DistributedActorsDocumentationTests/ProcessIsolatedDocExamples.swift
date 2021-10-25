@@ -22,13 +22,13 @@ private struct WorkRequest: NonTransportableActorMessage {}
 
 private struct Requests: NonTransportableActorMessage {}
 
-class ProcessIsolatedDocExamples {
+class _ProcessIsolatedDocExamples {
     func x() throws {
         #if os(iOS) || os(watchOS) || os(tvOS)
         // feature not supported on iOS and similar, so in order to even compile on those platforms we #if it out
         #else
         // tag::spawn_in_domain[]
-        let isolated = ProcessIsolated { boot in // <1>
+        let isolated = _ProcessIsolated { boot in // <1>
 
             // optionally configure nodes by changing the provided settings
             boot.settings.logging.logLevel = .info
