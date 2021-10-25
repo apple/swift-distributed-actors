@@ -51,7 +51,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemXCTestCase {
     }
 
     let spawnFaultyWorkerCommand = "spawnFaultyWorker"
-    func healthyMasterBehavior(pm: _ActorRef<SimpleProbeMessage>, pw: _ActorRef<Int>) -> _Behavior<String> {
+    func healthyBossBehavior(pm: _ActorRef<SimpleProbeMessage>, pw: _ActorRef<Int>) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case self.spawnFaultyWorkerCommand:
@@ -65,14 +65,14 @@ final class ActorIsolationFailureHandlingTests: ActorSystemXCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
-        let pm: ActorTestProbe<SimpleProbeMessage> = self.testKit.makeTestProbe("testProbe-master-1")
+        let pm: ActorTestProbe<SimpleProbeMessage> = self.testKit.makeTestProbe("testProbe-boss-1")
         let pw: ActorTestProbe<Int> = self.testKit.makeTestProbe("testProbeForWorker-1")
 
-        let healthyMaster: _ActorRef<String> = try system._spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
+        let healthyBoss: _ActorRef<String> = try system._spawn("healthyBoss", self.healthyBossBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
-        pm.watch(healthyMaster)
-        healthyMaster.tell("spawnFaultyWorker")
+        pm.watch(healthyBoss)
+        healthyBoss.tell("spawnFaultyWorker")
         guard case .spawned(let worker) = try pm.expectMessage() else { throw pm.error() }
 
         // watch the worker and see that it works correctly:
@@ -88,7 +88,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemXCTestCase {
 
         // even though the worker crashed, the parent is still alive (!)
         let stillAlive = "still alive"
-        healthyMaster.tell(stillAlive)
+        healthyBoss.tell(stillAlive)
         try pm.expectMessage(.echoing(message: "still alive"))
     }
 }

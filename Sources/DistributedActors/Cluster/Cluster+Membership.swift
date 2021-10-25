@@ -103,10 +103,24 @@ extension Cluster {
                 .count
         }
 
+        /// Returns all members that are part of this membership, and have the exact `status` and `reachability` status.
+        ///
+        ///
+        /// - Parameters:
+        ///   - statuses: statuses for which to check the members for
+        ///   - reachability: optional reachability that is the members will be filtered by
+        /// - Returns: array of members matching those checks. Can be empty.
         public func members(withStatus status: Cluster.MemberStatus, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
             self.members(withStatus: [status], reachability: reachability)
         }
 
+        /// Returns all members that are part of this membership, and have the any ``Cluster.MemberStatus`` that is part
+        /// of the `statuses` passed in and `reachability` status.
+        ///
+        /// - Parameters:
+        ///   - statuses: statuses for which to check the members for
+        ///   - reachability: optional reachability that is the members will be filtered by
+        /// - Returns: array of members matching those checks. Can be empty.
         public func members(withStatus statuses: Set<Cluster.MemberStatus>, reachability: Cluster.MemberReachability? = nil) -> [Cluster.Member] {
             let reachabilityFilter: (Cluster.Member) -> Bool = { member in
                 reachability == nil || member.reachability == reachability
@@ -142,6 +156,7 @@ extension Cluster {
             }
         }
 
+        /// Find specific member, identified by its unique node identity.
         public func member(byUniqueNodeID nid: UniqueNode.ID) -> Cluster.Member? {
             // TODO: make this O(1) by allowing wrapper type to equality check only on NodeID
             self._members.first(where: { $0.key.nid == nid })?.value
@@ -154,8 +169,7 @@ extension Cluster {
         /// A leader is a specific `Member` which was selected to fulfil the leadership role for the time being.
         /// A leader returning a non-nil value, guarantees that the same Member existing as part of this `Membership` as well (non-members cannot be leaders).
         ///
-        /// ## Leaders are not Masters
-        /// Clustering, as offered by this project, is inherently boss-less; yet sometimes a leader may be useful to make decisions more efficient or centralized.
+        /// Clustering, as offered by this project, is inherently "master"-less; yet sometimes a leader may be useful to make decisions more efficient or centralized.
         /// Leaders may be selected using various strategies, the most simple one being sorting members by their addresses and picking the "lowest".
         ///
         /// ### Leaders in partitions
@@ -192,6 +206,7 @@ extension Cluster {
             self.isLeader(member.uniqueNode)
         }
 
+        /// Checks if the membership contains a member representing this ``UniqueNode``.
         func contains(_ uniqueNode: UniqueNode) -> Bool {
             self._members[uniqueNode] != nil
         }

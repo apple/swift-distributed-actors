@@ -37,7 +37,7 @@ public_protos=(
 )
 
 # There are two visibility options: Public, Internal (default)
-# https://github.com/apple/swift-protobuf/blob/master/Documentation/PLUGIN.md#generation-option-visibility---visibility-of-generated-types
+# https://github.com/apple/swift-protobuf/blob/main/Documentation/PLUGIN.md#generation-option-visibility---visibility-of-generated-types
 # TODO: https://github.com/apple/swift-distributed-actors/issues/59
 for visibility in public default; do
   swift_opt=''
