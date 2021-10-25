@@ -25,7 +25,7 @@ if [[ "$short_version" == "$long_version" ]]; then
   doc_link_version="${version}"
 else
   version="${short_version}-dev"
-  doc_link_version="master" # since dev is latest development we point to master
+  doc_link_version="main" # since dev is latest development we point to main
 fi
 echo "Project version: ${version}"
 
@@ -79,7 +79,7 @@ mkdir -p $root_path/.build/symbol-graphs
 
 for module in "${modules[@]}"; do
   echo "Building symbol-graph for module [$module]..."
-  $SWIFT build --target DistributedActors \
+  $SWIFT build --target $module \
     -Xswiftc -emit-symbol-graph \
     -Xswiftc -emit-symbol-graph-dir \
     -Xswiftc $root_path/.build/symbol-graphs
