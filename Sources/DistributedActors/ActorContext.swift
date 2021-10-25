@@ -357,11 +357,10 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// The returned `_ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `_ActorRef` terminates as well.
     ///
-    /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
-    /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
+    /// There can only be one `subReceive` per `_SubReceiveId`. When installing a new `subReceive`
+    /// with an existing `_SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    @usableFromInline
-    func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
+    public func subReceive<SubMessage>(_: _SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         return undefined()
     }
@@ -376,9 +375,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     /// There can only be one `subReceive` per type. When installing a new `subReceive`
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    @usableFromInline
-    func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage> {
-        self.subReceive(SubReceiveId(type), type, closure)
+    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage> {
+        self.subReceive(_SubReceiveId(type), type, closure)
     }
 
     @usableFromInline
@@ -387,29 +385,26 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     }
 }
 
-/// Used to identify a `subReceive`
-@usableFromInline
-struct SubReceiveId<SubMessage>: Hashable, Equatable {
-    @usableFromInline
-    let id: String
+/// Used to identify a `subReceive`.
+// TODO(distributed): sub-receives will be removed shortly, thanks to actors in the language there are other ways to solve this.
+public struct _SubReceiveId<SubMessage>: Hashable, Equatable {
+    public let id: String
 
-    @usableFromInline
-    init(_: SubMessage.Type) {
+    public init(_: SubMessage.Type) {
         let typeName = String(reflecting: SubMessage.self)
             .replacingOccurrences(of: "()", with: "Void")
             .replacingOccurrences(of: " ", with: "")
         self.id = typeName
     }
 
-    @usableFromInline
-    init(_ type: SubMessage.Type = SubMessage.self, id: String) {
+    public init(_ type: SubMessage.Type = SubMessage.self, id: String) {
         self.id = id
             .replacingOccurrences(of: "()", with: "Void")
             .replacingOccurrences(of: " ", with: "")
     }
 }
 
-extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+extension _SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
         self.init(id: value)
     }
@@ -419,7 +414,7 @@ extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpola
 public struct AnySubReceiveId: Hashable, Equatable {
     let underlying: AnyHashable
 
-    init<SubMessage>(_ id: SubReceiveId<SubMessage>) {
+    init<SubMessage>(_ id: _SubReceiveId<SubMessage>) {
         self.underlying = AnyHashable(id)
     }
 }

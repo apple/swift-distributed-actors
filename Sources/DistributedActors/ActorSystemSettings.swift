@@ -24,7 +24,6 @@ public struct ActorSystemSettings {
     public typealias ProtocolName = String
 
     public var actor: ActorSettings = .default
-    public var failure: FailureSettings = .default
 
     public var plugins: PluginsSettings = .default
 
@@ -122,31 +121,6 @@ public struct LoggingSettings {
 
     /// Log all actor `spawn` events
     public var verboseSpawning = false
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Failure Settings
-
-public struct _FailureSettings {
-    public static let `default` = FailureSettings()
-
-    /// Determines what action should be taken when a failure is escalated to a top level guardian (e.g. `/user` or `/system).
-    public var onGuardianFailure: GuardianFailureHandling = .shutdownActorSystem
-}
-
-/// Configures what guardians should do when an error reaches them.
-/// (Guardians are the top level actors, e.g. `/user` or `/system`).
-public enum GuardianFailureHandling {
-    /// Shut down the actor system when an error is escalated to a guardian.
-    case shutdownActorSystem
-
-    /// Immediately exit the process when an error is escalated to a guardian.
-    /// Best used with `_ProcessIsolated` mode.
-    #if os(iOS) || os(watchOS) || os(tvOS)
-    // not supported on these operating systems
-    #else
-    case systemExit(Int)
-    #endif
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
