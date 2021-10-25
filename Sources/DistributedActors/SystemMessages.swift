@@ -100,7 +100,7 @@ public enum TerminationCircumstances {
     case failed(Supervision.Failure)
     /// The actor has failed and requests to escalate this failure.
     /// Even if the parent did not watch the child, this failure should be taken as one that the parent is at least partially responsible for.
-    /// If nothing else, the parent may want to "bubble up" the failure either by throwing or if it was configured with `SupervisionStrategy.escalate` itself.
+    /// If nothing else, the parent may want to "bubble up" the failure either by throwing or if it was configured with `_SupervisionStrategy.escalate` itself.
     ///
     /// Escalating takes precedence over `.failed`, in case the child was both watched and configured with `.escalate` supervision.
     case escalating(Supervision.Failure)

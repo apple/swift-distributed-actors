@@ -109,7 +109,7 @@ extension Reception {
     }
 }
 
-extension Reception.Listing where Guest: ReceivesMessages {
+extension Reception.Listing where Guest: _ReceivesMessages {
     /// Retrieve all listed actor references, mapping them to their appropriate type.
     /// Note that this operation is lazy and has to iterate over all the actors when performing the
     /// iteration.
@@ -191,7 +191,7 @@ extension Reception {
     }
 }
 
-extension Reception.Registered where Guest: ReceivesMessages {
+extension Reception.Registered where Guest: _ReceivesMessages {
     internal var ref: _ActorRef<Guest.Message> {
         self._guest._ref
     }

@@ -127,7 +127,7 @@ public struct LoggingSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Failure Settings
 
-public struct FailureSettings {
+public struct _FailureSettings {
     public static let `default` = FailureSettings()
 
     /// Determines what action should be taken when a failure is escalated to a top level guardian (e.g. `/user` or `/system).
@@ -141,7 +141,7 @@ public enum GuardianFailureHandling {
     case shutdownActorSystem
 
     /// Immediately exit the process when an error is escalated to a guardian.
-    /// Best used with `ProcessIsolated` mode.
+    /// Best used with `_ProcessIsolated` mode.
     #if os(iOS) || os(watchOS) || os(tvOS)
     // not supported on these operating systems
     #else

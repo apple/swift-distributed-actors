@@ -38,9 +38,9 @@ import DistributedActorsConcurrencyHelpers
 /// ### Servant process supervision
 /// Servant processes may be subject to commander supervision, in similar ways as child actors can be supervised.
 /// The same strategies are available, and can be selected declaratively when invoking `requestSpawnServant`.
-public class ProcessIsolated {
+public class _ProcessIsolated {
     public let system: ActorSystem
-    public let control: IsolatedControl
+    public let control: _IsolatedControl
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Local state
@@ -97,15 +97,15 @@ public class ProcessIsolated {
         }
         let system = boot(bootSettings)
 
-        system.log.info("Configured ProcessIsolated(\(role), pid: \(getpid())), parentPID: \(POSIXProcessUtils.getParentPID()), with arguments: \(arguments)")
+        system.log.info("Configured _ProcessIsolated(\(role), pid: \(getpid())), parentPID: \(POSIXProcessUtils.getParentPID()), with arguments: \(arguments)")
 
-        self.control = IsolatedControl(system: system, roles: [role], commanderNode: system.settings.cluster.uniqueBindNode)
+        self.control = _IsolatedControl(system: system, roles: [role], commanderNode: system.settings.cluster.uniqueBindNode)
         self.system = system
 
         self._lastAssignedServantPort = system.settings.cluster.node.port
 
         if role.is(.commander) {
-            let funSpawnServantProcess: (_ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: _ServantProcessSupervisionStrategy, args: [String]) in
+            let funSpawnServantProcess: (_ServantProcess_SupervisionStrategy, [String]) -> Void = { (supervision: _ServantProcess_SupervisionStrategy, args: [String]) in
                 self.spawnServantProcess(supervision: supervision, args: args)
             }
             let funRespawnServantProcess: (ServantProcess) -> Void = { (servant: ServantProcess) in
@@ -178,8 +178,8 @@ public class ProcessIsolated {
     /// In order for this to work, the commander process MUST be running `blockAndSuperviseServants`.
     ///
     /// ### Thread safety
-    /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
-    public func spawnServantProcess(supervision: _ServantProcessSupervisionStrategy, args: [String] = []) {
+    /// Thread safe, can be invoked from any thread (and any node, managed by the `_ProcessIsolated` launcher)
+    public func spawnServantProcess(supervision: _ServantProcess_SupervisionStrategy, args: [String] = []) {
         if self.control.hasRole(.commander) {
             self.processSupervisorMailbox.enqueue(.spawnServant(supervision, args: args))
         } else {
@@ -201,7 +201,7 @@ public class ProcessIsolated {
     /// In order for this to work, the commander process MUST be running `blockAndSuperviseServants`.
     ///
     /// ### Thread safety
-    /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
+    /// Thread safe, can be invoked from any thread (and any node, managed by the `_ProcessIsolated` launcher)
     internal func storeServant(pid: Int, servant: ServantProcess) {
         self.lock.withLockVoid {
             self._servants[pid] = servant
@@ -210,7 +210,7 @@ public class ProcessIsolated {
 
     ///
     /// ### Thread safety
-    /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
+    /// Thread safe, can be invoked from any thread (and any node, managed by the `_ProcessIsolated` launcher)
     internal func removeServant(pid: Int) -> ServantProcess? {
         self.lock.withLock {
             self._servants.removeValue(forKey: pid)
@@ -221,7 +221,7 @@ public class ProcessIsolated {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Role
 
-extension ProcessIsolated {
+extension _ProcessIsolated {
     /// Role that a process isolated process can fulfil.
     /// Used by `isolated.runOn(role: )
     public struct Role: Hashable, CustomStringConvertible {
@@ -253,15 +253,15 @@ extension ProcessIsolated {
 internal struct ServantProcess {
     var node: UniqueNode
     var args: [String]
-    let supervisionStrategy: _ServantProcessSupervisionStrategy
+    let _SupervisionStrategy: _ServantProcess_SupervisionStrategy
     var restartLogic: RestartDecisionLogic?
 
-    init(node: UniqueNode, args: [String], supervisionStrategy: _ServantProcessSupervisionStrategy) {
+    init(node: UniqueNode, args: [String], _SupervisionStrategy: _ServantProcess_SupervisionStrategy) {
         self.node = node
         self.args = args
-        self.supervisionStrategy = supervisionStrategy
+        self._SupervisionStrategy = _SupervisionStrategy
 
-        switch supervisionStrategy.underlying {
+        switch _SupervisionStrategy.underlying {
         case .restart(let atMost, let within, let backoffStrategy):
             self.restartLogic = RestartDecisionLogic(maxRestarts: atMost, within: within, backoffStrategy: backoffStrategy)
         case .escalate:
@@ -287,11 +287,11 @@ internal struct ServantProcess {
 }
 
 internal enum _ProcessSupervisorMessage {
-    case spawnServant(_ServantProcessSupervisionStrategy, args: [String])
+    case spawnServant(_ServantProcess_SupervisionStrategy, args: [String])
     case respawnServant(ServantProcess)
 }
 
-extension ProcessIsolated {
+extension _ProcessIsolated {
     // Effectively, this is a ProcessFailureDetector
     internal func processCommanderLoop() {
         while true {
@@ -324,7 +324,7 @@ extension ProcessIsolated {
 
             var effectiveArgs: [String] = []
             effectiveArgs.append(command)
-            effectiveArgs.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
+            effectiveArgs.append(KnownServantParameters.role.render(value: _ProcessIsolated.Role.servant.name))
             effectiveArgs.append(KnownServantParameters.port.render(value: "\(node.port)"))
             effectiveArgs.append(KnownServantParameters.commanderNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
             effectiveArgs.append(contentsOf: args)
@@ -332,7 +332,7 @@ extension ProcessIsolated {
             let servant = ServantProcess(
                 node: node,
                 args: effectiveArgs,
-                supervisionStrategy: supervision
+                _SupervisionStrategy: supervision
             )
 
             do {
@@ -403,20 +403,20 @@ enum KnownServantParameters {
 }
 
 public final class _BootSettings {
-    let roles: [ProcessIsolated.Role]
+    let roles: [_ProcessIsolated.Role]
     let pid: Int
 
-    public convenience init(_ role: ProcessIsolated.Role, pid: Int) {
+    public convenience init(_ role: _ProcessIsolated.Role, pid: Int) {
         self.init(roles: [role], pid: pid)
     }
 
-    public init(roles: [ProcessIsolated.Role], pid: Int) {
+    public init(roles: [_ProcessIsolated.Role], pid: Int) {
         self.roles = roles
         self.pid = pid
     }
 
     /// Executes passed in block ONLY if the current process has the passed in `role`.
-    public func runOn<T>(role: ProcessIsolated.Role, _ block: () -> T) -> T? {
+    public func runOn<T>(role: _ProcessIsolated.Role, _ block: () -> T) -> T? {
         if self.hasRole(role) {
             return block()
         } else {
@@ -424,7 +424,7 @@ public final class _BootSettings {
         }
     }
 
-    public func hasRole(_ role: ProcessIsolated.Role) -> Bool {
+    public func hasRole(_ role: _ProcessIsolated.Role) -> Bool {
         self.roles.contains(role)
     }
 
@@ -443,19 +443,20 @@ public final class _BootSettings {
     }
 }
 
-public final class IsolatedControl {
+/// Responsible for controlling the process isolated servant processes.
+public final class _IsolatedControl {
     let system: ActorSystem
-    let roles: [ProcessIsolated.Role]
+    let roles: [_ProcessIsolated.Role]
     let commanderNode: UniqueNode
 
-    public init(system: ActorSystem, roles: [ProcessIsolated.Role], commanderNode: UniqueNode) {
+    public init(system: ActorSystem, roles: [_ProcessIsolated.Role], commanderNode: UniqueNode) {
         self.system = system
         self.roles = roles
         self.commanderNode = commanderNode
     }
 
     /// Request spawning a new servant process.
-    func requestSpawnServant(supervision: _ServantProcessSupervisionStrategy, args: [String] = []) {
+    func requestSpawnServant(supervision: _ServantProcess_SupervisionStrategy, args: [String] = []) {
         precondition(self.hasRole(.commander), "Only 'commander' process can spawn servants. Was: \(self)")
 
         let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessCommander(on: self.commanderNode), system: self.system)
@@ -473,17 +474,17 @@ public final class IsolatedControl {
         self.system._resolve(context: context).tell(.requestRespawnServant(servant, delay: delay))
     }
 
-    public func hasRole(_ role: ProcessIsolated.Role) -> Bool {
+    public func hasRole(_ role: _ProcessIsolated.Role) -> Bool {
         self.roles.contains(role)
     }
 }
 
-extension ProcessIsolated.Role {
-    public static var commander: ProcessIsolated.Role {
+extension _ProcessIsolated.Role {
+    public static var commander: _ProcessIsolated.Role {
         .init("commander")
     }
 
-    public static var servant: ProcessIsolated.Role {
+    public static var servant: _ProcessIsolated.Role {
         .init("servant")
     }
 }

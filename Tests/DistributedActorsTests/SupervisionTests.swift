@@ -119,7 +119,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
         let parentBehavior: _Behavior<Never> = .setup { context in
-            let strategy: SupervisionStrategy = .stop
+            let strategy: _SupervisionStrategy = .stop
             let behavior = self.faulty(probe: p.ref)
             let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-erroring-1",
@@ -369,7 +369,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
     func sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: FailureMode) throws {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
 
-        let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
+        let strategy: _SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
         var shouldFail = true
         let behavior: _Behavior<String> = .setup { _ in
             if shouldFail {
@@ -397,7 +397,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
     func sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: FailureMode) throws {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
 
-        let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
+        let strategy: _SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
         // initial setup should not fail
         var shouldFail = false
         let behavior: _Behavior<String> = .setup { _ in
@@ -436,7 +436,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
     func sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: FailureMode) throws {
         let probe = self.testKit.makeTestProbe(expecting: String.self)
 
-        let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
+        let strategy: _SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
         let behavior: _Behavior<String> = .setup { _ in
             probe.tell("starting")
             try failureMode.fail()

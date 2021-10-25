@@ -49,16 +49,16 @@ extension _ActorRef {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Codable ReceivesMessages
+// MARK: Codable _ReceivesMessages
 
-extension ReceivesMessages {
+extension _ReceivesMessages {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case let ref as _ActorRef<Message>:
             try container.encode(ref.address)
         default:
-            fatalError("Can not serialize non-_ActorRef ReceivesMessages! Was: \(self)")
+            fatalError("Can not serialize non-_ActorRef _ReceivesMessages! Was: \(self)")
         }
     }
 

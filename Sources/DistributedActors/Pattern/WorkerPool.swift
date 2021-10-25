@@ -38,7 +38,7 @@ public struct WorkerPool<Message: ActorMessage> {
         /// Instructs the `WorkerPool` to use only the specified actors for routing.
         ///
         /// The actors will be removed from the pool if they terminate and will not be replaced automatically.
-        /// Thus, the workers should use a `SupervisionStrategy` appropriate for them so they can survive failures.
+        /// Thus, the workers should use a `_SupervisionStrategy` appropriate for them so they can survive failures.
         ///
         /// ### No remaining workers
         /// The worker pool will terminate itself if all of its static workers have terminated.
@@ -209,7 +209,7 @@ internal extension WorkerPool {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Worker Pool Ref
 
-public struct WorkerPoolRef<Message: ActorMessage>: ReceivesMessages {
+public struct WorkerPoolRef<Message: ActorMessage>: _ReceivesMessages {
     @usableFromInline
     internal let _ref: _ActorRef<WorkerPoolMessage<Message>>
 

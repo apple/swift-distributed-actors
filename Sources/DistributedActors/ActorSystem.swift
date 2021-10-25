@@ -328,7 +328,7 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     /// of the optional timeout is exceeded.
     ///
     /// This call is also offered to underlying transports which may have to perform the blocking wait themselves
-    /// (most notably, `ProcessIsolated` does so). Please refer to your configured transports documentation,
+    /// (most notably, `_ProcessIsolated` does so). Please refer to your configured transports documentation,
     /// to learn about exact semantics of parking a system while using them.
     public func park(atMost parkTimeout: TimeAmount? = nil) throws {
         let howLongParkingMsg = parkTimeout == nil ? "indefinitely" : "for \(parkTimeout!.prettyDescription)"
@@ -875,6 +875,9 @@ public enum ActorSystemError: ActorTransportError {
     case shuttingDown(String)
 }
 
+/// Error thrown when unable to resolve an ``ActorIdentity``.
+///
+/// Refer to ``ActorSystem/resolve(_:as:)`` or the distributed actors Swift Evolution proposal for details.
 public enum ResolveError: ActorTransportError {
     case illegalIdentity(AnyActorIdentity)
 }

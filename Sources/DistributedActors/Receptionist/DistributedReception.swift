@@ -258,7 +258,7 @@ struct AnyDistributedReceptionKey: Sendable, Codable, Hashable, CustomStringConv
 //    }
 //}
 //
-//extension DistributedReception.Registered where Guest: ReceivesMessages {
+//extension DistributedReception.Registered where Guest: _ReceivesMessages {
 //    internal var ref: _ActorRef<Guest.Message> {
 //        self._guest._ref
 //    }

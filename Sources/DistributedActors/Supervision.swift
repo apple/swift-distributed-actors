@@ -14,7 +14,7 @@
 
 /// Properties configuring supervision for given actor.
 public struct _SupervisionProps {
-    // internal var supervisionMappings: [ErrorTypeIdentifier: SupervisionStrategy]
+    // internal var supervisionMappings: [ErrorTypeIdentifier: _SupervisionStrategy]
     // on purpose stored as list, to keep order in which the supervisors are added as we "scan" from first to last when we handle
     internal var supervisionMappings: [ErrorTypeBoundSupervisionStrategy]
 
@@ -27,14 +27,14 @@ public struct _SupervisionProps {
     /// Add another supervision strategy for a specific `Error` type to the supervision chain contained within these props.
     ///
     /// - SeeAlso: The `Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
-    public mutating func add(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
+    public mutating func add(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervisionMappings.append(ErrorTypeBoundSupervisionStrategy(failureType: errorType, strategy: strategy))
     }
 
     /// Non mutating version of `_SupervisionProps.add(strategy:forErrorType:)`
     ///
     /// - SeeAlso: The `Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
-    public func adding(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> _SupervisionProps {
+    public func adding(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _SupervisionProps {
         var p = self
         p.add(strategy: strategy, forErrorType: errorType)
         return p
@@ -49,7 +49,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    static func supervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    static func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = Props()
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
@@ -62,7 +62,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    static func supervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+    static func supervision(strategy: _SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
         self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -73,7 +73,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    func supervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    func supervision(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = self
         props.supervise(strategy: strategy, forErrorType: errorType)
         return props
@@ -86,7 +86,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    func supervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+    func supervision(strategy: _SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
         self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -97,7 +97,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: failure type selector, working as a "catch all" for the specific types of failures.
-    mutating func supervise(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
+    mutating func supervise(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervision.add(strategy: strategy, forErrorType: errorType)
     }
 
@@ -108,7 +108,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    mutating func supervise(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) {
+    mutating func supervise(strategy: _SupervisionStrategy, forAll selector: Supervise.All = .failures) {
         self.supervise(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 }
@@ -148,7 +148,7 @@ public extension Props {
 ///
 /// **Restarting with Backoff**
 ///
-/// It is possible to `.restart` a backoff strategy before completing a restart. In this case the passed in `SupervisionStrategy`
+/// It is possible to `.restart` a backoff strategy before completing a restart. In this case the passed in `_SupervisionStrategy`
 /// is invoked and the returned `TimeAmount` is used to suspend the actor for this amount of time, before completing the restart,
 /// canonicalizing any `.setup` or similar top-level behaviors and continuing to process messages.
 ///
@@ -166,7 +166,7 @@ public extension Props {
 ///
 /// Backoffs are tremendously useful in building resilient retrying systems, as they allow the avoidance of thundering situations,
 /// in case a fault caused multiple actors to fail for the same reason (e.g. the failure of a shared resource).
-public enum SupervisionStrategy {
+public enum _SupervisionStrategy {
     /// Default supervision strategy applied to all actors, unless a different one is selected in their `Props`.
     ///
     /// Semantically equivalent to not applying any supervision strategy at all, since not applying a strategy
@@ -178,7 +178,7 @@ public enum SupervisionStrategy {
     /// The restart supervision strategy allowing the supervised actor to be restarted `atMost` times `within` a time period.
     /// In addition, each subsequent restart _may_ be performed after a certain backoff.
     ///
-    /// - SeeAlso: The top level `SupervisionStrategy` documentation explores semantics of supervision in more depth.
+    /// - SeeAlso: The top level `_SupervisionStrategy` documentation explores semantics of supervision in more depth.
     ///
     /// **Associated Values**
     ///   - `atMost` number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0).
@@ -207,15 +207,15 @@ public enum SupervisionStrategy {
     /// This strategy is useful whenever the failure of some specific actor should be considered "fatal to the actor system",
     /// yet we still want to perform a graceful shutdown, rather than an abrupt one (e.g. by calling `exit()`).
     ///
-    /// #### Inter-op with `ProcessIsolated`
+    /// #### Inter-op with `_ProcessIsolated`
     /// It is worth pointing out, that escalating failures to root guardians
     case escalate
 }
 
-public extension SupervisionStrategy {
-    /// Simplified version of `SupervisionStrategy.restart(atMost:within:backoff:)`.
+public extension _SupervisionStrategy {
+    /// Simplified version of `_SupervisionStrategy.restart(atMost:within:backoff:)`.
     ///
-    /// - SeeAlso: The top level `SupervisionStrategy` documentation explores semantics of supervision in more depth.
+    /// - SeeAlso: The top level `_SupervisionStrategy` documentation explores semantics of supervision in more depth.
     ///
     /// **Providing a `within` time period**
     ///
@@ -237,23 +237,23 @@ public extension SupervisionStrategy {
     ///   - `within` amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
     ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
-    static func restart(atMost: Int, within: TimeAmount?) -> SupervisionStrategy {
+    static func restart(atMost: Int, within: TimeAmount?) -> _SupervisionStrategy {
         .restart(atMost: atMost, within: within, backoff: nil)
     }
 }
 
 internal struct ErrorTypeBoundSupervisionStrategy {
     let failureType: Error.Type
-    let strategy: SupervisionStrategy
+    let strategy: _SupervisionStrategy
 }
 
 /// Namespace for supervision associated types.
 ///
-/// - SeeAlso: `SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
+/// - SeeAlso: `_SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
 public struct Supervision {
     /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
     internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
-        func supervisorFor0(failureType: Error.Type, strategy: SupervisionStrategy) -> Supervisor<Message> {
+        func supervisorFor0(failureType: Error.Type, strategy: _SupervisionStrategy) -> Supervisor<Message> {
             switch strategy {
             case .restart(let atMost, let within, let backoffStrategy):
                 let strategy = RestartDecisionLogic(maxRestarts: atMost, within: within, backoffStrategy: backoffStrategy)

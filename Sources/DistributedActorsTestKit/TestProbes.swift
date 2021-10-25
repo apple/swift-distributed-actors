@@ -475,9 +475,9 @@ extension ActorTestProbe {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: TestProbes can ReceivesMessages
+// MARK: TestProbes can _ReceivesMessages
 
-extension ActorTestProbe: ReceivesMessages {
+extension ActorTestProbe: _ReceivesMessages {
     public var address: ActorAddress {
         self.exposedRef.address
     }
@@ -494,13 +494,13 @@ public extension ActorTestProbe {
     // TODO: would be nice to be able to also intercept system messages hm...
 
     func interceptAllMessages(sentTo behavior: _Behavior<Message>) -> _Behavior<Message> {
-        let interceptor: Interceptor<Message> = ProbeInterceptor(probe: self)
+        let interceptor: _Interceptor<Message> = ProbeInterceptor(probe: self)
         return .intercept(behavior: behavior, with: interceptor)
     }
 }
 
 /// Allows intercepting messages
-public final class ProbeInterceptor<Message: ActorMessage>: Interceptor<Message> {
+public final class ProbeInterceptor<Message: ActorMessage>: _Interceptor<Message> {
     let probe: ActorTestProbe<Message>
 
     public init(probe: ActorTestProbe<Message>) {
