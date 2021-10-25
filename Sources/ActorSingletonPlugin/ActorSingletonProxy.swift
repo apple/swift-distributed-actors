@@ -70,7 +70,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             if context.system.settings.cluster.enabled {
                 // Subscribe to `Cluster.Event` in order to update `targetNode`
                 context.system.cluster.events.subscribe(
-                    context.subReceive(SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
+                    context.subReceive(_SubReceiveId(id: "clusterEvent-\(context.name)"), Cluster.Event.self) { event in
                         try self.receiveClusterEvent(context, event)
                     }
                 )
@@ -136,7 +136,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
             props: ._wellKnown
         )
         // Need the manager to tell us the ref because we can't resolve it due to random incarnation
-        let refSubReceive = context.subReceive(SubReceiveId(id: "ref-\(context.name)"), _ActorRef<Message>?.self) {
+        let refSubReceive = context.subReceive(_SubReceiveId(id: "ref-\(context.name)"), _ActorRef<Message>?.self) {
             self.updateRef(context, $0)
         }
         self.managerRef?.tell(.takeOver(from: from, replyTo: refSubReceive))

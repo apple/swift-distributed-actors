@@ -172,34 +172,6 @@ var targets: [PackageDescription.Target] = [
     // MARK: Integration Tests - `it_` prefixed
 
     .executableTarget(
-        name: "it_ProcessIsolated_escalatingWorkers",
-        dependencies: [
-            "DistributedActors",
-        ],
-        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_escalatingWorkers"
-    ),
-    .executableTarget(
-        name: "it_ProcessIsolated_respawnsServants",
-        dependencies: [
-            "DistributedActors",
-        ],
-        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_respawnsServants"
-    ),
-    .executableTarget(
-        name: "it_ProcessIsolated_noLeaking",
-        dependencies: [
-            "DistributedActors",
-        ],
-        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_noLeaking"
-    ),
-    .executableTarget(
-        name: "it_ProcessIsolated_backoffRespawn",
-        dependencies: [
-            "DistributedActors",
-        ],
-        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
-    ),
-    .executableTarget(
         name: "it_Clustered_swim_suspension_reachability",
         dependencies: [
             "DistributedActors",

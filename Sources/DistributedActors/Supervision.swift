@@ -206,9 +206,6 @@ public enum _SupervisionStrategy {
     ///
     /// This strategy is useful whenever the failure of some specific actor should be considered "fatal to the actor system",
     /// yet we still want to perform a graceful shutdown, rather than an abrupt one (e.g. by calling `exit()`).
-    ///
-    /// #### Inter-op with `_ProcessIsolated`
-    /// It is worth pointing out, that escalating failures to root guardians
     case escalate
 }
 

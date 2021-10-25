@@ -327,9 +327,8 @@ public final class ActorSystem: _Distributed.ActorTransport, @unchecked Sendable
     /// Parks the current thread (usually "main thread") until the system is terminated,
     /// of the optional timeout is exceeded.
     ///
-    /// This call is also offered to underlying transports which may have to perform the blocking wait themselves
-    /// (most notably, `_ProcessIsolated` does so). Please refer to your configured transports documentation,
-    /// to learn about exact semantics of parking a system while using them.
+    /// This call is also offered to underlying transports which may have to perform the blocking wait themselves.
+    /// Please refer to your configured transports documentation, to learn about exact semantics of parking a system while using them.
     public func park(atMost parkTimeout: TimeAmount? = nil) throws {
         let howLongParkingMsg = parkTimeout == nil ? "indefinitely" : "for \(parkTimeout!.prettyDescription)"
         self.log.info("Parking actor system \(howLongParkingMsg)...")
