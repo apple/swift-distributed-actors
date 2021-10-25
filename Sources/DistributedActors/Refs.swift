@@ -534,7 +534,7 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
 /// :nodoc: INTERNAL API: May change without any prior notice.
 ///
 /// Represents the an "top level" actor which is the parent of all actors spawned on by the system itself
-/// (unlike actors spawned from within other actors, by using `context.spawn`).
+/// (unlike actors spawned from within other actors, by using `context._spawn`).
 public class _Guardian {
     @usableFromInline
     let _address: ActorAddress

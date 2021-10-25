@@ -28,7 +28,7 @@ class InteropDocExamples: XCTestCase {
 
         let system = ActorSystem("System")
         defer { try! system.shutdown().wait() }
-        let behavior: Behavior<Messages> = .receiveMessage { _ in
+        let behavior: _Behavior<Messages> = .receiveMessage { _ in
             // ...
             .same
         }
@@ -38,7 +38,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_sendResult_dispatch[]
-        let ref: _ActorRef<Messages> = try system._spawn.anonymous, behavior) // <1>
+        let ref: _ActorRef<Messages> = try system._spawn(.anonymous, behavior) // <1>
 
         DispatchQueue.global().async { // <2>
             let result = someComputation() // <3>
@@ -67,7 +67,7 @@ class InteropDocExamples: XCTestCase {
         func fetchDataAsync(_: (String) -> Void) {}
 
         // tag::asyncOp_sendResult_insideActor[]
-        let behavior: Behavior<Messages> = .receive { context, message in
+        let behavior: _Behavior<Messages> = .receive { context, message in
             switch message {
             case .fetchData:
                 fetchDataAsync { // <1>
@@ -84,7 +84,7 @@ class InteropDocExamples: XCTestCase {
             return .same
         }
         // end::asyncOp_sendResult_insideActor[]
-        let ref = try system._spawn.anonymous, behavior)
+        let ref = try system._spawn(.anonymous, behavior)
 
         // tag::asyncOp_sendResult_insideActor_external_api[]
         ref.tell(.result("foo"))
@@ -124,7 +124,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_onResultAsync[]
-        let behavior: Behavior<Messages> = .setup { context in
+        let behavior: _Behavior<Messages> = .setup { context in
             var cachedUsers: Cache<String, User> = Cache(cacheDuration: .seconds(30)) // <1>
 
             return .receiveMessage { message in
@@ -175,7 +175,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_awaitResult[]
-        let behavior: Behavior<Message> = .setup { context in
+        let behavior: _Behavior<Message> = .setup { context in
             let future: EventLoopFuture<String> = fetchDataAsync() // <1>
             return context.awaitResult(of: future, timeout: .milliseconds(100)) { // <2>
                 switch $0 {
@@ -187,7 +187,7 @@ class InteropDocExamples: XCTestCase {
             }
         }
 
-        func prefixer(prefix: String) -> Behavior<Message> {
+        func prefixer(prefix: String) -> _Behavior<Message> {
             .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
@@ -213,7 +213,7 @@ class InteropDocExamples: XCTestCase {
             eventLoop.makeSucceededFuture("success")
         }
 
-        func prefixer(prefix: String) -> Behavior<Message> {
+        func prefixer(prefix: String) -> _Behavior<Message> {
             .receiveMessage {
                 switch $0 {
                 case .addPrefix(let string, let recipient):
@@ -224,7 +224,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_awaitResultThrowing[]
-        let behavior: Behavior<Message> = .setup { context in
+        let behavior: _Behavior<Message> = .setup { context in
             let future: EventLoopFuture<String> = fetchDataAsync() // <1>
             return context.awaitResultThrowing(of: future, timeout: .milliseconds(100)) { // <2>
                 prefixer(prefix: $0)

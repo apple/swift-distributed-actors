@@ -24,15 +24,15 @@ final class DispatcherTests: ActorSystemXCTestCase {
     // MARK: Running "on NIO" for fun and profit
 
     func test_runOn_nioEventLoop() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let behavior: Behavior<String> = .receive { context, message in
+        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let behavior: _Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
             p.tell("Dispatcher: \((context as! _ActorShell<String>)._dispatcher.name)")
             return .same
         }
 
-        let w = try system._spawn.anonymous, props: .dispatcher(.nio(self.eventLoopGroup.next())), behavior)
+        let w = try system._spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup.next())), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -43,15 +43,15 @@ final class DispatcherTests: ActorSystemXCTestCase {
     }
 
     func test_runOn_nioEventLoopGroup() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let behavior: Behavior<String> = .receive { context, message in
+        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let behavior: _Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
             p.tell("Dispatcher: \((context as! _ActorShell<String>)._dispatcher.name)")
             return .same
         }
 
-        let w = try system._spawn.anonymous, props: .dispatcher(.nio(self.eventLoopGroup)), behavior)
+        let w = try system._spawn(.anonymous, props: .dispatcher(.nio(self.eventLoopGroup)), behavior)
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -65,8 +65,8 @@ final class DispatcherTests: ActorSystemXCTestCase {
     // MARK: Grand Central Dispatch
 
     func test_runOn_dispatchQueue() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let behavior: Behavior<String> = .receive { context, message in
+        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let behavior: _Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("\(message)")
             p.tell("\((context as! _ActorShell<String>)._dispatcher.name)")
@@ -74,7 +74,7 @@ final class DispatcherTests: ActorSystemXCTestCase {
         }
 
         let global: DispatchQueue = .global()
-        let w = try system._spawn.anonymous, props: .dispatcher(.dispatchQueue(global)), behavior)
+        let w = try system._spawn(.anonymous, props: .dispatcher(.dispatchQueue(global)), behavior)
         w.tell("Hello")
         w.tell("World")
 

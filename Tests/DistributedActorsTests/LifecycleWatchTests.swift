@@ -82,8 +82,8 @@ final class DeathWatchDistributedTests: ActorSystemXCTestCase {
 
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
         try runAsyncAndBlock {
-            let pj = testKit.spawnTestProbe(expecting: String.self)
-            let pr = testKit.spawnTestProbe(expecting: String.self)
+            let pj = testKit.makeTestProbe(expecting: String.self)
+            let pr = testKit.makeTestProbe(expecting: String.self)
             let juliet = Juliet(probe: pj, transport: system)
 
             func meet() async throws {
@@ -103,8 +103,8 @@ final class DeathWatchDistributedTests: ActorSystemXCTestCase {
 
     func test_watchThenUnwatch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
         try runAsyncAndBlock {
-            let pj = testKit.spawnTestProbe(expecting: String.self)
-            let pr = testKit.spawnTestProbe(expecting: String.self)
+            let pj = testKit.makeTestProbe(expecting: String.self)
+            let pr = testKit.makeTestProbe(expecting: String.self)
             let juliet = Juliet(probe: pj, transport: system)
 
             func meet() async throws {

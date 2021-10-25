@@ -28,24 +28,24 @@ final class NodeDeathWatcherTests: ClusteredActorSystemsXCTestCase {
 
         try self.joinNodes(node: first, with: second)
 
-        let refOnRemote1: _ActorRef<String> = try second.spawn("remote-1", .ignore)
+        let refOnRemote1: _ActorRef<String> = try second._spawn("remote-1", .ignore)
         let refOnFirstToRemote1 = first._resolve(ref: refOnRemote1, onSystem: second)
 
-        let refOnRemote2: _ActorRef<String> = try second.spawn("remote-2", .ignore)
+        let refOnRemote2: _ActorRef<String> = try second._spawn("remote-2", .ignore)
         let refOnFirstToRemote2 = first._resolve(ref: refOnRemote2, onSystem: second)
 
         let testKit = ActorTestKit(first)
-        let p = testKit.spawnTestProbe(expecting: Signals.Terminated.self)
+        let p = testKit.makeTestProbe(expecting: Signals.Terminated.self)
 
         // --- prepare actor on [first], which watches remote actors ---
 
-        _ = try first.spawn(
+        _ = try first._spawn(
             "watcher1",
-            Behavior<String>.setup { context in
+            _Behavior<String>.setup { context in
                 context.watch(refOnFirstToRemote1)
                 context.watch(refOnFirstToRemote2)
 
-                let recv: Behavior<String> = .receiveMessage { _ in
+                let recv: _Behavior<String> = .receiveMessage { _ in
                     .same
                 }
 

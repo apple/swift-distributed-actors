@@ -116,7 +116,7 @@ public final class _Mutex {
 
 /// :nodoc: Not intended to be used by end users.
 ///
-/// Similar to `LinkedBlockingQueue` however specialized for a single element.
+/// Similar to `_LinkedBlockingQueue` however specialized for a single element.
 /// Used most often as "await until something happens" mechanism.
 /// Can be used when no other execution context is available yet some waiting for another thread to complete some task
 /// has to be performed, e.g. during dispatcher / event-loop shutdown.

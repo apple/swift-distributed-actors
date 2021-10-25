@@ -22,7 +22,7 @@ import Logging
 /// dynamically, e.g. if a node joins or removes itself from the cluster.
 ///
 // TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
-public class WorkerPool<Message: ActorMessage> {
+public struct WorkerPool<Message: ActorMessage> {
     typealias Ref = WorkerPoolRef<Message>
 
     /// A selector defines how actors should be selected to participate in the pool.
@@ -64,7 +64,7 @@ public class WorkerPool<Message: ActorMessage> {
 
     // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?
     // TODO: round robin or what strategy?
-    public static func spawn(
+    public static func _spawn(
         _ factory: _ActorRefFactory,
         _ naming: ActorNaming,
         props: Props = Props(),
@@ -84,7 +84,7 @@ public class WorkerPool<Message: ActorMessage> {
 /// Immutable state shared across all of them is kept in the worker pool instance to avoid unnecessary passing around,
 /// and state bound to a specific state of the state machine is kept in each appropriate behavior.
 internal extension WorkerPool {
-    typealias PoolBehavior = Behavior<WorkerPoolMessage<Message>>
+    typealias PoolBehavior = _Behavior<WorkerPoolMessage<Message>>
 
     /// Register with receptionist under `selector.key` and become `awaitingWorkers`.
     func initial() -> PoolBehavior {
@@ -145,7 +145,7 @@ internal extension WorkerPool {
                 return worker
             }
 
-            let _forwarding: Behavior<WorkerPoolMessage<Message>> = .receive { context, poolMessage in
+            let _forwarding: _Behavior<WorkerPoolMessage<Message>> = .receive { context, poolMessage in
                 switch poolMessage {
                 case .forward(let message):
                     let selected = selectWorker()
@@ -175,7 +175,7 @@ internal extension WorkerPool {
             // In order to make this time window smaller, we explicitly watch and remove any workers we are forwarding to.
             workers.forEach { context.watch($0) }
 
-            let eagerlyRemoteTerminatedWorkers: Behavior<WorkerPoolMessage<Message>> =
+            let eagerlyRemoteTerminatedWorkers: _Behavior<WorkerPoolMessage<Message>> =
                 .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                     var remainingWorkers = workers
                     remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version

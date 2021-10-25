@@ -22,11 +22,11 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
     func test_workerPool_registerNewlyStartedActors() throws {
         let workerKey = Reception.Key(_ActorRef<String>.self, id: "request-workers")
 
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
-        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
+        let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
+        let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        func worker(p: ActorTestProbe<String>) -> Behavior<String> {
+        func worker(p: ActorTestProbe<String>) -> _Behavior<String> {
             .setup { context in
                 context.receptionist.registerMyself(with: workerKey) // could ask and await on the registration
 
@@ -41,7 +41,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
         _ = try self.system._spawn("worker-b", worker(p: pB))
         _ = try self.system._spawn("worker-c", worker(p: pC))
 
-        let workers = try WorkerPool.spawn(self.system, "workers", select: .dynamic(workerKey))
+        let workers = try WorkerPool._spawn(self.system, "workers", select: .dynamic(workerKey))
 
         workers.tell("a")
         workers.tell("b")
@@ -67,11 +67,11 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
     func test_workerPool_dynamic_removeDeadActors() throws {
         let workerKey = Reception.Key(_ActorRef<String>.self, id: "request-workers")
 
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
-        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
+        let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
+        let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
 
-        func worker(p: ActorTestProbe<String>) -> Behavior<String> {
+        func worker(p: ActorTestProbe<String>) -> _Behavior<String> {
             .setup { context in
                 context.receptionist.registerMyself(with: workerKey) // could ask and await on the registration
 
@@ -92,7 +92,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
         let workerC = try system._spawn("worker-c", worker(p: pC))
         pC.watch(workerC)
 
-        let workers = try WorkerPool.spawn(self.system, "workersMayDie", select: .dynamic(workerKey))
+        let workers = try WorkerPool._spawn(self.system, "workersMayDie", select: .dynamic(workerKey))
 
         // since the workers joining the pool is still technically always a bit racy with the dynamic selection,
         // we try a few times to send a message and see it delivered at each worker. This would not be the case with a static selector.
@@ -140,10 +140,10 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
     }
 
     func test_workerPool_ask() throws {
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
+        let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
 
-        func worker(p: ActorTestProbe<String>) -> Behavior<WorkerPoolQuestion> {
+        func worker(p: ActorTestProbe<String>) -> _Behavior<WorkerPoolQuestion> {
             .receive { context, work in
                 p.tell("work:\(work.id) at \(context.path.name)")
                 return .same
@@ -153,7 +153,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
         let workerA = try system._spawn("worker-a", worker(p: pA))
         let workerB = try system._spawn("worker-b", worker(p: pB))
 
-        let workers = try WorkerPool.spawn(self.system, "questioningTheWorkers", select: .static([workerA, workerB]))
+        let workers = try WorkerPool._spawn(self.system, "questioningTheWorkers", select: .static([workerA, workerB]))
 
         // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
         let answerA: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "AAA", replyTo: $0) }
@@ -180,12 +180,12 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
     }
 
     func test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers() throws {
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
-        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
-        let pW: ActorTestProbe<String> = self.testKit.spawnTestProbe("pW")
+        let pA: ActorTestProbe<String> = self.testKit.makeTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.makeTestProbe("pB")
+        let pC: ActorTestProbe<String> = self.testKit.makeTestProbe("pC")
+        let pW: ActorTestProbe<String> = self.testKit.makeTestProbe("pW")
 
-        func worker(p: ActorTestProbe<String>) -> Behavior<String> {
+        func worker(p: ActorTestProbe<String>) -> _Behavior<String> {
             .receive { context, work in
                 if work == "stop" {
                     return .stop
@@ -202,7 +202,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
         let workerC = try system._spawn("worker-c", worker(p: pC))
         pC.watch(workerC)
 
-        let workers = try WorkerPool.spawn(self.system, "staticWorkersMayDie", select: .static([workerA, workerB, workerC]))
+        let workers = try WorkerPool._spawn(self.system, "staticWorkersMayDie", select: .static([workerA, workerB, workerC]))
         pW.watch(workers._ref)
 
         // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
@@ -244,7 +244,7 @@ final class WorkerPoolTests: ActorSystemXCTestCase {
 
     func test_workerPool_static_throwOnEmptyInitialSet() throws {
         let error = try shouldThrow {
-            let _: WorkerPoolRef<Never> = try WorkerPool.spawn(system, "wrongConfigPool", select: .static([]))
+            let _: WorkerPoolRef<Never> = try WorkerPool._spawn(system, "wrongConfigPool", select: .static([]))
         }
 
         "\(error)".shouldContain("Illegal empty collection passed to `.static` worker pool")

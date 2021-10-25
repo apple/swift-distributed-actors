@@ -36,7 +36,7 @@ final class ActorIsolationFailureHandlingTests: ActorSystemXCTestCase {
         case error(code: Int)
     }
 
-    func faultyWorkerBehavior(probe pw: _ActorRef<Int>) -> Behavior<FaultyWorkerMessage> {
+    func faultyWorkerBehavior(probe pw: _ActorRef<Int>) -> _Behavior<FaultyWorkerMessage> {
         .receive { context, message in
             context.log.info("Working on: \(message)")
             switch message {
@@ -51,11 +51,11 @@ final class ActorIsolationFailureHandlingTests: ActorSystemXCTestCase {
     }
 
     let spawnFaultyWorkerCommand = "spawnFaultyWorker"
-    func healthyMasterBehavior(pm: _ActorRef<SimpleProbeMessage>, pw: _ActorRef<Int>) -> Behavior<String> {
+    func healthyMasterBehavior(pm: _ActorRef<SimpleProbeMessage>, pw: _ActorRef<Int>) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case self.spawnFaultyWorkerCommand:
-                let worker = try context.spawn("faultyWorker", self.faultyWorkerBehavior(probe: pw))
+                let worker = try context._spawn("faultyWorker", self.faultyWorkerBehavior(probe: pw))
                 pm.tell(.spawned(child: worker))
             default:
                 pm.tell(.echoing(message: message))
@@ -65,10 +65,10 @@ final class ActorIsolationFailureHandlingTests: ActorSystemXCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
-        let pm: ActorTestProbe<SimpleProbeMessage> = self.testKit.spawnTestProbe("testProbe-master-1")
-        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe("testProbeForWorker-1")
+        let pm: ActorTestProbe<SimpleProbeMessage> = self.testKit.makeTestProbe("testProbe-master-1")
+        let pw: ActorTestProbe<Int> = self.testKit.makeTestProbe("testProbeForWorker-1")
 
-        let healthyMaster: _ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
+        let healthyMaster: _ActorRef<String> = try system._spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)

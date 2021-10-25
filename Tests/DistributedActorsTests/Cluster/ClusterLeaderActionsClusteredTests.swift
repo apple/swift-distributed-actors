@@ -28,11 +28,11 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 1)
         }
 
-        let p = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+        let p = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
 
-        _ = try first.spawn(
+        _ = try first._spawn(
             "selfishSingleLeader",
-            Behavior<Cluster.Event>.setup { context in
+            _Behavior<Cluster.Event>.setup { context in
                 context.system.cluster.events.subscribe(context.myself)
 
                 return .receiveMessage { event in
@@ -155,9 +155,9 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
         }
 
-        let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
-        let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
@@ -222,21 +222,21 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
 
         let second = self.setUpNode("second") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
         let third = self.setUpNode("third") { settings in
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(300)))
         }
-        let p3 = self.testKit(third).spawnTestProbe(expecting: Cluster.Event.self)
+        let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         third.cluster.events.subscribe(p3.ref)
 
         try self.joinNodes(node: first, with: second)
@@ -282,7 +282,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
         eventsOnFirstSub.shouldContain(.membershipChange(.init(node: secondNode, previousStatus: .up, toStatus: .down)))
 
         try self.testKit(first).eventually(within: .seconds(3)) {
-            let p1s = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
+            let p1s = self.testKit(first).makeTestProbe(expecting: Cluster.Membership.self)
             first.cluster.ref.tell(.query(.currentMembership(p1s.ref)))
         }
     }
@@ -294,7 +294,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
-        let p1 = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(p1.ref)
 
         let second = self.setUpNode("second") { settings in
@@ -303,7 +303,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
-        let p2 = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         second.cluster.events.subscribe(p2.ref)
 
         let third = self.setUpNode("third") { settings in
@@ -312,7 +312,7 @@ final class ClusterLeaderActionsClusteredTests: ClusteredActorSystemsXCTestCase 
             settings.cluster.autoLeaderElection = .lowestReachable(minNumberOfMembers: 2)
             settings.cluster.downingStrategy = .timeout(.init(downUnreachableMembersAfter: .milliseconds(200)))
         }
-        let p3 = self.testKit(third).spawnTestProbe(expecting: Cluster.Event.self)
+        let p3 = self.testKit(third).makeTestProbe(expecting: Cluster.Event.self)
         third.cluster.events.subscribe(p3.ref)
 
         try self.joinNodes(node: first, with: second)

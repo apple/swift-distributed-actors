@@ -52,7 +52,7 @@ public final class StashBuffer<Message: ActorMessage> {
     }
 
     /// Unstashes all messages currently contained in the buffer and eagerly
-    /// processes them with the given behavior. Behavior changes will be
+    /// processes them with the given behavior. _Behavior changes will be
     /// tracked, so if a message causes a behavior change, that behavior will be
     /// used for the following message. The current behavior after the last
     /// messages has been processed will be returned and can be used as the new
@@ -73,7 +73,7 @@ public final class StashBuffer<Message: ActorMessage> {
     /// - Throws: When any of the behavior reductions throws
     /// - Returns: The last behavior returned from processing the unstashed messages
     @inlinable
-    public func unstashAll(context: _ActorContext<Message>, behavior: Behavior<Message>) throws -> Behavior<Message> {
+    public func unstashAll(context: _ActorContext<Message>, behavior: _Behavior<Message>) throws -> _Behavior<Message> {
         // TODO: can we make this honor the run length like `Mailbox` does?
         var iterator = self.buffer.iterator
         let canonical = try context._downcastUnsafe.behavior.canonicalize(context, next: behavior)

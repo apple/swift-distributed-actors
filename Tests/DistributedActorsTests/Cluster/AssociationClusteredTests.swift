@@ -95,8 +95,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let secondName = second.cluster.uniqueNode.node.systemName
         let secondPort = second.cluster.uniqueNode.port
 
-        let firstEventsProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Event.self)
-        let secondEventsProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Event.self)
+        let firstEventsProbe = self.testKit(first).makeTestProbe(expecting: Cluster.Event.self)
+        let secondEventsProbe = self.testKit(second).makeTestProbe(expecting: Cluster.Event.self)
         first.cluster.events.subscribe(firstEventsProbe.ref)
         second.cluster.events.subscribe(secondEventsProbe.ref)
 
@@ -112,7 +112,7 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let secondReplacement = self.setUpNode(secondName + "-REPLACEMENT") { settings in
             settings.cluster.bindPort = secondPort
         }
-        let secondReplacementEventsProbe = self.testKit(secondReplacement).spawnTestProbe(expecting: Cluster.Event.self)
+        let secondReplacementEventsProbe = self.testKit(secondReplacement).makeTestProbe(expecting: Cluster.Event.self)
         secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
         second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
 
@@ -128,8 +128,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
     func test_association_shouldAllowSendingToSecondReference() throws {
         let (first, second) = self.setUpPair()
 
-        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: String.self)
-        let refOnSecondSystem: _ActorRef<String> = try second.spawn(
+        let probeOnSecond = self.testKit(second).makeTestProbe(expecting: String.self)
+        let refOnSecondSystem: _ActorRef<String> = try second._spawn(
             "secondAcquaintance",
             .receiveMessage { message in
                 probeOnSecond.tell("forwarded:\(message)")
@@ -326,8 +326,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         let second = self.setUpNode("second")
 
         // actor on `second` node
-        let p2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-        let secondOne: _ActorRef<String> = try second.spawn("second-1", .receive { _, message in
+        let p2 = self.testKit(second).makeTestProbe(expecting: String.self)
+        let secondOne: _ActorRef<String> = try second._spawn("second-1", .receive { _, message in
             p2.tell("Got:\(message)")
             return .same
         })
@@ -369,8 +369,8 @@ final class ClusterAssociationTests: ClusteredActorSystemsXCTestCase {
         // down myself
         first.cluster.down(node: first.cluster.uniqueNode.node)
 
-        let firstProbe = self.testKit(first).spawnTestProbe(expecting: Cluster.Membership.self)
-        let secondProbe = self.testKit(second).spawnTestProbe(expecting: Cluster.Membership.self)
+        let firstProbe = self.testKit(first).makeTestProbe(expecting: Cluster.Membership.self)
+        let secondProbe = self.testKit(second).makeTestProbe(expecting: Cluster.Membership.self)
 
         // we we down first on first, it should become down there:
         try self.testKit(first).eventually(within: .seconds(3)) {

@@ -43,7 +43,7 @@ public protocol _DeathWatchProtocol {
     /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
     /// the lovers each kill themselves, thinking the other has died.
     ///
-    /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> Behavior<Message>)` method,
+    /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> _Behavior<Message>)` method,
     /// which gives this actor the ability to react to the watchee's death in some other fashion,
     /// for example by saying some nice words about its life, or spawning a "replacement" of watchee in its' place.
     ///

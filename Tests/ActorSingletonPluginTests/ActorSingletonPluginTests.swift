@@ -29,7 +29,7 @@ final class ActorSingletonPluginTests: ActorSystemXCTestCase {
             try! system.shutdown().wait()
         }
 
-        let replyProbe = ActorTestKit(system).spawnTestProbe(expecting: String.self)
+        let replyProbe = ActorTestKit(system).makeTestProbe(expecting: String.self)
 
         // singleton.host behavior
         let ref = try system.singleton.host(GreeterSingleton.Message.self, name: GreeterSingleton.name, GreeterSingleton("Hello").behavior)

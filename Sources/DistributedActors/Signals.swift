@@ -51,8 +51,8 @@ public enum Signals {
 
     /// Signal sent to an actor right after is has semantically been stopped (i.e. will receive no more messages nor signals, except this one).
     ///
-    /// This signal can be handled just like any other signal, using `Behavior.receiveSignal((_ActorContext<Message>, Signal) throws -> Behavior<Message>)`,
-    /// however the `Behavior` returned by the closure will always be ignored and the actor will proceed to its `Terminated` state.
+    /// This signal can be handled just like any other signal, using `_Behavior.receiveSignal((_ActorContext<Message>, Signal) throws -> _Behavior<Message>)`,
+    /// however the `_Behavior` returned by the closure will always be ignored and the actor will proceed to its `Terminated` state.
     /// In other words, it is not possible to stop the actor from terminating once it has received the PostStop signal.
     public struct PostStop: Sendable, Signal {
         @usableFromInline

@@ -224,7 +224,7 @@ public final class OperationLogClusterReceptionist {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Behavior
 
-    var behavior: Behavior<Message> {
+    var behavior: _Behavior<Message> {
         .setup { context in
             context.log.debug("Initialized receptionist")
 
@@ -244,7 +244,7 @@ public final class OperationLogClusterReceptionist {
             )
 
             // === behavior -----------
-            return Behavior<Receptionist.Message>.receiveMessage {
+            return _Behavior<Receptionist.Message>.receiveMessage {
                 self.tracelog(context, .receive, message: $0)
                 switch $0 {
                 case let push as PushOps:

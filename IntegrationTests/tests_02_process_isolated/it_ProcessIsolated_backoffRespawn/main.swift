@@ -32,7 +32,7 @@ pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
 struct OnPurposeBoom: Error {}
 
-isolated.run(on: .master) {
+isolated.run(on: .commander) {
     isolated.spawnServantProcess(
         supervision:
         .respawn(
@@ -50,7 +50,7 @@ try isolated.run(on: .servant) {
     isolated.system.log.info("ISOLATED RUNNING: \(CommandLine.arguments)")
 
     // swiftformat:disable indent unusedArguments wrapArguments
-    _ = try isolated.system.spawn(
+    _ = try isolated.system._spawn(
         "failed",
         of: String.self,
         props: Props().supervision(strategy: .escalate),

@@ -27,19 +27,19 @@ internal class ActorSingletonManager<Message: ActorMessage> {
     /// Props of the singleton behavior
     private let singletonProps: Props
     /// The singleton behavior
-    private let singletonBehavior: Behavior<Message>
+    private let singletonBehavior: _Behavior<Message>
 
     /// The singleton ref
     private var singleton: _ActorRef<Message>?
 
-    init(settings: ActorSingletonSettings, props: Props, _ behavior: Behavior<Message>) {
+    init(settings: ActorSingletonSettings, props: Props, _ behavior: _Behavior<Message>) {
         self.settings = settings
         self.singletonProps = props
         self.singletonBehavior = behavior
     }
 
-    var behavior: Behavior<Directive> {
-        Behavior<Directive>.receive { context, message in
+    var behavior: _Behavior<Directive> {
+        _Behavior<Directive>.receive { context, message in
             switch message {
             case .takeOver(let from, let replyTo):
                 // Spawn the singleton then send its ref
@@ -60,7 +60,7 @@ internal class ActorSingletonManager<Message: ActorMessage> {
 
     private func takeOver(_ context: _ActorContext<Directive>, from: UniqueNode?) throws {
         // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over (https://github.com/apple/swift-distributed-actors/issues/329)
-        self.singleton = try context._spawn.unique(self.settings.name), props: self.singletonProps, self.singletonBehavior)
+        self.singleton = try context._spawn(.unique(self.settings.name), props: self.singletonProps, self.singletonBehavior)
     }
 
     private func handOver(_ context: _ActorContext<Directive>, to: UniqueNode?) throws {

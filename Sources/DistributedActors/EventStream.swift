@@ -34,9 +34,9 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
         name: String,
         of type: Event.Type = Event.self,
         systemStream: Bool,
-        customBehavior: Behavior<EventStreamShell.Message<Event>>? = nil
+        customBehavior: _Behavior<EventStreamShell.Message<Event>>? = nil
     ) throws {
-        let behavior: Behavior<EventStreamShell.Message<Event>> = customBehavior ?? EventStreamShell.behavior(type)
+        let behavior: _Behavior<EventStreamShell.Message<Event>> = customBehavior ?? EventStreamShell.behavior(type)
         if systemStream {
             self.init(ref: try system._spawnSystemActor(.unique(name), behavior))
         } else {
@@ -110,12 +110,12 @@ internal enum EventStreamShell {
         case asyncUnsubscribe(ObjectIdentifier, continue: () -> Void)
     }
 
-    static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
+    static func behavior<Event>(_: Event.Type) -> _Behavior<Message<Event>> {
         .setup { context in
             var subscribers: [ActorAddress: _ActorRef<Event>] = [:]
             var asyncSubscribers: [ObjectIdentifier: (Event) -> Void] = [:]
 
-            let behavior: Behavior<Message<Event>> = .receiveMessage { message in
+            let behavior: _Behavior<Message<Event>> = .receiveMessage { message in
                 switch message {
                 case .subscribe(let ref):
                     subscribers[ref.address] = ref

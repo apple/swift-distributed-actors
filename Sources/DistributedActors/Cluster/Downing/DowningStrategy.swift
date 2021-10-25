@@ -54,7 +54,7 @@ internal struct DowningStrategyShell {
         self.strategy = strategy
     }
 
-    var behavior: Behavior<Message> {
+    var behavior: _Behavior<Message> {
         .setup { context in
             let clusterEventSubRef = context.subReceive(Cluster.Event.self) { event in
                 do {

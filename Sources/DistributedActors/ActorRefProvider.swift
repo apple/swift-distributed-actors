@@ -22,17 +22,17 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     /// Path of the root guardian actor for this part of the actor tree.
     var rootAddress: ActorAddress { get }
 
-    /// Spawn an actor with the passed in [Behavior] and return its [_ActorRef].
+    /// Spawn an actor with the passed in [_Behavior] and return its [_ActorRef].
     ///
     /// The returned actor ref is immediately valid and may have messages sent to.
     ///
-    /// ### Lack of `.spawnWatch` on top level
-    /// Note that it is not possible to `.spawnWatch` top level actors, since any stop would mean the system shutdown
+    /// ### Lack of `._spawnWatch` on top level
+    /// Note that it is not possible to `._spawnWatch` top level actors, since any stop would mean the system shutdown
     /// if you really want this then implement your own top actor to spawn children. It is possible however to use
     /// `.supervision(strategy: .escalate))` as failures bubbling up through the system may indeed be a reason to terminate.
     func _spawn<Message>(
         system: ActorSystem,
-        behavior: Behavior<Message>, address: ActorAddress,
+        behavior: _Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
@@ -77,7 +77,7 @@ extension RemoteActorRefProvider {
 
     func _spawn<Message>(
         system: ActorSystem,
-        behavior: Behavior<Message>, address: ActorAddress,
+        behavior: _Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>
@@ -141,7 +141,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
 
     func _spawn<Message>(
         system: ActorSystem,
-        behavior: Behavior<Message>, address: ActorAddress,
+        behavior: _Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props,
         startImmediately: Bool
     ) throws -> _ActorRef<Message>

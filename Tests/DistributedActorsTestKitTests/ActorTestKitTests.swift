@@ -65,7 +65,7 @@ final class ActorTestKitTests: XCTestCase {
     }
 
     func test_fishForMessages() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
 
         p.tell("yes-1")
         p.tell("yes-2")
@@ -95,7 +95,7 @@ final class ActorTestKitTests: XCTestCase {
     }
 
     func test_fishForTransformed() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
 
         p.tell("yes-1")
         p.tell("yes-2")
@@ -125,7 +125,7 @@ final class ActorTestKitTests: XCTestCase {
     }
 
     func test_fishFor_canThrow() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
 
         p.tell("yes-1")
 
@@ -140,7 +140,7 @@ final class ActorTestKitTests: XCTestCase {
     }
 
     func test_ensureRegistered() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
         let receptionKey: Reception.Key<_ActorRef<String>> = "*"
 
         self.system._receptionist.register(p.ref, as: "*")

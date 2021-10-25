@@ -25,13 +25,13 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func setUpFirst(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
         let first = super.setUpNode("first", modifySettings)
-        self.firstClusterProbe = self.testKit(first).spawnTestProbe()
+        self.firstClusterProbe = self.testKit(first).makeTestProbe()
         return first
     }
 
     func setUpSecond(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
         let second = super.setUpNode("second", modifySettings)
-        self.secondClusterProbe = self.testKit(second).spawnTestProbe()
+        self.secondClusterProbe = self.testKit(second).makeTestProbe()
         return second
     }
 
@@ -50,8 +50,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
-        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let ref = try first._spawn
+        let probeOnSecond = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
+        let ref = try first._spawn(
             "SWIM",
             SWIMActorShell.swimTestBehavior(members: [probeOnSecond.ref], clusterRef: self.firstClusterProbe.ref) { settings in
                 settings.lifeguard.maxLocalHealthMultiplier = 1
@@ -72,7 +72,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
     func test_swim_shouldRespondWithAckToPing() throws {
         let first = self.setUpFirst()
-        let p = self.testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
+        let p = self.testKit(first).makeTestProbe(expecting: SWIM.Message.self)
 
         let ref = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [], clusterRef: self.firstClusterProbe.ref))
 
@@ -94,9 +94,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
 
         first.cluster.join(node: second.cluster.uniqueNode.node)
 
-        let dummyProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let firstPeerProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.PingOriginRef.Message.self)
+        let dummyProbe = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
+        let firstPeerProbe = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testKit(first).makeTestProbe(expecting: SWIM.PingOriginRef.Message.self)
 
         let ref = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [firstPeerProbe.ref], clusterRef: self.firstClusterProbe.ref))
 
@@ -118,9 +118,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         third.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
-        let p = self.testKit(second).spawnTestProbe(expecting: String.self)
+        let p = self.testKit(second).makeTestProbe(expecting: String.self)
 
-        func behavior(postFix: String) -> Behavior<SWIM.Message> {
+        func behavior(postFix: String) -> _Behavior<SWIM.Message> {
             .receive { context, message in
                 switch message {
                 case .remote(.ping(let replyTo, _, _)):
@@ -148,8 +148,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpFirst()
         let second = self.setUpFirst()
 
-        let secondProbe = self.testKit(second).spawnTestProbe("SWIM-2", expecting: SWIM.Message.self)
-        let ackProbe = self.testKit(second).spawnTestProbe(expecting: SWIM.PingOriginRef.Message.self)
+        let secondProbe = self.testKit(second).makeTestProbe("SWIM-2", expecting: SWIM.Message.self)
+        let ackProbe = self.testKit(second).makeTestProbe(expecting: SWIM.PingOriginRef.Message.self)
 
         let ref = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [secondProbe.ref], clusterRef: self.firstClusterProbe.ref))
         ref.tell(.remote(.pingRequest(target: secondProbe.ref, pingRequestOrigin: ackProbe.ref, payload: .none, sequenceNumber: 13)))
@@ -176,7 +176,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         first.cluster.join(node: second.cluster.uniqueNode.node)
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
 
-        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let probeOnSecond = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
         let firstSwim = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [probeOnSecond.ref], clusterRef: self.firstClusterProbe.ref))
         firstSwim.tell(.local(.protocolPeriodTick))
 
@@ -190,9 +190,9 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let systemA = self.setUpNode("A")
         let systemB = self.setUpNode("B")
 
-        let probeA = self.testKit(systemA).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+        let probeA = self.testKit(systemA).makeTestProbe(expecting: ForwardedSWIMMessage.self)
         let refA = try systemA._spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probeA.ref))
-        let probeB = self.testKit(systemB).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+        let probeB = self.testKit(systemB).makeTestProbe(expecting: ForwardedSWIMMessage.self)
         let refB = try systemB._spawn("SWIM-B", self.forwardingSWIMBehavior(forwardTo: probeB.ref))
 
         let swim = try systemSWIM._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
@@ -213,14 +213,14 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
         try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
-        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let probeOnSecond = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
         let remoteMemberRef = first._resolveKnownRemote(probeOnSecond.ref, onRemoteSystem: second)
         let maxIndependentSuspicions = 10
         let suspicionTimeoutPeriodsMax = 1000
         let suspicionTimeoutPeriodsMin = 1
         let timeSource = TestTimeSource()
 
-        let ref = try first._spawn
+        let ref = try first._spawn(
             "SWIM",
             SWIMActorShell.swimTestBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref) { settings in
                 settings.timeSourceNow = timeSource.now
@@ -232,7 +232,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         ref.tell(.local(.protocolPeriodTick))
         try self.expectPing(on: probeOnSecond, reply: false)
         timeSource.tick()
-        let ackProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testKit(first).makeTestProbe(expecting: SWIM.Message.self)
         let suspectStatus: SWIM.Status = .suspect(incarnation: 0, suspectedBy: [firstNode.asSWIMNode])
         ref.tell(.remote(.ping(pingOrigin: ackProbe.ref, payload: .membership([SWIM.Member(peer: remoteMemberRef, status: suspectStatus, protocolPeriod: 0)]), sequenceNumber: 1)))
 
@@ -304,8 +304,8 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         try assertAssociated(first, withExactly: second.cluster.uniqueNode)
         try assertAssociated(second, withExactly: first.cluster.uniqueNode)
 
-        let probeOnSecond = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
-        let secondSwimProbe = self.testKit(second).spawnTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
+        let probeOnSecond = self.testKit(second).makeTestProbe(expecting: SWIM.Message.self)
+        let secondSwimProbe = self.testKit(second).makeTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
 
         let swimRef = try first._spawn("SWIM", SWIMActorShell.swimTestBehavior(members: [secondSwimProbe.ref], clusterRef: self.firstClusterProbe.ref))
         swimRef.tell(.remote(.ping(pingOrigin: probeOnSecond.ref, payload: .none, sequenceNumber: 1)))
@@ -344,7 +344,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         let recipient: _ActorRef<SWIM.Message>
     }
 
-    func forwardingSWIMBehavior(forwardTo ref: _ActorRef<ForwardedSWIMMessage>) -> Behavior<SWIM.Message> {
+    func forwardingSWIMBehavior(forwardTo ref: _ActorRef<ForwardedSWIMMessage>) -> _Behavior<SWIM.Message> {
         .receive { context, message in
             ref.tell(.init(message: message, recipient: context.myself))
             return .same
@@ -374,7 +374,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
-        let stateProbe = testKit.spawnTestProbe(expecting: [SWIM.Member].self)
+        let stateProbe = testKit.makeTestProbe(expecting: [SWIM.Member].self)
 
         try testKit.eventually(within: timeout, file: file, line: line, column: column) {
             swimShell.tell(._testing(._getMembershipState(replyTo: stateProbe.ref)))
@@ -395,7 +395,7 @@ final class SWIMShellClusteredTests: ClusteredActorSystemsXCTestCase {
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
-        let stateProbe = testKit.spawnTestProbe(expecting: [SWIM.Member].self)
+        let stateProbe = testKit.makeTestProbe(expecting: [SWIM.Member].self)
 
         try testKit.assertHolds(for: timeout, file: file, line: line, column: column) {
             swimShell.tell(._testing(._getMembershipState(replyTo: stateProbe.ref)))
@@ -432,7 +432,7 @@ extension SWIMActorShell {
     }
 
     static func swimTestBehavior(members: [_ActorRef<SWIM.Message>], clusterRef: ClusterShell.Ref, configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in
-    }) -> Behavior<SWIM.Message> {
+    }) -> _Behavior<SWIM.Message> {
         .setup { context in
             let swim = self.makeSWIM(for: context.address, members: members, context: context, configuredWith: configure)
             return SWIM.Shell.ready(shell: SWIMActorShell(swim, clusterRef: clusterRef))
@@ -440,7 +440,7 @@ extension SWIMActorShell {
     }
 
     static func swimBehavior(members: [_ActorRef<SWIM.Message>: SWIM.Status], clusterRef: ClusterShell.Ref, configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in
-    }) -> Behavior<SWIM.Message> {
+    }) -> _Behavior<SWIM.Message> {
         .setup { context in
             let swim = self.makeSWIM(for: context.address, members: members, context: context, configuredWith: configure)
             return SWIM.Shell.ready(shell: SWIMActorShell(swim, clusterRef: clusterRef))

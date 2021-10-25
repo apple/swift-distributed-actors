@@ -308,7 +308,7 @@ extension _Children {
 // MARK: Internal shell operations
 
 extension _ActorShell {
-    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>) throws -> _ActorRef<M> {
+    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: _Behavior<M>) throws -> _ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
@@ -383,7 +383,7 @@ extension _ActorShell {
 public enum _ActorContextError: Error {
     /// It is illegal to `context.stop(context.myself)` as it would result in potentially unexpected behavior,
     /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
-    /// it should return `Behavior.stop` from its receive block, which will cause it to immediately stop processing
+    /// it should return `_Behavior.stop` from its receive block, which will cause it to immediately stop processing
     /// any further messages.
     case attemptedStoppingMyselfUsingContext(ref: AddressableActorRef)
     /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system

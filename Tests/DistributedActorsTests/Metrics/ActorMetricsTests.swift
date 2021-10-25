@@ -41,10 +41,10 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
         let first = self.setUpNode("first")
         let second = self.setUpNode("second")
 
-        let ref: _ActorRef<String> = try first.spawn(
+        let ref: _ActorRef<String> = try first._spawn(
             "measuredActor",
             props: .metrics(group: "measuredActorGroup", measure: [.deserialization]),
-            Behavior.receive { _, _ in
+            _Behavior.receive { _, _ in
                 .same
             }
         )
@@ -60,10 +60,10 @@ final class ActorMetricsTests: ClusteredActorSystemsXCTestCase {
     func test_mailboxCount_reportsMetrics() throws {
         let first = self.setUpNode("first")
 
-        let one: _ActorRef<String> = try first.spawn(
+        let one: _ActorRef<String> = try first._spawn(
             "measuredActor",
             props: .metrics(group: "measuredActorGroup", measure: [.mailbox]),
-            Behavior.receive { _, _ in .same }
+            _Behavior.receive { _, _ in .same }
         )
 
         for _ in 0 ... 256 {

@@ -85,7 +85,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Internal _stop capability (without returning Behavior.stop) for Actorables
+    // MARK: Internal _stop capability (without returning _Behavior.stop) for Actorables
 
     /// Allows setting the "next" behavior externally.
     ///
@@ -124,7 +124,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         of type: M.Type = M.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
-        _ behavior: Behavior<M>
+        _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: ActorMessage {
         undefined()
@@ -142,7 +142,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
         of type: M.Type = M.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
-        _ behavior: Behavior<M>
+        _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: ActorMessage {
         undefined()
@@ -171,7 +171,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///
     /// - Throws: an `_ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
     ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
-    ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stop`.
+    ///           also throw, as the proper way of stopping oneself is returning a `_Behavior.stop`.
     public func stop<M>(child ref: _ActorRef<M>) throws where M: ActorMessage {
         return undefined()
     }
@@ -232,7 +232,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `_AsyncResult` completes
-    public func awaitResult<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) -> Behavior<Message> {
+    public func awaitResult<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) -> _Behavior<Message> {
         _AsyncResult.withTimeout(after: timeout)._onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
             selfRef?.sendSystemMessage(.resume(result.map { $0 }))
         }
@@ -256,8 +256,8 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     public func awaitResultThrowing<AR: _AsyncResult>(
         of _AsyncResult: AR,
         timeout: TimeAmount,
-        _ continuation: @escaping (AR.Value) throws -> Behavior<Message>
-    ) -> Behavior<Message> {
+        _ continuation: @escaping (AR.Value) throws -> _Behavior<Message>
+    ) -> _Behavior<Message> {
         self.awaitResult(of: _AsyncResult, timeout: timeout) { result in
             switch result {
             case .success(let res): return try continuation(res)
@@ -278,7 +278,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `_AsyncResult` completes.
     ///     It is safe to access and modify actor state from here.
-    public func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
+    public func onResultAsync<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, file: String = #file, line: UInt = #line, _ continuation: @escaping (Result<AR.Value, Error>) throws -> _Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self, file: file, line: line) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe
@@ -305,7 +305,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     ///   - timeout: time after which the _AsyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `_AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    public func onResultAsyncThrowing<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) {
+    public func onResultAsyncThrowing<AR: _AsyncResult>(of _AsyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> _Behavior<Message>) {
         self.onResultAsync(of: _AsyncResult, timeout: timeout) { res in
             switch res {
             case .success(let value): return try continuation(value)
@@ -380,7 +380,7 @@ public class _ActorContext<Message: ActorMessage> /* TODO(sendable): NOTSendable
     }
 
     @usableFromInline
-    func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
+    func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
         undefined()
     }
 }

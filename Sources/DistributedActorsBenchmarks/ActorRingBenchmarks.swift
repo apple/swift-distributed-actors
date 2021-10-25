@@ -61,7 +61,7 @@ private func tearDown() {
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-private let q = LinkedBlockingQueue<Int>()
+private let q = _LinkedBlockingQueue<Int>()
 
 private let spawnStart = Atomic<UInt64>(value: 0)
 private let spawnStop = Atomic<UInt64>(value: 0)
@@ -81,7 +81,7 @@ private struct Token: ActorMessage {
 
 private let mutex = _Mutex()
 
-private func loopMember(id: Int, next: _ActorRef<Token>, msg: Token) -> Behavior<Token> {
+private func loopMember(id: Int, next: _ActorRef<Token>, msg: Token) -> _Behavior<Token> {
     .receive { _, msg in
         switch msg.payload {
         case 1:
@@ -109,7 +109,7 @@ private func initLoop(m messages: Int, n actors: Int) {
 
             var loopRef = context.myself
             for i in (1 ... actors).reversed() {
-                loopRef = try context.spawn("a\(actors - i)", loopMember(id: i, next: loopRef, msg: Token(messages)))
+                loopRef = try context._spawn("a\(actors - i)", loopMember(id: i, next: loopRef, msg: Token(messages)))
                 // context.log.info("SPAWNed \(loopRef.path.name)...")
             }
             // pprint("DONE SPAWN... \(SwiftBenchmarkTools.Timer().getTime())")

@@ -38,13 +38,13 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
     func test_swimPeer_ping_shouldRemoteMetrics() throws {
         let first = self.setUpNode("first")
 
-        let origin = testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
-        let target = testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
+        let origin = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
+        let target = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
 
-        let fakeClusterRef = testKit(first).spawnTestProbe(expecting: ClusterShell.Message.self).ref
+        let fakeClusterRef = testKit(first).makeTestProbe(expecting: ClusterShell.Message.self).ref
 
         let instance = SWIM.Instance(settings: first.settings.cluster.swim, myself: origin.ref)
-        _ = try first.spawn("swim", of: SWIM.Message.self, .setup { context in
+        _ = try first._spawn("swim", of: SWIM.Message.self, .setup { context in
             let shell = SWIMActorShell(instance, clusterRef: fakeClusterRef)
             shell.sendPing(to: target.ref, payload: .none, pingRequestOrigin: nil, pingRequestSequenceNumber: nil, timeout: .seconds(2), sequenceNumber: 1, context: context)
             return .receiveMessage { _ in .same }
@@ -70,11 +70,11 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
     func test_swimPeer_pingRequest_shouldRemoteMetrics() throws {
         let first = self.setUpNode("first")
 
-        let origin = testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
-        let target = testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
-        let through = testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
+        let origin = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
+        let target = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
+        let through = testKit(first).makeTestProbe(expecting: SWIM.Message.self)
 
-        let fakeClusterRef = testKit(first).spawnTestProbe(expecting: ClusterShell.Message.self).ref
+        let fakeClusterRef = testKit(first).makeTestProbe(expecting: ClusterShell.Message.self).ref
         let directive = SWIM.Instance.SendPingRequestDirective(
             target: target.ref,
             timeout: .seconds(1),
@@ -84,7 +84,7 @@ final class ActorMetricsSWIMActorPeerMetricsTests: ClusteredActorSystemsXCTestCa
         )
 
         let instance = SWIM.Instance(settings: first.settings.cluster.swim, myself: origin.ref)
-        _ = try first.spawn("swim", of: SWIM.Message.self, .setup { context in
+        _ = try first._spawn("swim", of: SWIM.Message.self, .setup { context in
             let shell = SWIMActorShell(instance, clusterRef: fakeClusterRef)
             shell.sendPingRequests(directive, context: context) // we need a real context here since we reach into system metrics through it
             return .receiveMessage { _ in .same }

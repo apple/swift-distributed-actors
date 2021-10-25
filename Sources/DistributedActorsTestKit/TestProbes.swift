@@ -59,32 +59,32 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
     }
 
     /// Blocking linked queue, available to run assertions on
-    private let messagesQueue = LinkedBlockingQueue<Message>()
+    private let messagesQueue = _LinkedBlockingQueue<Message>()
     /// Blocking linked queue, available to run assertions on
-    private let signalQueue = LinkedBlockingQueue<_SystemMessage>()
+    private let signalQueue = _LinkedBlockingQueue<_SystemMessage>()
     /// Blocking linked queue, specialized for keeping only termination signals (so that we can assert terminations, independently of other signals)
-    private let terminationsQueue = LinkedBlockingQueue<Signals.Terminated>()
+    private let terminationsQueue = _LinkedBlockingQueue<Signals.Terminated>()
 
     /// Last message received (by using an `expect...` call), by this probe.
     public var lastMessage: Message?
 
-    /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
+    /// Prepares and spawns a new test probe. Users should use `testKit.makeTestProbe(...)` instead.
     internal init(
-        spawn: (Behavior<ProbeCommands>) throws -> _ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
+        _ makeRef: (_Behavior<ProbeCommands>) throws -> _ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
         file: StaticString = #file, line: UInt = #line
     ) {
         self.settings = settings
 
-        let behavior: Behavior<ProbeCommands> = ActorTestProbe.behavior(
+        let behavior: _Behavior<ProbeCommands> = ActorTestProbe.behavior(
             messageQueue: self.messagesQueue,
             signalQueue: self.signalQueue,
             terminationsQueue: self.terminationsQueue
         )
 
         do {
-            self.internalRef = try spawn(behavior)
+            self.internalRef = try makeRef(behavior)
         } catch {
-            let _: Never = fatalErrorBacktrace("Failed to spawn \(ActorTestProbe<Message>.self): [\(error)]:\(String(reflecting: type(of: error)))", file: file, line: line)
+            let _: Never = fatalErrorBacktrace("Failed to make actor ref for \(ActorTestProbe<Message>.self): [\(error)]:\(String(reflecting: type(of: error)))", file: file, line: line)
         }
 
         self.name = self.internalRef.address.name
@@ -96,11 +96,11 @@ public final class ActorTestProbe<Message: ActorMessage>: @unchecked Sendable {
     }
 
     private static func behavior(
-        messageQueue: LinkedBlockingQueue<Message>,
-        signalQueue: LinkedBlockingQueue<_SystemMessage>, // TODO: maybe we don't need this one
-        terminationsQueue: LinkedBlockingQueue<Signals.Terminated>
-    ) -> Behavior<ProbeCommands> {
-        Behavior<ProbeCommands>.receive { context, message in
+        messageQueue: _LinkedBlockingQueue<Message>,
+        signalQueue: _LinkedBlockingQueue<_SystemMessage>, // TODO: maybe we don't need this one
+        terminationsQueue: _LinkedBlockingQueue<Signals.Terminated>
+    ) -> _Behavior<ProbeCommands> {
+        _Behavior<ProbeCommands>.receive { context, message in
             guard let cell = context.myself._unsafeUnwrapCell.actor else {
                 throw TestProbeInitializationError.failedToObtainUnderlyingCell
             }
@@ -488,12 +488,12 @@ extension ActorTestProbe: ReceivesMessages {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: TestProbes can intercept all messages send to a Behavior
+// MARK: TestProbes can intercept all messages send to a _Behavior
 
 public extension ActorTestProbe {
     // TODO: would be nice to be able to also intercept system messages hm...
 
-    func interceptAllMessages(sentTo behavior: Behavior<Message>) -> Behavior<Message> {
+    func interceptAllMessages(sentTo behavior: _Behavior<Message>) -> _Behavior<Message> {
         let interceptor: Interceptor<Message> = ProbeInterceptor(probe: self)
         return .intercept(behavior: behavior, with: interceptor)
     }
@@ -507,7 +507,7 @@ public final class ProbeInterceptor<Message: ActorMessage>: Interceptor<Message>
         self.probe = probe
     }
 
-    public final override func interceptMessage(target: Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    public final override func interceptMessage(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
         self.probe.tell(message)
         return try target.interpretMessage(context: context, message: message)
     }

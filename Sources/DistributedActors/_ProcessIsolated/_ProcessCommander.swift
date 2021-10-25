@@ -41,7 +41,7 @@ internal struct ProcessCommander {
 
     private var _servants: [Int: ServantProcess] = [:]
 
-    var behavior: Behavior<Command> {
+    var behavior: _Behavior<Command> {
         .setup { context in
             context.log.info("Process commander initialized, ready to accept commands.")
 
@@ -52,7 +52,7 @@ internal struct ProcessCommander {
         }
     }
 
-    var running: Behavior<Command> {
+    var running: _Behavior<Command> {
         .setup { context in
             var _spawnServantTimerId = 0
             func nextSpawnServantTimerKey() -> TimerKey {

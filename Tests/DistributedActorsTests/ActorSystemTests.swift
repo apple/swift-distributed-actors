@@ -37,7 +37,7 @@ final class ActorSystemTests: ActorSystemXCTestCase {
     }
 
     func test_system_spawn_shouldNotThrowOnNameReUse() throws {
-        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<Int> = self.testKit.makeTestProbe()
         // re-using a name of an actor that has been stopped is fine
         let ref: _ActorRef<String> = try system._spawn("test", .stop)
 
@@ -53,14 +53,14 @@ final class ActorSystemTests: ActorSystemXCTestCase {
 
     func test_shutdown_shouldStopAllActors() throws {
         let system2 = ActorSystem("ShutdownSystem")
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let echoBehavior: Behavior<String> = .receiveMessage { message in
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let echoBehavior: _Behavior<String> = .receiveMessage { message in
             p.tell(message)
             return .same
         }
 
-        let ref1 = try system2.spawn(.anonymous, echoBehavior)
-        let ref2 = try system2.spawn(.anonymous, echoBehavior)
+        let ref1 = try system2._spawn(.anonymous, echoBehavior)
+        let ref2 = try system2._spawn(.anonymous, echoBehavior)
 
         p.watch(ref1)
         p.watch(ref2)
@@ -95,13 +95,13 @@ final class ActorSystemTests: ActorSystemXCTestCase {
 
     func test_shutdown_selfSendingActorShouldNotDeadlockSystem() throws {
         let system2 = ActorSystem("ShutdownSystem")
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let echoBehavior: Behavior<String> = .receive { context, message in
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let echoBehavior: _Behavior<String> = .receive { context, message in
             context.myself.tell(message)
             return .same
         }
 
-        let selfSender = try system2.spawn(.anonymous, echoBehavior)
+        let selfSender = try system2._spawn(.anonymous, echoBehavior)
 
         p.watch(selfSender)
 

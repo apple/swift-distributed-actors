@@ -27,7 +27,7 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
     func test_discovery_shouldInitiateJoinsToNewlyDiscoveredNodes() throws {
         let discovery = TestTriggeredServiceDiscovery<String, Node>()
         let settings = ServiceDiscoverySettings(discovery, service: "example")
-        let clusterProbe = testKit.spawnTestProbe(expecting: ClusterShell.Message.self)
+        let clusterProbe = testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         _ = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
 
         discovery.subscribed.wait()
@@ -78,7 +78,7 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
             service: ExampleK8sService(name: "example"),
             mapInstanceToNode: { instance in instance.node }
         )
-        let clusterProbe = testKit.spawnTestProbe(expecting: ClusterShell.Message.self)
+        let clusterProbe = testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         _ = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
 
         discovery.subscribed.wait()
@@ -102,7 +102,7 @@ final class ClusterDiscoveryTests: ActorSystemXCTestCase {
     func test_discovery_stoppingActor_shouldCancelSubscription() throws {
         let discovery = TestTriggeredServiceDiscovery<String, Node>()
         let settings = ServiceDiscoverySettings(discovery, service: "example")
-        let clusterProbe = testKit.spawnTestProbe(expecting: ClusterShell.Message.self)
+        let clusterProbe = testKit.makeTestProbe(expecting: ClusterShell.Message.self)
         let ref = try system._spawn("discovery", DiscoveryShell(settings: settings, cluster: clusterProbe.ref).behavior)
 
         discovery.subscribed.wait()

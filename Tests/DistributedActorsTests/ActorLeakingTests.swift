@@ -33,11 +33,11 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        let stopsOnAnyMessage: Behavior<String> = .receiveMessage { _ in
+        let stopsOnAnyMessage: _Behavior<String> = .receiveMessage { _ in
             .stop
         }
 
-        var ref: _ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
+        var ref: _ActorRef<String>? = try system._spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -69,14 +69,14 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        let stopsOnAnyMessage: Behavior<String> = .setup { context in
+        let stopsOnAnyMessage: _Behavior<String> = .setup { context in
             .receiveMessage { _ in
                 context.log.debug("just so we actually close over context ;)")
                 return .stop
             }
         }
 
-        var ref: _ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
+        var ref: _ActorRef<String>? = try system._spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -108,11 +108,11 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        let stopsOnAnyMessage: Behavior<String> = .receiveMessage { _ in
+        let stopsOnAnyMessage: _Behavior<String> = .receiveMessage { _ in
             .stop
         }
 
-        var ref: _ActorRef<String>? = try system.spawn("stopsOnAnyMessage", stopsOnAnyMessage)
+        var ref: _ActorRef<String>? = try system._spawn("stopsOnAnyMessage", stopsOnAnyMessage)
 
         let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userMailboxInitCounter.load()
@@ -145,19 +145,19 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        let spawnsNChildren: Behavior<Int> = .receive { context, childCount in
+        let spawnsNChildren: _Behavior<Int> = .receive { context, childCount in
             if childCount == 0 {
                 return .stop
             } else {
                 for _ in 1 ... childCount {
-                    let b: Behavior<String> = .receiveMessage { _ in .same }
-                    try context.spawn(.anonymous, b)
+                    let b: _Behavior<String> = .receiveMessage { _ in .same }
+                    try context._spawn(.anonymous, b)
                 }
                 return .same
             }
         }
 
-        var ref: _ActorRef<Int>? = try system.spawn("printer", spawnsNChildren)
+        var ref: _ActorRef<Int>? = try system._spawn("printer", spawnsNChildren)
 
         let expectedParentCount = 1
         let expectedChildrenCount = 3
@@ -209,11 +209,11 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #else
         let lock = _Mutex()
         lock.lock()
-        let behavior: Behavior<LeakTestMessage> = .receiveMessage { _ in
+        let behavior: _Behavior<LeakTestMessage> = .receiveMessage { _ in
             lock.lock()
             return .stop
         }
-        let ref = try system.spawn(.anonymous, props: Props().mailbox(MailboxProps.default(capacity: 1)), behavior)
+        let ref = try system._spawn(.anonymous, props: Props().mailbox(MailboxProps.default(capacity: 1)), behavior)
 
         // this will cause the actor to block and fill the mailbox, so the next message should be dropped and deallocated
         ref.tell(LeakTestMessage(nil))
@@ -249,9 +249,9 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #else
         var system: ActorSystem? = ActorSystem("FreeMe") // only "reference from user land" to the system
 
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
 
-        let ref = try system!.spawn("echo", of: String.self, .receive { context, message in
+        let ref = try system!._spawn("echo", of: String.self, .receive { context, message in
             if message == "shutdown" {
                 context.system.shutdown()
             }
@@ -284,7 +284,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         var system: ActorSystem? = ActorSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
-        _ = try system?.spawn("logging", of: String.self, .setup { context in
+        _ = try system?._spawn("logging", of: String.self, .setup { context in
             context.log.trace("Not going to be logged")
             return .receiveMessage { _ in .same }
         })
@@ -306,7 +306,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         var system: ActorSystem? = ActorSystem("Test") { settings in
             settings.logging.logLevel = .info
         }
-        _ = try system?.spawn("logging", of: String.self, .setup { context in
+        _ = try system?._spawn("logging", of: String.self, .setup { context in
             context.log.warning("Not going to be logged")
             return .receiveMessage { _ in .same }
         })

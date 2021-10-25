@@ -251,7 +251,7 @@ struct DistributedMessageDecl {
             }
 
             let returnTypeString = "\(t)".trimmingCharacters(in: .whitespaces)
-            if returnTypeString.starts(with: "Behavior<") || returnTypeString == "Myself.Behavior" {
+            if returnTypeString.starts(with: "_Behavior<") || returnTypeString == "Myself.Behavior" {
                 return .behavior(returnTypeString)
             } else if returnTypeString.starts(with: "Reply<") {
                 let valueTypeString = String(

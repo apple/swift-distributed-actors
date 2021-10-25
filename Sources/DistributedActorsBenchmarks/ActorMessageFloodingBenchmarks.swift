@@ -42,7 +42,7 @@ private func tearDown() {
     _system = nil
 }
 
-func flooding_behavior(latch: CountDownLatch, messageCount: Int) -> Behavior<Int> {
+func floodingBehavior(latch: CountDownLatch, messageCount: Int) -> _Behavior<Int> {
     .setup { _ in
         var count = messageCount
         return .receiveMessage { _ in
@@ -59,7 +59,7 @@ func bench_messageFlooding(_ messageCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
     let latch = CountDownLatch(from: 1)
 
-    let ref = try system._spawn(.anonymous, flooding_behavior(latch: latch, messageCount: messageCount))
+    let ref = try system._spawn(.anonymous, floodingBehavior(latch: latch, messageCount: messageCount))
 
     let start = timer.getTime()
 
@@ -83,7 +83,7 @@ func bench_messageFlooding_send(_ messageCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
     let latch = CountDownLatch(from: 1)
 
-    let ref = try system._spawn(.anonymous, flooding_behavior(latch: latch, messageCount: messageCount))
+    let ref = try system._spawn(.anonymous, floodingBehavior(latch: latch, messageCount: messageCount))
 
     let startSending = timer.getTime()
 

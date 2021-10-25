@@ -114,9 +114,9 @@ class SerializationTests: ActorSystemXCTestCase {
     // MARK: Actor ref serialization and resolve
 
     func test_serialize_actorRef_inMessage() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
 
-        let ref: _ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             "hello",
             .receiveMessage { message in
                 p.tell("got:\(message)")
@@ -144,14 +144,14 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_actorRef_inMessage_forRemoting() throws {
-        let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings in
+        let remoteCapableSystem = ActorSystem("remoteCapableSystem") { settings in
             settings.cluster.enabled = true
             settings.serialization.register(HasStringRef.self)
         }
         let testKit = ActorTestKit(remoteCapableSystem)
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = testKit.makeTestProbe(expecting: String.self)
 
-        let ref: _ActorRef<String> = try remoteCapableSystem.spawn(
+        let ref: _ActorRef<String> = try remoteCapableSystem._spawn(
             "hello",
             .receiveMessage { message in
                 p.tell("got:\(message)")
@@ -186,8 +186,8 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Never.self)
-        let stoppedRef: _ActorRef<String> = try system.spawn("dead-on-arrival", .stop)
+        let p = self.testKit.makeTestProbe(expecting: Never.self)
+        let stoppedRef: _ActorRef<String> = try system._spawn("dead-on-arrival", .stop)
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
@@ -209,7 +209,7 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
-        let stoppedRef: _ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", .stop) // stopped
+        let stoppedRef: _ActorRef<InterestingMessage> = try system._spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let serialized = try shouldNotThrow {
@@ -235,11 +235,11 @@ class SerializationTests: ActorSystemXCTestCase {
     }
 
     func test_serialize_receivesSystemMessages_inMessage() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
 
-        let watchMe: _ActorRef<String> = try system.spawn("watchMe", .ignore)
+        let watchMe: _ActorRef<String> = try system._spawn("watchMe", .ignore)
 
-        let ref: _ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             "shouldGetSystemMessage",
             .setup { context in
                 context.watch(watchMe)
@@ -283,8 +283,8 @@ class SerializationTests: ActorSystemXCTestCase {
         }
 
         do {
-            let p = self.testKit.spawnTestProbe("p1", expecting: String.self)
-            let echo: _ActorRef<String> = try s2.spawn(
+            let p = self.testKit.makeTestProbe("p1", expecting: String.self)
+            let echo: _ActorRef<String> = try s2._spawn(
                 "echo",
                 .receiveMessage { msg in
                     p.ref.tell("echo:\(msg)")

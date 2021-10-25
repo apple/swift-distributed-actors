@@ -18,7 +18,7 @@ import Logging
 ///
 /// Receptionists are designed to work seamlessly offer the same capability local and distributed.
 ///
-/// - SeeAlso: `_ActorContext<Message>.Receptionist`, accessible in the `Behavior` style API via `context.receptionist`.
+/// - SeeAlso: `_ActorContext<Message>.Receptionist`, accessible in the `_Behavior` style API via `context.receptionist`.
 /// - SeeAlso: `Actor<Act>.Context.Receptionist`, accessible in the `Actorable` style API via `context.receptionist`.
 public struct SystemReceptionist: BaseReceptionistOperations {
     let ref: _ActorRef<Receptionist.Message>

@@ -59,7 +59,7 @@ if let joinAddress = joinAddress {
     system.cluster.join(host: host, port: port) // <2>
 }
 
-let eventsListener = try system._spawn
+let eventsListener = try system._spawn(
     "eventsListener",
     of: Cluster.Event.self,
     .setup { context in
@@ -91,7 +91,7 @@ system.cluster.events.subscribe(eventsListener) // <2>
 // end::cluster-sample-event-listener[]
 
 // tag::cluster-sample-actors-discover-and-chat[]
-let chatter: _ActorRef<String> = try system._spawn
+let chatter: _ActorRef<String> = try system._spawn(
     "chatter",
     .receive { context, text in
         context.log.info("Received: \(text)")
@@ -101,7 +101,7 @@ let chatter: _ActorRef<String> = try system._spawn
 system._receptionist.register(chatter, with: "chat-room") // <1>
 
 if system.cluster.uniqueNode.port == 7337 { // <2>
-    try system._spawn
+    try system._spawn(
         "greeter",
         of: Reception.Listing<_ActorRef<String>>.self,
         .setup { context in // <3>

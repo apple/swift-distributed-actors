@@ -25,12 +25,12 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
         // since there is no previous behavior to stay "same" name at the same time:
 
         let ex = try shouldThrow {
-            let sameBehavior: Behavior<String> = .same
+            let sameBehavior: _Behavior<String> = .same
             _ = try self.system._spawn("same", sameBehavior)
         }
 
         "\(ex)".shouldEqual("""
-        notAllowedAsInitial(DistributedActors.Behavior<Swift.String>.same)
+        notAllowedAsInitial(DistributedActors._Behavior<Swift.String>.same)
         """)
     }
 
@@ -42,20 +42,20 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
         // We do allow starting with .ignore though since that's like a "blackhole"
 
         let ex = try shouldThrow {
-            let unhandledBehavior: Behavior<String> = .unhandled
-            try system.spawn("unhandled", unhandledBehavior)
+            let unhandledBehavior: _Behavior<String> = .unhandled
+            try system._spawn("unhandled", unhandledBehavior)
         }
 
-        "\(ex)".shouldEqual("notAllowedAsInitial(DistributedActors.Behavior<Swift.String>.unhandled)")
+        "\(ex)".shouldEqual("notAllowedAsInitial(DistributedActors._Behavior<Swift.String>.unhandled)")
     }
 
     func test_spawn_shouldNotAllowIllegalActorNames() throws {
         func check(illegalName: String, expectedError: String) throws {
             let err = try shouldThrow {
-                let b: Behavior<String> = .ignore
+                let b: _Behavior<String> = .ignore
 
                 // more coverage for all the different chars in [[ActorPathTests]]
-                try system.spawn(.unique(illegalName), b)
+                try system._spawn(.unique(illegalName), b)
             }
             "\(err)".shouldEqual(expectedError)
         }
@@ -88,10 +88,10 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
     }
 
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let spawner: Behavior<String> = .receive { context, name in
+        let p = self.testKit.makeTestProbe(expecting: String.self)
+        let spawner: _Behavior<String> = .receive { context, name in
             let fromName = context.path
-            let _: _ActorRef<Int> = try context.system.spawn(
+            let _: _ActorRef<Int> = try context.system._spawn(
                 "\(name)",
                 .setup { context in
                     p.tell("me:\(context.path) spawned from \(fromName)")
@@ -100,12 +100,12 @@ class ActorLifecycleTests: ActorSystemXCTestCase {
             )
             return .stop
         }
-        try system.spawn("a", spawner).tell("charlie")
-        try self.system.spawn("b", spawner).tell("charlie")
-        try self.system.spawn("c", spawner).tell("charlie")
-        try self.system.spawn("d", spawner).tell("charlie")
-        try self.system.spawn("e", spawner).tell("charlie")
-        try self.system.spawn("f", spawner).tell("charlie")
+        try system._spawn("a", spawner).tell("charlie")
+        try self.system._spawn("b", spawner).tell("charlie")
+        try self.system._spawn("c", spawner).tell("charlie")
+        try self.system._spawn("d", spawner).tell("charlie")
+        try self.system._spawn("e", spawner).tell("charlie")
+        try self.system._spawn("f", spawner).tell("charlie")
 
         let spawnedBy = try p.expectMessage()
         pinfo("Spawned by: \(spawnedBy)")

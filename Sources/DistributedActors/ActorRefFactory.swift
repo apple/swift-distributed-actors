@@ -43,7 +43,7 @@ public protocol _ActorRefFactory {
     ///     Passing a string literal is the same as using an *unique* actor naming strategy, and may cause throws if the name is already used.
     ///     See also `ActorNaming` on details on other naming strategies (such as `.anonymous`).
     ///   - props: props held by this actor. Allow configuring details about failure handling and execution semantics of this actor.
-    ///   - behavior: the `Behavior` of the actor to be spawned.
+    ///   - behavior: the `_Behavior` of the actor to be spawned.
     /// - Returns: `_ActorRef` for the spawned actor.
     /// - Throws: When `ActorNaming.unique` (or a string literal is passed in) is used and the given name is already used in this namespace.
     ///     This can happen when a parent actor attempts to spawn two actors of the same name, or the same situation happens on top-level actors.
@@ -53,7 +53,7 @@ public protocol _ActorRefFactory {
         of type: Message.Type,
         props: Props,
         file: String, line: UInt,
-        _ behavior: Behavior<Message>
+        _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: ActorMessage
 }
 

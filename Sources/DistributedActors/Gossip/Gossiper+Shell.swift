@@ -46,12 +46,12 @@ internal final class GossipShell<Gossip: Codable, Acknowledgement: Codable> {
         self.peers = []
     }
 
-    var behavior: Behavior<Message> {
+    var behavior: _Behavior<Message> {
         .setup { context in
             self.ensureNextGossipRound(context)
             self.initPeerDiscovery(context)
 
-            return Behavior<Message>.receiveMessage {
+            return _Behavior<Message>.receiveMessage {
                 switch $0 {
                 case .updatePayload(let identifier, let payload):
                     self.onLocalPayloadUpdate(context, identifier: identifier, payload: payload)

@@ -32,7 +32,7 @@ pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
 struct OnPurposeBoom: Error {}
 
-isolated.run(on: .master) {
+isolated.run(on: .commander) {
     isolated.spawnServantProcess(supervision: .respawn(atMost: 1, within: nil), args: ["fatalError"])
     isolated.spawnServantProcess(supervision: .respawn(atMost: 1, within: nil), args: ["escalateError"])
 }
