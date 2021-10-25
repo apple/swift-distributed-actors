@@ -21,7 +21,7 @@ import Logging
 /// it is possible for anyone to maintain a local up-to-date copy of `Membership` by applying all these events to that copy.
 internal enum ClusterEventStream {
     enum Shell {
-        static var behavior: Behavior<EventStreamShell.Message<Cluster.Event>> {
+        static var behavior: _Behavior<EventStreamShell.Message<Cluster.Event>> {
             .setup { context in
 
                 // We maintain a snapshot i.e. the "latest version of the membership",
@@ -36,7 +36,7 @@ internal enum ClusterEventStream {
                 var subscribers: [ActorAddress: _ActorRef<Cluster.Event>] = [:]
                 var asyncSubscribers: [ObjectIdentifier: (Cluster.Event) -> Void] = [:]
 
-                let behavior: Behavior<EventStreamShell.Message<Cluster.Event>> = .receiveMessage { message in
+                let behavior: _Behavior<EventStreamShell.Message<Cluster.Event>> = .receiveMessage { message in
                     switch message {
                     case .subscribe(let ref):
                         subscribers[ref.address] = ref

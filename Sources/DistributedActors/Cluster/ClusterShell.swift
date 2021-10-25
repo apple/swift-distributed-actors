@@ -352,7 +352,7 @@ internal class ClusterShell {
         case failure(HandshakeStateMachine.HandshakeConnectionError)
     }
 
-    private var behavior: Behavior<Message> {
+    private var behavior: _Behavior<Message> {
         return self.bind()
     }
 
@@ -369,7 +369,7 @@ extension ClusterShell {
     /// Binds on setup to the configured address (as configured in `system.settings.cluster`).
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
-    private func bind() -> Behavior<Message> {
+    private func bind() -> _Behavior<Message> {
         return .setup { context in
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
@@ -457,8 +457,8 @@ extension ClusterShell {
     /// Ready and interpreting commands and incoming messages.
     ///
     /// Serves as main "driver" for handshake and association state machines.
-    private func ready(state: ClusterShellState) -> Behavior<Message> {
-        func receiveShellCommand(_ context: _ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
+    private func ready(state: ClusterShellState) -> _Behavior<Message> {
+        func receiveShellCommand(_ context: _ActorContext<Message>, command: CommandMessage) -> _Behavior<Message> {
             state.tracelog(.inbound, message: command)
 
             switch command {
@@ -494,7 +494,7 @@ extension ClusterShell {
             }
         }
 
-        func receiveQuery(_ context: _ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
+        func receiveQuery(_ context: _ActorContext<Message>, query: QueryMessage) -> _Behavior<Message> {
             state.tracelog(.inbound, message: query)
 
             switch query {
@@ -507,7 +507,7 @@ extension ClusterShell {
             }
         }
 
-        func receiveInbound(_ context: _ActorContext<Message>, message: InboundMessage) throws -> Behavior<Message> {
+        func receiveInbound(_ context: _ActorContext<Message>, message: InboundMessage) throws -> _Behavior<Message> {
             switch message {
             case .handshakeOffer(let offer, let channel, let promise):
                 self.tracelog(context, .receiveUnique(from: offer.originNode), message: offer)
@@ -532,7 +532,7 @@ extension ClusterShell {
         }
 
         /// Allows processing in one spot, all membership changes which we may have emitted in other places, due to joining, downing etc.
-        func receiveChangeMembershipRequest(_ context: _ActorContext<Message>, event: Cluster.Event) -> Behavior<Message> {
+        func receiveChangeMembershipRequest(_ context: _ActorContext<Message>, event: Cluster.Event) -> _Behavior<Message> {
             self.tracelog(context, .receive(from: state.selfNode.node), message: event)
             var state = state
 
@@ -572,7 +572,7 @@ extension ClusterShell {
             _ context: _ActorContext<Message>,
             _ state: ClusterShellState,
             gossip: Cluster.MembershipGossip
-        ) -> Behavior<Message> {
+        ) -> _Behavior<Message> {
             tracelog(context, .gossip(gossip), message: gossip)
             var state = state
 
@@ -613,7 +613,7 @@ extension ClusterShell {
             return self.ready(state: state)
         }
 
-        return Behavior<Message>
+        return _Behavior<Message>
             .receive { context, message in
                 switch message {
                 case .command(let command): return receiveShellCommand(context, command: command)
@@ -663,7 +663,7 @@ extension ClusterShell {
     /// Upon successful handshake, the `replyTo` actor shall be notified with its result, as well as the handshaked-with node shall be marked as `.joining`.
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    internal func beginHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> Behavior<Message> {
+    internal func beginHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node) -> _Behavior<Message> {
         var state = state
 
         guard remoteNode != state.selfNode.node else {
@@ -706,7 +706,7 @@ extension ClusterShell {
         }
     }
 
-    internal func retryHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
+    internal func retryHandshake(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> _Behavior<Message> {
         state.log.debug("Retry handshake with: \(initiated.remoteNode)")
 //
 //        // FIXME: this needs more work...
@@ -715,7 +715,7 @@ extension ClusterShell {
         return self.connectSendHandshakeOffer(context, state, initiated: initiated)
     }
 
-    func connectSendHandshakeOffer(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
+    func connectSendHandshakeOffer(_ context: _ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> _Behavior<Message> {
         var state = state
         state.log.debug("Extending handshake offer", metadata: [
             "handshake/remoteNode": "\(initiated.remoteNode)",
@@ -780,7 +780,7 @@ extension ClusterShell {
         _ context: _ActorContext<Message>, _ state: ClusterShellState,
         _ offer: Wire.HandshakeOffer, inboundChannel: Channel,
         replyInto handshakePromise: EventLoopPromise<Wire.HandshakeResponse>
-    ) -> Behavior<Message> {
+    ) -> _Behavior<Message> {
         var state = state
 
         // TODO: guard that the target node is actually "us"? i.e. if we're exposed over various protocols and/or ports etc?
@@ -886,7 +886,7 @@ extension ClusterShell {
 // MARK: Failures to obtain connections
 
 extension ClusterShell {
-    func onOutboundConnectionError(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, error: Error) -> Behavior<Message> {
+    func onOutboundConnectionError(_ context: _ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, error: Error) -> _Behavior<Message> {
         var state = state
         state.log.debug("Failed to establish outbound channel to \(remoteNode), error: \(error)", metadata: [
             "handshake/remoteNode": "\(remoteNode)",
@@ -952,7 +952,7 @@ extension ClusterShell {
 // MARK: Incoming Handshake Replies
 
 extension ClusterShell {
-    private func onHandshakeAccepted(_ context: _ActorContext<Message>, _ state: ClusterShellState, _ inboundAccept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
+    private func onHandshakeAccepted(_ context: _ActorContext<Message>, _ state: ClusterShellState, _ inboundAccept: Wire.HandshakeAccept, channel: Channel) -> _Behavior<Message> {
         var state = state // local copy for mutation
 
         state.log.debug("Accept association with \(reflecting: inboundAccept.targetNode)!", metadata: [
@@ -1046,7 +1046,7 @@ extension ClusterShell {
         }
     }
 
-    private func onHandshakeRejected(_ context: _ActorContext<Message>, _ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
+    private func onHandshakeRejected(_ context: _ActorContext<Message>, _ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> _Behavior<Message> {
         var state = state
 
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
@@ -1081,7 +1081,7 @@ extension ClusterShell {
         return .same
     }
 
-    private func onHandshakeFailed(_ context: _ActorContext<Message>, _ state: ClusterShellState, with node: Node, error: Error) -> Behavior<Message> {
+    private func onHandshakeFailed(_ context: _ActorContext<Message>, _ state: ClusterShellState, with node: Node, error: Error) -> _Behavior<Message> {
         // we MAY be seeing a handshake failure from a 2 nodes concurrently shaking hands on 2 connections,
         // and we decided to tie-break and kill one of the connections. As such, the handshake COMPLETED successfully but
         // on the other connection; and the terminated one may yield an error (e.g. truncation error during proto parsing etc),
@@ -1108,7 +1108,7 @@ extension ClusterShell {
         return .same
     }
 
-    private func onRestInPeace(_ context: _ActorContext<Message>, _ state: ClusterShellState, intendedNode: UniqueNode, fromNode: UniqueNode) -> Behavior<Message> {
+    private func onRestInPeace(_ context: _ActorContext<Message>, _ state: ClusterShellState, intendedNode: UniqueNode, fromNode: UniqueNode) -> _Behavior<Message> {
         let myselfNode = state.selfNode
 
         guard myselfNode == myselfNode else {
@@ -1165,7 +1165,7 @@ extension ClusterShell {
 // MARK: Shutdown
 
 extension ClusterShell {
-    fileprivate func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
+    fileprivate func onShutdownCommand(_ context: _ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> _Behavior<Message> {
         // we exit the death-pact with any children we spawned, even if they fail now, we don't mind because we're shutting down
         context.children.forEach { ref in
             context.unwatch(ref)
@@ -1198,7 +1198,7 @@ extension ClusterShell {
         _ context: _ActorContext<Message>,
         state: ClusterShellState,
         change: Cluster.ReachabilityChange
-    ) -> Behavior<Message> {
+    ) -> _Behavior<Message> {
         var state = state
         guard state.membership.applyReachabilityChange(change) != nil else {
             return .same

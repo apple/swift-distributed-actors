@@ -41,8 +41,8 @@ class ProcessIsolatedDocExamples {
 
         // ...
 
-        // executes only on .master process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        try isolated.run(on: .master) { // <3>
+        // executes only on .commander process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        try isolated.run(on: .commander) { // <3>
             // spawn a servant process
             isolated.spawnServantProcess( // <4>
                 supervision: .respawn( // <5>
@@ -52,7 +52,7 @@ class ProcessIsolatedDocExamples {
             )
 
             // spawn the an actor on the master node <6>
-            _ = try isolated.system._spawn
+            _ = try isolated.system._spawn(
                 "bruce",
                 of: WorkRequest.self,
                 .receiveMessage { _ in
@@ -61,7 +61,7 @@ class ProcessIsolatedDocExamples {
                 }
             )
         }
-        // end of executes only on .master process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // end of executes only on .commander process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // executes only on .servant process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         _ = try isolated.run(on: .servant) { // <7>

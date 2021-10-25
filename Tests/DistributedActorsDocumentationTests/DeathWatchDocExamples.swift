@@ -105,13 +105,13 @@ extension GameMatch.Command {
 }
 
 class DeathWatchDocExamples {
-    func unitReady() -> Behavior<GameUnit.Command> {
+    func unitReady() -> _Behavior<GameUnit.Command> {
         .ignore
     }
 
     func simple_watch() throws {
         // tag::simple_death_watch[]
-        func gameUnit(player: _ActorRef<Player.Command>) -> Behavior<GameUnit.Command> {
+        func gameUnit(player: _ActorRef<Player.Command>) -> _Behavior<GameUnit.Command> {
             .setup { context in
                 context.watch(player) // <1>
 
@@ -131,7 +131,7 @@ class DeathWatchDocExamples {
         // tag::handling_termination_deathwatch[]
         let concedeTimer: TimerKey = "concede-timer"
 
-        _ = Behavior<GameMatch.Command>.receive { context, command in
+        _ = _Behavior<GameMatch.Command>.receive { context, command in
             switch command {
             case .playerConnected(let player):
                 context.timers.cancel(for: concedeTimer)

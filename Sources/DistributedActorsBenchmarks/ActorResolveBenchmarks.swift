@@ -55,14 +55,14 @@ func bench_visitSingleRef(n: Int) {
 // -------
 
 func setUp_visit_depth_10_total_10() {
-    func spawnDeeper(stillMore n: Int) -> Behavior<Int> {
+    func spawnDeeper(stillMore n: Int) -> _Behavior<Int> {
         if n == 0 {
             return .setup { _ in
                 .same
             }
         } else {
-            return Behavior<Int>.setup { context in
-                try context.spawn("a\(n)", spawnDeeper(stillMore: n - 1))
+            return _Behavior<Int>.setup { context in
+                try context._spawn("a\(n)", spawnDeeper(stillMore: n - 1))
                 return .receiveMessage { _ in .same }
             }
         }
@@ -75,14 +75,14 @@ func bench_visit(n: Int) {
 }
 
 func setUp_visit_depth_1000_total_1000() {
-    func spawnDeeper(stillMore n: Int) -> Behavior<Int> {
+    func spawnDeeper(stillMore n: Int) -> _Behavior<Int> {
         if n == 0 {
             return .setup { _ in
                 .receiveMessage { _ in .same }
             }
         } else {
-            return Behavior<Int>.setup { context in
-                try context.spawn("a\(n)", spawnDeeper(stillMore: n - 1))
+            return _Behavior<Int>.setup { context in
+                try context._spawn("a\(n)", spawnDeeper(stillMore: n - 1))
                 return .receiveMessage { _ in .same }
             }
         }

@@ -28,16 +28,16 @@ public struct _ServantProcessSupervisionStrategy {
     /// Stopping supervision strategy, meaning that terminated servant processes will not get automatically spawned replacements.
     ///
     /// It is useful if you want to manually manage replacements and servant processes, however note that without restarting
-    /// servants, the system may end up in a state with no servants, and only the boss running, so you should plan to take
-    /// action in case this happens (e.g. by terminating the boss itself, and relying on a higher level orchestrator to restart
+    /// servants, the system may end up in a state with no servants, and only the commander running, so you should plan to take
+    /// action in case this happens (e.g. by terminating the commander itself, and relying on a higher level orchestrator to restart
     /// the entire system).
     public static var stop: _ServantProcessSupervisionStrategy {
         .init(underlying: .stop)
     }
 
-    /// Supervision strategy binding the lifecycle of the boss process with the given servant process,
+    /// Supervision strategy binding the lifecycle of the commander process with the given servant process,
     /// i.e. if a servant process supervised using this strategy terminates (exits, fails, for whatever reason),
-    /// the boss parent will also terminate (with an error exit code).
+    /// the commander parent will also terminate (with an error exit code).
     public static var escalate: _ServantProcessSupervisionStrategy {
         .init(underlying: .escalate)
     }
@@ -96,7 +96,7 @@ extension ProcessIsolated {
             case .escalate:
                 self.system.log.info("\(messagePrefix): ESCALATE, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>")")
                 self.system.cluster.down(node: self.system.cluster.uniqueNode.node)
-                // TODO: ensure we exit the boss process as well
+                // TODO: ensure we exit the commander process as well
 
             case .restartImmediately:
                 self.system.log.info("\(messagePrefix): RESPAWN, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>")")

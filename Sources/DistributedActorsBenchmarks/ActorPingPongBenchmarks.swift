@@ -119,7 +119,7 @@ private let mutex = _Mutex()
 
 private var supervisor: _ActorRef<PingPongCommand>!
 
-private func supervisorBehavior() -> Behavior<PingPongCommand> {
+private func supervisorBehavior() -> _Behavior<PingPongCommand> {
     .receive { context, message in
         switch message {
         case .startPingPong(let numMessagesPerActorPair, let numActors, let throughput, _, let replyTo):
@@ -174,8 +174,8 @@ private func startPingPongActorPairs(
     let startSpawning = SwiftBenchmarkTools.Timer().getTimeAsInt()
     actors.reserveCapacity(numPairs)
     for i in 0 ..< numPairs {
-        let ping = try context.spawn("ping-\(i)", pingPongBehavior)
-        let pong = try context.spawn("pong-\(i)", pingPongBehavior)
+        let ping = try context._spawn("ping-\(i)", pingPongBehavior)
+        let pong = try context._spawn("pong-\(i)", pingPongBehavior)
         let actorPair = (ping, pong)
         actors.append(actorPair)
     }
@@ -205,7 +205,7 @@ private struct EchoMessage: ActorMessage, CustomStringConvertible {
     }
 }
 
-private func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch) -> Behavior<EchoMessage> {
+private func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch) -> _Behavior<EchoMessage> {
     .setup { context in
         var left = messagesPerPair / 2
 

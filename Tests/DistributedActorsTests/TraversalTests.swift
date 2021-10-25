@@ -29,29 +29,29 @@ final class TraversalTests: ActorSystemXCTestCase {
         super.setUp()
 
         // we use the probe to make sure all actors are started before we start asserting on the tree
-        let probe = self.testKit.spawnTestProbe(expecting: ActorReady.self)
+        let probe = self.testKit.makeTestProbe(expecting: ActorReady.self)
 
-        let tellProbeWhenReady: Behavior<Int> = .setup { context in
+        let tellProbeWhenReady: _Behavior<Int> = .setup { context in
             probe.tell(ActorReady(name: context.name))
             return .receiveMessage { _ in .same }
         }
 
-        let _: _ActorRef<String> = try! self.system.spawn(
+        let _: _ActorRef<String> = try! self.system._spawn(
             "hello",
             .setup { context in
                 probe.tell(ActorReady(name: context.name))
-                let _: _ActorRef<Int> = try context.spawn("world", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context._spawn("world", tellProbeWhenReady)
                 return .receiveMessage { _ in .same }
             }
         )
 
-        let _: _ActorRef<String> = try! self.system.spawn(
+        let _: _ActorRef<String> = try! self.system._spawn(
             "other",
             .setup { context in
                 probe.tell(ActorReady(name: context.name))
-                let _: _ActorRef<Int> = try context.spawn("inner-1", tellProbeWhenReady)
-                let _: _ActorRef<Int> = try context.spawn("inner-2", tellProbeWhenReady)
-                let _: _ActorRef<Int> = try context.spawn("inner-3", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context._spawn("inner-1", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context._spawn("inner-2", tellProbeWhenReady)
+                let _: _ActorRef<Int> = try context._spawn("inner-3", tellProbeWhenReady)
                 return .receiveMessage { _ in .same }
             }
         )

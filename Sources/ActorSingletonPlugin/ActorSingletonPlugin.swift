@@ -37,7 +37,7 @@ public final class ActorSingletonPlugin {
     public init() {}
 
     // FIXME: document that may crash, it may right?
-    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> _ActorRef<Message> {
+    func ref<Message: ActorMessage>(of type: Message.Type, settings: ActorSingletonSettings, system: ActorSystem, props: Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
         try self.singletonsLock.withLock {
             if let existing = self.singletons[settings.name] {
                 guard let proxy = existing.unsafeUnwrapAs(Message.self).proxy else {
@@ -62,7 +62,7 @@ public final class ActorSingletonPlugin {
 
 extension ActorSingletonPlugin {
     @available(*, deprecated, message: "Will be removed and replaced by API based on DistributedActor. Issue #824")
-    func ref<Message>(of type: Message.Type, name: String, system: ActorSystem, props: Props? = nil, _ behavior: Behavior<Message>? = nil) throws -> _ActorRef<Message> {
+    func ref<Message>(of type: Message.Type, name: String, system: ActorSystem, props: Props? = nil, _ behavior: _Behavior<Message>? = nil) throws -> _ActorRef<Message> {
         let settings = ActorSingletonSettings(name: name)
         return try self.ref(of: type, settings: settings, system: system, props: props, behavior)
     }
@@ -120,12 +120,12 @@ public struct ActorSingletonControl {
     }
 
     /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(_ type: Message.Type, name: String, props: Props = Props(), _ behavior: Behavior<Message>) throws -> _ActorRef<Message> {
+    public func host<Message>(_ type: Message.Type, name: String, props: Props = Props(), _ behavior: _Behavior<Message>) throws -> _ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, name: name, system: self.system, props: props, behavior)
     }
 
     /// Defines a singleton `behavior` and indicates that it can be hosted on this node.
-    public func host<Message>(_ type: Message.Type, settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) throws -> _ActorRef<Message> {
+    public func host<Message>(_ type: Message.Type, settings: ActorSingletonSettings, props: Props = Props(), _ behavior: _Behavior<Message>) throws -> _ActorRef<Message> {
         try self.singletonPlugin.ref(of: type, settings: settings, system: self.system, props: props, behavior)
     }
 

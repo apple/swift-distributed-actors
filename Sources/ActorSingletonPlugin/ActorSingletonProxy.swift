@@ -43,7 +43,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     /// The singleton behavior.
     /// If `nil`, then this node is not a candidate for hosting the singleton. It would result
     /// in a failure if `allocationStrategy` selects this node by mistake.
-    private let singletonBehavior: Behavior<Message>?
+    private let singletonBehavior: _Behavior<Message>?
 
     /// The node that the singleton runs on
     private var targetNode: UniqueNode?
@@ -57,7 +57,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
     /// Message buffer in case singleton `ref` is `nil`
     private let buffer: StashBuffer<Message>
 
-    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: Props? = nil, _ behavior: Behavior<Message>? = nil) {
+    init(settings: ActorSingletonSettings, allocationStrategy: ActorSingletonAllocationStrategy, props: Props? = nil, _ behavior: _Behavior<Message>? = nil) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props
@@ -65,7 +65,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
         self.buffer = StashBuffer(capacity: settings.bufferCapacity)
     }
 
-    var behavior: Behavior<Message> {
+    var behavior: _Behavior<Message> {
         .setup { context in
             if context.system.settings.cluster.enabled {
                 // Subscribe to `Cluster.Event` in order to update `targetNode`
@@ -80,7 +80,7 @@ internal class ActorSingletonProxy<Message: ActorMessage> {
                 try self.takeOver(context, from: nil)
             }
 
-            return Behavior<Message>.receiveMessage { message in
+            return _Behavior<Message>.receiveMessage { message in
                 try self.forwardOrStash(context, message: message)
                 return .same
             }.receiveSpecificSignal(Signals.PostStop.self) { context, _ in

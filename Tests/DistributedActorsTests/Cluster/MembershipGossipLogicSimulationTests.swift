@@ -307,7 +307,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
         let initialGossips = setUpPeers()
         self.mockPeers = try! self.systems.map { system -> _ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> in
             let ref: _ActorRef<GossipShell<Cluster.MembershipGossip, Cluster.MembershipGossip>.Message> =
-                try system.spawn("peer", .receiveMessage { _ in .same })
+                try system._spawn("peer", .receiveMessage { _ in .same })
             return self.systems.first!._resolveKnownRemote(ref, onRemoteSystem: system)
         }.map { $0.asAddressable }
 
@@ -318,7 +318,7 @@ final class MembershipGossipLogicSimulationTests: ClusteredActorSystemsXCTestCas
             // initialize with user provided gossips
             self.logics = initialGossips.map { initialGossip in
                 let system = self.system(initialGossip.owner.node.systemName)
-                let probe = self.testKit(system).spawnTestProbe(expecting: Cluster.MembershipGossip.self)
+                let probe = self.testKit(system).makeTestProbe(expecting: Cluster.MembershipGossip.self)
                 let logic = self.makeLogic(system, probe)
                 logic.receiveLocalGossipUpdate(initialGossip)
                 return logic

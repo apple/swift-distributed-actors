@@ -160,7 +160,7 @@ public extension Props {
 ///         ^     ^ ^ ^^^^^^^ ^
 ///     .setup    | |    |    \- Complete the restart; If present, run any .setup and other nested behaviors, continue running as usual.
 ///               | |    \- Backoff time before completing the restart, if backoff strategy is set and returns a value.
-///               | \- Signals.PreRestart is interpreted by the existing Behavior (in its .onSignal handler, if present)
+///               | \- Signals.PreRestart is interpreted by the existing _Behavior (in its .onSignal handler, if present)
 ///               \- "Letting it Crash!"
 /// ```
 ///
@@ -252,7 +252,7 @@ internal struct ErrorTypeBoundSupervisionStrategy {
 /// - SeeAlso: `SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
 public struct Supervision {
     /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
-    internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
+    internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: SupervisionStrategy) -> Supervisor<Message> {
             switch strategy {
             case .restart(let atMost, let within, let backoffStrategy):
@@ -389,7 +389,7 @@ internal enum ProcessingAction<Message: ActorMessage> {
     case message(Message)
     case signal(Signal)
     case closure(ActorClosureCarry)
-    case continuation(() throws -> Behavior<Message>) // TODO: make it a Carry type for better debugging
+    case continuation(() throws -> _Behavior<Message>) // TODO: make it a Carry type for better debugging
     case subMessage(SubMessageCarry)
 }
 
@@ -416,38 +416,38 @@ internal class Supervisor<Message: ActorMessage> {
     typealias Directive = SupervisionDirective<Message>
 
     @inlinable
-    internal final func interpretSupervised(target: Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, message: Message) throws -> _Behavior<Message> {
         traceLog_Supervision("CALL WITH \(target) @@@@ [\(message)]:\(type(of: message))")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .message(message))
     }
 
     @inlinable
-    internal final func interpretSupervised(target: Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .signal(signal))
     }
 
     @inlinable
-    internal final func interpretSupervised(target: Behavior<Message>, context: _ActorContext<Message>, closure: ActorClosureCarry) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: ActorClosureCarry) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .closure(closure))
     }
 
     @inlinable
-    internal final func interpretSupervised(target: Behavior<Message>, context: _ActorContext<Message>, subMessage: SubMessageCarry) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, subMessage: SubMessageCarry) throws -> _Behavior<Message> {
         traceLog_Supervision("INTERPRETING SUB MESSAGE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .subMessage(subMessage))
     }
 
     @inlinable
-    internal final func interpretSupervised(target: Behavior<Message>, context: _ActorContext<Message>, closure: @escaping () throws -> Behavior<Message>) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: _Behavior<Message>, context: _ActorContext<Message>, closure: @escaping () throws -> _Behavior<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(
                 target: target, context: context, processingAction: .continuation(closure))
     }
 
     @inlinable
-    internal final func startSupervised(target: Behavior<Message>, context: _ActorContext<Message>) throws -> Behavior<Message> {
+    internal final func startSupervised(target: _Behavior<Message>, context: _ActorContext<Message>) throws -> _Behavior<Message> {
         traceLog_Supervision("CALLING START")
         return try self.interpretSupervised0(
                 target: target, context: context,
@@ -457,7 +457,7 @@ internal class Supervisor<Message: ActorMessage> {
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
     @inlinable
     @inline(__always)
-    final func interpretSupervised0(target: Behavior<Message>, context: _ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> Behavior<Message> {
+    final func interpretSupervised0(target: _Behavior<Message>, context: _ActorContext<Message>, processingAction: ProcessingAction<Message>) throws -> _Behavior<Message> {
         try self.interpretSupervised0(
                 target: target, context: context,
                 processingAction: processingAction, nFoldFailureDepth: 1) // 1 since we already have "one failure"
@@ -465,10 +465,10 @@ internal class Supervisor<Message: ActorMessage> {
 
     @inlinable
     @inline(__always)
-    final func interpretSupervised0(target: Behavior<Message>,
+    final func interpretSupervised0(target: _Behavior<Message>,
                                     context: _ActorContext<Message>,
                                     processingAction: ProcessingAction<Message>,
-                                    nFoldFailureDepth: Int) throws -> Behavior<Message> {
+                                    nFoldFailureDepth: Int) throws -> _Behavior<Message> {
         do {
             switch processingAction {
             case .start:
@@ -497,7 +497,7 @@ internal class Supervisor<Message: ActorMessage> {
     }
 
     @usableFromInline
-    func handleError(context: _ActorContext<Message>, target: Behavior<Message>, processingAction: ProcessingAction<Message>, error: Error) throws -> Behavior<Message> {
+    func handleError(context: _ActorContext<Message>, target: _Behavior<Message>, processingAction: ProcessingAction<Message>, error: Error) throws -> _Behavior<Message> {
         var errorToHandle = error
         // The following restart loop exists to support interpreting `PreRestart` and `Start` signal interpretation failures;
         // If the actor fails during restarting, this failure becomes the new failure reason, and we supervise this failure
@@ -554,7 +554,7 @@ internal class Supervisor<Message: ActorMessage> {
     /// Handle a fault that happened during processing.
     ///
     /// The returned `SupervisionDirective` will be interpreted appropriately.
-    open func handleFailure(_ context: _ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    open func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         undefined()
     }
 
@@ -588,7 +588,7 @@ final class StoppingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
             // TODO: matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
             return .stop
@@ -622,7 +622,7 @@ final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
             return .escalate(failure)
         } else {
@@ -661,7 +661,7 @@ final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
         super.init()
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         for supervisor in self.supervisors {
             if supervisor.canHandle(failure: failure) {
                 return try supervisor.handleFailure(context, target: target, failure: failure, processingType: processingType)
@@ -685,9 +685,9 @@ internal enum SupervisionDirective<Message: ActorMessage> {
     /// Directs mailbox to directly stop processing.
     case stop
     /// Directs mailbox to prepare AND complete a restart immediately.
-    case restartImmediately(Behavior<Message>)
+    case restartImmediately(_Behavior<Message>)
     /// Directs mailbox to prepare a restart after a delay.
-    case restartDelayed(TimeAmount, Behavior<Message>)
+    case restartDelayed(TimeAmount, _Behavior<Message>)
     /// Directs the mailbox to immediately fail and stop processing.
     /// Failures should "bubble up".
     case escalate(Supervision.Failure)
@@ -780,17 +780,17 @@ internal struct RestartDecisionLogic {
 final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
     internal let failureType: Error.Type
 
-    internal let initialBehavior: Behavior<Message>
+    internal let initialBehavior: _Behavior<Message>
 
     private var restartDecider: RestartDecisionLogic
 
-    public init(initialBehavior behavior: Behavior<Message>, restartLogic: RestartDecisionLogic, failureType: Error.Type) {
+    public init(initialBehavior behavior: _Behavior<Message>, restartLogic: RestartDecisionLogic, failureType: Error.Type) {
         self.initialBehavior = behavior
         self.restartDecider = restartLogic
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         let decision: SupervisionDecision = self.restartDecider.recordFailure()
 
         guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) else {
@@ -845,7 +845,7 @@ internal enum SupervisionRestartDelayedBehavior<Message: ActorMessage> {
     internal struct WakeUp {}
 
     @usableFromInline
-    static func after(delay: TimeAmount, with replacement: Behavior<Message>) -> Behavior<Message> {
+    static func after(delay: TimeAmount, with replacement: _Behavior<Message>) -> _Behavior<Message> {
         .setup { context in
             context.timers._startResumeTimer(key: TimerKey("restartBackoff", isSystemTimer: true), delay: delay, resumeWith: WakeUp())
 

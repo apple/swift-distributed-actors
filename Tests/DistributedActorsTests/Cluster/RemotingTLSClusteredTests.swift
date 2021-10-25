@@ -260,7 +260,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         sleep(2)
 
         do {
-            let pSystem = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
+            let pSystem = testKit.makeTestProbe(expecting: Set<UniqueNode>.self)
             local.cluster.ref.tell(.query(.associatedNodes(pSystem.ref)))
             remote.cluster.ref.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
@@ -268,7 +268,7 @@ class RemotingTLSTests: ClusteredActorSystemsXCTestCase {
         }
 
         do {
-            let pRemote = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
+            let pRemote = testKit.makeTestProbe(expecting: Set<UniqueNode>.self)
             local.cluster.ref.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
             remote.cluster.ref.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()

@@ -67,11 +67,11 @@ internal final class AffinityThreadPool {
     @usableFromInline
     internal struct Worker {
         @usableFromInline
-        internal let taskQueue: LinkedBlockingQueue<() -> Void>
+        internal let taskQueue: _LinkedBlockingQueue<() -> Void>
         private let thread: Thread
 
         internal init(stopped: Atomic<Bool>) throws {
-            let queue: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
+            let queue: _LinkedBlockingQueue<() -> Void> = _LinkedBlockingQueue()
             let thread = try Thread {
                 while !stopped.load(order: .acquire) {
                     // TODO: We are doing a timed poll here to guarantee that we

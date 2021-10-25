@@ -32,11 +32,11 @@ let isolated = ProcessIsolated { boot in
 pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
 // though one can ensure to only run if in a process of a given role:
-isolated.run(on: .master) {
+isolated.run(on: .commander) {
     // open some fds, hope to not leak them into children!
     var fds: [Int] = []
     for i in 1 ... 1000 {
-        fds.append(Int(open("/tmp/masters-treasure-\(i).txt", O_WRONLY | O_CREAT, 0o666)))
+        fds.append(Int(open("/tmp/commanders-treasure-\(i).txt", O_WRONLY | O_CREAT, 0o666)))
     }
 
     isolated.system.log.info("Opened \(fds.count) files...! Let's not leak them to servants")

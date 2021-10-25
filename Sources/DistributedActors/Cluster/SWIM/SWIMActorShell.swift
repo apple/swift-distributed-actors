@@ -41,10 +41,10 @@ internal struct SWIMActorShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Behaviors
+    // MARK: _Behaviors
 
     /// Initial behavior, kicks off timers and becomes `ready`.
-    static func behavior(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) -> Behavior<SWIM.Message> {
+    static func behavior(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) -> _Behavior<SWIM.Message> {
         .setup { context in
             let swim = SWIM.Instance(
                 settings: Self.customizeSWIMSettings(settings: settings, context: context),
@@ -69,7 +69,7 @@ internal struct SWIMActorShell {
         return settings
     }
 
-    static func ready(shell: SWIMActorShell) -> Behavior<SWIM.Message> {
+    static func ready(shell: SWIMActorShell) -> _Behavior<SWIM.Message> {
         .receive { context, wrappedMessage in
             switch wrappedMessage {
             case .remote(let message):

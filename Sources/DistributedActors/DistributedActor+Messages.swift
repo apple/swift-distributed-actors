@@ -30,7 +30,7 @@ public protocol __AnyDistributedClusterActor {
 public protocol __DistributedClusterActor: __AnyDistributedClusterActor {
     associatedtype Message: Codable // TODO: & Sendable
 
-    static func makeBehavior(instance: Self) -> Behavior<Message>
+    static func makeBehavior(instance: Self) -> _Behavior<Message>
 
     static func _spawn(instance: Self, on system: ActorSystem) -> _ActorRef<Message>
 }

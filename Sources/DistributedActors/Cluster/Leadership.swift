@@ -109,7 +109,7 @@ extension Leadership {
             self.membership = .empty
         }
 
-        var behavior: Behavior<Cluster.Event> {
+        var behavior: _Behavior<Cluster.Event> {
             .setup { context in
                 context.log.trace("Configured with \(self.election)")
                 context.system.cluster.events.subscribe(context.myself)
@@ -120,7 +120,7 @@ extension Leadership {
             }
         }
 
-        private var ready: Behavior<Cluster.Event> {
+        private var ready: _Behavior<Cluster.Event> {
             .receive { context, event in
                 switch event {
                 case .snapshot(let membership):
@@ -145,7 +145,7 @@ extension Leadership {
             }
         }
 
-        func runElection(_ context: _ActorContext<Cluster.Event>) -> Behavior<Cluster.Event> {
+        func runElection(_ context: _ActorContext<Cluster.Event>) -> _Behavior<Cluster.Event> {
             var electionContext = LeaderElectionContext(context)
             electionContext.log[metadataKey: "leadership/election"] = "\(String(reflecting: type(of: self.election)))"
             let electionResult = self.election.runElection(context: electionContext, membership: self.membership)

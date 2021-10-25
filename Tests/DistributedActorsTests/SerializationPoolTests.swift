@@ -118,7 +118,7 @@ final class SerializationPoolTests: XCTestCase {
     func test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {
         let serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
         defer { serializationPool.shutdown() }
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         // We are locking here to validate that the object is being serialized
         // on the calling thread, because only then will it be able to reenter
@@ -150,7 +150,7 @@ final class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         // We are locking here to validate that the objects are being serialized
         // on the same, separate thread, because only then will we not receive
@@ -185,7 +185,7 @@ final class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         // We are locking here to validate that the objects are being serialized
         // on different, separate threads, because only then will we receive
@@ -218,7 +218,7 @@ final class SerializationPoolTests: XCTestCase {
     func test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
         let serializationPool = try SerializationPool(settings: .default, serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let json = "{}"
 
         // We are locking here to validate that the object is being deserialized
@@ -255,7 +255,7 @@ final class SerializationPoolTests: XCTestCase {
     func test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let json = "{}"
 
         // We are locking here to validate that the objects are being deserialized
@@ -297,7 +297,7 @@ final class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         // We are locking here to validate that the objects are being deserialized
         // on different, separate threads, because only then will we receive
@@ -335,7 +335,7 @@ final class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: self.system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         // We are locking here to validate that the objects are being serialized
         // on different, separate threads, than the objects being deserialized

@@ -20,14 +20,14 @@ import XCTest
 
 final class StashBufferTests: ActorSystemXCTestCase {
     func test_stash_shouldStashMessages() throws {
-        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
-        let unstashBehavior: Behavior<Int> = .receiveMessage { message in
+        let unstashBehavior: _Behavior<Int> = .receiveMessage { message in
             probe.ref.tell(message)
             return .same
         }
 
-        let behavior: Behavior<Int> = .setup { _ in
+        let behavior: _Behavior<Int> = .setup { _ in
             let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
             return .receive { context, message in
                 switch message {
@@ -41,7 +41,7 @@ final class StashBufferTests: ActorSystemXCTestCase {
             }
         }
 
-        let stasher = try system.spawn(.anonymous, behavior)
+        let stasher = try system._spawn(.anonymous, behavior)
 
         for i in 0 ... 10 {
             stasher.tell(i)
@@ -66,11 +66,11 @@ final class StashBufferTests: ActorSystemXCTestCase {
     }
 
     func test_unstash_intoSetupBehavior_shouldCanonicalize() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Int.self)
+        let p = self.testKit.makeTestProbe(expecting: Int.self)
 
-        _ = try self.system.spawn(
+        _ = try self.system._spawn(
             "unstashIntoSetup",
-            Behavior<Int>.setup { context in
+            _Behavior<Int>.setup { context in
                 let stash = StashBuffer<Int>(capacity: 2)
                 try stash.stash(message: 1)
 
@@ -90,17 +90,17 @@ final class StashBufferTests: ActorSystemXCTestCase {
     }
 
     func test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun() throws {
-        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
         let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
 
-        let unstashBehavior: Behavior<Int> = .receiveMessage { message in
+        let unstashBehavior: _Behavior<Int> = .receiveMessage { message in
             try! stash.stash(message: message)
             probe.ref.tell(message)
             return .same
         }
 
-        let behavior: Behavior<Int> = .receive { context, message in
+        let behavior: _Behavior<Int> = .receive { context, message in
             switch message {
             case 10:
                 return try stash.unstashAll(context: context, behavior: unstashBehavior)
@@ -111,7 +111,7 @@ final class StashBufferTests: ActorSystemXCTestCase {
             }
         }
 
-        let stasher = try system.spawn(.anonymous, behavior)
+        let stasher = try system._spawn(.anonymous, behavior)
 
         for i in 0 ... 10 {
             stasher.tell(i)

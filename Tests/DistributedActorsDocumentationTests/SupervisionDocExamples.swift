@@ -22,7 +22,7 @@ class SupervisionDocExamples {
     lazy var system: ActorSystem = undefined(hint: "Examples, not intended to be run")
 
     func supervise_props() throws {
-        let greeterBehavior: Behavior<String> = undefined()
+        let greeterBehavior: _Behavior<String> = undefined()
         let context: _ActorContext<String> = undefined()
 
         // tag::supervise_props[]
@@ -30,7 +30,7 @@ class SupervisionDocExamples {
             .supervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
         // potentially more props configuration here ...
 
-        let greeterRef = try context._spawn
+        let greeterRef = try context._spawn(
             "greeter",
             props: props, // <3>
             greeterBehavior
@@ -40,11 +40,11 @@ class SupervisionDocExamples {
     }
 
     func supervise_inline() throws {
-        let greeterBehavior: Behavior<String> = undefined()
+        let greeterBehavior: _Behavior<String> = undefined()
         let context: _ActorContext<String> = undefined()
 
         // tag::supervise_inline[]
-        let greeterRef = try context._spawn
+        let greeterRef = try context._spawn(
             "greeter",
             props: .supervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
             greeterBehavior
@@ -59,7 +59,7 @@ class SupervisionDocExamples {
             case doesNotLike(name: String)
         }
 
-        func greeterBehavior(friends: [String]) -> Behavior<String> {
+        func greeterBehavior(friends: [String]) -> _Behavior<String> {
             .receive { context, name in
                 guard friends.contains(name) else {
                     context.log.warning("Overreacting to \(name)... Letting it crash!")
@@ -75,7 +75,7 @@ class SupervisionDocExamples {
         // tag::supervise_full_usage[]
         let friends = ["Alice", "Bob", "Caplin"]
 
-        let greeterRef: _ActorRef<String> = try system._spawn
+        let greeterRef: _ActorRef<String> = try system._spawn(
             "greeter",
             props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
             greeterBehavior(friends: friends)
@@ -96,7 +96,7 @@ class SupervisionDocExamples {
         typealias Name = String
         typealias LikedFruit = String
 
-        func favouriteFruitBehavior(_ whoLikesWhat: [Name: LikedFruit]) -> Behavior<String> {
+        func favouriteFruitBehavior(_ whoLikesWhat: [Name: LikedFruit]) -> _Behavior<String> {
             .receive { context, name in
                 let likedFruit = whoLikesWhat[name]! // 😱 Oh, no! This force unwrap is a terrible idea!
 
@@ -113,7 +113,7 @@ class SupervisionDocExamples {
             "Caplin": "Cucumbers",
         ]
 
-        let greeterRef = try system._spawn
+        let greeterRef = try system._spawn(
             "favFruit",
             props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
             favouriteFruitBehavior(whoLikesWhat)
@@ -136,7 +136,7 @@ class SupervisionDocExamples {
 //        struct NotIntendedToBeCaught: Error {}
 //
 //        /// "Re-throws" whichever error was sent to it.
-//        let throwerBehavior: Behavior<Error> = .setup { context in
+//        let throwerBehavior: _Behavior<Error> = .setup { context in
 //            context.log.info("Starting...")
 //
 //            return .receiveMessage { error in
@@ -145,7 +145,7 @@ class SupervisionDocExamples {
 //            }
 //        }
 //
-//        let thrower = try system._spawn
+//        let thrower = try system._spawn(
 //            "thrower",
 //            props: Props()
 //                .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self), // <2>

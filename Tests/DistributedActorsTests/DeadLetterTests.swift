@@ -42,7 +42,7 @@ final class DeadLetterTests: ActorSystemXCTestCase {
                 .stop
             }
         )
-        let p = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testKit.makeTestProbe(expecting: Never.self)
 
         p.watch(ref)
         ref.tell("terminate please")
@@ -61,7 +61,7 @@ final class DeadLetterTests: ActorSystemXCTestCase {
                 .stop
             }
         )
-        let p = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testKit.makeTestProbe(expecting: Never.self)
 
         p.watch(ref)
         ref.tell("terminate please")

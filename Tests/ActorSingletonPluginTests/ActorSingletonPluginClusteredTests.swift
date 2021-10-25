@@ -95,15 +95,15 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         }
 
         // No leader so singleton is not available, messages sent should be stashed
-        let replyProbe1 = self.testKit(first).spawnTestProbe(expecting: String.self)
+        let replyProbe1 = self.testKit(first).makeTestProbe(expecting: String.self)
         let ref1 = try first.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-1").behavior)
         ref1.tell(.greet(name: "Alice-1", replyTo: replyProbe1.ref))
 
-        let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
+        let replyProbe2 = self.testKit(second).makeTestProbe(expecting: String.self)
         let ref2 = try second.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-2").behavior)
         ref2.tell(.greet(name: "Bob-2", replyTo: replyProbe2.ref))
 
-        let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
+        let replyProbe3 = self.testKit(third).makeTestProbe(expecting: String.self)
         let ref3 = try third.singleton.host(GreeterSingleton.Message.self, settings: singletonSettings, GreeterSingleton("Hello-3").behavior)
         ref3.tell(.greet(name: "Charlie-3", replyTo: replyProbe3.ref))
 
@@ -167,8 +167,8 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         try self.ensureNodes(.up, nodes: first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode)
         pinfo("Nodes up: \([first.cluster.uniqueNode, second.cluster.uniqueNode, third.cluster.uniqueNode])")
 
-        let replyProbe2 = self.testKit(second).spawnTestProbe(expecting: String.self)
-        let replyProbe3 = self.testKit(third).spawnTestProbe(expecting: String.self)
+        let replyProbe2 = self.testKit(second).makeTestProbe(expecting: String.self)
+        let replyProbe3 = self.testKit(third).makeTestProbe(expecting: String.self)
 
         // `first` has the lowest address so it should be the leader and singleton
         try self.assertSingletonRequestReply(first, singletonRef: ref1, message: "Alice", expect: "Hello-1 Alice!")
@@ -196,7 +196,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
         let start = Deadline.now().uptimeNanoseconds
 
         // No leader so singleton is not available, messages sent should be stashed
-        _ = try second.spawn("teller", of: String.self, .setup { context in
+        _ = try second._spawn("teller", of: String.self, .setup { context in
             context.timers.startPeriodic(key: "periodic-try-send", message: "tick", interval: .seconds(1))
             var attempt = 0
 
@@ -253,7 +253,7 @@ final class ActorSingletonPluginClusteredTests: ClusteredActorSystemsXCTestCase 
     /// Since during re-balancing it may happen that a message gets lost, we send messages a few times and only if none "got through" it would be a serious error.
     private func assertSingletonRequestReply(_ system: ActorSystem, singletonRef: _ActorRef<GreeterSingleton.Message>, message: String, expect: String) throws {
         let testKit: ActorTestKit = self.testKit(system)
-        let replyProbe = testKit.spawnTestProbe(expecting: String.self)
+        let replyProbe = testKit.makeTestProbe(expecting: String.self)
 
         var attempts = 0
         try testKit.eventually(within: .seconds(10)) {
@@ -289,7 +289,7 @@ struct GreeterSingleton {
         case greet(name: String, replyTo: _ActorRef<String>)
     }
 
-    var behavior: Behavior<Message> {
+    var behavior: _Behavior<Message> {
         .receive { context, message in
             switch message {
             case .greet(let name, let replyTo):

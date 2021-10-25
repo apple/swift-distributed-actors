@@ -19,7 +19,7 @@ import NIOSSL
 import XCTest
 
 final class GossiperShellTests: ActorSystemXCTestCase {
-    func peerBehavior<T: Codable>() -> Behavior<GossipShell<T, String>.Message> {
+    func peerBehavior<T: Codable>() -> _Behavior<GossipShell<T, String>.Message> {
         .receiveMessage { msg in
             if "\(msg)".contains("stop") { return .stop } else { return .same }
         }
@@ -29,9 +29,9 @@ final class GossiperShellTests: ActorSystemXCTestCase {
     // MARK: test_down_beGossipedToOtherNodes
 
     func test_down_beGossipedToOtherNodes() throws {
-        let p = self.testKit.spawnTestProbe(expecting: [AddressableActorRef].self)
+        let p = self.testKit.makeTestProbe(expecting: [AddressableActorRef].self)
 
-        let control = try Gossiper._spawn
+        let control = try Gossiper._spawn(
             self.system,
             name: "gossiper",
             settings: .init(
@@ -98,9 +98,9 @@ final class GossiperShellTests: ActorSystemXCTestCase {
     // MARK: test_unidirectional_yetEmitsAck_shouldWarn
 
     func test_unidirectional_yetReceivesAckRef_shouldWarn() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.makeTestProbe(expecting: String.self)
 
-        let control = try Gossiper._spawn
+        let control = try Gossiper._spawn(
             self.system,
             name: "noAcks",
             settings: .init(

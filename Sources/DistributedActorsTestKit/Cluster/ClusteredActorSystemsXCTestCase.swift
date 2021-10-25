@@ -202,7 +202,7 @@ open class ClusteredActorSystemsXCTestCase: XCTestCase {
 extension ClusteredActorSystemsXCTestCase {
     public func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
         let testKit = self.testKit(system)
-        let p = testKit.spawnTestProbe(expecting: Cluster.Membership.self)
+        let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
 
         system.cluster.ref.tell(.query(.currentMembership(p.ref)))
         let membership = try! p.expectMessage()
@@ -291,7 +291,7 @@ extension ClusteredActorSystemsXCTestCase {
 
         let testKit = self.testKit(system)
 
-        let probe = testKit.spawnTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<UniqueNode>.self, file: file, line: line)
+        let probe = testKit.makeTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<UniqueNode>.self, file: file, line: line)
         defer { probe.stop() }
 
         try testKit.eventually(within: timeout ?? .seconds(8), file: file, line: line, column: column) {
@@ -337,7 +337,7 @@ extension ClusteredActorSystemsXCTestCase {
     ) throws {
         let testKit: ActorTestKit = self.testKit(system)
 
-        let probe = testKit.spawnTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
+        let probe = testKit.makeTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
             system.cluster.ref.tell(.query(.associatedNodes(probe.ref)))
@@ -435,7 +435,7 @@ extension ClusteredActorSystemsXCTestCase {
         file: StaticString = #file, line: UInt = #line
     ) throws {
         let testKit = self.testKit(system)
-        let p = testKit.spawnTestProbe(expecting: Cluster.Membership.self)
+        let p = testKit.makeTestProbe(expecting: Cluster.Membership.self)
         defer {
             p.stop()
         }

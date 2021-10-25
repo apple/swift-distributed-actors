@@ -74,7 +74,7 @@ func bench_SpawnChildren(_ actorCount: Int) throws {
 
     let latch = CountDownLatch(from: 1)
 
-    let spawnerBehavior: Behavior<String> = .receive { _, _ in
+    let spawnerBehavior: _Behavior<String> = .receive { _, _ in
         for i in 1 ... actorCount {
             let _: _ActorRef<Never> = try system._spawn("test-\(i)", .ignore)
         }

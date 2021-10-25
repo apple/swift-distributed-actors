@@ -264,7 +264,7 @@ internal final class DistributedReceptionistStorage {
     ///   *once* with all the remote actors removed, rather than trickling in the changes to the Listing one by one (as it would be the case
     ///   if we waited for Terminated signals to trickle in and handle these removals one by one then).
     func pruneNode(_ node: UniqueNode) -> PrunedNodeDirective {
-        var prune = PrunedNodeDirective()
+        let prune = PrunedNodeDirective()
 
         guard let keys = self._registeredKeysByNode[node] else {
             // no keys were related to this node, we should have nothing to clean-up here

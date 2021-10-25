@@ -31,8 +31,8 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
     }
 
     func test_actorLogger_shouldIncludeActorPath() throws {
-        let p = self.testKit.spawnTestProbe("p", expecting: String.self)
-        let r = self.testKit.spawnTestProbe("r", expecting: Rendered.self)
+        let p = self.testKit.makeTestProbe("p", expecting: String.self)
+        let r = self.testKit.makeTestProbe("r", expecting: Rendered.self)
 
         let ref: _ActorRef<String> = try system._spawn(
             "myName",
@@ -59,10 +59,10 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel() throws {
-        let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
-        let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
+        let p = self.testKit.makeTestProbe("p2", expecting: String.self)
+        let r = self.testKit.makeTestProbe("r2", expecting: Rendered.self)
 
-        let ref: _ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
@@ -88,10 +88,10 @@ final class ActorLoggingTests: ActorSystemXCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata() throws {
-        let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
-        let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
+        let p = self.testKit.makeTestProbe("p2", expecting: String.self)
+        let r = self.testKit.makeTestProbe("r2", expecting: Rendered.self)
 
-        let ref: _ActorRef<String> = try system.spawn(
+        let ref: _ActorRef<String> = try system._spawn(
             "myName",
             .setup { context in
                 // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~

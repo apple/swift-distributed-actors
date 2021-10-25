@@ -57,7 +57,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         }
     }
 
-    func faulty(probe: _ActorRef<WorkerMessages>?) -> Behavior<FaultyMessage> {
+    func faulty(probe: _ActorRef<WorkerMessages>?) -> _Behavior<FaultyMessage> {
         .setup { context in
             probe?.tell(.setupRunning(ref: context.myself))
 
@@ -82,16 +82,16 @@ final class SupervisionTests: ActorSystemXCTestCase {
 
     func compileOnlyDSLReadabilityTest() {
         _ = { () -> Void in
-            let behavior: Behavior<String> = undefined()
-            _ = try self.system.spawn("example", behavior)
-            _ = try self.system.spawn("example", props: Props(), behavior)
-            _ = try self.system.spawn("example", props: .dispatcher(.pinnedThread), behavior)
-            _ = try self.system.spawn("example", props: Props().dispatcher(.pinnedThread).supervision(strategy: .stop), behavior)
-            _ = try self.system.spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))), behavior)
-            _ = try self.system.spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)), behavior)
+            let behavior: _Behavior<String> = undefined()
+            _ = try self.system._spawn("example", behavior)
+            _ = try self.system._spawn("example", props: Props(), behavior)
+            _ = try self.system._spawn("example", props: .dispatcher(.pinnedThread), behavior)
+            _ = try self.system._spawn("example", props: Props().dispatcher(.pinnedThread).supervision(strategy: .stop), behavior)
+            _ = try self.system._spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))), behavior)
+            _ = try self.system._spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)), behavior)
 
             // chaining
-            _ = try self.system.spawn(
+            _ = try self.system._spawn(
                 "example",
                 props: Props()
                     .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
@@ -100,7 +100,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
                 behavior
             )
 
-            _ = try self.system.spawn(
+            _ = try self.system._spawn(
                 "example",
                 props: Props()
                     .supervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchableError.self)
@@ -115,13 +115,13 @@ final class SupervisionTests: ActorSystemXCTestCase {
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
 
     func sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: String, makeEvilMessage: (String) -> FaultyMessage) throws {
-        let p = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
+        let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
-        let parentBehavior: Behavior<Never> = .setup { context in
+        let parentBehavior: _Behavior<Never> = .setup { context in
             let strategy: SupervisionStrategy = .stop
             let behavior = self.faulty(probe: p.ref)
-            let _: _ActorRef<FaultyMessage> = try context.spawn(
+            let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-erroring-1",
                 props: .supervision(strategy: strategy),
                 behavior
@@ -130,7 +130,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         }
         let interceptedParent = pp.interceptAllMessages(sentTo: parentBehavior) // TODO: intercept not needed
 
-        let parent: _ActorRef<Never> = try system.spawn("\(runName)-parent", interceptedParent)
+        let parent: _ActorRef<Never> = try system._spawn("\(runName)-parent", interceptedParent)
 
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
 
@@ -147,11 +147,11 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_restartSupervised_shouldRestart(runName: String, makeEvilMessage: (String) -> FaultyMessage) throws {
-        let p = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
+        let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
-        let parentBehavior: Behavior<Never> = .setup { context in
-            let _: _ActorRef<FaultyMessage> = try context.spawn(
+        let parentBehavior: _Behavior<Never> = .setup { context in
+            let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-erroring-2",
                 props: Props().supervision(strategy: .restart(atMost: 2, within: .seconds(1))),
                 self.faulty(probe: p.ref)
@@ -161,7 +161,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
 
-        let parent: _ActorRef<Never> = try system.spawn("\(runName)-parent-2", behavior)
+        let parent: _ActorRef<Never> = try system._spawn("\(runName)-parent-2", behavior)
         pp.watch(parent)
 
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
@@ -196,11 +196,11 @@ final class SupervisionTests: ActorSystemXCTestCase {
     ) throws {
         let backoff = Backoff.constant(.milliseconds(200))
 
-        let p = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
+        let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
-        let parentBehavior: Behavior<Never> = .setup { context in
-            let _: _ActorRef<FaultyMessage> = try context.spawn(
+        let parentBehavior: _Behavior<Never> = .setup { context in
+            let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-failing-2",
                 props: Props().supervision(strategy: .restart(atMost: 3, within: .seconds(1), backoff: backoff)),
                 self.faulty(probe: p.ref)
@@ -210,7 +210,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
 
-        let parent: _ActorRef<Never> = try system.spawn("\(runName)-parent-2", behavior)
+        let parent: _ActorRef<Never> = try system._spawn("\(runName)-parent-2", behavior)
         pp.watch(parent)
 
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
@@ -259,11 +259,11 @@ final class SupervisionTests: ActorSystemXCTestCase {
             randomFactor: 0.0
         )
 
-        let p = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
+        let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
-        let parentBehavior: Behavior<Never> = .setup { context in
-            let _: _ActorRef<FaultyMessage> = try context.spawn(
+        let parentBehavior: _Behavior<Never> = .setup { context in
+            let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-exponentialBackingOff",
                 props: Props().supervision(strategy: .restart(atMost: 10, within: nil, backoff: backoff)),
                 self.faulty(probe: p.ref)
@@ -273,7 +273,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
 
-        let parent: _ActorRef<Never> = try system.spawn("\(runName)-parent-2", behavior)
+        let parent: _ActorRef<Never> = try system._spawn("\(runName)-parent-2", behavior)
         pp.watch(parent)
 
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
@@ -311,13 +311,13 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: String, makeEvilMessage: (String) -> FaultyMessage) throws {
-        let p = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
+        let pp = self.testKit.makeTestProbe(expecting: Never.self)
 
         let failurePeriod: DistributedActors.TimeAmount = .seconds(1) // .milliseconds(300)
 
-        let parentBehavior: Behavior<Never> = .setup { context in
-            let _: _ActorRef<FaultyMessage> = try context.spawn(
+        let parentBehavior: _Behavior<Never> = .setup { context in
+            let _: _ActorRef<FaultyMessage> = try context._spawn(
                 "\(runName)-erroring-within-2",
                 props: .supervision(strategy: .restart(atMost: 2, within: failurePeriod)),
                 self.faulty(probe: p.ref)
@@ -326,7 +326,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
 
-        let parent: _ActorRef<Never> = try system.spawn("\(runName)-parent-2", behavior)
+        let parent: _ActorRef<Never> = try system._spawn("\(runName)-parent-2", behavior)
         pp.watch(parent)
 
         guard case .setupRunning(let faultyWorker) = try p.expectMessage() else { throw p.error() }
@@ -367,11 +367,11 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: FailureMode) throws {
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let probe = self.testKit.makeTestProbe(expecting: String.self)
 
         let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
         var shouldFail = true
-        let behavior: Behavior<String> = .setup { _ in
+        let behavior: _Behavior<String> = .setup { _ in
             if shouldFail {
                 shouldFail = false // we only fail the first time
                 probe.tell("failing")
@@ -386,7 +386,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref: _ActorRef<String> = try system.spawn("fail-in-start-1", props: .supervision(strategy: strategy), behavior)
+        let ref: _ActorRef<String> = try system._spawn("fail-in-start-1", props: .supervision(strategy: strategy), behavior)
 
         try probe.expectMessage("failing")
         try probe.expectMessage("starting")
@@ -395,12 +395,12 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: FailureMode) throws {
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let probe = self.testKit.makeTestProbe(expecting: String.self)
 
         let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
         // initial setup should not fail
         var shouldFail = false
-        let behavior: Behavior<String> = .setup { _ in
+        let behavior: _Behavior<String> = .setup { _ in
             if shouldFail {
                 shouldFail = false
                 probe.tell("setup:failing")
@@ -421,7 +421,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref: _ActorRef<String> = try system.spawn("fail-in-start-2", props: .supervision(strategy: strategy), behavior)
+        let ref: _ActorRef<String> = try system._spawn("fail-in-start-2", props: .supervision(strategy: strategy), behavior)
 
         try probe.expectMessage("starting")
         ref.tell("test")
@@ -434,10 +434,10 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: FailureMode) throws {
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let probe = self.testKit.makeTestProbe(expecting: String.self)
 
         let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
-        let behavior: Behavior<String> = .setup { _ in
+        let behavior: _Behavior<String> = .setup { _ in
             probe.tell("starting")
             try failureMode.fail()
             return .receiveMessage {
@@ -446,7 +446,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref: _ActorRef<String> = try system.spawn("fail-in-start-3", props: .supervision(strategy: strategy), behavior)
+        let ref: _ActorRef<String> = try system._spawn("fail-in-start-3", props: .supervision(strategy: strategy), behavior)
         probe.watch(ref)
         for _ in 1 ... 5 {
             try probe.expectMessage("starting")
@@ -509,19 +509,19 @@ final class SupervisionTests: ActorSystemXCTestCase {
     // MARK: Escalating supervision
 
     func test_escalateSupervised_throws_shouldKeepEscalatingThrough_watchingParents() throws {
-        let pt = self.testKit.spawnTestProbe("pt", expecting: _ActorRef<String>.self)
-        let pm = self.testKit.spawnTestProbe("pm", expecting: _ActorRef<String>.self)
-        let pab = self.testKit.spawnTestProbe("pab", expecting: _ActorRef<String>.self)
-        let pb = self.testKit.spawnTestProbe("pb", expecting: _ActorRef<String>.self)
-        let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
+        let pt = self.testKit.makeTestProbe("pt", expecting: _ActorRef<String>.self)
+        let pm = self.testKit.makeTestProbe("pm", expecting: _ActorRef<String>.self)
+        let pab = self.testKit.makeTestProbe("pab", expecting: _ActorRef<String>.self)
+        let pb = self.testKit.makeTestProbe("pb", expecting: _ActorRef<String>.self)
+        let pp = self.testKit.makeTestProbe("pp", expecting: String.self)
 
-        _ = try self.system.spawn(
+        _ = try self.system._spawn(
             "top",
             of: String.self,
             .setup { c in
                 pt.tell(c.myself)
 
-                _ = try c.spawn(
+                _ = try c._spawn(
                     "middle",
                     of: String.self,
                     props: .supervision(strategy: .escalate),
@@ -529,13 +529,13 @@ final class SupervisionTests: ActorSystemXCTestCase {
                         pm.tell(cc.myself)
 
                         // you can also just watch, this way the failure will be both in case of stop or crash; failure will be a Death Pact rather than indicating an escalation
-                        _ = try cc.spawnWatch(
+                        _ = try cc._spawnWatch(
                             "almostBottom",
                             of: String.self,
                             .setup { ccc in
                                 pab.tell(ccc.myself)
 
-                                _ = try ccc.spawnWatch(
+                                _ = try ccc._spawnWatch(
                                     "bottom",
                                     of: String.self,
                                     props: .supervision(strategy: .escalate),
@@ -555,7 +555,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
                     }
                 )
 
-                return Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
+                return _Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
                     pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
 
                     return .same // stop the failure from reaching the guardian and terminating the system
@@ -587,33 +587,33 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func test_escalateSupervised_throws_shouldKeepEscalatingThrough_nonWatchingParents() throws {
-        let pt = self.testKit.spawnTestProbe("pt", expecting: _ActorRef<String>.self)
-        let pm = self.testKit.spawnTestProbe("pm", expecting: _ActorRef<String>.self)
-        let pab = self.testKit.spawnTestProbe("pab", expecting: _ActorRef<String>.self)
-        let pb = self.testKit.spawnTestProbe("pb", expecting: _ActorRef<String>.self)
-        let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
+        let pt = self.testKit.makeTestProbe("pt", expecting: _ActorRef<String>.self)
+        let pm = self.testKit.makeTestProbe("pm", expecting: _ActorRef<String>.self)
+        let pab = self.testKit.makeTestProbe("pab", expecting: _ActorRef<String>.self)
+        let pb = self.testKit.makeTestProbe("pb", expecting: _ActorRef<String>.self)
+        let pp = self.testKit.makeTestProbe("pp", expecting: String.self)
 
-        _ = try self.system.spawn(
+        _ = try self.system._spawn(
             "top",
             of: String.self,
             .setup { c in
                 pt.tell(c.myself)
 
-                _ = try c.spawn(
+                _ = try c._spawn(
                     "middle",
                     of: String.self,
                     props: .supervision(strategy: .escalate),
                     .setup { cc in
                         pm.tell(cc.myself)
 
-                        _ = try cc.spawn(
+                        _ = try cc._spawn(
                             "almostBottom",
                             of: String.self,
                             props: .supervision(strategy: .escalate),
                             .setup { ccc in
                                 pab.tell(ccc.myself)
 
-                                _ = try ccc.spawn(
+                                _ = try ccc._spawn(
                                     "bottom",
                                     of: String.self,
                                     props: .supervision(strategy: .escalate),
@@ -633,7 +633,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
                     }
                 )
 
-                return Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
+                return _Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
                     pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
 
                     return .same // stop the failure from reaching the guardian and terminating the system
@@ -665,31 +665,31 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func test_escalateSupervised_throws_shouldKeepEscalatingUntilNonEscalatingParent() throws {
-        let pt = self.testKit.spawnTestProbe("pt", expecting: _ActorRef<String>.self)
-        let pm = self.testKit.spawnTestProbe("pm", expecting: _ActorRef<String>.self)
-        let pab = self.testKit.spawnTestProbe("pab", expecting: _ActorRef<String>.self)
-        let pb = self.testKit.spawnTestProbe("pb", expecting: _ActorRef<String>.self)
+        let pt = self.testKit.makeTestProbe("pt", expecting: _ActorRef<String>.self)
+        let pm = self.testKit.makeTestProbe("pm", expecting: _ActorRef<String>.self)
+        let pab = self.testKit.makeTestProbe("pab", expecting: _ActorRef<String>.self)
+        let pb = self.testKit.makeTestProbe("pb", expecting: _ActorRef<String>.self)
 
-        _ = try self.system.spawn(
+        _ = try self.system._spawn(
             "top",
             of: String.self,
             .setup { c in
                 pt.tell(c.myself)
 
-                _ = try c.spawn(
+                _ = try c._spawn(
                     "middle",
                     of: String.self,
                     .setup { cc in
                         pm.tell(cc.myself)
 
                         // does not watch or escalate child failures, this means that this is our "failure isolator"; failures will be stopped at this actor (!)
-                        _ = try cc.spawn(
+                        _ = try cc._spawn(
                             "almostBottom",
                             of: String.self,
                             .setup { ccc in
                                 pab.tell(ccc.myself)
 
-                                _ = try ccc.spawn(
+                                _ = try ccc._spawn(
                                     "bottom",
                                     of: String.self,
                                     props: .supervision(strategy: .escalate),
@@ -771,9 +771,9 @@ final class SupervisionTests: ActorSystemXCTestCase {
     // MARK: Composite handler tests
 
     func test_compositeSupervisor_shouldHandleUsingTheRightHandler() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let probe = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
 
-        let faultyWorker = try system.spawn(
+        let faultyWorker = try system._spawn(
             "compositeFailures-1",
             props: Props()
                 .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMeError.self)
@@ -802,13 +802,13 @@ final class SupervisionTests: ActorSystemXCTestCase {
     // MARK: Handling faults inside receiveSignal
 
     func sharedTestLogic_failInSignalHandling_shouldRestart(failBy failureMode: FailureMode) throws {
-        let parentProbe = self.testKit.spawnTestProbe(expecting: String.self)
-        let workerProbe = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let parentProbe = self.testKit.makeTestProbe(expecting: String.self)
+        let workerProbe = self.testKit.makeTestProbe(expecting: WorkerMessages.self)
 
         // parent spawns a new child for every message it receives, the workerProbe gets the reference so we can crash it then
-        let parentBehavior = Behavior<String>.receive { context, _ in
+        let parentBehavior = _Behavior<String>.receive { context, _ in
             let faultyBehavior = self.faulty(probe: workerProbe.ref)
-            try context.spawn("\(failureMode)-child", faultyBehavior)
+            try context._spawn("\(failureMode)-child", faultyBehavior)
 
             return .same
         }.receiveSignal { _, signal in
@@ -819,7 +819,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let parentRef: _ActorRef<String> = try system.spawn(
+        let parentRef: _ActorRef<String> = try system._spawn(
             "parent",
             props: .supervision(strategy: .restart(atMost: 2, within: nil)),
             parentBehavior
@@ -861,7 +861,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
     // MARK: Tests for selective failure handlers
 
     /// Throws all Errors it receives, EXCEPT `PleaseReplyError` to which it replies to the probe
-    private func throwerBehavior(probe: ActorTestProbe<PleaseReplyError>) -> Behavior<NonTransportableAnyError> {
+    private func throwerBehavior(probe: ActorTestProbe<PleaseReplyError>) -> _Behavior<NonTransportableAnyError> {
         .receiveMessage { errorEnvelope in
             switch errorEnvelope.failure {
             case let reply as PleaseReplyError:
@@ -874,9 +874,9 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType() throws {
-        let p = self.testKit.spawnTestProbe(expecting: PleaseReplyError.self)
+        let p = self.testKit.makeTestProbe(expecting: PleaseReplyError.self)
 
-        let supervisedThrower: _ActorRef<NonTransportableAnyError> = try system.spawn(
+        let supervisedThrower: _ActorRef<NonTransportableAnyError> = try system._spawn(
             "thrower-1",
             props: .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: EasilyCatchableError.self),
             self.throwerBehavior(probe: p)
@@ -896,9 +896,9 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func test_supervisor_shouldOnlyHandle_anyThrows() throws {
-        let p = self.testKit.spawnTestProbe(expecting: PleaseReplyError.self)
+        let p = self.testKit.makeTestProbe(expecting: PleaseReplyError.self)
 
-        let supervisedThrower: _ActorRef<NonTransportableAnyError> = try system.spawn(
+        let supervisedThrower: _ActorRef<NonTransportableAnyError> = try system._spawn(
             "thrower-2",
             props: .supervision(strategy: .restart(atMost: 100, within: nil), forAll: .errors),
             self.throwerBehavior(probe: p)
@@ -918,9 +918,9 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy failureMode: FailureMode) throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = Behavior.receiveMessage { _ in
+        let behavior: _Behavior<String> = _Behavior.receiveMessage { _ in
             try failureMode.fail()
             return .same
         }.receiveSignal { _, signal in
@@ -930,7 +930,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let ref = try system.spawn(.anonymous, props: .supervision(strategy: .restart(atMost: 1, within: .seconds(5))), behavior)
+        let ref = try system._spawn(.anonymous, props: .supervision(strategy: .restart(atMost: 1, within: .seconds(5))), behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -945,11 +945,11 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy failureMode: FailureMode, backoff: BackoffStrategy?) throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         var preRestartCounter = 0
 
-        let failOnBoom: Behavior<String> = Behavior.receiveMessage { message in
+        let failOnBoom: _Behavior<String> = _Behavior.receiveMessage { message in
             if message == "boom" {
                 try failureMode.fail()
             }
@@ -965,7 +965,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             return .same
         }
 
-        let ref = try system.spawn("fail-onside-pre-restart", props: .supervision(strategy: .restart(atMost: 3, within: nil, backoff: backoff)), failOnBoom)
+        let ref = try system._spawn("fail-onside-pre-restart", props: .supervision(strategy: .restart(atMost: 3, within: nil, backoff: backoff)), failOnBoom)
         p.watch(ref)
 
         ref.tell("boom")
@@ -988,16 +988,16 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .receiveMessage { msg in
+        let behavior: _Behavior<String> = .receiveMessage { msg in
             p.tell("crashing:\(msg)")
             return .stop { _ in
                 throw FaultyError.boom(message: "test")
             }
         }
 
-        let ref = try system.spawn(.anonymous, props: .supervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
+        let ref = try system._spawn(.anonymous, props: .supervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
         p.watch(ref)
 
         ref.tell("test")
@@ -1010,9 +1010,9 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy failureMode: FailureMode) throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { _ in
+        let behavior: _Behavior<String> = .setup { _ in
             p.tell("setup")
             return .receive { context, msg in
                 let cb: AsynchronousCallback<String> = context.makeAsynchronousCallback { str in
@@ -1028,7 +1028,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, props: .supervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
+        let ref = try system._spawn(.anonymous, props: .supervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
         p.watch(ref)
 
         try p.expectMessage("setup")
@@ -1047,13 +1047,13 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy failureMode: FailureMode) throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let el = elg.next()
         let promise = el.makePromise(of: Int.self)
         let future = promise.futureResult
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             p.tell("starting")
             return .receiveMessage { message in
                 switch message {
@@ -1069,7 +1069,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, props: Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
+        let ref = try system._spawn(.anonymous, props: Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
 
         try p.expectMessage("starting")
         ref.tell("suspend")
@@ -1082,13 +1082,13 @@ final class SupervisionTests: ActorSystemXCTestCase {
     }
 
     func test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let el = elg.next()
         let promise = el.makePromise(of: Int.self)
         let future = promise.futureResult
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             p.tell("starting")
             return .receiveMessage { message in
                 switch message {
@@ -1103,7 +1103,7 @@ final class SupervisionTests: ActorSystemXCTestCase {
             }
         }
 
-        let ref = try system.spawn(.anonymous, props: Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
+        let ref = try system._spawn(.anonymous, props: Props.supervision(strategy: .restart(atMost: 1, within: .seconds(1))), behavior)
 
         try p.expectMessage("starting")
         ref.tell("suspend")

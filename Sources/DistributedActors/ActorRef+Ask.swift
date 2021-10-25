@@ -268,7 +268,7 @@ internal enum AskActor {
         file: String,
         function: String,
         line: UInt
-    ) -> Behavior<ResponseType> {
+    ) -> _Behavior<ResponseType> {
         // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
         // but make dead letters tell us back that our ask will never reply?
         .setup { context in

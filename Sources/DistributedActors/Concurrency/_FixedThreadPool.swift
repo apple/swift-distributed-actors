@@ -44,7 +44,7 @@ private final class Worker {
 /// executed concurrently on all threads.
 public final class _FixedThreadPool {
     @usableFromInline
-    internal let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
+    internal let q: _LinkedBlockingQueue<() -> Void> = _LinkedBlockingQueue()
     private var workers: [Worker] = []
 
     @usableFromInline

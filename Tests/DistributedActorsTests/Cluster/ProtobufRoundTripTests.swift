@@ -49,7 +49,7 @@ final class ProtobufRoundTripTests: ActorSystemXCTestCase {
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
         let offer = Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), originNode: self.node, targetNode: self.node.node)
-        let proto = ProtoHandshakeOffer(offer)
+        let proto = _ProtoHandshakeOffer(offer)
         let back = try Wire.HandshakeOffer(fromProto: proto)
         back.shouldEqual(offer)
     }

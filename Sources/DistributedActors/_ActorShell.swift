@@ -32,7 +32,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
-    var behavior: Behavior<Message>
+    var behavior: _Behavior<Message>
 
     @usableFromInline
     let _parent: AddressableActorRef
@@ -146,7 +146,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
     internal init(
         system: ActorSystem, parent: AddressableActorRef,
-        behavior: Behavior<Message>, address: ActorAddress,
+        behavior: _Behavior<Message>, address: ActorAddress,
         props: Props, dispatcher: MessageDispatcher
     ) {
         self._system = system
@@ -274,7 +274,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         }
     }
 
-    /// Interprets the incoming message using the current `Behavior` and swaps it with the
+    /// Interprets the incoming message using the current `_Behavior` and swaps it with the
     /// next behavior (as returned by user code, which the message was applied to).
     ///
     /// Warning: Mutates the cell's behavior.
@@ -284,7 +284,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         self.instrumentation.actorReceivedStart(message: message, from: nil)
 
         do {
-            let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
+            let next: _Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
 
             #if SACT_TRACE_ACTOR_SHELL
             self.log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
@@ -383,7 +383,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
             return self.runState
         }
 
-        let next: Behavior<Message>
+        let next: _Behavior<Message>
         if let adapted = adapter(carry.message) {
             next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapted)
         } else {
@@ -403,7 +403,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
 
     /// Handles all actions that MUST be applied after a message is interpreted.
     @usableFromInline
-    internal func finishInterpretAnyMessage(_ next: Behavior<Message>) throws -> ActorRunResult {
+    internal func finishInterpretAnyMessage(_ next: _Behavior<Message>) throws -> ActorRunResult {
         if next.isChanging {
             try self.becomeNext(behavior: next)
         }
@@ -454,7 +454,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     }
 
     @usableFromInline
-    internal func _escalate(failure: Supervision.Failure) -> Behavior<Message> {
+    internal func _escalate(failure: Supervision.Failure) -> _Behavior<Message> {
         self.behavior = self.behavior.fail(cause: failure)
 
         return self.behavior
@@ -491,7 +491,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     /// MUST be preceded by an invocation of `restartPrepare`.
     /// The two steps MAY be performed in different point in time; reason being: backoff restarts,
     /// which need to suspend the actor, and NOT start it just yet, until the system message awakens it again.
-    @inlinable public func _restartComplete(with behavior: Behavior<Message>) throws -> Behavior<Message> {
+    @inlinable public func _restartComplete(with behavior: _Behavior<Message>) throws -> _Behavior<Message> {
         try behavior.validateAsInitial()
         self.behavior = behavior
         try self.interpretStart()
@@ -503,7 +503,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     ///
     /// Returns: `true` if next behavior is .stop and appropriate actions will be taken
     @inlinable
-    internal func becomeNext(behavior next: Behavior<Message>) throws {
+    internal func becomeNext(behavior next: _Behavior<Message>) throws {
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
         self.behavior = try self.behavior.canonicalize(self, next: next)
     }
@@ -635,7 +635,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         of type: M.Type = M.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
-        _ behavior: Behavior<M>
+        _ behavior: _Behavior<M>
     ) throws -> _ActorRef<M>
         where M: ActorMessage {
         try self.system.serialization._ensureSerializer(type, file: file, line: line)
@@ -648,7 +648,7 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
         of type: Message.Type = Message.self,
         props: Props = Props(),
         file: String = #file, line: UInt = #line,
-        _ behavior: Behavior<Message>
+        _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message>
         where Message: ActorMessage {
         self.watch(try self._spawn(naming, props: props, behavior))
@@ -683,17 +683,17 @@ public final class _ActorShell<Message: ActorMessage>: _ActorContext<Message>, A
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Sub Receive
 
-    var subReceives: [AnySubReceiveId: ((SubMessageCarry) throws -> Behavior<Message>, AbstractAdapter)] = [:]
+    var subReceives: [AnySubReceiveId: ((SubMessageCarry) throws -> _Behavior<Message>, AbstractAdapter)] = [:]
 
     @usableFromInline
-    override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
+    override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> _Behavior<Message>)? {
         self.subReceives[identifier]?.0
     }
 
     public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> _ActorRef<SubMessage>
         where SubMessage: ActorMessage {
         do {
-            let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
+            let wrappedClosure: (SubMessageCarry) throws -> _Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
                     self.log.warning("Received message [\(carry.message)] of type [\(String(reflecting: type(of: carry.message)))] for identifier [\(carry.identifier)] and address [\(carry.subReceiveAddress)] ")
                     return .same // TODO: make .drop once implemented
@@ -811,7 +811,7 @@ extension _ActorShell {
 
         let terminatedDirective = self.deathWatch.receiveTerminated(terminated)
 
-        let next: Behavior<Message>
+        let next: _Behavior<Message>
         if self.props._distributedActor {
             next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
         } else {
@@ -871,7 +871,7 @@ extension _ActorShell {
             // it is a Terminated sub-class, and thus shares semantics with it.
             try self.interpretTerminatedSignal(who: terminated.address, terminated: terminated)
         } else {
-            let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: signal)
+            let next: _Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: signal)
             try self.becomeNext(behavior: next)
         }
     }
@@ -902,7 +902,7 @@ extension _ActorShell {
         } else {
             // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
 
-            let next: Behavior<Message>
+            let next: _Behavior<Message>
             if case .signalHandling = self.behavior.underlying {
                 // TODO: we always want to call "through" the supervisor, make it more obvious that that should be the case internal API wise?
                 next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
@@ -934,7 +934,7 @@ extension _ActorShell {
                     // the child actor has stopped without providing us with a reason // FIXME; does this need to carry manual stop as a reason?
                     //
                     // no signal handling installed is semantically equivalent to unhandled
-                    next = Behavior<Message>.unhandled
+                    next = _Behavior<Message>.unhandled
                 }
             }
 

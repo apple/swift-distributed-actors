@@ -96,12 +96,12 @@ extension Rendering {
                     return ref.asAddressable
                 }
 
-                public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
+                public static func makeBehavior(instance: {{baseName}}) -> _Behavior<Message> {
                     return .setup { [weak instance] context in
                         // FIXME: if the actor has lifecycle hooks, call them
                         // try await instance.preStart(context: context)
 
-                        return Behavior<Message>._receiveMessageAsync { [weak instance] message in
+                        return _Behavior<Message>._receiveMessageAsync { [weak instance] message in
                             guard let instance = instance else {
                                 // This isn't wrong per se, it just is a race with the instance going away while we were
                                 // still delivering it some remote message; the same as any other termination race.

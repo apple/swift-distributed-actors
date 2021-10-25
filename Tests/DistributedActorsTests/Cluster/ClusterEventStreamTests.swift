@@ -32,8 +32,8 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
     }
 
     func test_clusterEventStream_shouldCollapseEventsAndOfferASnapshotToLateSubscribers() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
+        let p2 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
         let eventStream = try EventStream(
             system,
@@ -87,7 +87,7 @@ final class ClusterEventStreamTests: ActorSystemXCTestCase {
     }
 
     func test_clusterEventStream_collapseManyEventsIntoSnapshot() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: Cluster.Event.self)
+        let p1 = self.testKit.makeTestProbe(expecting: Cluster.Event.self)
 
         let eventStream = try EventStream(
             system,

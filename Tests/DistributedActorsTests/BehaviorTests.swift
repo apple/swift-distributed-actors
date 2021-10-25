@@ -26,7 +26,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_setup_executesImmediatelyOnStartOfActor() throws {
-        let p = self.testKit.spawnTestProbe("testActor-1", expecting: String.self)
+        let p = self.testKit.makeTestProbe("testActor-1", expecting: String.self)
 
         let message = "EHLO"
         let _: _ActorRef<String> = try system._spawn(
@@ -41,7 +41,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("testActor-2")
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe("testActor-2")
 
         var counter = 0
 
@@ -54,7 +54,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
-        let p = self.testKit.spawnTestProbe("testActor-2", expecting: String.self)
+        let p = self.testKit.makeTestProbe("testActor-2", expecting: String.self)
 
         var counter = 0
 
@@ -76,9 +76,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_receive_shouldReceiveManyMessagesInExpectedOrder() throws {
-        let p = self.testKit.spawnTestProbe("testActor-3", expecting: Int.self)
+        let p = self.testKit.makeTestProbe("testActor-3", expecting: Int.self)
 
-        func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> Behavior<Int> {
+        func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> _Behavior<Int> {
             if at == n {
                 return .setup { _ in
                     .stop
@@ -110,7 +110,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe("probe-specificSignal-1")
+        let p: ActorTestProbe<Signals.Terminated> = self.testKit.makeTestProbe("probe-specificSignal-1")
         let _: _ActorRef<String> = try system._spawn(
             .anonymous,
             .setup { context in
@@ -128,10 +128,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("probe-specificSignal-2")
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe("probe-specificSignal-2")
         let ref: _ActorRef<String> = try system._spawn(
             .anonymous,
-            Behavior<String>.receiveMessage { _ in
+            _Behavior<String>.receiveMessage { _ in
                 .stop
             }.receiveSpecificSignal(Signals.PostStop.self) { _, postStop in
                 p.tell("got:\(postStop)")
@@ -150,7 +150,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
         case other
     }
 
-    func firstBehavior(_ probe: _ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
+    func firstBehavior(_ probe: _ActorRef<OrElseMessage>) -> _Behavior<OrElseMessage> {
         .receiveMessage { message in
             switch message {
             case .first:
@@ -164,19 +164,19 @@ final class BehaviorTests: ActorSystemXCTestCase {
         }
     }
 
-    func secondBehavior(_ probe: _ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
+    func secondBehavior(_ probe: _ActorRef<OrElseMessage>) -> _Behavior<OrElseMessage> {
         .receiveMessage { message in
             probe.tell(message)
             return .same
         }
     }
 
-    func combinedBehavior(_ probe: _ActorRef<OrElseMessage>) -> Behavior<OrElseMessage> {
+    func combinedBehavior(_ probe: _ActorRef<OrElseMessage>) -> _Behavior<OrElseMessage> {
         self.firstBehavior(probe).orElse(self.secondBehavior(probe))
     }
 
     func test_orElse_shouldExecuteFirstBehavior() throws {
-        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.first)
@@ -184,7 +184,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_orElse_shouldExecuteSecondBehavior() throws {
-        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.second)
@@ -192,7 +192,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_orElse_shouldNotExecuteSecondBehaviorOnIgnore() throws {
-        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
         let ref: _ActorRef<OrElseMessage> = try system._spawn(.anonymous, self.combinedBehavior(p.ref))
 
         ref.tell(.other)
@@ -200,14 +200,14 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_orElse_shouldProperlyHandleDeeplyNestedBehaviors() throws {
-        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
-        var behavior: Behavior<Int> = .receiveMessage { message in
+        let p: ActorTestProbe<Int> = self.testKit.makeTestProbe()
+        var behavior: _Behavior<Int> = .receiveMessage { message in
             p.tell(message)
             return .same
         }
 
         for i in (0 ... 100).reversed() {
-            behavior = Behavior<Int>.receiveMessage { message in
+            behavior = _Behavior<Int>.receiveMessage { message in
                 if message == i {
                     p.tell(-i)
                     return .same
@@ -227,8 +227,8 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_orElse_shouldProperlyApplyTerminatedToSecondBehaviorBeforeCausingDeathPactError() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let first: Behavior<Never> = .setup { context in
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let first: _Behavior<Never> = .setup { context in
             let child: _ActorRef<String> = try context._spawnWatch(
                 "child",
                 .receiveMessage { _ in
@@ -247,7 +247,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
                 return .unhandled
             }
         }
-        let second: Behavior<Never> = .receiveSignal { _, signal in
+        let second: _Behavior<Never> = .receiveSignal { _, signal in
             switch signal {
             case let terminated as Signals.Terminated:
                 p.tell("second:terminated-name:\(terminated.address.name)")
@@ -265,12 +265,12 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_orElse_shouldCanonicalizeNestedSetupInAlternative() throws {
-        let p: ActorTestProbe<OrElseMessage> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<OrElseMessage> = self.testKit.makeTestProbe()
 
-        let first: Behavior<OrElseMessage> = .receiveMessage { _ in
+        let first: _Behavior<OrElseMessage> = .receiveMessage { _ in
             .unhandled
         }
-        let second: Behavior<OrElseMessage> = .setup { _ in
+        let second: _Behavior<OrElseMessage> = .setup { _ in
             p.tell(.second)
             return .setup { _ in
                 p.tell(.second)
@@ -290,9 +290,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<Never> = .stop { _ in
+        let behavior: _Behavior<Never> = .stop { _ in
             p.tell("postStop")
         }
 
@@ -302,9 +302,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_stoppedWithPostStopThrows_shouldTerminate() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<Never> = .stop(
+        let behavior: _Behavior<Never> = .stop(
             postStop: .signalHandling(handleMessage: .ignore) { _, _ in
                 p.tell("postStop")
                 throw TestError("Boom")
@@ -320,9 +320,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_makeAsynchronousCallback_shouldExecuteClosureInActorContext() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .receive { context, msg in
+        let behavior: _Behavior<String> = .receive { context, msg in
             let cb = context.makeAsynchronousCallback {
                 // This is a nasty trick to determine that the closure is
                 // actually being executed in the context of the actor. After
@@ -353,11 +353,11 @@ final class BehaviorTests: ActorSystemXCTestCase {
             try! system.shutdown().wait()
         }
 
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         let mockLine = 77777
 
-        let behavior: Behavior<String> = .receive { context, _ in
+        let behavior: _Behavior<String> = .receive { context, _ in
             let cb = context.makeAsynchronousCallback(line: UInt(mockLine)) {
                 throw Boom("Oh no, what a boom!")
             }
@@ -381,9 +381,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_myself_shouldStayValidAfterActorStopped() throws {
-        let p: ActorTestProbe<ContextClosureMessage> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<ContextClosureMessage> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             p.tell(.context {
                 context.myself
             })
@@ -404,9 +404,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .intercept(
+        let behavior: _Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
                 .suspend { (msg: Result<Int, Error>) in
                     p.tell("unsuspended:\(msg)")
@@ -436,9 +436,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .intercept(
+        let behavior: _Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
                 .suspend { (msg: Result<Int, Error>) in
                     p.tell("suspended:\(msg)")
@@ -485,9 +485,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .intercept(
+        let behavior: _Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
                 .suspend { (msg: Result<Int, Error>) in
                     switch msg {
@@ -519,7 +519,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
         try p.expectMessage("resumed:something else")
     }
 
-    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> Behavior<String> {
+    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>>? = nil) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
@@ -534,7 +534,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
         }
     }
 
-    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> Behavior<String> {
+    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> _Behavior<String> {
         .receive { context, message in
             switch message {
             case "suspend":
@@ -553,10 +553,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -585,10 +585,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -614,10 +614,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -641,10 +641,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
 
         let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
@@ -669,10 +669,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
 
         let ref = try system._spawn(.anonymous, behavior)
 
@@ -695,10 +695,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             p.tell("initializing")
             return context.awaitResult(of: future, timeout: .milliseconds(100)) { result in
                 suspendProbe.tell(result.mapError { error in ErrorEnvelope(error) })
@@ -734,10 +734,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             p.tell("initializing")
             return context.awaitResult(of: future, timeout: .milliseconds(10)) { result in
                 suspendProbe.tell(result.mapError { error in ErrorEnvelope(error) })
@@ -767,10 +767,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, ErrorEnvelope>> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             p.tell("initializing")
             return .receiveMessage { _ in
                 context.awaitResult(of: future, timeout: .seconds(3)) { result in
@@ -802,10 +802,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
+        let behavior: _Behavior<String> = self.awaitResultThrowingBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
 
         let ref = try system._spawn(.anonymous, behavior)
         p.watch(ref)
@@ -825,9 +825,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_suspendedActor_shouldKeepProcessingSystemMessages() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .receiveMessage { msg in
+        let behavior: _Behavior<String> = .receiveMessage { msg in
             .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -851,11 +851,11 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_suspendedActor_shouldKeepProcessingSignals() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior = Behavior<String>.receive { context, msg in
+        let behavior = _Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            try context._spawnWatch("child", Behavior<String>.stop)
+            try context._spawnWatch("child", _Behavior<String>.stop)
             return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -870,7 +870,7 @@ final class BehaviorTests: ActorSystemXCTestCase {
             p.tell("signal:\(s.address.name)")
 
             // returning this behavior should not unsuspend the actor
-            return Behavior<String>.receiveMessage { msg in
+            return _Behavior<String>.receiveMessage { msg in
                 p.tell("changedBySignal:\(msg)")
                 return .same
             }
@@ -892,11 +892,11 @@ final class BehaviorTests: ActorSystemXCTestCase {
     }
 
     func test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior = Behavior<String>.receive { context, msg in
+        let behavior = _Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            try context._spawnWatch("child", Behavior<String>.stop)
+            try context._spawnWatch("child", _Behavior<String>.stop)
             return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -921,9 +921,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
                 case .success(let res): probe.tell(res)
@@ -947,10 +947,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe = self.testKit.spawnTestProbe(expecting: NonTransportableAnyError.self)
+        let probe = self.testKit.makeTestProbe(expecting: NonTransportableAnyError.self)
         let error = self.testKit.error()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
                 case .success: throw self.testKit.error()
@@ -974,10 +974,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let resultProbe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
-        let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let resultProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
+        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
                 case .success(let res): resultProbe.tell(res)
@@ -1008,10 +1008,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let resultProbe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
-        let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let resultProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
+        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
                 case .success(let res): resultProbe.tell(res)
@@ -1042,10 +1042,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let resultProbe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let resultProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .seconds(3)) {
                 switch $0 {
                 case .success(let res): resultProbe.tell(res)
@@ -1076,10 +1076,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let resultProbe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let resultProbe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .seconds(3)) {
                 switch $0 {
                 case .success(let res): resultProbe.tell(res)
@@ -1119,9 +1119,9 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsyncThrowing(of: future, timeout: .milliseconds(300)) {
                 probe.tell($0)
                 return .same
@@ -1142,10 +1142,10 @@ final class BehaviorTests: ActorSystemXCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe: ActorTestProbe<Never> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Never> = self.testKit.makeTestProbe()
         let error = self.testKit.error()
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.onResultAsyncThrowing(of: future, timeout: .milliseconds(300)) { _ in
                 .same
             }

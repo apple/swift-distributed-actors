@@ -34,8 +34,8 @@ pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 let workersKey = Reception.Key(_ActorRef<String>.self, id: "workers")
 
 // though one can ensure to only run if in a process of a given role:
-try isolated.run(on: .master) {
-    let pool = try WorkerPool.spawn(isolated.system, "workerPool", select: .dynamic(workersKey))
+try isolated.run(on: .commander) {
+    let pool = try WorkerPool._spawn(isolated.system, "workerPool", select: .dynamic(workersKey))
 
     let _: _ActorRef<String> = try isolated.system._spawn(
         "pingSource",

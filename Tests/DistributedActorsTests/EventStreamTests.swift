@@ -20,9 +20,9 @@ import XCTest
 
 final class EventStreamTests: ActorSystemXCTestCase {
     func test_eventStream_shouldPublishEventsToAllSubscribers() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: String.self)
+        let p1 = self.testKit.makeTestProbe(expecting: String.self)
+        let p2 = self.testKit.makeTestProbe(expecting: String.self)
+        let p3 = self.testKit.makeTestProbe(expecting: String.self)
 
         let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
@@ -38,9 +38,9 @@ final class EventStreamTests: ActorSystemXCTestCase {
     }
 
     func test_eventStream_shouldNotPublishEventsToActorsAfterTheyUnsubscribed() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: String.self)
+        let p1 = self.testKit.makeTestProbe(expecting: String.self)
+        let p2 = self.testKit.makeTestProbe(expecting: String.self)
+        let p3 = self.testKit.makeTestProbe(expecting: String.self)
 
         let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
@@ -65,9 +65,9 @@ final class EventStreamTests: ActorSystemXCTestCase {
     }
 
     func test_eventStream_shouldUnsubscribeActorsOnTermination() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: String.self)
+        let p1 = self.testKit.makeTestProbe(expecting: String.self)
+        let p2 = self.testKit.makeTestProbe(expecting: String.self)
+        let p3 = self.testKit.makeTestProbe(expecting: String.self)
 
         let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 

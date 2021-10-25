@@ -32,7 +32,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receive_behavior() throws {
         // tag::receive_behavior[]
-        let behavior: Behavior<Greetings> = .receive { _, message in // <1>
+        let behavior: _Behavior<Greetings> = .receive { _, message in // <1>
             print("Received \(message)") // <2>
             return .same // <3>
         }
@@ -42,7 +42,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receiveMessage_behavior() throws {
         // tag::receiveMessage_behavior[]
-        let behavior: Behavior<Greetings> = .receiveMessage { message in // <1>
+        let behavior: _Behavior<Greetings> = .receiveMessage { message in // <1>
             print("Received \(message)") // <2>
             return .same // <3>
         }
@@ -54,7 +54,7 @@ class ActorDocExamples: XCTestCase {
         // tag::spawn[]
         let system = ActorSystem("ExampleSystem") // <1>
 
-        let greeterBehavior: Behavior<String> = .receiveMessage { name in // <2>
+        let greeterBehavior: _Behavior<String> = .receiveMessage { name in // <2>
             print("Hello \(name)!")
             return .same
         }
@@ -81,7 +81,7 @@ class ActorDocExamples: XCTestCase {
             fatalError("undefined")
         }
 
-        let lineHandling: Behavior<String> = .receive { _, _ in
+        let lineHandling: _Behavior<String> = .receive { _, _ in
             let data = readData() // <1>
             // do things with `data`...
 
@@ -102,7 +102,7 @@ class ActorDocExamples: XCTestCase {
         }
 
         // tag::stop_myself_refactored[]
-        private func stopForTerminal(_ data: LineByLineData) -> Behavior<String> {
+        private func stopForTerminal(_ data: LineByLineData) -> _Behavior<String> {
             switch data {
             case .endOfFile: return .stop
             default: return .same
@@ -117,12 +117,12 @@ class ActorDocExamples: XCTestCase {
             fatalError("undefined")
         }
 
-        func stopForTerminal(_: X.LineByLineData) -> Behavior<String> {
+        func stopForTerminal(_: X.LineByLineData) -> _Behavior<String> {
             fatalError("undefined")
         }
 
         // tag::stop_myself_refactored[]
-        let lineHandling: Behavior<String> = .receive { _, _ in
+        let lineHandling: _Behavior<String> = .receive { _, _ in
             let data = readData()
             // do things with `data`...
 
@@ -141,11 +141,11 @@ class ActorDocExamples: XCTestCase {
     }
 
     func example_props_inline() throws {
-        let behavior: Behavior<String> = .ignore
+        let behavior: _Behavior<String> = .ignore
         let system = ActorSystem("ExampleSystem")
 
         // tag::props_inline[]
-        let worker = try system._spawn
+        let worker = try system._spawn(
             "worker",
             props: .dispatcher(.default),
             behavior
@@ -158,7 +158,7 @@ class ActorDocExamples: XCTestCase {
         // tag::receptionist_register[]
         let key = Reception.Key(_ActorRef<String>.self, id: "my-actor") // <1>
 
-        let behavior: Behavior<String> = .setup { context in
+        let behavior: _Behavior<String> = .setup { context in
             context.receptionist.registerMyself(with: key) // <2>
 
             return .receiveMessage { _ in
@@ -191,7 +191,7 @@ class ActorDocExamples: XCTestCase {
     func example_receptionist_subscribe() {
         let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::receptionist_subscribe[]
-        let behavior: Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
+        let behavior: _Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
             context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
@@ -209,7 +209,7 @@ class ActorDocExamples: XCTestCase {
     func example_context_receptionist_subscribe() {
         let key = Reception.Key(_ActorRef<String>.self, id: "my-actor")
         // tag::context_receptionist_subscribe[]
-        let behavior: Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
+        let behavior: _Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
             context.system._receptionist.subscribe(context.myself, to: key) // <1>
 
             return .receiveMessage {
@@ -233,7 +233,7 @@ class ActorDocExamples: XCTestCase {
             let replyTo: _ActorRef<String>
         }
 
-        let greeterBehavior: Behavior<Hello> = .receiveMessage { message in
+        let greeterBehavior: _Behavior<Hello> = .receiveMessage { message in
             message.replyTo.tell("Hello \(message.name)!")
             return .same
         }
@@ -257,13 +257,13 @@ class ActorDocExamples: XCTestCase {
             let replyTo: _ActorRef<String>
         }
 
-        let greeterBehavior: Behavior<Hello> = .receiveMessage { message in
+        let greeterBehavior: _Behavior<Hello> = .receiveMessage { message in
             message.replyTo.tell("Hello \(message.name)!")
             return .same
         }
         let greeter = try system._spawn("greeter", greeterBehavior)
 
-        let caplinBehavior: Behavior<Never> = .setup { context in
+        let caplinBehavior: _Behavior<Never> = .setup { context in
             let timeout: TimeAmount = .seconds(1)
 
             let response: AskResponse<String> = // <1>
@@ -271,7 +271,7 @@ class ActorDocExamples: XCTestCase {
                     Hello(name: context.name, replyTo: $0)
                 }
 
-            func greeted() -> Behavior<Never> {
+            func greeted() -> _Behavior<Never> {
                 .stop
             }
 
@@ -310,11 +310,11 @@ class ActorDocExamples: XCTestCase {
 
 // tag::suggested_props_pattern[]
 struct ExampleWorker {
-    public static var suggested: (Behavior<WorkerMessages>, Props) {
+    public static var suggested: (_Behavior<WorkerMessages>, Props) {
         return (behavior, ExampleWorker.props)
     }
 
-    internal static var behavior: Behavior<WorkerMessages> = .receive { context, _ in
+    internal static var behavior: _Behavior<WorkerMessages> = .receive { context, _ in
         context.log.info("Work, work!")
         return .same
     }

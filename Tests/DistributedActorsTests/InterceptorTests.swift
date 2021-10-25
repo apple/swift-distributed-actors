@@ -24,7 +24,7 @@ final class ShoutingInterceptor: Interceptor<String> {
         self.probe = probe
     }
 
-    override func interceptMessage(target: Behavior<String>, context: _ActorContext<String>, message: String) throws -> Behavior<String> {
+    override func interceptMessage(target: _Behavior<String>, context: _ActorContext<String>, message: String) throws -> _Behavior<String> {
         self.probe?.tell("from-interceptor:\(message)")
         return try target.interpretMessage(context: context, message: message + "!")
     }
@@ -41,7 +41,7 @@ final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
         self.probe = probe
     }
 
-    override func interceptSignal(target: Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    override func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
         switch signal {
         case let terminated as Signals.Terminated:
             self.probe.tell(terminated) // we forward all termination signals to someone
@@ -57,11 +57,11 @@ final class TerminatedInterceptor<Message: ActorMessage>: Interceptor<Message> {
 
 final class InterceptorTests: ActorSystemXCTestCase {
     func test_interceptor_shouldConvertMessages() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         let interceptor = ShoutingInterceptor()
 
-        let forwardToProbe: Behavior<String> = .receiveMessage { message in
+        let forwardToProbe: _Behavior<String> = .receiveMessage { message in
             p.tell(message)
             return .same
         }
@@ -81,14 +81,14 @@ final class InterceptorTests: ActorSystemXCTestCase {
     }
 
     func test_interceptor_shouldSurviveDeeplyNestedInterceptors() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let i: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
+        let i: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
         let makeStringsLouderInterceptor = ShoutingInterceptor(probe: i)
 
         // just like in the movie "Inception"
-        func interceptionInceptionBehavior(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
-            let behavior: Behavior<String>
+        func interceptionInceptionBehavior(currentDepth depth: Int, stopAt limit: Int) -> _Behavior<String> {
+            let behavior: _Behavior<String>
             if depth < limit {
                 // add another "setup layer"
                 behavior = interceptionInceptionBehavior(currentDepth: depth + 1, stopAt: limit)
@@ -118,11 +118,11 @@ final class InterceptorTests: ActorSystemXCTestCase {
     }
 
     func test_interceptor_shouldInterceptSignals() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<Signals.Terminated> = self.testKit.makeTestProbe()
 
         let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
-        let spawnSomeStoppers = Behavior<String>.setup { context in
+        let spawnSomeStoppers = _Behavior<String>.setup { context in
             let one: _ActorRef<String> = try context._spawnWatch(
                 "stopperOne",
                 .receiveMessage { _ in
@@ -162,22 +162,22 @@ final class InterceptorTests: ActorSystemXCTestCase {
             self.probe = probe
         }
 
-        override func interceptSignal(target: Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        override func interceptSignal(target: _Behavior<Message>, context: _ActorContext<Message>, signal: Signal) throws -> _Behavior<Message> {
             self.probe.tell("intercepted:\(signal)")
             return try target.interpretSignal(context: context, signal: signal)
         }
     }
 
     func test_interceptor_shouldRemainWhenReturningStoppingWithPostStop() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.makeTestProbe()
 
-        let behavior: Behavior<String> = .receiveMessage { _ in
+        let behavior: _Behavior<String> = .receiveMessage { _ in
             .stop { _ in
                 p.tell("postStop")
             }
         }
 
-        let interceptedBehavior: Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
+        let interceptedBehavior: _Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
 
         let ref = try system._spawn(.anonymous, interceptedBehavior)
         p.watch(ref)

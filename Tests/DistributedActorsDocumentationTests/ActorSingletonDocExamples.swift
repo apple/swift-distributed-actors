@@ -27,7 +27,7 @@ class ActorSingletonDocExamples {
         }
         // end::configure-system[]
 
-        let singletonBehavior: Behavior<String> = .receive { context, name in
+        let singletonBehavior: _Behavior<String> = .receive { context, name in
             context.log.info("Hello \(name)!")
             return .same
         }

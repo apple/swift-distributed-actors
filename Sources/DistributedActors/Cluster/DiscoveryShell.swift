@@ -32,7 +32,7 @@ final class DiscoveryShell {
         self.cluster = cluster
     }
 
-    var behavior: Behavior<Message> {
+    var behavior: _Behavior<Message> {
         .setup { context in
             self.subscription = self.settings.subscribe(onNext: { result in
                 switch result {
@@ -51,8 +51,8 @@ final class DiscoveryShell {
         }
     }
 
-    private var ready: Behavior<Message> {
-        Behavior<Message>.receive { context, message in
+    private var ready: _Behavior<Message> {
+        _Behavior<Message>.receive { context, message in
             switch message {
             case .listing(let discoveredNodes):
                 self.onUpdatedListing(discoveredNodes: discoveredNodes, context: context)
@@ -82,7 +82,7 @@ final class DiscoveryShell {
         self.previouslyDiscoveredNodes = discoveredNodes
     }
 
-    func stop(reason: CompletionReason?, context: _ActorContext<Message>) -> Behavior<Message> {
+    func stop(reason: CompletionReason?, context: _ActorContext<Message>) -> _Behavior<Message> {
         context.log.info("Stopping cluster node discovery, reason: \(optional: reason)")
         self.subscription?.cancel()
         return .stop

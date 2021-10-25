@@ -24,7 +24,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     func test_ask_forSimpleType() throws {
-        let behavior: Behavior<TestMessage> = .receiveMessage {
+        let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
             return .stop
         }
@@ -39,7 +39,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() throws {
-        let behavior: Behavior<TestMessage> = .receiveMessage {
+        let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
             return .stop
         }
@@ -54,7 +54,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     func test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout() throws {
-        let behavior: Behavior<TestMessage> = .receiveMessage { _ in
+        let behavior: _Behavior<TestMessage> = .receiveMessage { _ in
             .stop
         }
 
@@ -72,7 +72,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     func test_ask_shouldCompleteWithFirstResponse() throws {
-        let behavior: Behavior<TestMessage> = .receiveMessage {
+        let behavior: _Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received:1")
             $0.replyTo.tell("received:2")
             return .stop
@@ -92,7 +92,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = testKit.makeTestProbe(expecting: String.self)
 
         let greeter: _ActorRef<AnswerMePlease> = try system._spawn(
             "greeterAskReply",
@@ -118,7 +118,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: TimeAmount) throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = testKit.makeTestProbe(expecting: String.self)
 
         let greeter: _ActorRef<AnswerMePlease> = try system._spawn(
             "greeterAskReply",
@@ -158,11 +158,11 @@ final class ActorAskTests: ActorSystemXCTestCase {
     }
 
     func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = testKit.makeTestProbe(expecting: String.self)
 
-        let void: _ActorRef<AnswerMePlease> = try system.spawn("theVoid", (.receiveMessage { _ in .same }))
+        let void: _ActorRef<AnswerMePlease> = try system._spawn("theVoid", (.receiveMessage { _ in .same }))
 
-        let _: _ActorRef<Never> = try system.spawn(
+        let _: _ActorRef<Never> = try system._spawn(
             "onResultAsync",
             .setup { context in
                 let askResult = void
@@ -205,7 +205,7 @@ final class ActorAskTests: ActorSystemXCTestCase {
     func test_ask_withTerminatedSystem_shouldNotCauseCrash() throws {
         let system = ActorSystem("AskCrashSystem")
 
-        let ref = try system.spawn(
+        let ref = try system._spawn(
             .unique("responder"),
             of: TestMessage.self,
             .receiveMessage { message in

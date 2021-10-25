@@ -63,7 +63,7 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         self.membership = .empty
     }
 
-    @available(*, deprecated, message: "will be replaced by distributed actor / closure version (we'll reuse the name though)")
+    @available(*, deprecated, message: "will be replaced by distributed actor / closure version")
     func onActorWatched(by watcher: AddressableActorRef, remoteNode: UniqueNode) {
         guard !self.nodeTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
@@ -180,7 +180,7 @@ enum NodeDeathWatcherShell {
     }
 
     // FIXME: death watcher is incomplete, should handle snapshot!!
-    static func behavior(clusterEvents: EventStream<Cluster.Event>) -> Behavior<Message> {
+    static func behavior(clusterEvents: EventStream<Cluster.Event>) -> _Behavior<Message> {
         .setup { context in
             let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.cluster.uniqueBindNode)
 
@@ -197,7 +197,7 @@ enum NodeDeathWatcherShell {
         }
     }
 
-    static func behavior(_ instance: NodeDeathWatcherInstance) -> Behavior<Message> {
+    static func behavior(_ instance: NodeDeathWatcherInstance) -> _Behavior<Message> {
         .receive { context, message in
             context.log.debug("Received: \(message)")
             switch message {

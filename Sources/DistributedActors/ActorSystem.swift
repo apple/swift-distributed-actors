@@ -470,7 +470,7 @@ extension ActorSystem: _ActorRefFactory {
     public func _spawn<Message>(
             _ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(),
             file: String = #file, line: UInt = #line,
-            _ behavior: Behavior<Message>
+            _ behavior: _Behavior<Message>
     ) throws -> _ActorRef<Message> where Message: ActorMessage {
         try self.serialization._ensureSerializer(type, file: file, line: line)
         return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
@@ -484,7 +484,7 @@ extension ActorSystem: _ActorRefFactory {
     /// This also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system.
     /// Appropriate supervision strategies should be configured for these types of actors.
     public func _spawnSystemActor<Message>(
-            _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
+            _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: Props = Props()
     ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
         try self.serialization._ensureSerializer(Message.self)
@@ -502,7 +502,7 @@ extension ActorSystem: _ActorRefFactory {
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
     internal func _prepareSystemActor<Message>(
-            _ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()
+            _ naming: ActorNaming, _ behavior: _Behavior<Message>, props: Props = Props()
     ) throws -> LazyStart<Message>
             where Message: ActorMessage {
         // try self._serialization._ensureSerializer(Message.self)
@@ -513,7 +513,7 @@ extension ActorSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
             using provider: _ActorRefProvider,
-            _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
+            _ behavior: _Behavior<Message>, name naming: ActorNaming, props: Props = Props(),
             startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
@@ -556,7 +556,7 @@ extension ActorSystem: _ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     internal func _spawn<Message>(
             using provider: _ActorRefProvider,
-            _ behavior: Behavior<Message>, address: ActorAddress, props: Props = Props(),
+            _ behavior: _Behavior<Message>, address: ActorAddress, props: Props = Props(),
             startImmediately: Bool = true
     ) throws -> _ActorRef<Message>
             where Message: ActorMessage {
@@ -614,7 +614,7 @@ extension ActorSystem: _ActorRefFactory {
 
     // FIXME(distributed): this exists because generated _spawnAny, we need to get rid of that _spawnAny
     public func _spawnDistributedActor<Message>(
-            _ behavior: Behavior<Message>, identifiedBy id: AnyActorIdentity) -> _ActorRef<Message> where Message: ActorMessage {
+            _ behavior: _Behavior<Message>, identifiedBy id: AnyActorIdentity) -> _ActorRef<Message> where Message: ActorMessage {
         guard let address = id.underlying as? ActorAddress else {
             fatalError("Cannot spawn distributed actor with \(Self.self) transport and non-\(ActorAddress.self) identity! Was: \(id)")
         }
@@ -631,19 +631,6 @@ extension ActorSystem: _ActorRefFactory {
 
         return try! self._spawn(using: provider, behavior, address: address, props: props) // try!-safe, since the naming must have been correct
     }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Beginnings of 'system time'
-extension ActorSystem {
-    /// Returns `Deadline` set `timeAmount` away from the systems current `now` time.
-    // TODO: Programmatic timers are not yet implemented, but would be in use here to offer and set the "now"
-    func deadline(fromNow timeAmount: TimeAmount) -> Deadline {
-        let now = Deadline.now() // TODO: allow programmatic timers
-        return now + timeAmount
-    }
-
-    // func progressTimeBy(_ timeAmount: TimeAmount) // TODO: Implement
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

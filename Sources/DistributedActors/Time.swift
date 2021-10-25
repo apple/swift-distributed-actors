@@ -325,7 +325,8 @@ public extension TimeAmount {
 /// ```
 ///
 /// - note: `Deadline` should not be used to represent a time interval
-@available(*, deprecated, message: "To be replaced by types that upcoming Swift versions might gain, as discussed in [Pitch] Clock, Instant, Date, and Duration https://forums.swift.org/t/pitch-clock-instant-date-and-duration/52451")
+// TODO(swift): To be replaced by types that upcoming Swift versions might gain, as discussed in
+//              [Pitch] Clock, Instant, Date, and Duration https://forums.swift.org/t/pitch-clock-instant-date-and-duration/52451
 public struct Deadline: Equatable, Hashable {
     public typealias Value = Int64
 

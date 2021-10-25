@@ -332,7 +332,7 @@ extension LifecycleWatch {
     /// such that the user can have a chance to handle and react to them.
     public func receiveNodeTerminated(_ terminatedNode: UniqueNode) {
         // TODO: remove actors as we notify about them
-        for (watched, fn) in self.watching {
+        for (watched, _) in self.watching {
             guard let watchedAddress = watched._unwrapActorAddress, watchedAddress.uniqueNode == terminatedNode else {
                 continue
             }

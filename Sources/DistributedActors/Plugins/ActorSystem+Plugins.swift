@@ -17,14 +17,13 @@
 
 public protocol AnyPlugin {
     /// Starts the plugin.
-    // TODO: return a Future<> once we have such abstraction, such that plugin can ensure "to be ready" within some time
+    // TODO: move to async function
     func start(_ system: ActorSystem) -> Result<Void, Error>
 
     /// Stops the plugin.
-    // TODO: return a Future<> once we have such abstraction, such that plugin can ensure "to be ready" within some time
+    // TODO: move to async function
     func stop(_ system: ActorSystem) -> Result<Void, Error>
 
-//    func stop(_ system: ActorClusterTransport) async throws
 }
 
 /// A plugin provides specific features and capabilities (e.g., singleton) to an `ActorSystem`.

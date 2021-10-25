@@ -29,7 +29,7 @@ let actors = 10000
 enum HotelGuest {
     typealias Ref = _ActorRef<String>
 
-    static var behavior: Behavior<String> = .setup { context in
+    static var behavior: _Behavior<String> = .setup { context in
         context.receptionist.registerMyself(with: .guests)
 
         return .receiveMessage { _ in
@@ -39,7 +39,7 @@ enum HotelGuest {
 }
 
 enum HotelOwner {
-    static var behavior: Behavior<Int> = .receiveMessage { message in
+    static var behavior: _Behavior<Int> = .receiveMessage { message in
         let guests = try (1 ... message).map { id in
             try system._spawn("guest-\(id)", HotelGuest.behavior)
         }
@@ -51,7 +51,7 @@ enum HotelOwner {
 }
 
 enum GuestListener {
-    static var behavior: Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
+    static var behavior: _Behavior<Reception.Listing<_ActorRef<String>>> = .setup { context in
 
         context.receptionist.subscribeMyself(to: .guests)
 

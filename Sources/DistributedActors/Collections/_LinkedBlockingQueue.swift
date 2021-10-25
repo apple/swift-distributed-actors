@@ -15,8 +15,7 @@
 import NIO
 
 /// :nodoc: Not intended for general use.
-@usableFromInline
-final class LinkedBlockingQueue<A>: @unchecked Sendable {
+public final class _LinkedBlockingQueue<A>: @unchecked Sendable {
     @usableFromInline
     final class Node<A>: @unchecked Sendable {
         @usableFromInline
@@ -41,8 +40,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     @usableFromInline
     internal var count: Int = 0
 
-    @usableFromInline
-    init() {
+    public init() {
         self.producer = Node(nil)
         self.consumer = self.producer
     }
@@ -53,7 +51,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     ///
     /// - Parameter item: The item to be added to the queue.
     @inlinable
-    func enqueue(_ item: A) {
+    public func enqueue(_ item: A) {
         self.lock.synchronized {
             let next = Node(item)
             self.producer.next = next
@@ -72,7 +70,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     ///
     /// - Returns: The item at the head of the queue
     @inlinable
-    func dequeue() -> A {
+    public func dequeue() -> A {
         self.lock.synchronized { () -> A in
             while true {
                 if let elem = self.take() {
@@ -86,7 +84,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     /// Removes all items from the queue, resets the count and signals all
     /// waiting threads.
     @inlinable
-    func clear() {
+    public func clear() {
         self.lock.synchronized {
             while let _ = self.take() {}
             self.count = 0
@@ -102,7 +100,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     ///                      in case the queue is empty.
     /// - Returns: The head of the queue or nil, when the timeout is exceeded.
     @inlinable
-    func poll(_ timeout: TimeAmount) -> A? {
+    public func poll(_ timeout: TimeAmount) -> A? {
         self.lock.synchronized { () -> A? in
             if let item = self.take() {
                 return item
@@ -138,7 +136,7 @@ final class LinkedBlockingQueue<A>: @unchecked Sendable {
     }
 
     @inlinable
-    func size() -> Int {
+    public func size() -> Int {
         self.lock.synchronized {
             self.count
         }
