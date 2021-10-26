@@ -100,10 +100,8 @@ As such, it is necessary to download and use nightly built toolchains to develop
 
 Distributed actors require "latest" nightly toolchains to build correctly.
 
-At this point in time, the **2021-10-20** toolchain is sufficient to build the project.
-You can download it from [https://swift.org/download/](https://swift.org/download/), 
-specifically the following toolchain [swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a-osx.pkg](https://swift.org/builds/development/xcode/swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a/swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a-osx.pkg) 
-is sufficient to build the current `main` branch.
+At this point in time, the **2021-10-26 nightly toolchain** is sufficient to build the project.
+You can download it from [https://swift.org/download/](https://swift.org/download/).
 
 ```
 # Export the toolchain (nightly snapshot or pull-request generated toolchain), e.g.:
@@ -116,17 +114,6 @@ $TOOLCHAIN/usr/bin/swift build --build-tests
 # Build and run all tests
 $TOOLCHAIN/usr/bin/swift test
 ```
-
-> **KNOWN LIMITATION:** This toolchain still requires an explicit:
-> 
-> ```swift
-> init(transport: ActorTransport) { 
->   defer { transport.actorReady(self) }
-> }
-> ```
-> 
-> This limitation will be lifted as soon as [Inject invocations of transport.actorReady in init #39762](https://github.com/apple/swift/pull/39762) 
-> is merged and a new toolchain is available with it, as we began to synthesize this call in initializers.
 
 #### Note on `DYLD_LIBRARY_PATH`
 

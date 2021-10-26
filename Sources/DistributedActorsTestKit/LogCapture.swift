@@ -58,14 +58,22 @@ public final class LogCapture {
         }
     }
 
-    public func awaitLogContaining(_ testKit: ActorTestKit, text: String, within: TimeAmount = .seconds(3), file: StaticString = #file, line: UInt = #line) throws {
+    /// Blocks while calling thread while waiting for log message to appear from monitored actor system.
+    ///
+    /// Returns: first log message that matches text predicate (with naive "contains" check).
+    /// Throws: an ``EventuallyError`` when the deadline is exceeded without matching a log message.
+    public func awaitLogContaining(
+        _ testKit: ActorTestKit, text: String,
+        within: TimeAmount = .seconds(3),
+        file: StaticString = #file, line: UInt = #line
+    ) throws -> CapturedLogMessage {
         try testKit.eventually(within: within, file: file, line: line) {
             let logs = self.logs
-            if !logs.contains(where: { log in
-                "\(log)".contains(text)
-            }) {
+            guard let found = logs.first(where: { log in "\(log)".contains(text) }) else {
                 throw TestError("Logs did not contain [\(text)].")
             }
+
+            return found
         }
     }
 }

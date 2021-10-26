@@ -780,14 +780,14 @@ extension ActorSystem {
         return self.namingLock.withLock {
             guard let managed = self._managedDistributedActors[address] else {
                 log.info("Unknown reference on our UniqueNode", metadata: [
-                    "actor/address": "\(address.detailedDescription)",
+                    "actor/identity": "\(address.detailedDescription)",
                 ])
                 // TODO(distributed): throw here, this should be a dead letter
                 return nil
             }
 
             log.info("Resolved as local instance", metadata: [
-                "actor/address": "\(address)",
+                "actor/identity": "\(address)",
                 "actor": "\(managed)",
             ])
             return managed as? Act
@@ -803,9 +803,9 @@ extension ActorSystem {
         let props = Props.forSpawn // TODO(distributed): rather we'd want to be passed a param through here
         let address = try! self._reserveName(type: Act.self, props: props)
 
-        log.trace("Assign identity", metadata: [
+        log.warning("Assign identity", metadata: [
             "actor/type": "\(actorType)",
-            "actor/address": "\(address.detailedDescription)",
+            "actor/identity": "\(address.detailedDescription)",
         ])
 
         return self.namingLock.withLock {
@@ -817,8 +817,8 @@ extension ActorSystem {
     public func actorReady<Act>(_ actor: Act) where Act: DistributedActor {
         let address = actor.id._forceUnwrapActorAddress
 
-        log.info("Actor ready", metadata: [
-            "actor/address": "\(address.detailedDescription)",
+        log.warning("Actor ready", metadata: [
+            "actor/identity": "\(address.detailedDescription)",
             "actor/type": "\(type(of: actor))",
         ])
 
@@ -830,30 +830,35 @@ extension ActorSystem {
                             "Add `plugins: [\"DistributedActorsGeneratorPlugin\"]` to your target.")
         }
 
-        if let watcher = actor as? LifecycleWatchSupport & DistributedActor {
-            func doMakeLifecycleWatch<Watcher: LifecycleWatchSupport & DistributedActor>(watcher: Watcher) {
-                _ = self._makeLifecycleWatch(watcher: watcher)
-            }
-            _openExistential(watcher, do: doMakeLifecycleWatch)
-        }
-
         func doSpawn<SpawnAct: __AnyDistributedClusterActor>(_: SpawnAct.Type) -> AddressableActorRef {
             log.trace("Spawn any for \(SpawnAct.self)")
             // FIXME(distributed): hopefully remove this and perform the spawn in the cluster library?
             return try! SpawnAct._spawnAny(instance: actor as! SpawnAct, on: self)
         }
-        let anyRef: AddressableActorRef = _openExistential(SpawnAct, do: doSpawn)
 
         self.namingLock.withLockVoid {
-            log.info("Store managed distributed actor \(anyRef.address.detailedDescription)")
-            self._reservedNames.remove(address)
+            guard self._reservedNames.remove(address) != nil else {
+                // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times
+                log.warning("Attempted to ready an identity that was not reserved: \(address)")
+                return
+            }
+
+            if let watcher = actor as? LifecycleWatchSupport & DistributedActor {
+                func doMakeLifecycleWatch<Watcher: LifecycleWatchSupport & DistributedActor>(watcher: Watcher) {
+                    _ = self._makeLifecycleWatch(watcher: watcher)
+                }
+                _openExistential(watcher, do: doMakeLifecycleWatch)
+            }
+
+            let anyRef: AddressableActorRef = _openExistential(SpawnAct, do: doSpawn)
+            log.debug("Store managed distributed actor \(anyRef.address.detailedDescription)")
             self._managedRefs[address] = anyRef
         }
     }
 
     /// Called during actor deinit/destroy.
     public func resignIdentity(_ id: AnyActorIdentity) {
-        log.trace("Resign identity", metadata: ["actor/id": "\(id.underlying)"])
+        log.warning("Resign identity", metadata: ["actor/id": "\(id.underlying)"])
         let address = id._forceUnwrapActorAddress
 
         self.namingLock.withLockVoid {
@@ -871,6 +876,7 @@ extension ActorSystem {
 }
 
 public enum ActorSystemError: ActorTransportError {
+    case duplicateActorPath(path: ActorPath)
     case shuttingDown(String)
 }
 

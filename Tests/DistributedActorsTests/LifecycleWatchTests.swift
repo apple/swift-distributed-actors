@@ -28,7 +28,6 @@ distributed actor Romeo: LifecycleWatchSupport, CustomStringConvertible {
     lazy var log = Logger(actor: self)
 
     init(probe: ActorTestProbe<String>, transport: ActorTransport) {
-        defer { transport.actorReady(self) }
         self.probe = probe
         probe.tell("Romeo init")
     }
@@ -53,7 +52,6 @@ distributed actor Juliet: LifecycleWatchSupport, CustomStringConvertible {
     let probe: ActorTestProbe<String>
 
     init(probe: ActorTestProbe<String>, transport: ActorTransport) {
-        defer { transport.actorReady(self) }
         self.probe = probe
         probe.tell("Juliet init")
     }
@@ -78,7 +76,7 @@ distributed actor Juliet: LifecycleWatchSupport, CustomStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Tests
 
-final class DeathWatchDistributedTests: ActorSystemXCTestCase {
+final class LifecycleWatchTests: ActorSystemXCTestCase {
 
     func test_watch_shouldTriggerTerminatedWhenWatchedActorDeinits() throws {
         try runAsyncAndBlock {
