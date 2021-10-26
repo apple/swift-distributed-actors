@@ -23,9 +23,10 @@ unacceptable_terms=(
     -e sanit[y]
     -e sanit[y]
 )
-if git grep --color=never -i "${unacceptable_terms[@]}" > /dev/null; then
+
+if git grep --color=never -i ${unacceptable_terms[@]}\" -- . ':(exclude)Sources/CDistributedActorsAtomics/include/cpp_magic.h' ':(exclude)NOTICE.txt' > /dev/null; then
     printf "\033[0;31mUnacceptable language found.\033[0m\n"
-    git grep -i "${unacceptable_terms[@]}"
+    git grep --color=never -i ${unacceptable_terms[@]}\" -- . ':(exclude)Sources/CDistributedActorsAtomics/include/cpp_magic.h' ':(exclude)NOTICE.txt'
     exit 1
 fi
 printf "\033[0;32mokay.\033[0m\n"
