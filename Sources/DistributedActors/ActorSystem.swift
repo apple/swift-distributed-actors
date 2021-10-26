@@ -838,7 +838,7 @@ extension ActorSystem {
 
         self.namingLock.withLockVoid {
             guard self._reservedNames.remove(address) != nil else {
-                // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times
+                // FIXME(distributed): this is a bug in the initializers impl, they may call actorReady many times (from async inits)
                 log.warning("Attempted to ready an identity that was not reserved: \(address)")
                 return
             }

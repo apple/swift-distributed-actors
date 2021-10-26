@@ -491,10 +491,10 @@ public enum ShouldMatcherError: Error {
 }
 
 public struct CallSiteInfo {
-    let file: StaticString
-    let line: UInt
-    let column: UInt
-    let appliedAssertionName: String
+    public let file: StaticString
+    public let line: UInt
+    public let column: UInt
+    public let appliedAssertionName: String
 
     init(file: StaticString = #file, line: UInt = #line, column: UInt = #column, function: String = #function) {
         self.file = file
@@ -533,9 +533,11 @@ extension CallSiteInfo {
     }
 }
 
+/// An error type with additional ``CallSiteInfo`` which is able to pretty print failures.
+/// It is useful for printing complex failures on the command line and is usually thrown by `should` matchers.
 public struct CallSiteError: Error, CustomStringConvertible {
-    let callSite: CallSiteInfo
-    let explained: String
+    public let callSite: CallSiteInfo
+    public let explained: String
 
     public init(callSite: CallSiteInfo, explained: String) {
         self.callSite = callSite

@@ -1,7 +1,12 @@
 
 # Swift Distributed Actors
 
-Peer-to-peer clustered actor system implementation for Swift Distributed Actors.
+Peer-to-peer server-side focused clustering transport implementation for Swift Distributed Actors.
+
+> **NOTE:** This is a work in progress, early preview project. All APIs may (and will) change. Please read more about our plans the introduction below.
+
+* [Introduction](#introduction)
+* [Development](#development)
 
 ## Introduction
 
@@ -219,7 +224,35 @@ docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.2004.main.
 
 ## Documentation
 
-We are in the process of updating documentation to use `swift-docc`.
+Only an initial version of API documentation is available right now. This is mostly because the API surface of this 
+library is expected to change intensely, along with the evolving language proposal on which this library depends.
+
+You can build API documentation by running the Swift DocC compiler. The [recently released DocC compiler](https://swift.org/blog/swift-docc/) is an official part of the Swift
+project, however it is so new, that it does not ship with official toolchains yet. Therefore, we provide scripts that
+automate the building and previewing documentation for you. Those will not be necessary once DocC begins to ship with  
+toolchains.
+
+Do build documentation run:
+
+```asciidoc
+./scripts/docs/generate_docc.sh
+```
+
+And to preview and browse the documentation as a web-page, run: 
+
+```asciidoc
+./scripts/docs/preview_docc.sh
+```
+
+Which will result in an output similar to this:
+
+```
+========================================
+Starting Local Preview Server
+	          http://localhost:8000/documentation/distributedactors
+```
+
+You can then keep this preview server running, and re-run the `generate_docc.sh` script to keep updating the browsed documentation.
 
 ## Supported Versions
 

@@ -16,7 +16,7 @@
 import DistributedActorsTestKit
 import XCTest
 
-final class ActorSystemTransportTests: ActorSystemXCTestCase {
+final class ActorSystemTransportTests: ActorSystemXCTestCase, @unchecked Sendable {
 
     func test_system_shouldAssignIdentityAndReadyActor() throws {
         try runAsyncAndBlock {
@@ -24,7 +24,9 @@ final class ActorSystemTransportTests: ActorSystemXCTestCase {
                 settings.cluster.disable()
             }
 
-            let stub = StubDistributedActor(transport: first)
+            var stub: StubDistributedActor? = StubDistributedActor(transport: first)
+            _ = stub
+            stub = nil
 
             let identity = try self.logCapture.awaitLogContaining(testKit, text: "Assign identity")
             let idString = "\(identity.metadata!["actor/identity"]!)"

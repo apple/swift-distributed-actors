@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
+import DistributedActorsTestKit
 import XCTest
 
 import _Distributed
@@ -42,9 +43,14 @@ extension XCTestCase {
         wait(for: [finished], timeout: TimeInterval(timeout.seconds))
         testTask.cancel()
 
-        if let error = receptacle.wait() {
-            throw error
+        guard let error = receptacle.wait() else {
+            return
         }
+
+        if let error = error as? CallSiteError {
+            XCTFail(error.explained, file: error.callSite.file, line: error.callSite.line)
+        }
+        throw error
     }
 
     func runAsyncAndBlock(
