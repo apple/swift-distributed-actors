@@ -8,7 +8,7 @@ This document specifies the security process for the Swift Distributed Actors pr
 
 ### Private Disclosure Process
 
-The Distributed Actors core team asks that known and suspected vulnerabilities be
+The Swift Distributed Actors core team asks that known and suspected vulnerabilities be
 privately and responsibly disclosed by emailing
 [sswg-security-reports@forums.swift.org](mailto:sswg-security-reports@forums.swift.org)
 with the [details usually included with bug reports][issue-template].
@@ -16,10 +16,9 @@ with the [details usually included with bug reports][issue-template].
 
 #### When to report a vulnerability
 
-* You think you have discovered a potential security vulnerability in SwiftNIO
-  or any of the SwiftNIO projects.
-* You are unsure how a vulnerability affects SwiftNIO or any of the SwiftNIO
-  projects.
+* You think you have discovered a potential security vulnerability in Swift Distributed Actors
+  or any of the related projects.
+* You are unsure how a vulnerability affects Swift Distributed Actors or any of the related projects.
 
 #### What happens next?
 
