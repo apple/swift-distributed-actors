@@ -22,7 +22,6 @@ distributed actor Forwarder {
     let probe: ActorTestProbe<String>?
     let name: String
     init(probe: ActorTestProbe<String>?, name: String, transport: ActorTransport) {
-        defer { transport.actorReady(self) }
         self.probe = probe
         self.name = name
     }

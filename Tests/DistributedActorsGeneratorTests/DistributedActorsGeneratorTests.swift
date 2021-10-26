@@ -25,10 +25,6 @@
 //
 //distributed actor TestDistributedActor {
 //
-//    init(transport: ActorTransport) {
-//        defer { transport.actorReady(self) }
-//    }
-//
 //    distributed func greet(name: String) -> String {
 //        print("ACTOR [\(self) \((self.id.underlying as! ActorAddress).detailedDescription)] RECEIVED \(#function)")
 //        (self.actorTransport as! ActorSystem).log.warning("ACTOR [\(self) \((self.id.underlying as! ActorAddress).detailedDescription)] RECEIVED \(#function)")

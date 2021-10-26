@@ -644,7 +644,7 @@ public class _Guardian {
             }
 
             if self._children.contains(name: path.name) {
-                throw _ActorContextError.duplicateActorPath(path: path)
+                throw ActorSystemError.duplicateActorPath(path: path)
             }
 
             let cell = try spawn()

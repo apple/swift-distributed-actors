@@ -31,7 +31,6 @@ distributed actor StringForwarder: CustomStringConvertible {
     let probe: ActorTestProbe<String>
 
     init(probe: ActorTestProbe<String>, transport: ActorTransport) {
-        defer { transport.actorReady(self) }
         self.probe = probe
     }
 

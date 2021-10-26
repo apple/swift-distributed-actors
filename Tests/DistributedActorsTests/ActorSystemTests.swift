@@ -27,8 +27,8 @@ final class ActorSystemTests: ActorSystemXCTestCase {
             let _: _ActorRef<String> = try system._spawn("test", .ignore)
         }
 
-        guard case _ActorContextError.duplicateActorPath(let path) = error else {
-            XCTFail()
+        guard case ActorSystemError.duplicateActorPath(let path) = error else {
+            XCTFail("Expected ActorSystemError.duplicateActorPath, but was: \(error)")
             return
         }
 

@@ -27,7 +27,6 @@ distributed actor Fork: CustomStringConvertible {
     private var isTaken: Bool = false
 
     init(name: String, transport: ActorTransport) {
-        defer { transport.actorReady(self) }
         self.name = name
     }
 

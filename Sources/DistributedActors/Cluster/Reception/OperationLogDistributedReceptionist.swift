@@ -247,7 +247,6 @@ distributed actor OpLogDistributedReceptionist: DistributedReceptionist, CustomS
 //         transport system: ActorSystem // FIXME(distributed): should be specific ActorSystem type, but that causes the synthesized storage rdar://84329494
     ) {
         let system = transport._forceUnwrapActorSystem
-        defer { system.actorReady(self) }
 
         self.instrumentation = system.settings.instrumentation.makeReceptionistInstrumentation()
 
