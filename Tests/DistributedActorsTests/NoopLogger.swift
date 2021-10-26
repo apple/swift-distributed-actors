@@ -14,26 +14,9 @@
 
 import Logging
 
-public struct NoopLogger {
+/// Convenience for creating a "no op" logger.
+struct NoopLogger {
     public static func make() -> Logger {
-        .init(label: "noop", factory: { _ in NoopLogHandler() })
+        .init(label: "noop", factory: { _ in SwiftLogNoOpLogHandler() })
     }
-}
-
-public struct NoopLogHandler: LogHandler {
-    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
-        // ignore
-    }
-
-    public subscript(metadataKey _: String) -> Logger.MetadataValue? {
-        get {
-            nil // ignore
-        }
-        set {
-            // ignore
-        }
-    }
-
-    public var metadata: Logger.Metadata = [:]
-    public var logLevel: Logger.Level = .critical
 }

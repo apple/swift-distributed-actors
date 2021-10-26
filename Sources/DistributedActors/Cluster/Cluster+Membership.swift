@@ -169,7 +169,7 @@ extension Cluster {
         /// A leader is a specific `Member` which was selected to fulfil the leadership role for the time being.
         /// A leader returning a non-nil value, guarantees that the same Member existing as part of this `Membership` as well (non-members cannot be leaders).
         ///
-        /// Clustering, as offered by this project, is inherently "master"-less; yet sometimes a leader may be useful to make decisions more efficient or centralized.
+        /// Clustering offered by this project does not really designate any "special" nodes; yet sometimes a leader may be useful to make decisions more efficient or centralized.
         /// Leaders may be selected using various strategies, the most simple one being sorting members by their addresses and picking the "lowest".
         ///
         /// ### Leaders in partitions
