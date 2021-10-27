@@ -31,37 +31,6 @@ var targets: [PackageDescription.Target] = [
           .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
         ]
     ),
-    .executableTarget(
-        name: "SampleCluster",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
-        ],
-        path: "Sources/SampleCluster",
-        plugins: [
-          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
-        ]
-    ),
-    .executableTarget(
-        name: "SampleReceptionist",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
-        ],
-        path: "Sources/SampleReceptionist",
-        plugins: [
-          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
-        ]
-    ),
-    .executableTarget(
-        name: "SampleMetrics",
-        dependencies: [
-            .product(name: "DistributedActors", package: "swift-distributed-actors"),
-            .product(name: "SwiftPrometheus", package: "SwiftPrometheus"),
-        ],
-        path: "Sources/SampleMetrics",
-        plugins: [
-          .plugin(name: "DistributedActorsGeneratorPlugin", package: "swift-distributed-actors"),
-        ]
-    ),
 
     /* --- tests --- */
 
@@ -81,8 +50,6 @@ var dependencies: [Package.Dependency] = [
 
     // ~~~~~~~ only for samples ~~~~~~~
 
-    // for metrics examples:
-    .package(url: "https://github.com/MrLotU/SwiftPrometheus", from: "1.0.0-alpha.11"), // Apache v2 license
 ]
 
 let package = Package(
@@ -98,14 +65,6 @@ let package = Package(
         .executable(
             name: "SampleDiningPhilosophers",
             targets: ["SampleDiningPhilosophers"]
-        ),
-        .executable(
-            name: "SampleCluster",
-            targets: ["SampleCluster"]
-        ),
-        .executable(
-            name: "SampleMetrics",
-            targets: ["SampleMetrics"]
         ),
     ],
 

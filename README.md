@@ -106,7 +106,7 @@ You can download it from [https://swift.org/download/](https://swift.org/downloa
 ```
 # Export the toolchain (nightly snapshot or pull-request generated toolchain), e.g.:
 
-export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-20-a.xctoolchain
+export TOOLCHAIN=/Library/Developer/Toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-26-a.xctoolchain
 
 # Just build the project
 $TOOLCHAIN/usr/bin/swift build --build-tests

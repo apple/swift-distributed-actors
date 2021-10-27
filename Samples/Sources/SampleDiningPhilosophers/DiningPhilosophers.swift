@@ -39,6 +39,6 @@ final class DiningPhilosophers {
             Philosopher(name: "Erik", leftFork: fork4, rightFork: fork5, transport: system),
         ]
 
-        Thread.sleep(time)
+        _Thread.sleep(time)
     }
 }

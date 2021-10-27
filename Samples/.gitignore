@@ -1,2 +1,0 @@
-# The XPC sample generates an .app, so we want to ignore it
-*.app

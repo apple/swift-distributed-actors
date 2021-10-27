@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import Foundation
 import XCTest
 
 class MPSCLinkedQueueTests: XCTestCase {
@@ -37,7 +36,7 @@ class MPSCLinkedQueueTests: XCTestCase {
         let q = MPSCLinkedQueue<Int>()
 
         for _ in 1 ... writerCount {
-            _ = try Thread {
+            _ = try _Thread {
                 for i in 0 ..< messageCountPerWriter {
                     q.enqueue(i)
                 }
