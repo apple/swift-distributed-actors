@@ -33,7 +33,7 @@ public struct Props: @unchecked Sendable {
     public var mailbox: MailboxProps
     public var dispatcher: DispatcherProps
 
-    // Supervision properties will be removed.
+    // _Supervision properties will be removed.
     // This type of "parent/child" supervision and the entire actor tree will be removed.
     // Instead we will rely exclusively on watching other actors explicitly.
     internal var supervision: _SupervisionProps

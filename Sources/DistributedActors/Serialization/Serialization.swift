@@ -141,7 +141,7 @@ public class Serialization {
             hint: "DistributedActors.\(OperationLogClusterReceptionist.PushOps.self)", serializerID: .default
         )
         // FIXME: This will go away once https://github.com/apple/swift/pull/30318 is merged and we can rely on summoning types
-        settings.registerInbound(OperationLogClusterReceptionist.AckOps.self, hint: "ReceptionistMessage", serializerID: .default)
+        settings.registerInbound(OperationLogClusterReceptionist.AckOps.self, hint: "_ReceptionistMessage", serializerID: .default)
         settings.registerInbound(
             OperationLogClusterReceptionist.AckOps.self,
             hint: "DistributedActors.\(OperationLogClusterReceptionist.AckOps.self)", serializerID: .default

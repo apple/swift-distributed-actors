@@ -175,7 +175,7 @@ internal struct DeathWatchImpl<Message: ActorMessage> {
                 // Because a child ALWAYS sends a .childTerminated to its parent on termination, so there is no need to watch it again,
                 // other than _us_ remembering that we issued such watch. A child can also never be remote, so the node deathwatcher does not matter either.
                 //
-                // A childTerminated is transformed into `Signals.ChildTerminated` which subclasses `Signals.Terminated`,
+                // A childTerminated is transformed into `Signals._ChildTerminated` which subclasses `Signals.Terminated`,
                 // so this way we achieve exactly one termination notification already.
                 addressableWatchee._sendSystemMessage(.watch(watchee: addressableWatchee, watcher: watcher.asAddressable), file: file, line: line)
             }

@@ -410,7 +410,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
             }
         }.receiveSignal { _, signal in
             switch signal {
-            case let terminated as Signals.ChildTerminated:
+            case let terminated as Signals._ChildTerminated:
                 // only this should match
                 p.tell(.childStopped(name: "child-term:\(terminated.address.name)"))
             case let terminated as Signals.Terminated:
@@ -513,7 +513,7 @@ final class ParentChildActorTests: ActorSystemXCTestCase {
                         let ref: _ActorRef<Int> = try context._spawn(
                             "child",
                             behavior.receiveSignal { _, signal in
-                                if signal is Signals.PostStop {
+                                if signal is Signals._PostStop {
                                     p.tell(count)
                                 }
 

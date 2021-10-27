@@ -133,14 +133,14 @@ final class BehaviorTests: ActorSystemXCTestCase {
             .anonymous,
             _Behavior<String>.receiveMessage { _ in
                 .stop
-            }.receiveSpecificSignal(Signals.PostStop.self) { _, postStop in
+            }.receiveSpecificSignal(Signals._PostStop.self) { _, postStop in
                 p.tell("got:\(postStop)")
                 return .stop
             }
         )
         ref.tell("please stop")
 
-        try p.expectMessage("got:PostStop()")
+        try p.expectMessage("got:_PostStop()")
         // receiveSignalType was invoked successfully
     }
 

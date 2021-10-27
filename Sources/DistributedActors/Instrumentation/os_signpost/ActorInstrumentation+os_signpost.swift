@@ -116,7 +116,7 @@ extension OSSignpostActorInstrumentation {
         )
     }
 
-    public func actorFailed(failure: Supervision.Failure) {
+    public func actorFailed(failure: _Supervision.Failure) {
         guard OSSignpostActorInstrumentation.logLifecycle.signpostsEnabled else {
             return
         }

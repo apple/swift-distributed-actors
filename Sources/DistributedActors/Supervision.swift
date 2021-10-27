@@ -26,14 +26,14 @@ public struct _SupervisionProps {
 
     /// Add another supervision strategy for a specific `Error` type to the supervision chain contained within these props.
     ///
-    /// - SeeAlso: The `Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
+    /// - SeeAlso: The `_Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
     public mutating func add(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervisionMappings.append(ErrorTypeBoundSupervisionStrategy(failureType: errorType, strategy: strategy))
     }
 
     /// Non mutating version of `_SupervisionProps.add(strategy:forErrorType:)`
     ///
-    /// - SeeAlso: The `Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
+    /// - SeeAlso: The `_Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
     public func adding(strategy: _SupervisionStrategy, forErrorType errorType: Error.Type) -> _SupervisionProps {
         var p = self
         p.add(strategy: strategy, forErrorType: errorType)
@@ -62,8 +62,8 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    static func supervision(strategy: _SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    static func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> Props {
+        self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Creates a new `Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
@@ -86,8 +86,8 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    func supervision(strategy: _SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    func supervision(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) -> Props {
+        self.supervision(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Adds another supervisor for the selected `Error` type to the chain of existing supervisors in this `Props`.
@@ -108,8 +108,8 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    mutating func supervise(strategy: _SupervisionStrategy, forAll selector: Supervise.All = .failures) {
-        self.supervise(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    mutating func supervise(strategy: _SupervisionStrategy, forAll selector: _Supervise.All = .failures) {
+        self.supervise(strategy: strategy, forErrorType: _Supervise.internalErrorTypeFor(selector: selector))
     }
 }
 
@@ -160,7 +160,7 @@ public extension Props {
 ///         ^     ^ ^ ^^^^^^^ ^
 ///     .setup    | |    |    \- Complete the restart; If present, run any .setup and other nested behaviors, continue running as usual.
 ///               | |    \- Backoff time before completing the restart, if backoff strategy is set and returns a value.
-///               | \- Signals.PreRestart is interpreted by the existing _Behavior (in its .onSignal handler, if present)
+///               | \- Signals._PreRestart is interpreted by the existing _Behavior (in its .onSignal handler, if present)
 ///               \- "Letting it Crash!"
 /// ```
 ///
@@ -247,7 +247,7 @@ internal struct ErrorTypeBoundSupervisionStrategy {
 /// Namespace for supervision associated types.
 ///
 /// - SeeAlso: `_SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
-public struct Supervision {
+public struct _Supervision {
     /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
     internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: _Behavior<Message>, props: _SupervisionProps) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: _SupervisionStrategy) -> Supervisor<Message> {
@@ -265,7 +265,7 @@ public struct Supervision {
         switch props.supervisionMappings.count {
         case 0:
             // "no supervisor" is equivalent to a stopping one, this way we can centralize reporting and logging of failures
-            return StoppingSupervisor(failureType: Supervise.AllFailures.self)
+            return StoppingSupervisor(failureType: _Supervise.AllFailures.self)
         case 1:
             let typeBoundStrategy = props.supervisionMappings.first!
             return supervisorFor0(failureType: typeBoundStrategy.failureType, strategy: typeBoundStrategy.strategy)
@@ -302,7 +302,7 @@ public struct Supervision {
     }
 }
 
-extension Supervision.Failure: CustomStringConvertible, CustomDebugStringConvertible {
+extension _Supervision.Failure: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         switch self {
         case .fault(let f):
@@ -335,7 +335,7 @@ extension Supervision.Failure: CustomStringConvertible, CustomDebugStringConvert
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Phantom types for registering supervisors
 
-public enum Supervise {
+public enum _Supervise {
     /// Supervision failure "catch all" selectors.
     /// By configuring supervision with one of the following you may configure a supervisor to catch only a specific
     /// type of failures (e.g. only swift `Error`s or only faults).
@@ -349,7 +349,7 @@ public enum Supervise {
 
     // MARK: Phantom types for registering supervisors
 
-    internal static func internalErrorTypeFor(selector: Supervise.All) -> Error.Type {
+    internal static func internalErrorTypeFor(selector: _Supervise.All) -> Error.Type {
         switch selector {
         case .errors: return AllErrors.self
         case .faults: return AllFaults.self
@@ -496,7 +496,7 @@ internal class Supervisor<Message: ActorMessage> {
     @usableFromInline
     func handleError(context: _ActorContext<Message>, target: _Behavior<Message>, processingAction: ProcessingAction<Message>, error: Error) throws -> _Behavior<Message> {
         var errorToHandle = error
-        // The following restart loop exists to support interpreting `PreRestart` and `Start` signal interpretation failures;
+        // The following restart loop exists to support interpreting `_PreRestart` and `Start` signal interpretation failures;
         // If the actor fails during restarting, this failure becomes the new failure reason, and we supervise this failure
         // this allows "try again a few times restarts" to happen even if the fault occurs in starting the actor (e.g. opening a file or obtaining some resource failing).
         //
@@ -520,7 +520,7 @@ internal class Supervisor<Message: ActorMessage> {
                 directive = try self.handleFailure(context, target: target, failure: .error(errorToHandle), processingType: processingAction.type)
             } catch {
                 // An error was thrown by our Supervisor logic while handling the failure, this is a bug and thus we crash hard
-                throw Supervision.SupervisionError.illegalDecision("Illegal supervision decision detected.", handledError: errorToHandle, error: error)
+                throw _Supervision.SupervisionError.illegalDecision("Illegal supervision decision detected.", handledError: errorToHandle, error: error)
             }
 
             do {
@@ -551,14 +551,14 @@ internal class Supervisor<Message: ActorMessage> {
     /// Handle a fault that happened during processing.
     ///
     /// The returned `SupervisionDirective` will be interpreted appropriately.
-    open func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    open func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         undefined()
     }
 
     /// Implement and return `true` if this supervisor can handle the failure or not.
     /// If `false` is returned and other supervisors are present, they will be tied in order, until a supervisor which
     /// can handle the failure is found, or if no such supervisor exists the failure will cause the actor to crash (as expected).
-    open func canHandle(failure: Supervision.Failure) -> Bool {
+    open func canHandle(failure: _Supervision.Failure) -> Bool {
         undefined()
     }
 
@@ -585,7 +585,7 @@ final class StoppingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
             // TODO: matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
             return .stop
@@ -602,7 +602,7 @@ final class StoppingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         }
     }
 
-    override func canHandle(failure: Supervision.Failure) -> Bool {
+    override func canHandle(failure: _Supervision.Failure) -> Bool {
         failure.shouldBeHandled(bySupervisorHandling: self.failureType)
     }
 
@@ -619,7 +619,7 @@ final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
             return .escalate(failure)
         } else {
@@ -635,7 +635,7 @@ final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         }
     }
 
-    override func canHandle(failure: Supervision.Failure) -> Bool {
+    override func canHandle(failure: _Supervision.Failure) -> Bool {
         failure.shouldBeHandled(bySupervisorHandling: self.failureType)
     }
 
@@ -647,7 +647,7 @@ final class EscalatingSupervisor<Message: ActorMessage>: Supervisor<Message> {
 // There are a few ways we could go about implementing this, we currently do a simple scan for "first one that handles",
 // which should be quite good enough esp. since we expect the supervisors to be usually not more than just a few.
 //
-// The scan also makes implementing the "catch" all types `Supervision.AllFailures` etc simpler rather than having to search
+// The scan also makes implementing the "catch" all types `_Supervision.AllFailures` etc simpler rather than having to search
 // the underlying map for the catch all handlers as well as the specific error.
 final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
     private let supervisors: [Supervisor<Message>]
@@ -658,7 +658,7 @@ final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
         super.init()
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         for supervisor in self.supervisors {
             if supervisor.canHandle(failure: failure) {
                 return try supervisor.handleFailure(context, target: target, failure: failure, processingType: processingType)
@@ -667,7 +667,7 @@ final class CompositeSupervisor<Message: ActorMessage>: Supervisor<Message> {
         return .stop
     }
 
-    override func canHandle(failure: Supervision.Failure) -> Bool {
+    override func canHandle(failure: _Supervision.Failure) -> Bool {
         self.supervisors.contains {
             $0.canHandle(failure: failure)
         }
@@ -687,7 +687,7 @@ internal enum SupervisionDirective<Message: ActorMessage> {
     case restartDelayed(TimeAmount, _Behavior<Message>)
     /// Directs the mailbox to immediately fail and stop processing.
     /// Failures should "bubble up".
-    case escalate(Supervision.Failure)
+    case escalate(_Supervision.Failure)
 }
 
 internal enum SupervisionDecision {
@@ -787,7 +787,7 @@ final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+    override func handleFailure(_ context: _ActorContext<Message>, target: _Behavior<Message>, failure: _Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         let decision: SupervisionDecision = self.restartDecider.recordFailure()
 
         guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) else {
@@ -821,7 +821,7 @@ final class RestartingSupervisor<Message: ActorMessage>: Supervisor<Message> {
         }
     }
 
-    override func canHandle(failure: Supervision.Failure) -> Bool {
+    override func canHandle(failure: _Supervision.Failure) -> Bool {
         failure.shouldBeHandled(bySupervisorHandling: self.failureType)
     }
 
@@ -868,16 +868,16 @@ extension RestartingSupervisor: CustomStringConvertible {
     }
 }
 
-private extension Supervision.Failure {
+private extension _Supervision.Failure {
     func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
-        let supervisorHandlesEverything = handledType == Supervise.AllFailures.self
+        let supervisorHandlesEverything = handledType == _Supervise.AllFailures.self
 
         func matchErrorTypes0() -> Bool {
             switch self {
             case .error(let error):
-                return handledType == Supervise.AllErrors.self || handledType == type(of: error)
+                return handledType == _Supervise.AllErrors.self || handledType == type(of: error)
             case .fault(let errorRepr):
-                return handledType == Supervise.AllFaults.self || handledType == type(of: errorRepr)
+                return handledType == _Supervise.AllFaults.self || handledType == type(of: errorRepr)
             }
         }
 

@@ -116,7 +116,7 @@ extension Rendering {
                             return .same
                         }._receiveSignalAsync { [weak instance] context, signal in 
                             switch signal {
-                            case is Signals.PostStop:
+                            case is Signals._PostStop:
                                 // FIXME: if we'd expose lifecycle hooks, call them
                                 // try await instance.postStop(context: context)
                                 return .stop
