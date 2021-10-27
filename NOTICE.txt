@@ -37,15 +37,6 @@ This product contains some modified data-structures from Apple/Swift-NIO.
 
 ---
 
-This product contains "cpp_magic.h" from Thomas Nixon & Jonathan Heathcote's uSHET
-
-  * LICENSE (MIT):
-    * https://github.com/18sg/uSHET/blob/master/LICENSE
-  * HOMEPAGE:
-    * https://github.com/18sg/uSHET
-
----
-
 This project was influenced by:
 
 * Akka

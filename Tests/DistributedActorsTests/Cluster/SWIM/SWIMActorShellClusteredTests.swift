@@ -16,6 +16,7 @@
 import DistributedActorsConcurrencyHelpers // for TimeSource
 import DistributedActorsTestKit
 import Foundation
+import Atomics
 @testable import SWIM
 import XCTest
 
@@ -449,18 +450,18 @@ extension SWIMActorShell {
 }
 
 class TestTimeSource {
-    var currentTime: Atomic<UInt64>
+    let currentTime: UnsafeAtomic<UInt64>
 
     /// starting from 1 to ensure .distantPast is already expired
     init(currentTime: UInt64 = 1) {
-        self.currentTime = Atomic(value: currentTime)
+        self.currentTime = .create(currentTime)
     }
 
     func now() -> DispatchTime {
-        DispatchTime(uptimeNanoseconds: self.currentTime.load())
+        DispatchTime(uptimeNanoseconds: self.currentTime.load(ordering: .relaxed))
     }
 
     func tick() {
-        _ = self.currentTime.add(100)
+        _ = self.currentTime.loadThenWrappingIncrement(by: 100, ordering: .relaxed)
     }
 }

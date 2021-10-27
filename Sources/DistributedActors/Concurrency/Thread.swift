@@ -19,10 +19,11 @@ import Glibc
 #endif
 
 import DistributedActorsConcurrencyHelpers
+import Atomics
 import NIO
 
-/// :nodoc: Not intended for general use. TODO: Make internal if possible.
-public enum ThreadError: Error {
+/// Not intended for general use.
+internal enum ThreadError: Error {
     case threadCreationFailed
     case threadJoinFailed
 }
@@ -35,19 +36,19 @@ private class BoxedClosure {
     }
 }
 
-/// :nodoc: Not intended for general use. TODO: Make internal if possible.
-public class Thread {
+// TODO(concurrency): remove this, we can use Tasks everywhere instead
+public class _Thread {
     private let thread: pthread_t
     private let lock: _Mutex
-    private var isRunning: Atomic<Bool>
+    private var isRunning: UnsafeAtomic<Bool>
 
     public init(_ f: @escaping () -> Void) throws {
         let lock = _Mutex()
-        let isRunning = Atomic<Bool>(value: true)
+        let isRunning = UnsafeAtomic<Bool>.create(true)
         let ref = Unmanaged.passRetained(BoxedClosure {
             defer {
                 lock.synchronized {
-                    isRunning.store(false)
+                    isRunning.store(false, ordering: .relaxed)
                 }
             }
             f()
@@ -59,7 +60,7 @@ public class Thread {
         var t: pthread_t?
         #endif
 
-        guard pthread_create(&t, nil, Thread.runnerCallback, ref.toOpaque()) == 0 else {
+        guard pthread_create(&t, nil, _Thread.runnerCallback, ref.toOpaque()) == 0 else {
             ref.release()
             throw ThreadError.threadCreationFailed
         }
@@ -76,9 +77,13 @@ public class Thread {
         pthread_detach(self.thread)
     }
 
+    deinit {
+        self.isRunning.destroy()
+    }
+
     public func cancel() {
         self.lock.synchronized {
-            if self.isRunning.load() {
+            if self.isRunning.load(ordering: .relaxed) {
                 let error = pthread_cancel(self.thread)
 
                 switch error {

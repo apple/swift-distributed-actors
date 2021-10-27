@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
+import Atomics
 
 @usableFromInline
 internal enum AffinityThreadPoolError: Error {
@@ -27,18 +28,22 @@ internal final class AffinityThreadPool {
     @usableFromInline
     internal let workerCount: Int
     @usableFromInline
-    internal let stopped: Atomic<Bool>
+    internal let stopped: UnsafeAtomic<Bool>
 
     internal init(workerCount: Int) throws {
         var workers: [Worker] = []
         self.workerCount = workerCount
-        self.stopped = Atomic(value: false)
+        self.stopped = .create(false)
 
         for _ in 0 ..< workerCount {
             workers.append(try Worker(stopped: self.stopped))
         }
 
         self.workers = workers
+    }
+
+    deinit {
+        self.stopped.destroy()
     }
 
     /// Executes `task` on the specified worker thread.
@@ -61,19 +66,19 @@ internal final class AffinityThreadPool {
     /// processed will be finished, but no new tasks will be started.
     @inlinable
     internal func shutdown() {
-        self.stopped.store(true, order: .release)
+        self.stopped.store(true, ordering: .releasing)
     }
 
     @usableFromInline
     internal struct Worker {
         @usableFromInline
         internal let taskQueue: _LinkedBlockingQueue<() -> Void>
-        private let thread: Thread
+        private let thread: _Thread
 
-        internal init(stopped: Atomic<Bool>) throws {
+        internal init(stopped: UnsafeAtomic<Bool>) throws {
             let queue: _LinkedBlockingQueue<() -> Void> = _LinkedBlockingQueue()
-            let thread = try Thread {
-                while !stopped.load(order: .acquire) {
+            let thread = try _Thread {
+                while !stopped.load(ordering: .acquiring) {
                     // TODO: We are doing a timed poll here to guarantee that we
                     // will eventually check if stopped has been set, even if no
                     // tasks are being processed. There must be a better way to

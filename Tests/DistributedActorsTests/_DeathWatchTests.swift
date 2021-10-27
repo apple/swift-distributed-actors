@@ -162,7 +162,7 @@ final class DeathWatchTests: ActorSystemXCTestCase {
 
 //    try p1.expectTerminated(stoppableRef)
 //    try p2.expectTerminated(stoppableRef)
-        Thread.sleep(.milliseconds(1000))
+        _Thread.sleep(.milliseconds(1000))
     }
 
     func test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers() throws {

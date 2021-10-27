@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
+import Atomics
 
 /// `EventStream` manages a set of subscribers and forwards any events sent to it via the `.publish`
 /// message to all subscribers. An actor can subscribe to the events by sending a `.subscribe` message
@@ -67,26 +67,30 @@ public struct EventStream<Event: ActorMessage>: AsyncSequence {
     public class AsyncIterator: AsyncIteratorProtocol {
         var underlying: AsyncStream<Event>.Iterator!
 
-        private let subscribed: Atomic<Bool> = Atomic(value: false)
+        private let subscribed: UnsafeAtomic<Bool> = .create(false)
 
         // TODO: clean this up since it's used by tests only (e.g., EventStreamConsumer)
         var ready: Bool {
-            self.subscribed.load()
+            self.subscribed.load(ordering: .relaxed)
         }
 
         init(ref: _ActorRef<EventStreamShell.Message<Event>>) {
             let id = ObjectIdentifier(self)
             self.underlying = AsyncStream<Event> { continuation in
                 ref.tell(.asyncSubscribe(id, { event in continuation.yield(event) }) {
-                    _ = self.subscribed.compareAndExchange(expected: false, desired: true)
+                    _ = self.subscribed.compareExchange(expected: false, desired: true, ordering: .relaxed)
                 })
 
                 continuation.onTermination = { @Sendable (_) -> Void in
                     ref.tell(.asyncUnsubscribe(id) {
-                        _ = self.subscribed.compareAndExchange(expected: true, desired: false)
+                        _ = self.subscribed.compareExchange(expected: true, desired: false, ordering: .relaxed)
                     })
                 }
             }.makeAsyncIterator()
+        }
+
+        deinit {
+            self.subscribed.destroy()
         }
 
         public func next() async -> Event? {

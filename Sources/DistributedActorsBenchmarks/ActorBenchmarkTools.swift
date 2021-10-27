@@ -14,16 +14,21 @@
 
 import DistributedActors
 import DistributedActorsConcurrencyHelpers
+import Atomics
 import SwiftBenchmarkTools
 
 @usableFromInline
 internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Message> {
-    let startTime = Atomic<UInt64>(value: 0)
+    let startTime: UnsafeAtomic<UInt64> = .create(0)
     let receptacle = BlockingReceptacle<Message>()
+
+    deinit {
+        startTime.destroy()
+    }
 
     override func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
         self.receptacle.offerOnce(message)
-        self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
+        self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt(), ordering: .relaxed)
     }
 
     override var address: ActorAddress {
@@ -39,7 +44,7 @@ internal class BenchmarkLatchPersonality<Message: Codable>: _CellDelegate<Messag
     }
 
     func timeSinceUnlocked() -> DistributedActors.TimeAmount? {
-        let time = Int64(SwiftBenchmarkTools.Timer().getTimeAsInt()) - Int64(self.startTime.load())
+        let time = Int64(SwiftBenchmarkTools.Timer().getTimeAsInt()) - Int64(self.startTime.load(ordering: .relaxed))
         if time > 0 {
             return DistributedActors.TimeAmount.nanoseconds(Int(time))
         } else {

@@ -14,10 +14,11 @@
 
 import DistributedActorsConcurrencyHelpers
 import Foundation
+import Atomics
 
 // TODO: Discuss naming of `Worker`
 private final class Worker {
-    var thread: Thread?
+    var thread: _Thread?
     var completedTasks: Int = 0
 
     @usableFromInline
@@ -42,27 +43,28 @@ private final class Worker {
 /// A FixedThreadPool eagerly starts the configured number of threads and keeps
 /// all of them running until `shutdown` is called. Submitted tasks will be
 /// executed concurrently on all threads.
+// FIXME(swift): very simple thread pool, does not need to be great since we're moving entirely to swift built-in runtime
 public final class _FixedThreadPool {
     @usableFromInline
     internal let q: _LinkedBlockingQueue<() -> Void> = _LinkedBlockingQueue()
     private var workers: [Worker] = []
 
     @usableFromInline
-    internal let stopping: Atomic<Bool> = Atomic(value: false)
+    internal let stopping: UnsafeAtomic<Bool> = .create(false)
 
     @usableFromInline
-    internal let runningWorkers: Atomic<Int>
+    internal let runningWorkers: UnsafeAtomic<Int>
 
     internal let allThreadsStopped: BlockingReceptacle<Void> = BlockingReceptacle()
 
     public init(_ threadCount: Int) throws {
-        self.runningWorkers = Atomic(value: threadCount)
+        self.runningWorkers = UnsafeAtomic.create(threadCount)
 
         for _ in 1 ... threadCount {
             let worker = Worker()
-            let thread = try Thread {
+            let thread = try _Thread {
                 // threads in the pool keep running as long as the pool is not stopping
-                while !self.stopping.load() {
+                while !self.stopping.load(ordering: .relaxed) {
                     // FIXME: We are currently using a timed `poll` instead of indefinitely
                     //        blocking on `dequeue` because we need to be able to check
                     //        if the pool is stopping. `pthread_cancel` is problematic here
@@ -77,7 +79,7 @@ public final class _FixedThreadPool {
                     }
                 }
 
-                if self.runningWorkers.sub(1) == 1 {
+                if self.runningWorkers.loadThenWrappingDecrement(ordering: .relaxed) == 1 {
                     // the last thread that stopped notifies the thread(s) waiting for the shutdown
                     self.allThreadsStopped.offerOnce(())
                 }
@@ -88,12 +90,17 @@ public final class _FixedThreadPool {
         }
     }
 
+    deinit {
+        self.stopping.destroy()
+        self.runningWorkers.destroy()
+    }
+
     /// Initiates shutdown of the pool. Active threads will complete processing
     /// of the current work item, idle threads will complete immediately.
     /// Outstanding work items that have not started processing will not be
     /// ignored.
     public func shutdown() {
-        if !self.stopping.exchange(with: true) {
+        if !self.stopping.exchange(true, ordering: .relaxed) {
             self.workers.removeAll()
             self.q.clear()
             self.allThreadsStopped.wait()
@@ -106,7 +113,7 @@ public final class _FixedThreadPool {
     /// - Parameter task: The task to be processed.
     @inlinable
     public func submit(_ task: @escaping () -> Void) {
-        if !self.stopping.load() {
+        if !self.stopping.load(ordering: .relaxed) {
             self.q.enqueue(task)
         }
     }

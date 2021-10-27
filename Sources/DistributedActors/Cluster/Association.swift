@@ -33,7 +33,7 @@ import NIO
 ///
 /// A completed ("associated") `Association` can ONLY be obtained by successfully completing a `HandshakeStateMachine` dance,
 /// as only the handshake can ensure that the other side is also an actor node that is able and willing to communicate with us.
-final class Association: CustomStringConvertible {
+final class Association: CustomStringConvertible, @unchecked Sendable {
     // TODO: Terrible lock which we want to get rid of; it means that every remote send has to content against all other sends about getting this ref
     // and the only reason is really because the off chance case in which we have to make an Association earlier than we have the handshake completed (i.e. we send to a ref that is not yet associated)
     let lock: Lock

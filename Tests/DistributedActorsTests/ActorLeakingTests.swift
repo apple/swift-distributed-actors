@@ -15,6 +15,7 @@
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import DistributedActorsTestKit
+import Atomics
 import Foundation
 import XCTest
 
@@ -40,7 +41,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         var ref: _ActorRef<String>? = try system._spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
             } else {
@@ -52,7 +53,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         ref = nil
 
         let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
@@ -79,7 +80,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         var ref: _ActorRef<String>? = try system._spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
             } else {
@@ -91,7 +92,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         ref = nil
 
         let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
@@ -115,7 +116,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         var ref: _ActorRef<String>? = try system._spawn("stopsOnAnyMessage", stopsOnAnyMessage)
 
         let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userMailboxInitCounter.load()
+            let counter = self.system.userMailboxInitCounter.load(ordering: .relaxed)
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
             } else {
@@ -127,7 +128,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         ref = nil
 
         let afterStopMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userMailboxInitCounter.load()
+            let counter = self.system.userMailboxInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
@@ -166,7 +167,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         ref?.tell(expectedChildrenCount)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != expectedActorCount {
                 throw NotEnoughActorsAlive(expected: expectedActorCount, current: counter)
             } else {
@@ -178,7 +179,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         ref = nil
 
         let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.userCellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load(ordering: .relaxed)
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
@@ -192,14 +193,14 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
     }
 
     final class LeakTestMessage {
-        let deallocated: Atomic<Bool>?
+        let deallocated: UnsafeAtomic<Bool>?
 
-        init(_ deallocated: Atomic<Bool>?) {
+        init(_ deallocated: UnsafeAtomic<Bool>?) {
             self.deallocated = deallocated
         }
 
         deinit {
-            deallocated?.store(true)
+            deallocated?.store(true, ordering: .relaxed)
         }
     }
 
@@ -218,10 +219,11 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         // this will cause the actor to block and fill the mailbox, so the next message should be dropped and deallocated
         ref.tell(LeakTestMessage(nil))
 
-        let deallocated: Atomic<Bool> = Atomic(value: false)
+        let deallocated: UnsafeAtomic<Bool> = .create(false)
+        defer { deallocated.destroy() }
         ref.tell(LeakTestMessage(deallocated))
 
-        deallocated.load().shouldBeTrue()
+        deallocated.load(ordering: .relaxed).shouldBeTrue()
         lock.unlock()
         #endif // SACT_TESTS_LEAKS
     }
@@ -230,16 +232,16 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better
+        throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better #831
 
-        let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
+        let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
         for n in 1 ... 5 {
             let system = ActorSystem("Test-\(n)")
             try! system.shutdown().wait()
         }
 
-        ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
+        ActorSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
 
@@ -279,7 +281,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #if !SACT_TESTS_LEAKS
         return self.skipLeakTests()
         #else
-        let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
+        let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
         var system: ActorSystem? = ActorSystem("Test") { settings in
             settings.logging.logLevel = .info
@@ -291,7 +293,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         try! system?.shutdown().wait()
         system = nil
 
-        ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
+        ActorSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
 
@@ -301,7 +303,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         #else
         throw XCTSkip("!!! Skipping test \(#function) !!!") // FIXME(distributed): we need to manage the retain cycles with the receptionist better
 
-        let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
+        let initialSystemCount = ActorSystem.actorSystemInitCounter.load(ordering: .relaxed)
 
         var system: ActorSystem? = ActorSystem("Test") { settings in
             settings.logging.logLevel = .info
@@ -313,7 +315,7 @@ final class ActorLeakingTests: ActorSystemXCTestCase {
         try! system?.shutdown().wait()
         system = nil
 
-        ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
+        ActorSystem.actorSystemInitCounter.load(ordering: .relaxed).shouldEqual(initialSystemCount)
         #endif // SACT_TESTS_LEAKS
     }
 
@@ -330,11 +332,11 @@ extension ActorLeakingTests.LeakTestMessage: Codable {
     public convenience init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let value = try container.decode(Bool.self, forKey: CodingKeys._deallocated)
-        self.init(Atomic(value: value))
+        self.init(UnsafeAtomic.create(value))
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(deallocated?.load() ?? false, forKey: CodingKeys._deallocated)
+        try container.encode(deallocated?.load(ordering: .relaxed) ?? false, forKey: CodingKeys._deallocated)
     }
 }

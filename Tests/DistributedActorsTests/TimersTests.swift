@@ -98,7 +98,7 @@ final class TimersTests: ActorSystemXCTestCase {
             // Because we cancel the timer in the same run, the message should
             // not be processed and the probe should not receive a message.
             context.timers.startSingle(key: TimerKey("message"), message: "fromTimer", delay: .nanoseconds(0))
-            DistributedActors.Thread.sleep(.milliseconds(10))
+            DistributedActors._Thread.sleep(.milliseconds(10)) // FIXME(swift): replace with Task.sleep
             context.timers.cancel(for: TimerKey("message"))
             return .receiveMessage { message in
                 p.tell(message)

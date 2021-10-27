@@ -36,7 +36,7 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "DistributedActors",
         dependencies: [
-            "DistributedActorsConcurrencyHelpers", // TODO: remove in favor of swift-atomics
+            "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox", // TODO(swift): remove mailbox runtime, use Swift actors directly
             .product(name: "OrderedCollections", package: "swift-collections"),
             .product(name: "Atomics", package: "swift-atomics"),
@@ -92,7 +92,9 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "DistributedActorsTestKit",
         dependencies: [
-            "DistributedActors", "DistributedActorsConcurrencyHelpers"
+            "DistributedActors",
+            "DistributedActorsConcurrencyHelpers",
+            .product(name: "Atomics", package: "swift-atomics"),
         ]
     ),
 
@@ -121,7 +123,8 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsTests",
         dependencies: [
             "DistributedActors",
-            "DistributedActorsTestKit"
+            "DistributedActorsTestKit",
+            .product(name: "Atomics", package: "swift-atomics"),
         ],
         plugins: [
             "DistributedActorsGeneratorPlugin"
@@ -142,11 +145,6 @@ var targets: [PackageDescription.Target] = [
             "CDistributedActorsMailbox",
             "DistributedActorsTestKit"
         ]
-    ),
-
-    .testTarget(
-        name: "DistributedActorsConcurrencyHelpersTests",
-        dependencies: ["DistributedActorsConcurrencyHelpers"]
     ),
 
     .testTarget(
@@ -187,6 +185,7 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActors",
             "SwiftBenchmarkTools",
+            .product(name: "Atomics", package: "swift-atomics"),
         ],
         exclude: [
           "README.md",
@@ -214,16 +213,8 @@ var targets: [PackageDescription.Target] = [
     ),
 
     .target(
-        name: "CDistributedActorsAtomics", // TODO: remove since swift-atomics is ready now
-        dependencies: [],
-        exclude: [
-          "README.md"
-        ]
-    ),
-
-    .target(
         name: "DistributedActorsConcurrencyHelpers",
-        dependencies: ["CDistributedActorsAtomics"],
+        dependencies: [],
         exclude: [
           "README.md"
         ]
